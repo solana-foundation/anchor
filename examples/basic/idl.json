@@ -1,0 +1,165 @@
+{
+  "version": "0.0.0",
+  "name": "example",
+  "methods": [
+    {
+      "name": "create_root",
+      "accounts": [
+        {
+          "name": "authority",
+          "is_mut": false,
+          "is_signer": true
+        },
+        {
+          "name": "root",
+          "is_mut": true,
+          "is_signer": false
+        }
+      ],
+      "args": [
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "data",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_root",
+      "accounts": [
+        {
+          "name": "authority",
+          "is_mut": false,
+          "is_signer": true
+        },
+        {
+          "name": "root",
+          "is_mut": true,
+          "is_signer": false
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_leaf",
+      "accounts": [
+        {
+          "name": "root",
+          "is_mut": false,
+          "is_signer": false
+        },
+        {
+          "name": "leaf",
+          "is_mut": true,
+          "is_signer": false
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "u64"
+        },
+        {
+          "name": "custom",
+          "type": {
+            "defined": "MyCustomType"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_leaf",
+      "accounts": [
+        {
+          "name": "authority",
+          "is_mut": false,
+          "is_signer": true
+        },
+        {
+          "name": "root",
+          "is_mut": false,
+          "is_signer": false
+        },
+        {
+          "name": "leaf",
+          "is_mut": true,
+          "is_signer": false
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "type": "struct",
+      "name": "Root",
+      "fields": [
+        {
+          "name": "initialized",
+          "type": "bool"
+        },
+        {
+          "name": "authority",
+          "type": "publicKey"
+        },
+        {
+          "name": "data",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "Leaf",
+      "fields": [
+        {
+          "name": "initialized",
+          "type": "bool"
+        },
+        {
+          "name": "root",
+          "type": "publicKey"
+        },
+        {
+          "name": "data",
+          "type": "u64"
+        },
+        {
+          "name": "custom",
+          "type": {
+            "defined": "MyCustomType"
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "type": "struct",
+      "name": "MyCustomType",
+      "fields": [
+        {
+          "name": "my_data",
+          "type": "u64"
+        },
+        {
+          "name": "key",
+          "type": "publicKey"
+        }
+      ]
+    }
+  ]
+}
