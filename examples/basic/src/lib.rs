@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "program", feature(proc_macro_hygiene))]
+#![feature(proc_macro_hygiene)]
 
 use anchor::prelude::*;
 

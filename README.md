@@ -13,6 +13,8 @@ For example, one could imagine easily writing a faulty SPL token program that fo
 An example program looks like this.
 
 ```rust
+use anchor::prelude::*;
+
 // Program instruction handler.
 
 #[program]
@@ -33,7 +35,7 @@ pub struct Initialize<'info> {
 
 // Program owned account.
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct Root {
     pub initialized: bool,
     pub data: u64,

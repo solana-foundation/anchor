@@ -1,7 +1,5 @@
 use anyhow::Result;
 use clap::Clap;
-use std::fs::File;
-use std::io::Read;
 
 #[derive(Debug, Clap)]
 pub struct Opts {
