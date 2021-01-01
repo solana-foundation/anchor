@@ -4,8 +4,6 @@ version = "0.1.0"
 description = "Basic example"
 edition = "2018"
 
-[workspace]
-
 [lib]
 crate-type = ["cdylib"]
 name = "basic_program"
@@ -14,10 +12,4 @@ name = "basic_program"
 borsh = { git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }
 solana-program = "1.4.3"
 solana-sdk = { version = "1.3.14", default-features = false, features = ["program"] }
-anchor = { path = "../../", feautres = ["derive"] }
-
-[profile.release]
-lto = true
-
-[profile.test]
-opt-level = 2
+anchor = { path = "../../", features = ["derive"] }

@@ -23,5 +23,5 @@ members = [
     "syn",
     "attributes/*",
     "derive",
+    "examples/basic",
 ]
-exclude = ["examples/basic"]
