@@ -18,16 +18,14 @@ For example, one could imagine easily writing a faulty SPL token program that fo
 See a full example [here](./examples/basic/src/lib.rs) along with a generated [IDL](./examples/basic/idl.json).
 
 ```rust
-use anchor::prelude::*;
-
 // Program instruction handler.
 
 #[program]
 mod example {
     pub fn create_root(ctx: Context<Initialize>, initial_data: u64) {
       let root = &mut ctx.accounts.root;
-	  root.account.initialized = true;
-	  root.account.data = initial_data;
+      root.account.initialized = true;
+      root.account.data = initial_data;
     }
 }
 
@@ -63,7 +61,7 @@ The `#[program]` attribute marks a program.
 ```rust
 #[program]
 mod example {
- ...
+   ...
 }
 ```
 
@@ -72,7 +70,7 @@ Internally, this generates the usual Solana entry code, i.e.,
 ```rust
 solana_program::entrypoint!(entry);
 fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-  ...
+    ...
 }
 ```
 
