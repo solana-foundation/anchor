@@ -38,7 +38,7 @@ mod example {
         let leaf = &mut ctx.accounts.leaf;
         leaf.account.data = data;
         if let Some(custom) = custom {
-            leaf.custom = custom;
+            leaf.account.custom = custom;
         }
         Ok(())
     }

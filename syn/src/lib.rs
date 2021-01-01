@@ -1,6 +1,7 @@
 //! DSL syntax tokens.
 
 pub mod codegen;
+#[cfg(target_arch = "x86")]
 pub mod idl;
 pub mod parser;
 

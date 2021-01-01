@@ -9,25 +9,38 @@ import { getProvider } from './';
  * Rpcs is a dynamically generated object with rpc methods attached.
  */
 export interface Rpcs {
-  [key: string]: Rpc;
+  [key: string]: RpcFn;
 }
 
 /**
  * Ixs is a dynamically generated object with ix functions attached.
  */
 export interface Ixs {
-  [key: string]: Ix;
+  [key: string]: IxFn;
 }
 
 /**
- * Rpc is a single rpc method.
+ * Accounts is a dynamically generated object to fetch any given account
+ * of a program.
  */
-export type Rpc = (ctx: RpcContext, ...args: any[]) => Promise<any>;
+export interface Accounts {
+  [key: string]: AccountFn;
+}
+
+/**
+ * RpcFn is a single rpc method.
+ */
+export type RpcFn = (ctx: RpcContext, ...args: any[]) => Promise<any>;
 
 /**
  * Ix is a function to create a `TransactionInstruction`.
  */
-export type Ix = (ctx: RpcContext, ...args: any[]) => TransactionInstruction;
+export type IxFn = (ctx: RpcContext, ...args: any[]) => TransactionInstruction;
+
+/**
+ * Account is a function returning a deserialized account, given an address.
+ */
+export type AccountFn = (address: PublicKey) => any;
 
 /**
  * Options for an RPC invocation.
@@ -64,10 +77,11 @@ export class RpcFactory {
    *
    * @returns an object with all the RPC methods attached.
    */
-	public static build(idl: Idl, coder: Coder, programId: PublicKey): [Rpcs, Ixs] {
+	public static build(idl: Idl, coder: Coder, programId: PublicKey): [Rpcs, Ixs, Accounts] {
 		const rpcs: Rpcs = {};
 		const ixFns: Ixs = {};
-		idl.instructions.forEach(idlIx=> {
+		const accountFns: Accounts = {};
+		idl.instructions.forEach(idlIx => {
 			// Function to create a raw `TransactionInstruction`.
 			const ix = RpcFactory.buildIx(
 				idlIx,
@@ -81,10 +95,28 @@ export class RpcFactory {
 			rpcs[name] = rpc;
 			ixFns[name] = ix;
 		});
-		return [rpcs, ixFns];
+
+		idl.accounts.forEach(idlAccount => {
+			// todo
+			const accountFn = async (address: PublicKey): Promise<void> => {
+				const provider = getProvider();
+				if (provider === null) {
+					throw new Error('Provider not set');
+				}
+				const accountInfo = await provider.connection.getAccountInfo(address);
+				if (accountInfo === null) {
+					throw new Error(`Entity does not exist ${address}`);
+				}
+				coder.accounts.decode(idlAccount.name, accountInfo.data);
+			};
+			const name = camelCase(idlAccount.name);
+			accountFns[name] = accountFn;
+		});
+
+		return [rpcs, ixFns, accountFns];
 	}
 
-	private static buildIx(idlIx: IdlInstruction, coder: Coder, programId: PublicKey): Ix {
+	private static buildIx(idlIx: IdlInstruction, coder: Coder, programId: PublicKey): IxFn {
     if (idlIx.name === '_inner') {
       throw new IdlError('the _inner name is reserved');
     }
@@ -109,7 +141,7 @@ export class RpcFactory {
     return ix;
 	}
 
-	private static buildRpc(ixFn: Ix): Rpc {
+	private static buildRpc(ixFn: IxFn): RpcFn {
     const rpc = async (ctx: RpcContext, ...args: any[]): Promise<TransactionSignature> => {
 			const tx = new Transaction();
 			if (ctx.instructions !== undefined) {
