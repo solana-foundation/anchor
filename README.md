@@ -5,7 +5,7 @@ Anchor is a DSL for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-
 ## Note
 
 * **Anchor is in active development, so all APIs are subject to change.**
-* **The code is unaudited. Use at your own risk.**
+* **This code is unaudited. Use at your own risk.**
 
 ## Goal
 
@@ -88,7 +88,7 @@ pub fn initialize(ctx: Context<Initialize>, initial_data: u64) {
 }
 ```
 
-Note that the `program` handler inputs are broken up into two sections: 1) an accounts struct for the instruction, deriving the `Accounts` macro and a variable length set of program arguments deserialized from the instruction data.
+Note that the `program` handler inputs are broken up into two sections: 1) a context containing an accounts struct for the instruction, deriving the `Accounts` macro, and a variable length set of program arguments deserialized from the instruction data.
 
 ## Marking an Accounts struct.
 
@@ -128,3 +128,12 @@ There are several inert attributes (attributes that are consumed only for the pu
 * Relay accounts for composability
 * Error code derive for boilerplate.
 * Generate error codes for each constraint.
+
+## License
+
+Anchor is dual-licensed under Apache 2.0 and MIT terms:
+
+```
+Apache License, Version 2.0, (LICENSE or http://www.apache.org/licenses/LICENSE-2.0)
+MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+```
