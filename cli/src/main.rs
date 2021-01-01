@@ -44,7 +44,7 @@ fn idl(file: String, out: Option<String>) -> Result<()> {
     let idl = anchor_syn::parser::file::parse(&file)?;
     let idl_json = serde_json::to_string_pretty(&idl)?;
     if let Some(out) = out {
-        std::fs::write(out, idl_json);
+        std::fs::write(out, idl_json)?;
         return Ok(());
     }
     println!("{}", idl_json);
