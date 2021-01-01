@@ -1,4 +1,6 @@
 bin/
+node_modules/
+dist/
 .idea/
 target/
 *~
