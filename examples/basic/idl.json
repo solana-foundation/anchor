@@ -1,19 +1,19 @@
 {
   "version": "0.0.0",
   "name": "example",
-  "methods": [
+  "instructions": [
     {
       "name": "create_root",
       "accounts": [
         {
           "name": "authority",
-          "is_mut": false,
-          "is_signer": true
+          "isMut": false,
+          "isSigner": true
         },
         {
           "name": "root",
-          "is_mut": true,
-          "is_signer": false
+          "isMut": true,
+          "isSigner": false
         }
       ],
       "args": [
@@ -32,13 +32,13 @@
       "accounts": [
         {
           "name": "authority",
-          "is_mut": false,
-          "is_signer": true
+          "isMut": false,
+          "isSigner": true
         },
         {
           "name": "root",
-          "is_mut": true,
-          "is_signer": false
+          "isMut": true,
+          "isSigner": false
         }
       ],
       "args": [
@@ -53,13 +53,13 @@
       "accounts": [
         {
           "name": "root",
-          "is_mut": false,
-          "is_signer": false
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "leaf",
-          "is_mut": true,
-          "is_signer": false
+          "isMut": true,
+          "isSigner": false
         }
       ],
       "args": [
@@ -80,59 +80,21 @@
       "accounts": [
         {
           "name": "authority",
-          "is_mut": false,
-          "is_signer": true
+          "isMut": false,
+          "isSigner": true
         },
         {
           "name": "root",
-          "is_mut": false,
-          "is_signer": false
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "leaf",
-          "is_mut": true,
-          "is_signer": false
+          "isMut": true,
+          "isSigner": false
         }
       ],
       "args": [
-        {
-          "name": "data",
-          "type": "u64"
-        }
-      ]
-    }
-  ],
-  "accounts": [
-    {
-      "type": "struct",
-      "name": "Root",
-      "fields": [
-        {
-          "name": "initialized",
-          "type": "bool"
-        },
-        {
-          "name": "authority",
-          "type": "publicKey"
-        },
-        {
-          "name": "data",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "Leaf",
-      "fields": [
-        {
-          "name": "initialized",
-          "type": "bool"
-        },
-        {
-          "name": "root",
-          "type": "publicKey"
-        },
         {
           "name": "data",
           "type": "u64"
@@ -140,26 +102,78 @@
         {
           "name": "custom",
           "type": {
-            "defined": "MyCustomType"
+            "option": {
+              "defined": "MyCustomType"
+            }
           }
         }
       ]
     }
   ],
+  "accounts": [
+    {
+      "name": "Root",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "data",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Leaf",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "root",
+            "type": "publicKey"
+          },
+          {
+            "name": "data",
+            "type": "u64"
+          },
+          {
+            "name": "custom",
+            "type": {
+              "defined": "MyCustomType"
+            }
+          }
+        ]
+      }
+    }
+  ],
   "types": [
     {
-      "type": "struct",
       "name": "MyCustomType",
-      "fields": [
-        {
-          "name": "my_data",
-          "type": "u64"
-        },
-        {
-          "name": "key",
-          "type": "publicKey"
-        }
-      ]
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "my_data",
+            "type": "u64"
+          },
+          {
+            "name": "key",
+            "type": "publicKey"
+          }
+        ]
+      }
     }
   ]
 }

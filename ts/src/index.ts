@@ -1,29 +1,20 @@
-import { PublicKey } from '@solana/web3.js';
+import { Program } from './program';
+import Coder from './coder';
+import { Provider } from '@project-serum/common';
 
-export class Program {
-	/**
-	 * Address of the program.
-	 */
-	public programId: PublicKey;
+let _provider: Provider | null = null;
 
-	/**
-	 * The inner variables required to implement the Program object.
-	 */
-	public _inner: ProgramInner;
-
-	public constructor(idl: Idl, programId: PublicKey, options?: ProgramOptions) {
-		this.programId = programId;
-		this._inner = {
-			options: options === undefined ? {} : options,
-		};
-		console.log("building",idl);
-	}
+function setProvider(provider: Provider) {
+	_provider = provider;
 }
 
-type Idl = any;
-
-type ProgramInner = {
-	options: ProgramOptions;
+function getProvider(): Provider {
+	return _provider;
 }
 
-type ProgramOptions = {};
+export {
+	Program,
+	Coder,
+	setProvider,
+	getProvider,
+};

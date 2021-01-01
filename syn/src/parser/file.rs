@@ -35,7 +35,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
         acc_names
     };
 
-    let methods = p
+    let instructions = p
         .rpcs
         .iter()
         .map(|rpc| {
@@ -63,7 +63,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
                     is_signer: acc.is_signer,
                 })
                 .collect::<Vec<_>>();
-            IdlMethod {
+            IdlInstruction {
                 name: rpc.ident.to_string(),
                 accounts,
                 args,
@@ -76,11 +76,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
     let mut types = vec![];
     let ty_defs = parse_ty_defs(&f)?;
     for ty_def in ty_defs {
-        let name = match &ty_def {
-            IdlTypeDef::Struct { name, .. } => name,
-            IdlTypeDef::Enum { name, .. } => name,
-        };
-        if acc_names.contains(name) {
+        if acc_names.contains(&ty_def.name) {
             accounts.push(ty_def);
         } else {
             types.push(ty_def);
@@ -90,7 +86,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
     Ok(Idl {
         version: "0.0.0".to_string(),
         name: p.name.to_string(),
-        methods,
+        instructions,
         types,
         accounts,
     })
@@ -174,7 +170,10 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                         _ => panic!("Only named structs are allowed."),
                     };
 
-                    return Some(fields.map(|fields| IdlTypeDef::Struct { name, fields }));
+                    return Some(fields.map(|fields| IdlTypeDef {
+                        name,
+                        ty: IdlTypeDefTy::Struct { fields },
+                    }));
                 }
                 None
             }

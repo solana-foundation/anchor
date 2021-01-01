@@ -30,9 +30,16 @@ mod example {
         Ok(())
     }
 
-    pub fn update_leaf(ctx: Context<UpdateLeaf>, data: u64) -> ProgramResult {
+    pub fn update_leaf(
+        ctx: Context<UpdateLeaf>,
+        data: u64,
+        custom: Option<MyCustomType>,
+    ) -> ProgramResult {
         let leaf = &mut ctx.accounts.leaf;
         leaf.account.data = data;
+        if let Some(custom) = custom {
+            leaf.custom = custom;
+        }
         Ok(())
     }
 }

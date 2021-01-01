@@ -14,7 +14,7 @@
   "scripts": {
     "build": "yarn build:node",
     "build:node": "tsc && tsc -p tsconfig.cjs.json",
-    "watch": "tsc --watch",
+    "watch": "tsc -p tsconfig.cjs.json --watch",
     "test:unit": "jest test/unit",
     "test:integration": "jest test/integration --detectOpenHandles",
     "coverage": "jest --coverage test/unit",
@@ -25,10 +25,12 @@
     "@project-serum/common": "^0.0.1-beta.0",
     "@project-serum/lockup": "^0.0.1-beta.0",
     "@solana/spl-token": "0.0.11",
+    "@types/bn.js": "^4.11.6",
     "bn.js": "^5.1.2",
-    "buffer-layout": "^1.2.0"
+		"buffer-layout": "^1.2.0",
+    "camelcase": "^5.3.1"
   },
-	"devDependencies": {
+  "devDependencies": {
     "@commitlint/cli": "^8.2.0",
     "@commitlint/config-conventional": "^8.2.0",
     "@types/jest": "^26.0.15",
@@ -44,7 +46,7 @@
     "ts-jest": "^26.4.3",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.5"
-	},
+  },
   "peerDependencies": {
     "@solana/web3.js": "^0.86.1"
   }

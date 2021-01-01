@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Idl {
     pub version: String,
     pub name: String,
-    pub methods: Vec<IdlMethod>,
+    pub instructions: Vec<IdlInstruction>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub accounts: Vec<IdlTypeDef>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -12,13 +12,14 @@ pub struct Idl {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct IdlMethod {
+pub struct IdlInstruction {
     pub name: String,
     pub accounts: Vec<IdlAccount>,
     pub args: Vec<IdlField>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IdlAccount {
     pub name: String,
     pub is_mut: bool,
@@ -33,16 +34,17 @@ pub struct IdlField {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "type")]
-pub enum IdlTypeDef {
-    Struct {
-        name: String,
-        fields: Vec<IdlField>,
-    },
-    Enum {
-        name: String,
-        variants: Vec<EnumVariant>,
-    },
+pub struct IdlTypeDef {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub ty: IdlTypeDefTy,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "kind")]
+pub enum IdlTypeDefTy {
+    Struct { fields: Vec<IdlField> },
+    Enum { variants: Vec<EnumVariant> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,26 +77,44 @@ pub enum IdlType {
     String,
     PublicKey,
     Defined(String),
+    Option(Box<IdlType>),
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IdlTypePublicKey;
 
 impl std::str::FromStr for IdlType {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let r = match s {
+        // Eliminate whitespace.
+        let mut s = s.to_string();
+        s.retain(|c| !c.is_whitespace());
+
+        let r = match s.as_str() {
             "bool" => IdlType::Bool,
             "u8" => IdlType::U8,
             "i8" => IdlType::I8,
             "u16" => IdlType::U16,
             "i16" => IdlType::I16,
             "u32" => IdlType::U32,
-            "I32" => IdlType::I32,
+            "i32" => IdlType::I32,
             "u64" => IdlType::U64,
             "i64" => IdlType::I64,
             "Vec<u8>" => IdlType::Bytes,
             "String" => IdlType::String,
             "Pubkey" => IdlType::PublicKey,
-            _ => IdlType::Defined(s.to_string()),
+            _ => match s.to_string().strip_prefix("Option<") {
+                None => IdlType::Defined(s.to_string()),
+                Some(inner) => {
+                    let inner_ty = Self::from_str(
+                        inner
+                            .strip_suffix(">")
+                            .ok_or(anyhow::anyhow!("Invalid option"))?,
+                    )?;
+                    IdlType::Option(Box::new(inner_ty))
+                }
+            },
         };
         Ok(r)
     }
