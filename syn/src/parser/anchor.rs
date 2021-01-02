@@ -42,7 +42,7 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
 fn parse_field(f: &syn::Field, anchor: &syn::Attribute) -> Field {
     let ident = f.ident.clone().unwrap();
     let ty = parse_ty(f);
-    let (constraints, is_mut, is_signer) = parse_constraints(anchor);
+    let (constraints, is_mut, is_signer) = parse_constraints(anchor, &ty);
     Field {
         ident,
         ty,
@@ -91,7 +91,7 @@ fn parse_program_account(path: &syn::Path) -> ProgramAccountTy {
     ProgramAccountTy { account_ident }
 }
 
-fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool) {
+fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool, bool) {
     let mut tts = anchor.tokens.clone().into_iter();
     let g_stream = match tts.next().expect("Must have a token group") {
         proc_macro2::TokenTree::Group(g) => g.stream(),
@@ -153,7 +153,7 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool) {
                 }
             },
             proc_macro2::TokenTree::Punct(punct) => {
-                if (punct.as_char() != ',') {
+                if punct.as_char() != ',' {
                     panic!("invalid syntax");
                 }
             }
@@ -168,10 +168,12 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool) {
         }
     }
 
-    // If no owner constraint was specified, default to it being the current
-    // program.
     if !has_owner_constraint {
-        constraints.push(Constraint::Owner(ConstraintOwner::Program));
+        if ty == &Ty::AccountInfo {
+            constraints.push(Constraint::Owner(ConstraintOwner::Skip));
+        } else {
+            constraints.push(Constraint::Owner(ConstraintOwner::Program));
+        }
     }
 
     (constraints, is_mut, is_signer)

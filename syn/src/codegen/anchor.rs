@@ -157,7 +157,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
 pub fn generate_constraint_literal(_f: &Field, c: &ConstraintLiteral) -> proc_macro2::TokenStream {
     let tokens = &c.tokens;
     quote! {
-        if #tokens {
+        if !(#tokens) {
             return Err(ProgramError::Custom(1)); // todo: error codes
         }
     }

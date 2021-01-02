@@ -1,3 +1,4 @@
+import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
 import * as borsh from "@project-serum/borsh";
 import { Idl, IdlField, IdlTypeDef } from "./idl";
@@ -51,7 +52,8 @@ class InstructionCoder<T = any> {
       let fieldLayouts = ix.args.map((arg) =>
         IdlCoder.fieldLayout(arg, idl.types)
       );
-      return borsh.struct(fieldLayouts, ix.name);
+      const name = camelCase(ix.name);
+      return borsh.struct(fieldLayouts, name);
     });
     return borsh.rustEnum(ixLayouts);
   }
@@ -144,8 +146,6 @@ class IdlCoder {
           const name = field.type.defined;
           const filtered = types.filter((t) => t.name === name);
           if (filtered.length !== 1) {
-            console.log(types);
-            console.log(name);
             throw new IdlError("Type not found");
           }
           return IdlCoder.typeDefLayout(filtered[0], types, name);

@@ -37,12 +37,12 @@ export interface Accounts {
 /**
  * RpcFn is a single rpc method.
  */
-export type RpcFn = (ctx: RpcContext, ...args: any[]) => Promise<any>;
+export type RpcFn = (...args: any[]) => Promise<any>;
 
 /**
  * Ix is a function to create a `TransactionInstruction`.
  */
-export type IxFn = (ctx: RpcContext, ...args: any[]) => TransactionInstruction;
+export type IxFn = (...args: any[]) => TransactionInstruction;
 
 /**
  * Account is a function returning a deserialized account, given an address.
@@ -59,11 +59,14 @@ type RpcOptions = ConfirmOptions;
  * covered by the instruction enum.
  */
 type RpcContext = {
-  options?: RpcOptions;
+  // Accounts the instruction will use.
   accounts: RpcAccounts;
   // Instructions to run *before* the specified rpc instruction.
   instructions?: TransactionInstruction[];
+  // Accounts that must sign the transaction.
   signers?: Array<Account>;
+  // RpcOptions.
+  options?: RpcOptions;
 };
 
 /**
@@ -95,7 +98,7 @@ export class RpcFactory {
       // Function to create a raw `TransactionInstruction`.
       const ix = RpcFactory.buildIx(idlIx, coder, programId);
       // Function to invoke an RPC against a cluster.
-      const rpc = RpcFactory.buildRpc(ix);
+      const rpc = RpcFactory.buildRpc(idlIx, ix);
 
       const name = camelCase(idlIx.name);
       rpcs[name] = rpc;
@@ -104,7 +107,7 @@ export class RpcFactory {
 
     idl.accounts.forEach((idlAccount) => {
       // todo
-      const accountFn = async (address: PublicKey): Promise<void> => {
+      const accountFn = async (address: PublicKey): Promise<any> => {
         const provider = getProvider();
         if (provider === null) {
           throw new Error("Provider not set");
@@ -113,7 +116,7 @@ export class RpcFactory {
         if (accountInfo === null) {
           throw new Error(`Entity does not exist ${address}`);
         }
-        coder.accounts.decode(idlAccount.name, accountInfo.data);
+        return coder.accounts.decode(idlAccount.name, accountInfo.data);
       };
       const name = camelCase(idlAccount.name);
       accountFns[name] = accountFn;
@@ -131,9 +134,10 @@ export class RpcFactory {
       throw new IdlError("the _inner name is reserved");
     }
 
-    const ix = (ctx: RpcContext, ...args: any[]): TransactionInstruction => {
+    const ix = (...args: any[]): TransactionInstruction => {
+      const [ixArgs, ctx] = splitArgsAndCtx(idlIx, [...args]);
       validateAccounts(idlIx, ctx.accounts);
-      validateInstruction(idlIx, args);
+      validateInstruction(idlIx, ...args);
 
       const keys = idlIx.accounts.map((acc) => {
         return {
@@ -142,27 +146,24 @@ export class RpcFactory {
           isSigner: acc.isSigner,
         };
       });
-
       return new TransactionInstruction({
         keys,
         programId,
-        data: coder.instruction.encode(toInstruction(idlIx, args)),
+        data: coder.instruction.encode(toInstruction(idlIx, ...ixArgs)),
       });
     };
 
     return ix;
   }
 
-  private static buildRpc(ixFn: IxFn): RpcFn {
-    const rpc = async (
-      ctx: RpcContext,
-      ...args: any[]
-    ): Promise<TransactionSignature> => {
+  private static buildRpc(idlIx: IdlInstruction, ixFn: IxFn): RpcFn {
+    const rpc = async (...args: any[]): Promise<TransactionSignature> => {
+      const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
       const tx = new Transaction();
       if (ctx.instructions !== undefined) {
         tx.add(...ctx.instructions);
       }
-      tx.add(ixFn(ctx, ...args));
+      tx.add(ixFn(...args));
       const provider = getProvider();
       if (provider === null) {
         throw new Error("Provider not found");
@@ -176,6 +177,23 @@ export class RpcFactory {
   }
 }
 
+function splitArgsAndCtx(
+  idlIx: IdlInstruction,
+  args: any[]
+): [any[], RpcContext] {
+  let options = undefined;
+
+  const inputLen = idlIx.args ? idlIx.args.length : 0;
+  if (args.length > inputLen) {
+    if (args.length !== inputLen + 1) {
+      throw new Error("provided too many arguments ${args}");
+    }
+    options = args.pop();
+  }
+
+  return [args, options];
+}
+
 function toInstruction(idlIx: IdlInstruction, ...args: any[]) {
   if (idlIx.args.length != args.length) {
     throw new Error("Invalid argument length");
@@ -186,7 +204,13 @@ function toInstruction(idlIx: IdlInstruction, ...args: any[]) {
     ix[ixArg.name] = args[idx];
     idx += 1;
   });
-  return ix;
+
+  // JavaScript representation of the rust enum variant.
+  const name = camelCase(idlIx.name);
+  const ixVariant: { [key: string]: any } = {};
+  ixVariant[name] = ix;
+
+  return ixVariant;
 }
 
 // Throws error if any account required for the `ix` is not given.

@@ -1,7 +1,7 @@
 //! DSL syntax tokens.
 
 pub mod codegen;
-#[cfg(target_arch = "x86")]
+#[cfg(feature = "idl")]
 pub mod idl;
 pub mod parser;
 
@@ -67,11 +67,13 @@ pub struct Field {
 }
 
 // A type of an account field.
+#[derive(PartialEq)]
 pub enum Ty {
     AccountInfo,
     ProgramAccount(ProgramAccountTy),
 }
 
+#[derive(PartialEq)]
 pub struct ProgramAccountTy {
     // The struct type of the account.
     pub account_ident: syn::Ident,

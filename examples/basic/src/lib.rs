@@ -48,8 +48,6 @@ mod example {
 
 #[derive(Accounts)]
 pub struct CreateRoot<'info> {
-    #[account(signer)]
-    pub authority: AccountInfo<'info>,
     #[account(mut, "!root.initialized")]
     pub root: ProgramAccount<'info, Root>,
 }
@@ -108,7 +106,7 @@ pub struct MyCustomType {
 // Define any auxiliary access control checks.
 
 fn not_zero(authority: Pubkey) -> ProgramResult {
-    if authority != Pubkey::new_from_array([0; 32]) {
+    if authority == Pubkey::new_from_array([0; 32]) {
         return Err(ProgramError::InvalidInstructionData);
     }
     Ok(())

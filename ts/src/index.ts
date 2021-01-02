@@ -1,6 +1,8 @@
+import BN from "bn.js";
+import * as web3 from "@solana/web3.js";
+import { Provider } from "@project-serum/common";
 import { Program } from "./program";
 import Coder from "./coder";
-import { Provider } from "@project-serum/common";
 
 let _provider: Provider | null = null;
 
@@ -12,4 +14,4 @@ function getProvider(): Provider {
   return _provider;
 }
 
-export { Program, Coder, setProvider, getProvider, Provider };
+export { Program, Coder, setProvider, getProvider, Provider, BN, web3 };

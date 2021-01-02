@@ -34,6 +34,11 @@ export class Program {
    */
   readonly instruction: Ixs;
 
+  /**
+   * Coder for serializing rpc requests.
+   */
+  readonly coder: Coder;
+
   public constructor(idl: Idl, programId: PublicKey) {
     this.idl = idl;
     this.programId = programId;
@@ -46,5 +51,6 @@ export class Program {
     this.rpc = rpcs;
     this.instruction = ixs;
     this.account = accounts;
+    this.coder = coder;
   }
 }

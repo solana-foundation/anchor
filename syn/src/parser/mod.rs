@@ -1,4 +1,4 @@
 pub mod anchor;
-#[cfg(target_arch = "x86")]
+#[cfg(feature = "idl")]
 pub mod file;
 pub mod program;

@@ -6,11 +6,6 @@
       "name": "create_root",
       "accounts": [
         {
-          "name": "authority",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
           "name": "root",
           "isMut": true,
           "isSigner": false
