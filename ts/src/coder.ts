@@ -96,30 +96,32 @@ class AccountsCoder {
 
 class IdlCoder {
   public static fieldLayout(field: IdlField, types?: IdlTypeDef[]): Layout {
+    const fieldName =
+      field.name !== undefined ? camelCase(field.name) : undefined;
     switch (field.type) {
       case "bool": {
-        return borsh.bool(field.name);
+        return borsh.bool(fieldName);
       }
       case "u8": {
-        return borsh.u8(field.name);
+        return borsh.u8(fieldName);
       }
       case "u32": {
-        return borsh.u32(field.name);
+        return borsh.u32(fieldName);
       }
       case "u64": {
-        return borsh.u64(field.name);
+        return borsh.u64(fieldName);
       }
       case "i64": {
-        return borsh.i64(field.name);
+        return borsh.i64(fieldName);
       }
       case "bytes": {
-        return borsh.vecU8(field.name);
+        return borsh.vecU8(fieldName);
       }
       case "string": {
-        return borsh.str(field.name);
+        return borsh.str(fieldName);
       }
       case "publicKey": {
-        return borsh.publicKey(field.name);
+        return borsh.publicKey(fieldName);
       }
       // TODO: all the other types that need to be exported by the borsh package.
       default: {
@@ -134,7 +136,7 @@ class IdlCoder {
               },
               types
             ),
-            field.name
+            fieldName
           );
           // @ts-ignore
         } else if (field.type.defined) {
@@ -143,12 +145,11 @@ class IdlCoder {
             throw new IdlError("User defined types not provided");
           }
           // @ts-ignore
-          const name = field.type.defined;
-          const filtered = types.filter((t) => t.name === name);
+          const filtered = types.filter((t) => t.name === field.type.defined);
           if (filtered.length !== 1) {
             throw new IdlError("Type not found");
           }
-          return IdlCoder.typeDefLayout(filtered[0], types, name);
+          return IdlCoder.typeDefLayout(filtered[0], types, fieldName);
         } else {
           throw new Error(`Not yet implemented: ${field}`);
         }

@@ -11,22 +11,24 @@ mod example {
     #[access_control(not_zero(authority))]
     pub fn create_root(ctx: Context<CreateRoot>, authority: Pubkey, data: u64) -> ProgramResult {
         let root = &mut ctx.accounts.root;
-        root.account.authority = authority;
-        root.account.data = data;
-        root.account.initialized = true;
+        root.authority = authority;
+        root.data = data;
+        root.initialized = true;
         Ok(())
     }
 
     pub fn update_root(ctx: Context<UpdateRoot>, data: u64) -> ProgramResult {
         let root = &mut ctx.accounts.root;
-        root.account.data = data;
+        root.data = data;
         Ok(())
     }
 
     pub fn create_leaf(ctx: Context<CreateLeaf>, data: u64, custom: MyCustomType) -> ProgramResult {
         let leaf = &mut ctx.accounts.leaf;
-        leaf.account.data = data;
-        leaf.account.custom = custom;
+        leaf.initialized = true;
+        leaf.root = *ctx.accounts.root.info.key;
+        leaf.data = data;
+        leaf.custom = custom;
         Ok(())
     }
 
@@ -36,9 +38,9 @@ mod example {
         custom: Option<MyCustomType>,
     ) -> ProgramResult {
         let leaf = &mut ctx.accounts.leaf;
-        leaf.account.data = data;
+        leaf.data = data;
         if let Some(custom) = custom {
-            leaf.account.custom = custom;
+            leaf.custom = custom;
         }
         Ok(())
     }
@@ -74,7 +76,7 @@ pub struct UpdateLeaf<'info> {
     pub authority: AccountInfo<'info>,
     #[account("root.initialized", "&root.authority == authority.key")]
     pub root: ProgramAccount<'info, Root>,
-    #[account(mut, belongs_to = root, "!leaf.initialized")]
+    #[account(mut, belongs_to = root, "leaf.initialized")]
     pub leaf: ProgramAccount<'info, Leaf>,
 }
 

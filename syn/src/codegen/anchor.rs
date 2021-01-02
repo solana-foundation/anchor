@@ -49,11 +49,11 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             match f.is_mut {
                 false => quote! {},
                 true => quote! {
-                        let mut data = self.#info.try_borrow_mut_data()?;
-                        let dst: &mut [u8] = &mut data;
-                        let mut cursor = std::io::Cursor::new(dst);
-                        self.#ident.account.serialize(&mut cursor)
-                                .map_err(|_| ProgramError::InvalidAccountData)?;
+                    let mut data = self.#info.try_borrow_mut_data()?;
+                    let dst: &mut [u8] = &mut data;
+                    let mut cursor = std::io::Cursor::new(dst);
+                    self.#ident.account.serialize(&mut cursor)
+                        .map_err(|_| ProgramError::InvalidAccountData)?;
                 },
             }
         })

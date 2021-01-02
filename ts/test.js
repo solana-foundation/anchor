@@ -4,11 +4,13 @@ const anchor = require('.');
 // Global workspace settings.
 const WORKSPACE = {
     idl: JSON.parse(require('fs').readFileSync('../examples/basic/idl.json', 'utf8')),
-    programId: new anchor.web3.PublicKey('3bSz7zXCXFdEBw8AKEWJAa53YswM5aCoNNt5xSR42JDp'),
+    programId: new anchor.web3.PublicKey('CrQZpSbUnkXxwf1FnepmefoZ7VsbYE6HXmG1TjChH6y'),
     provider: anchor.Provider.local(),
 };
 
 async function test() {
+    console.log('Starting test.');
+
     // Configure the local cluster.
     anchor.setProvider(WORKSPACE.provider);
 
@@ -42,8 +44,7 @@ async function test() {
                 programId: WORKSPACE.programId,
             }),
         ],
-    }
-                                );
+    });
 
     // Read the newly created account data.
     let account = await program.account.root(root.publicKey);
@@ -62,6 +63,65 @@ async function test() {
     // Check the update actually persisted.
     account = await program.account.root(root.publicKey);
     assert.ok(account.data.eq(new anchor.BN(999)));
+
+    // Create and initialize a leaf account.
+    const leaf = new anchor.web3.Account();
+    let customType = { myData: new anchor.BN(4), key: WORKSPACE.programId };
+    await program.rpc.createLeaf(new anchor.BN(2), customType, {
+        accounts: {
+            root: root.publicKey,
+            leaf: leaf.publicKey,
+        },
+        signers: [leaf],
+        instructions: [
+            anchor.web3.SystemProgram.createAccount({
+                fromPubkey: WORKSPACE.provider.wallet.publicKey,
+                newAccountPubkey: leaf.publicKey,
+                space: 100,
+                lamports: await WORKSPACE.provider.connection.getMinimumBalanceForRentExemption(100),
+                programId: WORKSPACE.programId,
+            }),
+        ],
+    });
+
+    // Check the account was initialized.
+    account = await program.account.leaf(leaf.publicKey);
+    assert.ok(account.initialized);
+    assert.ok(account.root.equals(root.publicKey));
+    assert.ok(account.data.eq(new anchor.BN(2)));
+    assert.ok(account.custom.myData.eq(new anchor.BN(4)));
+    assert.ok(account.custom.key.equals(WORKSPACE.programId));
+
+    // Update the account.
+    await program.rpc.updateLeaf(new anchor.BN(5), null, {
+        accounts: {
+            authority: WORKSPACE.provider.wallet.publicKey,
+            root: root.publicKey,
+            leaf: leaf.publicKey,
+        },
+    });
+
+    // Check it was updated.
+    account = await program.account.leaf(leaf.publicKey);
+    assert.ok(account.data.eq(new anchor.BN(5)));
+
+    // Now update with the option.
+    customType = { myData: new anchor.BN(7), key: WORKSPACE.programId };
+    await program.rpc.updateLeaf(new anchor.BN(6), customType, {
+        accounts: {
+            authority: WORKSPACE.provider.wallet.publicKey,
+            root: root.publicKey,
+            leaf: leaf.publicKey,
+        },
+    });
+
+    // Check it was updated.
+    account = await program.account.leaf(leaf.publicKey);
+    assert.ok(account.data.eq(new anchor.BN(6)));
+    assert.ok(account.custom.myData.eq(new anchor.BN(7)));
+    assert.ok(account.custom.key.equals(WORKSPACE.programId));
+
+    console.log('Test complete.');
 }
 
 test();

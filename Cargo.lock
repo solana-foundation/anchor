@@ -17,6 +17,7 @@ dependencies = [
  "anchor-attributes-program",
  "anchor-derive",
  "borsh",
+ "solana-program",
  "solana-sdk",
  "thiserror",
 ]
