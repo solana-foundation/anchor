@@ -35,8 +35,8 @@ we will see soon.
 
 ### `Context<Initialize>`
 
-The first parameter of *every* RPC handler is the `Context` struct, which is a simple
-container for the currently executing `program_id`  generic over
+The first parameter of _every_ RPC handler is the `Context` struct, which is a simple
+container for the currently executing `program_id` generic over
 `Accounts`--here, the `Initialize` struct.
 
 ### `#[derive(Accounts)]`
@@ -75,6 +75,7 @@ can be generated.
 ```bash
 anchor idl -f src/lib.rs -o idl.js
 ```
+
 Inspecting the contents of `idl.js` one should see
 
 ```json
@@ -90,6 +91,7 @@ Inspecting the contents of `idl.js` one should see
   ]
 }
 ```
+
 For experienced Ethereum developers, this is analogous to an `abi.json` file.
 
 ## Generating a Client

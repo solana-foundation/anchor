@@ -1,6 +1,6 @@
-# Prerequisites
+# Install
 
-Before getting started, make sure to setup all the prerequisite tools on your local machine.
+To get started, make sure to setup all the prerequisite tools on your local machine.
 
 ## Install Rust
 

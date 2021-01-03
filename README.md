@@ -1,5 +1,7 @@
 # Anchor ⚓
 
+[![Docs](https://img.shields.io/badge/docs-vuepress-brightgreen)](https://project-serum.github.io/anchor/)
+
 Anchor is a DSL for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime, providing a safer and more convenient programming model to the Solana developer along with the ability to extract an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) from source.
 
 ## Note

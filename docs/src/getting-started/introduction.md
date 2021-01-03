@@ -2,9 +2,9 @@
 
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime, exposing a safer and more convenient programming model to the Solana developer by providing a
 
-* Rust Crate for writing Solana programs
-* CLI for extracting an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) from source
-* TypeScript package for generating clients from IDL
+- Rust Crate for writing Solana programs
+- CLI for extracting an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) from source
+- TypeScript package for generating clients from IDL
 
 If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/) and [web3.js](https://github.com/ethereum/web3.js) or Parity's [Ink!](https://github.com/paritytech/ink), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
 
