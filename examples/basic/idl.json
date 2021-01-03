@@ -3,7 +3,7 @@
   "name": "example",
   "instructions": [
     {
-      "name": "create_root",
+      "name": "createRoot",
       "accounts": [
         {
           "name": "root",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "name": "update_root",
+      "name": "updateRoot",
       "accounts": [
         {
           "name": "authority",
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "name": "create_leaf",
+      "name": "createLeaf",
       "accounts": [
         {
           "name": "root",
@@ -71,7 +71,7 @@
       ]
     },
     {
-      "name": "update_leaf",
+      "name": "updateLeaf",
       "accounts": [
         {
           "name": "authority",
@@ -160,7 +160,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "my_data",
+            "name": "myData",
             "type": "u64"
           },
           {

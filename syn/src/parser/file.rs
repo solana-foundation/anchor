@@ -7,6 +7,8 @@ use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
+use heck::MixedCase;
+use heck::CamelCase;
 
 static DERIVE_NAME: &'static str = "Accounts";
 
@@ -47,7 +49,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
                     arg.raw_arg.ty.to_tokens(&mut tts);
                     let ty = tts.to_string().parse().unwrap();
                     IdlField {
-                        name: arg.name.to_string(),
+                        name: arg.name.to_string().to_mixed_case(),
                         ty,
                     }
                 })
@@ -58,13 +60,13 @@ pub fn parse(filename: &str) -> Result<Idl> {
                 .fields
                 .iter()
                 .map(|acc| IdlAccount {
-                    name: acc.ident.to_string(),
+                    name: acc.ident.to_string().to_mixed_case(),
                     is_mut: acc.is_mut,
                     is_signer: acc.is_signer,
                 })
                 .collect::<Vec<_>>();
             IdlInstruction {
-                name: rpc.ident.to_string(),
+                name: rpc.ident.to_string().to_mixed_case(),
                 accounts,
                 args,
             }
@@ -162,7 +164,12 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                                 let mut tts = proc_macro2::TokenStream::new();
                                 f.ty.to_tokens(&mut tts);
                                 Ok(IdlField {
-                                    name: f.ident.as_ref().unwrap().to_string(),
+                                    name: f
+																				.ident
+																				.as_ref()
+																				.unwrap()
+																				.to_string()
+																				.to_mixed_case(),
                                     ty: tts.to_string().parse()?,
                                 })
                             })

@@ -60,7 +60,7 @@ type RpcOptions = ConfirmOptions;
  */
 type RpcContext = {
   // Accounts the instruction will use.
-  accounts: RpcAccounts;
+  accounts?: RpcAccounts;
   // Instructions to run *before* the specified rpc instruction.
   instructions?: TransactionInstruction[];
   // Accounts that must sign the transaction.
@@ -105,22 +105,24 @@ export class RpcFactory {
       ixFns[name] = ix;
     });
 
-    idl.accounts.forEach((idlAccount) => {
-      // todo
-      const accountFn = async (address: PublicKey): Promise<any> => {
-        const provider = getProvider();
-        if (provider === null) {
-          throw new Error("Provider not set");
-        }
-        const accountInfo = await provider.connection.getAccountInfo(address);
-        if (accountInfo === null) {
-          throw new Error(`Entity does not exist ${address}`);
-        }
-        return coder.accounts.decode(idlAccount.name, accountInfo.data);
-      };
-      const name = camelCase(idlAccount.name);
-      accountFns[name] = accountFn;
-    });
+		if (idl.accounts) {
+			idl.accounts.forEach((idlAccount) => {
+				// todo
+				const accountFn = async (address: PublicKey): Promise<any> => {
+					const provider = getProvider();
+					if (provider === null) {
+						throw new Error("Provider not set");
+					}
+					const accountInfo = await provider.connection.getAccountInfo(address);
+					if (accountInfo === null) {
+						throw new Error(`Entity does not exist ${address}`);
+					}
+					return coder.accounts.decode(idlAccount.name, accountInfo.data);
+				};
+				const name = camelCase(idlAccount.name);
+				accountFns[name] = accountFn;
+			});
+		}
 
     return [rpcs, ixFns, accountFns];
   }
@@ -181,7 +183,7 @@ function splitArgsAndCtx(
   idlIx: IdlInstruction,
   args: any[]
 ): [any[], RpcContext] {
-  let options = undefined;
+  let options = {};
 
   const inputLen = idlIx.args ? idlIx.args.length : 0;
   if (args.length > inputLen) {

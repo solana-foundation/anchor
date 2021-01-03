@@ -60,10 +60,20 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
 
     let name = &accs.ident;
-    let generics = &accs.generics;
+    let (combined_generics, trait_generics, strct_generics) = match accs.generics.lt_token {
+				None => (
+						quote!{<'info>},
+						quote!{<'info>},
+						quote!{},
+				),
+				Some(_) => {
+						let g = &accs.generics;
+						(quote!{#g}, quote!{#g}, quote!{#g})
+				}
+		};
 
     quote! {
-        impl#generics Accounts#generics for #name#generics {
+        impl#combined_generics Accounts#trait_generics for #name#strct_generics {
             fn try_anchor(program_id: &Pubkey, accounts: &[AccountInfo<'info>]) -> Result<Self, ProgramError> {
                 let acc_infos = &mut accounts.iter();
 
@@ -77,7 +87,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
 
-        impl#generics #name#generics {
+        impl#strct_generics #name#strct_generics {
             pub fn exit(&self) -> ProgramResult {
                 #(#on_save)*
                 Ok(())

@@ -25,4 +25,5 @@ members = [
     "attributes/*",
     "derive",
     "examples/basic",
+    "examples/tutorial/basic-0/program",
 ]

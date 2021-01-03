@@ -4,6 +4,7 @@ use anchor::prelude::*;
 
 // Define the program's RPC handlers.
 
+// #region program
 #[program]
 mod example {
     use super::*;
@@ -45,6 +46,7 @@ mod example {
         Ok(())
     }
 }
+// #endregion program
 
 // Define the validated accounts for each handler.
 

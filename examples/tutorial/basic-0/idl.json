@@ -1,0 +1,11 @@
+{
+  "version": "0.0.0",
+  "name": "basic",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    }
+  ]
+}
