@@ -9,10 +9,10 @@ a local network is running.
 To get started, clone the repo.
 
 ```bash
-git clone https://github.com/armaniferrante/anchor
+git clone https://github.com/project-serum/anchor
 ```
 
-And change directories to the [example](https://github.com/armaniferrante/anchor/tree/master/examples/basic-0).
+And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/basic-0).
 
 ```bash
 cd anchor/examples/tutorial/basic-0

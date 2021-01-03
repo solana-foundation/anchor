@@ -1,7 +1,7 @@
 # Tutorial 1: Accounts, Arguments, and Types
 
 It's recommended to read [Tutorial 0](./tutorial-0.md) first, as this tutorial will
-build on top of it. The full example can be found [here](https://github.com/armaniferrante/anchor/tree/master/examples/basic-1).
+build on top of it. The full example can be found [here](https://github.com/project-serum/anchor/tree/master/examples/basic-1).
 
 ## Defining a program
 
