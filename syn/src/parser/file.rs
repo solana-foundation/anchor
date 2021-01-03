@@ -3,17 +3,17 @@ use crate::parser::anchor;
 use crate::parser::program;
 use crate::AccountsStruct;
 use anyhow::Result;
+use heck::MixedCase;
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
-use heck::MixedCase;
-use heck::CamelCase;
+use std::path::Path;
 
 static DERIVE_NAME: &'static str = "Accounts";
 
 // Parse an entire interface file.
-pub fn parse(filename: &str) -> Result<Idl> {
+pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let mut file = File::open(&filename)?;
 
     let mut src = String::new();
@@ -91,6 +91,7 @@ pub fn parse(filename: &str) -> Result<Idl> {
         instructions,
         types,
         accounts,
+        metadata: None,
     })
 }
 
@@ -164,12 +165,7 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                                 let mut tts = proc_macro2::TokenStream::new();
                                 f.ty.to_tokens(&mut tts);
                                 Ok(IdlField {
-                                    name: f
-																				.ident
-																				.as_ref()
-																				.unwrap()
-																				.to_string()
-																				.to_mixed_case(),
+                                    name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
                                     ty: tts.to_string().parse()?,
                                 })
                             })

@@ -42,13 +42,19 @@ module.exports = {
         title: "Getting Started",
         children: [
           "/getting-started/introduction",
-          "/getting-started/installation",
+					"/getting-started/installation",
+					"/getting-started/quick-start",
         ],
       },
       {
         collapsable: false,
         title: "Tutorials",
-        children: ["/tutorials/tutorial-0", "/tutorials/tutorial-1"],
+				children: [
+					"/tutorials/tutorial-0",
+					"/tutorials/tutorial-1",
+					"/tutorials/tutorial-2",
+					"/tutorials/tutorial-3",
+				],
       },
     ],
 

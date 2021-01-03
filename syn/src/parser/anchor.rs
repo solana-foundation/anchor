@@ -2,7 +2,6 @@ use crate::{
     AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
     ConstraintSigner, Field, ProgramAccountTy, Ty,
 };
-use quote::quote;
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
     let fields = match &strct.fields {

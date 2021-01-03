@@ -1,8 +1,11 @@
-# Install
+# Installing Dependencies
 
-To get started, make sure to setup all the prerequisite tools on your local machine.
+To get started, make sure to setup all the prerequisite tools on your local machine
+(an installer has not yet been developed).
 
 ## Install Rust
+
+For an introduction to Rust, see the excellent Rust [book](https://doc.rust-lang.org/book/).
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -10,23 +13,32 @@ source $HOME/.cargo/env
 rustup component add rustfmt
 ```
 
-For an introduction to Rust, see the excellent Rust [book](https://doc.rust-lang.org/book/).
+## Install Solana
+
+See the solana [docs](https://docs.solana.com/cli/install-solana-cli-tools) for installation instructions. On macOS and Linux,
+
+```bash
+sh -c "$(curl -sSfL https://release.solana.com/v1.5.0/install)"
+```
+
+## Install Mocha
+
+Program integration tests are run using [Mocha](https://mochajs.org/).
+
+```bash
+npm install -g mocha
+```
 
 ## Install Anchor
 
-For now, we can use Cargo.
+For now, we can use Cargo to install the CLI.
 
 ```bash
 cargo install --git https://github.com/project-serum/anchor anchor-cli
 ```
 
-## Install Solana
+To install the JavaScript package.
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/solana-labs/solana/v1.4.14/install/solana-install-init.sh | sh -s - v1.4.14
-export PATH="/home/ubuntu/.local/share/solana/install/active_release/bin:$PATH"
+npm install -g @project-serum/anchor
 ```
-
-## Setup a Localnet
-
-The easiest way to run a local cluster is to run the docker container provided by Solana. Instructions can be found [here](https://solana-labs.github.io/solana-web3.js/). (Note: `solana-test-validator` is the new, preferred way to run a local validator, though I haven't tested it yet).

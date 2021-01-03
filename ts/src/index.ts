@@ -3,6 +3,7 @@ import * as web3 from "@solana/web3.js";
 import { Provider } from "@project-serum/common";
 import { Program } from "./program";
 import Coder from "./coder";
+import workspace from './workspace';
 
 let _provider: Provider | null = null;
 
@@ -14,4 +15,4 @@ function getProvider(): Provider {
   return _provider;
 }
 
-export { Program, Coder, setProvider, getProvider, Provider, BN, web3 };
+export { workspace, Program, Coder, setProvider, getProvider, Provider, BN, web3 };
