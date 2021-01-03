@@ -8,7 +8,7 @@ Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sea
 
 If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/) and [web3.js](https://github.com/ethereum/web3.js) or Parity's [Ink!](https://github.com/paritytech/ink), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
 
-Here, we'll walkthrough a tutorial demonstrating how to use Anchor. To skip the tutorial and jump straight to a full example, go [here](https://github.com/project-serum/anchor/tree/master/examples/basic).
+Here, we'll walkthrough a tutorial demonstrating how to use Anchor. To skip the tutorial and jump straight to a full example, go [here](https://github.com/project-serum/anchor/tree/master/examples/basic/src/lib.rs).
 
 ## Contributing
 

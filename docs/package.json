@@ -8,14 +8,15 @@
     "email": ""
   },
   "repository": "/anchor",
-	"scripts": {
-		"deploy": "yarn build && gh-pages -d src/.vuepress/dist",
+  "scripts": {
+    "deploy": "yarn build && gh-pages -d src/.vuepress/dist",
     "dev": "vuepress dev src",
     "build": "vuepress build src"
   },
   "license": "MIT",
   "devDependencies": {
     "gh-pages": "^3.1.0",
-    "vuepress": "^1.5.3"
+    "vuepress": "^1.5.3",
+    "vuepress-plugin-dehydrate": "^1.1.5"
   }
 }
