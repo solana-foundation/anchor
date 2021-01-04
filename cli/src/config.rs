@@ -10,8 +10,8 @@ use std::str::FromStr;
 
 #[derive(Default)]
 pub struct Config {
-    cluster: Cluster,
-    wallet: WalletPath,
+    pub cluster: Cluster,
+    pub wallet: WalletPath,
 }
 
 impl Config {

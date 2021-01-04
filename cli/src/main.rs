@@ -1,10 +1,9 @@
 use crate::config::{find_cargo_toml, read_all_programs, Config, Program};
 use anchor_syn::idl::Idl;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Clap;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
-use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -43,6 +42,13 @@ pub enum Command {
         #[clap(short, long)]
         out: Option<String>,
     },
+    /// Deploys the workspace to the configured cluster.
+    Deploy {
+        #[clap(short, long)]
+        url: Option<String>,
+        #[clap(short, long)]
+        keypair: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -59,6 +65,7 @@ fn main() -> Result<()> {
             }
             idl(file, Some(&PathBuf::from(out.unwrap())))
         }
+        Command::Deploy { url, keypair } => deploy(url, keypair),
     }
 }
 
@@ -127,7 +134,7 @@ fn new_program(name: &str) -> Result<()> {
     let mut cargo_toml = File::create(&format!("programs/{}/Cargo.toml", name))?;
     cargo_toml.write_all(template::cargo_toml(&name).as_bytes())?;
     let mut xargo_toml = File::create(&format!("programs/{}/Xargo.toml", name))?;
-    xargo_toml.write_all(template::xargo_toml(&name).as_bytes())?;
+    xargo_toml.write_all(template::xargo_toml().as_bytes())?;
     let mut lib_rs = File::create(&format!("programs/{}/src/lib.rs", name))?;
     lib_rs.write_all(template::lib_rs(&name).as_bytes())?;
 
@@ -259,7 +266,10 @@ fn test() -> Result<()> {
     let mut validator_handle = start_test_validator()?;
 
     // Deploy all programs.
-    let programs = deploy_ws()?;
+    let programs = deploy_ws(
+        "http://localhost:8899",
+        ".anchor/test-ledger/faucet-keypair.json",
+    )?;
 
     // Store deployed program addresses in IDL metadata (for consumption by
     // client + tests).
@@ -325,9 +335,24 @@ fn start_test_validator() -> Result<Child> {
     Ok(validator_handle)
 }
 
-fn deploy_ws() -> Result<Vec<(Program, Pubkey)>> {
+fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
+    let (cfg, ws_path, _) = Config::discover()?.ok_or(anyhow!("Not in Anchor workspace."))?;
+    std::env::set_current_dir(ws_path.parent().unwrap())?;
+
+    let url = url.unwrap_or(cfg.cluster.url().to_string());
+    let keypair = keypair.unwrap_or(cfg.wallet.to_string());
+
+    let deployment = deploy_ws(&url, &keypair)?;
+    for (program, address) in deployment {
+        println!("Deployed {} at {}", program.idl.name, address.to_string());
+    }
+
+    Ok(())
+}
+
+fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
     let mut programs = vec![];
-    println!("Deploying workspace to http://localhost:8899...");
+    println!("Deploying workspace to {}...", url);
     for program in read_all_programs()? {
         let binary_path = format!(
             "target/bpfel-unknown-unknown/release/{}.so",
@@ -338,9 +363,9 @@ fn deploy_ws() -> Result<Vec<(Program, Pubkey)>> {
             .arg("deploy")
             .arg(&binary_path)
             .arg("--url")
-            .arg("http://localhost:8899") // TODO: specify network via cli.
+            .arg(url)
             .arg("--keypair")
-            .arg(".anchor/test-ledger/faucet-keypair.json") // TODO: specify wallet.
+            .arg(keypair)
             .output()
             .expect("Must deploy");
         if !exit.status.success() {

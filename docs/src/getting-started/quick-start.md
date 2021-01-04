@@ -18,7 +18,7 @@ Your repo will be laid out with the following structure
 * `Anchor.toml`: Anchor configuration file.
 * `programs/`: Directory for Solana program crates.
 * `app/`: Directory for your application frontend.
-* `tests/`: Directory for TypeScript integration tests.
+* `tests/`: Directory for JavaScript integration tests.
 
 ## Build
 

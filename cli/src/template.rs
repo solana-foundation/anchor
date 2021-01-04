@@ -34,7 +34,7 @@ anchor = {{ path = "/home/armaniferrante/Documents/code/src/github.com/project-s
     )
 }
 
-pub fn xargo_toml(name: &str) -> String {
+pub fn xargo_toml() -> String {
     r#"[target.bpfel-unknown-unknown.dependencies.std]
 features = []"#
         .to_string()
