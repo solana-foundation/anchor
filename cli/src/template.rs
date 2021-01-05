@@ -26,8 +26,7 @@ name = "{1}"
 borsh = {{ git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }}
 solana-program = "1.4.3"
 solana-sdk = {{ version = "1.3.14", default-features = false, features = ["program"] }}
-# anchor = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
-anchor = {{ path = "/home/armaniferrante/Documents/code/src/github.com/project-serum/anchor", features = ["derive"] }}
+anchor = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
 "#,
         name,
         name.to_snake_case(),
