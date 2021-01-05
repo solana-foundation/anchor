@@ -1,7 +1,7 @@
 # Tutorial 2: Account Constraints and Access Control
 
-Building on the previous two, this tutorial covers how to speciy constraints and access control
-on accounts. The full example can be found [here](https://github.com/project-serum/anchor/tree/master/examples/basic-2).
+Building on the previous two, this tutorial covers how to specify constraints and access control
+on accounts.
 
 Because Solana programs are stateless, a transaction must specify accounts to be executed. And because an untrusted client specifies those accounts, a program must responsibily validate all input to the program to ensure it is what it claims to be--in addition to any instruction specific access control the program needs to do. This is particularly burdensome when there are lots of dependencies between accounts, leading to repetitive [boilerplate](https://github.com/project-serum/serum-dex/blob/master/registry/src/access_control.rs) code for account validation along with the ability to easily shoot oneself in the foot by forgetting to validate any particular account.
 
@@ -15,7 +15,7 @@ To get started, clone the repo.
 git clone https://github.com/project-serum/anchor
 ```
 
-And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-1).
+And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-2).
 
 ```bash
 cd anchor/examples/tutorial/basic-2

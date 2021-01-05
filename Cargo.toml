@@ -24,5 +24,4 @@ members = [
     "syn",
     "attributes/*",
     "derive",
-    "examples/basic",
 ]

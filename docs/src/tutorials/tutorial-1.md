@@ -2,7 +2,7 @@
 
 This tutorial covers the basics of creating and mutating accounts using Anchor.
 It's recommended to read [Tutorial 0](./tutorial-0.md) first, as this tutorial will
-build on top of it. The full example can be found [here](https://github.com/project-serum/anchor/tree/master/examples/basic-1).
+build on top of it.
 
 ## Clone the Repo
 
@@ -51,7 +51,7 @@ we can invoke the above `initialize` instruction as follows.
 
 The last element passed into the method is common amongst all dynamically generated
 methods on the `rpc` namespace, containing several options for a transaction. Here,
-we specifiy the `accounts` field, an object of all the addresses the transaction
+we specify the `accounts` field, an object of all the addresses the transaction
 needs to touch.
 
 ::: details

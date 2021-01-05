@@ -1,7 +1,7 @@
 # Tutorial 0: A Minimal Example
 
 Here, we introduce Anchor's core syntax elements and project workflow. This tutorial assumes all
-[prerequisites](./prerequisites.md) are installed.
+[prerequisites](../getting-started/installation.md) are installed.
 
 ## Clone the Repo
 
@@ -19,11 +19,16 @@ cd anchor/examples/tutorial/basic-0
 
 ## Starting a Localnet
 
-In a seprate terminal, start a local network for testing.
+In a separate terminal, start a local network for testing.
 
 ```
 solana-test-validator
 ```
+
+::: details
+As you'll see later, starting a localnet manually like this is not necessary when testing with Anchor,
+but is done for educational purposes in this tutorial.
+:::
 
 ## Defining a Program
 
@@ -108,11 +113,14 @@ see [client.js](https://github.com/project-serum/anchor/tree/master/examples/tut
 Notice how we dynamically created the `initialize` method under
 the `rpc` namespace.
 
-Before running, make sure to plugin your program's address into `<YOUR-PROGRAM-ID>`.
+Now, make sure to plugin your program's address into `<YOUR-PROGRAM-ID>` (a mild
+annoyance that we'll address next), and run
 
 ```bash
 node client.js
 ```
+
+You just successfully created a client and executed a transaction on your localnet.
 
 ## Workspaces
 
