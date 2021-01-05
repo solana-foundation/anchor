@@ -1,11 +1,11 @@
 # Introduction
 
-Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime, exposing a more convenient programming model by providing several different developer tools.
+Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools.
 
 - Rust crates and DSL for writing Solana programs
-- CLI for extracting an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) from source
+- [IDL](https://en.wikipedia.org/wiki/Interface_description_language) specification
 - TypeScript package for generating clients from IDL
-- Workspace management for developing complete applications
+- CLI and workspace management for developing complete applications
 
 If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js) or Parity's [Ink!](https://github.com/paritytech/ink), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
 

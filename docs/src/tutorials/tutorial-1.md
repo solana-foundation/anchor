@@ -83,3 +83,9 @@ As before, we can run the example tests.
 ```
 anchor test
 ```
+
+## Next Steps
+
+We've covered all the basics of developing applications using Anchor. However, we've
+left out one import aspect to ensure the security of our programs--validating input
+and access control. We'll cover that next.

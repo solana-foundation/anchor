@@ -5,7 +5,7 @@ use anchor::prelude::*;
 // Define the program's RPC handlers.
 
 #[program]
-mod example {
+mod basic_2 {
     use super::*;
 
     #[access_control(not_zero(authority))]

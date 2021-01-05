@@ -1,5 +1,4 @@
 const anchor = require('@project-serum/anchor');
-const fs = require('fs');
 
 describe('basic-0', () => {
 
