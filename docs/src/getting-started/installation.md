@@ -42,3 +42,6 @@ To install the JavaScript package.
 ```bash
 npm install -g @project-serum/anchor
 ```
+
+Make sure your `NODE_PATH` is set properly so that globally installed modules
+can be resolved.

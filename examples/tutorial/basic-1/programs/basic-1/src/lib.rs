@@ -3,7 +3,7 @@
 use anchor::prelude::*;
 
 #[program]
-mod basic {
+mod basic_1 {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, data: u64) -> ProgramResult {

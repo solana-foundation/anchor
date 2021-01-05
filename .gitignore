@@ -6,3 +6,5 @@ target/
 *~
 *.swp
 *.swo
+.anchor
+test-ledger

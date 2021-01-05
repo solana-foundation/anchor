@@ -1,15 +1,12 @@
-// Before running this script, make sure to run `yarn && yarn build` inside
-// the `ts` directory.
-const anchor = require('../../../../ts');
-const fs = require('fs');
+const anchor = require('@project-serum/anchor');
 
 // Configure the local cluster.
 anchor.setProvider(anchor.Provider.local());
 
-// #region main
 async function main() {
+  // #region main
   // Read the generated IDL.
-  const idl = JSON.parse(fs.readFileSync('../idl.json', 'utf8'));
+  const idl = JSON.parse(require('fs').readFileSync('./target/idl/basic_0.json', 'utf8'));
 
   // Address of the deployed program.
   const programId = new anchor.web3.PublicKey('<YOUR-PROGRAM-ID>');
@@ -19,7 +16,8 @@ async function main() {
 
   // Execute the RPC.
   await program.rpc.initialize();
+  // #endregion main
 }
-// #endregion main
 
-main();
+console.log('Running client.');
+main().then(() => console.log('Success'));

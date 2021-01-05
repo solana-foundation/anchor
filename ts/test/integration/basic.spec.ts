@@ -10,10 +10,6 @@ const WORKSPACE = {
 };
 
 describe('Constraints program tests', () => {
-	it('Parses a workspace', async () => {
-
-	});
-
   it('Runs against a localnetwork', async () => {
     // Configure the local cluster.
     anchor.setProvider(WORKSPACE.provider);

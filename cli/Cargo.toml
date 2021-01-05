@@ -21,6 +21,7 @@ serde_yaml = "0.8"
 toml = "0.5.8"
 serde = { version = "1.0", features = ["derive"] }
 solana-sdk = "1.5.0"
+solana-client = "1.4.4"
 serum-common = { git = "https://github.com/project-serum/serum-dex", features = ["client"] }
 dirs = "3.0"
 heck = "0.3.1"

@@ -1,9 +1,10 @@
 {
-  "name": "anchor",
-  "version": "0.0.0",
+  "name": "@project-serum/anchor",
+  "version": "0.0.0-alpha.0",
   "description": "Anchor client",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
+  "license": "(MIT OR Apache-2.0)",
   "types": "dist/index.d.ts",
   "publishConfig": {
     "access": "public"

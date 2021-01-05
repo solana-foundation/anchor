@@ -3,6 +3,7 @@ use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Result};
 use clap::Clap;
 use serde::{Deserialize, Serialize};
+use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -266,10 +267,8 @@ fn test() -> Result<()> {
     let mut validator_handle = start_test_validator()?;
 
     // Deploy all programs.
-    let programs = deploy_ws(
-        "http://localhost:8899",
-        ".anchor/test-ledger/faucet-keypair.json",
-    )?;
+    let cfg = Config::discover()?.expect("Inside a workspace").0;
+    let programs = deploy_ws("http://localhost:8899", &cfg.wallet.to_string())?;
 
     // Store deployed program addresses in IDL metadata (for consumption by
     // client + tests).
@@ -329,8 +328,22 @@ fn start_test_validator() -> Result<Child> {
         .spawn()
         .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
 
-    // TODO: do something more sensible than sleeping.
-    std::thread::sleep(std::time::Duration::from_millis(2000));
+    // Wait for the validator to be ready.
+    let client = RpcClient::new("http://localhost:8899".to_string());
+    let mut count = 0;
+    let ms_wait = 5000;
+    while count < ms_wait {
+        let r = client.get_recent_blockhash();
+        if r.is_ok() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        count += 1;
+    }
+    if count == 5000 {
+        println!("Unable to start test validator.");
+        std::process::exit(1);
+    }
 
     Ok(validator_handle)
 }

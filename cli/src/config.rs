@@ -87,7 +87,7 @@ impl FromStr for Config {
 
         Ok(Config {
             cluster: cfg.cluster.parse()?,
-            wallet: cfg.wallet.parse()?,
+            wallet: shellexpand::tilde(&cfg.wallet).parse()?,
         })
     }
 }

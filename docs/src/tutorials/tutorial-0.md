@@ -1,8 +1,7 @@
 # Tutorial 0: A Minimal Example
 
-Here, we introduce a minimal example demonstrating the Anchor workflow and core syntax
-elements. This tutorial assumes all [prerequisites](./prerequisites.md) are installed and
-a local network is running.
+Here, we introduce Anchor's core syntax elements and project workflow. This tutorial assumes all
+[prerequisites](./prerequisites.md) are installed.
 
 ## Clone the Repo
 
@@ -18,11 +17,19 @@ And change directories to the [example](https://github.com/project-serum/anchor/
 cd anchor/examples/tutorial/basic-0
 ```
 
+## Starting a Localnet
+
+In a seprate terminal, start a local network for testing.
+
+```
+solana-test-validator
+```
+
 ## Defining a Program
 
 We define the minimum viable program as follows.
 
-<<< @/../examples/tutorial/basic-0/program/src/lib.rs
+<<< @/../examples/tutorial/basic-0/programs/basic-0/src/lib.rs
 
 * `#[program]` First, notice that a program is defined with the `#[program]` attribute, where each
 inner method defines an RPC request handler, or, in Solana parlance, an "instruction"
@@ -53,11 +60,11 @@ anchor build
 The `build` command is a convenience combining two steps.
 
 1) `cargo build-bpf`
-2) `anchor idl -f src/lib.rs -o basic.json`.
+2) `anchor idl -f program/src/lib.rs -o target/idl/basic_0.json`.
 :::
 
 Once run, you should see your build artifacts, as usual, in your `target/` directory. Additionally,
-a `basic.json` file is created. Inspecting its contents you should see
+a `target/idl/basic_0.json` file is created. Inspecting its contents you should see
 
 ```json
 {
@@ -73,35 +80,70 @@ a `basic.json` file is created. Inspecting its contents you should see
 }
 ```
 
-From which a client can be generated. Note that this file is created by parsing the `src/lib.rs`
+From this file a client can be generated. Note that this file is created by parsing the `src/lib.rs`
 file in your program's crate.
 
 ::: tip
 If you've developed on Ethereum, the IDL is analogous to the `abi.json`.
 :::
 
-## Deploying a program
+## Deploying
 
-Once built, we can deploy the program using the `solana deploy` command.
+Once built, we can deploy the program by running
 
 ```bash
-solana deploy <path-to-your-repo>/anchor/target/deploy/basic_program_0.so
+anchor deploy
 ```
 
-Making sure to susbstitute paths to match your local filesystem. Now, save the address
-the program was deployed with. It will be useful later.
+Take note of program's deployed address. We'll use it next.
 
 ## Generating a Client
 
-Now that we have an IDL, we can use it to create a client.
+Now that we've built a program, deployed it to a local cluster, and generated an IDL,
+we can use the IDL to generate a client to speak to our on-chain program. For example,
+see [client.js](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-0/client.js).
 
-<<< @/../examples/tutorial/basic-0/app/client.js#main
+<<< @/../examples/tutorial/basic-0/client.js#main
 
-Notice how the program dynamically created the `initialize` method under
+Notice how we dynamically created the `initialize` method under
 the `rpc` namespace.
+
+Before running, make sure to plugin your program's address into `<YOUR-PROGRAM-ID>`.
+
+```bash
+node client.js
+```
+
+## Workspaces
+
+So far we've seen the basics of how to create, deploy, and make RPCs to a program, but
+deploying a program, copy and pasting the address, and explicitly reading
+an IDL is all a bit tedious, and can easily get out of hand the more tests and the more
+programs you have. For this reason, we introduce the concept of a workspace.
+
+Inspecting [tests/basic_0.js](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-0/tests/basic_0.js), we see the above example can be reduced to
+
+<<< @/../examples/tutorial/basic-0/tests/basic-0.js#code
+
+The `workspace` namespace provides access to all programs in the local project and is
+automatically updated to reflect the latest deployment, making it easy to change
+your program, update your JavaScript, and run your tests in a fast feedback loop.
+
+::: tip NOTE
+For now, the workspace feature is only available when running  the `anchor test` command,
+which will automatically `build`, `deploy`, and `test` all programs against a localnet
+in one command.
+:::
+
+Finally, we can run the test. Don't forget to kill the local validator started earlier.
+We won't need to start one manually for any future tutorials.
+
+```bash
+anchor test
+```
 
 ## Next Steps
 
-So far we've seen the basics of how to create, deploy, and make RPCs to a program on Solana
-using Anchor. But a program isn't all that interesting without interacting with it's
-peristent state, which is what we'll cover next.
+We've introduced the basic syntax of writing programs in Anchor along with a productive
+workflow for building and testing. However, programs aren't all that interesting without
+interacting with persistent state. We'll cover that next.

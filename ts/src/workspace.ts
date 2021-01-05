@@ -1,4 +1,5 @@
 import camelCase from "camelcase";
+import { PublicKey } from '@solana/web3.js';
 import { Program } from './program';
 
 let _populatedWorkspace = false;
@@ -44,7 +45,7 @@ export default new Proxy({} as any, {
             const idlStr = fs.readFileSync(path);
             const idl = JSON.parse(idlStr);
 						const name = camelCase(idl.name, { pascalCase: true });
-            programs[name] = new Program(idl, idl.metadata.address);
+            programs[name] = new Program(idl, new PublicKey(idl.metadata.address));
             return programs;
           }, workspaceCache);
 

@@ -1,12 +1,11 @@
 # Quick Start
 
 The quick start provides a whirlwind tour through creating, deploying, and testing a project
-using Anchor, targeted at developers who are familiar with blockchain development. For an in depth
-guide of Anchor from the ground up, see the subequent tutorials.
+using Anchor. For an in depth guide building the Anchor workflow and DSL from the ground up,
+see the subequent tutorials.
 
 ## Initialize a project
 
-Anchor follows the principle of "Convention is better than configuration".
 To initialize your project workspace, run
 
 ```bash
@@ -22,11 +21,20 @@ Your repo will be laid out with the following structure
 
 ## Build
 
-To build your program targeting Solana's BPF runtime and emit an IDL that can be
-consumed by clients, run
+To build your program targeting Solana's BPF runtime and emit an IDL run
 
 ```bash
 anchor build
+```
+
+You should see IDL files for all workspace programs in your `target/idl/` directory.
+
+## Deploy
+
+To deploy all programs in your workspace, run
+
+```
+anchor deploy
 ```
 
 ## Test
@@ -40,13 +48,16 @@ are coverable with tests and not just replicated in tests.
 anchor test
 ```
 
-You just built a program, deployed it to a local network, and
-ran integration tests in one command. It's that easy. ;)
+Testing will build a program, deploy it to a local network, and
+run integration tests all in one command.
 
-## Deploy
+## New
 
-To deploy all programs in your workspace, run
+Anchor supports simulatenous development of multiple Solana programs.
+To create a new program in your workspace, run
 
 ```
-anchor deploy
+anchor new <program-name>
 ```
+
+You should see a new program in the `programs/` directory initialized with boilerplate.
