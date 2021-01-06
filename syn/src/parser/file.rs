@@ -1,5 +1,5 @@
 use crate::idl::*;
-use crate::parser::anchor;
+use crate::parser::accounts;
 use crate::parser::program;
 use crate::AccountsStruct;
 use anyhow::Result;
@@ -133,7 +133,7 @@ fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
             syn::Item::Struct(i_strct) => {
                 for attr in &i_strct.attrs {
                     if attr.tokens.to_string().contains(DERIVE_NAME) {
-                        let strct = anchor::parse(i_strct);
+                        let strct = accounts::parse(i_strct);
                         return Some((strct.ident.to_string(), strct));
                     }
                 }

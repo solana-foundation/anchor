@@ -61,16 +61,12 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
 
     let name = &accs.ident;
     let (combined_generics, trait_generics, strct_generics) = match accs.generics.lt_token {
-				None => (
-						quote!{<'info>},
-						quote!{<'info>},
-						quote!{},
-				),
-				Some(_) => {
-						let g = &accs.generics;
-						(quote!{#g}, quote!{#g}, quote!{#g})
-				}
-		};
+        None => (quote! {<'info>}, quote! {<'info>}, quote! {}),
+        Some(_) => {
+            let g = &accs.generics;
+            (quote! {#g}, quote! {#g}, quote! {#g})
+        }
+    };
 
     quote! {
         impl#combined_generics Accounts#trait_generics for #name#strct_generics {

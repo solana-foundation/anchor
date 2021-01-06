@@ -1,2 +1,2 @@
-pub mod anchor;
+pub mod accounts;
 pub mod program;
