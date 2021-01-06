@@ -1,0 +1,26 @@
+language: rust
+rust:
+  - stable
+cache: cargo
+env:
+  - NODE_VERSION="14.7.0"
+
+_defaults: &defaults
+  before_install:
+  - rustup component add rustfmt
+  - nvm install $NODE_VERSION
+
+jobs:
+  include:
+    - <<: *defaults
+      name: Build and Test Rust
+      script:
+        - cargo build
+        - cargo fmt -- --check
+        - cargo test
+    - <<: *defaults
+      name: Build and Test TypeScript
+      script:
+        - cd ts
+        - yarn
+        - yarn build
