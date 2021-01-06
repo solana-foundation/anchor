@@ -1,3 +1,4 @@
+dist: bionic
 language: rust
 rust:
   - stable
@@ -10,17 +11,35 @@ _defaults: &defaults
   - rustup component add rustfmt
   - nvm install $NODE_VERSION
 
+_examples: &examples
+  before_install:
+  - nvm install $NODE_VERSION
+  - npm install -g mocha
+  - npm install -g @project-serum/anchor
+  - sudo apt-get install -y pkg-config build-essential libudev-dev
+  - sh -c "$(curl -sSfL https://release.solana.com/v1.5.0/install)"
+  - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
+  - export NODE_PATH="/home/travis/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/:$NODE_PATH"
+  - yes | solana-keygen new
+  - cargo install --git https://github.com/project-serum/anchor anchor-cli
+
 jobs:
   include:
     - <<: *defaults
-      name: Build and Test Rust
+      name: Build and test Rust
       script:
         - cargo build
         - cargo fmt -- --check
         - cargo test
     - <<: *defaults
-      name: Build and Test TypeScript
+      name: Build and test TypeScript
       script:
         - cd ts
         - yarn
         - yarn build
+    - <<: *examples
+      name: Runs the examples
+      script:
+        - pushd examples/tutorial/basic-0 && anchor test && popd
+        - pushd examples/tutorial/basic-1 && anchor test && popd
+        - pushd examples/tutorial/basic-2 && anchor test && popd

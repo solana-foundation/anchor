@@ -37,6 +37,12 @@ For now, we can use Cargo to install the CLI.
 cargo install --git https://github.com/project-serum/anchor anchor-cli
 ```
 
+On Linux systems you may need to install additional dependencies. On Ubuntu,
+
+```bash
+sudo apt-get install -y pkg-config build-essential libudev-dev
+```
+
 To install the JavaScript package.
 
 ```bash

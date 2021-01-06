@@ -367,10 +367,7 @@ fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
     let mut programs = vec![];
     println!("Deploying workspace to {}...", url);
     for program in read_all_programs()? {
-        let binary_path = format!(
-            "target/bpfel-unknown-unknown/release/{}.so",
-            program.lib_name
-        );
+        let binary_path = format!("target/deploy/{}.so", program.lib_name);
         println!("Deploying {}...", binary_path);
         let exit = std::process::Command::new("solana")
             .arg("deploy")

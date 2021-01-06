@@ -1,2 +1,2 @@
 cluster = "localnet"
-wallet = "/home/armaniferrante/.config/solana/id.json"
+wallet = "~/.config/solana/id.json"
