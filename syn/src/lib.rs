@@ -64,6 +64,7 @@ pub struct Field {
     pub constraints: Vec<Constraint>,
     pub is_mut: bool,
     pub is_signer: bool,
+    pub is_init: bool,
 }
 
 // A type of an account field.

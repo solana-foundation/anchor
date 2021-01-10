@@ -34,7 +34,7 @@ npm install -g mocha
 For now, we can use Cargo to install the CLI.
 
 ```bash
-cargo install --git https://github.com/project-serum/anchor anchor-cli
+cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
 ```
 
 On Linux systems you may need to install additional dependencies. On Ubuntu,

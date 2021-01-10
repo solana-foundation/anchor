@@ -3,6 +3,9 @@ extern crate proc_macro;
 use quote::quote;
 use syn::parse_macro_input;
 
+/// Executes the given access control method before running the decorated
+/// instruction handler. Any method in scope of the attribute can be invoked
+/// with any arguments from the associated instruction handler.
 #[proc_macro_attribute]
 pub fn access_control(
     args: proc_macro::TokenStream,

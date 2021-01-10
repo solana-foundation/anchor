@@ -47,9 +47,10 @@ dependencies = [
 name = "anchor"
 version = "0.1.0"
 dependencies = [
- "anchor-attributes-access-control",
- "anchor-attributes-program",
- "anchor-derive",
+ "anchor-attribute-access-control",
+ "anchor-attribute-account",
+ "anchor-attribute-program",
+ "anchor-derive-accounts",
  "borsh",
  "solana-program",
  "solana-sdk",
@@ -57,7 +58,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-attributes-access-control"
+name = "anchor-attribute-access-control"
 version = "0.1.0"
 dependencies = [
  "anchor-syn",
@@ -68,7 +69,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-attributes-program"
+name = "anchor-attribute-account"
+version = "0.1.0"
+dependencies = [
+ "anchor-syn",
+ "anyhow",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.54",
+]
+
+[[package]]
+name = "anchor-attribute-program"
 version = "0.1.0"
 dependencies = [
  "anchor-syn",
@@ -99,7 +111,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-derive"
+name = "anchor-derive-accounts"
 version = "0.1.0"
 dependencies = [
  "anchor-syn",

@@ -21,7 +21,7 @@ _examples: &examples
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
   - export NODE_PATH="/home/travis/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/:$NODE_PATH"
   - yes | solana-keygen new
-  - cargo install --git https://github.com/project-serum/anchor anchor-cli
+  - cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
 
 jobs:
   include:

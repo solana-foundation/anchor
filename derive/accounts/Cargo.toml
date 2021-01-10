@@ -1,5 +1,5 @@
 [package]
-name = "anchor-attributes-access-control"
+name = "anchor-derive-accounts"
 version = "0.1.0"
 authors = ["armaniferrante <armaniferrante@gmail.com>"]
 edition = "2018"

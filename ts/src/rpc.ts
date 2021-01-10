@@ -7,6 +7,7 @@ import {
   TransactionSignature,
   TransactionInstruction,
 } from "@solana/web3.js";
+import { sha256 } from "crypto-hash";
 import { Idl, IdlInstruction } from "./idl";
 import { IdlError } from "./error";
 import Coder from "./coder";
@@ -35,24 +36,24 @@ export interface Accounts {
 }
 
 /**
- * RpcFn is a single rpc method.
+ * RpcFn is a single rpc method generated from an IDL.
  */
-export type RpcFn = (...args: any[]) => Promise<any>;
+export type RpcFn = (...args: any[]) => Promise<TransactionSignature>;
 
 /**
- * Ix is a function to create a `TransactionInstruction`.
+ * Ix is a function to create a `TransactionInstruction` generated from an IDL.
  */
 export type IxFn = (...args: any[]) => TransactionInstruction;
 
 /**
  * Account is a function returning a deserialized account, given an address.
  */
-export type AccountFn = (address: PublicKey) => any;
+export type AccountFn<T = any> = (address: PublicKey) => T;
 
 /**
  * Options for an RPC invocation.
  */
-type RpcOptions = ConfirmOptions;
+export type RpcOptions = ConfirmOptions;
 
 /**
  * RpcContext provides all arguments for an RPC/IX invocation that are not
@@ -107,7 +108,6 @@ export class RpcFactory {
 
     if (idl.accounts) {
       idl.accounts.forEach((idlAccount) => {
-        // todo
         const accountFn = async (address: PublicKey): Promise<any> => {
           const provider = getProvider();
           if (provider === null) {
@@ -117,7 +117,24 @@ export class RpcFactory {
           if (accountInfo === null) {
             throw new Error(`Entity does not exist ${address}`);
           }
-          return coder.accounts.decode(idlAccount.name, accountInfo.data);
+
+          // Assert the account discriminator is correct.
+          const expectedDiscriminator = Buffer.from(
+            (
+              await sha256(`account:${idlAccount.name}`, {
+                outputFormat: "buffer",
+              })
+            ).slice(0, 8)
+          );
+          const discriminator = accountInfo.data.slice(0, 8);
+
+          if (expectedDiscriminator.compare(discriminator)) {
+            throw new Error("Invalid account discriminator");
+          }
+
+          // Chop off the discriminator before decoding.
+          const data = accountInfo.data.slice(8);
+          return coder.accounts.decode(idlAccount.name, data);
         };
         const name = camelCase(idlAccount.name);
         accountFns[name] = accountFn;

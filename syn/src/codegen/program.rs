@@ -10,7 +10,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
     let instruction = generate_instruction(&program);
 
     quote! {
-        // Import everything in the mod, in case the user wants to put anchors
+        // Import everything in the mod, in case the user wants to put types
         // in there.
         use #mod_name::*;
 
@@ -61,7 +61,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
 
             quote! {
                 instruction::#variant_arm => {
-                    let mut accounts = #anchor::try_anchor(program_id, accounts)?;
+                    let mut accounts = #anchor::try_accounts(program_id, accounts)?;
                     #program_name::#rpc_name(
                         Context {
                             accounts: &mut accounts,

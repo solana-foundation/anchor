@@ -1,4 +1,4 @@
-# Tutorial 1: Accounts, Arguments, and Types
+# Tutorial 1: Arguments and Accounts
 
 This tutorial covers the basics of creating and mutating accounts using Anchor.
 It's recommended to read [Tutorial 0](./tutorial-0.md) first, as this tutorial will
@@ -22,25 +22,56 @@ cd anchor/examples/tutorial/basic-1
 
 We define our program as follows
 
-<<< @/../examples/tutorial/basic-1/programs/basic-1/src/lib.rs#program
+<<< @/../examples/tutorial/basic-1/programs/basic-1/src/lib.rs
 
 Some new syntax elements are introduced here.
 
-First, notice the `data` argument passed into the program. This argument and any other valid
-Rust types can be passed to the instruction to define inputs to the program. If you'd like to
-pass in your own type, then it must be defined in the same `src/lib.rs` file as the
-`#[program]` module (so that the IDL can pick it up). Additionally,
+### `initialize` instruction
+
+First, let's start with the initialize instruction. Notice the `data` argument passed into the program. This argument and any other valid
+Rust types can be passed to the instruction to define inputs to the program.
+
+::: tip
+If you'd like to pass in your own type as an input to an instruction handler, then it must be
+defined in the same `src/lib.rs` file as the `#[program]` module, so that the IDL parser can
+pick it up.
+:::
+
+Additionally,
 notice how we take a mutable reference to `my_account` and assign the `data` to it. This leads us
-the `Initialize` struct, deriving `Accounts`.
+the `Initialize` struct, deriving `Accounts`. There are two things to notice about `Initialize`.
 
-There are two things to notice about `Initialize`. First, the
-`my_account` field is marked with the `#[account(mut)]` attribute. This means that any
-changes to the field will be persisted upon exiting the program. Second, the field is of
-type `ProgramAccount<'info, MyAccount>`, telling the program it *must* be **owned**
-by the currently executing program and the deserialized data structure is `MyAccount`.
+1. The `my_account` field is of type `ProgramAccount<'info, MyAccount>`, telling the program it *must*
+be **owned** by the currently executing program, and the deserialized data structure is `MyAccount`.
+2. The `my_account` field is marked with the `#[account(init)]` attribute. This should be used
+in one situation: when a given `ProgramAccount` is newly created and is being used by the program
+for the first time (and thus it's data field is all zero). If `#[account(init)]` is not used
+when account data is zero initialized, the transaction will be rejected.
 
-In a later tutorial we'll delve more deeply into deriving `Accounts`. For now, just know
-one must mark their accounts `mut` if they want them to, well, mutate. ;)
+::: details
+All accounts created with Anchor are laid out as follows: `8-byte-discriminator || borsh
+serialized data`. The 8-byte-discriminator is created from the first 8 bytes of the
+`Sha256` hash of the account's type--using the example above, `sha256("MyAccount")[..8]`.
+
+Importantly, this allows a program to know for certain an account is indeed of a given type.
+Without it, a program would be vulnerable to account injection attacks, where a malicious user
+specifies an account of an unexpected type, causing the program to do unexpected things.
+
+On account creation, this 8-byte discriminator doesn't exist, since the account storage is
+zeroed. The first time an Anchor program mutates an account, this discriminator is prepended
+to the account storage array and all subsequent accesses to the account (not decorated with
+`#[account(init)]`) will check for this discriminator.
+:::
+
+### `update` instruction
+
+Similarly, the `Update` accounts struct is marked  with the `#[account(mut)]` attribute.
+Marking an account as `mut` persists any changes made upon exiting the program.
+
+Here we've covered the basics of how to interact with accounts. In a later tutorial,
+we'll delve more deeply into deriving `Accounts`, but for now, just know
+one must mark their accounts `init` when using an account for the first time and `mut`
+for persisting changes.
 
 ## Creating and Initializing Accounts
 
@@ -74,8 +105,8 @@ which in this case is `initialize`. Because we are creating `myAccount`, it need
 sign the transaction, as required by the Solana runtime.
 
 ::: details
-In future work, we might want to add something like a *Builder* pattern for constructing
-common transactions like creating and then initializing an account.
+In future work, we can simplify this example further by using something like a *Builder*
+pattern for constructing common transactions like creating and then initializing an account.
 :::
 
 As before, we can run the example tests.

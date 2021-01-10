@@ -1,5 +1,5 @@
 [package]
-name = "anchor-derive"
+name = "anchor-attribute-program"
 version = "0.1.0"
 authors = ["armaniferrante <armaniferrante@gmail.com>"]
 edition = "2018"
@@ -12,4 +12,4 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0.54", features = ["full"] }
 anyhow = "1.0.32"
-anchor-syn = { path = "../syn" }
+anchor-syn = { path = "../../syn" }

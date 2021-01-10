@@ -4,6 +4,8 @@ use anchor_syn::codegen::program as program_codegen;
 use anchor_syn::parser::program as program_parser;
 use syn::parse_macro_input;
 
+/// The module containing all instruction handlers defining all entries to the
+/// Solana program.
 #[proc_macro_attribute]
 pub fn program(
     _args: proc_macro::TokenStream,

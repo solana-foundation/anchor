@@ -22,8 +22,8 @@ describe('basic-1', () => {
       anchor.web3.SystemProgram.createAccount({
         fromPubkey: provider.wallet.publicKey,
         newAccountPubkey: myAccount.publicKey,
-        space: 8,
-        lamports: await provider.connection.getMinimumBalanceForRentExemption(8),
+        space: 8+8,
+        lamports: await provider.connection.getMinimumBalanceForRentExemption(8+8),
         programId: program.programId,
       }),
     );
@@ -47,6 +47,8 @@ describe('basic-1', () => {
     assert.ok(account.data.eq(new anchor.BN(1234)));
   });
 
+  // Reference to an account to use between multiple tests.
+  let _myAccount = undefined;
 
   it('Creates and initializes an account in a single atomic transaction', async () => {
     // The program to execute.
@@ -66,8 +68,8 @@ describe('basic-1', () => {
         anchor.web3.SystemProgram.createAccount({
           fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: myAccount.publicKey,
-          space: 8,
-          lamports: await provider.connection.getMinimumBalanceForRentExemption(8),
+          space: 8+8, // Add 8 for the account discriminator.
+          lamports: await provider.connection.getMinimumBalanceForRentExemption(8+8),
           programId: program.programId,
         }),
       ],
@@ -79,5 +81,33 @@ describe('basic-1', () => {
     // Check it's state was initialized.
     assert.ok(account.data.eq(new anchor.BN(1234)));
     // #endregion code
+
+    // Store the account for the next test.
+    _myAccount = myAccount;
+  });
+
+  it('Updates a previously created account', async () => {
+
+    const myAccount = _myAccount;
+
+    // #region update-test
+
+    // The program to execute.
+    const program = anchor.workspace.Basic1;
+
+    // Invoke the update rpc.
+    await program.rpc.update(new anchor.BN(4321), {
+      accounts: {
+        myAccount: myAccount.publicKey,
+      },
+    });
+
+    // Fetch the newly updated account.
+    const account = await program.account.myAccount(myAccount.publicKey);
+
+    // Check it's state was mutated.
+    assert.ok(account.data.eq(new anchor.BN(4321)));
+
+    // #endregion update-test
   });
 });

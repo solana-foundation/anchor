@@ -100,7 +100,7 @@ Once built, we can deploy the program by running
 anchor deploy
 ```
 
-Take note of program's deployed address. We'll use it next.
+Take note of the program's deployed address. We'll use it next.
 
 ## Generating a Client
 

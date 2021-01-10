@@ -27,8 +27,11 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
                         Some(attr)
                     })
                     .collect();
-                assert!(anchor_attrs.len() == 1);
-                anchor_attrs[0]
+                match anchor_attrs.len() {
+                    0 => None,
+                    1 => Some(anchor_attrs[0]),
+                    _ => panic!("invalid syntax: only one account attribute is allowed"),
+                }
             };
             parse_field(f, anchor_attr)
         })
@@ -38,16 +41,20 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
 }
 
 // Parses an inert #[anchor] attribute specifying the DSL.
-fn parse_field(f: &syn::Field, anchor: &syn::Attribute) -> Field {
+fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> Field {
     let ident = f.ident.clone().unwrap();
     let ty = parse_ty(f);
-    let (constraints, is_mut, is_signer) = parse_constraints(anchor, &ty);
+    let (constraints, is_mut, is_signer, is_init) = match anchor {
+        None => (vec![], false, false, false),
+        Some(anchor) => parse_constraints(anchor, &ty),
+    };
     Field {
         ident,
         ty,
         constraints,
         is_mut,
         is_signer,
+        is_init,
     }
 }
 
@@ -90,13 +97,14 @@ fn parse_program_account(path: &syn::Path) -> ProgramAccountTy {
     ProgramAccountTy { account_ident }
 }
 
-fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool, bool) {
+fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool, bool, bool) {
     let mut tts = anchor.tokens.clone().into_iter();
     let g_stream = match tts.next().expect("Must have a token group") {
         proc_macro2::TokenTree::Group(g) => g.stream(),
         _ => panic!("Invalid syntax"),
     };
 
+    let mut is_init = false;
     let mut is_mut = false;
     let mut is_signer = false;
     let mut constraints = vec![];
@@ -106,6 +114,10 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
     while let Some(token) = inner_tts.next() {
         match token {
             proc_macro2::TokenTree::Ident(ident) => match ident.to_string().as_str() {
+                "init" => {
+                    is_init = true;
+                    is_mut = true;
+                }
                 "mut" => {
                     is_mut = true;
                 }
@@ -175,5 +187,5 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
         }
     }
 
-    (constraints, is_mut, is_signer)
+    (constraints, is_mut, is_signer, is_init)
 }
