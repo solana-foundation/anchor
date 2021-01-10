@@ -35,17 +35,17 @@ use anchor::prelude::*;
 mod basic_1 {
     use super::*;
 
-    #[access_control(not_zero(data))]
     pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> ProgramResult {
         let my_account = &mut ctx.accounts.my_account;
-        my_account.initialized = true;
         my_account.authority = authority;
         Ok(())
     }
 
+    #[access_control(not_zero(data))]
     pub fn update(ctx: Context<Update>, data: u64) -> ProgramResult {
         let my_account = &mut ctx.accounts.my_account;
         my_account.data = data;
+        Ok(())
     }
 }
 
@@ -53,7 +53,7 @@ mod basic_1 {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(mut, "!my_account.initialized")]
+    #[account(init)]
     pub my_account: ProgramAccount<'info, MyAccount>,
 }
 
@@ -61,13 +61,15 @@ pub struct Initialize<'info> {
 pub struct Update<'info> {
     #[account(signer)]
     pub authority: AccountInfo<'info>,
+    #[account(mut, "&my_account.authority == authority.key")]
+    pub my_account: ProgramAccount<'info, MyAccount>,
 }
 
 // Define program owned accounts.
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[account]
 pub struct MyAccount {
-    pub initialized: bool,
+    pub authority: Pubkey,
     pub data: u64,
 }
 
@@ -80,7 +82,6 @@ fn not_zero(data: u64) -> ProgramResult {
     Ok(())
 }
 ```
-
 
 ## Accounts attribute syntax.
 
