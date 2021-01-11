@@ -1,6 +1,6 @@
 use crate::{
     AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintSigner, Field, Ty,
+    ConstraintSigner, Field, SysvarTy, Ty,
 };
 use quote::quote;
 
@@ -45,6 +45,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             let info = match f.ty {
                 Ty::AccountInfo => quote! { #ident },
                 Ty::ProgramAccount(_) => quote! { #ident.info },
+                _ => return quote! {},
             };
             match f.is_mut {
                 false => quote! {},
@@ -108,6 +109,38 @@ pub fn generate_field(f: &Field) -> proc_macro2::TokenStream {
                 },
             }
         }
+        Ty::Sysvar(sysvar) => match sysvar {
+            SysvarTy::Clock => quote! {
+                let #ident = Clock::from_account_info(#ident)?;
+            },
+            SysvarTy::Rent => quote! {
+                let #ident = Rent::from_account_info(#ident)?;
+            },
+            SysvarTy::EpochSchedule => quote! {
+                let #ident = EpochSchedule::from_account_info(#ident)?;
+            },
+            SysvarTy::Fees => quote! {
+                let #ident = Fees::from_account_info(#ident)?;
+            },
+            SysvarTy::RecentBlockHashes => quote! {
+                let #ident = RecentBlockhashes::from_account_info(#ident)?;
+            },
+            SysvarTy::SlotHashes => quote! {
+                let #ident = SlotHashes::from_account_info(#ident)?;
+            },
+            SysvarTy::SlotHistory => quote! {
+                let #ident = SlotHistory::from_account_info(#ident)?;
+            },
+            SysvarTy::StakeHistory => quote! {
+                let #ident = StakeHistory::from_account_info(#ident)?;
+            },
+            SysvarTy::Instructions => quote! {
+                let #ident = Instructions::from_account_info(#ident)?;
+            },
+            SysvarTy::Rewards => quote! {
+                let #ident = Rewards::from_account_info(#ident)?;
+            },
+        },
     };
     let checks: Vec<proc_macro2::TokenStream> = f
         .constraints
@@ -150,6 +183,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::ProgramAccount(_) => quote! { #ident.info },
+        _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     quote! {
         if !#info.is_signer {
@@ -172,6 +206,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::ProgramAccount(_) => quote! { #ident.info },
+        _ => panic!("Invalid syntax: owner cannot be specified."),
     };
     match c {
         ConstraintOwner::Skip => quote! {},

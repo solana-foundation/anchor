@@ -127,4 +127,15 @@ pub mod prelude {
     pub use solana_sdk::entrypoint::ProgramResult;
     pub use solana_sdk::program_error::ProgramError;
     pub use solana_sdk::pubkey::Pubkey;
+    pub use solana_sdk::sysvar::clock::Clock;
+    pub use solana_sdk::sysvar::epoch_schedule::EpochSchedule;
+    pub use solana_sdk::sysvar::fees::Fees;
+    pub use solana_sdk::sysvar::instructions::Instructions;
+    pub use solana_sdk::sysvar::recent_blockhashes::RecentBlockhashes;
+    pub use solana_sdk::sysvar::rent::Rent;
+    pub use solana_sdk::sysvar::rewards::Rewards;
+    pub use solana_sdk::sysvar::slot_hashes::SlotHashes;
+    pub use solana_sdk::sysvar::slot_history::SlotHistory;
+    pub use solana_sdk::sysvar::stake_history::StakeHistory;
+    pub use solana_sdk::sysvar::Sysvar;
 }

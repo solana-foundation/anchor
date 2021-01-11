@@ -72,6 +72,21 @@ pub struct Field {
 pub enum Ty {
     AccountInfo,
     ProgramAccount(ProgramAccountTy),
+    Sysvar(SysvarTy),
+}
+
+#[derive(PartialEq)]
+pub enum SysvarTy {
+    Clock,
+    Rent,
+    EpochSchedule,
+    Fees,
+    RecentBlockHashes,
+    SlotHashes,
+    SlotHistory,
+    StakeHistory,
+    Instructions,
+    Rewards,
 }
 
 #[derive(PartialEq)]

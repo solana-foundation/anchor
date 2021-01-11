@@ -4,7 +4,7 @@ use heck::SnakeCase;
 pub fn virtual_manifest() -> String {
     r#"[workspace]
 members = [
-  "programs/*"
+    "programs/*"
 ]
 "#
     .to_string()
@@ -47,10 +47,10 @@ use anchor::prelude::*;
 
 #[program]
 mod {} {{
-   use super::*;
-   pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {{
-       Ok(())
-   }}
+    use super::*;
+    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {{
+        Ok(())
+    }}
 }}
 
 #[derive(Accounts)]

@@ -40,6 +40,7 @@ jobs:
     - <<: *examples
       name: Runs the examples
       script:
+        - pushd examples/sysvars && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd

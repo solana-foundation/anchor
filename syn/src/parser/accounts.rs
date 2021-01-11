@@ -1,6 +1,6 @@
 use crate::{
     AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintSigner, Field, ProgramAccountTy, Ty,
+    ConstraintSigner, Field, ProgramAccountTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -69,6 +69,16 @@ fn parse_ty(f: &syn::Field) -> Ty {
     match segments.ident.to_string().as_str() {
         "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)),
         "AccountInfo" => Ty::AccountInfo,
+        "Clock" => Ty::Sysvar(SysvarTy::Clock),
+        "Rent" => Ty::Sysvar(SysvarTy::Rent),
+        "EpochSchedule" => Ty::Sysvar(SysvarTy::EpochSchedule),
+        "Fees" => Ty::Sysvar(SysvarTy::Fees),
+        "RecentBlockhashes" => Ty::Sysvar(SysvarTy::RecentBlockHashes),
+        "SlotHashes" => Ty::Sysvar(SysvarTy::SlotHashes),
+        "SlotHistory" => Ty::Sysvar(SysvarTy::SlotHistory),
+        "StakeHistory" => Ty::Sysvar(SysvarTy::StakeHistory),
+        "Instructions" => Ty::Sysvar(SysvarTy::Instructions),
+        "Rewards" => Ty::Sysvar(SysvarTy::Rewards),
         _ => panic!("invalid type"),
     }
 }
