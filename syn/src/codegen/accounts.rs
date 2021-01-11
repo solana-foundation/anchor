@@ -1,6 +1,6 @@
 use crate::{
     AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintSigner, Field, SysvarTy, Ty,
+    ConstraintRentExempt, ConstraintSigner, Field, SysvarTy, Ty,
 };
 use quote::quote;
 
@@ -16,26 +16,42 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         })
         .collect();
 
-    let (access_checks, return_tys): (
-        Vec<proc_macro2::TokenStream>,
-        Vec<proc_macro2::TokenStream>,
-    ) = accs
-        .fields
-        .iter()
-        .map(|f: &Field| {
-            let name = &f.ident;
+    let (deser_fields, access_checks, return_tys) = {
+        // Deserialization for each field.
+        let deser_fields: Vec<proc_macro2::TokenStream> = accs
+            .fields
+            .iter()
+            .map(generate_field_deserialization)
+            .collect();
+        // Constraint checks for each account fields.
+        let access_checks: Vec<proc_macro2::TokenStream> = accs
+            .fields
+            .iter()
+            .map(|f: &Field| {
+                let checks: Vec<proc_macro2::TokenStream> = f
+                    .constraints
+                    .iter()
+                    .map(|c| generate_constraint(&f, c))
+                    .collect();
+                quote! {
+                    #(#checks)*
+                }
+            })
+            .collect();
+        // Each field in the final deserialized accounts struct.
+        let return_tys: Vec<proc_macro2::TokenStream> = accs
+            .fields
+            .iter()
+            .map(|f: &Field| {
+                let name = &f.ident;
+                quote! {
+                    #name
+                }
+            })
+            .collect();
 
-            // Account validation.
-            let access_control = generate_field(f);
-
-            // Single field in the final deserialized accounts struct.
-            let return_ty = quote! {
-                #name
-            };
-
-            (access_control, return_ty)
-        })
-        .unzip();
+        (deser_fields, access_checks, return_tys)
+    };
 
     let on_save: Vec<proc_macro2::TokenStream> = accs
         .fields
@@ -73,10 +89,16 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             fn try_accounts(program_id: &Pubkey, accounts: &[AccountInfo<'info>]) -> Result<Self, ProgramError> {
                 let acc_infos = &mut accounts.iter();
 
+                // Pull out each account info from the `accounts` slice.
                 #(#acc_infos)*
 
+                // Deserialize each account.
+                #(#deser_fields)*
+
+                // Perform constraint checks on each account.
                 #(#access_checks)*
 
+                // Success. Return the validated accounts.
                 Ok(#name {
                     #(#return_tys),*
                 })
@@ -92,7 +114,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     }
 }
 
-pub fn generate_field(f: &Field) -> proc_macro2::TokenStream {
+pub fn generate_field_deserialization(f: &Field) -> proc_macro2::TokenStream {
     let ident = &f.ident;
     let assign_ty = match &f.ty {
         Ty::AccountInfo => quote! {
@@ -142,14 +164,9 @@ pub fn generate_field(f: &Field) -> proc_macro2::TokenStream {
             },
         },
     };
-    let checks: Vec<proc_macro2::TokenStream> = f
-        .constraints
-        .iter()
-        .map(|c| generate_constraint(&f, c))
-        .collect();
+
     quote! {
         #assign_ty
-        #(#checks)*
     }
 }
 
@@ -159,6 +176,7 @@ pub fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStrea
         Constraint::Signer(c) => generate_constraint_signer(f, c),
         Constraint::Literal(c) => generate_constraint_literal(f, c),
         Constraint::Owner(c) => generate_constraint_owner(f, c),
+        Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
     }
 }
 
@@ -213,6 +231,26 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
         ConstraintOwner::Program => quote! {
             if #info.owner != program_id {
                 return Err(ProgramError::Custom(1)); // todo: error codes
+            }
+        },
+    }
+}
+
+pub fn generate_constraint_rent_exempt(
+    f: &Field,
+    c: &ConstraintRentExempt,
+) -> proc_macro2::TokenStream {
+    let ident = &f.ident;
+    let info = match f.ty {
+        Ty::AccountInfo => quote! { #ident },
+        Ty::ProgramAccount(_) => quote! { #ident.info },
+        _ => panic!("Invalid syntax: rent exemption cannot be specified."),
+    };
+    match c {
+        ConstraintRentExempt::Skip => quote! {},
+        ConstraintRentExempt::Enforce => quote! {
+            if !rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
+                return Err(ProgramError::Custom(2)); // todo: error codes
             }
         },
     }

@@ -1,6 +1,6 @@
 use crate::{
     AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintSigner, Field, ProgramAccountTy, SysvarTy, Ty,
+    ConstraintRentExempt, ConstraintSigner, Field, ProgramAccountTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -61,7 +61,7 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> Field {
 fn parse_ty(f: &syn::Field) -> Ty {
     let path = match &f.ty {
         syn::Type::Path(ty_path) => ty_path.path.clone(),
-        _ => panic!("invalid type"),
+        _ => panic!("invalid account syntax"),
     };
     // TODO: allow segmented paths.
     assert!(path.segments.len() == 1);
@@ -79,7 +79,7 @@ fn parse_ty(f: &syn::Field) -> Ty {
         "StakeHistory" => Ty::Sysvar(SysvarTy::StakeHistory),
         "Instructions" => Ty::Sysvar(SysvarTy::Instructions),
         "Rewards" => Ty::Sysvar(SysvarTy::Rewards),
-        _ => panic!("invalid type"),
+        _ => panic!("invalid account type"),
     }
 }
 
@@ -119,6 +119,7 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
     let mut is_signer = false;
     let mut constraints = vec![];
     let mut has_owner_constraint = false;
+    let mut is_rent_exempt = None;
 
     let mut inner_tts = g_stream.into_iter();
     while let Some(token) = inner_tts.next() {
@@ -127,6 +128,11 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
                 "init" => {
                     is_init = true;
                     is_mut = true;
+                    // If it's not specified, all program owned accounts default
+                    // to being rent exempt.
+                    if is_rent_exempt.is_none() {
+                        is_rent_exempt = Some(true);
+                    }
                 }
                 "mut" => {
                     is_mut = true;
@@ -169,6 +175,30 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
                     constraints.push(Constraint::Owner(constraint));
                     has_owner_constraint = true;
                 }
+                "rent_exempt" => {
+                    match inner_tts.next() {
+                        None => is_rent_exempt = Some(true),
+                        Some(tkn) => {
+                            match tkn {
+                                proc_macro2::TokenTree::Punct(punct) => {
+                                    assert!(punct.as_char() == '=');
+                                    punct
+                                }
+                                _ => panic!("invalid syntax"),
+                            };
+                            let should_skip = match inner_tts.next().unwrap() {
+                                proc_macro2::TokenTree::Ident(ident) => ident,
+                                _ => panic!("invalid syntax"),
+                            };
+                            match should_skip.to_string().as_str() {
+                                "skip" => {
+                                    is_rent_exempt = Some(false);
+                                },
+                                _ => panic!("invalid syntax: omit the rent_exempt attribute to enforce rent exemption"),
+                            };
+                        }
+                    };
+                }
                 _ => {
                     panic!("invalid syntax");
                 }
@@ -195,6 +225,14 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
         } else {
             constraints.push(Constraint::Owner(ConstraintOwner::Program));
         }
+    }
+
+    match is_rent_exempt {
+        None => constraints.push(Constraint::RentExempt(ConstraintRentExempt::Skip)),
+        Some(is_re) => match is_re {
+            false => constraints.push(Constraint::RentExempt(ConstraintRentExempt::Skip)),
+            true => constraints.push(Constraint::RentExempt(ConstraintRentExempt::Enforce)),
+        },
     }
 
     (constraints, is_mut, is_signer, is_init)

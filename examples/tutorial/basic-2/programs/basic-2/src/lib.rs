@@ -52,6 +52,7 @@ mod basic_2 {
 pub struct CreateRoot<'info> {
     #[account(init)]
     pub root: ProgramAccount<'info, Root>,
+    pub rent: Rent,
 }
 
 #[derive(Accounts)]
@@ -67,6 +68,7 @@ pub struct CreateLeaf<'info> {
     pub root: ProgramAccount<'info, Root>,
     #[account(init)]
     pub leaf: ProgramAccount<'info, Leaf>,
+    pub rent: Rent,
 }
 
 #[derive(Accounts)]

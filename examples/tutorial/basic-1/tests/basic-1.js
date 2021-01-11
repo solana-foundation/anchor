@@ -36,6 +36,7 @@ describe('basic-1', () => {
     await program.rpc.initialize(new anchor.BN(1234), {
       accounts: {
         myAccount: myAccount.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
     });
     // #endregion code-separated
@@ -62,6 +63,7 @@ describe('basic-1', () => {
     await program.rpc.initialize(new anchor.BN(1234), {
       accounts: {
         myAccount: myAccount.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [myAccount],
       instructions: [

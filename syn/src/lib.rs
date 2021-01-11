@@ -101,6 +101,7 @@ pub enum Constraint {
     BelongsTo(ConstraintBelongsTo),
     Literal(ConstraintLiteral),
     Owner(ConstraintOwner),
+    RentExempt(ConstraintRentExempt),
 }
 
 pub struct ConstraintBelongsTo {
@@ -115,5 +116,10 @@ pub struct ConstraintLiteral {
 
 pub enum ConstraintOwner {
     Program,
+    Skip,
+}
+
+pub enum ConstraintRentExempt {
+    Enforce,
     Skip,
 }
