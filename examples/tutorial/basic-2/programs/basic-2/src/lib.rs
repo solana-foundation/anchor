@@ -13,7 +13,6 @@ mod basic_2 {
         let root = &mut ctx.accounts.root;
         root.authority = authority;
         root.data = data;
-        root.initialized = true;
         Ok(())
     }
 
@@ -25,8 +24,7 @@ mod basic_2 {
 
     pub fn create_leaf(ctx: Context<CreateLeaf>, data: u64, custom: MyCustomType) -> ProgramResult {
         let leaf = &mut ctx.accounts.leaf;
-        leaf.initialized = true;
-        leaf.root = *ctx.accounts.root.info.key;
+        leaf.root = *ctx.accounts.root.to_account_info().key;
         leaf.data = data;
         leaf.custom = custom;
         Ok(())
@@ -52,7 +50,7 @@ mod basic_2 {
 pub struct CreateRoot<'info> {
     #[account(init)]
     pub root: ProgramAccount<'info, Root>,
-    pub rent: Rent,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -68,7 +66,7 @@ pub struct CreateLeaf<'info> {
     pub root: ProgramAccount<'info, Root>,
     #[account(init)]
     pub leaf: ProgramAccount<'info, Leaf>,
-    pub rent: Rent,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -85,14 +83,12 @@ pub struct UpdateLeaf<'info> {
 
 #[account]
 pub struct Root {
-    pub initialized: bool,
     pub authority: Pubkey,
     pub data: u64,
 }
 
 #[account]
 pub struct Leaf {
-    pub initialized: bool,
     pub root: Pubkey,
     pub data: u64,
     pub custom: MyCustomType,
@@ -100,7 +96,7 @@ pub struct Leaf {
 
 // Define custom types.
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct MyCustomType {
     pub my_data: u64,
     pub key: Pubkey,

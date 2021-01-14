@@ -67,7 +67,7 @@ pub fn account(
     };
 
     proc_macro::TokenStream::from(quote! {
-        #[derive(AnchorSerialize, AnchorDeserialize)]
+        #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
         #account_strct
 
         #coder

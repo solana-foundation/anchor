@@ -1,4 +1,5 @@
 use solana_sdk::account_info::AccountInfo;
+use solana_sdk::instruction::AccountMeta;
 use solana_sdk::program_error::ProgramError;
 use solana_sdk::pubkey::Pubkey;
 use std::io::Write;
@@ -8,6 +9,7 @@ pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::account;
 pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
+/// Default serialization format for anchor instructions and accounts.
 pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
 
 /// A data structure of Solana accounts that can be deserialized from the input
@@ -16,9 +18,26 @@ pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorS
 /// (in addition to any done within `AccountDeserialize`) on accounts to ensure
 /// the accounts maintain any invariants required for the program to run
 /// securely.
-pub trait Accounts<'info>: Sized {
-    fn try_accounts(program_id: &Pubkey, from: &[AccountInfo<'info>])
-        -> Result<Self, ProgramError>;
+pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
+    fn try_accounts(
+        program_id: &Pubkey,
+        from: &mut &[AccountInfo<'info>],
+    ) -> Result<Self, ProgramError>;
+}
+
+/// Transformation to `AccountMeta` structs.
+pub trait ToAccountMetas {
+    fn to_account_metas(&self) -> Vec<AccountMeta>;
+}
+
+/// Transformation to `AccountInfo` structs.
+pub trait ToAccountInfos<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>>;
+}
+
+/// Transformation to an `AccountInfo` struct.
+pub trait ToAccountInfo<'info> {
+    fn to_account_info(&self) -> AccountInfo<'info>;
 }
 
 /// A data structure that can be serialized and stored in an `AccountInfo` data
@@ -48,16 +67,15 @@ pub trait AccountDeserialize: Sized {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 }
 
-/// A container for a deserialized `account` and raw `AccountInfo` object.
-///
-/// Using this within a data structure deriving `Accounts` will ensure the
-/// account is owned by the currently executing program.
-pub struct ProgramAccount<'a, T: AccountSerialize + AccountDeserialize> {
-    pub info: AccountInfo<'a>,
-    pub account: T,
+/// Container for a serializable `account`. Use this to reference any account
+/// owned by the currently executing program.
+#[derive(Clone)]
+pub struct ProgramAccount<'a, T: AccountSerialize + AccountDeserialize + Clone> {
+    info: AccountInfo<'a>,
+    account: T,
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize> ProgramAccount<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T> {
     pub fn new(info: AccountInfo<'a>, account: T) -> ProgramAccount<'a, T> {
         Self { info, account }
     }
@@ -93,7 +111,15 @@ impl<'a, T: AccountSerialize + AccountDeserialize> ProgramAccount<'a, T> {
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize> Deref for ProgramAccount<'a, T> {
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'info>
+    for ProgramAccount<'info, T>
+{
+    fn to_account_info(&self) -> AccountInfo<'info> {
+        self.info.clone()
+    }
+}
+
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAccount<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -101,30 +127,123 @@ impl<'a, T: AccountSerialize + AccountDeserialize> Deref for ProgramAccount<'a, 
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize> DerefMut for ProgramAccount<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramAccount<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
 }
 
-/// A data structure providing non-argument inputs to the Solana program, namely
-/// the currently executing program's ID and the set of validated, deserialized
-/// accounts.
-pub struct Context<'a, 'b, T> {
+/// Similar to `ProgramAccount`, but to reference any account *not* owned by
+/// the current program.
+pub type CpiAccount<'a, T> = ProgramAccount<'a, T>;
+
+/// Container for a Solana sysvar.
+pub struct Sysvar<'info, T: solana_sdk::sysvar::Sysvar> {
+    info: AccountInfo<'info>,
+    account: T,
+}
+
+impl<'info, T: solana_sdk::sysvar::Sysvar> Sysvar<'info, T> {
+    pub fn from_account_info(
+        acc_info: &AccountInfo<'info>,
+    ) -> Result<Sysvar<'info, T>, ProgramError> {
+        Ok(Sysvar {
+            info: acc_info.clone(),
+            account: T::from_account_info(&acc_info)?,
+        })
+    }
+}
+
+impl<'a, T: solana_sdk::sysvar::Sysvar> Deref for Sysvar<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.account
+    }
+}
+
+impl<'a, T: solana_sdk::sysvar::Sysvar> DerefMut for Sysvar<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.account
+    }
+}
+
+impl<'info, T: solana_sdk::sysvar::Sysvar> ToAccountInfo<'info> for Sysvar<'info, T> {
+    fn to_account_info(&self) -> AccountInfo<'info> {
+        self.info.clone()
+    }
+}
+
+impl<'info> ToAccountInfo<'info> for AccountInfo<'info> {
+    fn to_account_info(&self) -> AccountInfo<'info> {
+        self.clone()
+    }
+}
+
+/// Provides non-argument inputs to the program.
+pub struct Context<'a, 'b, 'c, 'info, T> {
+    /// Deserialized accounts.
     pub accounts: &'a mut T,
+    /// Currently executing program id.
     pub program_id: &'b Pubkey,
+    /// Remaining accounts given but not deserialized or validated.
+    pub remaining_accounts: &'c [AccountInfo<'info>],
+}
+
+impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, 'info, T> {
+    pub fn new(
+        accounts: &'a mut T,
+        program_id: &'b Pubkey,
+        remaining_accounts: &'c [AccountInfo<'info>],
+    ) -> Self {
+        Self {
+            accounts,
+            program_id,
+            remaining_accounts,
+        }
+    }
+}
+
+/// Context speciying non-argument inputs for cross-program-invocations.
+pub struct CpiContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
+    pub accounts: T,
+    pub program: AccountInfo<'info>,
+    pub signer_seeds: &'a [&'b [&'c [u8]]],
+}
+
+impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiContext<'a, 'b, 'c, 'info, T> {
+    pub fn new(program: AccountInfo<'info>, accounts: T) -> Self {
+        Self {
+            accounts,
+            program,
+            signer_seeds: &[],
+        }
+    }
+
+    pub fn new_with_signer(
+        accounts: T,
+        program: AccountInfo<'info>,
+        signer_seeds: &'a [&'b [&'c [u8]]],
+    ) -> Self {
+        Self {
+            accounts,
+            program,
+            signer_seeds,
+        }
+    }
 }
 
 pub mod prelude {
     pub use super::{
         access_control, account, program, AccountDeserialize, AccountSerialize, Accounts,
-        AnchorDeserialize, AnchorSerialize, Context, ProgramAccount,
+        AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext, ProgramAccount,
+        Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 
     pub use solana_program::msg;
-    pub use solana_sdk::account_info::next_account_info;
-    pub use solana_sdk::account_info::AccountInfo;
+    pub use solana_sdk::account_info::{next_account_info, AccountInfo};
     pub use solana_sdk::entrypoint::ProgramResult;
+    pub use solana_sdk::instruction::AccountMeta;
     pub use solana_sdk::program_error::ProgramError;
     pub use solana_sdk::pubkey::Pubkey;
     pub use solana_sdk::sysvar::clock::Clock;
@@ -137,5 +256,5 @@ pub mod prelude {
     pub use solana_sdk::sysvar::slot_hashes::SlotHashes;
     pub use solana_sdk::sysvar::slot_history::SlotHistory;
     pub use solana_sdk::sysvar::stake_history::StakeHistory;
-    pub use solana_sdk::sysvar::Sysvar;
+    pub use solana_sdk::sysvar::Sysvar as SolanaSysvar;
 }

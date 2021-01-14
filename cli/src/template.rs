@@ -19,8 +19,11 @@ description = "Created with Anchor"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 name = "{1}"
+
+[features]
+no-entrypoint = []
 
 [dependencies]
 borsh = {{ git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }}

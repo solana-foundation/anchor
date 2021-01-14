@@ -50,10 +50,11 @@ module.exports = {
         collapsable: false,
         title: "Tutorials",
 				children: [
-					"/tutorials/tutorial-0",
-					"/tutorials/tutorial-1",
-					"/tutorials/tutorial-2",
-				],
+          "/tutorials/tutorial-0",
+          "/tutorials/tutorial-1",
+          "/tutorials/tutorial-2",
+          "/tutorials/tutorial-3",
+        ],
       },
     ],
 

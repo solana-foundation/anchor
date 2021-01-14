@@ -11,8 +11,8 @@ mod sysvars {
 }
 
 #[derive(Accounts)]
-pub struct Sysvars {
-    pub clock: Clock,
-    pub rent: Rent,
-    pub stake_history: StakeHistory,
+pub struct Sysvars<'info> {
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    pub stake_history: Sysvar<'info, StakeHistory>,
 }

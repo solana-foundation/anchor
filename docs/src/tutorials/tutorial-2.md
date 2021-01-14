@@ -33,3 +33,9 @@ cd anchor/examples/tutorial/basic-2
 For now see the [source](https://github.com/project-serum/anchor/tree/master/examples/basic-2).
 
 TODO
+
+## Next Steps
+
+We've covered the basics for writing a single program using Anchor on Solana. But the power of
+blockchains come not from a single program, but from combining multiple *composable* programs
+(buzzword alert!). Next, we'll see how to call one program from another.
