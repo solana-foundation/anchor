@@ -51,7 +51,7 @@ dependencies = [
  "anyhow",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -62,7 +62,7 @@ dependencies = [
  "anyhow",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -73,7 +73,7 @@ dependencies = [
  "anyhow",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -92,7 +92,7 @@ dependencies = [
  "shellexpand",
  "solana-client",
  "solana-sdk",
- "syn 1.0.54",
+ "syn 1.0.57",
  "toml",
 ]
 
@@ -104,7 +104,7 @@ dependencies = [
  "anyhow",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -115,7 +115,7 @@ dependencies = [
  "anchor-attribute-account",
  "anchor-attribute-program",
  "anchor-derive-accounts",
- "borsh",
+ "serum-borsh",
  "solana-program",
  "solana-sdk",
  "thiserror",
@@ -131,7 +131,7 @@ dependencies = [
  "quote 1.0.8",
  "serde",
  "serde_json",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -318,7 +318,7 @@ source = "git+https://github.com/project-serum/borsh?branch=serum#337732a185f052
 dependencies = [
  "borsh-derive-internal",
  "borsh-schema-derive-internal",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -328,7 +328,7 @@ source = "git+https://github.com/project-serum/borsh?branch=serum#337732a185f052
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -338,7 +338,7 @@ source = "git+https://github.com/project-serum/borsh?branch=serum#337732a185f052
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -493,7 +493,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -758,7 +758,7 @@ checksum = "eaed5874effa6cde088c644ddcdcb4ffd1511391c5be4fdd7a5ccd02c7e4a183"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -922,7 +922,7 @@ checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "synstructure",
 ]
 
@@ -1051,7 +1051,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -1708,7 +1708,7 @@ checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -1759,7 +1759,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -1853,7 +1853,7 @@ dependencies = [
  "Inflector",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2001,7 +2001,7 @@ checksum = "65ad2ae56b6abe3a1ee25f15ee605bacadb9a764edaba9c2bf4103800d4a1895"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2012,7 +2012,7 @@ checksum = "f8e8d2bf0b23038a4424865103a4df472855692821aab4e4f5c3312d461d9e5f"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2063,7 +2063,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "version_check",
 ]
 
@@ -2473,7 +2473,7 @@ checksum = "c84d3526699cd55261af4b941e4e725444df67aa4f9e6a3564f18030d12672df"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2509,6 +2509,49 @@ dependencies = [
  "linked-hash-map",
  "serde",
  "yaml-rust",
+]
+
+[[package]]
+name = "serum-borsh"
+version = "0.7.2+serum.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a2e3702b632fc34836373a02da8df9083ced146a8cc7eea243b7e413483af9e"
+dependencies = [
+ "serum-borsh-derive",
+ "solana-sdk",
+]
+
+[[package]]
+name = "serum-borsh-derive"
+version = "0.7.2+serum.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8191deea0c5070466bcc55b7d78b6cc5b0bfcafc48a159d749d2fbfaa4d565ef"
+dependencies = [
+ "serum-borsh-derive-internal",
+ "serum-borsh-schema-derive-internal",
+ "syn 1.0.57",
+]
+
+[[package]]
+name = "serum-borsh-derive-internal"
+version = "0.7.2+serum.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb9ec4867a9aac787051047a0ac5ba9ab4d04218e5cad8f2d7d849ccbadab3e0"
+dependencies = [
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.57",
+]
+
+[[package]]
+name = "serum-borsh-schema-derive-internal"
+version = "0.7.2+serum.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bea9257a06a269e60182e5ab4bc025348110fc213695744ef36d5b1e8739cfb"
+dependencies = [
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2717,7 +2760,7 @@ dependencies = [
  "reqwest",
  "serde",
  "syn 0.15.44",
- "syn 1.0.54",
+ "syn 1.0.57",
  "tokio 0.1.22",
  "winapi 0.3.9",
 ]
@@ -2752,7 +2795,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "rustc_version",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -2980,7 +3023,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "rustversion",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -3174,9 +3217,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.54"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a2af957a63d6bd42255c359c93d9bfdb97076bd3b820897ce55ffbfbf107f44"
+checksum = "4211ce9909eb971f111059df92c45640aad50a619cf55cd76476be803c4c68e6"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
@@ -3191,7 +3234,7 @@ checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "unicode-xid 0.2.1",
 ]
 
@@ -3284,7 +3327,7 @@ checksum = "9be73a2caec27583d0046ef3796c3794f868a5bc813db689eed00c7631275cd1"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
 ]
 
 [[package]]
@@ -3806,7 +3849,7 @@ dependencies = [
  "log",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "wasm-bindgen-shared",
 ]
 
@@ -3840,7 +3883,7 @@ checksum = "b5a48c72f299d80557c7c62e37e7225369ecc0c963964059509fbafe917c7549"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -3977,7 +4020,7 @@ checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.54",
+ "syn 1.0.57",
  "synstructure",
 ]
 
