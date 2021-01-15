@@ -8,3 +8,5 @@ target/
 *.swo
 .anchor
 test-ledger
+examples/*/Cargo.lock
+examples/**/Cargo.lock

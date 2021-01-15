@@ -27,10 +27,10 @@ no-entrypoint = []
 cpi = ["no-entrypoint"]
 
 [dependencies]
-borsh = {{ git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }}
+anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
+serum-borsh = {{ version = "0.7.2+serum.1", features = ["serum-program"] }}
 solana-program = "1.4.3"
 solana-sdk = {{ version = "1.3.14", default-features = false, features = ["program"] }}
-anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
 "#,
         name,
         name.to_snake_case(),

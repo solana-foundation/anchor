@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang"
-version = "0.1.0"
+version = "0.0.0-alpha.0"
 description = ""
 repository = "https://github.com/project-serum/serum-dex"
 edition = "2018"
@@ -13,11 +13,11 @@ default = []
 thiserror = "1.0.20"
 solana-program = "1.4.3"
 solana-sdk = { version = "1.3.14", default-features = false, features = ["program"] }
-anchor-derive-accounts = { path = "./derive/accounts" }
-anchor-attribute-program = { path = "./attribute/program" }
-anchor-attribute-access-control = { path = "./attribute/access-control" }
-anchor-attribute-account = { path = "./attribute/account" }
-borsh = { git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }
+anchor-derive-accounts = { path = "./derive/accounts", version = "0.0.0-alpha.0" }
+anchor-attribute-program = { path = "./attribute/program", version = "0.0.0-alpha.0" }
+anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.0.0-alpha.0" }
+anchor-attribute-account = { path = "./attribute/account", version = "0.0.0-alpha.0" }
+serum-borsh = { version = "0.7.2+serum.2", features = ["serum-program"] }
 
 [workspace]
 members = [
