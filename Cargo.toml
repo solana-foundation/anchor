@@ -1,9 +1,11 @@
 [package]
 name = "anchor-lang"
 version = "0.0.0-alpha.0"
-description = ""
-repository = "https://github.com/project-serum/serum-dex"
+authors = ["Serum Foundation <foundation@projectserum.com>"]
+repository = "https://github.com/project-serum/anchor"
 edition = "2018"
+license = "Apache-2.0"
+description = "Solana Sealevel eDSL"
 
 [features]
 derive = []
