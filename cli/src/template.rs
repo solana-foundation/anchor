@@ -28,7 +28,7 @@ cpi = ["no-entrypoint"]
 
 [dependencies]
 anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
-serum-borsh = {{ version = "0.7.2+serum.2", features = ["serum-program"] }}
+serum-borsh = {{ version = "0.8.0-serum.1", features = ["serum-program"] }}
 solana-program = "1.4.3"
 solana-sdk = {{ version = "1.3.14", default-features = false, features = ["program"] }}
 "#,

@@ -19,7 +19,7 @@ anchor-derive-accounts = { path = "./derive/accounts", version = "0.0.0-alpha.0"
 anchor-attribute-program = { path = "./attribute/program", version = "0.0.0-alpha.0" }
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.0.0-alpha.0" }
 anchor-attribute-account = { path = "./attribute/account", version = "0.0.0-alpha.0" }
-serum-borsh = { version = "0.7.2+serum.2", features = ["serum-program"] }
+serum-borsh = { version = "0.8.0-serum.1", features = ["serum-program"] }
 
 [workspace]
 members = [
