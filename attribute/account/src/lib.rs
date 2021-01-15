@@ -17,7 +17,7 @@ pub fn account(
     let discriminator_preimage = format!("account:{}", account_name.to_string());
 
     let coder = quote! {
-        impl anchor::AccountSerialize for #account_name {
+        impl anchor_lang::AccountSerialize for #account_name {
             fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
                 // TODO: we shouldn't have to hash at runtime. However, rust
                 //       is not happy when trying to include solana-sdk from
@@ -39,7 +39,7 @@ pub fn account(
             }
         }
 
-        impl anchor::AccountDeserialize for #account_name {
+        impl anchor_lang::AccountDeserialize for #account_name {
             fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
                 let mut discriminator = [0u8; 8];
                 discriminator.copy_from_slice(

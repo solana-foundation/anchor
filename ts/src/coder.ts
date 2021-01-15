@@ -126,7 +126,20 @@ class IdlCoder {
       // TODO: all the other types that need to be exported by the borsh package.
       default: {
         // @ts-ignore
-        if (field.type.option) {
+        if (field.type.vec) {
+          return borsh.vec(
+            IdlCoder.fieldLayout(
+              {
+                name: undefined,
+                // @ts-ignore
+                type: field.type.vec,
+              },
+              types
+            ),
+            fieldName
+          );
+          // @ts-ignore
+        } else if (field.type.option) {
           return borsh.option(
             IdlCoder.fieldLayout(
               {

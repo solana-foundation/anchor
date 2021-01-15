@@ -54,8 +54,13 @@ type IdlType =
   | "bytes"
   | "string"
   | "publicKey"
+  | IdlTypeVec
   | IdlTypeOption
   | IdlTypeDefined;
+
+export type IdlTypeVec = {
+  vec: IdlType;
+};
 
 export type IdlTypeOption = {
   option: IdlType;

@@ -30,7 +30,7 @@ cpi = ["no-entrypoint"]
 borsh = {{ git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }}
 solana-program = "1.4.3"
 solana-sdk = {{ version = "1.3.14", default-features = false, features = ["program"] }}
-anchor = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
+anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
 "#,
         name,
         name.to_snake_case(),
@@ -47,7 +47,7 @@ pub fn lib_rs(name: &str) -> String {
     format!(
         r#"#![feature(proc_macro_hygiene)]
 
-use anchor::prelude::*;
+use anchor_lang::prelude::*;
 
 #[program]
 mod {} {{

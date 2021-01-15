@@ -1,12 +1,12 @@
 [package]
-name = "basic-0"
+name = "composite"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "basic_0"
+name = "composite"
 
 [features]
 no-entrypoint = []

@@ -1,39 +1,44 @@
 use crate::{
-    AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintRentExempt, ConstraintSigner, Field, SysvarTy, Ty,
+    AccountField, AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral,
+    ConstraintOwner, ConstraintRentExempt, ConstraintSigner, Field, Ty,
 };
 use quote::quote;
 
 pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
-    // Extract out each account info.
-    let acc_infos: Vec<proc_macro2::TokenStream> = accs
-        .fields
-        .iter()
-        .map(|f: &Field| {
-            let name = &f.ident;
-            quote! {
-                let #name = next_account_info(acc_infos)?;
-            }
-        })
-        .collect();
-    let acc_infos_len = {
-        let acc_infos_len = acc_infos.len();
-        quote! {
-            #acc_infos_len
-        }
-    };
-
     // Deserialization for each field.
     let deser_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(generate_field_deserialization)
+        .map(|af: &AccountField| match af {
+            AccountField::AccountsStruct(s) => {
+                let name = &s.ident;
+                quote! {
+                    let #name = Accounts::try_accounts(program_id, accounts)?;
+                }
+            }
+            AccountField::Field(f) => {
+                let name = f.typed_ident();
+                match f.is_init {
+                    false => quote! {
+                        let #name = Accounts::try_accounts(program_id, accounts)?;
+                    },
+                    true => quote! {
+                        let #name = AccountsInit::try_accounts_init(program_id, accounts)?;
+                    },
+                }
+            }
+        })
         .collect();
 
     // Constraint checks for each account fields.
     let access_checks: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
+        // TODO: allow constraints on composite fields.
+        .filter_map(|af: &AccountField| match af {
+            AccountField::AccountsStruct(_) => None,
+            AccountField::Field(f) => Some(f),
+        })
         .map(|f: &Field| {
             let checks: Vec<proc_macro2::TokenStream> = f
                 .constraints
@@ -50,8 +55,11 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let return_tys: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|f: &Field| {
-            let name = &f.ident;
+        .map(|f: &AccountField| {
+            let name = match f {
+                AccountField::AccountsStruct(s) => &s.ident,
+                AccountField::Field(f) => &f.ident,
+            };
             quote! {
                 #name
             }
@@ -62,26 +70,36 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let on_save: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|f: &Field| {
-            let ident = &f.ident;
-            let info = match f.ty {
-                Ty::AccountInfo => quote! { #ident },
-                Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
-                _ => return quote! {},
-            };
-            match f.is_mut {
-                false => quote! {},
-                true => quote! {
-                    // Only persist the change if the account is owned by the
-                    // current program.
-                    if program_id == self.#info.owner  {
-                        let info = self.#info;
-                        let mut data = info.try_borrow_mut_data()?;
-                        let dst: &mut [u8] = &mut data;
-                        let mut cursor = std::io::Cursor::new(dst);
-                        self.#ident.try_serialize(&mut cursor)?;
+        .map(|af: &AccountField| {
+            match af {
+                AccountField::AccountsStruct(s) => {
+                    let name = &s.ident;
+                    quote! {
+                        self.#name.exit(program_id);
                     }
-                },
+                }
+                AccountField::Field(f) => {
+                    let ident = &f.ident;
+                    let info = match f.ty {
+                        Ty::AccountInfo => quote! { #ident },
+                        Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
+                        _ => return quote! {},
+                    };
+                    match f.is_mut {
+                        false => quote! {},
+                        true => quote! {
+                                // Only persist the change if the account is owned by the
+                                // current program.
+                                if program_id == self.#info.owner  {
+                                        let info = self.#info;
+                                        let mut data = info.try_borrow_mut_data()?;
+                                        let dst: &mut [u8] = &mut data;
+                                        let mut cursor = std::io::Cursor::new(dst);
+                                        self.#ident.try_serialize(&mut cursor)?;
+                                }
+                        },
+                    }
+                }
             }
         })
         .collect();
@@ -90,10 +108,13 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let to_acc_infos: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|f: &Field| {
-            let name = &f.ident;
+        .map(|f: &AccountField| {
+            let name = match f {
+                AccountField::AccountsStruct(s) => &s.ident,
+                AccountField::Field(f) => &f.ident,
+            };
             quote! {
-                self.#name.to_account_info()
+                account_infos.extend(self.#name.to_account_infos());
             }
         })
         .collect();
@@ -102,19 +123,13 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let to_acc_metas: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|f: &Field| {
-            let name = &f.ident;
-            let is_signer = match f.is_signer {
-                false => quote! { false },
-                true => quote! { true },
+        .map(|f: &AccountField| {
+            let name = match f {
+                AccountField::AccountsStruct(s) => &s.ident,
+                AccountField::Field(f) => &f.ident,
             };
-            match f.is_mut {
-                false => quote! {
-                    AccountMeta::new_readonly(*self.#name.to_account_info().key, #is_signer)
-                },
-                true => quote! {
-                    AccountMeta::new(*self.#name.to_account_info().key, #is_signer)
-                },
+            quote! {
+                account_metas.extend(self.#name.to_account_metas());
             }
         })
         .collect();
@@ -130,15 +145,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         impl#combined_generics Accounts#trait_generics for #name#strct_generics {
-            fn try_accounts(program_id: &Pubkey, remaining_accounts: &mut &[AccountInfo<'info>]) -> Result<Self, ProgramError> {
-                let acc_infos = &mut remaining_accounts.iter();
-
-                // Pull out each account info from the `accounts` slice.
-                #(#acc_infos)*
-
-                // Move the remaining_accounts cursor to the iterator end.
-                *remaining_accounts = &remaining_accounts[#acc_infos_len..];
-
+            fn try_accounts(program_id: &Pubkey, accounts: &mut &[AccountInfo<'info>]) -> Result<Self, ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
 
@@ -154,17 +161,22 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
 
         impl#combined_generics ToAccountInfos#trait_generics for #name#strct_generics {
             fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-                vec![
-                    #(#to_acc_infos),*
-                ]
+                let mut account_infos = vec![];
+
+                #(#to_acc_infos)*
+
+                account_infos
             }
         }
 
         impl#combined_generics ToAccountMetas for #name#strct_generics {
             fn to_account_metas(&self) -> Vec<AccountMeta> {
-                vec![
-                    #(#to_acc_metas),*
-                ]
+                let mut account_metas = vec![];
+
+                #(#to_acc_metas)*
+
+
+                account_metas
             }
         }
 
@@ -174,73 +186,6 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                 Ok(())
             }
         }
-    }
-}
-
-pub fn generate_field_deserialization(f: &Field) -> proc_macro2::TokenStream {
-    let ident = &f.ident;
-    let assign_ty = match &f.ty {
-        Ty::AccountInfo => quote! {
-            let #ident = #ident.clone();
-        },
-        Ty::ProgramAccount(acc) => {
-            let account_struct = &acc.account_ident;
-            match f.is_init {
-                false => quote! {
-                    let #ident: ProgramAccount<#account_struct> = ProgramAccount::try_from(#ident)?;
-                },
-                true => quote! {
-                    let #ident: ProgramAccount<#account_struct> = ProgramAccount::try_from_init(#ident)?;
-                },
-            }
-        }
-        Ty::CpiAccount(acc) => {
-            let account_struct = &acc.account_ident;
-            match f.is_init {
-                false => quote! {
-                    let #ident: CpiAccount<#account_struct> = CpiAccount::try_from(#ident)?;
-                },
-                true => quote! {
-                    let #ident: CpiAccount<#account_struct> = CpiAccount::try_from_init(#ident)?;
-                },
-            }
-        }
-        Ty::Sysvar(sysvar) => match sysvar {
-            SysvarTy::Clock => quote! {
-                let #ident: Sysvar<Clock> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::Rent => quote! {
-                let #ident: Sysvar<Rent> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::EpochSchedule => quote! {
-                let #ident: Sysvar<EpochSchedule> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::Fees => quote! {
-                let #ident: Sysvar<Fees> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::RecentBlockHashes => quote! {
-                let #ident: Sysvar<RecentBlockhashes> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::SlotHashes => quote! {
-                let #ident: Sysvar<SlotHashes> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::SlotHistory => quote! {
-                let #ident: Sysvar<SlotHistory> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::StakeHistory => quote! {
-                let #ident: Sysvar<StakeHistory> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::Instructions => quote! {
-                let #ident: Sysvar<Instructions> = Sysvar::from_account_info(#ident)?;
-            },
-            SysvarTy::Rewards => quote! {
-                let #ident: Sysvar<Rewards> = Sysvar::from_account_info(#ident)?;
-            },
-        },
-    };
-
-    quote! {
-        #assign_ty
     }
 }
 

@@ -49,7 +49,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                     let mut remaining_accounts: &[AccountInfo] = accounts;
                     let mut accounts = #anchor::try_accounts(program_id, &mut remaining_accounts)?;
                     #program_name::#rpc_name(
-                        Context::new(&mut accounts, program_id, remaining_accounts),
+                        Context::new(program_id, &mut accounts, remaining_accounts),
                         #(#rpc_arg_names),*
                     )?;
                     accounts.exit(program_id)

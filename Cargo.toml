@@ -1,5 +1,5 @@
 [package]
-name = "anchor"
+name = "anchor-lang"
 version = "0.1.0"
 description = ""
 repository = "https://github.com/project-serum/serum-dex"

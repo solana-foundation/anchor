@@ -80,6 +80,7 @@ pub enum IdlType {
     PublicKey,
     Defined(String),
     Option(Box<IdlType>),
+    Vec(Box<IdlType>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,7 +108,17 @@ impl std::str::FromStr for IdlType {
             "String" => IdlType::String,
             "Pubkey" => IdlType::PublicKey,
             _ => match s.to_string().strip_prefix("Option<") {
-                None => IdlType::Defined(s.to_string()),
+                None => match s.to_string().strip_prefix("Vec<") {
+                    None => IdlType::Defined(s.to_string()),
+                    Some(inner) => {
+                        let inner_ty = Self::from_str(
+                            inner
+                                .strip_suffix(">")
+                                .ok_or(anyhow::anyhow!("Invalid option"))?,
+                        )?;
+                        IdlType::Vec(Box::new(inner_ty))
+                    }
+                },
                 Some(inner) => {
                     let inner_ty = Self::from_str(
                         inner

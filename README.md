@@ -55,7 +55,7 @@ mod basic_1 {
 pub struct Initialize<'info> {
     #[account(init)]
     pub my_account: ProgramAccount<'info, MyAccount>,
-    pub rent: Rent,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -95,7 +95,7 @@ purposes of the Accounts macro) that can be specified on a struct deriving `Acco
 | `#[account(mut)]` | On `ProgramAccount` structs. | Marks the account as mutable and persists the state transition. |
 | `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, skipping the account discriminator check. |
 | `#[account(belongs_to = <target>)]` | On `ProgramAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
-| `#[account(owner = program \| skip)]` | On `ProgramAccount` and `AccountInfo` structs | Checks the owner of the account is the current program or skips the check. |
+| `#[account(owner = program \| skip)]` | On `AccountInfo` structs | Checks the owner of the account is the current program or skips the check. |
 | `#[account("<literal>")]` | On `ProgramAccount` structs | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
 | `#[account(rent_exempt = <skip>)]` | On `AccountInfo` or `ProgramAccount` structs | Optional attribute to skip the rent exemption check. By default, all accounts marked with `#[account(init)]` will be rent exempt. Similarly, omitting `= skip` will mark the account rent exempt. |
 

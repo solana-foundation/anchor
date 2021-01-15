@@ -1,6 +1,7 @@
 use crate::{
-    AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral, ConstraintOwner,
-    ConstraintRentExempt, ConstraintSigner, CpiAccountTy, Field, ProgramAccountTy, SysvarTy, Ty,
+    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
+    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSigner, CpiAccountTy,
+    Field, ProgramAccountTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -9,7 +10,7 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
         _ => panic!("invalid input"),
     };
 
-    let fields: Vec<Field> = fields
+    let fields: Vec<AccountField> = fields
         .named
         .iter()
         .map(|f: &syn::Field| {
@@ -40,21 +41,34 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
     AccountsStruct::new(strct.clone(), fields)
 }
 
-// Parses an inert #[anchor] attribute specifying the DSL.
-fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> Field {
+fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField {
     let ident = f.ident.clone().unwrap();
-    let ty = parse_ty(f);
-    let (constraints, is_mut, is_signer, is_init) = match anchor {
-        None => (vec![], false, false, false),
-        Some(anchor) => parse_constraints(anchor, &ty),
-    };
-    Field {
-        ident,
-        ty,
-        constraints,
-        is_mut,
-        is_signer,
-        is_init,
+    match is_field_primitive(f) {
+        true => {
+            let ty = parse_ty(f);
+            let (constraints, is_mut, is_signer, is_init) = match anchor {
+                None => (vec![], false, false, false),
+                Some(anchor) => parse_constraints(anchor, &ty),
+            };
+            AccountField::Field(Field {
+                ident,
+                ty,
+                constraints,
+                is_mut,
+                is_signer,
+                is_init,
+            })
+        }
+        false => AccountField::AccountsStruct(CompositeField {
+            ident,
+            symbol: ident_string(f),
+        }),
+    }
+}
+fn is_field_primitive(f: &syn::Field) -> bool {
+    match ident_string(f).as_str() {
+        "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
+        _ => false,
     }
 }
 
@@ -63,16 +77,24 @@ fn parse_ty(f: &syn::Field) -> Ty {
         syn::Type::Path(ty_path) => ty_path.path.clone(),
         _ => panic!("invalid account syntax"),
     };
-    // TODO: allow segmented paths.
-    assert!(path.segments.len() == 1);
-    let segments = &path.segments[0];
-    match segments.ident.to_string().as_str() {
+    match ident_string(f).as_str() {
         "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)),
         "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)),
         "AccountInfo" => Ty::AccountInfo,
         _ => panic!("invalid account type"),
     }
+}
+
+fn ident_string(f: &syn::Field) -> String {
+    let path = match &f.ty {
+        syn::Type::Path(ty_path) => ty_path.path.clone(),
+        _ => panic!("invalid account syntax"),
+    };
+    // TODO: allow segmented paths.
+    assert!(path.segments.len() == 1);
+    let segments = &path.segments[0];
+    segments.ident.to_string()
 }
 
 fn parse_cpi_account(path: &syn::Path) -> CpiAccountTy {

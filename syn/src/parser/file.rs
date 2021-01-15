@@ -29,7 +29,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         let mut acc_names = HashSet::new();
 
         for accs_strct in accs.values() {
-            for a in accs_strct.account_tys() {
+            for a in accs_strct.account_tys(&accs)? {
                 acc_names.insert(a);
             }
         }
@@ -56,15 +56,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                 .collect::<Vec<_>>();
             // todo: don't unwrap
             let accounts_strct = accs.get(&rpc.anchor_ident.to_string()).unwrap();
-            let accounts = accounts_strct
-                .fields
-                .iter()
-                .map(|acc| IdlAccount {
-                    name: acc.ident.to_string().to_mixed_case(),
-                    is_mut: acc.is_mut,
-                    is_signer: acc.is_signer,
-                })
-                .collect::<Vec<_>>();
+            let accounts = accounts_strct.idl_accounts(&accs);
             IdlInstruction {
                 name: rpc.ident.to_string().to_mixed_case(),
                 accounts,
@@ -125,7 +117,7 @@ fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
     mods[0].clone()
 }
 
-// Parse all structs deriving the `Accounts` macro.
+// Parse all structs implementing the `Accounts` trait.
 fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
     f.items
         .iter()
@@ -139,6 +131,8 @@ fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
                 }
                 None
             }
+            // TODO: parse manual implementations. Currently we only look
+            //       for derives.
             _ => None,
         })
         .collect()
