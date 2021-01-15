@@ -8,7 +8,7 @@ use anchor_lang::prelude::*;
 #[program]
 mod composite {
     use super::*;
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(_ctx: Context<Initialize>) -> ProgramResult {
         Ok(())
     }
 

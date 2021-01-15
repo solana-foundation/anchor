@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 #[program]
 mod basic_0 {
     use super::*;
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(_ctx: Context<Initialize>) -> ProgramResult {
         Ok(())
     }
 }

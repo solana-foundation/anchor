@@ -75,7 +75,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                 AccountField::AccountsStruct(s) => {
                     let name = &s.ident;
                     quote! {
-                        self.#name.exit(program_id);
+                        self.#name.exit(program_id)?;
                     }
                 }
                 AccountField::Field(f) => {
