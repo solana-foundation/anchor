@@ -1,6 +1,6 @@
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsInit, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsInit, CpiAccount, ToAccountInfo,
+    ToAccountInfos, ToAccountMetas,
 };
 use solana_sdk::account_info::AccountInfo;
 use solana_sdk::instruction::AccountMeta;
@@ -127,5 +127,17 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAcco
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramAccount<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
+    }
+}
+
+impl<'info, T> From<CpiAccount<'info, T>> for ProgramAccount<'info, T>
+where
+    T: AccountSerialize + AccountDeserialize + Clone,
+{
+    fn from(a: CpiAccount<'info, T>) -> Self {
+        Self {
+            info: a.to_account_info(),
+            account: Deref::deref(&a).clone(),
+        }
     }
 }
