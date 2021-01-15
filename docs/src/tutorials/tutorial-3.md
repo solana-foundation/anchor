@@ -47,10 +47,10 @@ Things to notice
   account. Think of `CpiAccount` exactly like `ProgramAccount`, except used for accounts *not*
   owned by the current program.
 
-::: details
-When adding another Anchor program to your crate's `Cargo.toml`, make sure to specify the `no-entrypoint`
-feature. If you look at the `Cargo.toml` for this example, you'll see
-`puppet = { path = "../puppet", features = ["no-entrypoint"] }`.
+::: tip
+When using another Anchor program for CPI, make sure to specify the `cpi` feature in your `Cargo.toml`.
+If you look at the `Cargo.toml` for this example, you'll see
+`puppet = { path = "../puppet", features = ["cpi"] }`.
 :::
 
 ## Signer Seeds

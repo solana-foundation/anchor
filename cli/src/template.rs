@@ -24,6 +24,7 @@ name = "{1}"
 
 [features]
 no-entrypoint = []
+cpi = ["no-entrypoint"]
 
 [dependencies]
 borsh = {{ git = "https://github.com/project-serum/borsh", branch = "serum", features = ["serum-program"] }}

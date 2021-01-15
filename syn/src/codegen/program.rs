@@ -177,6 +177,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
         })
         .collect();
     quote! {
+        #[cfg(feature = "cpi")]
         pub mod cpi {
             use super::*;
 
