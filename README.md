@@ -1,6 +1,7 @@
 # Anchor ⚓
 
 [![Build Status](https://travis-ci.com/project-serum/anchor.svg?branch=master)](https://travis-ci.com/project-serum/anchor)
+[![Docs.rs](https://docs.rs/anchor-lang/badge.svg)](https://docs.rs/anchor-lang)
 [![Docs](https://img.shields.io/badge/docs-tutorials-orange)](https://project-serum.github.io/anchor/)
 [![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/739225212658122886)
 [![License](https://img.shields.io/github/license/project-serum/anchor?color=blue)](https://opensource.org/licenses/Apache-2.0)
@@ -17,7 +18,7 @@ If you're familiar with developing in Ethereum's [Solidity](https://docs.solidit
 ## Getting Started
 
 For a quickstart guide and in depth tutorials, see the guided [documentation](https://project-serum.github.io/anchor/getting-started/introduction.html).
-To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples/tutorial).
+To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples). For the latest Rust API documentation, see [docs.rs](https://docs.rs/anchor-lang).
 
 ## Note
 
@@ -26,7 +27,7 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 
 ## Example
 
-```Rust
+```rust
 use anchor::prelude::*;
 
 // Define the program's RPC handlers.
