@@ -2513,9 +2513,9 @@ dependencies = [
 
 [[package]]
 name = "serum-borsh"
-version = "0.7.2+serum.1"
+version = "0.7.2+serum.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a2e3702b632fc34836373a02da8df9083ced146a8cc7eea243b7e413483af9e"
+checksum = "95c8fa44b0da40ab9874fdc83e0a118ee76afd11b9099cf4733ee8f4daf04172"
 dependencies = [
  "serum-borsh-derive",
  "solana-sdk",
