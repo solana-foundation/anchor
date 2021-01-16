@@ -1,6 +1,7 @@
+use anchor_lang::solana_program;
+use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_lang::{Accounts, CpiContext};
-use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 
 pub fn transfer<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>,

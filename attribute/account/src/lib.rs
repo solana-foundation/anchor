@@ -24,7 +24,7 @@ pub fn account(
                 //       the proc-macro crate.
                 let mut discriminator = [0u8; 8];
                 discriminator.copy_from_slice(
-                    &solana_program::hash::hash(
+                    &anchor_lang::solana_program::hash::hash(
                         #discriminator_preimage.as_bytes(),
                     ).to_bytes()[..8],
                 );
@@ -43,7 +43,7 @@ pub fn account(
             fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
                 let mut discriminator = [0u8; 8];
                 discriminator.copy_from_slice(
-                    &solana_program::hash::hash(
+                    &anchor_lang::solana_program::hash::hash(
                         #discriminator_preimage.as_bytes(),
                     ).to_bytes()[..8],
                 );

@@ -16,7 +16,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
         use #mod_name::*;
 
         #[cfg(not(feature = "no-entrypoint"))]
-        solana_program::entrypoint!(entry);
+        anchor_lang::solana_program::entrypoint!(entry);
         #[cfg(not(feature = "no-entrypoint"))]
         fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
             let mut data: &[u8] = instruction_data;
@@ -156,7 +156,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
                             let data = AnchorSerialize::try_to_vec(&ix)
                                 .map_err(|_| ProgramError::InvalidInstructionData)?;
                             let accounts = ctx.accounts.to_account_metas();
-                            solana_program::instruction::Instruction {
+                            anchor_lang::solana_program::instruction::Instruction {
                                 program_id: *ctx.program.key,
                                 accounts,
                                 data,
@@ -164,7 +164,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
                         };
                         let mut acc_infos = ctx.accounts.to_account_infos();
                         acc_infos.push(ctx.program.clone());
-                        solana_sdk::program::invoke_signed(
+                        anchor_lang::solana_program::program::invoke_signed(
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,

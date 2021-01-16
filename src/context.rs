@@ -1,6 +1,6 @@
 use crate::Accounts;
-use solana_sdk::account_info::AccountInfo;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::account_info::AccountInfo;
+use solana_program::pubkey::Pubkey;
 
 /// Provides non-argument inputs to the program.
 pub struct Context<'a, 'b, 'c, 'info, T> {

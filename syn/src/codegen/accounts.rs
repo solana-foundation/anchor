@@ -146,7 +146,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         impl#combined_generics anchor_lang::Accounts#trait_generics for #name#strct_generics {
-            fn try_accounts(program_id: &solana_program::pubkey::Pubkey, accounts: &mut &[solana_program::account_info::AccountInfo<'info>]) -> Result<Self, solana_program::program_error::ProgramError> {
+            fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
 
@@ -161,7 +161,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
 
         impl#combined_generics anchor_lang::ToAccountInfos#trait_generics for #name#strct_generics {
-            fn to_account_infos(&self) -> Vec<solana_program::account_info::AccountInfo<'info>> {
+            fn to_account_infos(&self) -> Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
                 let mut account_infos = vec![];
 
                 #(#to_acc_infos)*
@@ -171,7 +171,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
 
         impl#combined_generics anchor_lang::ToAccountMetas for #name#strct_generics {
-            fn to_account_metas(&self) -> Vec<solana_program::instruction::AccountMeta> {
+            fn to_account_metas(&self) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                 let mut account_metas = vec![];
 
                 #(#to_acc_metas)*
@@ -182,7 +182,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
 
         impl#strct_generics #name#strct_generics {
-            pub fn exit(&self, program_id: &solana_program::pubkey::Pubkey) -> solana_program::entrypoint::ProgramResult {
+            pub fn exit(&self, program_id: &anchor_lang::solana_program::pubkey::Pubkey) -> anchor_lang::solana_program::entrypoint::ProgramResult {
                 #(#on_save)*
                 Ok(())
             }

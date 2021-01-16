@@ -1,8 +1,8 @@
 use crate::{Accounts, ToAccountInfo, ToAccountInfos, ToAccountMetas};
-use solana_sdk::account_info::AccountInfo;
-use solana_sdk::instruction::AccountMeta;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::account_info::AccountInfo;
+use solana_program::instruction::AccountMeta;
+use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 
 impl<'info> Accounts<'info> for AccountInfo<'info> {
     fn try_accounts(

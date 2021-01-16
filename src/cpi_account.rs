@@ -1,10 +1,10 @@
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
-use solana_sdk::account_info::AccountInfo;
-use solana_sdk::instruction::AccountMeta;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::account_info::AccountInfo;
+use solana_program::instruction::AccountMeta;
+use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 use std::ops::{Deref, DerefMut};
 
 /// Container for any account *not* owned by the current program.

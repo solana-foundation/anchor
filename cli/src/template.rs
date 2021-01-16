@@ -28,8 +28,6 @@ cpi = ["no-entrypoint"]
 
 [dependencies]
 anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}
-solana-program = "1.4.3"
-solana-sdk = {{ version = "1.3.14", default-features = false, features = ["program"] }}
 "#,
         name,
         name.to_snake_case(),

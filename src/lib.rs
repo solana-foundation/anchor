@@ -21,10 +21,10 @@
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
-use solana_sdk::account_info::AccountInfo;
-use solana_sdk::instruction::AccountMeta;
-use solana_sdk::program_error::ProgramError;
-use solana_sdk::pubkey::Pubkey;
+use solana_program::account_info::AccountInfo;
+use solana_program::instruction::AccountMeta;
+use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 use std::io::Write;
 
 mod account_info;
@@ -43,6 +43,7 @@ pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
 /// Default serialization format for anchor instructions and accounts.
 pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
+pub use solana_program;
 
 /// A data structure of accounts that can be deserialized from the input
 /// of a Solana program. Due to the freewheeling nature of the accounts array,
@@ -120,21 +121,21 @@ pub mod prelude {
     };
 
     pub use borsh;
+    pub use solana_program::account_info::{next_account_info, AccountInfo};
+    pub use solana_program::entrypoint::ProgramResult;
+    pub use solana_program::instruction::AccountMeta;
     pub use solana_program::msg;
-    pub use solana_sdk::account_info::{next_account_info, AccountInfo};
-    pub use solana_sdk::entrypoint::ProgramResult;
-    pub use solana_sdk::instruction::AccountMeta;
-    pub use solana_sdk::program_error::ProgramError;
-    pub use solana_sdk::pubkey::Pubkey;
-    pub use solana_sdk::sysvar::clock::Clock;
-    pub use solana_sdk::sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_sdk::sysvar::fees::Fees;
-    pub use solana_sdk::sysvar::instructions::Instructions;
-    pub use solana_sdk::sysvar::recent_blockhashes::RecentBlockhashes;
-    pub use solana_sdk::sysvar::rent::Rent;
-    pub use solana_sdk::sysvar::rewards::Rewards;
-    pub use solana_sdk::sysvar::slot_hashes::SlotHashes;
-    pub use solana_sdk::sysvar::slot_history::SlotHistory;
-    pub use solana_sdk::sysvar::stake_history::StakeHistory;
-    pub use solana_sdk::sysvar::Sysvar as SolanaSysvar;
+    pub use solana_program::program_error::ProgramError;
+    pub use solana_program::pubkey::Pubkey;
+    pub use solana_program::sysvar::clock::Clock;
+    pub use solana_program::sysvar::epoch_schedule::EpochSchedule;
+    pub use solana_program::sysvar::fees::Fees;
+    pub use solana_program::sysvar::instructions::Instructions;
+    pub use solana_program::sysvar::recent_blockhashes::RecentBlockhashes;
+    pub use solana_program::sysvar::rent::Rent;
+    pub use solana_program::sysvar::rewards::Rewards;
+    pub use solana_program::sysvar::slot_hashes::SlotHashes;
+    pub use solana_program::sysvar::slot_history::SlotHistory;
+    pub use solana_program::sysvar::stake_history::StakeHistory;
+    pub use solana_program::sysvar::Sysvar as SolanaSysvar;
 }

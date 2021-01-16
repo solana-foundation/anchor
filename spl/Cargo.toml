@@ -6,5 +6,4 @@ edition = "2018"
 
 [dependencies]
 anchor-lang = { path = "../", features = ["derive"] }
-solana-program = "1.4.3"
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
