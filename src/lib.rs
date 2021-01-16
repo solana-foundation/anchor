@@ -30,6 +30,7 @@ use std::io::Write;
 mod account_info;
 mod context;
 mod cpi_account;
+mod error;
 mod program_account;
 mod sysvar;
 
@@ -39,10 +40,12 @@ pub use crate::program_account::ProgramAccount;
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::account;
+pub use anchor_attribute_error::error;
 pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
 /// Default serialization format for anchor instructions and accounts.
 pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
+pub use error::Error;
 pub use solana_program;
 
 /// A data structure of accounts that can be deserialized from the input
@@ -115,7 +118,7 @@ pub trait AccountDeserialize: Sized {
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
     pub use super::{
-        access_control, account, program, AccountDeserialize, AccountSerialize, Accounts,
+        access_control, account, error, program, AccountDeserialize, AccountSerialize, Accounts,
         AccountsInit, AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext,
         ProgramAccount, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
@@ -138,4 +141,5 @@ pub mod prelude {
     pub use solana_program::sysvar::slot_history::SlotHistory;
     pub use solana_program::sysvar::stake_history::StakeHistory;
     pub use solana_program::sysvar::Sysvar as SolanaSysvar;
+    pub use thiserror;
 }

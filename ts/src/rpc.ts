@@ -9,7 +9,7 @@ import {
 } from "@solana/web3.js";
 import { sha256 } from "crypto-hash";
 import { Idl, IdlInstruction } from "./idl";
-import { IdlError } from "./error";
+import { IdlError, ProgramError } from "./error";
 import Coder from "./coder";
 import { getProvider } from "./";
 
@@ -95,11 +95,12 @@ export class RpcFactory {
     const rpcs: Rpcs = {};
     const ixFns: Ixs = {};
     const accountFns: Accounts = {};
+    const idlErrors = parseIdlErrors(idl);
     idl.instructions.forEach((idlIx) => {
       // Function to create a raw `TransactionInstruction`.
       const ix = RpcFactory.buildIx(idlIx, coder, programId);
       // Function to invoke an RPC against a cluster.
-      const rpc = RpcFactory.buildRpc(idlIx, ix);
+      const rpc = RpcFactory.buildRpc(idlIx, ix, idlErrors);
 
       const name = camelCase(idlIx.name);
       rpcs[name] = rpc;
@@ -175,7 +176,11 @@ export class RpcFactory {
     return ix;
   }
 
-  private static buildRpc(idlIx: IdlInstruction, ixFn: IxFn): RpcFn {
+  private static buildRpc(
+    idlIx: IdlInstruction,
+    ixFn: IxFn,
+    idlErrors: Map<number, string>
+  ): RpcFn {
     const rpc = async (...args: any[]): Promise<TransactionSignature> => {
       const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
       const tx = new Transaction();
@@ -187,13 +192,54 @@ export class RpcFactory {
       if (provider === null) {
         throw new Error("Provider not found");
       }
-
-      const txSig = await provider.send(tx, ctx.signers, ctx.options);
-      return txSig;
+      try {
+        const txSig = await provider.send(tx, ctx.signers, ctx.options);
+        return txSig;
+      } catch (err) {
+        let translatedErr = translateError(idlErrors, err);
+        if (err === null) {
+          throw err;
+        }
+        throw translatedErr;
+      }
     };
 
     return rpc;
   }
+}
+
+function translateError(
+  idlErrors: Map<number, string>,
+  err: any
+): Error | null {
+  // TODO: don't rely on the error string. web3.js should preserve the error
+  //       code information instead of giving us an untyped string.
+  let components = err.toString().split("custom program error: ");
+  if (components.length === 2) {
+    try {
+      const errorCode = parseInt(components[1]);
+      let errorMsg = idlErrors.get(errorCode);
+      if (errorMsg === undefined) {
+        // Unexpected error code so just throw the untranslated error.
+        throw err;
+      }
+      return new ProgramError(errorCode, errorMsg);
+    } catch (parseErr) {
+      // Unable to parse the error. Just return the untranslated error.
+      return null;
+    }
+  }
+}
+
+function parseIdlErrors(idl: Idl): Map<number, string> {
+  const errors = new Map();
+  if (idl.errors) {
+    idl.errors.forEach((e) => {
+      let msg = e.msg ?? e.name;
+      errors.set(e.code, msg);
+    });
+  }
+  return errors;
 }
 
 function splitArgsAndCtx(

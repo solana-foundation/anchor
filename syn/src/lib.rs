@@ -245,3 +245,17 @@ pub enum ConstraintRentExempt {
     Enforce,
     Skip,
 }
+
+#[derive(Debug)]
+pub struct Error {
+    pub raw_enum: syn::ItemEnum,
+    pub ident: syn::Ident,
+    pub codes: Vec<ErrorCode>,
+}
+
+#[derive(Debug)]
+pub struct ErrorCode {
+    pub id: u32,
+    pub ident: syn::Ident,
+    pub msg: Option<String>,
+}

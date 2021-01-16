@@ -1,6 +1,5 @@
 use crate::idl::*;
-use crate::parser::accounts;
-use crate::parser::program;
+use crate::parser::{accounts, error, program};
 use crate::AccountsStruct;
 use anyhow::Result;
 use heck::MixedCase;
@@ -22,6 +21,17 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let f = syn::parse_file(&src).expect("Unable to parse file");
 
     let p = program::parse(parse_program_mod(&f));
+    let errors = parse_error_enum(&f).map(|mut e| {
+        error::parse(&mut e)
+            .codes
+            .iter()
+            .map(|code| IdlErrorCode {
+                code: 100 + code.id,
+                name: code.ident.to_string(),
+                msg: code.msg.clone(),
+            })
+            .collect::<Vec<IdlErrorCode>>()
+    });
 
     let accs = parse_accounts(&f);
 
@@ -83,6 +93,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         instructions,
         types,
         accounts,
+        errors,
         metadata: None,
     })
 }
@@ -117,6 +128,33 @@ fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
     mods[0].clone()
 }
 
+fn parse_error_enum(f: &syn::File) -> Option<syn::ItemEnum> {
+    f.items
+        .iter()
+        .filter_map(|i| match i {
+            syn::Item::Enum(item_enum) => {
+                let attrs = item_enum
+                    .attrs
+                    .iter()
+                    .filter_map(|attr| {
+                        let segment = attr.path.segments.last().unwrap();
+                        if segment.ident.to_string() == "error" {
+                            return Some(attr);
+                        }
+                        None
+                    })
+                    .collect::<Vec<_>>();
+                match attrs.len() {
+                    0 => None,
+                    1 => Some(item_enum),
+                    _ => panic!("Invalid syntax: one error attribute allowed"),
+                }
+            }
+            _ => None,
+        })
+        .next()
+        .cloned()
+}
 // Parse all structs implementing the `Accounts` trait.
 fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
     f.items

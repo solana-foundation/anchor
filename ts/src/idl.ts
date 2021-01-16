@@ -4,6 +4,7 @@ export type Idl = {
   instructions: IdlInstruction[];
   accounts?: IdlTypeDef[];
   types?: IdlTypeDef[];
+  errors?: IdlErrorCode[];
 };
 
 export type IdlInstruction = {
@@ -73,4 +74,10 @@ export type IdlTypeDefined = {
 
 type IdlEnumVariant = {
   // todo
+};
+
+type IdlErrorCode = {
+  code: number;
+  name: string;
+  msg?: string;
 };

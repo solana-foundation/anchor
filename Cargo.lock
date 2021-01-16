@@ -66,6 +66,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-attribute-error"
+version = "0.0.0-alpha.0"
+dependencies = [
+ "anchor-syn",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.57",
+]
+
+[[package]]
 name = "anchor-attribute-program"
 version = "0.0.0-alpha.0"
 dependencies = [
@@ -113,6 +123,7 @@ version = "0.0.0-alpha.0"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
+ "anchor-attribute-error",
  "anchor-attribute-program",
  "anchor-derive-accounts",
  "serum-borsh",

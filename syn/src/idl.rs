@@ -10,6 +10,8 @@ pub struct Idl {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub types: Vec<IdlTypeDef>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub errors: Option<Vec<IdlErrorCode>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<serde_json::Value>,
 }
 
@@ -131,4 +133,12 @@ impl std::str::FromStr for IdlType {
         };
         Ok(r)
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IdlErrorCode {
+    pub code: u32,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub msg: Option<String>,
 }
