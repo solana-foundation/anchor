@@ -119,6 +119,7 @@ pub mod prelude {
         ProgramAccount, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 
+    pub use borsh;
     pub use solana_program::msg;
     pub use solana_sdk::account_info::{next_account_info, AccountInfo};
     pub use solana_sdk::entrypoint::ProgramResult;
