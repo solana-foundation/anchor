@@ -16,6 +16,9 @@ _examples: &examples
   - nvm install $NODE_VERSION
   - npm install -g mocha
   - npm install -g @project-serum/anchor
+  - npm install -g @project-serum/serum
+  - npm install -g @project-serum/common
+  - npm install -g @solana/spl-token
   - sudo apt-get install -y pkg-config build-essential libudev-dev
   - sh -c "$(curl -sSfL https://release.solana.com/v1.5.0/install)"
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
@@ -42,6 +45,7 @@ jobs:
       script:
         - pushd examples/sysvars && anchor test && popd
         - pushd examples/composite && anchor test && popd
+        - pushd examples/spl/token-proxy && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd

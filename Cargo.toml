@@ -27,4 +27,5 @@ members = [
     "syn",
     "attribute/*",
     "derive/*",
+    "spl",
 ]

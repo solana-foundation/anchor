@@ -76,7 +76,7 @@ where
     T: AccountSerialize + AccountDeserialize + Clone,
 {
     fn try_accounts_init(
-        program_id: &Pubkey,
+        _program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.len() == 0 {

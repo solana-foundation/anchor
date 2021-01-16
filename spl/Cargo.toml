@@ -1,0 +1,10 @@
+[package]
+name = "anchor-spl"
+version = "0.0.0-alpha.0"
+authors = ["Armani Ferrante <armaniferrante@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+anchor-lang = { path = "../", features = ["derive"] }
+solana-program = "1.4.3"
+spl-token = { version = "3.0.1", features = ["no-entrypoint"] }

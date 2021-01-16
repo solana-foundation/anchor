@@ -81,22 +81,23 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                 AccountField::Field(f) => {
                     let ident = &f.ident;
                     let info = match f.ty {
-                        Ty::AccountInfo => quote! { #ident },
+                        // Only ProgramAccounts are automatically saved (when
+                        // marked `#[account(mut)]`).
                         Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
                         _ => return quote! {},
                     };
                     match f.is_mut {
                         false => quote! {},
                         true => quote! {
-                                // Only persist the change if the account is owned by the
-                                // current program.
-                                if program_id == self.#info.owner  {
-                                        let info = self.#info;
-                                        let mut data = info.try_borrow_mut_data()?;
-                                        let dst: &mut [u8] = &mut data;
-                                        let mut cursor = std::io::Cursor::new(dst);
-                                        self.#ident.try_serialize(&mut cursor)?;
-                                }
+                            // Only persist the change if the account is owned by the
+                            // current program.
+                            if program_id == self.#info.owner  {
+                                let info = self.#info;
+                                let mut data = info.try_borrow_mut_data()?;
+                                let dst: &mut [u8] = &mut data;
+                                let mut cursor = std::io::Cursor::new(dst);
+                                self.#ident.try_serialize(&mut cursor)?;
+                            }
                         },
                     }
                 }
@@ -144,8 +145,8 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     };
 
     quote! {
-        impl#combined_generics Accounts#trait_generics for #name#strct_generics {
-            fn try_accounts(program_id: &Pubkey, accounts: &mut &[AccountInfo<'info>]) -> Result<Self, ProgramError> {
+        impl#combined_generics anchor_lang::Accounts#trait_generics for #name#strct_generics {
+            fn try_accounts(program_id: &solana_program::pubkey::Pubkey, accounts: &mut &[solana_program::account_info::AccountInfo<'info>]) -> Result<Self, solana_program::program_error::ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
 
@@ -159,8 +160,8 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
 
-        impl#combined_generics ToAccountInfos#trait_generics for #name#strct_generics {
-            fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        impl#combined_generics anchor_lang::ToAccountInfos#trait_generics for #name#strct_generics {
+            fn to_account_infos(&self) -> Vec<solana_program::account_info::AccountInfo<'info>> {
                 let mut account_infos = vec![];
 
                 #(#to_acc_infos)*
@@ -169,8 +170,8 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
 
-        impl#combined_generics ToAccountMetas for #name#strct_generics {
-            fn to_account_metas(&self) -> Vec<AccountMeta> {
+        impl#combined_generics anchor_lang::ToAccountMetas for #name#strct_generics {
+            fn to_account_metas(&self) -> Vec<solana_program::instruction::AccountMeta> {
                 let mut account_metas = vec![];
 
                 #(#to_acc_metas)*
@@ -181,7 +182,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
 
         impl#strct_generics #name#strct_generics {
-            pub fn exit(&self, program_id: &Pubkey) -> ProgramResult {
+            pub fn exit(&self, program_id: &solana_program::pubkey::Pubkey) -> solana_program::entrypoint::ProgramResult {
                 #(#on_save)*
                 Ok(())
             }

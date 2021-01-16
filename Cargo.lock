@@ -122,6 +122,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-spl"
+version = "0.0.0-alpha.0"
+dependencies = [
+ "anchor-lang",
+ "solana-program",
+ "spl-token 3.0.1",
+]
+
+[[package]]
 name = "anchor-syn"
 version = "0.0.0-alpha.0"
 dependencies = [
