@@ -381,7 +381,7 @@ fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
             .output()
             .expect("Must deploy");
         if !exit.status.success() {
-            println!("There was a problem deploying.");
+            println!("There was a problem deploying: {:?}.", exit);
             std::process::exit(exit.status.code().unwrap_or(1));
         }
         let stdout: DeployStdout = serde_json::from_str(std::str::from_utf8(&exit.stdout)?)?;
