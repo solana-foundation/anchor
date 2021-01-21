@@ -30,10 +30,10 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 ```rust
 use anchor::prelude::*;
 
-// Define the program's RPC handlers.
+// Define instruction handlers.
 
 #[program]
-mod basic_1 {
+mod example {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> ProgramResult {
@@ -42,7 +42,6 @@ mod basic_1 {
         Ok(())
     }
 
-    #[access_control(not_zero(data))]
     pub fn update(ctx: Context<Update>, data: u64) -> ProgramResult {
         let my_account = &mut ctx.accounts.my_account;
         my_account.data = data;
@@ -50,7 +49,7 @@ mod basic_1 {
     }
 }
 
-// Define the validated accounts for each handler.
+// Define accounts for each handler.
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -61,10 +60,10 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct Update<'info> {
+    #[account(mut, has_one = authority)]
+    pub my_account: ProgramAccount<'info, MyAccount>,
     #[account(signer)]
     pub authority: AccountInfo<'info>,
-    #[account(mut, "&my_account.authority == authority.key")]
-    pub my_account: ProgramAccount<'info, MyAccount>,
 }
 
 // Define program owned accounts.
@@ -73,15 +72,6 @@ pub struct Update<'info> {
 pub struct MyAccount {
     pub authority: Pubkey,
     pub data: u64,
-}
-
-// Define auxiliary access control checks.
-
-fn not_zero(data: u64) -> ProgramResult {
-    if data == 0 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-    Ok(())
 }
 ```
 
@@ -93,12 +83,14 @@ purposes of the Accounts macro) that can be specified on a struct deriving `Acco
 | Attribute | Where Applicable | Description |
 |:--|:--|:--|
 | `#[account(signer)]` | On raw `AccountInfo` structs. | Checks the given account signed the transaction. |
-| `#[account(mut)]` | On `ProgramAccount` structs. | Marks the account as mutable and persists the state transition. |
+| `#[account(mut)]` | On `AccountInfo`, `ProgramAccount` or `CpiAccount` structs. | Marks the account as mutable and persists the state transition. |
 | `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, skipping the account discriminator check. |
-| `#[account(belongs_to = <target>)]` | On `ProgramAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
+| `#[account(belongs_to = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
+| `#[account(has_one = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Semantically different, but otherwise the same as `belongs_to`. |
+| `#[account(seeds = [<seeds>])]` | On `AccountInfo` structs | Seeds for the program derived address an `AccountInfo` struct represents. |
 | `#[account(owner = program \| skip)]` | On `AccountInfo` structs | Checks the owner of the account is the current program or skips the check. |
-| `#[account("<literal>")]` | On `ProgramAccount` structs | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
-| `#[account(rent_exempt = <skip>)]` | On `AccountInfo` or `ProgramAccount` structs | Optional attribute to skip the rent exemption check. By default, all accounts marked with `#[account(init)]` will be rent exempt. Similarly, omitting `= skip` will mark the account rent exempt. |
+| `#[account("<literal>")]` | On any type deriving `Accounts` | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
+| `#[account(rent_exempt = <skip>)]` | On `AccountInfo` or `ProgramAccount` structs | Optional attribute to skip the rent exemption check. By default, all accounts marked with `#[account(init)]` will be rent exempt, and so this should rarely (if ever) be used. Similarly, omitting `= skip` will mark the account rent exempt. |
 
 ## License
 
