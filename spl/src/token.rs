@@ -1,7 +1,12 @@
 use anchor_lang::solana_program;
 use anchor_lang::solana_program::account_info::AccountInfo;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
+use anchor_lang::solana_program::program_error::ProgramError;
+use anchor_lang::solana_program::program_pack::Pack;
 use anchor_lang::{Accounts, CpiContext};
+use std::ops::Deref;
+
+pub use spl_token::ID;
 
 pub fn transfer<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>,
@@ -42,8 +47,8 @@ pub fn mint_to<'a, 'b, 'c, 'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.mint.clone(),
             ctx.accounts.to.clone(),
+            ctx.accounts.mint.clone(),
             ctx.accounts.authority.clone(),
             ctx.program.clone(),
         ],
@@ -75,6 +80,30 @@ pub fn burn<'a, 'b, 'c, 'info>(
     )
 }
 
+pub fn approve<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, Approve<'info>>,
+    amount: u64,
+) -> ProgramResult {
+    let ix = spl_token::instruction::approve(
+        &spl_token::ID,
+        ctx.accounts.to.key,
+        ctx.accounts.delegate.key,
+        ctx.accounts.authority.key,
+        &[],
+        amount,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.to.clone(),
+            ctx.accounts.delegate.clone(),
+            ctx.accounts.authority.clone(),
+            ctx.program.clone(),
+        ],
+        ctx.signer_seeds,
+    )
+}
+
 #[derive(Accounts)]
 pub struct Transfer<'info> {
     pub from: AccountInfo<'info>,
@@ -94,4 +123,53 @@ pub struct Burn<'info> {
     pub mint: AccountInfo<'info>,
     pub to: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Approve<'info> {
+    pub to: AccountInfo<'info>,
+    pub delegate: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Clone)]
+pub struct TokenAccount(spl_token::state::Account);
+
+impl anchor_lang::AccountDeserialize for TokenAccount {
+    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        TokenAccount::try_deserialize_unchecked(buf)
+    }
+
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        spl_token::state::Account::unpack(buf).map(|a| TokenAccount(a))
+    }
+}
+
+impl Deref for TokenAccount {
+    type Target = spl_token::state::Account;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct Mint(spl_token::state::Mint);
+
+impl anchor_lang::AccountDeserialize for Mint {
+    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        Mint::try_deserialize_unchecked(buf)
+    }
+
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        spl_token::state::Mint::unpack(buf).map(|a| Mint(a))
+    }
+}
+
+impl Deref for Mint {
+    type Target = spl_token::state::Mint;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }

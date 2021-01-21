@@ -1,6 +1,7 @@
 use crate::{
-    AccountField, AccountsStruct, Constraint, ConstraintBelongsTo, ConstraintLiteral,
-    ConstraintOwner, ConstraintRentExempt, ConstraintSigner, Field, Ty,
+    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
+    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
+    Field, Ty,
 };
 use quote::quote;
 
@@ -12,8 +13,9 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         .map(|af: &AccountField| match af {
             AccountField::AccountsStruct(s) => {
                 let name = &s.ident;
+                let ty = &s.raw_field.ty;
                 quote! {
-                    let #name = Accounts::try_accounts(program_id, accounts)?;
+                    let #name: #ty = Accounts::try_accounts(program_id, accounts)?;
                 }
             }
             AccountField::Field(f) => {
@@ -34,17 +36,19 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let access_checks: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        // TODO: allow constraints on composite fields.
-        .filter_map(|af: &AccountField| match af {
-            AccountField::AccountsStruct(_) => None,
-            AccountField::Field(f) => Some(f),
-        })
-        .map(|f: &Field| {
-            let checks: Vec<proc_macro2::TokenStream> = f
-                .constraints
-                .iter()
-                .map(|c| generate_constraint(&f, c))
-                .collect();
+        .map(|af: &AccountField| {
+            let checks: Vec<proc_macro2::TokenStream> = match af {
+                AccountField::Field(f) => f
+                    .constraints
+                    .iter()
+                    .map(|c| generate_field_constraint(&f, c))
+                    .collect(),
+                AccountField::AccountsStruct(s) => s
+                    .constraints
+                    .iter()
+                    .map(|c| generate_composite_constraint(&s, c))
+                    .collect(),
+            };
             quote! {
                 #(#checks)*
             }
@@ -70,36 +74,20 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     let on_save: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|af: &AccountField| {
-            match af {
-                AccountField::AccountsStruct(s) => {
-                    let name = &s.ident;
-                    quote! {
-                        self.#name.exit(program_id)?;
-                    }
+        .map(|af: &AccountField| match af {
+            AccountField::AccountsStruct(s) => {
+                let name = &s.ident;
+                quote! {
+                    anchor_lang::AccountsExit::exit(&self.#name, program_id)?;
                 }
-                AccountField::Field(f) => {
-                    let ident = &f.ident;
-                    let info = match f.ty {
-                        // Only ProgramAccounts are automatically saved (when
-                        // marked `#[account(mut)]`).
-                        Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
-                        _ => return quote! {},
-                    };
-                    match f.is_mut {
-                        false => quote! {},
-                        true => quote! {
-                            // Only persist the change if the account is owned by the
-                            // current program.
-                            if program_id == self.#info.owner  {
-                                let info = self.#info;
-                                let mut data = info.try_borrow_mut_data()?;
-                                let dst: &mut [u8] = &mut data;
-                                let mut cursor = std::io::Cursor::new(dst);
-                                self.#ident.try_serialize(&mut cursor)?;
-                            }
-                        },
-                    }
+            }
+            AccountField::Field(f) => {
+                let ident = &f.ident;
+                match f.is_mut {
+                    false => quote! {},
+                    true => quote! {
+                        anchor_lang::AccountsExit::exit(&self.#ident, program_id)?;
+                    },
                 }
             }
         })
@@ -125,12 +113,18 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         .fields
         .iter()
         .map(|f: &AccountField| {
-            let name = match f {
-                AccountField::AccountsStruct(s) => &s.ident,
-                AccountField::Field(f) => &f.ident,
+            let (name, is_signer) = match f {
+                AccountField::AccountsStruct(s) => (&s.ident, quote! {None}),
+                AccountField::Field(f) => {
+                    let is_signer = match f.is_signer {
+                        false => quote! {None},
+                        true => quote! {Some(true)},
+                    };
+                    (&f.ident, is_signer)
+                }
             };
             quote! {
-                account_metas.extend(self.#name.to_account_metas());
+                account_metas.extend(self.#name.to_account_metas(#is_signer));
             }
         })
         .collect();
@@ -146,6 +140,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         impl#combined_generics anchor_lang::Accounts#trait_generics for #name#strct_generics {
+            #[inline(never)]
             fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
@@ -171,7 +166,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
 
         impl#combined_generics anchor_lang::ToAccountMetas for #name#strct_generics {
-            fn to_account_metas(&self) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+            fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                 let mut account_metas = vec![];
 
                 #(#to_acc_metas)*
@@ -181,8 +176,8 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
 
-        impl#strct_generics #name#strct_generics {
-            pub fn exit(&self, program_id: &anchor_lang::solana_program::pubkey::Pubkey) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+        impl#combined_generics anchor_lang::AccountsExit#trait_generics for #name#strct_generics {
+            fn exit(&self, program_id: &anchor_lang::solana_program::pubkey::Pubkey) -> anchor_lang::solana_program::entrypoint::ProgramResult {
                 #(#on_save)*
                 Ok(())
             }
@@ -190,13 +185,24 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     }
 }
 
-pub fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
+pub fn generate_field_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::BelongsTo(c) => generate_constraint_belongs_to(f, c),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
-        Constraint::Literal(c) => generate_constraint_literal(f, c),
+        Constraint::Literal(c) => generate_constraint_literal(c),
         Constraint::Owner(c) => generate_constraint_owner(f, c),
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
+        Constraint::Seeds(c) => generate_constraint_seeds(f, c),
+    }
+}
+
+pub fn generate_composite_constraint(
+    _f: &CompositeField,
+    c: &Constraint,
+) -> proc_macro2::TokenStream {
+    match c {
+        Constraint::Literal(c) => generate_constraint_literal(c),
+        _ => panic!("Composite fields can only use literal constraints"),
     }
 }
 
@@ -224,13 +230,20 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     quote! {
-        if !#info.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
+        // Don't enforce on CPI, since usually a program is signing and so
+        // the `try_accounts` deserializatoin will fail *if* the one
+        // tries to manually invoke it.
+        //
+        // This check will be performed on the other end of the invocation.
+        if cfg!(not(feature = "cpi")) {
+            if !#info.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
         }
     }
 }
 
-pub fn generate_constraint_literal(_f: &Field, c: &ConstraintLiteral) -> proc_macro2::TokenStream {
+pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenStream {
     let tokens = &c.tokens;
     quote! {
         if !(#tokens) {
@@ -273,5 +286,19 @@ pub fn generate_constraint_rent_exempt(
                 return Err(ProgramError::Custom(2)); // todo: error codes
             }
         },
+    }
+}
+
+pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeeds) -> proc_macro2::TokenStream {
+    let name = &f.ident;
+    let seeds = &c.seeds;
+    quote! {
+        let program_signer = Pubkey::create_program_address(
+            &#seeds,
+            program_id,
+        ).map_err(|_| ProgramError::Custom(1))?; // todo
+        if #name.to_account_info().key != &program_signer {
+            return Err(ProgramError::Custom(1)); // todo
+        }
     }
 }

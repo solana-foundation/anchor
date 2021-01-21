@@ -9,14 +9,22 @@ export type Idl = {
 
 export type IdlInstruction = {
   name: string;
-  accounts: IdlAccount[];
+  accounts: IdlAccountItem[];
   args: IdlField[];
 };
+
+export type IdlAccountItem = IdlAccount | IdlAccounts;
 
 export type IdlAccount = {
   name: string;
   isMut: boolean;
   isSigner: boolean;
+};
+
+// A nested/recursive version of IdlAccount.
+export type IdlAccounts = {
+  name: string;
+  accounts: IdlAccountItem[];
 };
 
 export type IdlField = {
@@ -32,17 +40,12 @@ export type IdlTypeDef = {
 type IdlTypeDefTy = {
   kind: "struct" | "enum";
   fields?: IdlTypeDefStruct;
-  variants?: IdlTypeDefEnum;
+  variants?: IdlEnumVariant[];
 };
 
 type IdlTypeDefStruct = Array<IdlField>;
 
-// TODO
-type IdlTypeDefEnum = {
-  variants: IdlEnumVariant;
-};
-
-type IdlType =
+export type IdlType =
   | "bool"
   | "u8"
   | "i8"
@@ -72,9 +75,16 @@ export type IdlTypeDefined = {
   defined: string;
 };
 
-type IdlEnumVariant = {
-  // todo
+export type IdlEnumVariant = {
+  name: string;
+  fields?: IdlEnumFields;
 };
+
+type IdlEnumFields = IdlEnumFieldsNamed | IdlEnumFieldsTuple;
+
+type IdlEnumFieldsNamed = IdlField[];
+
+type IdlEnumFieldsTuple = IdlType[];
 
 type IdlErrorCode = {
   code: number;

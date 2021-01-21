@@ -40,6 +40,7 @@ pub fn account(
         }
 
         impl anchor_lang::AccountDeserialize for #account_name {
+
             fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
                 let mut discriminator = [0u8; 8];
                 discriminator.copy_from_slice(

@@ -1,7 +1,7 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
-    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSigner, CpiAccountTy,
-    Field, ProgramAccountTy, SysvarTy, Ty,
+    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
+    CpiAccountTy, Field, ProgramAccountTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -43,13 +43,13 @@ pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
 
 fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField {
     let ident = f.ident.clone().unwrap();
+    let (constraints, is_mut, is_signer, is_init) = match anchor {
+        None => (vec![], false, false, false),
+        Some(anchor) => parse_constraints(anchor),
+    };
     match is_field_primitive(f) {
         true => {
             let ty = parse_ty(f);
-            let (constraints, is_mut, is_signer, is_init) = match anchor {
-                None => (vec![], false, false, false),
-                Some(anchor) => parse_constraints(anchor, &ty),
-            };
             AccountField::Field(Field {
                 ident,
                 ty,
@@ -62,9 +62,12 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
         false => AccountField::AccountsStruct(CompositeField {
             ident,
             symbol: ident_string(f),
+            constraints,
+            raw_field: f.clone(),
         }),
     }
 }
+
 fn is_field_primitive(f: &syn::Field) -> bool {
     match ident_string(f).as_str() {
         "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
@@ -167,7 +170,7 @@ fn parse_sysvar(path: &syn::Path) -> SysvarTy {
     }
 }
 
-fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool, bool, bool) {
+fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, bool) {
     let mut tts = anchor.tokens.clone().into_iter();
     let g_stream = match tts.next().expect("Must have a token group") {
         proc_macro2::TokenTree::Group(g) => g.stream(),
@@ -178,7 +181,6 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
     let mut is_mut = false;
     let mut is_signer = false;
     let mut constraints = vec![];
-    let mut has_owner_constraint = false;
     let mut is_rent_exempt = None;
 
     let mut inner_tts = g_stream.into_iter();
@@ -201,7 +203,21 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
                     is_signer = true;
                     constraints.push(Constraint::Signer(ConstraintSigner {}));
                 }
-                "belongs_to" => {
+                "seeds" => {
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    let seeds = match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Group(g) => g,
+                        _ => panic!("invalid syntax"),
+                    };
+                    constraints.push(Constraint::Seeds(ConstraintSeeds { seeds }))
+                }
+                "belongs_to" | "has_one" => {
                     match inner_tts.next().unwrap() {
                         proc_macro2::TokenTree::Punct(punct) => {
                             assert!(punct.as_char() == '=');
@@ -233,7 +249,6 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
                         _ => panic!("invalid syntax"),
                     };
                     constraints.push(Constraint::Owner(constraint));
-                    has_owner_constraint = true;
                 }
                 "rent_exempt" => {
                     match inner_tts.next() {
@@ -276,12 +291,6 @@ fn parse_constraints(anchor: &syn::Attribute, ty: &Ty) -> (Vec<Constraint>, bool
             _ => {
                 panic!("invalid syntax");
             }
-        }
-    }
-
-    if !has_owner_constraint {
-        if let Ty::ProgramAccount(_) = ty {
-            constraints.push(Constraint::Owner(ConstraintOwner::Program));
         }
     }
 

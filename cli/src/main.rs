@@ -287,6 +287,8 @@ fn test() -> Result<()> {
 
     // Run the tests.
     if let Err(e) = std::process::Command::new("mocha")
+        .arg("-t")
+        .arg("10000")
         .arg("tests/")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

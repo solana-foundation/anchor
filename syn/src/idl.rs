@@ -18,10 +18,26 @@ pub struct Idl {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IdlInstruction {
     pub name: String,
-    pub accounts: Vec<IdlAccount>,
+    pub accounts: Vec<IdlAccountItem>,
     pub args: Vec<IdlField>,
 }
 
+// A single struct deriving `Accounts`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdlAccounts {
+    pub name: String,
+    pub accounts: Vec<IdlAccountItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IdlAccountItem {
+    IdlAccount(IdlAccount),
+    IdlAccounts(IdlAccounts),
+}
+
+// A single field in the accounts struct.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdlAccount {

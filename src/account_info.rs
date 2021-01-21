@@ -1,5 +1,6 @@
-use crate::{Accounts, ToAccountInfo, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
+use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -19,10 +20,11 @@ impl<'info> Accounts<'info> for AccountInfo<'info> {
 }
 
 impl<'info> ToAccountMetas for AccountInfo<'info> {
-    fn to_account_metas(&self) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+        let is_signer = is_signer.unwrap_or(self.is_signer);
         let meta = match self.is_writable {
-            false => AccountMeta::new_readonly(*self.key, self.is_signer),
-            true => AccountMeta::new(*self.key, self.is_signer),
+            false => AccountMeta::new_readonly(*self.key, is_signer),
+            true => AccountMeta::new(*self.key, is_signer),
         };
         vec![meta]
     }
@@ -37,5 +39,12 @@ impl<'info> ToAccountInfos<'info> for AccountInfo<'info> {
 impl<'info> ToAccountInfo<'info> for AccountInfo<'info> {
     fn to_account_info(&self) -> AccountInfo<'info> {
         self.clone()
+    }
+}
+
+impl<'info> AccountsExit<'info> for AccountInfo<'info> {
+    fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
+        // no-op
+        Ok(())
     }
 }

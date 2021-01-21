@@ -28,6 +28,7 @@ use solana_program::pubkey::Pubkey;
 use std::io::Write;
 
 mod account_info;
+mod boxed;
 mod context;
 mod cpi_account;
 mod error;
@@ -61,6 +62,11 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     ) -> Result<Self, ProgramError>;
 }
 
+/// The exit procedure for an accounts object.
+pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
+    fn exit(&self, program_id: &Pubkey) -> solana_program::entrypoint::ProgramResult;
+}
+
 /// A data structure of accounts providing a one time deserialization upon
 /// initialization, i.e., when the data array for a given account is zeroed.
 /// For all subsequent deserializations, it's expected that
@@ -74,7 +80,12 @@ pub trait AccountsInit<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
 
 /// Transformation to `AccountMeta` structs.
 pub trait ToAccountMetas {
-    fn to_account_metas(&self) -> Vec<AccountMeta>;
+    /// `is_signer` is given as an optional override for the signer meta field.
+    /// This covers the edge case when a program-derived-address needs to relay
+    /// a transaction from a client to another program but sign the transaction
+    /// before the relay. The client cannot mark the field as a signer, and so
+    /// we have to override the is_signer meta field given by the client.
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
 }
 
 /// Transformation to `AccountInfo` structs.
@@ -119,8 +130,8 @@ pub trait AccountDeserialize: Sized {
 pub mod prelude {
     pub use super::{
         access_control, account, error, program, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsInit, AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext,
-        ProgramAccount, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize, Context, CpiAccount,
+        CpiContext, ProgramAccount, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 
     pub use borsh;

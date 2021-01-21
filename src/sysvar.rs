@@ -1,5 +1,6 @@
-use crate::{Accounts, ToAccountInfo, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
+use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -37,7 +38,7 @@ impl<'info, T: solana_program::sysvar::Sysvar> Accounts<'info> for Sysvar<'info,
 }
 
 impl<'info, T: solana_program::sysvar::Sysvar> ToAccountMetas for Sysvar<'info, T> {
-    fn to_account_metas(&self) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_mut_signer: Option<bool>) -> Vec<AccountMeta> {
         vec![AccountMeta::new_readonly(*self.info.key, false)]
     }
 }
@@ -65,5 +66,12 @@ impl<'a, T: solana_program::sysvar::Sysvar> DerefMut for Sysvar<'a, T> {
 impl<'info, T: solana_program::sysvar::Sysvar> ToAccountInfo<'info> for Sysvar<'info, T> {
     fn to_account_info(&self) -> AccountInfo<'info> {
         self.info.clone()
+    }
+}
+
+impl<'info, T: solana_program::sysvar::Sysvar> AccountsExit<'info> for Sysvar<'info, T> {
+    fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
+        // no-op
+        Ok(())
     }
 }

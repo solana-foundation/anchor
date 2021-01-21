@@ -32,6 +32,7 @@ pub fn parse(error_enum: &mut syn::ItemEnum) -> Error {
         .collect();
 
     Error {
+        name: error_enum.ident.to_string(),
         raw_enum: error_enum.clone(),
         ident,
         codes,

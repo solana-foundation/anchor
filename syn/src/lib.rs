@@ -1,7 +1,7 @@
 //! DSL syntax tokens.
 
 #[cfg(feature = "idl")]
-use crate::idl::IdlAccount;
+use crate::idl::{IdlAccount, IdlAccountItem, IdlAccounts};
 use anyhow::Result;
 #[cfg(feature = "idl")]
 use heck::MixedCase;
@@ -85,21 +85,28 @@ impl AccountsStruct {
     }
 
     #[cfg(feature = "idl")]
-    pub fn idl_accounts(&self, global_accs: &HashMap<String, AccountsStruct>) -> Vec<IdlAccount> {
+    pub fn idl_accounts(
+        &self,
+        global_accs: &HashMap<String, AccountsStruct>,
+    ) -> Vec<IdlAccountItem> {
         self.fields
             .iter()
-            .flat_map(|acc: &AccountField| match acc {
+            .map(|acc: &AccountField| match acc {
                 AccountField::AccountsStruct(comp_f) => {
                     let accs_strct = global_accs
                         .get(&comp_f.symbol)
                         .expect("Could not reslve Accounts symbol");
-                    accs_strct.idl_accounts(global_accs)
+                    let accounts = accs_strct.idl_accounts(global_accs);
+                    IdlAccountItem::IdlAccounts(IdlAccounts {
+                        name: comp_f.ident.to_string().to_mixed_case(),
+                        accounts,
+                    })
                 }
-                AccountField::Field(acc) => vec![IdlAccount {
+                AccountField::Field(acc) => IdlAccountItem::IdlAccount(IdlAccount {
                     name: acc.ident.to_string().to_mixed_case(),
                     is_mut: acc.is_mut,
                     is_signer: acc.is_signer,
-                }],
+                }),
             })
             .collect::<Vec<_>>()
     }
@@ -120,6 +127,8 @@ pub enum AccountField {
 pub struct CompositeField {
     pub ident: syn::Ident,
     pub symbol: String,
+    pub constraints: Vec<Constraint>,
+    pub raw_field: syn::Field,
 }
 
 // An account in the accounts struct.
@@ -219,6 +228,7 @@ pub enum Constraint {
     Literal(ConstraintLiteral),
     Owner(ConstraintOwner),
     RentExempt(ConstraintRentExempt),
+    Seeds(ConstraintSeeds),
 }
 
 #[derive(Debug)]
@@ -247,7 +257,13 @@ pub enum ConstraintRentExempt {
 }
 
 #[derive(Debug)]
+pub struct ConstraintSeeds {
+    pub seeds: proc_macro2::Group,
+}
+
+#[derive(Debug)]
 pub struct Error {
+    pub name: String,
     pub raw_enum: syn::ItemEnum,
     pub ident: syn::Ident,
     pub codes: Vec<ErrorCode>,

@@ -21,9 +21,10 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let f = syn::parse_file(&src).expect("Unable to parse file");
 
     let p = program::parse(parse_program_mod(&f));
-    let errors = parse_error_enum(&f).map(|mut e| {
-        error::parse(&mut e)
-            .codes
+
+    let error = parse_error_enum(&f).map(|mut e| error::parse(&mut e));
+    let error_codes = error.as_ref().map(|e| {
+        e.codes
             .iter()
             .map(|code| IdlErrorCode {
                 code: 100 + code.id,
@@ -79,11 +80,17 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let mut accounts = vec![];
     let mut types = vec![];
     let ty_defs = parse_ty_defs(&f)?;
+
+    let error_name = error.map(|e| e.name).unwrap_or("".to_string());
+
     for ty_def in ty_defs {
-        if acc_names.contains(&ty_def.name) {
-            accounts.push(ty_def);
-        } else {
-            types.push(ty_def);
+        // Don't add the error type to the types or accounts sections.
+        if ty_def.name != error_name {
+            if acc_names.contains(&ty_def.name) {
+                accounts.push(ty_def);
+            } else {
+                types.push(ty_def);
+            }
         }
     }
 
@@ -93,7 +100,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         instructions,
         types,
         accounts,
-        errors,
+        errors: error_codes,
         metadata: None,
     })
 }
@@ -117,14 +124,16 @@ fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
                     })
                     .collect::<Vec<_>>();
                 if mods.len() != 1 {
-                    panic!("invalid program attribute");
+                    return None;
                 }
                 Some(item_mod)
             }
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert!(mods.len() == 1);
+    if mods.len() != 1 {
+        panic!("Did not find program attribute");
+    }
     mods[0].clone()
 }
 
@@ -193,7 +202,7 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                         syn::Fields::Named(fields) => fields
                             .named
                             .iter()
-                            .map(|f| {
+                            .map(|f: &syn::Field| {
                                 let mut tts = proc_macro2::TokenStream::new();
                                 f.ty.to_tokens(&mut tts);
                                 Ok(IdlField {
@@ -212,7 +221,48 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                 }
                 None
             }
+            syn::Item::Enum(enm) => {
+                let name = enm.ident.to_string();
+                let variants = enm
+                    .variants
+                    .iter()
+                    .map(|variant: &syn::Variant| {
+                        let name = variant.ident.to_string();
+                        let fields = match &variant.fields {
+                            syn::Fields::Unit => None,
+                            syn::Fields::Unnamed(fields) => {
+                                let fields: Vec<IdlType> =
+                                    fields.unnamed.iter().map(to_idl_type).collect();
+                                Some(EnumFields::Tuple(fields))
+                            }
+                            syn::Fields::Named(fields) => {
+                                let fields: Vec<IdlField> = fields
+                                    .named
+                                    .iter()
+                                    .map(|f: &syn::Field| {
+                                        let name = f.ident.as_ref().unwrap().to_string();
+                                        let ty = to_idl_type(f);
+                                        IdlField { name, ty }
+                                    })
+                                    .collect();
+                                Some(EnumFields::Named(fields))
+                            }
+                        };
+                        EnumVariant { name, fields }
+                    })
+                    .collect::<Vec<EnumVariant>>();
+                Some(Ok(IdlTypeDef {
+                    name,
+                    ty: IdlTypeDefTy::Enum { variants },
+                }))
+            }
             _ => None,
         })
         .collect()
+}
+
+fn to_idl_type(f: &syn::Field) -> IdlType {
+    let mut tts = proc_macro2::TokenStream::new();
+    f.ty.to_tokens(&mut tts);
+    tts.to_string().parse().unwrap()
 }

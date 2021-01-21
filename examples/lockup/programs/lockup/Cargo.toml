@@ -1,12 +1,12 @@
 [package]
-name = "errors"
+name = "serum-lockup"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "errors"
+name = "serum_lockup"
 
 [features]
 no-entrypoint = []
@@ -14,3 +14,5 @@ cpi = ["no-entrypoint"]
 
 [dependencies]
 anchor-lang = { git = "https://github.com/project-serum/anchor", features = ["derive"] }
+anchor-spl = { git = "https://github.com/project-serum/anchor" }
+bytemuck = "1.4.0"

@@ -6,6 +6,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
     let mod_name = &program.name;
     let instruction_name = instruction_enum_name(&program);
     let dispatch = generate_dispatch(&program);
+    let handlers_non_inlined = generate_non_inlined_handlers(&program);
     let methods = generate_methods(&program);
     let instruction = generate_instruction(&program);
     let cpi = generate_cpi(&program);
@@ -20,21 +21,27 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
         #[cfg(not(feature = "no-entrypoint"))]
         fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
             let mut data: &[u8] = instruction_data;
-            let ix = instruction::#instruction_name::deserialize(&mut data)
+            let ix = __private::instruction::#instruction_name::deserialize(&mut data)
                 .map_err(|_| ProgramError::Custom(1))?; // todo: error code
 
                 #dispatch
         }
 
-        #methods
+        // Create a private module to not clutter the program's namespace.
+        mod __private {
+            use super::*;
 
-        #instruction
+            #handlers_non_inlined
+
+            #instruction
+        }
+
+        #methods
 
         #cpi
     }
 }
 pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
-    let program_name = &program.name;
     let dispatch_arms: Vec<proc_macro2::TokenStream> = program
         .rpcs
         .iter()
@@ -42,10 +49,42 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             let rpc_arg_names: Vec<&syn::Ident> = rpc.args.iter().map(|arg| &arg.name).collect();
             let variant_arm = generate_ix_variant(program, rpc);
             let rpc_name = &rpc.raw_method.sig.ident;
+            quote! {
+                __private::instruction::#variant_arm => {
+                    __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        match ix {
+            #(#dispatch_arms),*
+        }
+    }
+}
+
+// Generate non-inlined wrappers for each instruction handler, since Solana's
+// BPF max stack size can't handle reasonable sized dispatch trees without doing
+// so.
+pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStream {
+    let program_name = &program.name;
+    let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
+        .rpcs
+        .iter()
+        .map(|rpc| {
+            let rpc_params: Vec<_> = rpc.args.iter().map(|arg| &arg.raw_arg).collect();
+            let rpc_arg_names: Vec<&syn::Ident> = rpc.args.iter().map(|arg| &arg.name).collect();
+            let rpc_name = &rpc.raw_method.sig.ident;
             let anchor = &rpc.anchor_ident;
 
             quote! {
-                instruction::#variant_arm => {
+                #[inline(never)]
+                pub fn #rpc_name(
+                    program_id: &Pubkey,
+                    accounts: &[AccountInfo],
+                    #(#rpc_params),*
+                ) -> ProgramResult {
                     let mut remaining_accounts: &[AccountInfo] = accounts;
                     let mut accounts = #anchor::try_accounts(program_id, &mut remaining_accounts)?;
                     #program_name::#rpc_name(
@@ -59,9 +98,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        match ix {
-            #(#dispatch_arms),*
-        }
+        #(#non_inlined_handlers)*
     }
 }
 
@@ -131,7 +168,7 @@ pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
 
 fn instruction_enum_name(program: &Program) -> proc_macro2::Ident {
     proc_macro2::Ident::new(
-        &format!("_{}Instruction", program.name.to_string().to_camel_case()),
+        &format!("{}Instruction", program.name.to_string().to_camel_case()),
         program.name.span(),
     )
 }
@@ -152,10 +189,10 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
                         #(#args),*
                     ) -> ProgramResult {
                         let ix = {
-                            let ix = instruction::#ix_variant;
+                            let ix = __private::instruction::#ix_variant;
                             let data = AnchorSerialize::try_to_vec(&ix)
                                 .map_err(|_| ProgramError::InvalidInstructionData)?;
-                            let accounts = ctx.accounts.to_account_metas();
+                            let accounts = ctx.accounts.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
                                 program_id: *ctx.program.key,
                                 accounts,
