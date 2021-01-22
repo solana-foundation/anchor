@@ -1,15 +1,14 @@
-const assert = require('assert');
-const anchor = require('@project-serum/anchor');
+const assert = require("assert");
+const anchor = require("@project-serum/anchor");
 
-describe('basic-1', () => {
-
+describe("basic-1", () => {
   // Use a local provider.
-  const provider = anchor.Provider.local()
+  const provider = anchor.Provider.local();
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
 
-  it('Creates and initializes an account in two different transactions', async () => {
+  it("Creates and initializes an account in two different transactions", async () => {
     // The program owning the account to create.
     const program = anchor.workspace.Basic1;
 
@@ -22,10 +21,12 @@ describe('basic-1', () => {
       anchor.web3.SystemProgram.createAccount({
         fromPubkey: provider.wallet.publicKey,
         newAccountPubkey: myAccount.publicKey,
-        space: 8+8,
-        lamports: await provider.connection.getMinimumBalanceForRentExemption(8+8),
+        space: 8 + 8,
+        lamports: await provider.connection.getMinimumBalanceForRentExemption(
+          8 + 8
+        ),
         programId: program.programId,
-      }),
+      })
     );
 
     // Execute the transaction against the cluster.
@@ -51,7 +52,7 @@ describe('basic-1', () => {
   // Reference to an account to use between multiple tests.
   let _myAccount = undefined;
 
-  it('Creates and initializes an account in a single atomic transaction', async () => {
+  it("Creates and initializes an account in a single atomic transaction", async () => {
     // The program to execute.
     const program = anchor.workspace.Basic1;
 
@@ -70,8 +71,10 @@ describe('basic-1', () => {
         anchor.web3.SystemProgram.createAccount({
           fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: myAccount.publicKey,
-          space: 8+8, // Add 8 for the account discriminator.
-          lamports: await provider.connection.getMinimumBalanceForRentExemption(8+8),
+          space: 8 + 8, // Add 8 for the account discriminator.
+          lamports: await provider.connection.getMinimumBalanceForRentExemption(
+            8 + 8
+          ),
           programId: program.programId,
         }),
       ],
@@ -83,13 +86,38 @@ describe('basic-1', () => {
     // Check it's state was initialized.
     assert.ok(account.data.eq(new anchor.BN(1234)));
     // #endregion code
+  });
+
+  it("Creates and initializes an account in a single atomic transaction (simplified)", async () => {
+    // The program to execute.
+    const program = anchor.workspace.Basic1;
+
+    // The Account to create.
+    const myAccount = new anchor.web3.Account();
+
+    // Atomically create the new account and initialize it with the program.
+    // #region code-simplified
+    await program.rpc.initialize(new anchor.BN(1234), {
+      accounts: {
+        myAccount: myAccount.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [myAccount],
+      instructions: [await program.account.myAccount(myAccount)],
+    });
+    // #endregion code-simplified
+
+    // Fetch the newly created account from the cluster.
+    const account = await program.account.myAccount(myAccount.publicKey);
+
+    // Check it's state was initialized.
+    assert.ok(account.data.eq(new anchor.BN(1234)));
 
     // Store the account for the next test.
     _myAccount = myAccount;
   });
 
-  it('Updates a previously created account', async () => {
-
+  it("Updates a previously created account", async () => {
     const myAccount = _myAccount;
 
     // #region update-test

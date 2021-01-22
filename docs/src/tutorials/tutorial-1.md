@@ -109,10 +109,9 @@ array of all instructions to run **before** the explicitly specified program ins
 which in this case is `initialize`. Because we are creating `myAccount`, it needs to
 sign the transaction, as required by the Solana runtime.
 
-::: details
-In future work, we can simplify this example further by using something like a *Builder*
-pattern for constructing common transactions like creating and then initializing an account.
-:::
+We can simplify this further.
+
+<<< @/../examples/tutorial/basic-1/tests/basic-1.js#code-simplified
 
 As before, we can run the example tests.
 

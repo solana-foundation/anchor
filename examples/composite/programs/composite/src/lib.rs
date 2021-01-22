@@ -15,7 +15,7 @@ mod composite {
     pub fn composite_update(
         ctx: Context<CompositeUpdate>,
         dummy_a: u64,
-        dummy_b: String,
+        dummy_b: u64,
     ) -> ProgramResult {
         let a = &mut ctx.accounts.foo.dummy_a;
         let b = &mut ctx.accounts.bar.dummy_b;
@@ -61,5 +61,5 @@ pub struct DummyA {
 
 #[account]
 pub struct DummyB {
-    pub data: String,
+    pub data: u64,
 }
