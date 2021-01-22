@@ -1,6 +1,5 @@
 const assert = require("assert");
-//const anchor = require('@project-serum/anchor');
-const anchor = require("/home/armaniferrante/Documents/code/src/github.com/project-serum/anchor/ts");
+const anchor = require('@project-serum/anchor');
 
 describe("errors", () => {
   // Configure the client to use the local cluster.
