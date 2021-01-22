@@ -118,7 +118,8 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                     let seed = anchor_lang::ProgramState::<#name>::seed();
                     let owner = ctor_accounts.program.key;
                     let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
-                    let space = 1000; // todo
+                    // Add 8 for the account discriminator.
+                    let space = 8 + instance.try_to_vec().map_err(|_| ProgramError::Custom(1))?.len();
                     let lamports = ctor_accounts.rent.minimum_balance(space);
                     let seeds = &[&[nonce][..]];
 
