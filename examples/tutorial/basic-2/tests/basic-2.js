@@ -1,6 +1,5 @@
 const assert = require("assert");
-//const anchor = require('@project-serum/anchor');
-const anchor = require("/home/armaniferrante/Documents/code/src/github.com/project-serum/anchor/ts");
+const anchor = require('@project-serum/anchor');
 
 describe("basic-2", () => {
   const provider = anchor.Provider.local();
