@@ -1,7 +1,7 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
     ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
-    CpiAccountTy, Field, ProgramAccountTy, SysvarTy, Ty,
+    CpiAccountTy, Field, ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -70,7 +70,7 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
 
 fn is_field_primitive(f: &syn::Field) -> bool {
     match ident_string(f).as_str() {
-        "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
+        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
         _ => false,
     }
 }
@@ -81,6 +81,7 @@ fn parse_ty(f: &syn::Field) -> Ty {
         _ => panic!("invalid account syntax"),
     };
     match ident_string(f).as_str() {
+        "ProgramState" => Ty::ProgramState(parse_program_state(&path)),
         "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)),
         "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)),
@@ -98,6 +99,11 @@ fn ident_string(f: &syn::Field) -> String {
     assert!(path.segments.len() == 1);
     let segments = &path.segments[0];
     segments.ident.to_string()
+}
+
+fn parse_program_state(path: &syn::Path) -> ProgramStateTy {
+    let account_ident = parse_account(&path);
+    ProgramStateTy { account_ident }
 }
 
 fn parse_cpi_account(path: &syn::Path) -> CpiAccountTy {

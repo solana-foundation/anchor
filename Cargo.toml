@@ -16,6 +16,7 @@ anchor-attribute-access-control = { path = "./attribute/access-control", version
 anchor-attribute-account = { path = "./attribute/account", version = "0.0.0-alpha.0" }
 anchor-attribute-error = { path = "./attribute/error" }
 anchor-attribute-program = { path = "./attribute/program", version = "0.0.0-alpha.0" }
+anchor-attribute-state = { path = "./attribute/state", version = "0.0.0-alpha.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.0.0-alpha.0" }
 serum-borsh = { version = "0.8.0-serum.1", features = ["serum-program"] }
 solana-program = "1.4.3"

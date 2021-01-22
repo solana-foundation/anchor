@@ -15,9 +15,20 @@ pub mod parser;
 
 #[derive(Debug)]
 pub struct Program {
+    pub state: Option<State>,
     pub rpcs: Vec<Rpc>,
     pub name: syn::Ident,
     pub program_mod: syn::ItemMod,
+}
+
+// State struct singleton.
+#[derive(Debug)]
+pub struct State {
+    pub name: String,
+    pub strct: syn::ItemStruct,
+    pub impl_block: syn::ItemImpl,
+    pub methods: Vec<Rpc>,
+    pub ctor: syn::ImplItemMethod,
 }
 
 #[derive(Debug)]
@@ -148,6 +159,12 @@ impl Field {
 
         let ty = match &self.ty {
             Ty::AccountInfo => quote! { AccountInfo },
+            Ty::ProgramState(ty) => {
+                let account = &ty.account_ident;
+                quote! {
+                    ProgramState<#account>
+                }
+            }
             Ty::ProgramAccount(ty) => {
                 let account = &ty.account_ident;
                 quote! {
@@ -189,6 +206,7 @@ impl Field {
 #[derive(Debug, PartialEq)]
 pub enum Ty {
     AccountInfo,
+    ProgramState(ProgramStateTy),
     ProgramAccount(ProgramAccountTy),
     CpiAccount(CpiAccountTy),
     Sysvar(SysvarTy),
@@ -206,6 +224,11 @@ pub enum SysvarTy {
     StakeHistory,
     Instructions,
     Rewards,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ProgramStateTy {
+    pub account_ident: syn::Ident,
 }
 
 #[derive(Debug, PartialEq)]

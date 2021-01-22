@@ -1,12 +1,84 @@
-use crate::{Program, Rpc, RpcArg};
+use crate::parser;
+use crate::{Program, Rpc, RpcArg, State};
 
 pub fn parse(program_mod: syn::ItemMod) -> Program {
     let mod_ident = &program_mod.ident;
-    let methods: Vec<&syn::ItemFn> = program_mod
-        .content
-        .as_ref()
-        .unwrap()
-        .1
+
+    let mod_content = &program_mod.content.as_ref().unwrap().1;
+
+    // Parse the state struct singleton.
+    let state: Option<State> = {
+        let strct: Option<&syn::ItemStruct> = mod_content
+            .iter()
+            .filter_map(|item| match item {
+                syn::Item::Struct(item_strct) => {
+                    let attrs = &item_strct.attrs;
+                    if attrs.is_empty() {
+                        return None;
+                    }
+                    let attr_label = attrs[0].path.get_ident().map(|i| i.to_string());
+                    if attr_label != Some("state".to_string()) {
+                        return None;
+                    }
+
+                    Some(item_strct)
+                }
+                _ => None,
+            })
+            .next();
+
+        let impl_block: Option<&syn::ItemImpl> = strct.map(|strct| {
+            let item_impl = mod_content
+                .iter()
+                .filter_map(|item| match item {
+                    syn::Item::Impl(item_impl) => {
+                        let impl_ty_str = parser::tts_to_string(&item_impl.self_ty);
+                        let strct_name = strct.ident.to_string();
+                        if strct_name != impl_ty_str {
+                            return None;
+                        }
+                        Some(item_impl)
+                    }
+                    _ => None,
+                })
+                .next()
+                .expect("Must provide an implementation");
+            item_impl
+        });
+
+        strct.map(|strct| {
+            // Chop off the `#[state]` attribute. It's just a marker.
+            let mut strct = strct.clone();
+            strct.attrs = vec![];
+
+            let impl_block = impl_block.expect("Must exist if struct exists").clone();
+            let ctor = impl_block
+                .items
+                .iter()
+                .filter_map(|item: &syn::ImplItem| match item {
+                    syn::ImplItem::Method(m) => {
+                        if m.sig.ident.to_string() == "new" {
+                            Some(m)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .next()
+                .expect("Must exist if struct exists")
+                .clone();
+            State {
+                name: strct.ident.to_string(),
+                strct: strct.clone(),
+                impl_block,
+                ctor,
+                methods: vec![], // todo
+            }
+        })
+    };
+
+    let methods: Vec<&syn::ItemFn> = mod_content
         .iter()
         .filter_map(|item| match item {
             syn::Item::Fn(item_fn) => Some(item_fn),
@@ -50,6 +122,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
         .collect();
 
     Program {
+        state,
         rpcs,
         name: mod_ident.clone(),
         program_mod,

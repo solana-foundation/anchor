@@ -1,7 +1,14 @@
 import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
 import * as borsh from "@project-serum/borsh";
-import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "./idl";
+import {
+  Idl,
+  IdlField,
+  IdlTypeDef,
+  IdlEnumVariant,
+  IdlType,
+  IdlStateMethod,
+} from "./idl";
 import { IdlError } from "./error";
 
 /**
@@ -23,10 +30,18 @@ export default class Coder {
    */
   readonly types: TypesCoder;
 
+  /**
+   * Coder for state structs.
+   */
+  readonly state: StateCoder;
+
   constructor(idl: Idl) {
     this.instruction = new InstructionCoder(idl);
     this.accounts = new AccountsCoder(idl);
     this.types = new TypesCoder(idl);
+    if (idl.state) {
+      this.state = new StateCoder(idl);
+    }
   }
 }
 
@@ -54,13 +69,24 @@ class InstructionCoder<T = any> {
   }
 
   private static parseIxLayout(idl: Idl): Layout {
-    let ixLayouts = idl.instructions.map((ix) => {
-      let fieldLayouts = ix.args.map((arg: IdlField) =>
-        IdlCoder.fieldLayout(arg, idl.types)
+    let stateMethods = idl.state ? idl.state.methods : [];
+    let ixLayouts = stateMethods
+      .map((m: IdlStateMethod) => {
+        let fieldLayouts = m.args.map((arg: IdlField) =>
+          IdlCoder.fieldLayout(arg, idl.types)
+        );
+        const name = camelCase(m.name);
+        return borsh.struct(fieldLayouts, name);
+      })
+      .concat(
+        idl.instructions.map((ix) => {
+          let fieldLayouts = ix.args.map((arg: IdlField) =>
+            IdlCoder.fieldLayout(arg, idl.types)
+          );
+          const name = camelCase(ix.name);
+          return borsh.struct(fieldLayouts, name);
+        })
       );
-      const name = camelCase(ix.name);
-      return borsh.struct(fieldLayouts, name);
-    });
     return borsh.rustEnum(ixLayouts);
   }
 }
@@ -132,6 +158,27 @@ class TypesCoder {
   public decode<T = any>(accountName: string, ix: Buffer): T {
     const layout = this.layouts.get(accountName);
     return layout.decode(ix);
+  }
+}
+
+class StateCoder {
+  private layout: Layout;
+
+  public constructor(idl: Idl) {
+    if (idl.state === undefined) {
+      throw new Error("Idl state not defined.");
+    }
+    this.layout = IdlCoder.typeDefLayout(idl.state.struct, idl.types);
+  }
+
+  public encode<T = any>(account: T): Buffer {
+    const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
+    const len = this.layout.encode(account, buffer);
+    return buffer.slice(0, len);
+  }
+
+  public decode<T = any>(ix: Buffer): T {
+    return this.layout.decode(ix);
   }
 }
 

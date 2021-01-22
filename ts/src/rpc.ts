@@ -8,6 +8,7 @@ import {
   Transaction,
   TransactionSignature,
   TransactionInstruction,
+  SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import { sha256 } from "crypto-hash";
 import {
@@ -19,6 +20,7 @@ import {
   IdlField,
   IdlEnumVariant,
   IdlAccountItem,
+  IdlStateMethod,
 } from "./idl";
 import { IdlError, ProgramError } from "./error";
 import Coder from "./coder";
@@ -105,6 +107,11 @@ type RpcAccounts = {
   [key: string]: PublicKey | RpcAccounts;
 };
 
+export type State = {
+  address: () => Promise<PublicKey>;
+  rpc: Rpcs;
+};
+
 /**
  * RpcFactory builds an Rpcs object for a given IDL.
  */
@@ -118,12 +125,13 @@ export class RpcFactory {
     idl: Idl,
     coder: Coder,
     programId: PublicKey
-  ): [Rpcs, Ixs, Txs, Accounts] {
+  ): [Rpcs, Ixs, Txs, Accounts, State] {
     const idlErrors = parseIdlErrors(idl);
 
     const rpcs: Rpcs = {};
     const ixFns: Ixs = {};
     const txFns: Txs = {};
+    const state = RpcFactory.buildState(idl, coder, programId);
 
     idl.instructions.forEach((idlIx) => {
       // Function to create a raw `TransactionInstruction`.
@@ -143,7 +151,107 @@ export class RpcFactory {
       ? RpcFactory.buildAccounts(idl, coder, programId)
       : {};
 
-    return [rpcs, ixFns, txFns, accountFns];
+    return [rpcs, ixFns, txFns, accountFns, state];
+  }
+
+  private static buildState(
+    idl: Idl,
+    coder: Coder,
+    programId: PublicKey
+  ): State | undefined {
+    if (idl.state === undefined) {
+      return undefined;
+    }
+    let address = async () => {
+      let [registrySigner, _nonce] = await PublicKey.findProgramAddress(
+        [],
+        programId
+      );
+      return PublicKey.createWithSeed(registrySigner, "unversioned", programId);
+    };
+
+    const rpc: Rpcs = {};
+    idl.state.methods.forEach((m: IdlStateMethod) => {
+      if (m.name !== "new") {
+        throw new Error("State struct mutatation not yet implemented.");
+      }
+      // Ctor `new` method.
+      rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
+        const tx = new Transaction();
+        const [programSigner, _nonce] = await PublicKey.findProgramAddress(
+          [],
+          programId
+        );
+        const ix = new TransactionInstruction({
+          keys: [
+            {
+              pubkey: getProvider().wallet.publicKey,
+              isWritable: false,
+              isSigner: true,
+            },
+            { pubkey: await address(), isWritable: true, isSigner: false },
+            { pubkey: programSigner, isWritable: false, isSigner: false },
+            {
+              pubkey: SystemProgram.programId,
+              isWritable: false,
+              isSigner: false,
+            },
+
+            { pubkey: programId, isWritable: false, isSigner: false },
+            { pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
+          ],
+          programId,
+          data: coder.instruction.encode(toInstruction(m, ...args)),
+        });
+
+        tx.add(ix);
+
+        const provider = getProvider();
+        if (provider === null) {
+          throw new Error("Provider not found");
+        }
+        try {
+          const txSig = await provider.send(tx);
+          return txSig;
+        } catch (err) {
+          // TODO: translate error.
+          throw err;
+        }
+      };
+    });
+
+    // Fetches the state object from the blockchain.
+    const state = async (): Promise<any> => {
+      const addr = await address();
+      const provider = getProvider();
+      if (provider === null) {
+        throw new Error("Provider not set");
+      }
+      const accountInfo = await provider.connection.getAccountInfo(addr);
+      if (accountInfo === null) {
+        throw new Error(`Entity does not exist ${address}`);
+      }
+      // Assert the account discriminator is correct.
+      const expectedDiscriminator = Buffer.from(
+        (
+          await sha256(`state:${idl.state.struct.name}`, {
+            outputFormat: "buffer",
+          })
+        ).slice(0, 8)
+      );
+      const discriminator = accountInfo.data.slice(0, 8);
+      if (expectedDiscriminator.compare(discriminator)) {
+        throw new Error("Invalid account discriminator");
+      }
+      // Chop off the discriminator before decoding.
+      const data = accountInfo.data.slice(8);
+      return coder.state.decode(data);
+    };
+
+    state["address"] = address;
+    state["rpc"] = rpc;
+
+    return state;
   }
 
   private static buildIx(
@@ -361,7 +469,8 @@ function splitArgsAndCtx(
   return [args, options];
 }
 
-function toInstruction(idlIx: IdlInstruction, ...args: any[]) {
+// Allow either IdLInstruction or IdlStateMethod since the types share fields.
+function toInstruction(idlIx: IdlInstruction | IdlStateMethod, ...args: any[]) {
   if (idlIx.args.length != args.length) {
     throw new Error("Invalid argument length");
   }

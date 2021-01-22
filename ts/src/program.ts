@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { RpcFactory } from "./rpc";
 import { Idl } from "./idl";
 import Coder from "./coder";
-import { Rpcs, Ixs, Txs, Accounts } from "./rpc";
+import { Rpcs, Ixs, Txs, Accounts, State } from "./rpc";
 
 /**
  * Program is the IDL deserialized representation of a Solana program.
@@ -44,6 +44,11 @@ export class Program {
    */
   readonly coder: Coder;
 
+  /**
+   * Object with state account accessors and rpcs.
+   */
+  readonly state: State;
+
   public constructor(idl: Idl, programId: PublicKey) {
     this.idl = idl;
     this.programId = programId;
@@ -52,11 +57,16 @@ export class Program {
     const coder = new Coder(idl);
 
     // Build the dynamic RPC functions.
-    const [rpcs, ixs, txs, accounts] = RpcFactory.build(idl, coder, programId);
+    const [rpcs, ixs, txs, accounts, state] = RpcFactory.build(
+      idl,
+      coder,
+      programId
+    );
     this.rpc = rpcs;
     this.instruction = ixs;
     this.transaction = txs;
     this.account = accounts;
     this.coder = coder;
+    this.state = state;
   }
 }

@@ -2,6 +2,7 @@ export type Idl = {
   version: string;
   name: string;
   instructions: IdlInstruction[];
+  state?: IdlState;
   accounts?: IdlTypeDef[];
   types?: IdlTypeDef[];
   errors?: IdlErrorCode[];
@@ -10,6 +11,18 @@ export type Idl = {
 export type IdlInstruction = {
   name: string;
   accounts: IdlAccountItem[];
+  args: IdlField[];
+};
+
+// IdlStateMethods are similar to instructions, except they only allow
+// for a single account, the state account.
+export type IdlState = {
+  struct: IdlTypeDef;
+  methods: IdlStateMethod[];
+};
+
+export type IdlStateMethod = {
+  name: string;
   args: IdlField[];
 };
 
