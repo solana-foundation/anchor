@@ -43,7 +43,7 @@ mod counter {
 
     pub fn new(ctx: Context<Auth>) -> Result<Self> {
         Ok(Self {
-            auth: *auth.accounts.authority.key
+            auth: *ctx.accounts.authority.key
         })
     }
 
