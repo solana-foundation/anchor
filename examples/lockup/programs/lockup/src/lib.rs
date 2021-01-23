@@ -41,7 +41,7 @@ mod lockup {
         Ok(())
     }
 
-    #[access_control(create_vesting_accounts(&ctx, nonce))]
+    #[access_control(CreateVesting::accounts(&ctx, nonce))]
     pub fn create_vesting(
         ctx: Context<CreateVesting>,
         beneficiary: Pubkey,
@@ -191,51 +191,6 @@ mod lockup {
     }
 }
 
-#[access_control(is_whitelisted(transfer))]
-pub fn whitelist_relay_cpi<'info>(
-    transfer: &WhitelistTransfer,
-    remaining_accounts: &[AccountInfo<'info>],
-    instruction_data: Vec<u8>,
-) -> Result<(), Error> {
-    let mut meta_accounts = vec![
-        AccountMeta::new_readonly(*transfer.vesting.to_account_info().key, false),
-        AccountMeta::new(*transfer.vault.to_account_info().key, false),
-        AccountMeta::new_readonly(*transfer.vesting_signer.to_account_info().key, true),
-        AccountMeta::new_readonly(*transfer.token_program.to_account_info().key, false),
-        AccountMeta::new(
-            *transfer.whitelisted_program_vault.to_account_info().key,
-            false,
-        ),
-        AccountMeta::new_readonly(
-            *transfer
-                .whitelisted_program_vault_authority
-                .to_account_info()
-                .key,
-            false,
-        ),
-    ];
-    meta_accounts.extend(remaining_accounts.iter().map(|a| {
-        if a.is_writable {
-            AccountMeta::new(*a.key, a.is_signer)
-        } else {
-            AccountMeta::new_readonly(*a.key, a.is_signer)
-        }
-    }));
-    let relay_instruction = Instruction {
-        program_id: *transfer.whitelisted_program.to_account_info().key,
-        accounts: meta_accounts,
-        data: instruction_data.to_vec(),
-    };
-
-    let seeds = &[
-        transfer.vesting.to_account_info().key.as_ref(),
-        &[transfer.vesting.nonce],
-    ];
-    let signer = &[&seeds[..]];
-    solana_program::program::invoke_signed(&relay_instruction, &transfer.to_account_infos(), signer)
-        .map_err(Into::into)
-}
-
 #[derive(Accounts)]
 pub struct SetAuthority<'info> {
     #[account(mut, has_one = authority)]
@@ -263,20 +218,22 @@ pub struct CreateVesting<'info> {
     clock: Sysvar<'info, Clock>,
 }
 
-fn create_vesting_accounts(ctx: &Context<CreateVesting>, nonce: u8) -> Result<(), Error> {
-    let vault_authority = Pubkey::create_program_address(
-        &[
-            ctx.accounts.vesting.to_account_info().key.as_ref(),
-            &[nonce],
-        ],
-        ctx.program_id,
-    )
-    .map_err(|_| ErrorCode::InvalidProgramAddress)?;
-    if ctx.accounts.vault.owner != vault_authority {
-        return Err(ErrorCode::InvalidVaultOwner)?;
-    }
+impl<'info> CreateVesting<'info> {
+    fn accounts(ctx: &Context<CreateVesting>, nonce: u8) -> Result<(), Error> {
+        let vault_authority = Pubkey::create_program_address(
+            &[
+                ctx.accounts.vesting.to_account_info().key.as_ref(),
+                &[nonce],
+            ],
+            ctx.program_id,
+        )
+        .map_err(|_| ErrorCode::InvalidProgramAddress)?;
+        if ctx.accounts.vault.owner != vault_authority {
+            return Err(ErrorCode::InvalidVaultOwner)?;
+        }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -305,13 +262,6 @@ pub struct WhitelistAdd<'info> {
     lockup: ProgramState<'info, Lockup>,
     #[account(signer)]
     authority: AccountInfo<'info>,
-}
-
-fn whitelist_has_capacity(ctx: &Context<WhitelistAdd>) -> Result<(), Error> {
-    if ctx.accounts.lockup.whitelist.len() == lockup::Lockup::WHITELIST_SIZE {
-        return Err(ErrorCode::WhitelistFull.into());
-    }
-    Ok(())
 }
 
 #[derive(Accounts)]
@@ -353,24 +303,10 @@ pub struct WhitelistTransfer<'info> {
     whitelisted_program_vault_authority: AccountInfo<'info>,
 }
 
-pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<(), Error> {
-    if !transfer.lockup.whitelist.contains(&WhitelistEntry {
-        program_id: *transfer.whitelisted_program.key,
-    }) {
-        return Err(ErrorCode::WhitelistEntryNotFound.into());
-    }
-    Ok(())
-}
-
 #[derive(Accounts)]
 pub struct AvailableForWithdrawal<'info> {
     vesting: ProgramAccount<'info, Vesting>,
     clock: Sysvar<'info, Clock>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Copy, Clone)]
-pub struct WhitelistEntry {
-    pub program_id: Pubkey,
 }
 
 #[account]
@@ -401,6 +337,11 @@ pub struct Vesting {
     pub whitelist_owned: u64,
     /// Signer nonce.
     pub nonce: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Copy, Clone)]
+pub struct WhitelistEntry {
+    pub program_id: Pubkey,
 }
 
 #[error]
@@ -459,4 +400,65 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
+}
+
+fn whitelist_has_capacity(ctx: &Context<WhitelistAdd>) -> Result<(), Error> {
+    if ctx.accounts.lockup.whitelist.len() == lockup::Lockup::WHITELIST_SIZE {
+        return Err(ErrorCode::WhitelistFull.into());
+    }
+    Ok(())
+}
+
+#[access_control(is_whitelisted(transfer))]
+pub fn whitelist_relay_cpi<'info>(
+    transfer: &WhitelistTransfer,
+    remaining_accounts: &[AccountInfo<'info>],
+    instruction_data: Vec<u8>,
+) -> Result<(), Error> {
+    let mut meta_accounts = vec![
+        AccountMeta::new_readonly(*transfer.vesting.to_account_info().key, false),
+        AccountMeta::new(*transfer.vault.to_account_info().key, false),
+        AccountMeta::new_readonly(*transfer.vesting_signer.to_account_info().key, true),
+        AccountMeta::new_readonly(*transfer.token_program.to_account_info().key, false),
+        AccountMeta::new(
+            *transfer.whitelisted_program_vault.to_account_info().key,
+            false,
+        ),
+        AccountMeta::new_readonly(
+            *transfer
+                .whitelisted_program_vault_authority
+                .to_account_info()
+                .key,
+            false,
+        ),
+    ];
+    meta_accounts.extend(remaining_accounts.iter().map(|a| {
+        if a.is_writable {
+            AccountMeta::new(*a.key, a.is_signer)
+        } else {
+            AccountMeta::new_readonly(*a.key, a.is_signer)
+        }
+    }));
+    let relay_instruction = Instruction {
+        program_id: *transfer.whitelisted_program.to_account_info().key,
+        accounts: meta_accounts,
+        data: instruction_data.to_vec(),
+    };
+
+    let seeds = &[
+        transfer.vesting.to_account_info().key.as_ref(),
+        &[transfer.vesting.nonce],
+    ];
+    let signer = &[&seeds[..]];
+    solana_program::program::invoke_signed(&relay_instruction, &transfer.to_account_infos(), signer)
+        .map_err(Into::into)
+}
+
+pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<(), Error> {
+    if !transfer.lockup.whitelist.contains(&WhitelistEntry {
+        program_id: *transfer.whitelisted_program.key,
+    }) {
+        return Err(ErrorCode::WhitelistEntryNotFound.into());
+    }
+    Ok(())
 }

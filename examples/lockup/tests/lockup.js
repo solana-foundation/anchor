@@ -353,14 +353,12 @@ describe("Lockup and Registry", () => {
     const [mainTx, _balances] = await utils.createBalanceSandbox(
       provider,
       registrarAccount,
-      memberSigner,
-      provider.wallet.publicKey // Beneficiary,
+      memberSigner
     );
     const [lockedTx, _balancesLocked] = await utils.createBalanceSandbox(
       provider,
       registrarAccount,
-      memberSigner,
-      vesting.publicKey // Lockup.
+      memberSigner
     );
 
     balances = _balances;
@@ -407,15 +405,10 @@ describe("Lockup and Registry", () => {
     const depositAmount = new anchor.BN(120);
     await registry.rpc.deposit(depositAmount, {
       accounts: {
-        // Whitelist relay.
-        vesting: anchor.web3.SYSVAR_RENT_PUBKEY,
         depositor: god,
         depositorAuthority: provider.wallet.publicKey,
         tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
         vault: memberAccount.balances.vault,
-        memberSigner,
-        // Program specific.
-        registrar: registrar.publicKey,
         beneficiary: provider.wallet.publicKey,
         member: member.publicKey,
       },
@@ -430,7 +423,7 @@ describe("Lockup and Registry", () => {
 
   it("Stakes to a member (unlocked)", async () => {
     const stakeAmount = new anchor.BN(10);
-    await registry.rpc.stake(stakeAmount, provider.wallet.publicKey, {
+    await registry.rpc.stake(stakeAmount, false, {
       accounts: {
         // Stake instance.
         registrar: registrar.publicKey,
@@ -553,9 +546,9 @@ describe("Lockup and Registry", () => {
       mint,
       provider.wallet.publicKey
     );
-    await registry.rpc.claimRewardUnlocked({
+    await registry.rpc.claimReward({
       accounts: {
-        token,
+        to: token,
         cmn: {
           registrar: registrar.publicKey,
 
@@ -696,6 +689,7 @@ describe("Lockup and Registry", () => {
 
     await registry.rpc.claimRewardLocked(nonce, {
       accounts: {
+        registry: await registry.state.address(),
         lockupProgram: lockup.programId,
         cmn: {
           registrar: registrar.publicKey,
@@ -744,10 +738,10 @@ describe("Lockup and Registry", () => {
 
   const pendingWithdrawal = new anchor.web3.Account();
 
-  it("Unstakes", async () => {
+  it("Unstakes (unlocked)", async () => {
     const unstakeAmount = new anchor.BN(10);
 
-    await registry.rpc.startUnstake(unstakeAmount, provider.wallet.publicKey, {
+    await registry.rpc.startUnstake(unstakeAmount, false, {
       accounts: {
         registrar: registrar.publicKey,
         rewardEventQ: rewardQ.publicKey,
@@ -853,17 +847,13 @@ describe("Lockup and Registry", () => {
     const withdrawAmount = new anchor.BN(100);
     await registry.rpc.withdraw(withdrawAmount, {
       accounts: {
-        // Whitelist relay.
-        vesting: anchor.web3.SYSVAR_RENT_PUBKEY,
-        depositor: token,
-        depositorAuthority: provider.wallet.publicKey,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+        registrar: registrar.publicKey,
+        member: member.publicKey,
+        beneficiary: provider.wallet.publicKey,
         vault: memberAccount.balances.vault,
         memberSigner,
-        // Program specific.
-        registrar: registrar.publicKey,
-        beneficiary: provider.wallet.publicKey,
-        member: member.publicKey,
+        depositor: token,
+        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
       },
     });
 

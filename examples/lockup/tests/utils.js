@@ -1,7 +1,8 @@
-const anchor = require("@project-serum/anchor");
+// const anchor = require("@project-serum/anchor");
+const anchor = require("/home/armaniferrante/Documents/code/src/github.com/project-serum/anchor/ts");
 const serumCmn = require("@project-serum/common");
 
-async function createBalanceSandbox(provider, r, registrySigner, owner) {
+async function createBalanceSandbox(provider, r, registrySigner) {
   const spt = new anchor.web3.Account();
   const vault = new anchor.web3.Account();
   const vaultStake = new anchor.web3.Account();
@@ -53,7 +54,6 @@ async function createBalanceSandbox(provider, r, registrySigner, owner) {
   return [
     tx,
     {
-      balanceId: owner,
       spt: spt.publicKey,
       vault: vault.publicKey,
       vaultStake: vaultStake.publicKey,

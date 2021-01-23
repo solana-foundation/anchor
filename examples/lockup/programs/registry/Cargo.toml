@@ -15,4 +15,4 @@ cpi = ["no-entrypoint"]
 [dependencies]
 anchor-lang = { git = "https://github.com/project-serum/anchor", features = ["derive"] }
 anchor-spl = { git = "https://github.com/project-serum/anchor" }
-serum-lockup = { path = "../lockup", features = ["cpi"] }
+lockup = { path = "../lockup", features = ["cpi"] }
