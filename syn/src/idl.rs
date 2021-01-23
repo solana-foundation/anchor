@@ -24,13 +24,7 @@ pub struct IdlState {
     pub methods: Vec<IdlStateMethod>,
 }
 
-// IdlStateMethods are similar to instructions, except they only allow
-// for a single account, the state account.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct IdlStateMethod {
-    pub name: String,
-    pub args: Vec<IdlField>,
-}
+pub type IdlStateMethod = IdlInstruction;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IdlInstruction {

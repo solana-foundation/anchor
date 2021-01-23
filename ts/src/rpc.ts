@@ -131,7 +131,7 @@ export class RpcFactory {
     const rpcs: Rpcs = {};
     const ixFns: Ixs = {};
     const txFns: Txs = {};
-    const state = RpcFactory.buildState(idl, coder, programId);
+    const state = RpcFactory.buildState(idl, coder, programId, idlErrors);
 
     idl.instructions.forEach((idlIx) => {
       // Function to create a raw `TransactionInstruction`.
@@ -157,7 +157,8 @@ export class RpcFactory {
   private static buildState(
     idl: Idl,
     coder: Coder,
-    programId: PublicKey
+    programId: PublicKey,
+    idlErrors: Map<number, string>
   ): State | undefined {
     if (idl.state === undefined) {
       return undefined;
@@ -172,52 +173,92 @@ export class RpcFactory {
 
     const rpc: Rpcs = {};
     idl.state.methods.forEach((m: IdlStateMethod) => {
-      if (m.name !== "new") {
-        throw new Error("State struct mutatation not yet implemented.");
-      }
-      // Ctor `new` method.
-      rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
-        const tx = new Transaction();
-        const [programSigner, _nonce] = await PublicKey.findProgramAddress(
-          [],
-          programId
-        );
-        const ix = new TransactionInstruction({
-          keys: [
-            {
-              pubkey: getProvider().wallet.publicKey,
-              isWritable: false,
-              isSigner: true,
-            },
+      if (m.name === "new") {
+        // Ctor `new` method.
+        rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
+          const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
+          const tx = new Transaction();
+          const [programSigner, _nonce] = await PublicKey.findProgramAddress(
+            [],
+            programId
+          );
+          const ix = new TransactionInstruction({
+            keys: [
+              {
+                pubkey: getProvider().wallet.publicKey,
+                isWritable: false,
+                isSigner: true,
+              },
+              { pubkey: await address(), isWritable: true, isSigner: false },
+              { pubkey: programSigner, isWritable: false, isSigner: false },
+              {
+                pubkey: SystemProgram.programId,
+                isWritable: false,
+                isSigner: false,
+              },
+
+              { pubkey: programId, isWritable: false, isSigner: false },
+              {
+                pubkey: SYSVAR_RENT_PUBKEY,
+                isWritable: false,
+                isSigner: false,
+              },
+            ].concat(RpcFactory.accountsArray(ctx.accounts, m.accounts)),
+            programId,
+            data: coder.instruction.encode(toInstruction(m, ...ixArgs)),
+          });
+
+          tx.add(ix);
+
+          const provider = getProvider();
+          if (provider === null) {
+            throw new Error("Provider not found");
+          }
+          try {
+            const txSig = await provider.send(tx, ctx.signers, ctx.options);
+            return txSig;
+          } catch (err) {
+            let translatedErr = translateError(idlErrors, err);
+            if (translatedErr === null) {
+              throw err;
+            }
+            throw translatedErr;
+          }
+        };
+      } else {
+        rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
+          const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
+          validateAccounts(m.accounts, ctx.accounts);
+          const tx = new Transaction();
+
+          const keys = [
             { pubkey: await address(), isWritable: true, isSigner: false },
-            { pubkey: programSigner, isWritable: false, isSigner: false },
-            {
-              pubkey: SystemProgram.programId,
-              isWritable: false,
-              isSigner: false,
-            },
+          ].concat(RpcFactory.accountsArray(ctx.accounts, m.accounts));
 
-            { pubkey: programId, isWritable: false, isSigner: false },
-            { pubkey: SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
-          ],
-          programId,
-          data: coder.instruction.encode(toInstruction(m, ...args)),
-        });
+          tx.add(
+            new TransactionInstruction({
+              keys,
+              programId,
+              data: coder.instruction.encode(toInstruction(m, ...ixArgs)),
+            })
+          );
 
-        tx.add(ix);
-
-        const provider = getProvider();
-        if (provider === null) {
-          throw new Error("Provider not found");
-        }
-        try {
-          const txSig = await provider.send(tx);
-          return txSig;
-        } catch (err) {
-          // TODO: translate error.
-          throw err;
-        }
-      };
+          const provider = getProvider();
+          if (provider === null) {
+            throw new Error("Provider not found");
+          }
+          try {
+            const txSig = await provider.send(tx, ctx.signers, ctx.options);
+            return txSig;
+          } catch (err) {
+            let translatedErr = translateError(idlErrors, err);
+            if (translatedErr === null) {
+              throw err;
+            }
+            throw translatedErr;
+          }
+        };
+      }
     });
 
     // Fetches the state object from the blockchain.

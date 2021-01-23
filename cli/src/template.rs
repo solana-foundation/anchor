@@ -47,7 +47,7 @@ pub fn lib_rs(name: &str) -> String {
 use anchor_lang::prelude::*;
 
 #[program]
-mod {} {{
+pub mod {} {{
     use super::*;
     pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {{
         Ok(())

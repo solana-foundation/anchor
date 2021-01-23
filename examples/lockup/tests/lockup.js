@@ -28,7 +28,11 @@ describe("Lockup and Registry", () => {
   });
 
   it("Is initialized!", async () => {
-    await lockup.state.rpc.new(provider.wallet.publicKey);
+    await lockup.state.rpc.new({
+      accounts: {
+        authority: provider.wallet.publicKey,
+      },
+    });
 
     lockupAddress = await lockup.state.address();
     const lockupAccount = await lockup.state();
@@ -42,30 +46,27 @@ describe("Lockup and Registry", () => {
 
   it("Deletes the default whitelisted addresses", async () => {
     const defaultEntry = { programId: new anchor.web3.PublicKey() };
-    await lockup.rpc.whitelistDelete(defaultEntry, {
+    await lockup.state.rpc.whitelistDelete(defaultEntry, {
       accounts: {
         authority: provider.wallet.publicKey,
-        lockup: lockupAddress,
       },
     });
   });
 
   it("Sets a new authority", async () => {
     const newAuthority = new anchor.web3.Account();
-    await lockup.rpc.setAuthority(newAuthority.publicKey, {
+    await lockup.state.rpc.setAuthority(newAuthority.publicKey, {
       accounts: {
         authority: provider.wallet.publicKey,
-        lockup: lockupAddress,
       },
     });
 
     let lockupAccount = await lockup.state();
     assert.ok(lockupAccount.authority.equals(newAuthority.publicKey));
 
-    await lockup.rpc.setAuthority(provider.wallet.publicKey, {
+    await lockup.state.rpc.setAuthority(provider.wallet.publicKey, {
       accounts: {
         authority: newAuthority.publicKey,
-        lockup: lockupAddress,
       },
       signers: [newAuthority],
     });
@@ -96,20 +97,19 @@ describe("Lockup and Registry", () => {
 
     const accounts = {
       authority: provider.wallet.publicKey,
-      lockup: lockupAddress,
     };
 
-    await lockup.rpc.whitelistAdd(e0, { accounts });
+    await lockup.state.rpc.whitelistAdd(e0, { accounts });
 
     let lockupAccount = await lockup.state();
 
     assert.ok(lockupAccount.whitelist.length === 1);
     assert.deepEqual(lockupAccount.whitelist, [e0]);
 
-    await lockup.rpc.whitelistAdd(e1, { accounts });
-    await lockup.rpc.whitelistAdd(e2, { accounts });
-    await lockup.rpc.whitelistAdd(e3, { accounts });
-    await lockup.rpc.whitelistAdd(e4, { accounts });
+    await lockup.state.rpc.whitelistAdd(e1, { accounts });
+    await lockup.state.rpc.whitelistAdd(e2, { accounts });
+    await lockup.state.rpc.whitelistAdd(e3, { accounts });
+    await lockup.state.rpc.whitelistAdd(e4, { accounts });
 
     lockupAccount = await lockup.state();
 
@@ -117,7 +117,7 @@ describe("Lockup and Registry", () => {
 
     await assert.rejects(
       async () => {
-        await lockup.rpc.whitelistAdd(e5, { accounts });
+        await lockup.state.rpc.whitelistAdd(e5, { accounts });
       },
       (err) => {
         assert.equal(err.code, 108);
@@ -128,10 +128,9 @@ describe("Lockup and Registry", () => {
   });
 
   it("Removes from the whitelist", async () => {
-    await lockup.rpc.whitelistDelete(e0, {
+    await lockup.state.rpc.whitelistDelete(e0, {
       accounts: {
         authority: provider.wallet.publicKey,
-        lockup: lockupAddress,
       },
     });
     let lockupAccount = await lockup.state();
@@ -284,7 +283,9 @@ describe("Lockup and Registry", () => {
   });
 
   it("Initializes registry's global state", async () => {
-    await registry.state.rpc.new(lockup.programId);
+    await registry.state.rpc.new({
+      accounts: { lockupProgram: lockup.programId },
+    });
 
     const state = await registry.state();
     assert.ok(state.lockupProgram.equals(lockup.programId));

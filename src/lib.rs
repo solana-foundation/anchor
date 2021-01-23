@@ -41,7 +41,7 @@ pub use crate::context::{Context, CpiContext};
 pub use crate::cpi_account::CpiAccount;
 pub use crate::ctor::Ctor;
 pub use crate::program_account::ProgramAccount;
-pub use crate::state::ProgramState;
+pub use crate::state::{ProgramState, ProgramStateAccounts};
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::account;

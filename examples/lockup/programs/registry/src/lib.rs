@@ -19,8 +19,10 @@ mod registry {
     }
 
     impl Registry {
-        pub fn new<'info>(lockup_program: Pubkey) -> Result<Self, Error> {
-            Ok(Registry { lockup_program })
+        pub fn new<'info>(ctx: Context<Ctor>) -> Result<Self, Error> {
+            Ok(Registry {
+                lockup_program: *ctx.accounts.lockup_program.key,
+            })
         }
     }
 
@@ -596,6 +598,11 @@ pub struct BalanceSandboxAccounts<'info> {
     vault_stake: CpiAccount<'info, TokenAccount>,
     #[account(mut, "vault_pw.owner == spt.owner", "vault_pw.mint == vault.mint")]
     vault_pw: CpiAccount<'info, TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct Ctor<'info> {
+    lockup_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

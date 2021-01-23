@@ -38,7 +38,7 @@ impl<'info, T: solana_program::sysvar::Sysvar> Accounts<'info> for Sysvar<'info,
 }
 
 impl<'info, T: solana_program::sysvar::Sysvar> ToAccountMetas for Sysvar<'info, T> {
-    fn to_account_metas(&self, is_mut_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
         vec![AccountMeta::new_readonly(*self.info.key, false)]
     }
 }
