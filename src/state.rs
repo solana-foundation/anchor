@@ -1,6 +1,6 @@
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiAccount, ToAccountInfo,
-    ToAccountInfos, ToAccountMetas,
+    self as anchor_lang, AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Context,
+    CpiAccount, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -8,6 +8,20 @@ use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::ops::{Deref, DerefMut};
+
+/// Trait implemented by program state structs, providing the execution context
+/// for the currently executing program.
+pub trait ProgramStateContext<'a, 'b, 'c, 'info> {
+    fn context() -> Context<'a, 'b, 'c, 'info, ProgramStateAccounts<'info>>;
+}
+
+/// Accounts given to instructions defined on a state struct, excluding the
+/// state account itself.
+#[derive(Accounts)]
+pub struct ProgramStateAccounts<'info> {
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+}
 
 /// Boxed container for the program state singleton.
 #[derive(Clone)]

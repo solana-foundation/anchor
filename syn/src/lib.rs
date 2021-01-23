@@ -27,8 +27,17 @@ pub struct State {
     pub name: String,
     pub strct: syn::ItemStruct,
     pub impl_block: syn::ItemImpl,
-    pub methods: Vec<Rpc>,
+    pub methods: Vec<StateRpc>,
     pub ctor: syn::ImplItemMethod,
+    pub ctor_anchor: syn::Ident, // TODO: consolidate this with ctor above.
+}
+
+#[derive(Debug)]
+pub struct StateRpc {
+    pub raw_method: syn::ImplItemMethod,
+    pub ident: syn::Ident,
+    pub args: Vec<RpcArg>,
+    pub anchor_ident: syn::Ident,
 }
 
 #[derive(Debug)]

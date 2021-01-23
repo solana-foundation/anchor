@@ -25,7 +25,7 @@ pub fn account(
 
     let coder = quote! {
         impl anchor_lang::AccountSerialize for #account_name {
-            fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
+            fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> std::result::Result<(), ProgramError> {
                 // TODO: we shouldn't have to hash at runtime. However, rust
                 //       is not happy when trying to include solana-sdk from
                 //       the proc-macro crate.
@@ -48,7 +48,7 @@ pub fn account(
 
         impl anchor_lang::AccountDeserialize for #account_name {
 
-            fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+            fn try_deserialize(buf: &mut &[u8]) -> std::result::Result<Self, ProgramError> {
                 let mut discriminator = [0u8; 8];
                 discriminator.copy_from_slice(
                     &anchor_lang::solana_program::hash::hash(
@@ -66,7 +66,7 @@ pub fn account(
                 Self::try_deserialize_unchecked(buf)
             }
 
-            fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+            fn try_deserialize_unchecked(buf: &mut &[u8]) -> std::result::Result<Self, ProgramError> {
                 let mut data: &[u8] = &buf[8..];
                 AnchorDeserialize::deserialize(&mut data)
                     .map_err(|_| ProgramError::InvalidAccountData)

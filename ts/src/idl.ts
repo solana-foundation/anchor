@@ -21,10 +21,7 @@ export type IdlState = {
   methods: IdlStateMethod[];
 };
 
-export type IdlStateMethod = {
-  name: string;
-  args: IdlField[];
-};
+export type IdlStateMethod = IdlInstruction;
 
 export type IdlAccountItem = IdlAccount | IdlAccounts;
 

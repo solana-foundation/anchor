@@ -4,7 +4,7 @@
 use anchor_lang::prelude::*;
 
 #[program]
-mod basic_4 {
+pub mod basic_4 {
     use super::*;
 
     #[state]
@@ -13,9 +13,12 @@ mod basic_4 {
     }
 
     impl MyProgram {
-        pub fn new(data: u64) -> Result<Self, ProgramError> {
+        pub fn new(ctx: Context<Ctor>, data: u64) -> Result<Self, ProgramError> {
             Ok(Self { data })
         }
     }
 }
+
+#[derive(Accounts)]
+pub struct Ctor {}
 // #endregion code

@@ -8,7 +8,7 @@
 
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools.
 
-- Rust DSL for writing Solana programs
+- Rust eDSL for writing Solana programs
 - [IDL](https://en.wikipedia.org/wiki/Interface_description_language) specification
 - TypeScript package for generating clients from IDL
 - CLI and workspace management for developing complete applications
@@ -25,7 +25,55 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 * **Anchor is in active development, so all APIs are subject to change.**
 * **This code is unaudited. Use at your own risk.**
 
-## Example
+## Examples
+
+Build stateful programs on Solana by defining a state struct with associated
+methods. Here's a classic counter example, where only the designated `authority`
+can increment the count.
+
+```rust
+#[program]
+mod counter {
+
+    #[state]
+    pub struct Counter {
+      authority: Pubkey,
+      count: u64,
+    }
+
+    pub fn new(ctx: Context<Auth>) -> Result<Self> {
+        Ok(Self {
+            auth: *auth.accounts.authority.key
+        })
+    }
+
+    pub fn increment(&mut self, ctx: Context<Auth>) -> Result<()> {
+        if &self.authority != ctx.accounts.authority.key {
+            return Err(ErrorCode::Unauthorized.into());
+        }
+
+        self.count += 1;
+
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct Auth<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+}
+
+#[error]
+pub enum ErrorCode {
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
+}
+```
+
+Additionally, one can utilize the full power of Solana's parallel execution model by
+keeping the program stateless and working with accounts directly. The above example
+can be rewritten as follows.
 
 ```rust
 use anchor::prelude::*;
@@ -33,18 +81,23 @@ use anchor::prelude::*;
 // Define instruction handlers.
 
 #[program]
-mod example {
+mod counter {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> ProgramResult {
-        let my_account = &mut ctx.accounts.my_account;
-        my_account.authority = authority;
+        let counter = &mut ctx.accounts.counter;
+
+        counter.authority = authority;
+        counter.count = 0;
+
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, data: u64) -> ProgramResult {
-        let my_account = &mut ctx.accounts.my_account;
-        my_account.data = data;
+    pub fn increment(ctx: Context<Update>) -> ProgramResult {
+        let counter = &mut ctx.accounts.counter;
+
+        counter += 1;
+
         Ok(())
     }
 }
@@ -54,14 +107,14 @@ mod example {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init)]
-    pub my_account: ProgramAccount<'info, MyAccount>,
+    pub counter: ProgramAccount<'info, Counter>,
     pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
-pub struct Update<'info> {
+pub struct Increment<'info> {
     #[account(mut, has_one = authority)]
-    pub my_account: ProgramAccount<'info, MyAccount>,
+    pub counter: ProgramAccount<'info, Counter>,
     #[account(signer)]
     pub authority: AccountInfo<'info>,
 }
@@ -69,11 +122,16 @@ pub struct Update<'info> {
 // Define program owned accounts.
 
 #[account]
-pub struct MyAccount {
+pub struct Counter {
     pub authority: Pubkey,
-    pub data: u64,
+    pub count: u64,
 }
 ```
+
+Due to the fact that account sizes on Solana are fixed, some combination of
+the above is often required. For example, one can store store global state
+associated with the entire program in the `#[state]` struct and local
+state assocated with each user in individual `#[account]` structs.
 
 ## Accounts attribute syntax.
 

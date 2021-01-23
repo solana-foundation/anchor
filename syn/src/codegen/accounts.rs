@@ -141,7 +141,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         impl#combined_generics anchor_lang::Accounts#trait_generics for #name#strct_generics {
             #[inline(never)]
-            fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
+            fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
 

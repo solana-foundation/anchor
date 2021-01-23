@@ -10,8 +10,10 @@ use anchor_spl::token::{self, TokenAccount, Transfer};
 
 mod calculator;
 
+type Result<T> = std::result::Result<T, Error>;
+
 #[program]
-mod lockup {
+pub mod lockup {
     use super::*;
 
     #[state]
@@ -25,20 +27,45 @@ mod lockup {
     impl Lockup {
         pub const WHITELIST_SIZE: usize = 5;
 
-        pub fn new(authority: Pubkey) -> Result<Self, Error> {
+        pub fn new(ctx: Context<Auth>) -> Result<Self> {
             let mut whitelist = vec![];
             whitelist.resize(Self::WHITELIST_SIZE, Default::default());
             Ok(Lockup {
-                authority,
+                authority: *ctx.accounts.authority.key,
                 whitelist,
             })
         }
-    }
 
-    pub fn set_authority(ctx: Context<SetAuthority>, new_authority: Pubkey) -> Result<(), Error> {
-        let lockup = &mut ctx.accounts.lockup;
-        lockup.authority = new_authority;
-        Ok(())
+        #[access_control(whitelist_auth(self, &ctx))]
+        pub fn whitelist_add(&mut self, ctx: Context<Auth>, entry: WhitelistEntry) -> Result<()> {
+            if self.whitelist.len() == Self::WHITELIST_SIZE {
+                return Err(ErrorCode::WhitelistFull.into());
+            }
+            if self.whitelist.contains(&entry) {
+                return Err(ErrorCode::WhitelistEntryAlreadyExists.into());
+            }
+            self.whitelist.push(entry);
+            Ok(())
+        }
+
+        #[access_control(whitelist_auth(self, &ctx))]
+        pub fn whitelist_delete(
+            &mut self,
+            ctx: Context<Auth>,
+            entry: WhitelistEntry,
+        ) -> Result<()> {
+            if !self.whitelist.contains(&entry) {
+                return Err(ErrorCode::WhitelistEntryNotFound.into());
+            }
+            self.whitelist.retain(|e| e != &entry);
+            Ok(())
+        }
+
+        #[access_control(whitelist_auth(self, &ctx))]
+        pub fn set_authority(&mut self, ctx: Context<Auth>, new_authority: Pubkey) -> Result<()> {
+            self.authority = new_authority;
+            Ok(())
+        }
     }
 
     #[access_control(CreateVesting::accounts(&ctx, nonce))]
@@ -49,7 +76,7 @@ mod lockup {
         period_count: u64,
         deposit_amount: u64,
         nonce: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if end_ts <= ctx.accounts.clock.unix_timestamp {
             return Err(ErrorCode::InvalidTimestamp.into());
         }
@@ -78,7 +105,7 @@ mod lockup {
         Ok(())
     }
 
-    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<(), Error> {
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         // Has the given amount vested?
         if amount
             > calculator::available_for_withdrawal(
@@ -105,32 +132,12 @@ mod lockup {
         Ok(())
     }
 
-    #[access_control(whitelist_has_capacity(&ctx))]
-    pub fn whitelist_add(ctx: Context<WhitelistAdd>, entry: WhitelistEntry) -> Result<(), Error> {
-        if ctx.accounts.lockup.whitelist.contains(&entry) {
-            return Err(ErrorCode::WhitelistEntryAlreadyExists.into());
-        }
-        ctx.accounts.lockup.whitelist.push(entry);
-        Ok(())
-    }
-
-    pub fn whitelist_delete(
-        ctx: Context<WhitelistAdd>,
-        entry: WhitelistEntry,
-    ) -> Result<(), Error> {
-        if !ctx.accounts.lockup.whitelist.contains(&entry) {
-            return Err(ErrorCode::WhitelistEntryNotFound.into());
-        }
-        ctx.accounts.lockup.whitelist.retain(|e| e != &entry);
-        Ok(())
-    }
-
     // Sends funds from the lockup program to a whitelisted program.
     pub fn whitelist_withdraw(
         ctx: Context<WhitelistWithdraw>,
         instruction_data: Vec<u8>,
         amount: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let before_amount = ctx.accounts.transfer.vault.amount;
         whitelist_relay_cpi(
             &ctx.accounts.transfer,
@@ -155,7 +162,7 @@ mod lockup {
     pub fn whitelist_deposit(
         ctx: Context<WhitelistDeposit>,
         instruction_data: Vec<u8>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let before_amount = ctx.accounts.transfer.vault.amount;
         whitelist_relay_cpi(
             &ctx.accounts.transfer,
@@ -180,7 +187,7 @@ mod lockup {
     }
 
     // Convenience function for UI's to calculate the withdrawalable amount.
-    pub fn available_for_withdrawal(ctx: Context<AvailableForWithdrawal>) -> Result<(), Error> {
+    pub fn available_for_withdrawal(ctx: Context<AvailableForWithdrawal>) -> Result<()> {
         let available = calculator::available_for_withdrawal(
             &ctx.accounts.vesting,
             ctx.accounts.clock.unix_timestamp,
@@ -192,9 +199,7 @@ mod lockup {
 }
 
 #[derive(Accounts)]
-pub struct SetAuthority<'info> {
-    #[account(mut, has_one = authority)]
-    lockup: ProgramState<'info, Lockup>,
+pub struct Auth<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -219,7 +224,7 @@ pub struct CreateVesting<'info> {
 }
 
 impl<'info> CreateVesting<'info> {
-    fn accounts(ctx: &Context<CreateVesting>, nonce: u8) -> Result<(), Error> {
+    fn accounts(ctx: &Context<CreateVesting>, nonce: u8) -> Result<()> {
         let vault_authority = Pubkey::create_program_address(
             &[
                 ctx.accounts.vesting.to_account_info().key.as_ref(),
@@ -254,22 +259,6 @@ pub struct Withdraw<'info> {
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
     clock: Sysvar<'info, Clock>,
-}
-
-#[derive(Accounts)]
-pub struct WhitelistAdd<'info> {
-    #[account(mut, has_one = authority)]
-    lockup: ProgramState<'info, Lockup>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
-}
-
-#[derive(Accounts)]
-pub struct WhitelistDelete<'info> {
-    #[account(mut, has_one = authority)]
-    lockup: ProgramState<'info, Lockup>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -374,6 +363,8 @@ pub enum ErrorCode {
     WhitelistWithdrawLimit,
     #[msg("Whitelist entry not found.")]
     WhitelistEntryNotFound,
+    #[msg("You do not have sufficient permissions to perform this action.")]
+    Unauthorized,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut CreateVesting<'info>>
@@ -402,19 +393,12 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
     }
 }
 
-fn whitelist_has_capacity(ctx: &Context<WhitelistAdd>) -> Result<(), Error> {
-    if ctx.accounts.lockup.whitelist.len() == lockup::Lockup::WHITELIST_SIZE {
-        return Err(ErrorCode::WhitelistFull.into());
-    }
-    Ok(())
-}
-
 #[access_control(is_whitelisted(transfer))]
 pub fn whitelist_relay_cpi<'info>(
     transfer: &WhitelistTransfer,
     remaining_accounts: &[AccountInfo<'info>],
     instruction_data: Vec<u8>,
-) -> Result<(), Error> {
+) -> Result<()> {
     let mut meta_accounts = vec![
         AccountMeta::new_readonly(*transfer.vesting.to_account_info().key, false),
         AccountMeta::new(*transfer.vault.to_account_info().key, false),
@@ -454,11 +438,18 @@ pub fn whitelist_relay_cpi<'info>(
         .map_err(Into::into)
 }
 
-pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<(), Error> {
+pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<()> {
     if !transfer.lockup.whitelist.contains(&WhitelistEntry {
         program_id: *transfer.whitelisted_program.key,
     }) {
         return Err(ErrorCode::WhitelistEntryNotFound.into());
+    }
+    Ok(())
+}
+
+fn whitelist_auth(lockup: &Lockup, ctx: &Context<Auth>) -> Result<()> {
+    if &lockup.authority != ctx.accounts.authority.key {
+        return Err(ErrorCode::Unauthorized.into());
     }
     Ok(())
 }

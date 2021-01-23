@@ -1,6 +1,6 @@
 use crate::idl::*;
 use crate::parser::{self, accounts, error, program};
-use crate::{AccountsStruct, Rpc};
+use crate::{AccountsStruct, StateRpc};
 use anyhow::Result;
 use heck::MixedCase;
 use quote::ToTokens;
@@ -22,12 +22,23 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
 
     let p = program::parse(parse_program_mod(&f));
 
+    let accs = parse_accounts(&f);
+    let acc_names = {
+        let mut acc_names = HashSet::new();
+        for accs_strct in accs.values() {
+            for a in accs_strct.account_tys(&accs)? {
+                acc_names.insert(a);
+            }
+        }
+        acc_names
+    };
+
     let state = p.state.map(|state| {
         let mut methods = state
             .methods
             .iter()
-            .map(|method: &Rpc| {
-                let name = method.ident.to_string();
+            .map(|method: &StateRpc| {
+                let name = method.ident.to_string().to_mixed_case();
                 let args = method
                     .args
                     .iter()
@@ -41,7 +52,13 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                         }
                     })
                     .collect::<Vec<_>>();
-                IdlStateMethod { name, args }
+                let accounts_strct = accs.get(&method.anchor_ident.to_string()).unwrap();
+                let accounts = accounts_strct.idl_accounts(&accs);
+                IdlStateMethod {
+                    name,
+                    args,
+                    accounts,
+                }
             })
             .collect::<Vec<_>>();
         let ctor = {
@@ -51,6 +68,18 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                 .sig
                 .inputs
                 .iter()
+                .filter_map(|arg: &syn::FnArg| match arg {
+                    syn::FnArg::Typed(pat_ty) => {
+                        // TODO: this filtering should be donein the parser.
+                        let mut arg_str = parser::tts_to_string(&pat_ty.ty);
+                        arg_str.retain(|c| !c.is_whitespace());
+                        if arg_str.starts_with("Context<") {
+                            return None;
+                        }
+                        Some(arg)
+                    }
+                    _ => None,
+                })
                 .map(|arg: &syn::FnArg| match arg {
                     syn::FnArg::Typed(arg_typed) => {
                         let mut tts = proc_macro2::TokenStream::new();
@@ -64,7 +93,13 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                     _ => panic!("Invalid syntax"),
                 })
                 .collect();
-            IdlStateMethod { name, args }
+            let accounts_strct = accs.get(&state.ctor_anchor.to_string()).unwrap();
+            let accounts = accounts_strct.idl_accounts(&accs);
+            IdlStateMethod {
+                name,
+                args,
+                accounts,
+            }
         };
 
         methods.insert(0, ctor);
@@ -105,20 +140,6 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
             })
             .collect::<Vec<IdlErrorCode>>()
     });
-
-    let accs = parse_accounts(&f);
-
-    let acc_names = {
-        let mut acc_names = HashSet::new();
-
-        for accs_strct in accs.values() {
-            for a in accs_strct.account_tys(&accs)? {
-                acc_names.insert(a);
-            }
-        }
-
-        acc_names
-    };
 
     let instructions = p
         .rpcs

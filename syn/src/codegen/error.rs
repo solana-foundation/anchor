@@ -18,7 +18,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         #error_enum
 
         impl std::fmt::Display for #enum_name {
-            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
                 <Self as std::fmt::Debug>::fmt(self, fmt)
             }
         }
