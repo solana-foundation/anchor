@@ -15,11 +15,3 @@ pub fn state(
         #item_struct
     })
 }
-
-/*
-        impl<'a, 'b, 'c, 'info> anchor_lang::ProgramStateContext<'a, 'b, 'c, 'info> for #strct {
-            fn context() -> Context<'a, 'b, 'c, 'info, ProgramStateAccounts<'info>> {
-                // todo
-            }
-        }
-*/
