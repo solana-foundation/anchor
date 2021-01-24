@@ -74,9 +74,9 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                 };
                 quote! {
                     __private::instruction::#variant_arm => {
-												__private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
-										}
-								}
+                        __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
+                    }
+                }
             })
             .collect(),
     };
