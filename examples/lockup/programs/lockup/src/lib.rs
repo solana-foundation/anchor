@@ -10,8 +10,6 @@ use anchor_spl::token::{self, TokenAccount, Transfer};
 
 mod calculator;
 
-type Result<T> = std::result::Result<T, Error>;
-
 #[program]
 pub mod lockup {
     use super::*;

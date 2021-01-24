@@ -5,15 +5,15 @@ use anchor_lang::prelude::*;
 #[program]
 mod errors {
     use super::*;
-    pub fn hello(ctx: Context<Hello>) -> Result<(), Error> {
+    pub fn hello(ctx: Context<Hello>) -> Result<()> {
         Err(MyError::Hello.into())
     }
 
-    pub fn hello_no_msg(ctx: Context<HelloNoMsg>) -> Result<(), Error> {
+    pub fn hello_no_msg(ctx: Context<HelloNoMsg>) -> Result<()> {
         Err(MyError::HelloNoMsg.into())
     }
 
-    pub fn hello_next(ctx: Context<HelloNext>) -> Result<(), Error> {
+    pub fn hello_next(ctx: Context<HelloNext>) -> Result<()> {
         Err(MyError::HelloNext.into())
     }
 }

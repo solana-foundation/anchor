@@ -5,6 +5,8 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
     let error_enum = error.raw_enum;
     let enum_name = &error.ident;
     quote! {
+        type Result<T> = std::result::Result<T, Error>;
+
         #[derive(thiserror::Error, Debug)]
         pub enum Error {
             #[error(transparent)]
