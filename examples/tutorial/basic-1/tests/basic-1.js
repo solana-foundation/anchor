@@ -103,7 +103,7 @@ describe("basic-1", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [myAccount],
-      instructions: [await program.account.myAccount(myAccount)],
+      instructions: [await program.account.myAccount.createInstruction(myAccount)],
     });
     // #endregion code-simplified
 

@@ -19,7 +19,7 @@ mod registry {
     }
 
     impl Registry {
-        pub fn new<'info>(ctx: Context<Ctor>) -> Result<Self> {
+        pub fn new(ctx: Context<Ctor>) -> Result<Self> {
             Ok(Registry {
                 lockup_program: *ctx.accounts.lockup_program.key,
             })

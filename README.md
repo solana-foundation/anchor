@@ -4,7 +4,7 @@
 [![Docs.rs](https://docs.rs/anchor-lang/badge.svg)](https://docs.rs/anchor-lang)
 [![Docs](https://img.shields.io/badge/docs-tutorials-orange)](https://project-serum.github.io/anchor/)
 [![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/739225212658122886)
-[![License](https://img.shields.io/github/license/project-serum/anchor?color=blue)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/github/license/project-serum/anchor?color=ff69b4)](https://opensource.org/licenses/Apache-2.0)
 
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools.
 
@@ -18,7 +18,15 @@ If you're familiar with developing in Ethereum's [Solidity](https://docs.solidit
 ## Getting Started
 
 For a quickstart guide and in depth tutorials, see the guided [documentation](https://project-serum.github.io/anchor/getting-started/introduction.html).
-To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples). For the latest Rust API documentation, see [docs.rs](https://docs.rs/anchor-lang).
+To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples/lockup). For the latest Rust API documentation, see [docs.rs](https://docs.rs/anchor-lang).
+
+## Packages
+
+| Package | Version | Description|
+| :-- | :-- | :--|
+| `@project-serum/anchor` | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | TypeScript client generator for Anchor programs |
+| `anchor-lang` | [![Crates.io](https://img.shields.io/crates/v/anchor-lang?color=blue)](https://crates.io/crates/anchor-lang) | Rust primitives for writing programs on Solana |
+| `anchor-spl` | ![crates](https://img.shields.io/badge/crates.io-unpublished-blue.svg) | CPI clients for SPL programs on Solana |
 
 ## Note
 
@@ -78,13 +86,11 @@ can be rewritten as follows.
 ```rust
 use anchor::prelude::*;
 
-// Define instruction handlers.
-
 #[program]
 mod counter {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> ProgramResult {
+    pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
 
         counter.authority = authority;
@@ -93,7 +99,7 @@ mod counter {
         Ok(())
     }
 
-    pub fn increment(ctx: Context<Update>) -> ProgramResult {
+    pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
 
         counter += 1;
@@ -101,8 +107,6 @@ mod counter {
         Ok(())
     }
 }
-
-// Define accounts for each handler.
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
@@ -119,12 +123,16 @@ pub struct Increment<'info> {
     pub authority: AccountInfo<'info>,
 }
 
-// Define program owned accounts.
-
 #[account]
 pub struct Counter {
     pub authority: Pubkey,
     pub count: u64,
+}
+
+#[error]
+pub enum ErrorCode {
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
 }
 ```
 
@@ -133,12 +141,14 @@ the above is often required. For example, one can store store global state
 associated with the entire program in the `#[state]` struct and local
 state assocated with each user in individual `#[account]` structs.
 
+For more, see the [examples](https://github.com/project-serum/anchor/tree/master/examples)
+directory.
+
 ## Accounts attribute syntax.
 
-There are several inert attributes (attributes that are consumed only for the
-purposes of the Accounts macro) that can be specified on a struct deriving `Accounts`.
+There are several inert attributes that can be specified on a struct deriving `Accounts`.
 
-| Attribute | Where Applicable | Description |
+| Attribute | Location | Description |
 |:--|:--|:--|
 | `#[account(signer)]` | On raw `AccountInfo` structs. | Checks the given account signed the transaction. |
 | `#[account(mut)]` | On `AccountInfo`, `ProgramAccount` or `CpiAccount` structs. | Marks the account as mutable and persists the state transition. |
