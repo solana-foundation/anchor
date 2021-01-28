@@ -100,6 +100,11 @@ fn init(name: String) -> Result<()> {
     let mut mocha = File::create(&format!("tests/{}.js", name))?;
     mocha.write_all(template::mocha(&name).as_bytes())?;
 
+    // Build the migrations directory.
+    fs::create_dir("migrations")?;
+    let mut deploy = File::create("migrations/deploy.js")?;
+    deploy.write_all(&template::deploy_script().as_bytes())?;
+
     println!("{} initialized", name);
 
     Ok(())
@@ -138,7 +143,6 @@ fn new_program(name: &str) -> Result<()> {
     xargo_toml.write_all(template::xargo_toml().as_bytes())?;
     let mut lib_rs = File::create(&format!("programs/{}/src/lib.rs", name))?;
     lib_rs.write_all(template::lib_rs(&name).as_bytes())?;
-
     Ok(())
 }
 
@@ -400,10 +404,10 @@ fn run_hosted_deploy(url: &str, keypair: &str) -> Result<()> {
 
     let cur_dir = std::env::current_dir()?;
     let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
-    let deploy_script_str = template::deploy_script(url, &module_path);
+    let deploy_script_host_str = template::deploy_script_host(url, &module_path);
     std::env::set_current_dir(".anchor")?;
 
-    std::fs::write("deploy.js", deploy_script_str)?;
+    std::fs::write("deploy.js", deploy_script_host_str)?;
     if let Err(e) = std::process::Command::new("node")
         .arg("deploy.js")
         .stdout(Stdio::inherit())

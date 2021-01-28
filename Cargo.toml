@@ -19,7 +19,7 @@ anchor-attribute-program = { path = "./attribute/program", version = "0.0.0-alph
 anchor-attribute-state = { path = "./attribute/state", version = "0.0.0-alpha.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.0.0-alpha.0" }
 serum-borsh = { version = "0.8.0-serum.1", features = ["serum-program"] }
-solana-program = "1.4.3"
+solana-program = "=1.5.0"
 thiserror = "1.0.20"
 
 [workspace]

@@ -34,10 +34,9 @@ anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["d
     )
 }
 
-pub fn deploy_script(cluster_url: &str, script_path: &str) -> String {
+pub fn deploy_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
         r#"
-const serumCmn = require("@project-serum/common");
 const anchor = require('@project-serum/anchor');
 
 // Deploy script defined by the user.
@@ -47,9 +46,9 @@ async function main() {{
     const url = "{1}";
     const preflightCommitment = 'recent';
     const connection = new anchor.web3.Connection(url, preflightCommitment);
-    const wallet = serumCmn.NodeWallet.local();
+    const wallet = anchor.Wallet.local();
 
-    const provider = new serumCmn.Provider(connection, wallet, {{
+    const provider = new anchor.Provider(connection, wallet, {{
         preflightCommitment,
         commitment: 'recent',
     }});
@@ -63,6 +62,23 @@ main();
     )
 }
 
+pub fn deploy_script() -> String {
+    return r#"
+// Migrations are an early feature. Currently, they're nothing more than this
+// single deploy script that's invoked from the CLI, injecting a provider
+// configured from the workspace's Anchor.toml.
+
+const anchor = require("@project-serum/anchor");
+
+module.exports = async function (provider) {
+  // Configure client to use the provider.
+  anchor.setProvider(provider);
+
+  // Add your deploy script here.
+}
+"#
+    .to_string();
+}
 pub fn xargo_toml() -> String {
     r#"[target.bpfel-unknown-unknown.dependencies.std]
 features = []"#
