@@ -1,5 +1,6 @@
 import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
+import { sha256 } from "crypto-hash";
 import * as borsh from "@project-serum/borsh";
 import {
   Idl,
@@ -10,6 +11,11 @@ import {
   IdlStateMethod,
 } from "./idl";
 import { IdlError } from "./error";
+
+/**
+ * Number of bytes of the account discriminator.
+ */
+export const ACCOUNT_DISCRIMINATOR_SIZE = 8;
 
 /**
  * Coder provides a facade for encoding and decoding all IDL related objects.
@@ -105,24 +111,30 @@ class AccountsCoder {
       this.accountLayouts = new Map();
       return;
     }
-    const layouts = idl.accounts.map((acc) => {
+    const layouts: [string, Layout][] = idl.accounts.map((acc) => {
       return [acc.name, IdlCoder.typeDefLayout(acc, idl.types)];
     });
 
-    // @ts-ignore
     this.accountLayouts = new Map(layouts);
   }
 
-  public encode<T = any>(accountName: string, account: T): Buffer {
+  public async encode<T = any>(
+    accountName: string,
+    account: T
+  ): Promise<Buffer> {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const layout = this.accountLayouts.get(accountName);
     const len = layout.encode(account, buffer);
-    return buffer.slice(0, len);
+    let accountData = buffer.slice(0, len);
+    let discriminator = await accountDiscriminator(accountName);
+    return Buffer.concat([discriminator, accountData]);
   }
 
   public decode<T = any>(accountName: string, ix: Buffer): T {
+    // Chop off the discriminator before decoding.
+    const data = ix.slice(8);
     const layout = this.accountLayouts.get(accountName);
-    return layout.decode(ix);
+    return layout.decode(data);
   }
 }
 
@@ -171,14 +183,20 @@ class StateCoder {
     this.layout = IdlCoder.typeDefLayout(idl.state.struct, idl.types);
   }
 
-  public encode<T = any>(account: T): Buffer {
+  public async encode<T = any>(name: string, account: T): Promise<Buffer> {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const len = this.layout.encode(account, buffer);
-    return buffer.slice(0, len);
+
+    const disc = await stateDiscriminator(name);
+    const accData = buffer.slice(0, len);
+
+    return Buffer.concat([disc, accData]);
   }
 
   public decode<T = any>(ix: Buffer): T {
-    return this.layout.decode(ix);
+    // Chop off discriminator.
+    const data = ix.slice(8);
+    return this.layout.decode(data);
   }
 }
 
@@ -298,4 +316,111 @@ class IdlCoder {
       throw new Error(`Unknown type kint: ${typeDef}`);
     }
   }
+}
+
+// Calculates unique 8 byte discriminator prepended to all anchor accounts.
+export async function accountDiscriminator(name: string): Promise<Buffer> {
+  return Buffer.from(
+    (
+      await sha256(`account:${name}`, {
+        outputFormat: "buffer",
+      })
+    ).slice(0, 8)
+  );
+}
+
+// Calculates unique 8 byte discriminator prepended to all anchor state accounts.
+export async function stateDiscriminator(name: string): Promise<Buffer> {
+  return Buffer.from(
+    (
+      await sha256(`state:${name}`, {
+        outputFormat: "buffer",
+      })
+    ).slice(0, 8)
+  );
+}
+
+// Returns the size of the type in bytes. For variable length types, just return
+// 1. Users should override this value in such cases.
+export function typeSize(idl: Idl, ty: IdlType): number {
+  switch (ty) {
+    case "bool":
+      return 1;
+    case "u8":
+      return 1;
+    case "i8":
+      return 1;
+    case "u16":
+      return 2;
+    case "u32":
+      return 4;
+    case "u64":
+      return 8;
+    case "i64":
+      return 8;
+    case "bytes":
+      return 1;
+    case "string":
+      return 1;
+    case "publicKey":
+      return 32;
+    default:
+      // @ts-ignore
+      if (ty.vec !== undefined) {
+        return 1;
+      }
+      // @ts-ignore
+      if (ty.option !== undefined) {
+        // @ts-ignore
+        return 1 + typeSize(ty.option);
+      }
+      // @ts-ignore
+      if (ty.defined !== undefined) {
+        // @ts-ignore
+        const filtered = idl.types.filter((t) => t.name === ty.defined);
+        if (filtered.length !== 1) {
+          throw new IdlError(`Type not found: ${JSON.stringify(ty)}`);
+        }
+        let typeDef = filtered[0];
+
+        return accountSize(idl, typeDef);
+      }
+      throw new Error(`Invalid type ${JSON.stringify(ty)}`);
+  }
+}
+
+export function accountSize(
+  idl: Idl,
+  idlAccount: IdlTypeDef
+): number | undefined {
+  if (idlAccount.type.kind === "enum") {
+    let variantSizes = idlAccount.type.variants.map(
+      (variant: IdlEnumVariant) => {
+        if (variant.fields === undefined) {
+          return 0;
+        }
+        // @ts-ignore
+        return (
+          variant.fields
+            // @ts-ignore
+            .map((f: IdlField | IdlType) => {
+              // @ts-ignore
+              if (f.name === undefined) {
+                throw new Error("Tuple enum variants not yet implemented.");
+              }
+              // @ts-ignore
+              return typeSize(idl, f.type);
+            })
+            .reduce((a: number, b: number) => a + b)
+        );
+      }
+    );
+    return Math.max(...variantSizes) + 1;
+  }
+  if (idlAccount.type.fields === undefined) {
+    return 0;
+  }
+  return idlAccount.type.fields
+    .map((f) => typeSize(idl, f.type))
+    .reduce((a, b) => a + b);
 }

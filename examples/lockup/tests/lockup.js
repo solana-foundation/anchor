@@ -5,9 +5,10 @@ const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 const utils = require("./utils");
 
 describe("Lockup and Registry", () => {
-  const provider = anchor.Provider.local();
+  // Read the provider from the configured environmnet.
+  const provider = anchor.Provider.env();
 
-  // Configure the client to use the local cluster.
+  // Configure the client to use the provider.
   anchor.setProvider(provider);
 
   const lockup = anchor.workspace.Lockup;

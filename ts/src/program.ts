@@ -1,8 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
+import Provider from "./provider";
 import { RpcFactory } from "./rpc";
 import { Idl } from "./idl";
 import Coder from "./coder";
 import { Rpcs, Ixs, Txs, Accounts, State } from "./rpc";
+import { getProvider } from "./";
 
 /**
  * Program is the IDL deserialized representation of a Solana program.
@@ -49,9 +51,15 @@ export class Program {
    */
   readonly state: State;
 
-  public constructor(idl: Idl, programId: PublicKey) {
+  /**
+   * Wallet and network provider.
+   */
+  readonly provider: Provider;
+
+  public constructor(idl: Idl, programId: PublicKey, provider?: Provider) {
     this.idl = idl;
     this.programId = programId;
+    this.provider = provider ?? getProvider();
 
     // Build the serializer.
     const coder = new Coder(idl);
@@ -60,7 +68,8 @@ export class Program {
     const [rpcs, ixs, txs, accounts, state] = RpcFactory.build(
       idl,
       coder,
-      programId
+      programId,
+      this.provider
     );
     this.rpc = rpcs;
     this.instruction = ixs;

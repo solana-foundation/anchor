@@ -34,6 +34,35 @@ anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["d
     )
 }
 
+pub fn deploy_script(cluster_url: &str, script_path: &str) -> String {
+    format!(
+        r#"
+const serumCmn = require("@project-serum/common");
+const anchor = require('@project-serum/anchor');
+
+// Deploy script defined by the user.
+const userScript = require("{0}");
+
+async function main() {{
+    const url = "{1}";
+    const preflightCommitment = 'recent';
+    const connection = new anchor.web3.Connection(url, preflightCommitment);
+    const wallet = serumCmn.NodeWallet.local();
+
+    const provider = new serumCmn.Provider(connection, wallet, {{
+        preflightCommitment,
+        commitment: 'recent',
+    }});
+
+    // Run the user's deploy script.
+    userScript(provider);
+}}
+main();
+"#,
+        script_path, cluster_url,
+    )
+}
+
 pub fn xargo_toml() -> String {
     r#"[target.bpfel-unknown-unknown.dependencies.std]
 features = []"#

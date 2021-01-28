@@ -131,8 +131,8 @@ pub mod lockup {
     }
 
     // Sends funds from the lockup program to a whitelisted program.
-    pub fn whitelist_withdraw(
-        ctx: Context<WhitelistWithdraw>,
+    pub fn whitelist_withdraw<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, WhitelistWithdraw<'info>>,
         instruction_data: Vec<u8>,
         amount: u64,
     ) -> Result<()> {
@@ -157,8 +157,8 @@ pub mod lockup {
     }
 
     // Sends funds from a whitelisted program back to the lockup program.
-    pub fn whitelist_deposit(
-        ctx: Context<WhitelistDeposit>,
+    pub fn whitelist_deposit<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, WhitelistDeposit<'info>>,
         instruction_data: Vec<u8>,
     ) -> Result<()> {
         let before_amount = ctx.accounts.transfer.vault.amount;
@@ -393,7 +393,7 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 
 #[access_control(is_whitelisted(transfer))]
 pub fn whitelist_relay_cpi<'info>(
-    transfer: &WhitelistTransfer,
+    transfer: &WhitelistTransfer<'info>,
     remaining_accounts: &[AccountInfo<'info>],
     instruction_data: Vec<u8>,
 ) -> Result<()> {
@@ -432,7 +432,9 @@ pub fn whitelist_relay_cpi<'info>(
         &[transfer.vesting.nonce],
     ];
     let signer = &[&seeds[..]];
-    solana_program::program::invoke_signed(&relay_instruction, &transfer.to_account_infos(), signer)
+    let mut accounts = transfer.to_account_infos();
+    accounts.extend_from_slice(&remaining_accounts);
+    solana_program::program::invoke_signed(&relay_instruction, &accounts, signer)
         .map_err(Into::into)
 }
 

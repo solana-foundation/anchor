@@ -160,6 +160,10 @@ mod registry {
             token::mint_to(cpi_ctx, spt_amount)?;
         }
 
+        // Update stake timestamp.
+        let member = &mut ctx.accounts.member;
+        member.last_stake_ts = ctx.accounts.clock.unix_timestamp;
+
         Ok(())
     }
 
@@ -230,6 +234,10 @@ mod registry {
         pending_withdrawal.pool = ctx.accounts.registrar.pool_mint;
         pending_withdrawal.registrar = *ctx.accounts.registrar.to_account_info().key;
         pending_withdrawal.locked = locked;
+
+        // Update stake timestamp.
+        let member = &mut ctx.accounts.member;
+        member.last_stake_ts = ctx.accounts.clock.unix_timestamp;
 
         Ok(())
     }
@@ -349,12 +357,14 @@ mod registry {
         let vendor = &mut ctx.accounts.vendor;
         vendor.registrar = *ctx.accounts.registrar.to_account_info().key;
         vendor.vault = *ctx.accounts.vendor_vault.to_account_info().key;
+        vendor.mint = ctx.accounts.vendor_vault.mint;
         vendor.nonce = nonce;
         vendor.pool_token_supply = ctx.accounts.pool_mint.supply;
         vendor.reward_event_q_cursor = cursor;
         vendor.start_ts = ctx.accounts.clock.unix_timestamp;
         vendor.expiry_ts = expiry_ts;
         vendor.expiry_receiver = expiry_receiver;
+        vendor.from = *ctx.accounts.depositor_authority.key;
         vendor.total = total;
         vendor.expired = false;
         vendor.kind = kind.clone();
@@ -497,6 +507,7 @@ pub struct Initialize<'info> {
     registrar: ProgramAccount<'info, Registrar>,
     #[account(init)]
     reward_event_q: ProgramAccount<'info, RewardQueue>,
+    #[account("pool_mint.decimals == 0")]
     pool_mint: CpiAccount<'info, Mint>,
     rent: Sysvar<'info, Rent>,
 }
@@ -1096,12 +1107,14 @@ pub struct RewardEvent {
 pub struct RewardVendor {
     pub registrar: Pubkey,
     pub vault: Pubkey,
+    pub mint: Pubkey,
     pub nonce: u8,
     pub pool_token_supply: u64,
     pub reward_event_q_cursor: u32,
     pub start_ts: i64,
     pub expiry_ts: i64,
     pub expiry_receiver: Pubkey,
+    pub from: Pubkey,
     pub total: u64,
     pub expired: bool,
     pub kind: RewardVendorKind,

@@ -1,4 +1,6 @@
 import camelCase from "camelcase";
+import EventEmitter from "eventemitter3";
+import * as bs58 from "bs58";
 import {
   Account,
   AccountMeta,
@@ -9,42 +11,41 @@ import {
   TransactionSignature,
   TransactionInstruction,
   SYSVAR_RENT_PUBKEY,
+  Commitment,
 } from "@solana/web3.js";
-import { sha256 } from "crypto-hash";
+import Provider from "./provider";
 import {
   Idl,
   IdlAccount,
   IdlInstruction,
-  IdlTypeDef,
-  IdlType,
-  IdlField,
-  IdlEnumVariant,
   IdlAccountItem,
   IdlStateMethod,
 } from "./idl";
 import { IdlError, ProgramError } from "./error";
-import Coder from "./coder";
-import { getProvider } from "./";
+import Coder, {
+  ACCOUNT_DISCRIMINATOR_SIZE,
+  accountDiscriminator,
+  stateDiscriminator,
+  accountSize,
+} from "./coder";
 
 /**
- * Number of bytes of the account discriminator.
- */
-const ACCOUNT_DISCRIMINATOR_SIZE = 8;
-
-/**
- * Rpcs is a dynamically generated object with rpc methods attached.
+ * Dynamically generated rpc namespace.
  */
 export interface Rpcs {
   [key: string]: RpcFn;
 }
 
 /**
- * Ixs is a dynamically generated object with ix functions attached.
+ * Dynamically generated instruction namespace.
  */
 export interface Ixs {
   [key: string]: IxFn;
 }
 
+/**
+ * Dynamically generated transaction namespace.
+ */
 export interface Txs {
   [key: string]: TxFn;
 }
@@ -65,7 +66,11 @@ export type RpcFn = (...args: any[]) => Promise<TransactionSignature>;
 /**
  * Ix is a function to create a `TransactionInstruction` generated from an IDL.
  */
-export type IxFn = (...args: any[]) => TransactionInstruction;
+export type IxFn = IxProps & ((...args: any[]) => TransactionInstruction);
+
+type IxProps = {
+  accounts: (ctx: RpcAccounts) => any;
+};
 
 /**
  * Tx is a function to create a `Transaction` generate from an IDL.
@@ -75,7 +80,26 @@ export type TxFn = (...args: any[]) => Transaction;
 /**
  * Account is a function returning a deserialized account, given an address.
  */
-export type AccountFn<T = any> = (address: PublicKey) => T;
+export type AccountFn<T = any> = AccountProps & ((address: PublicKey) => T);
+
+/**
+ * Deserialized account owned by a program.
+ */
+export type ProgramAccount<T = any> = {
+  publicKey: PublicKey;
+  account: T;
+};
+
+/**
+ * Non function properties on the acccount namespace.
+ */
+type AccountProps = {
+  size: number;
+  all: (filter?: Buffer) => Promise<ProgramAccount<any>[]>;
+  subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
+  unsubscribe: (address: PublicKey) => void;
+  createInstruction: (account: Account) => Promise<TransactionInstruction>;
+};
 
 /**
  * Options for an RPC invocation.
@@ -112,6 +136,9 @@ export type State = {
   rpc: Rpcs;
 };
 
+// Tracks all subscriptions.
+const subscriptions: Map<string, Subscription> = new Map();
+
 /**
  * RpcFactory builds an Rpcs object for a given IDL.
  */
@@ -124,177 +151,150 @@ export class RpcFactory {
   public static build(
     idl: Idl,
     coder: Coder,
-    programId: PublicKey
+    programId: PublicKey,
+    provider: Provider
   ): [Rpcs, Ixs, Txs, Accounts, State] {
     const idlErrors = parseIdlErrors(idl);
 
     const rpcs: Rpcs = {};
     const ixFns: Ixs = {};
     const txFns: Txs = {};
-    const state = RpcFactory.buildState(idl, coder, programId, idlErrors);
+    const state = RpcFactory.buildState(
+      idl,
+      coder,
+      programId,
+      idlErrors,
+      provider
+    );
 
     idl.instructions.forEach((idlIx) => {
+      const name = camelCase(idlIx.name);
       // Function to create a raw `TransactionInstruction`.
       const ix = RpcFactory.buildIx(idlIx, coder, programId);
       // Ffnction to create a `Transaction`.
       const tx = RpcFactory.buildTx(idlIx, ix);
       // Function to invoke an RPC against a cluster.
-      const rpc = RpcFactory.buildRpc(idlIx, tx, idlErrors);
-
-      const name = camelCase(idlIx.name);
+      const rpc = RpcFactory.buildRpc(idlIx, tx, idlErrors, provider);
       rpcs[name] = rpc;
       ixFns[name] = ix;
       txFns[name] = tx;
     });
 
     const accountFns = idl.accounts
-      ? RpcFactory.buildAccounts(idl, coder, programId)
+      ? RpcFactory.buildAccounts(idl, coder, programId, provider)
       : {};
 
     return [rpcs, ixFns, txFns, accountFns, state];
   }
 
+  // Builds the state namespace.
   private static buildState(
     idl: Idl,
     coder: Coder,
     programId: PublicKey,
-    idlErrors: Map<number, string>
+    idlErrors: Map<number, string>,
+    provider: Provider
   ): State | undefined {
     if (idl.state === undefined) {
       return undefined;
     }
-    let address = async () => {
-      let [registrySigner, _nonce] = await PublicKey.findProgramAddress(
-        [],
-        programId
-      );
-      return PublicKey.createWithSeed(registrySigner, "unversioned", programId);
-    };
-
-    const rpc: Rpcs = {};
-    idl.state.methods.forEach((m: IdlStateMethod) => {
-      if (m.name === "new") {
-        // Ctor `new` method.
-        rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
-          const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
-          const tx = new Transaction();
-          const [programSigner, _nonce] = await PublicKey.findProgramAddress(
-            [],
-            programId
-          );
-          const ix = new TransactionInstruction({
-            keys: [
-              {
-                pubkey: getProvider().wallet.publicKey,
-                isWritable: false,
-                isSigner: true,
-              },
-              { pubkey: await address(), isWritable: true, isSigner: false },
-              { pubkey: programSigner, isWritable: false, isSigner: false },
-              {
-                pubkey: SystemProgram.programId,
-                isWritable: false,
-                isSigner: false,
-              },
-
-              { pubkey: programId, isWritable: false, isSigner: false },
-              {
-                pubkey: SYSVAR_RENT_PUBKEY,
-                isWritable: false,
-                isSigner: false,
-              },
-            ].concat(RpcFactory.accountsArray(ctx.accounts, m.accounts)),
-            programId,
-            data: coder.instruction.encode(toInstruction(m, ...ixArgs)),
-          });
-
-          tx.add(ix);
-
-          const provider = getProvider();
-          if (provider === null) {
-            throw new Error("Provider not found");
-          }
-          try {
-            const txSig = await provider.send(tx, ctx.signers, ctx.options);
-            return txSig;
-          } catch (err) {
-            let translatedErr = translateError(idlErrors, err);
-            if (translatedErr === null) {
-              throw err;
-            }
-            throw translatedErr;
-          }
-        };
-      } else {
-        rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
-          const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
-          validateAccounts(m.accounts, ctx.accounts);
-          const tx = new Transaction();
-
-          const keys = [
-            { pubkey: await address(), isWritable: true, isSigner: false },
-          ].concat(RpcFactory.accountsArray(ctx.accounts, m.accounts));
-
-          tx.add(
-            new TransactionInstruction({
-              keys,
-              programId,
-              data: coder.instruction.encode(toInstruction(m, ...ixArgs)),
-            })
-          );
-
-          const provider = getProvider();
-          if (provider === null) {
-            throw new Error("Provider not found");
-          }
-          try {
-            const txSig = await provider.send(tx, ctx.signers, ctx.options);
-            return txSig;
-          } catch (err) {
-            let translatedErr = translateError(idlErrors, err);
-            if (translatedErr === null) {
-              throw err;
-            }
-            throw translatedErr;
-          }
-        };
-      }
-    });
 
     // Fetches the state object from the blockchain.
     const state = async (): Promise<any> => {
-      const addr = await address();
-      const provider = getProvider();
-      if (provider === null) {
-        throw new Error("Provider not set");
-      }
+      const addr = await programStateAddress(programId);
       const accountInfo = await provider.connection.getAccountInfo(addr);
       if (accountInfo === null) {
-        throw new Error(`Entity does not exist ${address}`);
+        throw new Error(`Account does not exist ${addr.toString()}`);
       }
       // Assert the account discriminator is correct.
-      const expectedDiscriminator = Buffer.from(
-        (
-          await sha256(`state:${idl.state.struct.name}`, {
-            outputFormat: "buffer",
-          })
-        ).slice(0, 8)
+      const expectedDiscriminator = await stateDiscriminator(
+        idl.state.struct.name
       );
-      const discriminator = accountInfo.data.slice(0, 8);
-      if (expectedDiscriminator.compare(discriminator)) {
+      if (expectedDiscriminator.compare(accountInfo.data.slice(0, 8))) {
         throw new Error("Invalid account discriminator");
       }
-      // Chop off the discriminator before decoding.
-      const data = accountInfo.data.slice(8);
-      return coder.state.decode(data);
+      return coder.state.decode(accountInfo.data);
     };
 
-    state["address"] = address;
+    // Namespace with all rpc functions.
+    const rpc: Rpcs = {};
+    idl.state.methods.forEach((m: IdlStateMethod) => {
+      rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
+        const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
+        const keys = await stateInstructionKeys(programId, provider, m, ctx);
+        const tx = new Transaction();
+        tx.add(
+          new TransactionInstruction({
+            keys: keys.concat(
+              RpcFactory.accountsArray(ctx.accounts, m.accounts)
+            ),
+            programId,
+            data: coder.instruction.encode(toInstruction(m, ...ixArgs)),
+          })
+        );
+        try {
+          const txSig = await provider.send(tx, ctx.signers, ctx.options);
+          return txSig;
+        } catch (err) {
+          let translatedErr = translateError(idlErrors, err);
+          if (translatedErr === null) {
+            throw err;
+          }
+          throw translatedErr;
+        }
+      };
+    });
     state["rpc"] = rpc;
+
+    // Calculates the address of the program's global state object account.
+    state["address"] = async (): Promise<PublicKey> =>
+      programStateAddress(programId);
+
+    // Subscription singleton.
+    let sub: null | Subscription = null;
+
+    // Subscribe to account changes.
+    state["subscribe"] = (commitment?: Commitment): EventEmitter => {
+      if (sub !== null) {
+        return sub.ee;
+      }
+      const ee = new EventEmitter();
+
+      state["address"]().then((address) => {
+        const listener = provider.connection.onAccountChange(
+          address,
+          (acc) => {
+            const account = coder.state.decode(acc.data);
+            ee.emit("change", account);
+          },
+          commitment
+        );
+
+        sub = {
+          ee,
+          listener,
+        };
+      });
+
+      return ee;
+    };
+
+    // Unsubscribe from account changes.
+    state["unsubscribe"] = () => {
+      if (sub !== null) {
+        provider.connection
+          .removeAccountChangeListener(sub.listener)
+          .then(async () => {
+            sub = null;
+          })
+          .catch(console.error);
+      }
+    };
 
     return state;
   }
 
+  // Builds the instuction namespace.
   private static buildIx(
     idlIx: IdlInstruction,
     coder: Coder,
@@ -357,22 +357,21 @@ export class RpcFactory {
       .flat();
   }
 
+  // Builds the rpc namespace.
   private static buildRpc(
     idlIx: IdlInstruction,
     txFn: TxFn,
-    idlErrors: Map<number, string>
+    idlErrors: Map<number, string>,
+    provider: Provider
   ): RpcFn {
     const rpc = async (...args: any[]): Promise<TransactionSignature> => {
       const tx = txFn(...args);
       const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
-      const provider = getProvider();
-      if (provider === null) {
-        throw new Error("Provider not found");
-      }
       try {
         const txSig = await provider.send(tx, ctx.signers, ctx.options);
         return txSig;
       } catch (err) {
+        console.log("Translating error", err);
         let translatedErr = translateError(idlErrors, err);
         if (translatedErr === null) {
           throw err;
@@ -384,6 +383,7 @@ export class RpcFactory {
     return rpc;
   }
 
+  // Builds the transaction namespace.
   private static buildTx(idlIx: IdlInstruction, ixFn: IxFn): TxFn {
     const txFn = (...args: any[]): Transaction => {
       const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
@@ -398,52 +398,48 @@ export class RpcFactory {
     return txFn;
   }
 
+  // Returns the generated accounts namespace.
   private static buildAccounts(
     idl: Idl,
     coder: Coder,
-    programId: PublicKey
+    programId: PublicKey,
+    provider: Provider
   ): Accounts {
     const accountFns: Accounts = {};
+
     idl.accounts.forEach((idlAccount) => {
-      const accountFn = async (address: PublicKey): Promise<any> => {
-        const provider = getProvider();
-        if (provider === null) {
-          throw new Error("Provider not set");
-        }
+      const name = camelCase(idlAccount.name);
+
+      // Fetches the decoded account from the network.
+      const accountsNamespace = async (address: PublicKey): Promise<any> => {
         const accountInfo = await provider.connection.getAccountInfo(address);
         if (accountInfo === null) {
-          throw new Error(`Entity does not exist ${address}`);
+          throw new Error(`Account does not exist ${address.toString()}`);
         }
 
         // Assert the account discriminator is correct.
-        const expectedDiscriminator = Buffer.from(
-          (
-            await sha256(`account:${idlAccount.name}`, {
-              outputFormat: "buffer",
-            })
-          ).slice(0, 8)
-        );
-        const discriminator = accountInfo.data.slice(0, 8);
-
-        if (expectedDiscriminator.compare(discriminator)) {
+        const discriminator = await accountDiscriminator(idlAccount.name);
+        if (discriminator.compare(accountInfo.data.slice(0, 8))) {
           throw new Error("Invalid account discriminator");
         }
 
-        // Chop off the discriminator before decoding.
-        const data = accountInfo.data.slice(8);
-        return coder.accounts.decode(idlAccount.name, data);
+        return coder.accounts.decode(idlAccount.name, accountInfo.data);
       };
-      const name = camelCase(idlAccount.name);
-      accountFns[name] = accountFn;
-      const size = ACCOUNT_DISCRIMINATOR_SIZE + accountSize(idl, idlAccount);
+
+      // Returns the size of the account.
       // @ts-ignore
-      accountFns[name]["size"] = size;
+      accountsNamespace["size"] =
+        ACCOUNT_DISCRIMINATOR_SIZE + accountSize(idl, idlAccount);
+
+      // Returns an instruction for creating this account.
       // @ts-ignore
-      accountFns[name]["createInstruction"] = async (
+      accountsNamespace["createInstruction"] = async (
         account: Account,
         sizeOverride?: number
       ): Promise<TransactionInstruction> => {
-        const provider = getProvider();
+        // @ts-ignore
+        const size = accountsNamespace["size"];
+
         return SystemProgram.createAccount({
           fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: account.publicKey,
@@ -454,10 +450,101 @@ export class RpcFactory {
           programId,
         });
       };
+
+      // Subscribes to all changes to this account.
+      // @ts-ignore
+      accountsNamespace["subscribe"] = (
+        address: PublicKey,
+        commitment?: Commitment
+      ): EventEmitter => {
+        if (subscriptions.get(address.toString())) {
+          return subscriptions.get(address.toString()).ee;
+        }
+        const ee = new EventEmitter();
+
+        const listener = provider.connection.onAccountChange(
+          address,
+          (acc) => {
+            const account = coder.accounts.decode(idlAccount.name, acc.data);
+            ee.emit("change", account);
+          },
+          commitment
+        );
+
+        subscriptions.set(address.toString(), {
+          ee,
+          listener,
+        });
+
+        return ee;
+      };
+
+      // Unsubscribes to account changes.
+      // @ts-ignore
+      accountsNamespace["unsubscribe"] = (address: PublicKey) => {
+        let sub = subscriptions.get(address.toString());
+        if (subscriptions) {
+          provider.connection
+            .removeAccountChangeListener(sub.listener)
+            .then(() => {
+              subscriptions.delete(address.toString());
+            })
+            .catch(console.error);
+        }
+      };
+
+      // Returns all instances of this account type for the program.
+      // @ts-ignore
+      accountsNamespace["all"] = async (
+        filter?: Buffer
+      ): Promise<ProgramAccount<any>[]> => {
+        let bytes = await accountDiscriminator(idlAccount.name);
+        if (filter !== undefined) {
+          bytes = Buffer.concat([bytes, filter]);
+        }
+        // @ts-ignore
+        let resp = await provider.connection._rpcRequest("getProgramAccounts", [
+          programId.toBase58(),
+          {
+            commitment: provider.connection.commitment,
+            filters: [
+              {
+                memcmp: {
+                  offset: 0,
+                  bytes: bs58.encode(bytes),
+                },
+              },
+            ],
+          },
+        ]);
+        if (resp.error) {
+          console.error(resp);
+          throw new Error("Failed to get accounts");
+        }
+        return (
+          resp.result
+            // @ts-ignore
+            .map(({ pubkey, account: { data } }) => {
+              data = bs58.decode(data);
+              return {
+                publicKey: new PublicKey(pubkey),
+                account: coder.accounts.decode(idlAccount.name, data),
+              };
+            })
+        );
+      };
+
+      accountFns[name] = accountsNamespace;
     });
+
     return accountFns;
   }
 }
+
+type Subscription = {
+  listener: number;
+  ee: EventEmitter;
+};
 
 function translateError(
   idlErrors: Map<number, string>,
@@ -550,84 +637,62 @@ function validateInstruction(ix: IdlInstruction, ...args: any[]) {
   // todo
 }
 
-function accountSize(idl: Idl, idlAccount: IdlTypeDef): number | undefined {
-  if (idlAccount.type.kind === "enum") {
-    let variantSizes = idlAccount.type.variants.map(
-      (variant: IdlEnumVariant) => {
-        if (variant.fields === undefined) {
-          return 0;
-        }
-        // @ts-ignore
-        return (
-          variant.fields
-            // @ts-ignore
-            .map((f: IdlField | IdlType) => {
-              // @ts-ignore
-              if (f.name === undefined) {
-                throw new Error("Tuple enum variants not yet implemented.");
-              }
-              // @ts-ignore
-              return typeSize(idl, f.type);
-            })
-            .reduce((a: number, b: number) => a + b)
-        );
-      }
-    );
-    return Math.max(...variantSizes) + 1;
-  }
-  if (idlAccount.type.fields === undefined) {
-    return 0;
-  }
-  return idlAccount.type.fields
-    .map((f) => typeSize(idl, f.type))
-    .reduce((a, b) => a + b);
+// Calculates the deterministic address of the program's "state" account.
+async function programStateAddress(programId: PublicKey): Promise<PublicKey> {
+  let [registrySigner, _nonce] = await PublicKey.findProgramAddress(
+    [],
+    programId
+  );
+  return PublicKey.createWithSeed(registrySigner, "unversioned", programId);
 }
 
-// Returns the size of the type in bytes. For variable length types, just return
-// 1. Users should override this value in such cases.
-function typeSize(idl: Idl, ty: IdlType): number {
-  switch (ty) {
-    case "bool":
-      return 1;
-    case "u8":
-      return 1;
-    case "i8":
-      return 1;
-    case "u16":
-      return 2;
-    case "u32":
-      return 4;
-    case "u64":
-      return 8;
-    case "i64":
-      return 8;
-    case "bytes":
-      return 1;
-    case "string":
-      return 1;
-    case "publicKey":
-      return 32;
-    default:
-      // @ts-ignore
-      if (ty.vec !== undefined) {
-        return 1;
-      }
-      // @ts-ignore
-      if (ty.option !== undefined) {
-        // @ts-ignore
-        return 1 + typeSize(ty.option);
-      }
-      // @ts-ignore
-      if (ty.defined !== undefined) {
-        // @ts-ignore
-        const filtered = idl.types.filter((t) => t.name === ty.defined);
-        if (filtered.length !== 1) {
-          throw new IdlError(`Type not found: ${JSON.stringify(ty)}`);
-        }
-        let typeDef = filtered[0];
+// Returns the common keys that are prepended to all instructions targeting
+// the "state" of a program.
+async function stateInstructionKeys(
+  programId: PublicKey,
+  provider: Provider,
+  m: IdlStateMethod,
+  ctx: RpcContext
+) {
+  if (m.name === "new") {
+    // Ctor `new` method.
+    const [programSigner, _nonce] = await PublicKey.findProgramAddress(
+      [],
+      programId
+    );
+    return [
+      {
+        pubkey: provider.wallet.publicKey,
+        isWritable: false,
+        isSigner: true,
+      },
+      {
+        pubkey: await programStateAddress(programId),
+        isWritable: true,
+        isSigner: false,
+      },
+      { pubkey: programSigner, isWritable: false, isSigner: false },
+      {
+        pubkey: SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      },
 
-        return accountSize(idl, typeDef);
-      }
-      throw new Error(`Invalid type ${JSON.stringify(ty)}`);
+      { pubkey: programId, isWritable: false, isSigner: false },
+      {
+        pubkey: SYSVAR_RENT_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      },
+    ];
+  } else {
+    validateAccounts(m.accounts, ctx.accounts);
+    return [
+      {
+        pubkey: await programStateAddress(programId),
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
   }
 }

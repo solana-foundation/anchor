@@ -263,12 +263,16 @@ fn test() -> Result<()> {
     // Switch again (todo: restore cwd in `build` command).
     set_workspace_dir_or_exit();
 
-    // Bootup validator.
-    let mut validator_handle = start_test_validator()?;
-
     // Deploy all programs.
     let cfg = Config::discover()?.expect("Inside a workspace").0;
-    let programs = deploy_ws("http://localhost:8899", &cfg.wallet.to_string())?;
+
+    // Bootup validator.
+    let validator_handle = match cfg.cluster.url() {
+        "http://127.0.0.1:8899" => Some(start_test_validator()?),
+        _ => None,
+    };
+
+    let programs = deploy_ws(cfg.cluster.url(), &cfg.wallet.to_string())?;
 
     // Store deployed program addresses in IDL metadata (for consumption by
     // client + tests).
@@ -290,14 +294,19 @@ fn test() -> Result<()> {
         .arg("-t")
         .arg("10000")
         .arg("tests/")
+        .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
     {
-        validator_handle.kill()?;
+        if let Some(mut validator_handle) = validator_handle {
+            validator_handle.kill()?;
+        }
         return Err(anyhow::format_err!("{}", e.to_string()));
     }
-    validator_handle.kill()?;
+    if let Some(mut validator_handle) = validator_handle {
+        validator_handle.kill()?;
+    }
 
     Ok(())
 }
@@ -350,18 +359,59 @@ fn start_test_validator() -> Result<Child> {
     Ok(validator_handle)
 }
 
+// TODO: Testing and deploys should use separate sections of metadata.
+//       Similarly, each network should have separate metadata.
 fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
-    let (cfg, ws_path, _) = Config::discover()?.ok_or(anyhow!("Not in Anchor workspace."))?;
-    std::env::set_current_dir(ws_path.parent().unwrap())?;
+    // Build all programs.
+    set_workspace_dir_or_exit();
+    build(None)?;
+    set_workspace_dir_or_exit();
 
+    // Deploy all programs.
+    let cfg = Config::discover()?.expect("Inside a workspace").0;
     let url = url.unwrap_or(cfg.cluster.url().to_string());
     let keypair = keypair.unwrap_or(cfg.wallet.to_string());
-
     let deployment = deploy_ws(&url, &keypair)?;
+
+    // Add metadata to all IDLs.
     for (program, address) in deployment {
-        println!("Deployed {} at {}", program.idl.name, address.to_string());
+        // Add metadata to the IDL.
+        let mut idl = program.idl;
+        idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
+            address: address.to_string(),
+        })?);
+
+        // Persist it.
+        let idl_out = PathBuf::from("target/idl")
+            .join(&idl.name)
+            .with_extension("json");
+        write_idl(&idl, Some(&idl_out))?;
+
+        println!("Deployed {} at {}", idl.name, address.to_string());
     }
 
+    run_hosted_deploy(&url, &keypair)?;
+
+    Ok(())
+}
+
+fn run_hosted_deploy(url: &str, keypair: &str) -> Result<()> {
+    println!("Running deploy script");
+
+    let cur_dir = std::env::current_dir()?;
+    let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
+    let deploy_script_str = template::deploy_script(url, &module_path);
+    std::env::set_current_dir(".anchor")?;
+
+    std::fs::write("deploy.js", deploy_script_str)?;
+    if let Err(e) = std::process::Command::new("node")
+        .arg("deploy.js")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+    {
+        std::process::exit(1);
+    }
     Ok(())
 }
 
@@ -392,7 +442,7 @@ fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct DeployStdout {
     program_id: String,
 }

@@ -12,7 +12,8 @@ export default new Proxy({} as any, {
     const process = require("process");
 
     if (typeof window !== "undefined") {
-      throw new Error("`anchor.workspace` is not available in the browser");
+      // Workspaces aren't available in the browser, yet.
+      return undefined;
     }
 
     if (!_populatedWorkspace) {
