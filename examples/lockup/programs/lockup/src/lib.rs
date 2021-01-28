@@ -23,7 +23,7 @@ pub mod lockup {
     }
 
     impl Lockup {
-        pub const WHITELIST_SIZE: usize = 5;
+        pub const WHITELIST_SIZE: usize = 10;
 
         pub fn new(ctx: Context<Auth>) -> Result<Self> {
             let mut whitelist = vec![];
@@ -111,7 +111,7 @@ pub mod lockup {
                 ctx.accounts.clock.unix_timestamp,
             )
         {
-            return Err(ErrorCode::InsufficienWithdrawalBalance.into());
+            return Err(ErrorCode::InsufficientWithdrawalBalance.into());
         }
 
         // Transfer funds out.
@@ -348,7 +348,7 @@ pub enum ErrorCode {
     #[msg("Vault amount must be zero.")]
     InvalidVaultAmount,
     #[msg("Insufficient withdrawal balance.")]
-    InsufficienWithdrawalBalance,
+    InsufficientWithdrawalBalance,
     #[msg("Whitelist is full")]
     WhitelistFull,
     #[msg("Whitelist entry already exists")]

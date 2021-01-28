@@ -50,6 +50,9 @@ pub enum Command {
         #[clap(short, long)]
         keypair: Option<String>,
     },
+    /// Not yet implemented. Please use `solana program deploy` command to
+    /// upgrade your program.
+    Upgrade {},
 }
 
 fn main() -> Result<()> {
@@ -67,6 +70,10 @@ fn main() -> Result<()> {
             idl(file, Some(&PathBuf::from(out.unwrap())))
         }
         Command::Deploy { url, keypair } => deploy(url, keypair),
+        Command::Upgrade {} => {
+            println!("This command is not yet implemented. Please use `solana program deploy`.");
+            Ok(())
+        }
     }
 }
 
@@ -296,7 +303,7 @@ fn test() -> Result<()> {
     // Run the tests.
     if let Err(e) = std::process::Command::new("mocha")
         .arg("-t")
-        .arg("10000")
+        .arg("1000000")
         .arg("tests/")
         .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
         .stdout(Stdio::inherit())
@@ -424,16 +431,24 @@ fn run_hosted_deploy(url: &str) -> Result<()> {
 fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
     let mut programs = vec![];
     println!("Deploying workspace to {}...", url);
+    println!("Upgrade authority: {}", keypair);
     for program in read_all_programs()? {
         let binary_path = format!("target/deploy/{}.so", program.lib_name);
+
+        // The Solana CLI doesn't redeploy a program if this file exists.
+        // So remove it to make deploys explicit.
+        let keypair_path = format!("target/deploy/{}-keypair.json", program.lib_name);
+        std::fs::remove_file(keypair_path)?;
+
         println!("Deploying {}...", binary_path);
         let exit = std::process::Command::new("solana")
+            .arg("program")
             .arg("deploy")
-            .arg(&binary_path)
             .arg("--url")
             .arg(url)
             .arg("--keypair")
             .arg(keypair)
+            .arg(&binary_path)
             .output()
             .expect("Must deploy");
         if !exit.status.success() {

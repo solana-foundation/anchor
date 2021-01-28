@@ -1,5 +1,5 @@
 const assert = require("assert");
-const anchor = require('@project-serum/anchor');
+const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 const utils = require("./utils");
@@ -15,6 +15,7 @@ describe("Lockup and Registry", () => {
   const registry = anchor.workspace.Registry;
 
   let lockupAddress = null;
+  const WHITELIST_SIZE = 10;
 
   let mint = null;
   let god = null;
@@ -39,7 +40,7 @@ describe("Lockup and Registry", () => {
     const lockupAccount = await lockup.state();
 
     assert.ok(lockupAccount.authority.equals(provider.wallet.publicKey));
-    assert.ok(lockupAccount.whitelist.length === 5);
+    assert.ok(lockupAccount.whitelist.length === WHITELIST_SIZE);
     lockupAccount.whitelist.forEach((e) => {
       assert.ok(e.programId.equals(new anchor.web3.PublicKey()));
     });
@@ -76,11 +77,7 @@ describe("Lockup and Registry", () => {
     assert.ok(lockupAccount.authority.equals(provider.wallet.publicKey));
   });
 
-  let e0 = null;
-  let e1 = null;
-  let e2 = null;
-  let e3 = null;
-  let e4 = null;
+  const entries = [];
 
   it("Adds to the whitelist", async () => {
     const generateEntry = async () => {
@@ -89,36 +86,34 @@ describe("Lockup and Registry", () => {
         programId,
       };
     };
-    e0 = await generateEntry();
-    e1 = await generateEntry();
-    e2 = await generateEntry();
-    e3 = await generateEntry();
-    e4 = await generateEntry();
-    const e5 = await generateEntry();
+
+    for (let k = 0; k < WHITELIST_SIZE; k += 1) {
+      entries.push(await generateEntry());
+    }
 
     const accounts = {
       authority: provider.wallet.publicKey,
     };
 
-    await lockup.state.rpc.whitelistAdd(e0, { accounts });
+    await lockup.state.rpc.whitelistAdd(entries[0], { accounts });
 
     let lockupAccount = await lockup.state();
 
     assert.ok(lockupAccount.whitelist.length === 1);
-    assert.deepEqual(lockupAccount.whitelist, [e0]);
+    assert.deepEqual(lockupAccount.whitelist, [entries[0]]);
 
-    await lockup.state.rpc.whitelistAdd(e1, { accounts });
-    await lockup.state.rpc.whitelistAdd(e2, { accounts });
-    await lockup.state.rpc.whitelistAdd(e3, { accounts });
-    await lockup.state.rpc.whitelistAdd(e4, { accounts });
+    for (let k = 1; k < WHITELIST_SIZE; k += 1) {
+      await lockup.state.rpc.whitelistAdd(entries[k], { accounts });
+    }
 
     lockupAccount = await lockup.state();
 
-    assert.deepEqual(lockupAccount.whitelist, [e0, e1, e2, e3, e4]);
+    assert.deepEqual(lockupAccount.whitelist, entries);
 
     await assert.rejects(
       async () => {
-        await lockup.state.rpc.whitelistAdd(e5, { accounts });
+        const e = await generateEntry();
+        await lockup.state.rpc.whitelistAdd(e, { accounts });
       },
       (err) => {
         assert.equal(err.code, 108);
@@ -129,13 +124,13 @@ describe("Lockup and Registry", () => {
   });
 
   it("Removes from the whitelist", async () => {
-    await lockup.state.rpc.whitelistDelete(e0, {
+    await lockup.state.rpc.whitelistDelete(entries[0], {
       accounts: {
         authority: provider.wallet.publicKey,
       },
     });
     let lockupAccount = await lockup.state();
-    assert.deepEqual(lockupAccount.whitelist, [e1, e2, e3, e4]);
+    assert.deepEqual(lockupAccount.whitelist, entries.slice(1));
   });
 
   const vesting = new anchor.web3.Account();
@@ -264,7 +259,7 @@ describe("Lockup and Registry", () => {
   const rewardQ = new anchor.web3.Account();
   const withdrawalTimelock = new anchor.BN(4);
   const stakeRate = new anchor.BN(2);
-  const rewardQLen = 100;
+  const rewardQLen = 170;
   let registrarAccount = null;
   let registrarSigner = null;
   let nonce = null;

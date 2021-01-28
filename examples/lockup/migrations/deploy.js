@@ -90,15 +90,15 @@ async function genesis(provider) {
   ) {
     return {
       srm: {
-        withdrawalTimelock: 60,
-        stakeRate: 1000 * 10 ** 6,
-        rewardQLen: 100,
+        withdrawalTimelock: 60 * 60 * 24 * 7, // 1 week.
+        stakeRate: 500 * 10 ** 6, // 500 SRM.
+        rewardQLen: 150,
         mint: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt",
       },
       msrm: {
-        withdrawalTimelock: 45,
+        withdrawalTimelock: 60 * 60 * 24 * 7, // 1 week.
         stakeRate: 1,
-        rewardQLen: 100,
+        rewardQLen: 150,
         mint: "MSRMcoVyrFxnSgo5uXwone5SKcGhT1KEJMFEkMEWf9L",
       },
     };
@@ -117,15 +117,15 @@ async function genesis(provider) {
     );
     return {
       token1: {
-        withdrawalTimelock: 60,
-        stakeRate: 2 * 10 ** 6,
-        rewardQLen: 100,
+        withdrawalTimelock: 60 * 60 * 24 * 7,
+        stakeRate: 1000 * 10 ** 6,
+        rewardQLen: 150,
         mint: token1Mint.toString(),
       },
       token2: {
-        withdrawalTimelock: 45,
+        withdrawalTimelock: 60 * 60 * 24 * 7,
         stakeRate: 1,
-        rewardQLen: 100,
+        rewardQLen: 150,
         mint: token2Mint.toString(),
       },
     };
