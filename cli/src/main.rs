@@ -1,6 +1,6 @@
 use crate::config::{find_cargo_toml, read_all_programs, Config, Program};
 use anchor_syn::idl::Idl;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Clap;
 use serde::{Deserialize, Serialize};
 use solana_client::rpc_client::RpcClient;
@@ -394,12 +394,12 @@ fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
         println!("Deployed {} at {}", idl.name, address.to_string());
     }
 
-    run_hosted_deploy(&url, &keypair)?;
+    run_hosted_deploy(&url)?;
 
     Ok(())
 }
 
-fn run_hosted_deploy(url: &str, keypair: &str) -> Result<()> {
+fn run_hosted_deploy(url: &str) -> Result<()> {
     println!("Running deploy script");
 
     let cur_dir = std::env::current_dir()?;
@@ -408,7 +408,7 @@ fn run_hosted_deploy(url: &str, keypair: &str) -> Result<()> {
     std::env::set_current_dir(".anchor")?;
 
     std::fs::write("deploy.js", deploy_script_host_str)?;
-    if let Err(e) = std::process::Command::new("node")
+    if let Err(_e) = std::process::Command::new("node")
         .arg("deploy.js")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -416,6 +416,8 @@ fn run_hosted_deploy(url: &str, keypair: &str) -> Result<()> {
     {
         std::process::exit(1);
     }
+
+    println!("Deploy complete.");
     Ok(())
 }
 

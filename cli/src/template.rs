@@ -112,7 +112,7 @@ pub fn mocha(name: &str) -> String {
 describe('{}', () => {{
 
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.local());
+  anchor.setProvider(anchor.Provider.env());
 
   it('Is initialized!', async () => {{
     // Add your test here.
