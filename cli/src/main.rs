@@ -448,7 +448,7 @@ fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct DeployStdout {
     program_id: String,
 }
