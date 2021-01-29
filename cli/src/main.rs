@@ -500,7 +500,9 @@ fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
     }
 
     // Run migration script.
-    migrate(&url)?;
+    if Path::new("migrations/deploy.js").exists() {
+        migrate(&url)?;
+    }
 
     Ok(())
 }
