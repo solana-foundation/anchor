@@ -1,4 +1,4 @@
-use crate::{Accounts, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, AccountsInit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
@@ -15,6 +15,31 @@ impl<'info> Accounts<'info> for AccountInfo<'info> {
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
+        Ok(account.clone())
+    }
+}
+
+impl<'info> AccountsInit<'info> for AccountInfo<'info> {
+    fn try_accounts_init(
+        _program_id: &Pubkey,
+        accounts: &mut &[AccountInfo<'info>],
+    ) -> Result<Self, ProgramError> {
+        if accounts.len() == 0 {
+            return Err(ProgramError::NotEnoughAccountKeys);
+        }
+
+        let account = &accounts[0];
+        *accounts = &accounts[1..];
+
+        // The discriminator should be zero, since we're initializing.
+        let data: &[u8] = &account.try_borrow_data()?;
+        let mut disc_bytes = [0u8; 8];
+        disc_bytes.copy_from_slice(&data[..8]);
+        let discriminator = u64::from_le_bytes(disc_bytes);
+        if discriminator != 0 {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         Ok(account.clone())
     }
 }

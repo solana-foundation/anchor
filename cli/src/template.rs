@@ -24,7 +24,9 @@ name = "{1}"
 
 [features]
 no-entrypoint = []
+no-idl = []
 cpi = ["no-entrypoint"]
+default = []
 
 [dependencies]
 anchor-lang = {{ git = "https://github.com/project-serum/anchor", features = ["derive"] }}

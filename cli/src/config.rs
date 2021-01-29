@@ -148,7 +148,7 @@ pub fn extract_lib_name(path: impl AsRef<Path>) -> Result<String> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub lib_name: String,
     pub path: PathBuf,

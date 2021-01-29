@@ -1,10 +1,20 @@
 use crate::config::{find_cargo_toml, read_all_programs, Config, Program};
+use anchor_lang::idl::IdlAccount;
+use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Clap;
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 use serde::{Deserialize, Serialize};
 use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_config::RpcSendTransactionConfig;
+use solana_program::instruction::{AccountMeta, Instruction};
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signer;
+use solana_sdk::transaction::Transaction;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -34,8 +44,39 @@ pub enum Command {
     Test,
     /// Creates a new program.
     New { name: String },
-    /// Outputs an interface definition file.
+    /// Commands for interact with interface definitions.
     Idl {
+        #[clap(subcommand)]
+        subcmd: IdlCommand,
+    },
+    /// Deploys the workspace, creates IDL accounts, and runs the migration
+    /// script.
+    Deploy {
+        #[clap(short, long)]
+        url: Option<String>,
+        #[clap(short, long)]
+        keypair: Option<String>,
+    },
+    /// Runs the deploy migration script.
+    Migrate {
+        #[clap(short, long)]
+        url: String,
+    },
+    /// Not yet implemented. Please use `solana program deploy` command to
+    /// upgrade your program.
+    Upgrade {},
+}
+
+#[derive(Debug, Clap)]
+pub enum IdlCommand {
+    /// Initializes a program's IDL account. Can only be run once.
+    Init {
+        program_id: Pubkey,
+        #[clap(short, long)]
+        filepath: String,
+    },
+    /// Parses an IDL from source.
+    Parse {
         /// Path to the program's interface definition.
         #[clap(short, long)]
         file: String,
@@ -43,16 +84,13 @@ pub enum Command {
         #[clap(short, long)]
         out: Option<String>,
     },
-    /// Deploys the workspace to the configured cluster.
-    Deploy {
+    /// Fetches an IDL for the given program from a cluster.
+    Fetch {
+        program_id: Pubkey,
+        /// Output file for the idl (stdout if not specified).
         #[clap(short, long)]
-        url: Option<String>,
-        #[clap(short, long)]
-        keypair: Option<String>,
+        out: Option<String>,
     },
-    /// Not yet implemented. Please use `solana program deploy` command to
-    /// upgrade your program.
-    Upgrade {},
 }
 
 fn main() -> Result<()> {
@@ -63,17 +101,13 @@ fn main() -> Result<()> {
         Command::Build { idl } => build(idl),
         Command::Test => test(),
         Command::New { name } => new(name),
-        Command::Idl { file, out } => {
-            if out.is_none() {
-                return idl(file, None);
-            }
-            idl(file, Some(&PathBuf::from(out.unwrap())))
-        }
+        Command::Idl { subcmd } => idl(subcmd),
         Command::Deploy { url, keypair } => deploy(url, keypair),
         Command::Upgrade {} => {
             println!("This command is not yet implemented. Please use `solana program deploy`.");
             Ok(())
         }
+        Command::Migrate { url } => migrate(&url),
     }
 }
 
@@ -176,7 +210,7 @@ fn build_ws(
         Some(idl) => Some(PathBuf::from(idl)),
         None => {
             let cfg_parent = match cfg_path.parent() {
-                None => return Err(anyhow::anyhow!("Invalid Anchor.toml")),
+                None => return Err(anyhow!("Invalid Anchor.toml")),
                 Some(parent) => parent,
             };
             fs::create_dir_all(cfg_parent.join("target/idl"))?;
@@ -191,10 +225,7 @@ fn build_ws(
 
 fn build_all(_cfg: Config, cfg_path: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
     match cfg_path.parent() {
-        None => Err(anyhow::anyhow!(
-            "Invalid Anchor.toml at {}",
-            cfg_path.display()
-        )),
+        None => Err(anyhow!("Invalid Anchor.toml at {}", cfg_path.display())),
         Some(parent) => {
             let files = fs::read_dir(parent.join("programs"))?;
             for f in files {
@@ -219,7 +250,7 @@ fn build_cwd(idl_out: Option<String>) -> Result<()> {
 // Runs the build command outside of a workspace.
 fn _build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
     match cargo_toml.parent() {
-        None => return Err(anyhow::anyhow!("Unable to find parent")),
+        None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(&p)?,
     };
 
@@ -241,12 +272,29 @@ fn _build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
         Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("json")),
     };
 
-    write_idl(&idl, Some(&out))
+    write_idl(&idl, OutFile::File(out))
 }
 
-fn idl(file: String, out: Option<&Path>) -> Result<()> {
-    let idl = extract_idl(&file)?;
-    write_idl(&idl, out)
+// Fetches an IDL for the given program_id.
+fn fetch_idl(program_id: Pubkey) -> Result<Idl> {
+    let cfg = Config::discover()?.expect("Inside a workspace").0;
+    let client = RpcClient::new(cfg.cluster.url().to_string());
+
+    let idl_addr = IdlAccount::address(&program_id);
+
+    let account = client
+        .get_account_with_commitment(&idl_addr, CommitmentConfig::recent())?
+        .value
+        .map_or(Err(anyhow!("Account not found")), Ok)?;
+
+    // Cut off account discriminator.
+    let mut d: &[u8] = &account.data[8..];
+    let idl_account: IdlAccount = AnchorDeserialize::deserialize(&mut d)?;
+
+    let mut z = ZlibDecoder::new(&idl_account.data[..]);
+    let mut s = Vec::new();
+    z.read_to_end(&mut s)?;
+    serde_json::from_slice(&s[..]).map_err(Into::into)
 }
 
 fn extract_idl(file: &str) -> Result<Idl> {
@@ -254,13 +302,59 @@ fn extract_idl(file: &str) -> Result<Idl> {
     anchor_syn::parser::file::parse(&*file)
 }
 
-fn write_idl(idl: &Idl, out: Option<&Path>) -> Result<()> {
+fn idl(subcmd: IdlCommand) -> Result<()> {
+    match subcmd {
+        IdlCommand::Init {
+            program_id,
+            filepath,
+        } => idl_init(program_id, filepath),
+        IdlCommand::Parse { file, out } => idl_parse(file, out),
+        IdlCommand::Fetch { program_id, out } => idl_fetch(program_id, out),
+    }
+}
+
+fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
+    let cfg = Config::discover()?.expect("Inside a workspace").0;
+    let keypair = cfg.wallet.to_string();
+
+    let bytes = std::fs::read(idl_filepath)?;
+    let idl: Idl = serde_json::from_reader(&*bytes)?;
+    let idl_address = create_idl_account(&cfg, &keypair, &program_id, &idl)?;
+
+    println!("Idl account created: {:?}", idl_address);
+    Ok(())
+}
+
+fn idl_parse(file: String, out: Option<String>) -> Result<()> {
+    let idl = extract_idl(&file)?;
+    let out = match out {
+        None => OutFile::Stdout,
+        Some(out) => OutFile::File(PathBuf::from(out)),
+    };
+    write_idl(&idl, out)
+}
+
+fn idl_fetch(program_id: Pubkey, out: Option<String>) -> Result<()> {
+    let idl = fetch_idl(program_id)?;
+    let out = match out {
+        None => OutFile::Stdout,
+        Some(out) => OutFile::File(PathBuf::from(out)),
+    };
+    write_idl(&idl, out)
+}
+
+fn write_idl(idl: &Idl, out: OutFile) -> Result<()> {
     let idl_json = serde_json::to_string_pretty(idl)?;
-    match out.as_ref() {
-        None => println!("{}", idl_json),
-        Some(out) => std::fs::write(out, idl_json)?,
+    match out {
+        OutFile::Stdout => println!("{}", idl_json),
+        OutFile::File(out) => std::fs::write(out, idl_json)?,
     };
     Ok(())
+}
+
+enum OutFile {
+    Stdout,
+    File(PathBuf),
 }
 
 // Builds, deploys, and tests all workspace programs in a single command.
@@ -297,7 +391,7 @@ fn test() -> Result<()> {
         let idl_out = PathBuf::from("target/idl")
             .join(&idl.name)
             .with_extension("json");
-        write_idl(&idl, Some(&idl_out))?;
+        write_idl(&idl, OutFile::File(idl_out))?;
     }
 
     // Run the tests.
@@ -386,6 +480,10 @@ fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
 
     // Add metadata to all IDLs.
     for (program, address) in deployment {
+        // Store the IDL on chain.
+        let idl_address = create_idl_account(&cfg, &keypair, &address, &program.idl)?;
+        println!("IDL account created: {}", idl_address.to_string());
+
         // Add metadata to the IDL.
         let mut idl = program.idl;
         idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
@@ -396,18 +494,130 @@ fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
         let idl_out = PathBuf::from("target/idl")
             .join(&idl.name)
             .with_extension("json");
-        write_idl(&idl, Some(&idl_out))?;
+        write_idl(&idl, OutFile::File(idl_out))?;
 
         println!("Deployed {} at {}", idl.name, address.to_string());
     }
 
-    run_hosted_deploy(&url)?;
+    // Run migration script.
+    migrate(&url)?;
 
     Ok(())
 }
 
-fn run_hosted_deploy(url: &str) -> Result<()> {
-    println!("Running deploy script");
+fn create_idl_account(
+    cfg: &Config,
+    keypair_path: &str,
+    program_id: &Pubkey,
+    idl: &Idl,
+) -> Result<Pubkey> {
+    // Misc.
+    let idl_address = IdlAccount::address(program_id);
+    let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
+        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let client = RpcClient::new(cfg.cluster.url().to_string());
+
+    // Serialize and compress the idl.
+    let idl_data = {
+        let json_bytes = serde_json::to_vec(idl)?;
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(&json_bytes)?;
+        e.finish()?
+    };
+
+    // Run `Create instruction.
+    {
+        let data = serialize_idl_ix(anchor_lang::idl::IdlInstruction::Create {
+            data_len: (idl_data.len() as u64) * 2, // Double for future growth.
+        })?;
+        let program_signer = Pubkey::find_program_address(&[], program_id).0;
+        let accounts = vec![
+            AccountMeta::new_readonly(keypair.pubkey(), true),
+            AccountMeta::new(idl_address, false),
+            AccountMeta::new_readonly(program_signer, false),
+            AccountMeta::new_readonly(solana_program::system_program::ID, false),
+            AccountMeta::new_readonly(*program_id, false),
+            AccountMeta::new_readonly(solana_program::sysvar::rent::ID, false),
+        ];
+        let ix = Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        };
+        let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&keypair.pubkey()),
+            &[&keypair],
+            recent_hash,
+        );
+        client.send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig::single(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..RpcSendTransactionConfig::default()
+            },
+        )?;
+    }
+
+    // Write the idl to the account buffer, chopping up the IDL into pieces
+    // and sending multiple transactions in the event the IDL doesn't fit into
+    // a single transaction.
+    {
+        const MAX_WRITE_SIZE: usize = 1000;
+        let mut offset = 0;
+        while offset < idl_data.len() {
+            // Instruction data.
+            let data = {
+                let start = offset;
+                let end = std::cmp::min(offset + MAX_WRITE_SIZE, idl_data.len());
+                serialize_idl_ix(anchor_lang::idl::IdlInstruction::Write {
+                    data: idl_data[start..end].to_vec(),
+                })?
+            };
+            // Instruction accounts.
+            let accounts = vec![
+                AccountMeta::new(idl_address, false),
+                AccountMeta::new_readonly(keypair.pubkey(), true),
+            ];
+            // Instruction.
+            let ix = Instruction {
+                program_id: *program_id,
+                accounts,
+                data,
+            };
+            // Send transaction.
+            let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+            let tx = Transaction::new_signed_with_payer(
+                &[ix],
+                Some(&keypair.pubkey()),
+                &[&keypair],
+                recent_hash,
+            );
+            client.send_and_confirm_transaction_with_spinner_and_config(
+                &tx,
+                CommitmentConfig::single(),
+                RpcSendTransactionConfig {
+                    skip_preflight: true,
+                    ..RpcSendTransactionConfig::default()
+                },
+            )?;
+            offset += MAX_WRITE_SIZE;
+        }
+    }
+
+    Ok(idl_address)
+}
+
+fn serialize_idl_ix(ix_inner: anchor_lang::idl::IdlInstruction) -> Result<Vec<u8>> {
+    let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
+    data.append(&mut ix_inner.try_to_vec()?);
+    Ok(data)
+}
+
+fn migrate(url: &str) -> Result<()> {
+    println!("Running migration deploy script");
 
     let cur_dir = std::env::current_dir()?;
     let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
@@ -463,7 +673,7 @@ fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct DeployStdout {
     program_id: String,
 }

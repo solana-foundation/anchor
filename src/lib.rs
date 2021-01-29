@@ -33,6 +33,7 @@ mod context;
 mod cpi_account;
 mod ctor;
 mod error;
+pub mod idl;
 mod program_account;
 mod state;
 mod sysvar;
