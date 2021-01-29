@@ -21,6 +21,13 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
         anchor_lang::solana_program::entrypoint!(entry);
         #[cfg(not(feature = "no-entrypoint"))]
         fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+            if cfg!(not(feature = "no-idl")) {
+                if instruction_data.len() >= 8 {
+                    if anchor_lang::idl::IDL_IX_TAG.to_le_bytes() == instruction_data[..8] {
+                        return __private::__idl(program_id, accounts, &instruction_data[8..]);
+                    }
+                }
+            }
             let mut data: &[u8] = instruction_data;
             let ix = __private::instruction::#instruction_name::deserialize(&mut data)
                 .map_err(|_| ProgramError::Custom(1))?; // todo: error code
@@ -114,6 +121,136 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
 // so.
 pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStream {
     let program_name = &program.name;
+    let non_inlined_idl: proc_macro2::TokenStream = {
+        quote! {
+            // Entry for all IDL related instructions. Use the "no-idl" feature
+            // to eliminate this code, for example, if one wants to make the
+            // IDL no longer mutable or if one doesn't want to store the IDL
+            // on chain.
+            #[inline(never)]
+            #[cfg(not(feature = "no-idl"))]
+            pub fn __idl(program_id: &Pubkey, accounts: &[AccountInfo], idl_ix_data: &[u8]) -> ProgramResult {
+                let mut accounts = accounts;
+                let mut data: &[u8] = idl_ix_data;
+
+                let ix = anchor_lang::idl::IdlInstruction::deserialize(&mut data)
+                    .map_err(|_| ProgramError::Custom(1))?; // todo
+
+                match ix {
+                    anchor_lang::idl::IdlInstruction::Create { data_len } => {
+                        let mut accounts = anchor_lang::idl::IdlCreateAccounts::try_accounts(program_id, &mut accounts)?;
+                        __idl_create_account(program_id, &mut accounts, data_len)?;
+                        accounts.exit(program_id)?;
+                    },
+                    anchor_lang::idl::IdlInstruction::Write { data } => {
+                        let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
+                        __idl_write(program_id, &mut accounts, data)?;
+                        accounts.exit(program_id)?;
+                    },
+                    anchor_lang::idl::IdlInstruction::Clear => {
+                        let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
+                        __idl_clear(program_id, &mut accounts)?;
+                        accounts.exit(program_id)?;
+                    },
+                    anchor_lang::idl::IdlInstruction::SetAuthority { new_authority } => {
+                        let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
+                        __idl_set_authority(program_id, &mut accounts, new_authority)?;
+                        accounts.exit(program_id)?;
+                    }
+                }
+                Ok(())
+            }
+
+            // One time IDL account initializer. Will faill on subsequent
+            // invocations.
+            #[inline(never)]
+            pub fn __idl_create_account(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlCreateAccounts,
+                data_len: u64,
+            ) -> ProgramResult {
+                // Create the IDL's account.
+                let from = accounts.from.key;
+                let (base, nonce) = Pubkey::find_program_address(&[], accounts.program.key);
+                let seed = anchor_lang::idl::IdlAccount::seed();
+                let owner = accounts.program.key;
+                let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
+                // Space: account discriminator || authority pubkey || vec len || vec data
+                let space = 8 + 32 + 4 + data_len as usize;
+                let lamports = accounts.rent.minimum_balance(space);
+                let seeds = &[&[nonce][..]];
+                let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
+                    from,
+                    &to,
+                    &base,
+                    seed,
+                    lamports,
+                    space as u64,
+                    owner,
+                );
+                anchor_lang::solana_program::program::invoke_signed(
+                    &ix,
+                    &[
+                        accounts.from.clone(),
+                        accounts.to.clone(),
+                        accounts.base.clone(),
+                        accounts.system_program.clone(),
+                    ],
+                    &[seeds],
+                )?;
+
+                // Deserialize the newly created account.
+                let mut idl_account = {
+                    let mut account_data =  accounts.to.try_borrow_data()?;
+                    let mut account_data_slice: &[u8] = &account_data;
+                    anchor_lang::idl::IdlAccount::try_deserialize_unchecked(
+                        &mut account_data_slice,
+                    )?
+                };
+
+                // Set the authority.
+                idl_account.authority = *accounts.from.key;
+
+                // Store the new account data.
+                let mut data = accounts.to.try_borrow_mut_data()?;
+                let dst: &mut [u8] = &mut data;
+                let mut cursor = std::io::Cursor::new(dst);
+                idl_account.try_serialize(&mut cursor)?;
+
+                Ok(())
+            }
+
+            #[inline(never)]
+            pub fn __idl_write(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlAccounts,
+                idl_data: Vec<u8>,
+            ) -> ProgramResult {
+                let mut idl = &mut accounts.idl;
+                idl.data.extend(idl_data);
+                Ok(())
+            }
+
+            #[inline(never)]
+            pub fn __idl_clear(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlAccounts,
+            ) -> ProgramResult {
+                accounts.idl.data = vec![];
+                Ok(())
+            }
+
+            #[inline(never)]
+            pub fn __idl_set_authority(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlAccounts,
+                new_authority: Pubkey,
+            ) -> ProgramResult {
+                accounts.idl.authority = new_authority;
+                Ok(())
+            }
+        }
+    };
     let non_inlined_ctor: proc_macro2::TokenStream = match &program.state {
         None => quote! {},
         Some(state) => {
@@ -123,6 +260,8 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
             let mod_name = &program.name;
             let anchor_ident = &state.ctor_anchor;
             quote! {
+                // One time state account initializer. Will faill on subsequent
+                // invocations.
                 #[inline(never)]
                 pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], #(#ctor_typed_args),*) -> ProgramResult {
                     let mut remaining_accounts: &[AccountInfo] = accounts;
@@ -277,6 +416,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
         .collect();
 
     quote! {
+        #non_inlined_idl
         #non_inlined_ctor
         #(#non_inlined_state_handlers)*
         #(#non_inlined_handlers)*

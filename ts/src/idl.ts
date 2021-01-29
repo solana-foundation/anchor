@@ -1,3 +1,6 @@
+import { PublicKey } from "@solana/web3.js";
+import * as borsh from "@project-serum/borsh";
+
 export type Idl = {
   version: string;
   name: string;
@@ -101,3 +104,35 @@ type IdlErrorCode = {
   name: string;
   msg?: string;
 };
+
+// Deterministic IDL address as a function of the program id.
+export async function idlAddress(programId: PublicKey): Promise<PublicKey> {
+  const base = (await PublicKey.findProgramAddress([], programId))[0];
+  return await PublicKey.createWithSeed(base, seed(), programId);
+}
+
+// Seed for generating the idlAddress.
+export function seed(): string {
+  return "anchor:idl";
+}
+
+// The on-chain account of the IDL.
+export interface IdlProgramAccount {
+  authority: PublicKey;
+  data: Buffer;
+}
+
+const IDL_ACCOUNT_LAYOUT: borsh.Layout<IdlProgramAccount> = borsh.struct([
+  borsh.publicKey("authority"),
+  borsh.vecU8("data"),
+]);
+
+export function decodeIdlAccount(data: Buffer): IdlProgramAccount {
+  return IDL_ACCOUNT_LAYOUT.decode(data);
+}
+
+export function encodeIdlAccount(acc: IdlProgramAccount): Buffer {
+  const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
+  const len = IDL_ACCOUNT_LAYOUT.encode(acc, buffer);
+  return buffer.slice(0, len);
+}

@@ -101,10 +101,12 @@ dependencies = [
 name = "anchor-cli"
 version = "0.1.0"
 dependencies = [
+ "anchor-lang",
  "anchor-syn",
  "anyhow",
  "clap 3.0.0-beta.2",
  "dirs",
+ "flate2",
  "heck",
  "serde",
  "serde_json",
@@ -112,6 +114,7 @@ dependencies = [
  "serum-common",
  "shellexpand",
  "solana-client",
+ "solana-program",
  "solana-sdk",
  "syn 1.0.57",
  "toml",

@@ -15,17 +15,17 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                 let name = &s.ident;
                 let ty = &s.raw_field.ty;
                 quote! {
-                    let #name: #ty = Accounts::try_accounts(program_id, accounts)?;
+                    let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
                 }
             }
             AccountField::Field(f) => {
                 let name = f.typed_ident();
                 match f.is_init {
                     false => quote! {
-                        let #name = Accounts::try_accounts(program_id, accounts)?;
+                        let #name = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
                     },
                     true => quote! {
-                        let #name = AccountsInit::try_accounts_init(program_id, accounts)?;
+                        let #name = anchor_lang::AccountsInit::try_accounts_init(program_id, accounts)?;
                     },
                 }
             }
@@ -217,7 +217,7 @@ pub fn generate_constraint_belongs_to(
     // todo: would be nice if target could be an account info object.
     quote! {
         if &#ident.#target != #target.to_account_info().key {
-            return Err(ProgramError::Custom(1)); // todo: error codes
+            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
         }
     }
 }
@@ -237,7 +237,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
         // This check will be performed on the other end of the invocation.
         if cfg!(not(feature = "cpi")) {
             if !#info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
+                return Err(anchor_lang::solana_program::program_error::ProgramError::MissingRequiredSignature);
             }
         }
     }
@@ -247,7 +247,7 @@ pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenS
     let tokens = &c.tokens;
     quote! {
         if !(#tokens) {
-            return Err(ProgramError::Custom(1)); // todo: error codes
+            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
         }
     }
 }
@@ -263,7 +263,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
         ConstraintOwner::Skip => quote! {},
         ConstraintOwner::Program => quote! {
             if #info.owner != program_id {
-                return Err(ProgramError::Custom(1)); // todo: error codes
+                return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
             }
         },
     }
@@ -283,7 +283,7 @@ pub fn generate_constraint_rent_exempt(
         ConstraintRentExempt::Skip => quote! {},
         ConstraintRentExempt::Enforce => quote! {
             if !rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
-                return Err(ProgramError::Custom(2)); // todo: error codes
+                return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(2)); // todo: error codes
             }
         },
     }
@@ -296,9 +296,9 @@ pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeeds) -> proc_macro2:
         let program_signer = Pubkey::create_program_address(
             &#seeds,
             program_id,
-        ).map_err(|_| ProgramError::Custom(1))?; // todo
+        ).map_err(|_| anchor_lang::solana_program::program_error::ProgramError::Custom(1))?; // todo
         if #name.to_account_info().key != &program_signer {
-            return Err(ProgramError::Custom(1)); // todo
+            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo
         }
     }
 }

@@ -1,7 +1,8 @@
 import { PublicKey } from "@solana/web3.js";
+import { inflate } from "pako";
 import Provider from "./provider";
 import { RpcFactory } from "./rpc";
-import { Idl } from "./idl";
+import { Idl, idlAddress, decodeIdlAccount } from "./idl";
 import Coder from "./coder";
 import { Rpcs, Ixs, Txs, Accounts, State } from "./rpc";
 import { getProvider } from "./";
@@ -78,4 +79,33 @@ export class Program {
     this.coder = coder;
     this.state = state;
   }
+
+  /**
+   * Generates a Program client by fetching the IDL from chain.
+   */
+  public static async at(programId: PublicKey, provider?: Provider) {
+    const idl = await Program.fetchIdl(programId, provider);
+    return new Program(idl, programId, provider);
+  }
+
+  /**
+   * Fetches an idl from the blockchain.
+   */
+  public static async fetchIdl(programId: PublicKey, provider?: Provider) {
+    provider = provider ?? getProvider();
+    const address = await idlAddress(programId);
+    const accountInfo = await provider.connection.getAccountInfo(address);
+    // Chop off account discriminator.
+    let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
+    const inflatedIdl = inflate(idlAccount.data);
+    return JSON.parse(decodeUtf8(inflatedIdl));
+  }
+}
+
+function decodeUtf8(array: Uint8Array): string {
+  const decoder =
+    typeof TextDecoder === "undefined"
+      ? new (require("util").TextDecoder)("utf-8") // Node.
+      : new TextDecoder("utf-8"); // Browser.
+  return decoder.decode(array);
 }
