@@ -139,8 +139,8 @@ describe("Lockup and Registry", () => {
 
   it("Creates a vesting account", async () => {
     const beneficiary = provider.wallet.publicKey;
-    const endTs = new anchor.BN(Date.now() / 1000 + 3);
-    const periodCount = new anchor.BN(5);
+    const endTs = new anchor.BN(Date.now() / 1000 + 5);
+    const periodCount = new anchor.BN(2);
     const depositAmount = new anchor.BN(100);
 
     const vault = new anchor.web3.Account();
@@ -220,7 +220,7 @@ describe("Lockup and Registry", () => {
   });
 
   it("Waits for a vesting period to pass", async () => {
-    await serumCmn.sleep(5 * 1000);
+    await serumCmn.sleep(10 * 1000);
   });
 
   it("Withdraws from the vesting account", async () => {
