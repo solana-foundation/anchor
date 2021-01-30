@@ -21,6 +21,8 @@
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
+extern crate self as anchor_lang;
+
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
