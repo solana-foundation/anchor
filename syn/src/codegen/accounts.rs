@@ -204,26 +204,30 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     // structs are *not* visible from the #[program] macro, which is responsible
     // for generating the `accounts` mod, which aggregates all the the generated
     // accounts used for structs.
-    let re_exports: Vec<proc_macro2::TokenStream> = accs
-        .fields
-        .iter()
-        .filter_map(|f: &AccountField| match f {
+    let re_exports: Vec<proc_macro2::TokenStream> = {
+        // First, dedup the exports.
+        let mut re_exports = std::collections::HashSet::new();
+        for f in accs.fields.iter().filter_map(|f: &AccountField| match f {
             AccountField::AccountsStruct(s) => Some(s),
             AccountField::Field(_) => None,
-        })
-        .map(|f: &CompositeField| {
-            let symbol: proc_macro2::TokenStream = format!(
+        }) {
+            re_exports.insert(format!(
                 "__client_accounts_{0}::{1}",
                 f.symbol.to_snake_case(),
                 f.symbol,
-            )
-            .parse()
-            .unwrap();
-            quote! {
-                pub use #symbol;
-            }
-        })
-        .collect();
+            ));
+        }
+
+        re_exports
+            .iter()
+            .map(|symbol: &String| {
+                let symbol: proc_macro2::TokenStream = symbol.parse().unwrap();
+                quote! {
+                    pub use #symbol;
+                }
+            })
+            .collect()
+    };
 
     quote! {
 
