@@ -230,7 +230,6 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     };
 
     quote! {
-
         mod #account_mod_name {
             use super::*;
             use anchor_lang::prelude::borsh;

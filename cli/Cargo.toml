@@ -12,8 +12,8 @@ path = "src/main.rs"
 clap = "3.0.0-beta.1"
 anyhow = "1.0.32"
 syn = { version = "1.0.54", features = ["full", "extra-traits"] }
-anchor-lang = { path = "../" }
-anchor-syn = { path = "../syn", features = ["idl"] }
+anchor-lang = { path = "../lang" }
+anchor-syn = { path = "../lang/syn", features = ["idl"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 serde_yaml = "0.8"
