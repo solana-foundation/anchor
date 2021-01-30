@@ -1,0 +1,15 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Armani Ferrante <armaniferrante@gmail.com>"]
+edition = "2018"
+
+[workspace]
+
+[dependencies]
+anchor-client = { path = "../" }
+basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
+composite = { path = "../../examples/composite/programs/composite", features = ["no-entrypoint"] }
+shellexpand = "2.1.0"
+anyhow = "1.0.32"
+rand = "0.7.3"

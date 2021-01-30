@@ -121,6 +121,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-client"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "solana-client",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "anchor-derive-accounts"
 version = "0.0.0-alpha.0"
 dependencies = [

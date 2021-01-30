@@ -25,6 +25,7 @@ thiserror = "1.0.20"
 [workspace]
 members = [
     "cli",
+    "client",
     "syn",
     "attribute/*",
     "derive/*",

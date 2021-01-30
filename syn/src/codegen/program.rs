@@ -1,6 +1,6 @@
 use crate::parser;
 use crate::{Program, RpcArg, State};
-use heck::CamelCase;
+use heck::{CamelCase, SnakeCase};
 use quote::quote;
 
 pub fn generate(program: Program) -> proc_macro2::TokenStream {
@@ -11,11 +11,12 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
     let methods = generate_methods(&program);
     let instruction = generate_instruction(&program);
     let cpi = generate_cpi(&program);
+    let accounts = generate_accounts(&program);
 
     quote! {
-        // Import everything in the mod, in case the user wants to put types
-        // in there.
+        // TODO: remove once we allow segmented paths in `Accounts` structs.
         use #mod_name::*;
+
 
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
@@ -29,10 +30,10 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
                 }
             }
             let mut data: &[u8] = instruction_data;
-            let ix = __private::instruction::#instruction_name::deserialize(&mut data)
+            let ix = instruction::#instruction_name::deserialize(&mut data)
                 .map_err(|_| ProgramError::Custom(1))?; // todo: error code
 
-                #dispatch
+            #dispatch
         }
 
         // Create a private module to not clutter the program's namespace.
@@ -40,9 +41,11 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
             use super::*;
 
             #handlers_non_inlined
-
-            #instruction
         }
+
+        #accounts
+
+        #instruction
 
         #methods
 
@@ -57,7 +60,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             let variant_arm = generate_ctor_variant(program, state);
             let ctor_args = generate_ctor_args(state);
             quote! {
-                __private::instruction::#variant_arm => __private::__ctor(program_id, accounts, #(#ctor_args),*),
+                instruction::#variant_arm => __private::__ctor(program_id, accounts, #(#ctor_args),*),
             }
         }
     };
@@ -80,7 +83,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                     format!("__{}", name).parse().unwrap()
                 };
                 quote! {
-                    __private::instruction::#variant_arm => {
+                    instruction::#variant_arm => {
                         __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
                     }
                 }
@@ -100,7 +103,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             );
             let rpc_name = &rpc.raw_method.sig.ident;
             quote! {
-                __private::instruction::#variant_arm => {
+                instruction::#variant_arm => {
                     __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
                 }
             }
@@ -594,6 +597,10 @@ pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
+        /// `instruction` is a macro generated module containing the program's
+        /// instruction enum, where each variant is created from each method
+        /// handler in the `#[program]` mod. These should be used directly, when
+        /// specifying instructions on a client.
         pub mod instruction {
             use super::*;
             #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -611,6 +618,57 @@ fn instruction_enum_name(program: &Program) -> proc_macro2::Ident {
         &format!("{}Instruction", program.name.to_string().to_camel_case()),
         program.name.span(),
     )
+}
+
+fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
+    let mut accounts = std::collections::HashSet::new();
+
+    // Got through state accounts.
+    if let Some(state) = &program.state {
+        for rpc in &state.methods {
+            let anchor_ident = &rpc.anchor_ident;
+            // TODO: move to fn and share with accounts.rs.
+            let macro_name = format!(
+                "__client_accounts_{}",
+                anchor_ident.to_string().to_snake_case()
+            );
+            accounts.insert(macro_name);
+        }
+    }
+
+    // Go through instruction accounts.
+    for rpc in &program.rpcs {
+        let anchor_ident = &rpc.anchor_ident;
+        // TODO: move to fn and share with accounts.rs.
+        let macro_name = format!(
+            "__client_accounts_{}",
+            anchor_ident.to_string().to_snake_case()
+        );
+        accounts.insert(macro_name);
+    }
+
+    // Build the tokens from all accounts
+    let account_structs: Vec<proc_macro2::TokenStream> = accounts
+        .iter()
+        .map(|macro_name: &String| {
+            let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
+            quote! {
+                pub use crate::#macro_name::*;
+            }
+        })
+        .collect();
+
+    // TODO: calculate the account size and add it as a constant field to
+    //       each struct here. This is convenient for Rust clients.
+
+    quote! {
+        /// `accounts` is a macro generated module, providing a set of structs
+        /// mirroring the structs deriving `Accounts`, where each field is
+        /// a `Pubkey`. This is useful for specifying accounts for a client.
+        pub mod accounts {
+            #(#account_structs)*
+        }
+    }
 }
 
 fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
@@ -634,7 +692,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
                         #(#args),*
                     ) -> ProgramResult {
                         let ix = {
-                            let ix = __private::instruction::#ix_variant;
+                            let ix = instruction::#ix_variant;
                             let data = AnchorSerialize::try_to_vec(&ix)
                                 .map_err(|_| ProgramError::InvalidInstructionData)?;
                             let accounts = ctx.accounts.to_account_metas(None);

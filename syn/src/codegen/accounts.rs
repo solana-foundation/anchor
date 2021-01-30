@@ -3,6 +3,7 @@ use crate::{
     ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
     Field, Ty,
 };
+use heck::SnakeCase;
 use quote::quote;
 
 pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
@@ -138,7 +139,115 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    let account_mod_name: proc_macro2::TokenStream = format!(
+        "__client_accounts_{}",
+        accs.ident.to_string().to_snake_case()
+    )
+    .parse()
+    .unwrap();
+
+    let account_struct_fields: Vec<proc_macro2::TokenStream> = accs
+        .fields
+        .iter()
+        .map(|f: &AccountField| match f {
+            AccountField::AccountsStruct(s) => {
+                let name = &s.ident;
+                let symbol: proc_macro2::TokenStream = format!(
+                    "__client_accounts_{0}::{1}",
+                    s.symbol.to_snake_case(),
+                    s.symbol,
+                )
+                .parse()
+                .unwrap();
+                quote! {
+                    pub #name: #symbol
+                }
+            }
+            AccountField::Field(f) => {
+                let name = &f.ident;
+                quote! {
+                    pub #name: anchor_lang::solana_program::pubkey::Pubkey
+                }
+            }
+        })
+        .collect();
+
+    let account_struct_metas: Vec<proc_macro2::TokenStream> = accs
+        .fields
+        .iter()
+        .map(|f: &AccountField| match f {
+            AccountField::AccountsStruct(s) => {
+                let name = &s.ident;
+                quote! {
+                    account_metas.extend(self.#name.to_account_metas(None));
+                }
+            }
+            AccountField::Field(f) => {
+                let is_signer = match f.is_signer {
+                    false => quote! {false},
+                    true => quote! {true},
+                };
+                let meta = match f.is_mut {
+                    false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
+                    true => quote! { anchor_lang::solana_program::instruction::AccountMeta::new },
+                };
+                let name = &f.ident;
+                quote! {
+                    account_metas.push(#meta(self.#name, #is_signer));
+                }
+            }
+        })
+        .collect();
+
+    // Re-export all composite account structs (i.e. other structs deriving
+    // accounts embedded into this struct. Required because, these embedded
+    // structs are *not* visible from the #[program] macro, which is responsible
+    // for generating the `accounts` mod, which aggregates all the the generated
+    // accounts used for structs.
+    let re_exports: Vec<proc_macro2::TokenStream> = accs
+        .fields
+        .iter()
+        .filter_map(|f: &AccountField| match f {
+            AccountField::AccountsStruct(s) => Some(s),
+            AccountField::Field(_) => None,
+        })
+        .map(|f: &CompositeField| {
+            let symbol: proc_macro2::TokenStream = format!(
+                "__client_accounts_{0}::{1}",
+                f.symbol.to_snake_case(),
+                f.symbol,
+            )
+            .parse()
+            .unwrap();
+            quote! {
+                pub use #symbol;
+            }
+        })
+        .collect();
+
     quote! {
+
+        mod #account_mod_name {
+            use super::*;
+            use anchor_lang::prelude::borsh;
+            #(#re_exports)*
+
+            #[derive(anchor_lang::AnchorSerialize)]
+            pub struct #name {
+                #(#account_struct_fields),*
+            }
+
+            impl anchor_lang::ToAccountMetas for #name {
+                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+                    let mut account_metas = vec![];
+
+                    #(#account_struct_metas)*
+
+                    account_metas
+                }
+            }
+        }
+
         impl#combined_generics anchor_lang::Accounts#trait_generics for #name#strct_generics {
             #[inline(never)]
             fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
