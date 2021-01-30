@@ -78,6 +78,9 @@ pub mod lockup {
         if end_ts <= ctx.accounts.clock.unix_timestamp {
             return Err(ErrorCode::InvalidTimestamp.into());
         }
+        if period_count > (end_ts - ctx.accounts.clock.unix_timestamp) as u64 {
+            return Err(ErrorCode::InvalidPeriod.into());
+        }
         if period_count == 0 {
             return Err(ErrorCode::InvalidPeriod.into());
         }
