@@ -1,9 +1,11 @@
 [package]
 name = "anchor-spl"
-version = "0.0.0-alpha.0"
-authors = ["Armani Ferrante <armaniferrante@gmail.com>"]
+version = "0.1.0"
+authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "CPI clients for SPL programs"
 
 [dependencies]
-anchor-lang = { path = "../lang", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.1.0", features = ["derive"] }
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
