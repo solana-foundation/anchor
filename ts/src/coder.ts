@@ -333,7 +333,7 @@ export async function accountDiscriminator(name: string): Promise<Buffer> {
 export async function stateDiscriminator(name: string): Promise<Buffer> {
   return Buffer.from(
     (
-      await sha256(`state:${name}`, {
+      await sha256(`account:${name}`, {
         outputFormat: "buffer",
       })
     ).slice(0, 8)

@@ -1,4 +1,4 @@
-use crate::config::{find_cargo_toml, read_all_programs, Config, Program};
+use crate::config::{read_all_programs, Config, Program};
 use anchor_lang::idl::IdlAccount;
 use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
@@ -7,12 +7,14 @@ use clap::Clap;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::transaction::Transaction;
 use std::fs::{self, File};
@@ -34,23 +36,27 @@ pub struct Opts {
 pub enum Command {
     /// Initializes a workspace.
     Init { name: String },
-    /// Builds a Solana program.
+    /// Builds the workspace.
     Build {
         /// Output directory for the IDL.
         #[clap(short, long)]
         idl: Option<String>,
     },
     /// Runs integration tests against a localnetwork.
-    Test,
+    Test {
+        /// Use this flag if you want to run tests against previously deployed
+        /// programs.
+        #[clap(short, long)]
+        skip_deploy: bool,
+    },
     /// Creates a new program.
     New { name: String },
-    /// Commands for interact with interface definitions.
+    /// Commands for interacting with interface definitions.
     Idl {
         #[clap(subcommand)]
         subcmd: IdlCommand,
     },
-    /// Deploys the workspace, creates IDL accounts, and runs the migration
-    /// script.
+    /// Deploys each program in the workspace.
     Deploy {
         #[clap(short, long)]
         url: Option<String>,
@@ -60,17 +66,41 @@ pub enum Command {
     /// Runs the deploy migration script.
     Migrate {
         #[clap(short, long)]
-        url: String,
+        url: Option<String>,
     },
-    /// Not yet implemented. Please use `solana program deploy` command to
-    /// upgrade your program.
-    Upgrade {},
+    /// Deploys, initializes an IDL, and migrates all in one command.
+    Launch {
+        #[clap(short, long)]
+        url: Option<String>,
+        #[clap(short, long)]
+        keypair: Option<String>,
+    },
+    /// Upgrades a single program. The configured wallet must be the upgrade
+    /// authority.
+    Upgrade {
+        /// The program to upgrade.
+        #[clap(short, long)]
+        program_id: Pubkey,
+        /// Filepath to the new program binary.
+        program_filepath: String,
+    },
+    /// Runs an airdrop loop, continuously funding the configured wallet.
+    Airdrop {
+        #[clap(short, long)]
+        url: Option<String>,
+    },
 }
 
 #[derive(Debug, Clap)]
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
+        program_id: Pubkey,
+        #[clap(short, long)]
+        filepath: String,
+    },
+    /// Updates the IDL to the new file.
+    Update {
         program_id: Pubkey,
         #[clap(short, long)]
         filepath: String,
@@ -95,19 +125,20 @@ pub enum IdlCommand {
 
 fn main() -> Result<()> {
     let opts = Opts::parse();
-
     match opts.command {
         Command::Init { name } => init(name),
-        Command::Build { idl } => build(idl),
-        Command::Test => test(),
         Command::New { name } => new(name),
-        Command::Idl { subcmd } => idl(subcmd),
+        Command::Build { idl } => build(idl),
         Command::Deploy { url, keypair } => deploy(url, keypair),
-        Command::Upgrade {} => {
-            println!("This command is not yet implemented. Please use `solana program deploy`.");
-            Ok(())
-        }
-        Command::Migrate { url } => migrate(&url),
+        Command::Upgrade {
+            program_id,
+            program_filepath,
+        } => upgrade(program_id, program_filepath),
+        Command::Idl { subcmd } => idl(subcmd),
+        Command::Migrate { url } => migrate(url),
+        Command::Launch { url, keypair } => launch(url, keypair),
+        Command::Test { skip_deploy } => test(skip_deploy),
+        Command::Airdrop { url } => airdrop(url),
     }
 }
 
@@ -153,25 +184,19 @@ fn init(name: String) -> Result<()> {
 
 // Creates a new program crate in the `programs/<name>` directory.
 fn new(name: String) -> Result<()> {
-    match Config::discover()? {
-        None => {
-            println!("Not in anchor workspace.");
-            std::process::exit(1);
-        }
-        Some((_cfg, cfg_path, _inside_cargo)) => {
-            match cfg_path.parent() {
-                None => {
-                    println!("Unable to make new program");
-                }
-                Some(parent) => {
-                    std::env::set_current_dir(&parent)?;
-                    new_program(&name)?;
-                    println!("Created new program.");
-                }
-            };
-        }
-    }
-    Ok(())
+    with_workspace(|_cfg, path, _cargo| {
+        match path.parent() {
+            None => {
+                println!("Unable to make new program");
+            }
+            Some(parent) => {
+                std::env::set_current_dir(&parent)?;
+                new_program(&name)?;
+                println!("Created new program.");
+            }
+        };
+        Ok(())
+    })
 }
 
 // Creates a new program crate in the current directory with `name`.
@@ -188,28 +213,11 @@ fn new_program(name: &str) -> Result<()> {
 }
 
 fn build(idl: Option<String>) -> Result<()> {
-    match Config::discover()? {
-        None => build_cwd(idl),
-        Some((cfg, cfg_path, inside_cargo)) => build_ws(cfg, cfg_path, inside_cargo, idl),
-    }
-}
-
-// Runs the build inside a workspace.
-//
-// * Builds a single program if the current dir is within a Cargo subdirectory,
-//   e.g., `programs/my-program/src`.
-// * Builds *all* programs if thje current dir is anywhere else in the workspace.
-//
-fn build_ws(
-    cfg: Config,
-    cfg_path: PathBuf,
-    cargo_toml: Option<PathBuf>,
-    idl: Option<String>,
-) -> Result<()> {
+    let (cfg, path, cargo) = Config::discover()?.expect("Not in workspace.");
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
         None => {
-            let cfg_parent = match cfg_path.parent() {
+            let cfg_parent = match path.parent() {
                 None => return Err(anyhow!("Invalid Anchor.toml")),
                 Some(parent) => parent,
             };
@@ -217,38 +225,32 @@ fn build_ws(
             Some(cfg_parent.join("target/idl"))
         }
     };
-    match cargo_toml {
-        None => build_all(cfg, cfg_path, idl_out),
-        Some(ct) => _build_cwd(ct, idl_out),
-    }
+    match cargo {
+        None => build_all(&cfg, path, idl_out)?,
+        Some(ct) => build_cwd(ct, idl_out)?,
+    };
+
+    set_workspace_dir_or_exit();
+
+    Ok(())
 }
 
-fn build_all(_cfg: Config, cfg_path: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
+fn build_all(_cfg: &Config, cfg_path: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
     match cfg_path.parent() {
         None => Err(anyhow!("Invalid Anchor.toml at {}", cfg_path.display())),
         Some(parent) => {
             let files = fs::read_dir(parent.join("programs"))?;
             for f in files {
                 let p = f?.path();
-                _build_cwd(p.join("Cargo.toml"), idl_out.clone())?;
+                build_cwd(p.join("Cargo.toml"), idl_out.clone())?;
             }
             Ok(())
         }
     }
 }
 
-fn build_cwd(idl_out: Option<String>) -> Result<()> {
-    match find_cargo_toml()? {
-        None => {
-            println!("Cargo.toml not found");
-            std::process::exit(1);
-        }
-        Some(cargo_toml) => _build_cwd(cargo_toml, idl_out.map(PathBuf::from)),
-    }
-}
-
 // Runs the build command outside of a workspace.
-fn _build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
+fn build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(&p)?,
@@ -308,20 +310,136 @@ fn idl(subcmd: IdlCommand) -> Result<()> {
             program_id,
             filepath,
         } => idl_init(program_id, filepath),
+        IdlCommand::Update {
+            program_id,
+            filepath,
+        } => idl_update(program_id, filepath),
         IdlCommand::Parse { file, out } => idl_parse(file, out),
         IdlCommand::Fetch { program_id, out } => idl_fetch(program_id, out),
     }
 }
 
 fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
-    let cfg = Config::discover()?.expect("Inside a workspace").0;
-    let keypair = cfg.wallet.to_string();
+    with_workspace(|cfg, _path, _cargo| {
+        let keypair = cfg.wallet.to_string();
 
-    let bytes = std::fs::read(idl_filepath)?;
-    let idl: Idl = serde_json::from_reader(&*bytes)?;
-    let idl_address = create_idl_account(&cfg, &keypair, &program_id, &idl)?;
+        let bytes = std::fs::read(idl_filepath)?;
+        let idl: Idl = serde_json::from_reader(&*bytes)?;
 
-    println!("Idl account created: {:?}", idl_address);
+        let idl_address = create_idl_account(&cfg, &keypair, &program_id, &idl)?;
+
+        println!("Idl account created: {:?}", idl_address);
+        Ok(())
+    })
+}
+
+fn idl_update(program_id: Pubkey, idl_filepath: String) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        let bytes = std::fs::read(idl_filepath)?;
+        let idl: Idl = serde_json::from_reader(&*bytes)?;
+
+        idl_clear(cfg, &program_id)?;
+        idl_write(cfg, &program_id, &idl)?;
+
+        Ok(())
+    })
+}
+
+// Clears out *all* IDL data. The authority for the IDL must be the configured
+// wallet.
+fn idl_clear(cfg: &Config, program_id: &Pubkey) -> Result<()> {
+    let idl_address = IdlAccount::address(program_id);
+    let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let client = RpcClient::new(cfg.cluster.url().to_string());
+
+    let data = serialize_idl_ix(anchor_lang::idl::IdlInstruction::Clear)?;
+    let accounts = vec![
+        AccountMeta::new(idl_address, false),
+        AccountMeta::new_readonly(keypair.pubkey(), true),
+    ];
+    let ix = Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    };
+    let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&keypair.pubkey()),
+        &[&keypair],
+        recent_hash,
+    );
+    client.send_and_confirm_transaction_with_spinner_and_config(
+        &tx,
+        CommitmentConfig::single(),
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            ..RpcSendTransactionConfig::default()
+        },
+    )?;
+
+    Ok(())
+}
+
+// Write the idl to the account buffer, chopping up the IDL into pieces
+// and sending multiple transactions in the event the IDL doesn't fit into
+// a single transaction.
+fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl) -> Result<()> {
+    // Misc.
+    let idl_address = IdlAccount::address(program_id);
+    let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let client = RpcClient::new(cfg.cluster.url().to_string());
+
+    // Serialize and compress the idl.
+    let idl_data = {
+        let json_bytes = serde_json::to_vec(idl)?;
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(&json_bytes)?;
+        e.finish()?
+    };
+
+    const MAX_WRITE_SIZE: usize = 1000;
+    let mut offset = 0;
+    while offset < idl_data.len() {
+        // Instruction data.
+        let data = {
+            let start = offset;
+            let end = std::cmp::min(offset + MAX_WRITE_SIZE, idl_data.len());
+            serialize_idl_ix(anchor_lang::idl::IdlInstruction::Write {
+                data: idl_data[start..end].to_vec(),
+            })?
+        };
+        // Instruction accounts.
+        let accounts = vec![
+            AccountMeta::new(idl_address, false),
+            AccountMeta::new_readonly(keypair.pubkey(), true),
+        ];
+        // Instruction.
+        let ix = Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        };
+        // Send transaction.
+        let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&keypair.pubkey()),
+            &[&keypair],
+            recent_hash,
+        );
+        client.send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig::single(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..RpcSendTransactionConfig::default()
+            },
+        )?;
+        offset += MAX_WRITE_SIZE;
+    }
     Ok(())
 }
 
@@ -358,62 +476,40 @@ enum OutFile {
 }
 
 // Builds, deploys, and tests all workspace programs in a single command.
-fn test() -> Result<()> {
-    // Switch directories to top level workspace.
-    set_workspace_dir_or_exit();
+fn test(skip_deploy: bool) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        // Bootup validator, if needed.
+        let validator_handle = match cfg.cluster.url() {
+            "http://127.0.0.1:8899" => Some(start_test_validator()?),
+            _ => None,
+        };
 
-    // Build everything.
-    build(None)?;
+        // Deploy programs.
+        if !skip_deploy {
+            deploy(None, None)?;
+        }
 
-    // Switch again (todo: restore cwd in `build` command).
-    set_workspace_dir_or_exit();
-
-    // Deploy all programs.
-    let cfg = Config::discover()?.expect("Inside a workspace").0;
-
-    // Bootup validator.
-    let validator_handle = match cfg.cluster.url() {
-        "http://127.0.0.1:8899" => Some(start_test_validator()?),
-        _ => None,
-    };
-
-    let programs = deploy_ws(cfg.cluster.url(), &cfg.wallet.to_string())?;
-
-    // Store deployed program addresses in IDL metadata (for consumption by
-    // client + tests).
-    for (program, address) in programs {
-        // Add metadata to the IDL.
-        let mut idl = program.idl;
-        idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
-            address: address.to_string(),
-        })?);
-        // Persist it.
-        let idl_out = PathBuf::from("target/idl")
-            .join(&idl.name)
-            .with_extension("json");
-        write_idl(&idl, OutFile::File(idl_out))?;
-    }
-
-    // Run the tests.
-    if let Err(e) = std::process::Command::new("mocha")
-        .arg("-t")
-        .arg("1000000")
-        .arg("tests/")
-        .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-    {
+        // Run the tests.
+        if let Err(e) = std::process::Command::new("mocha")
+            .arg("-t")
+            .arg("1000000")
+            .arg("tests/")
+            .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+        {
+            if let Some(mut validator_handle) = validator_handle {
+                validator_handle.kill()?;
+            }
+            return Err(anyhow::format_err!("{}", e.to_string()));
+        }
         if let Some(mut validator_handle) = validator_handle {
             validator_handle.kill()?;
         }
-        return Err(anyhow::format_err!("{}", e.to_string()));
-    }
-    if let Some(mut validator_handle) = validator_handle {
-        validator_handle.kill()?;
-    }
 
-    Ok(())
+        Ok(())
+    })
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -467,43 +563,156 @@ fn start_test_validator() -> Result<Child> {
 // TODO: Testing and deploys should use separate sections of metadata.
 //       Similarly, each network should have separate metadata.
 fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
-    // Build all programs.
+    _deploy(url, keypair).map(|_| ())
+}
+
+fn _deploy(url: Option<String>, keypair: Option<String>) -> Result<Vec<(Pubkey, Program)>> {
+    with_workspace(|cfg, _path, _cargo| {
+        build(None)?;
+
+        // Fallback to config vars if not provided via CLI.
+        let url = url.unwrap_or(cfg.cluster.url().to_string());
+        let keypair = keypair.unwrap_or(cfg.wallet.to_string());
+
+        // Deploy the programs.
+        println!("Deploying workspace: {}", url);
+        println!("Upgrade authority: {}", keypair);
+
+        let mut programs = Vec::new();
+
+        for mut program in read_all_programs()? {
+            let binary_path = program.binary_path().display().to_string();
+
+            println!("Deploying {}...", binary_path);
+
+            // Write the program's keypair filepath. This forces a new deploy
+            // address.
+            let program_kp = Keypair::generate(&mut OsRng);
+            let mut file = File::create(program.anchor_keypair_path())?;
+            file.write_all(format!("{:?}", &program_kp.to_bytes()).as_bytes())?;
+
+            // Send deploy transactions.
+            let exit = std::process::Command::new("solana")
+                .arg("program")
+                .arg("deploy")
+                .arg("--url")
+                .arg(&url)
+                .arg("--keypair")
+                .arg(&keypair)
+                .arg("--program-id")
+                .arg(program.anchor_keypair_path().display().to_string())
+                .arg(&binary_path)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()
+                .expect("Must deploy");
+            if !exit.status.success() {
+                println!("There was a problem deploying: {:?}.", exit);
+                std::process::exit(exit.status.code().unwrap_or(1));
+            }
+
+            // Add program address to the IDL.
+            program.idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
+                address: program_kp.pubkey().to_string(),
+            })?);
+
+            // Persist it.
+            let idl_out = PathBuf::from("target/idl")
+                .join(&program.idl.name)
+                .with_extension("json");
+            write_idl(&program.idl, OutFile::File(idl_out))?;
+
+            programs.push((program_kp.pubkey(), program))
+        }
+
+        println!("Deploy success");
+
+        Ok(programs)
+    })
+}
+
+fn upgrade(program_id: Pubkey, program_filepath: String) -> Result<()> {
+    let path: PathBuf = program_filepath.parse().unwrap();
+    let program_filepath = path.canonicalize()?.display().to_string();
+
+    with_workspace(|cfg, _path, _cargo| {
+        let exit = std::process::Command::new("solana")
+            .arg("program")
+            .arg("deploy")
+            .arg("--url")
+            .arg(cfg.cluster.url())
+            .arg("--keypair")
+            .arg(&cfg.wallet.to_string())
+            .arg("--program-id")
+            .arg(program_id.to_string())
+            .arg(&program_filepath)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .expect("Must deploy");
+        if !exit.status.success() {
+            println!("There was a problem deploying: {:?}.", exit);
+            std::process::exit(exit.status.code().unwrap_or(1));
+        }
+        Ok(())
+    })
+}
+
+fn launch(url: Option<String>, keypair: Option<String>) -> Result<()> {
+    // Build and deploy.
+    let programs = _deploy(url.clone(), keypair.clone())?;
+
+    with_workspace(|cfg, _path, _cargo| {
+        let url = url.unwrap_or(cfg.cluster.url().to_string());
+        let keypair = keypair.unwrap_or(cfg.wallet.to_string());
+
+        // Add metadata to all IDLs.
+        for (address, program) in programs {
+            // Store the IDL on chain.
+            let idl_address = create_idl_account(&cfg, &keypair, &address, &program.idl)?;
+            println!("IDL account created: {}", idl_address.to_string());
+        }
+
+        // Run migration script.
+        if Path::new("migrations/deploy.js").exists() {
+            migrate(Some(url))?;
+        }
+
+        Ok(())
+    })
+}
+
+// with_workspace ensures the current working directory is always the top level
+// workspace directory, i.e., where the `Anchor.toml` file is located, before
+// and after the closure invocation.
+//
+// The closure passed into this function must never change the working directory
+// to be outside the workspace. Doing so will have undefined behavior.
+fn with_workspace<R>(f: impl FnOnce(&Config, PathBuf, Option<PathBuf>) -> R) -> R {
     set_workspace_dir_or_exit();
-    build(None)?;
+
+    clear_program_keys().unwrap();
+
+    let (cfg, cfg_path, cargo_toml) = Config::discover()
+        .expect("Previously set the workspace dir")
+        .expect("Anchor.toml must always exist");
+    let r = f(&cfg, cfg_path, cargo_toml);
+
     set_workspace_dir_or_exit();
+    clear_program_keys().unwrap();
 
-    // Deploy all programs.
-    let cfg = Config::discover()?.expect("Inside a workspace").0;
-    let url = url.unwrap_or(cfg.cluster.url().to_string());
-    let keypair = keypair.unwrap_or(cfg.wallet.to_string());
-    let deployment = deploy_ws(&url, &keypair)?;
+    r
+}
 
-    // Add metadata to all IDLs.
-    for (program, address) in deployment {
-        // Store the IDL on chain.
-        let idl_address = create_idl_account(&cfg, &keypair, &address, &program.idl)?;
-        println!("IDL account created: {}", idl_address.to_string());
-
-        // Add metadata to the IDL.
-        let mut idl = program.idl;
-        idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
-            address: address.to_string(),
-        })?);
-
-        // Persist it.
-        let idl_out = PathBuf::from("target/idl")
-            .join(&idl.name)
-            .with_extension("json");
-        write_idl(&idl, OutFile::File(idl_out))?;
-
-        println!("Deployed {} at {}", idl.name, address.to_string());
+// The Solana CLI doesn't redeploy a program if this file exists.
+// So remove it to make all commands explicit.
+fn clear_program_keys() -> Result<()> {
+    for program in read_all_programs().expect("Programs dir doesn't exist") {
+        let anchor_keypair_path = program.anchor_keypair_path();
+        if Path::exists(&anchor_keypair_path) {
+            std::fs::remove_file(anchor_keypair_path).expect("Always remove");
+        }
     }
-
-    // Run migration script.
-    if Path::new("migrations/deploy.js").exists() {
-        migrate(&url)?;
-    }
-
     Ok(())
 }
 
@@ -563,51 +772,7 @@ fn create_idl_account(
         )?;
     }
 
-    // Write the idl to the account buffer, chopping up the IDL into pieces
-    // and sending multiple transactions in the event the IDL doesn't fit into
-    // a single transaction.
-    {
-        const MAX_WRITE_SIZE: usize = 1000;
-        let mut offset = 0;
-        while offset < idl_data.len() {
-            // Instruction data.
-            let data = {
-                let start = offset;
-                let end = std::cmp::min(offset + MAX_WRITE_SIZE, idl_data.len());
-                serialize_idl_ix(anchor_lang::idl::IdlInstruction::Write {
-                    data: idl_data[start..end].to_vec(),
-                })?
-            };
-            // Instruction accounts.
-            let accounts = vec![
-                AccountMeta::new(idl_address, false),
-                AccountMeta::new_readonly(keypair.pubkey(), true),
-            ];
-            // Instruction.
-            let ix = Instruction {
-                program_id: *program_id,
-                accounts,
-                data,
-            };
-            // Send transaction.
-            let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
-            let tx = Transaction::new_signed_with_payer(
-                &[ix],
-                Some(&keypair.pubkey()),
-                &[&keypair],
-                recent_hash,
-            );
-            client.send_and_confirm_transaction_with_spinner_and_config(
-                &tx,
-                CommitmentConfig::single(),
-                RpcSendTransactionConfig {
-                    skip_preflight: true,
-                    ..RpcSendTransactionConfig::default()
-                },
-            )?;
-            offset += MAX_WRITE_SIZE;
-        }
-    }
+    idl_write(cfg, program_id, idl)?;
 
     Ok(idl_address)
 }
@@ -618,66 +783,29 @@ fn serialize_idl_ix(ix_inner: anchor_lang::idl::IdlInstruction) -> Result<Vec<u8
     Ok(data)
 }
 
-fn migrate(url: &str) -> Result<()> {
-    println!("Running migration deploy script");
+fn migrate(url: Option<String>) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        println!("Running migration deploy script");
 
-    let cur_dir = std::env::current_dir()?;
-    let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
-    let deploy_script_host_str = template::deploy_script_host(url, &module_path);
-    std::env::set_current_dir(".anchor")?;
+        let url = url.unwrap_or(cfg.cluster.url().to_string());
+        let cur_dir = std::env::current_dir()?;
+        let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
+        let deploy_script_host_str = template::deploy_script_host(&url, &module_path);
+        std::env::set_current_dir(".anchor")?;
 
-    std::fs::write("deploy.js", deploy_script_host_str)?;
-    if let Err(_e) = std::process::Command::new("node")
-        .arg("deploy.js")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-    {
-        std::process::exit(1);
-    }
-
-    println!("Deploy complete.");
-    Ok(())
-}
-
-fn deploy_ws(url: &str, keypair: &str) -> Result<Vec<(Program, Pubkey)>> {
-    let mut programs = vec![];
-    println!("Deploying workspace to {}...", url);
-    println!("Upgrade authority: {}", keypair);
-    for program in read_all_programs()? {
-        let binary_path = format!("target/deploy/{}.so", program.lib_name);
-
-        // The Solana CLI doesn't redeploy a program if this file exists.
-        // So remove it to make deploys explicit.
-        let keypair_path = format!("target/deploy/{}-keypair.json", program.lib_name);
-        std::fs::remove_file(keypair_path)?;
-
-        println!("Deploying {}...", binary_path);
-        let exit = std::process::Command::new("solana")
-            .arg("program")
-            .arg("deploy")
-            .arg("--url")
-            .arg(url)
-            .arg("--keypair")
-            .arg(keypair)
-            .arg(&binary_path)
+        std::fs::write("deploy.js", deploy_script_host_str)?;
+        if let Err(_e) = std::process::Command::new("node")
+            .arg("deploy.js")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
             .output()
-            .expect("Must deploy");
-        if !exit.status.success() {
-            println!("There was a problem deploying: {:?}.", exit);
-            std::process::exit(exit.status.code().unwrap_or(1));
+        {
+            std::process::exit(1);
         }
-        let stdout: DeployStdout = serde_json::from_str(std::str::from_utf8(&exit.stdout)?)?;
-        programs.push((program, stdout.program_id.parse()?));
-    }
-    println!("Deploy success!");
-    Ok(programs)
-}
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct DeployStdout {
-    program_id: String,
+        println!("Deploy complete.");
+        Ok(())
+    })
 }
 
 fn set_workspace_dir_or_exit() {
@@ -707,5 +835,25 @@ fn set_workspace_dir_or_exit() {
                 },
             };
         }
+    }
+}
+
+fn airdrop(url: Option<String>) -> Result<()> {
+    let url = url.unwrap_or("https://devnet.solana.com".to_string());
+    loop {
+        let exit = std::process::Command::new("solana")
+            .arg("airdrop")
+            .arg("10")
+            .arg("--url")
+            .arg(&url)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .expect("Must airdrop");
+        if !exit.status.success() {
+            println!("There was a problem airdropping: {:?}.", exit);
+            std::process::exit(exit.status.code().unwrap_or(1));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10000));
     }
 }

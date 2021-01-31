@@ -13,7 +13,6 @@ use basic_2::Author;
 use composite::accounts::{Bar, CompositeUpdate, Foo, Initialize};
 use composite::instruction::CompositeInstruction;
 use composite::{DummyA, DummyB};
-
 use rand::rngs::OsRng;
 
 fn main() -> Result<()> {

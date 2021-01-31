@@ -92,24 +92,7 @@ impl FromStr for Config {
     }
 }
 
-pub fn find_cargo_toml() -> Result<Option<PathBuf>> {
-    let _cwd = std::env::current_dir()?;
-    let mut cwd_opt = Some(_cwd.as_path());
-    while let Some(cwd) = cwd_opt {
-        let files = fs::read_dir(cwd)?;
-        for f in files {
-            let p = f?.path();
-            if let Some(filename) = p.file_name() {
-                if filename.to_str() == Some("Cargo.toml") {
-                    return Ok(Some(PathBuf::from(p)));
-                }
-            }
-        }
-        cwd_opt = cwd.parent();
-    }
-    Ok(None)
-}
-
+// TODO: this should read idl dir instead of parsing source.
 pub fn read_all_programs() -> Result<Vec<Program>> {
     let files = fs::read_dir("programs")?;
     let mut r = vec![];
@@ -153,6 +136,23 @@ pub struct Program {
     pub lib_name: String,
     pub path: PathBuf,
     pub idl: Idl,
+}
+
+impl Program {
+    pub fn anchor_keypair_path(&self) -> PathBuf {
+        std::env::current_dir()
+            .expect("Must have current dir")
+            .join(format!(
+                "target/deploy/anchor-{}-keypair.json",
+                self.lib_name
+            ))
+    }
+
+    pub fn binary_path(&self) -> PathBuf {
+        std::env::current_dir()
+            .expect("Must have current dir")
+            .join(format!("target/deploy/{}.so", self.lib_name))
+    }
 }
 
 serum_common::home_path!(WalletPath, ".config/solana/id.json");

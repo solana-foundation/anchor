@@ -108,6 +108,7 @@ dependencies = [
  "dirs",
  "flate2",
  "heck",
+ "rand",
  "serde",
  "serde_json",
  "serde_yaml",

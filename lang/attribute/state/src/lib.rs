@@ -11,7 +11,7 @@ pub fn state(
     let item_struct = parse_macro_input!(input as syn::ItemStruct);
 
     proc_macro::TokenStream::from(quote! {
-        #[account("state")]
+        #[account]
         #item_struct
     })
 }

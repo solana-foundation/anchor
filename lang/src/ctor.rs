@@ -11,6 +11,7 @@ use solana_program::sysvar::rent::Rent;
 #[derive(Accounts)]
 pub struct Ctor<'info> {
     // Payer of the transaction.
+    #[account(signer)]
     pub from: AccountInfo<'info>,
     // The deterministically defined "state" account being created via
     // `create_account_with_seed`.

@@ -26,3 +26,4 @@ serum-common = { git = "https://github.com/project-serum/serum-dex", features = 
 dirs = "3.0"
 heck = "0.3.1"
 flate2 = "1.0.19"
+rand = "0.7.3"
