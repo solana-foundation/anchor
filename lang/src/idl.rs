@@ -43,7 +43,7 @@ pub type IdlCreateAccounts<'info> = crate::ctor::Ctor<'info>;
 pub struct IdlAccounts<'info> {
     #[account(mut, has_one = authority)]
     pub idl: ProgramAccount<'info, IdlAccount>,
-    #[account(signer)]
+    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
     pub authority: AccountInfo<'info>,
 }
 

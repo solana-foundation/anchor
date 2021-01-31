@@ -1,6 +1,6 @@
 use crate::config::{read_all_programs, Config, Program};
 use anchor_lang::idl::IdlAccount;
-use anchor_lang::{AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Result};
 use clap::Clap;
@@ -99,11 +99,32 @@ pub enum IdlCommand {
         #[clap(short, long)]
         filepath: String,
     },
-    /// Updates the IDL to the new file.
-    Update {
+    /// Upgrades the IDL to the new file.
+    Upgrade {
         program_id: Pubkey,
         #[clap(short, long)]
         filepath: String,
+    },
+    /// Sets a new authority on the IDL account.
+    SetAuthority {
+        /// Program to change the IDL authority.
+        #[clap(short, long)]
+        program_id: Pubkey,
+        /// New authority of the IDL account.
+        #[clap(short, long)]
+        new_authority: Pubkey,
+    },
+    /// Command to remove the ability to modify the IDL account. This should
+    /// likely be used in conjection with eliminating an "upgrade authority" on
+    /// the program.
+    EraseAuthority {
+        #[clap(short, long)]
+        program_id: Pubkey,
+    },
+    /// Outputs the authority for the IDL account.
+    Authority {
+        /// The program to view.
+        program_id: Pubkey,
     },
     /// Parses an IDL from source.
     Parse {
@@ -310,10 +331,16 @@ fn idl(subcmd: IdlCommand) -> Result<()> {
             program_id,
             filepath,
         } => idl_init(program_id, filepath),
-        IdlCommand::Update {
+        IdlCommand::Upgrade {
             program_id,
             filepath,
-        } => idl_update(program_id, filepath),
+        } => idl_upgrade(program_id, filepath),
+        IdlCommand::SetAuthority {
+            program_id,
+            new_authority,
+        } => idl_set_authority(program_id, new_authority),
+        IdlCommand::EraseAuthority { program_id } => idl_erase_authority(program_id),
+        IdlCommand::Authority { program_id } => idl_authority(program_id),
         IdlCommand::Parse { file, out } => idl_parse(file, out),
         IdlCommand::Fetch { program_id, out } => idl_fetch(program_id, out),
     }
@@ -333,7 +360,7 @@ fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
     })
 }
 
-fn idl_update(program_id: Pubkey, idl_filepath: String) -> Result<()> {
+fn idl_upgrade(program_id: Pubkey, idl_filepath: String) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
@@ -343,6 +370,86 @@ fn idl_update(program_id: Pubkey, idl_filepath: String) -> Result<()> {
 
         Ok(())
     })
+}
+
+fn idl_authority(program_id: Pubkey) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        let client = RpcClient::new(cfg.cluster.url().to_string());
+        let idl_address = IdlAccount::address(&program_id);
+
+        let account = client.get_account(&idl_address)?;
+        let mut data: &[u8] = &account.data;
+        let idl_account: IdlAccount = AccountDeserialize::try_deserialize(&mut data)?;
+
+        println!("{:?}", idl_account.authority);
+
+        Ok(())
+    })
+}
+
+fn idl_set_authority(program_id: Pubkey, new_authority: Pubkey) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        // Misc.
+        let idl_address = IdlAccount::address(&program_id);
+        let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+            .map_err(|_| anyhow!("Unable to read keypair file"))?;
+        let client = RpcClient::new(cfg.cluster.url().to_string());
+
+        // Instruction data.
+        let data =
+            serialize_idl_ix(anchor_lang::idl::IdlInstruction::SetAuthority { new_authority })?;
+
+        // Instruction accounts.
+        let accounts = vec![
+            AccountMeta::new(idl_address, false),
+            AccountMeta::new_readonly(keypair.pubkey(), true),
+        ];
+
+        // Instruction.
+        let ix = Instruction {
+            program_id,
+            accounts,
+            data,
+        };
+        // Send transaction.
+        let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&keypair.pubkey()),
+            &[&keypair],
+            recent_hash,
+        );
+        client.send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig::single(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..RpcSendTransactionConfig::default()
+            },
+        )?;
+
+        println!("Authority update complete.");
+
+        Ok(())
+    })
+}
+
+fn idl_erase_authority(program_id: Pubkey) -> Result<()> {
+    println!("Are you sure you want to erase the IDL authority: [y/n]");
+
+    let stdin = std::io::stdin();
+    let mut stdin_lines = stdin.lock().lines();
+    let input = stdin_lines.next().unwrap().unwrap();
+    if input != "y" {
+        println!("Not erasing.");
+        return Ok(());
+    }
+
+    // Program will treat the zero authority as erased.
+    let new_authority = Pubkey::new_from_array([0u8; 32]);
+    idl_set_authority(program_id, new_authority)?;
+
+    Ok(())
 }
 
 // Clears out *all* IDL data. The authority for the IDL must be the configured
