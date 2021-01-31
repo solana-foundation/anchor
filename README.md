@@ -1,7 +1,6 @@
 # Anchor ⚓
 
 [![Build Status](https://travis-ci.com/project-serum/anchor.svg?branch=master)](https://travis-ci.com/project-serum/anchor)
-[![Docs.rs](https://docs.rs/anchor-lang/badge.svg)](https://docs.rs/anchor-lang)
 [![Docs](https://img.shields.io/badge/docs-tutorials-orange)](https://project-serum.github.io/anchor/)
 [![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/739225212658122886)
 [![License](https://img.shields.io/github/license/project-serum/anchor?color=ff69b4)](https://opensource.org/licenses/Apache-2.0)
@@ -22,12 +21,12 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 
 ## Packages
 
-| Package | Version | Description|
-| :-- | :-- | :--|
-| `@project-serum/anchor` | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | TypeScript client generator for Anchor programs |
-| `anchor-lang` | [![Crates.io](https://img.shields.io/crates/v/anchor-lang?color=blue)](https://crates.io/crates/anchor-lang) | Rust primitives for writing programs on Solana |
-| `anchor-spl` | ![crates](https://img.shields.io/badge/crates.io-unpublished-blue.svg) | CPI clients for SPL programs on Solana |
-
+| Package | Description | Version | Docs |
+| :-- | :-- | :--| :-- |
+| `anchor-lang` | Rust primitives for writing programs on Solana | [![Crates.io](https://img.shields.io/crates/v/anchor-lang?color=blue)](https://crates.io/crates/anchor-lang) | [![Docs.rs](https://docs.rs/anchor-lang/badge.svg)](https://docs.rs/anchor-lang) |
+| `anchor-spl` | CPI clients for SPL programs on Solana | ![crates](https://img.shields.io/crates/v/anchor-spl?color=blue) | [![Docs.rs](https://docs.rs/anchor-spl/badge.svg)](https://docs.rs/anchor-spl) |
+| `anchor-client` | Rust client for Anchor programs | ![crates](https://img.shields.io/crates/v/anchor-client?color=blue) | [![Docs.rs](https://docs.rs/anchor-client/badge.svg)](https://docs.rs/anchor-client) |
+| `@project-serum/anchor` | TypeScript client for Anchor programs | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | [![Docs](https://img.shields.io/badge/docs-tutorials-blue)](https://project-serum.github.io/anchor/) |
 ## Note
 
 * **Anchor is in active development, so all APIs are subject to change.**
