@@ -104,7 +104,7 @@ pub mod multisig {
         }
 
         // Execute the multisig transaction.
-        let ix: Instruction = ctx.accounts.transaction.account().into();
+        let ix: Instruction = (&*ctx.accounts.transaction).into();
         let seeds = &[
             ctx.accounts.multisig.to_account_info().key.as_ref(),
             &[ctx.accounts.multisig.nonce],
