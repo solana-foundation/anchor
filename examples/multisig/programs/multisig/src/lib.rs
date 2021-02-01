@@ -72,7 +72,7 @@ pub mod multisig {
     pub fn set_owners(ctx: Context<Auth>, owners: Vec<Pubkey>) -> Result<()> {
         let multisig = &mut ctx.accounts.multisig;
 
-        if owners.len() as u64 > multisig.threshold {
+        if (owners.len() as u64) < multisig.threshold {
             multisig.threshold = owners.len() as u64;
         }
 

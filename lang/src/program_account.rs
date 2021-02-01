@@ -16,6 +16,12 @@ pub struct ProgramAccount<'info, T: AccountSerialize + AccountDeserialize + Clon
     inner: Box<Inner<'info, T>>,
 }
 
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'info, T> {
+    pub fn account(&self) -> &T {
+        &self.inner.account
+    }
+}
+
 #[derive(Clone)]
 struct Inner<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     info: AccountInfo<'info>,
