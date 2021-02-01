@@ -48,6 +48,7 @@ jobs:
         - pushd examples/composite && anchor test && popd
         - pushd examples/errors && anchor test && popd
         - pushd examples/spl/token-proxy && anchor test && popd
+        - pushd examples/multisig && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd
