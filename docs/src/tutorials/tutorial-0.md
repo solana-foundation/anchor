@@ -1,4 +1,4 @@
-# Tutorial 0: A Minimal Example
+# A Minimal Example
 
 Here, we introduce Anchor's core syntax elements and project workflow. This tutorial assumes all
 [prerequisites](../getting-started/installation.md) are installed.
@@ -65,7 +65,7 @@ anchor build
 The `build` command is a convenience combining two steps.
 
 1) `cargo build-bpf`
-2) `anchor idl -f program/src/lib.rs -o target/idl/basic_0.json`.
+2) `anchor idl parse -f program/src/lib.rs -o target/idl/basic_0.json`.
 :::
 
 Once run, you should see your build artifacts, as usual, in your `target/` directory. Additionally,

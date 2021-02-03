@@ -15,10 +15,10 @@ rustup component add rustfmt
 
 ## Install Solana
 
-See the solana [docs](https://docs.solana.com/cli/install-solana-cli-tools) for installation instructions. Version 1.5.0 is required. On macOS and Linux,
+See the solana [docs](https://docs.solana.com/cli/install-solana-cli-tools) for installation instructions. Version 1.5.5 is required. On macOS and Linux,
 
 ```bash
-sh -c "$(curl -sSfL https://release.solana.com/v1.5.0/install)"
+sh -c "$(curl -sSfL https://release.solana.com/v1.5.5/install)"
 ```
 
 ## Install Mocha

@@ -1,4 +1,4 @@
-# Tutorial 4: State structs
+# State structs
 
 Up until now, we've treated programs on Solana as stateless, using accounts to persist
 state between instruction invocations. In this tutorial, we'll give Solana programs the
@@ -23,10 +23,53 @@ cd anchor/examples/tutorial/basic-4
 
 <<< @/../examples/tutorial/basic-4/programs/basic-4/src/lib.rs#code
 
-TODO: explain + add instructions (both manual instructions and instructions inside the impl block).
+Unlike the previous examples, all the instructions here not only take in an `Accounts`
+struct, but they also operate over a mutable, global account marked by the `#[state]`
+attribute. Every instruction defined in the corresponding `impl` block will have access
+to this account, making it a great place to store global program state.
+
+### How it works
+
+We are able to give a program the illusion of state by adopting conventions in the framework.  When invoking the `new` constructor, Anchor will automatically create a
+program-owned account inside the program itself, invoking the system program's [create_account_with_seed](https://docs.rs/solana-program/1.5.5/solana_program/system_instruction/fn.create_account_with_seed.html) instruction, using `Pubkey::find_program_address(&[], program_id)` as the **base** and a deterministic string as the **seed** (the string doesn't
+matter, as long as the framework is consistent).
+
+This all has the effect of
+giving the `#[state]` account a deterministic address, and so as long as all clients
+and programs adopt this convention, programs can have the illusion of state in addition
+to the full power of the lower level Solana accounts API. Of course, Anchor will handle this all for you, so you never have to worry about these details.
 
 ## Using the client
 
-<<< @/../examples/tutorial/basic-4/tests/basic-4.js#code
+### Invoke the constructor
 
-TODO explain.
+To access the `#[state]` account and associated instructions, one can use the
+`anchor.state` namespace on the client. For example, to invoke the constructor,
+
+<<< @/../examples/tutorial/basic-4/tests/basic-4.js#ctor
+
+Note that the constructor can only be invoked once per program. All subsequent calls
+to it will fail, since, as explained above, an account at a deterministic address
+will be created.
+
+### Fetch the state
+
+To fetch the state account,
+
+<<< @/../examples/tutorial/basic-4/tests/basic-4.js#accessor
+
+### Invoke an instruction
+
+To invoke an instruction,
+
+<<< @/../examples/tutorial/basic-4/tests/basic-4.js#instruction
+
+## Conclusion
+
+Using state structs is intuitive. However, due to the fact that accounts
+on Solana have a fixed size, applications often need to use accounts
+directly in addition to `#[state]` stucts.
+
+## Next Steps
+
+Next we'll discuss errors.

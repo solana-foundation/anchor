@@ -42,19 +42,26 @@ module.exports = {
         title: "Getting Started",
         children: [
           "/getting-started/introduction",
-					"/getting-started/installation",
-					"/getting-started/quick-start",
+          "/getting-started/installation",
         ],
       },
       {
         collapsable: false,
-        title: "Tutorials",
-				children: [
+        title: "Programs on Solana",
+        children: [
           "/tutorials/tutorial-0",
           "/tutorials/tutorial-1",
           "/tutorials/tutorial-2",
           "/tutorials/tutorial-3",
           "/tutorials/tutorial-4",
+          "/tutorials/tutorial-5",
+        ],
+      },
+      {
+        collapsable: false,
+        title: "CLI",
+        children: [
+          "/cli/commands",
         ],
       },
     ],

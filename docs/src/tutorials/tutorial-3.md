@@ -1,4 +1,4 @@
-# Tutorial 3: Cross Program Invocations (CPI)
+# Cross Program Invocations (CPI)
 
 This tutorial covers how to call one program from another, a process known as
 *cross-program-invocation* (CPI).

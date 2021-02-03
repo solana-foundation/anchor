@@ -1,4 +1,4 @@
-# Tutorial 1: Arguments and Accounts
+# Arguments and Accounts
 
 This tutorial covers the basics of creating and mutating accounts using Anchor.
 It's recommended to read [Tutorial 0](./tutorial-0.md) first, as this tutorial will

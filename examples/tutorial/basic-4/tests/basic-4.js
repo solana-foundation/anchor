@@ -10,26 +10,31 @@ describe("basic-4", () => {
   const program = anchor.workspace.Basic4;
 
   it("Is runs the constructor", async () => {
-    // #region code
+    // #region ctor
     // Initialize the program's state struct.
     await program.state.rpc.new({
       accounts: {
         authority: provider.wallet.publicKey,
       },
     });
+    // #endregion ctor
 
     // Fetch the state struct from the network.
+    // #region accessor
     const state = await program.state();
-    // #endregion code
+    // #endregion accessor
+
     assert.ok(state.count.eq(new anchor.BN(0)));
   });
 
   it("Executes a method on the program", async () => {
+    // #region instruction
     await program.state.rpc.increment({
       accounts: {
         authority: provider.wallet.publicKey,
       },
     });
+    // #endregion instruction
     const state = await program.state();
     assert.ok(state.count.eq(new anchor.BN(1)));
   });
