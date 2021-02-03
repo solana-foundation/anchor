@@ -36,6 +36,7 @@ module.exports = {
     docsDir: "",
     editLinkText: "",
     lastUpdated: false,
+    sidebarDepth: 2,
     sidebar: [
       {
         collapsable: false,
@@ -47,7 +48,7 @@ module.exports = {
       },
       {
         collapsable: false,
-        title: "Programs on Solana",
+        title: "Programs",
         children: [
           "/tutorials/tutorial-0",
           "/tutorials/tutorial-1",
