@@ -19,7 +19,14 @@ cd anchor/examples/tutorial/basic-0
 
 ## Starting a Localnet
 
-In a separate terminal, start a local network for testing.
+In a separate terminal, start a local network for testing. If you're running solana
+for the first time, generate a wallet.
+
+```
+solana-keygen new
+```
+
+Then run
 
 ```
 solana-test-validator
