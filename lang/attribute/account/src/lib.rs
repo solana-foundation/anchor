@@ -3,7 +3,20 @@ extern crate proc_macro;
 use quote::quote;
 use syn::parse_macro_input;
 
-/// A data structure representing a Solana account.
+/// A data structure representing a Solana account, implementing various traits:
+///
+/// - [`AccountSerialize`](./trait.AccountSerialize.html)
+/// - [`AccountDeserialize`](./trait.AccountDeserialize.html)
+/// - [`AnchorSerialize`](./trait.AnchorSerialize.html)
+/// - [`AnchorDeserialize`](./trait.AnchorDeserialize.html)
+///
+/// When implementing account serialization traits the first 8 bytes are
+/// reserved for a unique account discriminator, self described by the first 8
+/// bytes of the SHA256 of the account's Rust ident.
+///
+/// As a result, any calls to `AccountDeserialize`'s `try_deserialize` will
+/// check this discriminator. If it doesn't match, an invalid account was given,
+/// and the account deserialization will exit with an error.
 #[proc_macro_attribute]
 pub fn account(
     args: proc_macro::TokenStream,

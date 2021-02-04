@@ -143,22 +143,6 @@ state assocated with each user in individual `#[account]` structs.
 For more, see the [examples](https://github.com/project-serum/anchor/tree/master/examples)
 directory.
 
-## Accounts attribute syntax.
-
-There are several inert attributes that can be specified on a struct deriving `Accounts`.
-
-| Attribute | Location | Description |
-|:--|:--|:--|
-| `#[account(signer)]` | On raw `AccountInfo` structs. | Checks the given account signed the transaction. |
-| `#[account(mut)]` | On `AccountInfo`, `ProgramAccount` or `CpiAccount` structs. | Marks the account as mutable and persists the state transition. |
-| `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, skipping the account discriminator check. |
-| `#[account(belongs_to = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
-| `#[account(has_one = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Semantically different, but otherwise the same as `belongs_to`. |
-| `#[account(seeds = [<seeds>])]` | On `AccountInfo` structs | Seeds for the program derived address an `AccountInfo` struct represents. |
-| `#[account(owner = program \| skip)]` | On `AccountInfo` structs | Checks the owner of the account is the current program or skips the check. |
-| `#[account("<literal>")]` | On any type deriving `Accounts` | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
-| `#[account(rent_exempt = <skip>)]` | On `AccountInfo` or `ProgramAccount` structs | Optional attribute to skip the rent exemption check. By default, all accounts marked with `#[account(init)]` will be rent exempt, and so this should rarely (if ever) be used. Similarly, omitting `= skip` will mark the account rent exempt. |
-
 ## License
 
 Anchor is licensed under [Apache 2.0](./LICENSE).

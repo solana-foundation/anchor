@@ -57,28 +57,41 @@ pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorS
 pub use error::Error;
 pub use solana_program;
 
-/// A data structure of accounts that can be deserialized from the input
-/// of a Solana program. Due to the freewheeling nature of the accounts array,
-/// implementations of this trait should perform any and all constraint checks
-/// (in addition to any done within `AccountDeserialize`) on accounts to ensure
-/// the accounts maintain any invariants required for the program to run
-/// securely.
+/// A data structure of validated accounts that can be deserialized from the
+/// input to a Solana program. Implementations of this trait should perform any
+/// and all requisite constraint checks on accounts to ensure the accounts
+/// maintain any invariants required for the program to run securely. In most
+/// cases, it's recommended to use the [`Accounts`](./derive.Accounts.html)
+/// derive macro to implement this trait.
 pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
+    /// Returns the validated accounts struct. What constitutes "valid" is
+    /// program dependent. However, users of these types should never have to
+    /// worry about account substitution attacks. For example, if a program
+    /// expects a `Mint` account from the SPL token program  in a particular
+    /// field, then it should be impossible for this method to return `Ok` if any
+    /// other account type is given--from the SPL token program or elsewhere.
+    ///
+    /// `program_id` is the currently executing program. `accounts` is the
+    /// set of accounts to construct the type from. For every account used,
+    /// the implementation should mutate the slice, consuming the used entry
+    /// so that it cannot be used again.
     fn try_accounts(
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError>;
 }
 
-/// The exit procedure for an accounts object.
+/// The exit procedure for an account. Any cleanup or persistance to storage
+/// should be done here.
 pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
+    /// `program_id` is the currently executing program.
     fn exit(&self, program_id: &Pubkey) -> solana_program::entrypoint::ProgramResult;
 }
 
 /// A data structure of accounts providing a one time deserialization upon
-/// initialization, i.e., when the data array for a given account is zeroed.
-/// For all subsequent deserializations, it's expected that
-/// [Accounts](trait.Accounts.html) is used.
+/// account initialization, i.e., when the data array for a given account is
+/// zeroed. Any subsequent call to `try_accounts_init` should fail. For all
+/// subsequent deserializations, it's expected that [`Accounts`] is used.
 pub trait AccountsInit<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     fn try_accounts_init(
         program_id: &Pubkey,
@@ -86,7 +99,9 @@ pub trait AccountsInit<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     ) -> Result<Self, ProgramError>;
 }
 
-/// Transformation to `AccountMeta` structs.
+/// Transformation to
+/// [`AccountMeta`](../solana_program/instruction/struct.AccountMeta.html)
+/// structs.
 pub trait ToAccountMetas {
     /// `is_signer` is given as an optional override for the signer meta field.
     /// This covers the edge case when a program-derived-address needs to relay
@@ -96,7 +111,9 @@ pub trait ToAccountMetas {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
 }
 
-/// Transformation to `AccountInfo` structs.
+/// Transformation to
+/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html)
+/// structs.
 pub trait ToAccountInfos<'info> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>>;
 }
@@ -106,30 +123,39 @@ pub trait ToAccountInfo<'info> {
     fn to_account_info(&self) -> AccountInfo<'info>;
 }
 
-/// A data structure that can be serialized and stored in an `AccountInfo` data
-/// array.
+/// A data structure that can be serialized and stored into account storage,
+/// i.e. an
+/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// mutable data slice.
 ///
-/// Implementors of this trait should ensure that any subsequent usage the
+/// Implementors of this trait should ensure that any subsequent usage of the
 /// `AccountDeserialize` trait succeeds if and only if the account is of the
-/// correct type. For example, the implementation provided by the `#[account]`
-/// attribute sets the first 8 bytes to be a unique account discriminator,
-/// defined as the first 8 bytes of the SHA256 of the account's Rust ident.
-/// Thus, any subsequent  calls via `AccountDeserialize`'s `try_deserialize`
-/// will check this discriminator. If it doesn't match, an invalid account
-/// was given, and the program will exit with an error.
+/// correct type.
+///
+/// In most cases, one can use the default implementation provided by the
+/// [`#[account]`](./attr.account.html) attribute.
 pub trait AccountSerialize {
-    /// Serilalizes the account data into `writer`.
+    /// Serializes the account data into `writer`.
     fn try_serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError>;
 }
 
-/// A data structure that can be deserialized from an `AccountInfo` data array.
+/// A data structure that can be deserialized and stored into account storage,
+/// i.e. an
+/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// mutable data slice.
 pub trait AccountDeserialize: Sized {
-    /// Deserializes the account data.
+    /// Deserializes previously initialized account data. Should fail for all
+    /// uninitialized accounts, where the bytes are zeroed. Implementations
+    /// should be unique to a particular account type so that one can never
+    /// successfully deserialize the data of one account type into another.
+    /// For example, if the SPL token program where to implement this trait,
+    /// it should impossible to deserialize a `Mint` account into a token
+    /// `Account`.
     fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 
     /// Deserializes account data without checking the account discriminator.
-    /// This should only be used on account initialization, when the
-    /// discriminator is not yet set (since the entire account data is zeroed).
+    /// This should only be used on account initialization, when the bytes of
+    /// the account are zeroed.
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 }
 

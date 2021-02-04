@@ -4,7 +4,47 @@ use anchor_syn::codegen::error as error_codegen;
 use anchor_syn::parser::error as error_parser;
 use syn::parse_macro_input;
 
-/// Generates an error type from an error code enum.
+/// Generates `Error` and `type Result<T> = Result<T, Error>` types to be
+/// used as return types from Anchor instruction handlers. Importantly, the
+/// attribute implements
+/// [`From`](https://doc.rust-lang.org/std/convert/trait.From.html) on the
+/// `ErrorCode` to support converting from the user defined error enum *into*
+/// the generated `Error`.
+///
+/// # Example
+///
+/// ```
+/// use anchor_lang::prelude::*;
+///
+/// #[program]
+/// mod errors {
+///     use super::*;
+///     pub fn hello(_ctx: Context<Hello>) -> Result<()> {
+///         Err(MyError::Hello.into())
+///     }
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct Hello {}
+///
+/// #[error]
+/// pub enum MyError {
+///     #[msg("This is an error message clients cant automatically display")]
+///     Hello,
+/// }
+/// ```
+///
+/// Note that we generate a new `Error` type so that we can return either the
+/// user defined error enum *or* a
+/// [`ProgramError`](../solana_program/enum.ProgramError.html), which is used
+/// pervasively, throughout solana program crates. The generated `Error` type
+/// should almost never be used directly, as the user defined error is
+/// preferred. In the example above, `MyError::Hello.into()`.
+///
+/// # Msg
+///
+/// The `#[msg(..)]` attribute is inert, and is used only as a marker so that
+/// parsers  and IDLs can map error codes to error messages.
 #[proc_macro_attribute]
 pub fn error(
     _args: proc_macro::TokenStream,
