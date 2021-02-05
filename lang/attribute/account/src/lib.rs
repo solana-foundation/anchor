@@ -27,29 +27,26 @@ pub fn account(
     let account_strct = parse_macro_input!(input as syn::ItemStruct);
     let account_name = &account_strct.ident;
 
-    // Namespace the discriminator to prevent collisions.
-    let discriminator_preimage = {
-        if namespace == "" {
-            format!("account:{}", account_name.to_string())
-        } else {
-            format!("{}:{}", namespace, account_name.to_string())
-        }
+    let discriminator: proc_macro2::TokenStream = {
+        // Namespace the discriminator to prevent collisions.
+        let discriminator_preimage = {
+            if namespace == "" {
+                format!("account:{}", account_name.to_string())
+            } else {
+                format!("{}:{}", namespace, account_name.to_string())
+            }
+        };
+        let mut discriminator = [0u8; 8];
+        discriminator.copy_from_slice(
+            &anchor_syn::hash::hash(discriminator_preimage.as_bytes()).to_bytes()[..8],
+        );
+        format!("{:?}", discriminator).parse().unwrap()
     };
 
     let coder = quote! {
         impl anchor_lang::AccountSerialize for #account_name {
             fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> std::result::Result<(), ProgramError> {
-                // TODO: we shouldn't have to hash at runtime. However, rust
-                //       is not happy when trying to include solana-sdk from
-                //       the proc-macro crate.
-                let mut discriminator = [0u8; 8];
-                discriminator.copy_from_slice(
-                    &anchor_lang::solana_program::hash::hash(
-                        #discriminator_preimage.as_bytes(),
-                    ).to_bytes()[..8],
-                );
-
-                writer.write_all(&discriminator).map_err(|_| ProgramError::InvalidAccountData)?;
+                writer.write_all(&#discriminator).map_err(|_| ProgramError::InvalidAccountData)?;
                 AnchorSerialize::serialize(
                     self,
                     writer
@@ -62,18 +59,11 @@ pub fn account(
         impl anchor_lang::AccountDeserialize for #account_name {
 
             fn try_deserialize(buf: &mut &[u8]) -> std::result::Result<Self, ProgramError> {
-                let mut discriminator = [0u8; 8];
-                discriminator.copy_from_slice(
-                    &anchor_lang::solana_program::hash::hash(
-                        #discriminator_preimage.as_bytes(),
-                    ).to_bytes()[..8],
-                );
-
-                if buf.len() < discriminator.len() {
+                 if buf.len() < #discriminator.len() {
                     return Err(ProgramError::AccountDataTooSmall);
                 }
                 let given_disc = &buf[..8];
-                if &discriminator != given_disc {
+                if &#discriminator != given_disc {
                     return Err(ProgramError::InvalidInstructionData);
                 }
                 Self::try_deserialize_unchecked(buf)

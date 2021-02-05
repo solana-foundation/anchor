@@ -9,6 +9,8 @@ use quote::quote;
 use std::collections::HashMap;
 
 pub mod codegen;
+#[cfg(feature = "hash")]
+pub mod hash;
 #[cfg(feature = "idl")]
 pub mod idl;
 pub mod parser;
