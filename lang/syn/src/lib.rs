@@ -11,6 +11,8 @@ use std::collections::HashMap;
 pub mod codegen;
 #[cfg(feature = "hash")]
 pub mod hash;
+#[cfg(not(feature = "hash"))]
+pub(crate) mod hash;
 #[cfg(feature = "idl")]
 pub mod idl;
 pub mod parser;

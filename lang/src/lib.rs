@@ -159,6 +159,14 @@ pub trait AccountDeserialize: Sized {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 }
 
+/// Calculates the data for an instruction invocation, where the data is
+/// `Sha256(<namespace>::<method_name>)[..8] || BorshSerialize(args)`.
+/// `args` is a borsh serialized struct of named fields for each argument given
+/// to an instruction.
+pub trait InstructionData: AnchorSerialize {
+    fn data(&self) -> Vec<u8>;
+}
+
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {

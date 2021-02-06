@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+* lang, client, ts: Migrate from rust enum based method dispatch to a variant of sighash [(#64)](https://github.com/project-serum/anchor/pull/64).
+
 ## [0.1.0] - 2021-01-31
 
 Initial release.

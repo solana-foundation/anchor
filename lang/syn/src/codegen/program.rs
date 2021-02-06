@@ -3,13 +3,19 @@ use crate::{Program, RpcArg, State};
 use heck::{CamelCase, SnakeCase};
 use quote::quote;
 
+// Namespace for calculating state instruction sighash signatures.
+const SIGHASH_STATE_NAMESPACE: &'static str = "state";
+
+// Namespace for calculating instruction sighash signatures for any instruction
+// not affecting program state.
+const SIGHASH_GLOBAL_NAMESPACE: &'static str = "global";
+
 pub fn generate(program: Program) -> proc_macro2::TokenStream {
     let mod_name = &program.name;
-    let instruction_name = instruction_enum_name(&program);
     let dispatch = generate_dispatch(&program);
     let handlers_non_inlined = generate_non_inlined_handlers(&program);
     let methods = generate_methods(&program);
-    let instruction = generate_instruction(&program);
+    let instructions = generate_instructions(&program);
     let cpi = generate_cpi(&program);
     let accounts = generate_accounts(&program);
 
@@ -17,21 +23,27 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
         // TODO: remove once we allow segmented paths in `Accounts` structs.
         use #mod_name::*;
 
-
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
         #[cfg(not(feature = "no-entrypoint"))]
         fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+            if instruction_data.len() < 8 {
+                return Err(ProgramError::Custom(99));
+            }
+
+            let mut instruction_data: &[u8] = instruction_data;
+            let sighash: [u8; 8] = {
+                let mut sighash: [u8; 8] = [0; 8];
+                sighash.copy_from_slice(&instruction_data[..8]);
+                instruction_data = &instruction_data[8..];
+                sighash
+            };
+
             if cfg!(not(feature = "no-idl")) {
-                if instruction_data.len() >= 8 {
-                    if anchor_lang::idl::IDL_IX_TAG.to_le_bytes() == instruction_data[..8] {
-                        return __private::__idl(program_id, accounts, &instruction_data[8..]);
-                    }
+                if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
+                    return __private::__idl(program_id, accounts, &instruction_data[8..]);
                 }
             }
-            let mut data: &[u8] = instruction_data;
-            let ix = instruction::#instruction_name::deserialize(&mut data)
-                .map_err(|_| ProgramError::Custom(1))?; // todo: error code
 
             #dispatch
         }
@@ -45,7 +57,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
 
         #accounts
 
-        #instruction
+        #instructions
 
         #methods
 
@@ -57,10 +69,19 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
     let ctor_state_dispatch_arm = match &program.state {
         None => quote! { /* no-op */ },
         Some(state) => {
-            let variant_arm = generate_ctor_variant(program, state);
+            let variant_arm = generate_ctor_variant(state);
             let ctor_args = generate_ctor_args(state);
+            let ix_name: proc_macro2::TokenStream = generate_ctor_variant_name().parse().unwrap();
+            let sighash_arr = sighash_ctor();
+            let sighash_tts: proc_macro2::TokenStream =
+                format!("{:?}", sighash_arr).parse().unwrap();
             quote! {
-                instruction::#variant_arm => __private::__ctor(program_id, accounts, #(#ctor_args),*),
+                #sighash_tts => {
+                    let ix = instruction::#ix_name::deserialize(&mut instruction_data)
+                        .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                    let instruction::#variant_arm = ix;
+                    __private::__ctor(program_id, accounts, #(#ctor_args),*)
+                }
             }
         }
     };
@@ -72,18 +93,19 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             .map(|rpc: &crate::StateRpc| {
                 let rpc_arg_names: Vec<&syn::Ident> =
                     rpc.args.iter().map(|arg| &arg.name).collect();
-                let variant_arm: proc_macro2::TokenStream = generate_ix_variant(
-                    program,
-                    rpc.raw_method.sig.ident.to_string(),
-                    &rpc.args,
-                    true,
-                );
-                let rpc_name: proc_macro2::TokenStream = {
-                    let name = &rpc.raw_method.sig.ident.to_string();
-                    format!("__{}", name).parse().unwrap()
-                };
+                let name = &rpc.raw_method.sig.ident.to_string();
+                let rpc_name: proc_macro2::TokenStream = { format!("__{}", name).parse().unwrap() };
+                let variant_arm =
+                    generate_ix_variant(rpc.raw_method.sig.ident.to_string(), &rpc.args, true);
+                let ix_name = generate_ix_variant_name(rpc.raw_method.sig.ident.to_string(), true);
+                let sighash_arr = sighash(SIGHASH_STATE_NAMESPACE, &name);
+                let sighash_tts: proc_macro2::TokenStream =
+                    format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {
-                    instruction::#variant_arm => {
+                    #sighash_tts => {
+                        let ix = instruction::#ix_name::deserialize(&mut instruction_data)
+                            .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                        let instruction::#variant_arm = ix;
                         __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
                     }
                 }
@@ -95,15 +117,18 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
         .iter()
         .map(|rpc| {
             let rpc_arg_names: Vec<&syn::Ident> = rpc.args.iter().map(|arg| &arg.name).collect();
-            let variant_arm = generate_ix_variant(
-                program,
-                rpc.raw_method.sig.ident.to_string(),
-                &rpc.args,
-                false,
-            );
             let rpc_name = &rpc.raw_method.sig.ident;
+            let ix_name = generate_ix_variant_name(rpc.raw_method.sig.ident.to_string(), false);
+            let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &rpc_name.to_string());
+            let sighash_tts: proc_macro2::TokenStream =
+                format!("{:?}", sighash_arr).parse().unwrap();
+            let variant_arm =
+                generate_ix_variant(rpc.raw_method.sig.ident.to_string(), &rpc.args, false);
             quote! {
-                instruction::#variant_arm => {
+                #sighash_tts => {
+                    let ix = instruction::#ix_name::deserialize(&mut instruction_data)
+                        .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                    let instruction::#variant_arm = ix;
                     __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
                 }
             }
@@ -111,10 +136,14 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        match ix {
+        match sighash {
             #ctor_state_dispatch_arm
-            #(#state_dispatch_arms),*
-            #(#dispatch_arms),*
+            #(#state_dispatch_arms)*
+            #(#dispatch_arms)*
+            _ => {
+                msg!("Fallback functions are not supported. If you have a use case, please file an issue.");
+                Err(ProgramError::Custom(99))
+            }
         }
     }
 }
@@ -426,36 +455,42 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
     }
 }
 
-pub fn generate_ctor_variant(program: &Program, state: &State) -> proc_macro2::TokenStream {
-    let enum_name = instruction_enum_name(program);
+pub fn generate_ctor_variant(state: &State) -> proc_macro2::TokenStream {
     let ctor_args = generate_ctor_args(state);
+    let ctor_variant_name: proc_macro2::TokenStream = generate_ctor_variant_name().parse().unwrap();
     if ctor_args.len() == 0 {
         quote! {
-            #enum_name::__Ctor
+            #ctor_variant_name
         }
     } else {
         quote! {
-            #enum_name::__Ctor {
+            #ctor_variant_name {
                 #(#ctor_args),*
             }
         }
     }
 }
 
-pub fn generate_ctor_typed_variant_with_comma(program: &Program) -> proc_macro2::TokenStream {
+pub fn generate_ctor_variant_name() -> String {
+    "__Ctor".to_string()
+}
+
+pub fn generate_ctor_typed_variant_with_semi(program: &Program) -> proc_macro2::TokenStream {
     match &program.state {
         None => quote! {},
         Some(state) => {
             let ctor_args = generate_ctor_typed_args(state);
             if ctor_args.len() == 0 {
                 quote! {
-                    __Ctor,
+                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    pub struct __Ctor;
                 }
             } else {
                 quote! {
-                    __Ctor {
+                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    pub struct __Ctor {
                         #(#ctor_args),*
-                    },
+                    };
                 }
             }
         }
@@ -503,12 +538,10 @@ fn generate_ctor_args(state: &State) -> Vec<Box<syn::Pat>> {
 }
 
 pub fn generate_ix_variant(
-    program: &Program,
     name: String,
     args: &[RpcArg],
     underscore: bool,
 ) -> proc_macro2::TokenStream {
-    let enum_name = instruction_enum_name(program);
     let rpc_arg_names: Vec<&syn::Ident> = args.iter().map(|arg| &arg.name).collect();
     let rpc_name_camel: proc_macro2::TokenStream = {
         let n = name.to_camel_case();
@@ -521,14 +554,23 @@ pub fn generate_ix_variant(
 
     if args.len() == 0 {
         quote! {
-            #enum_name::#rpc_name_camel
+            #rpc_name_camel
         }
     } else {
         quote! {
-            #enum_name::#rpc_name_camel {
+            #rpc_name_camel {
                 #(#rpc_arg_names),*
             }
         }
+    }
+}
+
+pub fn generate_ix_variant_name(name: String, underscore: bool) -> proc_macro2::TokenStream {
+    let n = name.to_camel_case();
+    if underscore {
+        format!("__{}", n).parse().unwrap()
+    } else {
+        n.parse().unwrap()
     }
 }
 
@@ -539,9 +581,8 @@ pub fn generate_methods(program: &Program) -> proc_macro2::TokenStream {
     }
 }
 
-pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
-    let enum_name = instruction_enum_name(program);
-    let ctor_variant = generate_ctor_typed_variant_with_comma(program);
+pub fn generate_instructions(program: &Program) -> proc_macro2::TokenStream {
+    let ctor_variant = generate_ctor_typed_variant_with_semi(program);
     let state_method_variants: Vec<proc_macro2::TokenStream> = match &program.state {
         None => vec![],
         Some(state) => state
@@ -555,18 +596,48 @@ pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
                     );
                     name.parse().unwrap()
                 };
-                let raw_args: Vec<&syn::PatType> =
-                    method.args.iter().map(|arg| &arg.raw_arg).collect();
+                let raw_args: Vec<proc_macro2::TokenStream> = method
+                    .args
+                    .iter()
+                    .map(|arg| {
+                        format!("pub {}", parser::tts_to_string(&arg.raw_arg))
+                            .parse()
+                            .unwrap()
+                    })
+                    .collect();
+
+                let ix_data_trait = {
+                    let name = method.raw_method.sig.ident.to_string();
+                    let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &name);
+                    let sighash_tts: proc_macro2::TokenStream =
+                        format!("{:?}", sighash_arr).parse().unwrap();
+                    quote! {
+                        impl anchor_lang::InstructionData for #rpc_name_camel {
+                            fn data(&self) -> Vec<u8> {
+                                let mut d = #sighash_tts.to_vec();
+                                d.append(&mut self.try_to_vec().expect("Should always serialize"));
+                                d
+                            }
+                        }
+                    }
+                };
+
                 // If no args, output a "unit" variant instead of a struct variant.
                 if method.args.len() == 0 {
                     quote! {
-                        #rpc_name_camel,
+                        #[derive(AnchorSerialize, AnchorDeserialize)]
+                        pub struct #rpc_name_camel;
+
+                        #ix_data_trait
                     }
                 } else {
                     quote! {
-                        #rpc_name_camel {
+                        #[derive(AnchorSerialize, AnchorDeserialize)]
+                        pub struct #rpc_name_camel {
                             #(#raw_args),*
-                        },
+                        }
+
+                        #ix_data_trait
                     }
                 }
             })
@@ -576,21 +647,48 @@ pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
         .rpcs
         .iter()
         .map(|rpc| {
-            let rpc_name_camel = proc_macro2::Ident::new(
-                &rpc.raw_method.sig.ident.to_string().to_camel_case(),
-                rpc.raw_method.sig.ident.span(),
-            );
-            let raw_args: Vec<&syn::PatType> = rpc.args.iter().map(|arg| &arg.raw_arg).collect();
+            let name = &rpc.raw_method.sig.ident.to_string();
+            let rpc_name_camel =
+                proc_macro2::Ident::new(&name.to_camel_case(), rpc.raw_method.sig.ident.span());
+            let raw_args: Vec<proc_macro2::TokenStream> = rpc
+                .args
+                .iter()
+                .map(|arg| {
+                    format!("pub {}", parser::tts_to_string(&arg.raw_arg))
+                        .parse()
+                        .unwrap()
+                })
+                .collect();
+            let ix_data_trait = {
+                let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &name);
+                let sighash_tts: proc_macro2::TokenStream =
+                    format!("{:?}", sighash_arr).parse().unwrap();
+                quote! {
+                    impl anchor_lang::InstructionData for #rpc_name_camel {
+                        fn data(&self) -> Vec<u8> {
+                            let mut d = #sighash_tts.to_vec();
+                            d.append(&mut self.try_to_vec().expect("Should always serialize"));
+                            d
+                        }
+                    }
+                }
+            };
             // If no args, output a "unit" variant instead of a struct variant.
             if rpc.args.len() == 0 {
                 quote! {
-                    #rpc_name_camel
+                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    pub struct #rpc_name_camel;
+
+                    #ix_data_trait
                 }
             } else {
                 quote! {
-                    #rpc_name_camel {
+                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    pub struct #rpc_name_camel {
                         #(#raw_args),*
                     }
+
+                    #ix_data_trait
                 }
             }
         })
@@ -603,21 +701,12 @@ pub fn generate_instruction(program: &Program) -> proc_macro2::TokenStream {
         /// specifying instructions on a client.
         pub mod instruction {
             use super::*;
-            #[derive(AnchorSerialize, AnchorDeserialize)]
-            pub enum #enum_name {
-                #ctor_variant
-                #(#state_method_variants)*
-                #(#variants),*
-            }
+
+            #ctor_variant
+            #(#state_method_variants)*
+            #(#variants)*
         }
     }
-}
-
-fn instruction_enum_name(program: &Program) -> proc_macro2::Ident {
-    proc_macro2::Ident::new(
-        &format!("{}Instruction", program.name.to_string().to_camel_case()),
-        program.name.span(),
-    )
 }
 
 fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
@@ -678,14 +767,14 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
         .map(|rpc| {
             let accounts_ident = &rpc.anchor_ident;
             let cpi_method = {
-                let ix_variant = generate_ix_variant(
-                    program,
-                    rpc.raw_method.sig.ident.to_string(),
-                    &rpc.args,
-                    false,
-                );
+                let ix_variant =
+                    generate_ix_variant(rpc.raw_method.sig.ident.to_string(), &rpc.args, false);
                 let method_name = &rpc.ident;
                 let args: Vec<&syn::PatType> = rpc.args.iter().map(|arg| &arg.raw_arg).collect();
+                let name = &rpc.raw_method.sig.ident.to_string();
+                let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &name);
+                let sighash_tts: proc_macro2::TokenStream =
+                    format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {
                     pub fn #method_name<'a, 'b, 'c, 'info>(
                         ctx: CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
@@ -693,8 +782,10 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
                     ) -> ProgramResult {
                         let ix = {
                             let ix = instruction::#ix_variant;
-                            let data = AnchorSerialize::try_to_vec(&ix)
+                            let mut ix_data = AnchorSerialize::try_to_vec(&ix)
                                 .map_err(|_| ProgramError::InvalidInstructionData)?;
+                            let mut data = #sighash_tts.to_vec();
+                            data.append(&mut ix_data);
                             let accounts = ctx.accounts.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
                                 program_id: *ctx.program.key,
@@ -724,4 +815,25 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
             #(#cpi_methods)*
         }
     }
+}
+
+// We don't technically use sighash, because the input arguments aren't given.
+// Rust doesn't have method overloading so no need to use the arguments.
+// However, we do namespace methods in the preeimage so that we can use
+// different traits with the same method name.
+fn sighash(namespace: &str, name: &str) -> [u8; 8] {
+    let preimage = format!("{}::{}", namespace, name);
+
+    let mut sighash = [0u8; 8];
+    sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash
+}
+
+fn sighash_ctor() -> [u8; 8] {
+    let namespace = SIGHASH_STATE_NAMESPACE;
+    let preimage = format!("{}::new", namespace);
+
+    let mut sighash = [0u8; 8];
+    sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
+    sighash
 }

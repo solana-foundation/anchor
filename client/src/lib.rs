@@ -4,7 +4,7 @@
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{AccountDeserialize, AnchorSerialize, ToAccountMetas};
+use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use solana_client::client_error::ClientError as SolanaClientError;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -185,9 +185,8 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
-    pub fn args(mut self, args: impl AnchorSerialize) -> Self {
-        let data = args.try_to_vec().expect("Should always serialize");
-        self.instruction_data = Some(data);
+    pub fn args(mut self, args: impl InstructionData) -> Self {
+        self.instruction_data = Some(args.data());
         self
     }
 

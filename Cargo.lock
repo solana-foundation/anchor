@@ -176,12 +176,15 @@ name = "anchor-syn"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bs58",
  "heck",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "serde",
  "serde_json",
+ "sha2 0.9.3",
  "syn 1.0.57",
+ "thiserror",
 ]
 
 [[package]]
