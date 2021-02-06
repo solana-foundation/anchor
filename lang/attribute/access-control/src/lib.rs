@@ -9,7 +9,7 @@ use syn::parse_macro_input;
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use anchor_lang::prelude::*;
 ///
 /// #[program]
@@ -37,7 +37,6 @@ use syn::parse_macro_input;
 ///     Ok(())
 ///   }
 /// }
-/// ...
 /// ```
 ///
 /// This example demonstrates a useful pattern. Not only can you use

@@ -11,7 +11,7 @@ use syn::parse_macro_input;
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// #[derive(Accounts)]
 /// pub struct Auth<'info> {
 ///     #[account(mut, has_one = authority)]

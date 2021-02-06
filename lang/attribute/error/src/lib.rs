@@ -13,7 +13,7 @@ use syn::parse_macro_input;
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use anchor_lang::prelude::*;
 ///
 /// #[program]
