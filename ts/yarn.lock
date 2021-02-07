@@ -753,6 +753,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/crypto-hash@^1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@types/crypto-hash/-/crypto-hash-1.1.2.tgz#5a993deb0e6ba7c42f86eaa65d9bf563378f4569"
+  integrity sha512-sOmi+4Go2XKodLV4+lfP+5QMQ+6ZYqRJhK8D/n6xsxIUvlerEulmU9S4Lo02pXCH3qPBeJXEy+g8ZERktDJLSg==
+  dependencies:
+    crypto-hash "*"
+
 "@types/express-serve-static-core@^4.17.9":
   version "4.17.18"
   resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.17.18.tgz#8371e260f40e0e1ca0c116a9afcd9426fa094c40"
@@ -1687,7 +1694,7 @@ cross-spawn@^7.0.0, cross-spawn@^7.0.2:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-crypto-hash@^1.2.2:
+crypto-hash@*, crypto-hash@^1.2.2, crypto-hash@^1.3.0:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/crypto-hash/-/crypto-hash-1.3.0.tgz#b402cb08f4529e9f4f09346c3e275942f845e247"
   integrity sha512-lyAZ0EMyjDkVvz8WOeVnuCPvKVBXcMv1l5SVqO1yC7PzTwrD/pPje/BIRbWhMoPe436U+Y2nD7f5bFx0kt+Sbg==

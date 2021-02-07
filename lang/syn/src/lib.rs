@@ -32,6 +32,7 @@ pub struct State {
     pub strct: syn::ItemStruct,
     pub impl_block: syn::ItemImpl,
     pub methods: Vec<StateRpc>,
+    pub interfaces: Vec<StateInterface>,
     pub ctor: syn::ImplItemMethod,
     pub ctor_anchor: syn::Ident, // TODO: consolidate this with ctor above.
 }
@@ -42,6 +43,14 @@ pub struct StateRpc {
     pub ident: syn::Ident,
     pub args: Vec<RpcArg>,
     pub anchor_ident: syn::Ident,
+    // True if there exists a &self on the method.
+    pub has_receiver: bool,
+}
+
+#[derive(Debug)]
+pub struct StateInterface {
+    pub trait_name: String,
+    pub methods: Vec<StateRpc>,
 }
 
 #[derive(Debug)]

@@ -39,6 +39,7 @@ pub mod idl;
 mod program_account;
 mod state;
 mod sysvar;
+mod vec;
 
 pub use crate::context::{Context, CpiContext};
 pub use crate::cpi_account::CpiAccount;
@@ -49,6 +50,7 @@ pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::account;
 pub use anchor_attribute_error::error;
+pub use anchor_attribute_interface::interface;
 pub use anchor_attribute_program::program;
 pub use anchor_attribute_state::state;
 pub use anchor_derive_accounts::Accounts;
@@ -68,8 +70,8 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     /// program dependent. However, users of these types should never have to
     /// worry about account substitution attacks. For example, if a program
     /// expects a `Mint` account from the SPL token program  in a particular
-    /// field, then it should be impossible for this method to return `Ok` if any
-    /// other account type is given--from the SPL token program or elsewhere.
+    /// field, then it should be impossible for this method to return `Ok` if
+    /// any other account type is given--from the SPL token program or elsewhere.
     ///
     /// `program_id` is the currently executing program. `accounts` is the
     /// set of accounts to construct the type from. For every account used,
@@ -171,9 +173,9 @@ pub trait InstructionData: AnchorSerialize {
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
     pub use super::{
-        access_control, account, error, program, state, AccountDeserialize, AccountSerialize,
-        Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize, Context,
-        CpiAccount, CpiContext, Ctor, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
+        access_control, account, error, interface, program, state, AccountDeserialize,
+        AccountSerialize, Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize,
+        Context, CpiAccount, CpiContext, Ctor, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
         ToAccountInfos, ToAccountMetas,
     };
 
