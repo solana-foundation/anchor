@@ -6,7 +6,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
-use lockup::{CreateVesting, Vesting};
+use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;
 
 #[program]
@@ -23,6 +23,23 @@ mod registry {
             Ok(Registry {
                 lockup_program: *ctx.accounts.lockup_program.key,
             })
+        }
+    }
+
+    impl<'info> RealizeLock<'info, IsRealized<'info>> for Registry {
+        fn is_realized(ctx: Context<IsRealized>, v: Vesting) -> ProgramResult {
+            if let Some(realizor) = &v.realizor {
+                if &realizor.metadata != ctx.accounts.member.to_account_info().key {
+                    return Err(ErrorCode::InvalidRealizorMetadata.into());
+                }
+                assert!(ctx.accounts.member.beneficiary == v.beneficiary);
+                let total_staked =
+                    ctx.accounts.member_spt.amount + ctx.accounts.member_spt_locked.amount;
+                if total_staked != 0 {
+                    return Err(ErrorCode::UnrealizedReward.into());
+                }
+            }
+            Ok(())
         }
     }
 
@@ -435,14 +452,27 @@ mod registry {
             .unwrap();
         assert!(reward_amount > 0);
 
-        // Lockup program requires the timestamp to be >= clock's timestamp.
-        // So update if the time has already passed. 60 seconds is arbitrary.
-        let end_ts = match end_ts > ctx.accounts.cmn.clock.unix_timestamp + 60 {
-            true => end_ts,
-            false => ctx.accounts.cmn.clock.unix_timestamp + 60,
+        // The lockup program requires the timestamp to be >= clock's timestamp.
+        // So update if the time has already passed.
+        //
+        // If the reward is within `period_count` seconds of fully vesting, then
+        // we bump the `end_ts` because, otherwise, the vesting account would
+        // fail to be created. Vesting must have no more frequently than the
+        // smallest unit of time, once per second, expressed as
+        // `period_count <= end_ts - start_ts`.
+        let end_ts = match end_ts < ctx.accounts.cmn.clock.unix_timestamp + period_count as i64 {
+            true => ctx.accounts.cmn.clock.unix_timestamp + period_count as i64,
+            false => end_ts,
         };
 
-        // Create lockup account for the member's beneficiary.
+        // Specify the vesting account's realizor, so that unlocks can only
+        // execute once completely unstaked.
+        let realizor = Some(Realizor {
+            program: *ctx.program_id,
+            metadata: *ctx.accounts.cmn.member.to_account_info().key,
+        });
+
+        // CPI: Create lockup account for the member's beneficiary.
         let seeds = &[
             ctx.accounts.cmn.registrar.to_account_info().key.as_ref(),
             ctx.accounts.cmn.vendor.to_account_info().key.as_ref(),
@@ -461,9 +491,10 @@ mod registry {
             period_count,
             reward_amount,
             nonce,
+            realizor,
         )?;
 
-        // Update the member account.
+        // Make sure this reward can't be processed more than once.
         let member = &mut ctx.accounts.cmn.member;
         member.rewards_cursor = ctx.accounts.cmn.vendor.reward_event_q_cursor + 1;
 
@@ -607,6 +638,17 @@ pub struct BalanceSandboxAccounts<'info> {
 #[derive(Accounts)]
 pub struct Ctor<'info> {
     lockup_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct IsRealized<'info> {
+    #[account(
+        "&member.balances.spt == member_spt.to_account_info().key",
+        "&member.balances_locked.spt == member_spt_locked.to_account_info().key"
+    )]
+    member: ProgramAccount<'info, Member>,
+    member_spt: CpiAccount<'info, TokenAccount>,
+    member_spt_locked: CpiAccount<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -1168,6 +1210,12 @@ pub enum ErrorCode {
     ExpectedUnlockedVendor,
     #[msg("Locked deposit from an invalid deposit authority.")]
     InvalidVestingSigner,
+    #[msg("Locked rewards cannot be realized until one unstaked all tokens.")]
+    UnrealizedReward,
+    #[msg("The beneficiary doesn't match.")]
+    InvalidBeneficiary,
+    #[msg("The given member account does not match the realizor metadata.")]
+    InvalidRealizorMetadata,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut Deposit<'info>>
