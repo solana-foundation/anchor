@@ -582,8 +582,8 @@ describe("Lockup and Registry", () => {
   it("Drops a locked reward", async () => {
     lockedRewardKind = {
       locked: {
-        endTs: new anchor.BN(Date.now() / 1000 + 5),
-        periodCount: new anchor.BN(3),
+        endTs: new anchor.BN(Date.now() / 1000 + 6),
+        periodCount: new anchor.BN(2),
       },
     };
     lockedRewardAmount = new anchor.BN(200);
