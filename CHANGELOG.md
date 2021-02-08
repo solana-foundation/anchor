@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.2.0] - 2021-02-08
+
 ### Features
 
 * lang: Adds the ability to create and use CPI program interfaces [(#66)](https://github.com/project-serum/anchor/pull/66/files?file-filters%5B%5D=).
