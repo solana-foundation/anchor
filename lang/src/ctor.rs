@@ -2,12 +2,13 @@ use crate::{Accounts, Sysvar};
 use solana_program::account_info::AccountInfo;
 use solana_program::sysvar::rent::Rent;
 
-// The Ctor accounts that can be used to create any account within the program
-// itself (instead of creating the account on the client).
-//
-// This is used to create accounts at deterministic addresses, as a function of
-// nothing but a program ID--for example, to create state  global program
-// structs and program IDL accounts.
+/// The Ctor accounts that can be used to create any account within the program
+/// itself (instead of creating the account on the client).
+///
+/// This is used to create accounts at deterministic addresses, as a function of
+/// nothing but a program ID--for example, to create state  global program
+/// structs and program IDL accounts. It's currently used **internally** within
+/// the Anchor `#[program]` codegen.
 #[derive(Accounts)]
 pub struct Ctor<'info> {
     // Payer of the transaction.
