@@ -55,5 +55,3 @@ jobs:
         - pushd examples/tutorial/basic-2 && anchor test && popd
         - pushd examples/tutorial/basic-3 && anchor test && popd
         - pushd examples/tutorial/basic-4 && anchor test && popd
-        - solana airdrop 10 --url https://devnet.solana.com && solana airdrop 10 --url https://devnet.solana.com
-        - pushd examples/lockup && anchor test && popd
