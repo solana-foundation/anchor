@@ -41,7 +41,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
 
             if cfg!(not(feature = "no-idl")) {
                 if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
-                    return __private::__idl(program_id, accounts, &instruction_data[8..]);
+                    return __private::__idl(program_id, accounts, &instruction_data);
                 }
             }
 
@@ -66,6 +66,7 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
 }
 
 pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
+    // Dispatch the state constructor.
     let ctor_state_dispatch_arm = match &program.state {
         None => quote! { /* no-op */ },
         Some(state) => {
@@ -85,6 +86,8 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             }
         }
     };
+
+    // Dispatch the state impl instructions.
     let state_dispatch_arms: Vec<proc_macro2::TokenStream> = match &program.state {
         None => vec![],
         Some(s) => s
@@ -112,6 +115,63 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
             })
             .collect(),
     };
+
+    // Dispatch all trait interface implementations.
+    let trait_dispatch_arms: Vec<proc_macro2::TokenStream> = match &program.state {
+        None => vec![],
+        Some(s) => s
+            .interfaces
+            .iter()
+            .flat_map(|iface: &crate::StateInterface| {
+                iface
+                    .methods
+                    .iter()
+                    .map(|m: &crate::StateRpc| {
+                        let rpc_arg_names: Vec<&syn::Ident> =
+                            m.args.iter().map(|arg| &arg.name).collect();
+                        let name = &m.raw_method.sig.ident.to_string();
+                        let rpc_name: proc_macro2::TokenStream =  format!("__{}_{}", iface.trait_name, name).parse().unwrap();
+                        let raw_args: Vec<&syn::PatType> = m
+                            .args
+                            .iter()
+                            .map(|arg: &crate::RpcArg| &arg.raw_arg)
+                            .collect();
+                        let sighash_arr = sighash(&iface.trait_name, &m.ident.to_string());
+                        let sighash_tts: proc_macro2::TokenStream =
+                            format!("{:?}", sighash_arr).parse().unwrap();
+                        let args_struct = {
+                            if m.args.len() == 0 {
+                                quote! {
+                                    #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
+                                    struct Args;
+                                }
+                            } else {
+                                quote! {
+                                    #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
+                                    struct Args {
+                                        #(#raw_args),*
+                                    }
+                                }
+                            }
+                        };
+                        quote! {
+                            #sighash_tts => {
+                                #args_struct
+                                let ix = Args::deserialize(&mut instruction_data)
+                                    .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                                let Args {
+                                    #(#rpc_arg_names),*
+                                } = ix;
+                                __private::#rpc_name(program_id, accounts, #(#rpc_arg_names),*)
+                            }
+                        }
+                    })
+                    .collect::<Vec<proc_macro2::TokenStream>>()
+            })
+            .collect(),
+    };
+
+    // Dispatch all global instructions.
     let dispatch_arms: Vec<proc_macro2::TokenStream> = program
         .rpcs
         .iter()
@@ -139,6 +199,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
         match sighash {
             #ctor_state_dispatch_arm
             #(#state_dispatch_arms)*
+            #(#trait_dispatch_arms)*
             #(#dispatch_arms)*
             _ => {
                 msg!("Fallback functions are not supported. If you have a use case, please file an issue.");
@@ -166,7 +227,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                 let mut data: &[u8] = idl_ix_data;
 
                 let ix = anchor_lang::idl::IdlInstruction::deserialize(&mut data)
-                    .map_err(|_| ProgramError::Custom(1))?; // todo
+                    .map_err(|_| ProgramError::Custom(2))?; // todo
 
                 match ix {
                     anchor_lang::idl::IdlInstruction::Create { data_len } => {
@@ -419,6 +480,101 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
             })
             .collect(),
     };
+    let non_inlined_state_trait_handlers: Vec<proc_macro2::TokenStream> = match &program.state {
+        None => Vec::new(),
+        Some(state) => state
+            .interfaces
+            .iter()
+            .flat_map(|iface: &crate::StateInterface| {
+                iface
+                    .methods
+                    .iter()
+                    .map(|rpc| {
+                        let rpc_params: Vec<_> = rpc.args.iter().map(|arg| &arg.raw_arg).collect();
+                        let rpc_arg_names: Vec<&syn::Ident> =
+                            rpc.args.iter().map(|arg| &arg.name).collect();
+                        let private_rpc_name: proc_macro2::TokenStream = {
+                            let n = format!("__{}_{}", iface.trait_name, &rpc.raw_method.sig.ident.to_string());
+                            n.parse().unwrap()
+                        };
+                        let rpc_name = &rpc.raw_method.sig.ident;
+                        let state_ty: proc_macro2::TokenStream = state.name.parse().unwrap();
+                        let anchor_ident = &rpc.anchor_ident;
+
+                        if rpc.has_receiver {
+                            quote! {
+                                #[inline(never)]
+                                pub fn #private_rpc_name(
+                                    program_id: &Pubkey,
+                                    accounts: &[AccountInfo],
+                                    #(#rpc_params),*
+                                ) -> ProgramResult {
+
+                                    let mut remaining_accounts: &[AccountInfo] = accounts;
+                                    if remaining_accounts.len() == 0 {
+                                        return Err(ProgramError::Custom(1)); // todo
+                                    }
+
+                                    // Deserialize the program state account.
+                                    let state_account = &remaining_accounts[0];
+                                    let mut state: #state_ty = {
+                                        let data = state_account.try_borrow_data()?;
+                                        let mut sliced: &[u8] = &data;
+                                        anchor_lang::AccountDeserialize::try_deserialize(&mut sliced)?
+                                    };
+
+                                    remaining_accounts = &remaining_accounts[1..];
+
+                                    // Deserialize the program's execution context.
+                                    let mut accounts = #anchor_ident::try_accounts(
+                                        program_id,
+                                        &mut remaining_accounts,
+                                    )?;
+                                    let ctx = Context::new(program_id, &mut accounts, remaining_accounts);
+
+                                    // Execute user defined function.
+                                    state.#rpc_name(
+                                        ctx,
+                                        #(#rpc_arg_names),*
+                                    )?;
+
+                                    // Serialize the state and save it to storage.
+                                    accounts.exit(program_id)?;
+                                    let mut data = state_account.try_borrow_mut_data()?;
+                                    let dst: &mut [u8] = &mut data;
+                                    let mut cursor = std::io::Cursor::new(dst);
+                                    state.try_serialize(&mut cursor)?;
+
+                                    Ok(())
+                                }
+                            }
+                        } else {
+                            let state_name: proc_macro2::TokenStream = state.name.parse().unwrap();
+                            quote! {
+                                #[inline(never)]
+                                pub fn #private_rpc_name(
+                                    program_id: &Pubkey,
+                                    accounts: &[AccountInfo],
+                                    #(#rpc_params),*
+                                ) -> ProgramResult {
+                                    let mut remaining_accounts: &[AccountInfo] = accounts;
+                                    let mut accounts = #anchor_ident::try_accounts(
+                                        program_id,
+                                        &mut remaining_accounts,
+                                    )?;
+                                    #state_name::#rpc_name(
+                                        Context::new(program_id, &mut accounts, remaining_accounts),
+                                        #(#rpc_arg_names),*
+                                    )?;
+                                    accounts.exit(program_id)
+                                }
+                            }
+                        }
+                    })
+                    .collect::<Vec<proc_macro2::TokenStream>>()
+            })
+            .collect(),
+    };
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .rpcs
         .iter()
@@ -451,6 +607,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
         #non_inlined_idl
         #non_inlined_ctor
         #(#non_inlined_state_handlers)*
+        #(#non_inlined_state_trait_handlers)*
         #(#non_inlined_handlers)*
     }
 }
@@ -479,7 +636,14 @@ pub fn generate_ctor_typed_variant_with_semi(program: &Program) -> proc_macro2::
     match &program.state {
         None => quote! {},
         Some(state) => {
-            let ctor_args = generate_ctor_typed_args(state);
+            let ctor_args: Vec<proc_macro2::TokenStream> = generate_ctor_typed_args(state)
+                .iter()
+                .map(|arg| {
+                    format!("pub {}", parser::tts_to_string(&arg))
+                        .parse()
+                        .unwrap()
+                })
+                .collect();
             if ctor_args.len() == 0 {
                 quote! {
                     #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -490,7 +654,7 @@ pub fn generate_ctor_typed_variant_with_semi(program: &Program) -> proc_macro2::
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct __Ctor {
                         #(#ctor_args),*
-                    };
+                    }
                 }
             }
         }
@@ -821,7 +985,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
 // Rust doesn't have method overloading so no need to use the arguments.
 // However, we do namespace methods in the preeimage so that we can use
 // different traits with the same method name.
-fn sighash(namespace: &str, name: &str) -> [u8; 8] {
+pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{}::{}", namespace, name);
 
     let mut sighash = [0u8; 8];

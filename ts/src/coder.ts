@@ -356,7 +356,7 @@ export async function stateDiscriminator(name: string): Promise<Buffer> {
 
 // Returns the size of the type in bytes. For variable length types, just return
 // 1. Users should override this value in such cases.
-export function typeSize(idl: Idl, ty: IdlType): number {
+function typeSize(idl: Idl, ty: IdlType): number {
   switch (ty) {
     case "bool":
       return 1;
@@ -386,7 +386,7 @@ export function typeSize(idl: Idl, ty: IdlType): number {
       // @ts-ignore
       if (ty.option !== undefined) {
         // @ts-ignore
-        return 1 + typeSize(ty.option);
+        return 1 + typeSize(idl, ty.option);
       }
       // @ts-ignore
       if (ty.defined !== undefined) {

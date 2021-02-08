@@ -74,6 +74,7 @@ pub mod lockup {
         period_count: u64,
         deposit_amount: u64,
         nonce: u8,
+        realizor: Option<Realizor>,
     ) -> Result<()> {
         if end_ts <= ctx.accounts.clock.unix_timestamp {
             return Err(ErrorCode::InvalidTimestamp.into());
@@ -100,12 +101,14 @@ pub mod lockup {
         vesting.whitelist_owned = 0;
         vesting.grantor = *ctx.accounts.depositor_authority.key;
         vesting.nonce = nonce;
+        vesting.realizor = realizor;
 
         token::transfer(ctx.accounts.into(), deposit_amount)?;
 
         Ok(())
     }
 
+    #[access_control(is_realized(&ctx))]
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         // Has the given amount vested?
         if amount
@@ -187,7 +190,7 @@ pub mod lockup {
         Ok(())
     }
 
-    // Convenience function for UI's to calculate the withdrawalable amount.
+    // Convenience function for UI's to calculate the withdrawable amount.
     pub fn available_for_withdrawal(ctx: Context<AvailableForWithdrawal>) -> Result<()> {
         let available = calculator::available_for_withdrawal(
             &ctx.accounts.vesting,
@@ -242,6 +245,8 @@ impl<'info> CreateVesting<'info> {
     }
 }
 
+// All accounts not included here, i.e., the "remaining accounts" should be
+// ordered according to the realization interface.
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     // Vesting.
@@ -327,6 +332,29 @@ pub struct Vesting {
     pub whitelist_owned: u64,
     /// Signer nonce.
     pub nonce: u8,
+    /// The program that determines when the locked account is **realized**.
+    /// In addition to the lockup schedule, the program provides the ability
+    /// for applications to determine when locked tokens are considered earned.
+    /// For example, when earning locked tokens via the staking program, one
+    /// cannot receive the tokens until unstaking. As a result, if one never
+    /// unstakes, one would never actually receive the locked tokens.
+    pub realizor: Option<Realizor>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct Realizor {
+    /// Program to invoke to check a realization condition. This program must
+    /// implement the `RealizeLock` trait.
+    pub program: Pubkey,
+    /// Address of an arbitrary piece of metadata interpretable by the realizor
+    /// program. For example, when a vesting account is allocated, the program
+    /// can define its realization condition as a function of some account
+    /// state. The metadata is the address of that account.
+    ///
+    /// In the case of staking, the metadata is a `Member` account address. When
+    /// the realization condition is checked, the staking program will check the
+    /// `Member` account defined by the `metadata` has no staked tokens.
+    pub metadata: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Copy, Clone)]
@@ -366,6 +394,12 @@ pub enum ErrorCode {
     WhitelistEntryNotFound,
     #[msg("You do not have sufficient permissions to perform this action.")]
     Unauthorized,
+    #[msg("You are unable to realize projected rewards until unstaking.")]
+    UnableToWithdrawWhileStaked,
+    #[msg("The given lock realizor doesn't match the vesting account.")]
+    InvalidLockRealizor,
+    #[msg("You have not realized this vesting account.")]
+    UnrealizedVesting,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut CreateVesting<'info>>
@@ -455,4 +489,35 @@ fn whitelist_auth(lockup: &Lockup, ctx: &Context<Auth>) -> Result<()> {
         return Err(ErrorCode::Unauthorized.into());
     }
     Ok(())
+}
+
+// Returns Ok if the locked vesting account has been "realized". Realization
+// is application dependent. For example, in the case of staking, one must first
+// unstake before being able to earn locked tokens.
+fn is_realized<'info>(ctx: &Context<Withdraw>) -> Result<()> {
+    if let Some(realizor) = &ctx.accounts.vesting.realizor {
+        let cpi_program = {
+            let p = ctx.remaining_accounts[0].clone();
+            if p.key != &realizor.program {
+                return Err(ErrorCode::InvalidLockRealizor.into());
+            }
+            p
+        };
+        let cpi_accounts = ctx.remaining_accounts.to_vec()[1..].to_vec();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let vesting = (*ctx.accounts.vesting).clone();
+        realize_lock::is_realized(cpi_ctx, vesting).map_err(|_| ErrorCode::UnrealizedVesting)?;
+    }
+    Ok(())
+}
+
+/// RealizeLock defines the interface an external program must implement if
+/// they want to define a "realization condition" on a locked vesting account.
+/// This condition must be satisfied *even if a vesting schedule has
+/// completed*. Otherwise the user can never earn the locked funds. For example,
+/// in the case of the staking program, one cannot received a locked reward
+/// until one has completely unstaked.
+#[interface]
+pub trait RealizeLock<'info, T: Accounts<'info>> {
+    fn is_realized(ctx: Context<T>, v: Vesting) -> ProgramResult;
 }

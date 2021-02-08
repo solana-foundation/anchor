@@ -159,6 +159,7 @@ describe("Lockup and Registry", () => {
       periodCount,
       depositAmount,
       nonce,
+      null, // Lock realizor is None.
       {
         accounts: {
           vesting: vesting.publicKey,
@@ -194,6 +195,7 @@ describe("Lockup and Registry", () => {
     assert.ok(vestingAccount.whitelistOwned.eq(new anchor.BN(0)));
     assert.equal(vestingAccount.nonce, nonce);
     assert.ok(endTs.gt(vestingAccount.startTs));
+    assert.ok(vestingAccount.realizor === null);
   });
 
   it("Fails to withdraw from a vesting account before vesting", async () => {
@@ -580,8 +582,8 @@ describe("Lockup and Registry", () => {
   it("Drops a locked reward", async () => {
     lockedRewardKind = {
       locked: {
-        endTs: new anchor.BN(Date.now() / 1000 + 70),
-        periodCount: new anchor.BN(10),
+        endTs: new anchor.BN(Date.now() / 1000 + 5),
+        periodCount: new anchor.BN(3),
       },
     };
     lockedRewardAmount = new anchor.BN(200);
@@ -658,16 +660,21 @@ describe("Lockup and Registry", () => {
     assert.ok(e.locked === true);
   });
 
-  it("Collects a locked reward", async () => {
-    const vendoredVesting = new anchor.web3.Account();
-    const vendoredVestingVault = new anchor.web3.Account();
+  let vendoredVesting = null;
+  let vendoredVestingVault = null;
+  let vendoredVestingSigner = null;
+
+  it("Claims a locked reward", async () => {
+    vendoredVesting = new anchor.web3.Account();
+    vendoredVestingVault = new anchor.web3.Account();
     let [
-      vendoredVestingSigner,
+      _vendoredVestingSigner,
       nonce,
     ] = await anchor.web3.PublicKey.findProgramAddress(
       [vendoredVesting.publicKey.toBuffer()],
       lockup.programId
     );
+    vendoredVestingSigner = _vendoredVestingSigner;
     const remainingAccounts = lockup.instruction.createVesting
       .accounts({
         vesting: vendoredVesting.publicKey,
@@ -731,6 +738,51 @@ describe("Lockup and Registry", () => {
       lockupAccount.periodCount.eq(lockedRewardKind.locked.periodCount)
     );
     assert.ok(lockupAccount.whitelistOwned.eq(new anchor.BN(0)));
+    assert.ok(lockupAccount.realizor.program.equals(registry.programId));
+    assert.ok(lockupAccount.realizor.metadata.equals(member.publicKey));
+  });
+
+  it("Waits for the lockup period to pass", async () => {
+    await serumCmn.sleep(10 * 1000);
+  });
+
+  it("Should fail to unlock an unrealized lockup reward", async () => {
+    const token = await serumCmn.createTokenAccount(
+      provider,
+      mint,
+      provider.wallet.publicKey
+    );
+    await assert.rejects(
+      async () => {
+        const withdrawAmount = new anchor.BN(10);
+        await lockup.rpc.withdraw(withdrawAmount, {
+          accounts: {
+            vesting: vendoredVesting.publicKey,
+            beneficiary: provider.wallet.publicKey,
+            token,
+            vault: vendoredVestingVault.publicKey,
+            vestingSigner: vendoredVestingSigner,
+            tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+            clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+          },
+          // TODO: trait methods generated on the client. Until then, we need to manually
+          //       specify the account metas here.
+          remainingAccounts: [
+            { pubkey: registry.programId, isWritable: false, isSigner: false },
+            { pubkey: member.publicKey, isWritable: false, isSigner: false },
+            { pubkey: balances.spt, isWritable: false, isSigner: false },
+            { pubkey: balancesLocked.spt, isWritable: false, isSigner: false },
+          ],
+        });
+      },
+      (err) => {
+        // Solana doesn't propagate errors across CPI. So we receive the registry's error code,
+        // not the lockup's.
+        const errorCode = "custom program error: 0x78";
+        assert.ok(err.toString().split(errorCode).length === 2);
+        return true;
+      }
+    );
   });
 
   const pendingWithdrawal = new anchor.web3.Account();
@@ -854,6 +906,37 @@ describe("Lockup and Registry", () => {
       },
     });
 
+    const tokenAccount = await serumCmn.getTokenAccount(provider, token);
+    assert.ok(tokenAccount.amount.eq(withdrawAmount));
+  });
+
+  it("Should succesfully unlock a locked reward after unstaking", async () => {
+    const token = await serumCmn.createTokenAccount(
+      provider,
+      mint,
+      provider.wallet.publicKey
+    );
+
+    const withdrawAmount = new anchor.BN(7);
+    await lockup.rpc.withdraw(withdrawAmount, {
+      accounts: {
+        vesting: vendoredVesting.publicKey,
+        beneficiary: provider.wallet.publicKey,
+        token,
+        vault: vendoredVestingVault.publicKey,
+        vestingSigner: vendoredVestingSigner,
+        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+        clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+      },
+      // TODO: trait methods generated on the client. Until then, we need to manually
+      //       specify the account metas here.
+      remainingAccounts: [
+        { pubkey: registry.programId, isWritable: false, isSigner: false },
+        { pubkey: member.publicKey, isWritable: false, isSigner: false },
+        { pubkey: balances.spt, isWritable: false, isSigner: false },
+        { pubkey: balancesLocked.spt, isWritable: false, isSigner: false },
+      ],
+    });
     const tokenAccount = await serumCmn.getTokenAccount(provider, token);
     assert.ok(tokenAccount.amount.eq(withdrawAmount));
   });

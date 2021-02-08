@@ -11,6 +11,12 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: Adds the ability to create and use CPI program interfaces [(#66)](https://github.com/project-serum/anchor/pull/66/files?file-filters%5B%5D=).
+
+### Breaking Changes
+
 * lang, client, ts: Migrate from rust enum based method dispatch to a variant of sighash [(#64)](https://github.com/project-serum/anchor/pull/64).
 
 ## [0.1.0] - 2021-01-31

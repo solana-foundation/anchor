@@ -37,5 +37,12 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
                 }
             }
         }
+
+        impl std::convert::From<#enum_name> for ProgramError {
+            fn from(e: #enum_name) -> ProgramError {
+                let err: Error = e.into();
+                err.into()
+            }
+        }
     }
 }

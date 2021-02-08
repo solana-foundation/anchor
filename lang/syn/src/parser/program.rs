@@ -1,5 +1,5 @@
 use crate::parser;
-use crate::{Program, Rpc, RpcArg, State, StateRpc};
+use crate::{Program, Rpc, RpcArg, State, StateInterface, StateRpc};
 
 pub fn parse(program_mod: syn::ItemMod) -> Program {
     let mod_ident = &program_mod.ident;
@@ -28,12 +28,15 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
             .next();
 
         let impl_block: Option<&syn::ItemImpl> = strct.map(|strct| {
-            let item_impl = mod_content
+            let item_impls = mod_content
                 .iter()
                 .filter_map(|item| match item {
                     syn::Item::Impl(item_impl) => {
                         let impl_ty_str = parser::tts_to_string(&item_impl.self_ty);
                         let strct_name = strct.ident.to_string();
+                        if item_impl.trait_.is_some() {
+                            return None;
+                        }
                         if strct_name != impl_ty_str {
                             return None;
                         }
@@ -41,9 +44,39 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                     }
                     _ => None,
                 })
-                .next()
-                .expect("Must provide an implementation");
-            item_impl
+                .collect::<Vec<&syn::ItemImpl>>();
+            item_impls[0]
+        });
+
+        // All program interface implementations.
+        let trait_impls: Option<Vec<StateInterface>> = strct.map(|_strct| {
+            mod_content
+                .iter()
+                .filter_map(|item| match item {
+                    syn::Item::Impl(item_impl) => {
+                        let trait_name = match &item_impl.trait_ {
+                            None => return None,
+                            Some((_, path, _)) => path
+                                .segments
+                                .iter()
+                                .next()
+                                .expect("Must have one segmeent in a path")
+                                .ident
+                                .clone()
+                                .to_string(),
+                        };
+                        if item_impl.trait_.is_none() {
+                            return None;
+                        }
+                        let methods = parse_state_trait_methods(item_impl);
+                        Some(StateInterface {
+                            trait_name,
+                            methods,
+                        })
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<StateInterface>>()
         });
 
         strct.map(|strct| {
@@ -112,6 +145,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                                     ident: m.sig.ident.clone(),
                                     args,
                                     anchor_ident,
+                                    has_receiver: true,
                                 })
                             }
                         },
@@ -122,6 +156,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
             State {
                 name: strct.ident.to_string(),
                 strct: strct.clone(),
+                interfaces: trait_impls.expect("Some if state exists"),
                 impl_block,
                 ctor,
                 ctor_anchor,
@@ -205,4 +240,53 @@ fn extract_ident(path_ty: &syn::PatType) -> &proc_macro2::Ident {
         _ => panic!("invalid syntax"),
     };
     &path.segments[0].ident
+}
+
+fn parse_state_trait_methods(item_impl: &syn::ItemImpl) -> Vec<StateRpc> {
+    item_impl
+        .items
+        .iter()
+        .filter_map(|item: &syn::ImplItem| match item {
+            syn::ImplItem::Method(m) => match m.sig.inputs.first() {
+                None => None,
+                Some(_arg) => {
+                    let mut has_receiver = false;
+                    let mut args = m
+                        .sig
+                        .inputs
+                        .iter()
+                        .filter_map(|arg| match arg {
+                            syn::FnArg::Receiver(_) => {
+                                has_receiver = true;
+                                None
+                            }
+                            syn::FnArg::Typed(arg) => Some(arg),
+                        })
+                        .map(|raw_arg| {
+                            let ident = match &*raw_arg.pat {
+                                syn::Pat::Ident(ident) => &ident.ident,
+                                _ => panic!("invalid syntax"),
+                            };
+                            RpcArg {
+                                name: ident.clone(),
+                                raw_arg: raw_arg.clone(),
+                            }
+                        })
+                        .collect::<Vec<RpcArg>>();
+                    // Remove the Anchor accounts argument
+                    let anchor = args.remove(0);
+                    let anchor_ident = extract_ident(&anchor.raw_arg).clone();
+
+                    Some(StateRpc {
+                        raw_method: m.clone(),
+                        ident: m.sig.ident.clone(),
+                        args,
+                        anchor_ident,
+                        has_receiver,
+                    })
+                }
+            },
+            _ => None,
+        })
+        .collect()
 }

@@ -1,4 +1,4 @@
-use crate::Accounts;
+use crate::{Accounts, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 
@@ -27,13 +27,19 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {
 }
 
 /// Context speciying non-argument inputs for cross-program-invocations.
-pub struct CpiContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
+pub struct CpiContext<'a, 'b, 'c, 'info, T>
+where
+    T: ToAccountMetas + ToAccountInfos<'info>,
+{
     pub accounts: T,
     pub program: AccountInfo<'info>,
     pub signer_seeds: &'a [&'b [&'c [u8]]],
 }
 
-impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiContext<'a, 'b, 'c, 'info, T> {
+impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, 'info, T>
+where
+    T: ToAccountMetas + ToAccountInfos<'info>,
+{
     pub fn new(program: AccountInfo<'info>, accounts: T) -> Self {
         Self {
             accounts,
