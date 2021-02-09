@@ -11,9 +11,12 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
 * cli: Embed workspace programs into local validator genesis when testing.
 * cli: Stream program logs to `.anchor/program-logs` directory when testing.
 * spl: Add shared memory api.
+* lang/attribute/access-control: Allow specifying multiple modifier functions.
 
 ## [0.2.0] - 2021-02-08
 

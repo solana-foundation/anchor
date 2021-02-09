@@ -50,7 +50,18 @@ pub fn access_control(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let access_control: proc_macro2::TokenStream = args.to_string().parse().unwrap();
+    let mut args = args.to_string();
+    args.retain(|c| !c.is_whitespace());
+    let access_control: Vec<proc_macro2::TokenStream> = args
+        .split(')')
+        .filter_map(|ac| match ac {
+            "" => None,
+            _ => Some(ac),
+        })
+        .map(|ac| format!("{})", ac)) // Put back on the split char.
+        .map(|ac| format!("{}?;", ac)) // Add `?;` syntax.
+        .map(|ac| ac.parse().unwrap())
+        .collect();
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
 
@@ -63,7 +74,7 @@ pub fn access_control(
     proc_macro::TokenStream::from(quote! {
         #fn_vis #fn_sig {
 
-            #access_control?;
+            #(#access_control)*
 
             #(#fn_stmts)*
         }
