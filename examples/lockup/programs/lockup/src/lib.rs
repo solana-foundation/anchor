@@ -4,8 +4,8 @@
 #![feature(proc_macro_hygiene)]
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program;
 use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::solana_program::program;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
 mod calculator;
@@ -18,7 +18,8 @@ pub mod lockup {
     pub struct Lockup {
         /// The key with the ability to change the whitelist.
         pub authority: Pubkey,
-        /// Valid programs the program can relay transactions to.
+        /// List of programs locked tokens can be sent to. These programs
+        /// are completely trusted to maintain the locked property.
         pub whitelist: Vec<WhitelistEntry>,
     }
 
@@ -70,25 +71,19 @@ pub mod lockup {
     pub fn create_vesting(
         ctx: Context<CreateVesting>,
         beneficiary: Pubkey,
-        end_ts: i64,
-        period_count: u64,
         deposit_amount: u64,
         nonce: u8,
+        start_ts: i64,
+        end_ts: i64,
+        period_count: u64,
         realizor: Option<Realizor>,
     ) -> Result<()> {
-        if end_ts <= ctx.accounts.clock.unix_timestamp {
-            return Err(ErrorCode::InvalidTimestamp.into());
-        }
-        if period_count > (end_ts - ctx.accounts.clock.unix_timestamp) as u64 {
-            return Err(ErrorCode::InvalidPeriod.into());
-        }
-        if period_count == 0 {
-            return Err(ErrorCode::InvalidPeriod.into());
-        }
         if deposit_amount == 0 {
             return Err(ErrorCode::InvalidDepositAmount.into());
         }
-
+        if !is_valid_schedule(start_ts, end_ts, period_count) {
+            return Err(ErrorCode::InvalidSchedule.into());
+        }
         let vesting = &mut ctx.accounts.vesting;
         vesting.beneficiary = beneficiary;
         vesting.mint = ctx.accounts.vault.mint;
@@ -96,7 +91,8 @@ pub mod lockup {
         vesting.period_count = period_count;
         vesting.start_balance = deposit_amount;
         vesting.end_ts = end_ts;
-        vesting.start_ts = ctx.accounts.clock.unix_timestamp;
+        vesting.start_ts = start_ts;
+        vesting.created_ts = ctx.accounts.clock.unix_timestamp;
         vesting.outstanding = deposit_amount;
         vesting.whitelist_owned = 0;
         vesting.grantor = *ctx.accounts.depositor_authority.key;
@@ -321,9 +317,10 @@ pub struct Vesting {
     /// originally deposited.
     pub start_balance: u64,
     /// The unix timestamp at which this vesting account was created.
+    pub created_ts: i64,
+    /// The time at which vesting begins.
     pub start_ts: i64,
-    /// The ts at which all the tokens associated with this account
-    /// should be vested.
+    /// The time at which all tokens are vested.
     pub end_ts: i64,
     /// The number of times vesting will occur. For example, if vesting
     /// is once a year over seven years, this will be 7.
@@ -400,6 +397,8 @@ pub enum ErrorCode {
     InvalidLockRealizor,
     #[msg("You have not realized this vesting account.")]
     UnrealizedVesting,
+    #[msg("Invalid vesting schedule given.")]
+    InvalidSchedule,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut CreateVesting<'info>>
@@ -471,8 +470,7 @@ pub fn whitelist_relay_cpi<'info>(
     let signer = &[&seeds[..]];
     let mut accounts = transfer.to_account_infos();
     accounts.extend_from_slice(&remaining_accounts);
-    solana_program::program::invoke_signed(&relay_instruction, &accounts, signer)
-        .map_err(Into::into)
+    program::invoke_signed(&relay_instruction, &accounts, signer).map_err(Into::into)
 }
 
 pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<()> {
@@ -491,10 +489,23 @@ fn whitelist_auth(lockup: &Lockup, ctx: &Context<Auth>) -> Result<()> {
     Ok(())
 }
 
+pub fn is_valid_schedule(start_ts: i64, end_ts: i64, period_count: u64) -> bool {
+    if end_ts <= start_ts {
+        return false;
+    }
+    if period_count > (end_ts - start_ts) as u64 {
+        return false;
+    }
+    if period_count == 0 {
+        return false;
+    }
+    true
+}
+
 // Returns Ok if the locked vesting account has been "realized". Realization
 // is application dependent. For example, in the case of staking, one must first
 // unstake before being able to earn locked tokens.
-fn is_realized<'info>(ctx: &Context<Withdraw>) -> Result<()> {
+fn is_realized(ctx: &Context<Withdraw>) -> Result<()> {
     if let Some(realizor) = &ctx.accounts.vesting.realizor {
         let cpi_program = {
             let p = ctx.remaining_accounts[0].clone();

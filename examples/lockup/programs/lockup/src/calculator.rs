@@ -7,7 +7,7 @@ pub fn available_for_withdrawal(vesting: &Vesting, current_ts: i64) -> u64 {
 }
 
 // The amount of funds currently in the vault.
-pub fn balance(vesting: &Vesting) -> u64 {
+fn balance(vesting: &Vesting) -> u64 {
     vesting
         .outstanding
         .checked_sub(vesting.whitelist_owned)
@@ -33,12 +33,13 @@ fn withdrawn_amount(vesting: &Vesting) -> u64 {
 // Returns the total vested amount up to the given ts, assuming zero
 // withdrawals and zero funds sent to other programs.
 fn total_vested(vesting: &Vesting, current_ts: i64) -> u64 {
-    assert!(current_ts >= vesting.start_ts);
-
-    if current_ts >= vesting.end_ts {
-        return vesting.start_balance;
+    if current_ts < vesting.start_ts {
+        0
+    } else if current_ts >= vesting.end_ts {
+        vesting.start_balance
+    } else {
+        linear_unlock(vesting, current_ts).unwrap()
     }
-    linear_unlock(vesting, current_ts).unwrap()
 }
 
 fn linear_unlock(vesting: &Vesting, current_ts: i64) -> Option<u64> {

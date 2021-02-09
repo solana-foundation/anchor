@@ -12,6 +12,7 @@ describe("Lockup and Registry", () => {
   anchor.setProvider(provider);
 
   const lockup = anchor.workspace.Lockup;
+  const linear = anchor.workspace.Linear;
   const registry = anchor.workspace.Registry;
 
   let lockupAddress = null;
@@ -138,9 +139,10 @@ describe("Lockup and Registry", () => {
   let vestingSigner = null;
 
   it("Creates a vesting account", async () => {
-    const beneficiary = provider.wallet.publicKey;
-    const endTs = new anchor.BN(Date.now() / 1000 + 5);
+    const startTs = new anchor.BN(Date.now() / 1000);
+    const endTs = new anchor.BN(startTs.toNumber() + 5);
     const periodCount = new anchor.BN(2);
+    const beneficiary = provider.wallet.publicKey;
     const depositAmount = new anchor.BN(100);
 
     const vault = new anchor.web3.Account();
@@ -155,10 +157,11 @@ describe("Lockup and Registry", () => {
 
     await lockup.rpc.createVesting(
       beneficiary,
-      endTs,
-      periodCount,
       depositAmount,
       nonce,
+      startTs,
+      endTs,
+      periodCount,
       null, // Lock realizor is None.
       {
         accounts: {
@@ -190,11 +193,11 @@ describe("Lockup and Registry", () => {
     assert.ok(vestingAccount.grantor.equals(provider.wallet.publicKey));
     assert.ok(vestingAccount.outstanding.eq(depositAmount));
     assert.ok(vestingAccount.startBalance.eq(depositAmount));
-    assert.ok(vestingAccount.endTs.eq(endTs));
-    assert.ok(vestingAccount.periodCount.eq(periodCount));
     assert.ok(vestingAccount.whitelistOwned.eq(new anchor.BN(0)));
     assert.equal(vestingAccount.nonce, nonce);
-    assert.ok(endTs.gt(vestingAccount.startTs));
+    assert.ok(vestingAccount.createdTs.gt(new anchor.BN(0)));
+    assert.ok(vestingAccount.startTs.eq(startTs));
+    assert.ok(vestingAccount.endTs.eq(endTs));
     assert.ok(vestingAccount.realizor === null);
   });
 
@@ -582,6 +585,7 @@ describe("Lockup and Registry", () => {
   it("Drops a locked reward", async () => {
     lockedRewardKind = {
       locked: {
+        startTs: new anchor.BN(Date.now() / 1000),
         endTs: new anchor.BN(Date.now() / 1000 + 6),
         periodCount: new anchor.BN(2),
       },
