@@ -12,6 +12,7 @@ incremented for features.
 ## [Unreleased]
 
 * cli: Embed workspace programs into local validator genesis when testing.
+* cli: Stream program logs to `.anchor/program-logs` directory when testing.
 
 ## [0.2.0] - 2021-02-08
 

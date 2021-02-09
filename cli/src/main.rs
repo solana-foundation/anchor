@@ -603,6 +603,8 @@ fn test(skip_deploy: bool) -> Result<()> {
             }
         };
 
+        let log_streams = stream_logs(&cfg.cluster.url())?;
+
         // Run the tests.
         if let Err(e) = std::process::Command::new("mocha")
             .arg("-t")
@@ -620,6 +622,10 @@ fn test(skip_deploy: bool) -> Result<()> {
         }
         if let Some(mut validator_handle) = validator_handle {
             validator_handle.kill()?;
+        }
+
+        for mut stream in log_streams {
+            stream.kill()?;
         }
 
         Ok(())
@@ -650,6 +656,38 @@ fn genesis_flags() -> Result<Vec<String>> {
         write_idl(&program.idl, OutFile::File(idl_out))?;
     }
     Ok(flags)
+}
+
+fn stream_logs(url: &str) -> Result<Vec<std::process::Child>> {
+    let program_logs_dir = ".anchor/program-logs";
+    if Path::new(program_logs_dir).exists() {
+        std::fs::remove_dir_all(program_logs_dir)?;
+    }
+    fs::create_dir_all(program_logs_dir)?;
+    let mut handles = vec![];
+    for program in read_all_programs()? {
+        let mut file = File::open(&format!("target/idl/{}.json", program.lib_name))?;
+        let mut contents = vec![];
+        file.read_to_end(&mut contents)?;
+        let idl: Idl = serde_json::from_slice(&contents)?;
+        let metadata = idl.metadata.ok_or(anyhow!("Program address not found."))?;
+        let metadata: IdlTestMetadata = serde_json::from_value(metadata)?;
+
+        let log_file = File::create(format!(
+            "{}/{}.{}.log",
+            program_logs_dir, metadata.address, program.idl.name
+        ))?;
+        let stdio = std::process::Stdio::from(log_file);
+        let child = std::process::Command::new("solana")
+            .arg("logs")
+            .arg(metadata.address)
+            .arg("--url")
+            .arg(url)
+            .stdout(stdio)
+            .spawn()?;
+        handles.push(child);
+    }
+    Ok(handles)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
