@@ -13,6 +13,7 @@ incremented for features.
 
 * cli: Embed workspace programs into local validator genesis when testing.
 * cli: Stream program logs to `.anchor/program-logs` directory when testing.
+* spl: Add shared memory api.
 
 ## [0.2.0] - 2021-02-08
 
