@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+* cli: Embed workspace programs into local validator genesis when testing.
+
 ## [0.2.0] - 2021-02-08
 
 ### Features

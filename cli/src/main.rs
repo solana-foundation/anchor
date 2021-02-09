@@ -587,14 +587,21 @@ fn test(skip_deploy: bool) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
-            "http://127.0.0.1:8899" => Some(start_test_validator()?),
-            _ => None,
+            "http://127.0.0.1:8899" => {
+                build(None)?;
+                let flags = match skip_deploy {
+                    true => None,
+                    false => Some(genesis_flags()?),
+                };
+                Some(start_test_validator(flags)?)
+            }
+            _ => {
+                if !skip_deploy {
+                    deploy(None, None)?;
+                }
+                None
+            }
         };
-
-        // Deploy programs.
-        if !skip_deploy {
-            deploy(None, None)?;
-        }
 
         // Run the tests.
         if let Err(e) = std::process::Command::new("mocha")
@@ -619,12 +626,38 @@ fn test(skip_deploy: bool) -> Result<()> {
     })
 }
 
+// Returns the solana-test-validator flags to embed the workspace programs
+// in the genesis block. This allows us to run tests without every deploying.
+fn genesis_flags() -> Result<Vec<String>> {
+    let mut flags = Vec::new();
+    for mut program in read_all_programs()? {
+        let binary_path = program.binary_path().display().to_string();
+
+        let kp = Keypair::generate(&mut OsRng);
+        let address = kp.pubkey().to_string();
+
+        flags.push("--bpf-program".to_string());
+        flags.push(address.clone());
+        flags.push(binary_path);
+
+        // Add program address to the IDL.
+        program.idl.metadata = Some(serde_json::to_value(IdlTestMetadata { address })?);
+
+        // Persist it.
+        let idl_out = PathBuf::from("target/idl")
+            .join(&program.idl.name)
+            .with_extension("json");
+        write_idl(&program.idl, OutFile::File(idl_out))?;
+    }
+    Ok(flags)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IdlTestMetadata {
     address: String,
 }
 
-fn start_test_validator() -> Result<Child> {
+fn start_test_validator(flags: Option<Vec<String>>) -> Result<Child> {
     fs::create_dir_all(".anchor")?;
     let test_ledger_filename = ".anchor/test-ledger";
     let test_ledger_log_filename = ".anchor/test-ledger-log.txt";
@@ -642,6 +675,7 @@ fn start_test_validator() -> Result<Child> {
     let validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_filename)
+        .args(flags.unwrap_or(Vec::new()))
         .stdout(Stdio::from(test_validator_stdout))
         .stderr(Stdio::from(test_validator_stderr))
         .spawn()
