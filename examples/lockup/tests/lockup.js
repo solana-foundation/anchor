@@ -12,7 +12,6 @@ describe("Lockup and Registry", () => {
   anchor.setProvider(provider);
 
   const lockup = anchor.workspace.Lockup;
-  const linear = anchor.workspace.Linear;
   const registry = anchor.workspace.Registry;
 
   let lockupAddress = null;
