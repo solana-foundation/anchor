@@ -13,22 +13,22 @@ incremented for features.
 
 ### Features
 
-* cli: Embed workspace programs into local validator genesis when testing [(733ec3)](https://github.com/project-serum/anchor/commit/733ec300b0308e7d007873b0975585d836333fd4).
-* cli: Stream program logs to `.anchor/program-logs` directory when testing [(ce5ca7)](https://github.com/project-serum/anchor/commit/ce5ca7ddab6e0fd579deddcd02094b3f798bbe6a).
+* cli: Embed workspace programs into local validator genesis when testing ([733ec3](https://github.com/project-serum/anchor/commit/733ec300b0308e7d007873b0975585d836333fd4)).
+* cli: Stream program logs to `.anchor/program-logs` directory when testing ([ce5ca7](https://github.com/project-serum/anchor/commit/ce5ca7ddab6e0fd579deddcd02094b3f798bbe6a)).
 * spl: Add shared memory api [(d92cb1)](https://github.com/project-serum/anchor/commit/d92cb1516b78696d1257e41d0c5ac6821716300e).
-* lang/attribute/access-control: Allow specifying multiple modifier functions [(845df6)](https://github.com/project-serum/anchor/commit/845df6d1960bb544fa0f2e3331ec79cc804edeb6).
-* lang/syn: Allow state structs that don't have a ctor or impl block (just trait implementations) [(a78000)](https://github.com/project-serum/anchor/commit/a7800026833d64579e5b19c90d724ecc20d2a455).
-* ts: Add instruction method to state namespace [(627c27)](https://github.com/project-serum/anchor/commit/627c275e9cdf3dafafcf44473ba8146cc7979d44).
+* lang/attribute/access-control: Allow specifying multiple modifier functions ([845df6](https://github.com/project-serum/anchor/commit/845df6d1960bb544fa0f2e3331ec79cc804edeb6)).
+* lang/syn: Allow state structs that don't have a ctor or impl block (just trait implementations) ([a78000](https://github.com/project-serum/anchor/commit/a7800026833d64579e5b19c90d724ecc20d2a455)).
+* ts: Add instruction method to state namespace ([627c27](https://github.com/project-serum/anchor/commit/627c275e9cdf3dafafcf44473ba8146cc7979d44)).
 
 ## [0.2.0] - 2021-02-08
 
 ### Features
 
-* lang: Adds the ability to create and use CPI program interfaces [(#66)](https://github.com/project-serum/anchor/pull/66/files?file-filters%5B%5D=).
+* lang: Adds the ability to create and use CPI program interfaces ([#66](https://github.com/project-serum/anchor/pull/66/files?file-filters%5B%5D=)).
 
 ### Breaking Changes
 
-* lang, client, ts: Migrate from rust enum based method dispatch to a variant of sighash [(#64)](https://github.com/project-serum/anchor/pull/64).
+* lang, client, ts: Migrate from rust enum based method dispatch to a variant of sighash ([#64](https://github.com/project-serum/anchor/pull/64)).
 
 ## [0.1.0] - 2021-01-31
 
