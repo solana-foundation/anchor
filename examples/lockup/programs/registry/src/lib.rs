@@ -358,6 +358,16 @@ mod registry {
         if ctx.accounts.clock.unix_timestamp >= expiry_ts {
             return Err(ErrorCode::InvalidExpiry.into());
         }
+        if let RewardVendorKind::Locked {
+            start_ts,
+            end_ts,
+            period_count,
+        } = kind
+        {
+            if !lockup::is_valid_schedule(start_ts, end_ts, period_count) {
+                return Err(ErrorCode::InvalidVestingSchedule.into());
+            }
+        }
 
         // Transfer funds into the vendor's vault.
         token::transfer(ctx.accounts.into(), total)?;
@@ -384,7 +394,7 @@ mod registry {
         vendor.from = *ctx.accounts.depositor_authority.key;
         vendor.total = total;
         vendor.expired = false;
-        vendor.kind = kind.clone();
+        vendor.kind = kind;
 
         Ok(())
     }
@@ -434,12 +444,13 @@ mod registry {
         ctx: Context<'a, 'b, 'c, 'info, ClaimRewardLocked<'info>>,
         nonce: u8,
     ) -> Result<()> {
-        let (end_ts, period_count) = match ctx.accounts.cmn.vendor.kind {
+        let (start_ts, end_ts, period_count) = match ctx.accounts.cmn.vendor.kind {
             RewardVendorKind::Unlocked => return Err(ErrorCode::ExpectedLockedVendor.into()),
             RewardVendorKind::Locked {
+                start_ts,
                 end_ts,
                 period_count,
-            } => (end_ts, period_count),
+            } => (start_ts, end_ts, period_count),
         };
 
         // Reward distribution.
@@ -451,19 +462,6 @@ mod registry {
             .checked_div(ctx.accounts.cmn.vendor.pool_token_supply)
             .unwrap();
         assert!(reward_amount > 0);
-
-        // The lockup program requires the timestamp to be >= clock's timestamp.
-        // So update if the time has already passed.
-        //
-        // If the reward is within `period_count` seconds of fully vesting, then
-        // we bump the `end_ts` because, otherwise, the vesting account would
-        // fail to be created. Vesting must have no more frequently than the
-        // smallest unit of time, once per second, expressed as
-        // `period_count <= end_ts - start_ts`.
-        let end_ts = match end_ts < ctx.accounts.cmn.clock.unix_timestamp + period_count as i64 {
-            true => ctx.accounts.cmn.clock.unix_timestamp + period_count as i64,
-            false => end_ts,
-        };
 
         // Specify the vesting account's realizor, so that unlocks can only
         // execute once completely unstaked.
@@ -487,10 +485,11 @@ mod registry {
         lockup::cpi::create_vesting(
             cpi_ctx,
             ctx.accounts.cmn.member.beneficiary,
-            end_ts,
-            period_count,
             reward_amount,
             nonce,
+            start_ts,
+            end_ts,
+            period_count,
             realizor,
         )?;
 
@@ -1165,7 +1164,11 @@ pub struct RewardVendor {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum RewardVendorKind {
     Unlocked,
-    Locked { end_ts: i64, period_count: u64 },
+    Locked {
+        start_ts: i64,
+        end_ts: i64,
+        period_count: u64,
+    },
 }
 
 #[error]
@@ -1216,6 +1219,8 @@ pub enum ErrorCode {
     InvalidBeneficiary,
     #[msg("The given member account does not match the realizor metadata.")]
     InvalidRealizorMetadata,
+    #[msg("Invalid vesting schedule for the locked reward.")]
+    InvalidVestingSchedule,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut Deposit<'info>>
