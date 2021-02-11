@@ -654,10 +654,10 @@
     "@nodelib/fs.scandir" "2.1.4"
     fastq "^1.6.0"
 
-"@project-serum/borsh@^0.0.1-beta.0":
-  version "0.0.1-beta.0"
-  resolved "https://registry.yarnpkg.com/@project-serum/borsh/-/borsh-0.0.1-beta.0.tgz#8ab465ac23e0d840127c7922f8a1a500b50667d5"
-  integrity sha512-jBrGi0KBMe1UXkItp1JKR8Qtaal4xPrbkIWKzbglqVLRNnG+DiDWpZk8I9XMrSLiAFYTvQp8MIJmwwoWSyN8yQ==
+"@project-serum/borsh@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@project-serum/borsh/-/borsh-0.1.0.tgz#cdbff90d06901f8206afb6e1998e5c45aae0aea7"
+  integrity sha512-AWZ/cjThXmb7o2/fMocc8/VaEsqH29yXEwdHnzTXzglxg1vLPZXpBHqGuPfonSfbd7WszgnGXAIHc+9artwMGg==
   dependencies:
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"

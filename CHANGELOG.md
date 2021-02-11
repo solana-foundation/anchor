@@ -19,6 +19,7 @@ incremented for features.
 * lang/attribute/access-control: Allow specifying multiple modifier functions ([845df6](https://github.com/project-serum/anchor/commit/845df6d1960bb544fa0f2e3331ec79cc804edeb6)).
 * lang/syn: Allow state structs that don't have a ctor or impl block (just trait implementations) ([a78000](https://github.com/project-serum/anchor/commit/a7800026833d64579e5b19c90d724ecc20d2a455)).
 * ts: Add instruction method to state namespace ([627c27](https://github.com/project-serum/anchor/commit/627c275e9cdf3dafafcf44473ba8146cc7979d44)).
+* lang/syn, ts: Add support for u128 and i128 ([#83](https://github.com/project-serum/anchor/pull/83)).
 
 ## [0.2.0] - 2021-02-08
 
