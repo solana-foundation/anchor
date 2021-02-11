@@ -1,6 +1,6 @@
 use crate::idl::*;
 use crate::parser::{self, accounts, error, program};
-use crate::{AccountsStruct, StateRpc};
+use crate::{AccountsStruct, StateIx};
 use anyhow::Result;
 use heck::MixedCase;
 use quote::ToTokens;
@@ -43,7 +43,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                     .map(|(_impl_block, methods)| {
                         methods
                             .iter()
-                            .map(|method: &StateRpc| {
+                            .map(|method: &StateIx| {
                                 let name = method.ident.to_string().to_mixed_case();
                                 let args = method
                                     .args
@@ -152,10 +152,10 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     });
 
     let instructions = p
-        .rpcs
+        .ixs
         .iter()
-        .map(|rpc| {
-            let args = rpc
+        .map(|ix| {
+            let args = ix
                 .args
                 .iter()
                 .map(|arg| {
@@ -169,10 +169,10 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                 })
                 .collect::<Vec<_>>();
             // todo: don't unwrap
-            let accounts_strct = accs.get(&rpc.anchor_ident.to_string()).unwrap();
+            let accounts_strct = accs.get(&ix.anchor_ident.to_string()).unwrap();
             let accounts = accounts_strct.idl_accounts(&accs);
-            IdlInstruction {
-                name: rpc.ident.to_string().to_mixed_case(),
+            IdlIx {
+                name: ix.ident.to_string().to_mixed_case(),
                 accounts,
                 args,
             }
