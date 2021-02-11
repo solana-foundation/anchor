@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Idl {
     pub version: String,
     pub name: String,
-    pub instructions: Vec<IdlInstruction>,
+    pub instructions: Vec<IdlIx>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub state: Option<IdlState>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -24,10 +24,10 @@ pub struct IdlState {
     pub methods: Vec<IdlStateMethod>,
 }
 
-pub type IdlStateMethod = IdlInstruction;
+pub type IdlStateMethod = IdlIx;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdlInstruction {
+pub struct IdlIx {
     pub name: String,
     pub accounts: Vec<IdlAccountItem>,
     pub args: Vec<IdlField>,

@@ -20,7 +20,7 @@ pub mod parser;
 #[derive(Debug)]
 pub struct Program {
     pub state: Option<State>,
-    pub rpcs: Vec<Rpc>,
+    pub ixs: Vec<Ix>,
     pub name: syn::Ident,
     pub program_mod: syn::ItemMod,
 }
@@ -31,15 +31,15 @@ pub struct State {
     pub name: String,
     pub strct: syn::ItemStruct,
     pub ctor_and_anchor: Option<(syn::ImplItemMethod, syn::Ident)>,
-    pub impl_block_and_methods: Option<(syn::ItemImpl, Vec<StateRpc>)>,
+    pub impl_block_and_methods: Option<(syn::ItemImpl, Vec<StateIx>)>,
     pub interfaces: Option<Vec<StateInterface>>,
 }
 
 #[derive(Debug)]
-pub struct StateRpc {
+pub struct StateIx {
     pub raw_method: syn::ImplItemMethod,
     pub ident: syn::Ident,
-    pub args: Vec<RpcArg>,
+    pub args: Vec<IxArg>,
     pub anchor_ident: syn::Ident,
     // True if there exists a &self on the method.
     pub has_receiver: bool,
@@ -48,20 +48,20 @@ pub struct StateRpc {
 #[derive(Debug)]
 pub struct StateInterface {
     pub trait_name: String,
-    pub methods: Vec<StateRpc>,
+    pub methods: Vec<StateIx>,
 }
 
 #[derive(Debug)]
-pub struct Rpc {
+pub struct Ix {
     pub raw_method: syn::ItemFn,
     pub ident: syn::Ident,
-    pub args: Vec<RpcArg>,
+    pub args: Vec<IxArg>,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: syn::Ident,
 }
 
 #[derive(Debug)]
-pub struct RpcArg {
+pub struct IxArg {
     pub name: proc_macro2::Ident,
     pub raw_arg: syn::PatType,
 }

@@ -1,5 +1,5 @@
 use crate::parser;
-use crate::{Program, Rpc, RpcArg, State, StateInterface, StateRpc};
+use crate::{Ix, IxArg, Program, State, StateInterface, StateIx};
 
 const STATE_STRUCT_ATTRIBUTE: &str = "state";
 
@@ -49,7 +49,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                 })
                 .next(),
         };
-        // Parse ctor and the type in `Context<MY-TYPE>`.
+        // Parse ctor and the generic type in `Context<MY-TYPE>`.
         let ctor_and_anchor = match &impl_block {
             None => None,
             Some(impl_block) => {
@@ -77,7 +77,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
             }
         };
         // Parse all methods in the above `impl` block.
-        let methods: Option<Vec<StateRpc>> = impl_block.as_ref().map(|impl_block| {
+        let methods: Option<Vec<StateIx>> = impl_block.as_ref().map(|impl_block| {
             impl_block
                 .items
                 .iter()
@@ -100,17 +100,17 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                                             syn::Pat::Ident(ident) => &ident.ident,
                                             _ => panic!("invalid syntax"),
                                         };
-                                        RpcArg {
+                                        IxArg {
                                             name: ident.clone(),
                                             raw_arg: raw_arg.clone(),
                                         }
                                     })
-                                    .collect::<Vec<RpcArg>>();
+                                    .collect::<Vec<IxArg>>();
                                 // Remove the Anchor accounts argument
                                 let anchor = args.remove(0);
                                 let anchor_ident = extract_ident(&anchor.raw_arg).clone();
 
-                                Some(StateRpc {
+                                Some(StateIx {
                                     raw_method: m.clone(),
                                     ident: m.sig.ident.clone(),
                                     args,
@@ -168,17 +168,17 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                                                     syn::Pat::Ident(ident) => &ident.ident,
                                                     _ => panic!("invalid syntax"),
                                                 };
-                                                RpcArg {
+                                                IxArg {
                                                     name: ident.clone(),
                                                     raw_arg: raw_arg.clone(),
                                                 }
                                             })
-                                            .collect::<Vec<RpcArg>>();
+                                            .collect::<Vec<IxArg>>();
                                         // Remove the Anchor accounts argument
                                         let anchor = args.remove(0);
                                         let anchor_ident = extract_ident(&anchor.raw_arg).clone();
 
-                                        Some(StateRpc {
+                                        Some(StateIx {
                                             raw_method: m.clone(),
                                             ident: m.sig.ident.clone(),
                                             args,
@@ -215,15 +215,15 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
             }
         })
     };
-    // Parse all non-state instruction handlers.
-    let rpcs: Vec<Rpc> = mod_content
+    // Parse all non-state ix handlers.
+    let ixs: Vec<Ix> = mod_content
         .iter()
         .filter_map(|item| match item {
             syn::Item::Fn(item_fn) => Some(item_fn),
             _ => None,
         })
         .map(|method: &syn::ItemFn| {
-            let mut args: Vec<RpcArg> = method
+            let mut args: Vec<IxArg> = method
                 .sig
                 .inputs
                 .iter()
@@ -233,7 +233,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                             syn::Pat::Ident(ident) => &ident.ident,
                             _ => panic!("invalid syntax"),
                         };
-                        RpcArg {
+                        IxArg {
                             name: ident.clone(),
                             raw_arg: arg.clone(),
                         }
@@ -245,7 +245,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
             let anchor = args.remove(0);
             let anchor_ident = extract_ident(&anchor.raw_arg).clone();
 
-            Rpc {
+            Ix {
                 raw_method: method.clone(),
                 ident: method.sig.ident.clone(),
                 args,
@@ -256,7 +256,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
 
     Program {
         state,
-        rpcs,
+        ixs,
         name: mod_ident.clone(),
         program_mod,
     }
