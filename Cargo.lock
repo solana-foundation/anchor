@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-access-control"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-account"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -74,7 +74,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-error"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "proc-macro2 1.0.24",
@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-interface"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -96,7 +96,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-program"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -107,7 +107,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-state"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-lang",
  "solana-client",
@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -179,7 +179,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-spl"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anchor-lang",
  "solana-program",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-syn"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "bs58",

@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.2.1] - 2021-02-11
+
 ### Features
 
 * cli: Embed workspace programs into local validator genesis when testing ([733ec3](https://github.com/project-serum/anchor/commit/733ec300b0308e7d007873b0975585d836333fd4)).
