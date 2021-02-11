@@ -78,21 +78,6 @@ impl Hash {
         Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap())
     }
 
-    pub const fn new_from_array(hash_array: [u8; HASH_BYTES]) -> Self {
-        Self(hash_array)
-    }
-
-    /// unique Hash for tests and benchmarks.
-    pub fn new_unique() -> Self {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static I: AtomicU64 = AtomicU64::new(1);
-
-        let mut b = [0u8; HASH_BYTES];
-        let i = I.fetch_add(1, Ordering::Relaxed);
-        b[0..8].copy_from_slice(&i.to_le_bytes());
-        Self::new(&b)
-    }
-
     pub fn to_bytes(self) -> [u8; HASH_BYTES] {
         self.0
     }
@@ -129,11 +114,4 @@ pub fn hashv(vals: &[&[u8]]) -> Hash {
 /// Return a Sha256 hash for the given data.
 pub fn hash(val: &[u8]) -> Hash {
     hashv(&[val])
-}
-
-/// Return the hash of the given hash extended with the given value.
-pub fn extend_and_hash(id: &Hash, val: &[u8]) -> Hash {
-    let mut hash_data = id.as_ref().to_vec();
-    hash_data.extend_from_slice(val);
-    hash(&hash_data)
 }

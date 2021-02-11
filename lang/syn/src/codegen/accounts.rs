@@ -322,11 +322,8 @@ pub fn generate_constraint_belongs_to(
     f: &Field,
     c: &ConstraintBelongsTo,
 ) -> proc_macro2::TokenStream {
-    // todo: assert the field type.
-
     let target = c.join_target.clone();
     let ident = &f.ident;
-    // todo: would be nice if target could be an account info object.
     quote! {
         if &#ident.#target != #target.to_account_info().key {
             return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes

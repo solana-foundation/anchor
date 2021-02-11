@@ -6,39 +6,36 @@ use crate::{
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
     let fields = match &strct.fields {
-        syn::Fields::Named(fields) => fields,
+        syn::Fields::Named(fields) => fields.named.iter().map(parse_account_field).collect(),
         _ => panic!("invalid input"),
     };
+    AccountsStruct::new(strct.clone(), fields)
+}
 
-    let fields: Vec<AccountField> = fields
-        .named
+fn parse_account_field(f: &syn::Field) -> AccountField {
+    let anchor_attr = parse_account_attr(f);
+    parse_field(f, anchor_attr)
+}
+
+fn parse_account_attr(f: &syn::Field) -> Option<&syn::Attribute> {
+    let anchor_attrs: Vec<&syn::Attribute> = f
+        .attrs
         .iter()
-        .map(|f: &syn::Field| {
-            let anchor_attr = {
-                let anchor_attrs: Vec<&syn::Attribute> = f
-                    .attrs
-                    .iter()
-                    .filter_map(|attr: &syn::Attribute| {
-                        if attr.path.segments.len() != 1 {
-                            return None;
-                        }
-                        if attr.path.segments[0].ident.to_string() != "account" {
-                            return None;
-                        }
-                        Some(attr)
-                    })
-                    .collect();
-                match anchor_attrs.len() {
-                    0 => None,
-                    1 => Some(anchor_attrs[0]),
-                    _ => panic!("invalid syntax: only one account attribute is allowed"),
-                }
-            };
-            parse_field(f, anchor_attr)
+        .filter_map(|attr: &syn::Attribute| {
+            if attr.path.segments.len() != 1 {
+                return None;
+            }
+            if attr.path.segments[0].ident.to_string() != "account" {
+                return None;
+            }
+            Some(attr)
         })
         .collect();
-
-    AccountsStruct::new(strct.clone(), fields)
+    match anchor_attrs.len() {
+        0 => None,
+        1 => Some(anchor_attrs[0]),
+        _ => panic!("Invalid syntax: please specify one account attribute."),
+    }
 }
 
 fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField {
