@@ -24,6 +24,28 @@ mod registry {
                 lockup_program: *ctx.accounts.lockup_program.key,
             })
         }
+
+        pub fn set_lockup_program(
+            &mut self,
+            ctx: Context<SetLockupProgram>,
+            lockup_program: Pubkey,
+        ) -> Result<()> {
+            // Hard code the authority because the first version of this program
+            // did not set an authority account in the global state.
+            //
+            // When we remove the program's upgrade authority, we should remove
+            // this method first, redeploy, then remove the upgrade authority.
+            let expected: Pubkey = "HUgFuN4PbvF5YzjDSw9dQ8uTJUcwm2ANsMXwvRdY4ABx"
+                .parse()
+                .unwrap();
+            if ctx.accounts.authority.key != &expected {
+                return Err(ErrorCode::InvalidProgramAuthority.into());
+            }
+
+            self.lockup_program = lockup_program;
+
+            Ok(())
+        }
     }
 
     impl<'info> RealizeLock<'info, IsRealized<'info>> for Registry {
@@ -640,6 +662,12 @@ pub struct Ctor<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SetLockupProgram<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct IsRealized<'info> {
     #[account(
         "&member.balances.spt == member_spt.to_account_info().key",
@@ -1221,6 +1249,8 @@ pub enum ErrorCode {
     InvalidRealizorMetadata,
     #[msg("Invalid vesting schedule for the locked reward.")]
     InvalidVestingSchedule,
+    #[msg("Please specify the correct authority for this program.")]
+    InvalidProgramAuthority,
 }
 
 impl<'a, 'b, 'c, 'info> From<&mut Deposit<'info>>
