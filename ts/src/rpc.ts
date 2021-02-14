@@ -246,6 +246,9 @@ export class RpcFactory {
       rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
         const [_, ctx] = splitArgsAndCtx(m, [...args]);
         const tx = new Transaction();
+        if (ctx.instructions !== undefined) {
+          tx.add(...ctx.instructions);
+        }
         tx.add(await ix[m.name](...args));
         try {
           const txSig = await provider.send(tx, ctx.signers, ctx.options);
