@@ -1,7 +1,7 @@
 dist: bionic
 language: rust
 rust:
-  - stable
+  - nightly
 cache: cargo
 env:
   - NODE_VERSION="14.7.0"
@@ -44,6 +44,7 @@ jobs:
     - <<: *examples
       name: Runs the examples
       script:
+        - pushd client/example && ./run-test.sh && popd
         - pushd examples/sysvars && anchor test && popd
         - pushd examples/composite && anchor test && popd
         - pushd examples/errors && anchor test && popd
