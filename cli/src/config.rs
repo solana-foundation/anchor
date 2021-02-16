@@ -33,13 +33,13 @@ impl Config {
                 let p = f?.path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Cargo.toml") {
-                        cargo_toml_level = Some(PathBuf::from(p));
+                        cargo_toml_level = Some(p);
                     } else if filename.to_str() == Some("Anchor.toml") {
                         let mut cfg_file = File::open(&p)?;
                         let mut cfg_contents = String::new();
                         cfg_file.read_to_string(&mut cfg_contents)?;
                         let cfg = cfg_contents.parse()?;
-                        anchor_toml = Some((cfg, PathBuf::from(p)));
+                        anchor_toml = Some((cfg, p));
                     }
                 }
             }
@@ -121,7 +121,7 @@ pub fn extract_lib_name(path: impl AsRef<Path>) -> Result<String> {
             None => Err(anyhow!("lib not found in Cargo.toml")),
             Some(lib) => match lib
                 .get("name")
-                .ok_or(anyhow!("lib name not found in Cargo.toml"))?
+                .ok_or_else(|| anyhow!("lib name not found in Cargo.toml"))?
             {
                 toml::Value::String(n) => Ok(n.to_string()),
                 _ => Err(anyhow!("lib name must be a string")),

@@ -147,7 +147,7 @@ impl std::str::FromStr for IdlType {
                         let inner_ty = Self::from_str(
                             inner
                                 .strip_suffix(">")
-                                .ok_or(anyhow::anyhow!("Invalid option"))?,
+                                .ok_or_else(|| anyhow::anyhow!("Invalid option"))?,
                         )?;
                         IdlType::Vec(Box::new(inner_ty))
                     }
@@ -156,7 +156,7 @@ impl std::str::FromStr for IdlType {
                     let inner_ty = Self::from_str(
                         inner
                             .strip_suffix(">")
-                            .ok_or(anyhow::anyhow!("Invalid option"))?,
+                            .ok_or_else(|| anyhow::anyhow!("Invalid option"))?,
                     )?;
                     IdlType::Option(Box::new(inner_ty))
                 }

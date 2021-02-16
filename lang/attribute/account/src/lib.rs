@@ -30,7 +30,7 @@ pub fn account(
     let discriminator: proc_macro2::TokenStream = {
         // Namespace the discriminator to prevent collisions.
         let discriminator_preimage = {
-            if namespace == "" {
+            if namespace.is_empty() {
                 format!("account:{}", account_name.to_string())
             } else {
                 format!("{}:{}", namespace, account_name.to_string())

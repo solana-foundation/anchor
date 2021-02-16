@@ -50,7 +50,7 @@ impl Client {
             program_id,
             cfg: Config {
                 cluster: self.cfg.cluster.clone(),
-                options: self.cfg.options.clone(),
+                options: self.cfg.options,
                 payer: Keypair::from_bytes(&self.cfg.payer.to_bytes()).unwrap(),
             },
         }
@@ -81,7 +81,7 @@ impl Program {
             self.program_id,
             &self.cfg.cluster,
             Keypair::from_bytes(&self.cfg.payer.to_bytes()).unwrap(),
-            self.cfg.options.clone(),
+            self.cfg.options,
         )
     }
 
@@ -89,7 +89,7 @@ impl Program {
     pub fn account<T: AccountDeserialize>(&self, address: Pubkey) -> Result<T, ClientError> {
         let rpc_client = RpcClient::new_with_commitment(
             self.cfg.cluster.clone(),
-            self.cfg.options.unwrap_or(Default::default()),
+            self.cfg.options.unwrap_or_default(),
         );
         let account = rpc_client
             .get_account_with_commitment(&address, CommitmentConfig::recent())?
@@ -102,7 +102,7 @@ impl Program {
     pub fn rpc(&self) -> RpcClient {
         RpcClient::new_with_commitment(
             self.cfg.cluster.clone(),
-            self.cfg.options.unwrap_or(Default::default()),
+            self.cfg.options.unwrap_or_default(),
         )
     }
 
@@ -147,7 +147,7 @@ impl<'a> RequestBuilder<'a> {
             payer,
             cluster: cluster.to_string(),
             accounts: Vec::new(),
-            options: options.unwrap_or(Default::default()),
+            options: options.unwrap_or_default(),
             instructions: Vec::new(),
             instruction_data: None,
             signers: Vec::new(),

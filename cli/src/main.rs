@@ -670,7 +670,9 @@ fn stream_logs(url: &str) -> Result<Vec<std::process::Child>> {
         let mut contents = vec![];
         file.read_to_end(&mut contents)?;
         let idl: Idl = serde_json::from_slice(&contents)?;
-        let metadata = idl.metadata.ok_or(anyhow!("Program address not found."))?;
+        let metadata = idl
+            .metadata
+            .ok_or_else(|| anyhow!("Program address not found."))?;
         let metadata: IdlTestMetadata = serde_json::from_value(metadata)?;
 
         let log_file = File::create(format!(
@@ -713,7 +715,7 @@ fn start_test_validator(flags: Option<Vec<String>>) -> Result<Child> {
     let validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_filename)
-        .args(flags.unwrap_or(Vec::new()))
+        .args(flags.unwrap_or_default())
         .stdout(Stdio::from(test_validator_stdout))
         .stderr(Stdio::from(test_validator_stderr))
         .spawn()
@@ -750,8 +752,8 @@ fn _deploy(url: Option<String>, keypair: Option<String>) -> Result<Vec<(Pubkey, 
         build(None)?;
 
         // Fallback to config vars if not provided via CLI.
-        let url = url.unwrap_or(cfg.cluster.url().to_string());
-        let keypair = keypair.unwrap_or(cfg.wallet.to_string());
+        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
+        let keypair = keypair.unwrap_or_else(|| cfg.wallet.to_string());
 
         // Deploy the programs.
         println!("Deploying workspace: {}", url);
@@ -842,8 +844,8 @@ fn launch(url: Option<String>, keypair: Option<String>) -> Result<()> {
     let programs = _deploy(url.clone(), keypair.clone())?;
 
     with_workspace(|cfg, _path, _cargo| {
-        let url = url.unwrap_or(cfg.cluster.url().to_string());
-        let keypair = keypair.unwrap_or(cfg.wallet.to_string());
+        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
+        let keypair = keypair.unwrap_or_else(|| cfg.wallet.to_string());
 
         // Add metadata to all IDLs.
         for (address, program) in programs {
@@ -886,7 +888,7 @@ fn with_workspace<R>(f: impl FnOnce(&Config, PathBuf, Option<PathBuf>) -> R) -> 
 // The Solana CLI doesn't redeploy a program if this file exists.
 // So remove it to make all commands explicit.
 fn clear_program_keys() -> Result<()> {
-    for program in read_all_programs().expect("Programs dir doesn't exist") {
+    for program in read_all_programs()? {
         let anchor_keypair_path = program.anchor_keypair_path();
         if Path::exists(&anchor_keypair_path) {
             std::fs::remove_file(anchor_keypair_path).expect("Always remove");
@@ -966,7 +968,7 @@ fn migrate(url: Option<String>) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         println!("Running migration deploy script");
 
-        let url = url.unwrap_or(cfg.cluster.url().to_string());
+        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
         let cur_dir = std::env::current_dir()?;
         let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
         let deploy_script_host_str = template::deploy_script_host(&url, &module_path);
@@ -1005,20 +1007,19 @@ fn set_workspace_dir_or_exit() {
                 None => {
                     println!("Unable to make new program");
                 }
-                Some(parent) => match std::env::set_current_dir(&parent) {
-                    Err(_) => {
+                Some(parent) => {
+                    if std::env::set_current_dir(&parent).is_err() {
                         println!("Not in anchor workspace.");
                         std::process::exit(1);
                     }
-                    Ok(_) => {}
-                },
+                }
             };
         }
     }
 }
 
 fn airdrop(url: Option<String>) -> Result<()> {
-    let url = url.unwrap_or("https://devnet.solana.com".to_string());
+    let url = url.unwrap_or_else(|| "https://devnet.solana.com".to_string());
     loop {
         let exit = std::process::Command::new("solana")
             .arg("airdrop")

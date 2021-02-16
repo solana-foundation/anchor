@@ -79,7 +79,7 @@ pub struct AccountsStruct {
 impl AccountsStruct {
     pub fn new(strct: syn::ItemStruct, fields: Vec<AccountField>) -> Self {
         let ident = strct.ident.clone();
-        let generics = strct.generics.clone();
+        let generics = strct.generics;
         Self {
             ident,
             generics,
@@ -104,10 +104,9 @@ impl AccountsStruct {
                     }
                 }
                 AccountField::AccountsStruct(comp_f) => {
-                    let accs = global_accs.get(&comp_f.symbol).ok_or(anyhow::format_err!(
-                        "Invalid account type: {}",
-                        comp_f.symbol
-                    ))?;
+                    let accs = global_accs.get(&comp_f.symbol).ok_or_else(|| {
+                        anyhow::format_err!("Invalid account type: {}", comp_f.symbol)
+                    })?;
                     tys.extend(accs.account_tys(global_accs)?);
                 }
             }

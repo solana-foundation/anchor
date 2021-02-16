@@ -50,7 +50,7 @@ where
         _program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
-        if accounts.len() == 0 {
+        if accounts.is_empty() {
             return Err(ProgramError::NotEnoughAccountKeys);
         }
         let account = &accounts[0];

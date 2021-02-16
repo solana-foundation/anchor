@@ -54,10 +54,7 @@ pub fn access_control(
     args.retain(|c| !c.is_whitespace());
     let access_control: Vec<proc_macro2::TokenStream> = args
         .split(')')
-        .filter_map(|ac| match ac {
-            "" => None,
-            _ => Some(ac),
-        })
+        .filter(|ac| !ac.is_empty())
         .map(|ac| format!("{})", ac)) // Put back on the split char.
         .map(|ac| format!("{}?;", ac)) // Add `?;` syntax.
         .map(|ac| ac.parse().unwrap())

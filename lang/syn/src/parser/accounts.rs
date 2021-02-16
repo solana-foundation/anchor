@@ -21,14 +21,14 @@ fn parse_account_attr(f: &syn::Field) -> Option<&syn::Attribute> {
     let anchor_attrs: Vec<&syn::Attribute> = f
         .attrs
         .iter()
-        .filter_map(|attr: &syn::Attribute| {
+        .filter(|attr| {
             if attr.path.segments.len() != 1 {
-                return None;
+                return false;
             }
-            if attr.path.segments[0].ident.to_string() != "account" {
-                return None;
+            if attr.path.segments[0].ident != "account" {
+                return false;
             }
-            Some(attr)
+            true
         })
         .collect();
     match anchor_attrs.len() {
@@ -66,10 +66,10 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
 }
 
 fn is_field_primitive(f: &syn::Field) -> bool {
-    match ident_string(f).as_str() {
-        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
-        _ => false,
-    }
+    matches!(
+        ident_string(f).as_str(),
+        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo"
+    )
 }
 
 fn parse_ty(f: &syn::Field) -> Ty {
@@ -115,26 +115,22 @@ fn parse_program_account(path: &syn::Path) -> ProgramAccountTy {
 
 fn parse_account(path: &syn::Path) -> syn::Ident {
     let segments = &path.segments[0];
-    let account_ident = match &segments.arguments {
+    match &segments.arguments {
         syn::PathArguments::AngleBracketed(args) => {
             // Expected: <'info, MyType>.
             assert!(args.args.len() == 2);
             match &args.args[1] {
-                syn::GenericArgument::Type(ty) => match ty {
-                    syn::Type::Path(ty_path) => {
-                        // TODO: allow segmented paths.
-                        assert!(ty_path.path.segments.len() == 1);
-                        let path_segment = &ty_path.path.segments[0];
-                        path_segment.ident.clone()
-                    }
-                    _ => panic!("Invalid ProgramAccount"),
-                },
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => {
+                    // TODO: allow segmented paths.
+                    assert!(ty_path.path.segments.len() == 1);
+                    let path_segment = &ty_path.path.segments[0];
+                    path_segment.ident.clone()
+                }
                 _ => panic!("Invalid ProgramAccount"),
             }
         }
         _ => panic!("Invalid ProgramAccount"),
-    };
-    account_ident
+    }
 }
 
 fn parse_sysvar(path: &syn::Path) -> SysvarTy {
@@ -144,15 +140,12 @@ fn parse_sysvar(path: &syn::Path) -> SysvarTy {
             // Expected: <'info, MyType>.
             assert!(args.args.len() == 2);
             match &args.args[1] {
-                syn::GenericArgument::Type(ty) => match ty {
-                    syn::Type::Path(ty_path) => {
-                        // TODO: allow segmented paths.
-                        assert!(ty_path.path.segments.len() == 1);
-                        let path_segment = &ty_path.path.segments[0];
-                        path_segment.ident.clone()
-                    }
-                    _ => panic!("Invalid Sysvar"),
-                },
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => {
+                    // TODO: allow segmented paths.
+                    assert!(ty_path.path.segments.len() == 1);
+                    let path_segment = &ty_path.path.segments[0];
+                    path_segment.ident.clone()
+                }
                 _ => panic!("Invalid Sysvar"),
             }
         }

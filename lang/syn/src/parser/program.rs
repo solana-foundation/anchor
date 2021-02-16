@@ -58,7 +58,7 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                     .iter()
                     .filter_map(|item: &syn::ImplItem| match item {
                         syn::ImplItem::Method(m) => {
-                            if m.sig.ident.to_string() == "new" {
+                            if m.sig.ident == "new" {
                                 let ctx_arg = m.sig.inputs.first().unwrap(); // todo: unwrap.
                                 match ctx_arg {
                                     syn::FnArg::Receiver(_) => panic!("invalid syntax"),
@@ -73,7 +73,6 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                         _ => None,
                     })
                     .next()
-                    .clone()
             }
         };
         // Parse all methods in the above `impl` block.
@@ -141,9 +140,6 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
                                 .clone()
                                 .to_string(),
                         };
-                        if item_impl.trait_.is_none() {
-                            return None;
-                        }
                         let methods = item_impl
                             .items
                             .iter()
@@ -207,10 +203,9 @@ pub fn parse(program_mod: syn::ItemMod) -> Program {
 
             State {
                 name: strct.ident.to_string(),
-                strct: strct.clone(),
+                strct,
                 interfaces: trait_impls,
-                impl_block_and_methods: impl_block
-                    .map(|impl_block| (impl_block.clone(), methods.unwrap())),
+                impl_block_and_methods: impl_block.map(|impl_block| (impl_block, methods.unwrap())),
                 ctor_and_anchor,
             }
         })

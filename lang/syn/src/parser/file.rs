@@ -9,7 +9,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-static DERIVE_NAME: &'static str = "Accounts";
+const DERIVE_NAME: &str = "Accounts";
 
 // Parse an entire interface file.
 pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
@@ -69,24 +69,21 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                             })
                             .collect::<Vec<_>>()
                     })
-                    .unwrap_or(Vec::new());
+                    .unwrap_or_default();
                 let ctor = {
                     let name = "new".to_string();
                     let args = ctor
                         .sig
                         .inputs
                         .iter()
-                        .filter_map(|arg: &syn::FnArg| match arg {
+                        .filter(|arg| match arg {
                             syn::FnArg::Typed(pat_ty) => {
                                 // TODO: this filtering should be donein the parser.
                                 let mut arg_str = parser::tts_to_string(&pat_ty.ty);
                                 arg_str.retain(|c| !c.is_whitespace());
-                                if arg_str.starts_with("Context<") {
-                                    return None;
-                                }
-                                Some(arg)
+                                !arg_str.starts_with("Context<")
                             }
-                            _ => None,
+                            _ => false,
                         })
                         .map(|arg: &syn::FnArg| match arg {
                             syn::FnArg::Typed(arg_typed) => {
@@ -184,7 +181,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let mut types = vec![];
     let ty_defs = parse_ty_defs(&f)?;
 
-    let error_name = error.map(|e| e.name).unwrap_or("".to_string());
+    let error_name = error.map(|e| e.name).unwrap_or_else(|| "".to_string());
 
     for ty_def in ty_defs {
         // Don't add the error type to the types or accounts sections.
@@ -216,18 +213,12 @@ fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
         .iter()
         .filter_map(|i| match i {
             syn::Item::Mod(item_mod) => {
-                let mods = item_mod
+                let mod_count = item_mod
                     .attrs
                     .iter()
-                    .filter_map(|attr| {
-                        let segment = attr.path.segments.last().unwrap();
-                        if segment.ident.to_string() == "program" {
-                            return Some(attr);
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>();
-                if mods.len() != 1 {
+                    .filter(|attr| attr.path.segments.last().unwrap().ident == "program")
+                    .count();
+                if mod_count != 1 {
                     return None;
                 }
                 Some(item_mod)
@@ -246,18 +237,15 @@ fn parse_error_enum(f: &syn::File) -> Option<syn::ItemEnum> {
         .iter()
         .filter_map(|i| match i {
             syn::Item::Enum(item_enum) => {
-                let attrs = item_enum
+                let attrs_count = item_enum
                     .attrs
                     .iter()
-                    .filter_map(|attr| {
+                    .filter(|attr| {
                         let segment = attr.path.segments.last().unwrap();
-                        if segment.ident.to_string() == "error" {
-                            return Some(attr);
-                        }
-                        None
+                        segment.ident == "error"
                     })
-                    .collect::<Vec<_>>();
-                match attrs.len() {
+                    .count();
+                match attrs_count {
                     0 => None,
                     1 => Some(item_enum),
                     _ => panic!("Invalid syntax: one error attribute allowed"),

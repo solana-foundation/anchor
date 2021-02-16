@@ -175,14 +175,10 @@ pub fn interface(
                     // TODO: just map this to None once we allow this feature.
                     _ => panic!("Invalid syntax. No self allowed."),
                 })
-                .filter_map(|pat_ty: &syn::PatType| {
+                .filter(|pat_ty| {
                     let mut ty = parser::tts_to_string(&pat_ty.ty);
                     ty.retain(|s| !s.is_whitespace());
-                    if ty.starts_with("Context<") {
-                        None
-                    } else {
-                        Some(pat_ty)
-                    }
+                    !ty.starts_with("Context<")
                 })
                 .collect();
             let args_no_tys: Vec<&Box<syn::Pat>> = args
@@ -192,7 +188,7 @@ pub fn interface(
                 })
                 .collect();
             let args_struct = {
-                if args.len() == 0 {
+                if args.is_empty() {
                     quote! {
                         use anchor_lang::prelude::borsh;
                         #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]

@@ -4,11 +4,11 @@ use heck::{CamelCase, SnakeCase};
 use quote::quote;
 
 // Namespace for calculating state instruction sighash signatures.
-const SIGHASH_STATE_NAMESPACE: &'static str = "state";
+const SIGHASH_STATE_NAMESPACE: &str = "state";
 
 // Namespace for calculating instruction sighash signatures for any instruction
 // not affecting program state.
-const SIGHASH_GLOBAL_NAMESPACE: &'static str = "global";
+const SIGHASH_GLOBAL_NAMESPACE: &str = "global";
 
 pub fn generate(program: Program) -> proc_macro2::TokenStream {
     let mod_name = &program.name;
@@ -127,7 +127,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                     })
                     .collect()
             })
-            .unwrap_or(vec![]),
+            .unwrap_or_default(),
     };
 
     // Dispatch all trait interface implementations.
@@ -157,7 +157,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                                 let sighash_tts: proc_macro2::TokenStream =
                                     format!("{:?}", sighash_arr).parse().unwrap();
                                 let args_struct = {
-                                    if m.args.len() == 0 {
+                                    if m.args.is_empty() {
                                         quote! {
                                             #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
                                             struct Args;
@@ -187,7 +187,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                     })
                     .collect()
             })
-            .unwrap_or(vec![])
+            .unwrap_or_default()
     };
 
     // Dispatch all global instructions.
@@ -470,7 +470,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                             ) -> ProgramResult {
 
                                 let mut remaining_accounts: &[AccountInfo] = accounts;
-                                if remaining_accounts.len() == 0 {
+                                if remaining_accounts.is_empty() {
                                     return Err(ProgramError::Custom(1)); // todo
                                 }
 
@@ -510,7 +510,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                     })
                     .collect()
             })
-            .unwrap_or(vec![]),
+            .unwrap_or_default()
     };
     let non_inlined_state_trait_handlers: Vec<proc_macro2::TokenStream> = match &program.state {
         None => Vec::new(),
@@ -546,7 +546,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                         ) -> ProgramResult {
 
                                             let mut remaining_accounts: &[AccountInfo] = accounts;
-                                            if remaining_accounts.len() == 0 {
+                                            if remaining_accounts.is_empty() {
                                                 return Err(ProgramError::Custom(1)); // todo
                                             }
 
@@ -610,7 +610,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                     })
                     .collect()
             })
-            .unwrap_or(Vec::new()),
+            .unwrap_or_default(),
     };
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .ixs
@@ -652,7 +652,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
 pub fn generate_ctor_variant(state: &State) -> proc_macro2::TokenStream {
     let ctor_args = generate_ctor_args(state);
     let ctor_variant_name: proc_macro2::TokenStream = generate_ctor_variant_name().parse().unwrap();
-    if ctor_args.len() == 0 {
+    if ctor_args.is_empty() {
         quote! {
             #ctor_variant_name
         }
@@ -681,7 +681,7 @@ pub fn generate_ctor_typed_variant_with_semi(program: &Program) -> proc_macro2::
                         .unwrap()
                 })
                 .collect();
-            if ctor_args.len() == 0 {
+            if ctor_args.is_empty() {
                 quote! {
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct __Ctor;
@@ -719,10 +719,10 @@ fn generate_ctor_typed_args(state: &State) -> Vec<syn::PatType> {
                 })
                 .collect()
         })
-        .unwrap_or(Vec::new())
+        .unwrap_or_default()
 }
 
-fn generate_ctor_args(state: &State) -> Vec<Box<syn::Pat>> {
+fn generate_ctor_args(state: &State) -> Vec<syn::Pat> {
     state
         .ctor_and_anchor
         .as_ref()
@@ -737,13 +737,13 @@ fn generate_ctor_args(state: &State) -> Vec<Box<syn::Pat>> {
                         if arg_str.starts_with("Context<") {
                             return None;
                         }
-                        Some(pat_ty.pat.clone())
+                        Some(*pat_ty.pat.clone())
                     }
                     _ => panic!(""),
                 })
                 .collect()
         })
-        .unwrap_or(Vec::new())
+        .unwrap_or_default()
 }
 
 pub fn generate_ix_variant(
@@ -761,7 +761,7 @@ pub fn generate_ix_variant(
         }
     };
 
-    if args.len() == 0 {
+    if args.is_empty() {
         quote! {
             #ix_name_camel
         }
@@ -835,7 +835,7 @@ pub fn generate_ixs(program: &Program) -> proc_macro2::TokenStream {
                         };
 
                         // If no args, output a "unit" variant instead of a struct variant.
-                        if method.args.len() == 0 {
+                        if method.args.is_empty() {
                             quote! {
                                 #[derive(AnchorSerialize, AnchorDeserialize)]
                                 pub struct #ix_name_camel;
@@ -855,7 +855,7 @@ pub fn generate_ixs(program: &Program) -> proc_macro2::TokenStream {
                     })
                     .collect()
             })
-            .unwrap_or(Vec::new()),
+            .unwrap_or_default(),
     };
     let variants: Vec<proc_macro2::TokenStream> = program
         .ixs
@@ -888,7 +888,7 @@ pub fn generate_ixs(program: &Program) -> proc_macro2::TokenStream {
                 }
             };
             // If no args, output a "unit" variant instead of a struct variant.
-            if ix.args.len() == 0 {
+            if ix.args.is_empty() {
                 quote! {
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct #ix_name_camel;
