@@ -66,10 +66,10 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
 }
 
 fn is_field_primitive(f: &syn::Field) -> bool {
-    matches!(
-        ident_string(f).as_str(),
-        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo"
-    )
+    match ident_string(f).as_str() {
+        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
+        _ => false,
+    }
 }
 
 fn parse_ty(f: &syn::Field) -> Ty {
