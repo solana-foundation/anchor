@@ -606,19 +606,20 @@ fn test(skip_deploy: bool) -> Result<()> {
         let log_streams = stream_logs(&cfg.cluster.url())?;
 
         // Run the tests.
-        if let Err(e) = std::process::Command::new("mocha")
+        let exit = std::process::Command::new("mocha")
             .arg("-t")
             .arg("1000000")
             .arg("tests/")
             .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .output()
-        {
+            .output()?;
+
+        if !exit.status.success() {
             if let Some(mut validator_handle) = validator_handle {
                 validator_handle.kill()?;
             }
-            return Err(anyhow::format_err!("{}", e.to_string()));
+            std::process::exit(exit.status.code().unwrap());
         }
         if let Some(mut validator_handle) = validator_handle {
             validator_handle.kill()?;
