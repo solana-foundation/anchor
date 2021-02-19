@@ -510,6 +510,10 @@ export class RpcFactory {
       // @ts-ignore
       accountsNamespace["unsubscribe"] = (address: PublicKey) => {
         let sub = subscriptions.get(address.toString());
+        if (!sub) {
+          console.warn("Address is not subscribed");
+          return;
+        }
         if (subscriptions) {
           provider.connection
             .removeAccountChangeListener(sub.listener)
