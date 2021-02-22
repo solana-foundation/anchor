@@ -1,5 +1,5 @@
 cluster = "localnet"
-wallet = "/home/armaniferrante/.config/solana/id.json"
+wallet = "~/.config/solana/id.json"
 
 [[test.genesis]]
 address = "FtMNMKp9DZHKWUyVAsj3Q5QV8ow4P3fUPP7ZrWEQJzKr"
