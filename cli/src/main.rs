@@ -46,8 +46,12 @@ pub enum Command {
     Test {
         /// Use this flag if you want to run tests against previously deployed
         /// programs.
-        #[clap(short, long)]
+        #[clap(long)]
         skip_deploy: bool,
+        /// Flag to skip starting a local validator, if the configured cluster
+        /// url is a localnet.
+        #[clap(long)]
+        skip_local_validator: bool,
     },
     /// Creates a new program.
     New { name: String },
@@ -158,7 +162,10 @@ fn main() -> Result<()> {
         Command::Idl { subcmd } => idl(subcmd),
         Command::Migrate { url } => migrate(url),
         Command::Launch { url, keypair } => launch(url, keypair),
-        Command::Test { skip_deploy } => test(skip_deploy),
+        Command::Test {
+            skip_deploy,
+            skip_local_validator,
+        } => test(skip_deploy, skip_local_validator),
         Command::Airdrop { url } => airdrop(url),
     }
 }
@@ -583,7 +590,7 @@ enum OutFile {
 }
 
 // Builds, deploys, and tests all workspace programs in a single command.
-fn test(skip_deploy: bool) -> Result<()> {
+fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
@@ -593,7 +600,10 @@ fn test(skip_deploy: bool) -> Result<()> {
                     true => None,
                     false => Some(genesis_flags(cfg)?),
                 };
-                Some(start_test_validator(flags)?)
+                match skip_local_validator {
+                    true => None,
+                    false => Some(start_test_validator(flags)?),
+                }
             }
             _ => {
                 if !skip_deploy {
