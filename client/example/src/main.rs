@@ -31,12 +31,12 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
 
     // Wallet and cluster params.
-    let payer = read_keypair_file(&shellexpand::tilde("~/.config/solana/id.json"))
+    let payer = read_keypair_file(&*shellexpand::tilde("~/.config/solana/id.json"))
         .expect("Example requires a keypair file");
     let url = "http://localhost:8899";
 
     // Client.
-    let client = Client::new_with_options(url, payer, CommitmentConfig::recent());
+    let client = Client::new_with_options(url, payer, CommitmentConfig::processed());
 
     // Run tests.
     composite(&client, opts.composite_pid)?;
