@@ -306,7 +306,7 @@ fn fetch_idl(program_id: Pubkey) -> Result<Idl> {
     let idl_addr = IdlAccount::address(&program_id);
 
     let account = client
-        .get_account_with_commitment(&idl_addr, CommitmentConfig::recent())?
+        .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
         .value
         .map_or(Err(anyhow!("Account not found")), Ok)?;
 
@@ -421,7 +421,7 @@ fn idl_set_authority(program_id: Pubkey, new_authority: Pubkey) -> Result<()> {
         );
         client.send_and_confirm_transaction_with_spinner_and_config(
             &tx,
-            CommitmentConfig::single(),
+            CommitmentConfig::confirmed(),
             RpcSendTransactionConfig {
                 skip_preflight: true,
                 ..RpcSendTransactionConfig::default()
@@ -479,7 +479,7 @@ fn idl_clear(cfg: &Config, program_id: &Pubkey) -> Result<()> {
     );
     client.send_and_confirm_transaction_with_spinner_and_config(
         &tx,
-        CommitmentConfig::single(),
+        CommitmentConfig::confirmed(),
         RpcSendTransactionConfig {
             skip_preflight: true,
             ..RpcSendTransactionConfig::default()
@@ -539,7 +539,7 @@ fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl) -> Result<()> {
         );
         client.send_and_confirm_transaction_with_spinner_and_config(
             &tx,
-            CommitmentConfig::single(),
+            CommitmentConfig::confirmed(),
             RpcSendTransactionConfig {
                 skip_preflight: true,
                 ..RpcSendTransactionConfig::default()
@@ -953,7 +953,7 @@ fn create_idl_account(
         );
         client.send_and_confirm_transaction_with_spinner_and_config(
             &tx,
-            CommitmentConfig::single(),
+            CommitmentConfig::confirmed(),
             RpcSendTransactionConfig {
                 skip_preflight: true,
                 ..RpcSendTransactionConfig::default()

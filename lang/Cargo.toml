@@ -20,5 +20,5 @@ anchor-attribute-state = { path = "./attribute/state", version = "0.2.1" }
 anchor-attribute-interface = { path = "./attribute/interface", version = "0.2.1" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.2.1" }
 serum-borsh = "0.8.1-serum.1"
-solana-program = "=1.5.0"
+solana-program = "1.5.8"
 thiserror = "1.0.20"

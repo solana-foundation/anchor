@@ -92,7 +92,7 @@ impl Program {
             self.cfg.options.unwrap_or_default(),
         );
         let account = rpc_client
-            .get_account_with_commitment(&address, CommitmentConfig::recent())?
+            .get_account_with_commitment(&address, CommitmentConfig::processed())?
             .value
             .ok_or(ClientError::AccountNotFound)?;
         let mut data: &[u8] = &account.data;
