@@ -128,3 +128,40 @@ describe('{}', () => {{
         name.to_camel_case(),
     )
 }
+
+pub fn ts_mocha(name: &str) -> String {
+    format!(
+        r#"import * as anchor from '@project-serum/anchor';
+
+describe('{}', () => {{
+
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.Provider.env());
+
+  it('Is initialized!', async () => {{
+    // Add your test here.
+    const program = anchor.workspace.{};
+    const tx = await program.rpc.initialize();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+"#,
+        name,
+        name.to_camel_case(),
+    )
+}
+
+pub fn ts_config() -> String {
+    r#"{
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
+    .to_string()
+}

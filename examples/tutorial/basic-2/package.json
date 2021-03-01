@@ -1,0 +1,25 @@
+{
+  "name": "basic-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "ts-mocha -t 100000 -p ./tsconfig.json tests/**/*.{j,t}s"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@project-serum/anchor": "^0.2.2-beta.1",
+    "@types/chai": "^4.2.15"
+  },
+  "devDependencies": {
+    "@types/expect": "^24.3.0",
+    "@types/jest": "^26.0.20",
+    "@types/mocha": "^8.2.1",
+    "@types/node": "^14.14.31",
+    "chai": "^4.3.0"
+  }
+}

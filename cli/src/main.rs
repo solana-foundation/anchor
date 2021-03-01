@@ -35,7 +35,11 @@ pub struct Opts {
 #[derive(Debug, Clap)]
 pub enum Command {
     /// Initializes a workspace.
-    Init { name: String },
+    Init {
+        name: String,
+        #[clap(short, long)]
+        typescript: bool,
+    },
     /// Builds the workspace.
     Build {
         /// Output directory for the IDL.
@@ -151,7 +155,7 @@ pub enum IdlCommand {
 fn main() -> Result<()> {
     let opts = Opts::parse();
     match opts.command {
-        Command::Init { name } => init(name),
+        Command::Init { name, typescript } => init(name, typescript),
         Command::New { name } => new(name),
         Command::Build { idl } => build(idl),
         Command::Deploy { url, keypair } => deploy(url, keypair),
@@ -170,7 +174,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn init(name: String) -> Result<()> {
+fn init(name: String, typescript: bool) -> Result<()> {
     let cfg = Config::discover()?;
 
     if cfg.is_some() {
@@ -197,8 +201,17 @@ fn init(name: String) -> Result<()> {
 
     // Build the test suite.
     fs::create_dir("tests")?;
-    let mut mocha = File::create(&format!("tests/{}.js", name))?;
-    mocha.write_all(template::mocha(&name).as_bytes())?;
+    if typescript {
+        // Build typescript config
+        let mut ts_config = File::create("tsconfig.json")?;
+        ts_config.write_all(template::ts_config().as_bytes())?;
+
+        let mut mocha = File::create(&format!("tests/{}.ts", name))?;
+        mocha.write_all(template::ts_mocha(&name).as_bytes())?;
+    } else {
+        let mut mocha = File::create(&format!("tests/{}.js", name))?;
+        mocha.write_all(template::mocha(&name).as_bytes())?;
+    }
 
     // Build the migrations directory.
     fs::create_dir("migrations")?;
@@ -612,18 +625,31 @@ fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
                 None
             }
         };
-
         let log_streams = stream_logs(&cfg.cluster.url())?;
 
+        let ts_config_exist = Path::new("tsconfig.json").exists();
+
         // Run the tests.
-        let exit = std::process::Command::new("mocha")
-            .arg("-t")
-            .arg("1000000")
-            .arg("tests/")
-            .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()?;
+        let exit = match ts_config_exist {
+            true => std::process::Command::new("ts-mocha")
+                .arg("-p")
+                .arg("./tsconfig.json")
+                .arg("-t")
+                .arg("1000000")
+                .arg("tests/**/*.ts")
+                .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()?,
+            false => std::process::Command::new("mocha")
+                .arg("-t")
+                .arg("1000000")
+                .arg("tests/")
+                .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()?,
+        };
 
         if !exit.status.success() {
             if let Some(mut validator_handle) = validator_handle {
