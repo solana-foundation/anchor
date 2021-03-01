@@ -636,7 +636,7 @@ fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
                 .arg("./tsconfig.json")
                 .arg("-t")
                 .arg("1000000")
-                .arg("tests/**/*.ts")
+                .arg("tests/**/*.spec.ts")
                 .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
