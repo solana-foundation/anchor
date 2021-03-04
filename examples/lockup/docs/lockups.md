@@ -30,8 +30,8 @@ There are three parameters to specify:
 * Realizer - the program defining if and when vested tokens can be distributed to a beneficiary.
 
 Together these parameters form a linearly unlocked vesting schedule. For example,
-if one wanted to lock 100 SRM that unlocked twice, 50 SRM each time, over the next year, we'd
-use the following parameters (in JavaScript).
+if one wanted to lock 100 SPL tokens that unlocked twice, 50 each time, over the next year, one
+would use the following parameters (in JavaScript).
 
 ```javascript
 const startTimestamp = Date.now()/1000;
@@ -51,7 +51,7 @@ Withdrawing is straightforward. Simply invoke the `Withdraw` instruction, specif
 amount to withdraw from a **Vesting** account. The **beneficiary** of the
 **Vesting** account must sign the transaction, but if enough time has passed for an
 amount to be vested, and, if the funds are indeed held in the lockup program's vault
-(a point we will get to below) then the program will release the funds.
+(a point mentioned below) then the program will release the funds.
 
 ## Realizing Locked Tokens
 
@@ -93,7 +93,7 @@ To create a whitelisted program that receives withdrawals/deposits from/to the L
 one needs to implement the whitelist transfer interface, which assumes nothing about the
 `instruction_data` but requires accounts to be provided in a specific [order](https://github.com/project-serum/serum-dex/blob/master/registry/program/src/deposit.rs#L18).
 
-We'll use staking locked SRM as a working example.
+Take staking locked tokens as a working example.
 
 ### Staking Locked Tokens
 
@@ -121,7 +121,7 @@ transfer funds back into the lockup program on behalf of the **Vesting** account
 
 ## Major version upgrades.
 
-Assuming the `authority` account is set on the **Lockup** program, we can use this Whitelist
+Assuming the `authority` account is set on the **Lockup** program, one can use this Whitelist
 mechanism to do major version upgrades of the lockup program. One can whitelist the
 new **Lockup** program, and then all **Vesting** accounts would invidiually perform the migration
 by transferring their funds to the new proigram via the `WhitelistWithdraw` instruction.

@@ -18,13 +18,12 @@ program controlled accounts.
 Rewards can come from an arbitrary
 wallet, e.g. automatically from a fee earning program,
 or manually from a wallet owned by an individual. The specifics are token and protocol
-dependent. For example, in the case of SRM, rewards will be generated from the DEX's
-weekly fees, where 80% of the fees go to a buy and burn, and 20% to stakers.
+dependent.
 
 Similarly, the specifics of governance are not assumed by the staking program. However, a
 governance system can use this program as a primitive to implement stake weighted voting.
 
-Here we cover how staking works at somewhat of a low level with the goal of allowing one
+Here staking is covered at somewhat of a low level with the goal of allowing one
 to understand, contribute to, or modify the code.
 
 ## Accounts
@@ -69,7 +68,7 @@ Once deposited, a **Member** beneficiary invokes the `Stake` instruction to tran
 their **available-balances-vault** to one's **stake-vault**, creating newly minted
 **stake-pool-tokens** as proof of the stake deposit. These new tokens represent
 one's proportional right to all rewards distributed to the staking pool and are offered
-by the **Registry** program at a fixed price, e.g., of 500 SRM.
+by the **Registry** program at a fixed price, e.g., of 500 SPL tokens.
 
 ## Unstaking
 
@@ -125,32 +124,32 @@ known as "gulping"--since dropping rewards increases the total value of the pool
 while their proportion of the pool remained constant.
 
 However, there are enough downsides with using an AMM style pool to offset the convience.
-Unfortunately, we lose the nice balance isolation property **Member** accounts have, because
+Unfortunately, it loses the nice balance isolation property **Member** accounts have, because
 tokens have to be pooled into the same vault, which is an additional security concern that could
 easily lead to loss of funds, e.g., if there's a bug in the redemption calculation. Moreover, dropping
 arbitrary tokens onto the pool is a challenge. Not only do you have to create new pool vaults for
 every new token you drop onto the pool, but you also need to have stakers purchase those tokens to enter
-the pool. So not only are we staking SRM, but we're also staking other tokens. An additional oddity is that
+the pool, effectively requiring one to stake other unintended tokens. An additional oddity is that
 as rewards are dropped onto the pool, the price to enter the pool monotonically increases. Remember, entering this
 type of pool requires "creating" pool tokens, i.e., depositing enough tokens so that you don't dilute
-any other member. So if a single pool token represents one SRM. And if a single SRM is dropped onto every
-member of the pool, all the existing member's shares are now worth two SRM. So to enter the pool without
-dilution, one would have to "create" at a price of 2 SRM per share. This means that rewarding
+any other member. So if a single pool token represents one SPL token. And if an additional SPL token is dropped onto every
+member of the pool, all the existing member's shares are now worth two SPL tokens. So to enter the pool without
+dilution, one would have to "create" at a price of 2 SPL tokens per share. This means that rewarding
 stakers becomes more expensive over time. One could of course solve this problem by implementing
-arbitrary `n:m` pool token splits, which leads us right back to the problem of mutating global account
+arbitrary `n:m` pool token splits, which leads right back to the problem of mutating global account
 state for an SPL token.
 
-Furthermore, we haven't even touched upon dropping arbitrary program accounts as rewards, for exmaple,
-locked token rewards, which of course can't be dropped directly onto an AMM stylepool, since they are not tokens.
-So, if we did go with an AMM style pool, we'd need a separate mechanism for handling more general rewards like
-locked token accounts. Ideally, we'd have a single mechanism for both.
+Furthermore, dropping arbitrary program accounts as rewards hasn't even been covered, for example,
+locked token rewards, which of course can't be dropped directly onto an AMM style pool, since they are not tokens.
+So, if one did go with an AMM style pool, one would need a separate mechanism for handling more general rewards like
+locked token accounts. Ideally, there would be a single mechanism for both.
 
 ## Reward Vendors
 
-Instead of trying to *push* rewards to users via a direct transfer or airdrop, we can use a *polling* model
-where users effectively event source a log on demand, proviidng a proof one is eligible for the reward.
+Instead of trying to *push* rewards to users via a direct transfer or airdrop, one can use a *polling* model
+where users effectively event source a log on demand, providing a proof one is eligible for the reward.
 
-When a reward is created, we do two things:
+When a reward is created, the program must do two things:
 
 1) Create a **Reward Vendor** account with an associated token vault holding the reward.
 2) Assign the **Reward Vendor** the next available position in a **Reward Event Queue**. Then, to retrieve
@@ -160,18 +159,18 @@ some might say, *vends* the proportion of the dropped reward to the polling **Me
 operation completes by incrementing the **Member**'s queue cursor, ensuring that a given
 reward can only be processed once.
 
-This allows us to provide a way of dropping rewards to the stake pool in a way that is
+This allows the program to drop rewards on the stake pool in a way that is
 on chain and verifiable. Of course, it requires an external trigger, some account willing to
 transfer funds to a new **RewardVendor**, but that is outside of the scope of the staking
 program. The reward dropper can be an off chain BFT committee, or it can be an on-chain multisig.
 It can be a charitable individual, or funds can flow directly from a fee paying program such as the DEX,
 which itself can create a Reward Vendor from fees collected. It doesn't matter to the **Registry** program.
 
-Note that this solution also allows for rewards to be denominated in any token, not just SRM.
+Note that this solution also allows for rewards to be denominated in any token, not just the token being staked.
 Since rewards are paid out by the vendor immediately and to a token account of the **Member**'s
 choosing, it *just works*. Even more, this extends to arbitrary program accounts, particularly
-**Locked SRM**. A **Reward Vendor** needs to additionally know the accounts and instruction data
-to relay to the program, but otherwise, the mechanism is the same. The details of **Locked SRM** will
+**Locked** tokens. A **Reward Vendor** needs to additionally know the accounts and instruction data
+to relay to the program, but otherwise, the mechanism is the same. The details of **Locked** tokens will
 be explained in an additional document.
 
 ### Realizing Locked Rewards
