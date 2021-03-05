@@ -59,6 +59,10 @@ export default class Coder {
       this.state = new StateCoder(idl);
     }
   }
+
+  public sighash(nameSpace: string, ixName: string): Buffer {
+    return sighash(nameSpace, ixName);
+  }
 }
 
 /**
