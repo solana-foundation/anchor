@@ -33,7 +33,7 @@ mod registry {
             // Hard code the authority because the first version of this program
             // did not set an authority account in the global state.
             //
-            // When we remove the program's upgrade authority, we should remove
+            // When removing the program's upgrade authority, one should remove
             // this method first, redeploy, then remove the upgrade authority.
             let expected: Pubkey = "HUgFuN4PbvF5YzjDSw9dQ8uTJUcwm2ANsMXwvRdY4ABx"
                 .parse()
@@ -784,6 +784,7 @@ pub struct Stake<'info> {
 #[derive(Accounts)]
 pub struct StartUnstake<'info> {
     // Stake instance globals.
+    #[account(has_one = reward_event_q)]
     registrar: ProgramAccount<'info, Registrar>,
     reward_event_q: ProgramAccount<'info, RewardQueue>,
     #[account(mut)]
@@ -792,7 +793,7 @@ pub struct StartUnstake<'info> {
     // Member.
     #[account(init)]
     pending_withdrawal: ProgramAccount<'info, PendingWithdrawal>,
-    #[account(belongs_to = registrar)]
+    #[account(has_one = beneficiary, belongs_to = registrar)]
     member: ProgramAccount<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
@@ -829,8 +830,10 @@ pub struct EndUnstake<'info> {
     #[account(mut, belongs_to = registrar, belongs_to = member, "!pending_withdrawal.burned")]
     pending_withdrawal: ProgramAccount<'info, PendingWithdrawal>,
 
-    // if we had ordered maps implementing Accounts we could do a constraint like
-    // balances.get(pending_withdrawal.balance_id).vault == vault.key
+    // If we had ordered maps implementing Accounts we could do a constraint like
+    // balances.get(pending_withdrawal.balance_id).vault == vault.key.
+    //
+    // Note: we do the constraints check in the handler, not here.
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(mut)]
