@@ -73,54 +73,6 @@ pub mod multisig {
         Ok(())
     }
 
-    // Deletes a transaction if no one has signed, other than the creator.
-    // Note that the account is not actually deleted until the next epoch,
-    // when the account is garbage collected since there's no more SOL left.
-    // As a result, during the period of time when the transaction is deleted
-    // but the next epoch hasn't occured, the transaction account can still
-    // be used. To get around this, one could just add a field to mark deletion.
-    // This is not currently done.
-    pub fn delete_transaction(ctx: Context<DeleteTransaction>) -> Result<()> {
-        // Check the creator is the one and only signer.
-        let num_signers = ctx
-            .accounts
-            .transaction
-            .signers
-            .iter()
-            .fold(0, |acc, did_sign| if *did_sign { acc + 1 } else { acc });
-        if num_signers != 1 {
-            return Err(ErrorCode::TransactionAlreadySigned.into());
-        }
-        let owner_index = ctx
-            .accounts
-            .multisig
-            .owners
-            .iter()
-            .position(|a| a == ctx.accounts.owner.key)
-            .ok_or(ErrorCode::InvalidOwner)?;
-        if !ctx.accounts.transaction.signers[owner_index] {
-            return Err(ErrorCode::UnableToDelete.into());
-        }
-
-        // Mark the creator as not signed.
-        ctx.accounts.transaction.signers[owner_index] = false;
-
-        // Send the rent exemption sol back to the creator of the transaction.
-        let tx_lamports = ctx.accounts.transaction.to_account_info().lamports();
-        let to_lamports = ctx.accounts.owner.lamports();
-        **ctx.accounts.owner.lamports.borrow_mut() = to_lamports
-            .checked_add(tx_lamports)
-            .ok_or(ErrorCode::Overflow)?;
-        **ctx
-            .accounts
-            .transaction
-            .to_account_info()
-            .lamports
-            .borrow_mut() = 0;
-
-        Ok(())
-    }
-
     // Approves a transaction on behalf of an owner of the multisig.
     pub fn approve(ctx: Context<Approve>) -> Result<()> {
         let owner_index = ctx
@@ -228,16 +180,6 @@ pub struct CreateTransaction<'info> {
     #[account(signer)]
     proposer: AccountInfo<'info>,
     rent: Sysvar<'info, Rent>,
-}
-
-#[derive(Accounts)]
-pub struct DeleteTransaction<'info> {
-    multisig: ProgramAccount<'info, Multisig>,
-    #[account(belongs_to = multisig)]
-    transaction: ProgramAccount<'info, Transaction>,
-    // One of the multisig owners. Checked in the handler.
-    #[account(signer)]
-    owner: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
