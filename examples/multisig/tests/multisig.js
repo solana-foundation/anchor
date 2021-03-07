@@ -21,6 +21,7 @@ describe("multisig", () => {
     const ownerA = new anchor.web3.Account();
     const ownerB = new anchor.web3.Account();
     const ownerC = new anchor.web3.Account();
+    const ownerD = new anchor.web3.Account();
     const owners = [ownerA.publicKey, ownerB.publicKey, ownerC.publicKey];
 
     const threshold = new anchor.BN(2);
@@ -57,7 +58,7 @@ describe("multisig", () => {
         isSigner: true,
       },
     ];
-    const newOwners = [ownerA.publicKey, ownerB.publicKey];
+    const newOwners = [ownerA.publicKey, ownerB.publicKey, ownerD.publicKey];
     const data = program.coder.instruction.encode('set_owners', {
         owners: newOwners,
     });
