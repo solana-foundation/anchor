@@ -1,13 +1,12 @@
 use heck::CamelCase;
 use heck::SnakeCase;
 
-pub fn virtual_manifest() -> String {
+pub fn virtual_manifest() -> &'static str {
     r#"[workspace]
 members = [
     "programs/*"
 ]
 "#
-    .to_string()
 }
 
 pub fn cargo_toml(name: &str) -> String {
@@ -64,7 +63,7 @@ main();
     )
 }
 
-pub fn deploy_script() -> String {
+pub fn deploy_script() -> &'static str {
     r#"
 // Migrations are an early feature. Currently, they're nothing more than this
 // single deploy script that's invoked from the CLI, injecting a provider
@@ -79,12 +78,10 @@ module.exports = async function (provider) {
   // Add your deploy script here.
 }
 "#
-    .to_string()
 }
-pub fn xargo_toml() -> String {
+pub fn xargo_toml() -> &'static str {
     r#"[target.bpfel-unknown-unknown.dependencies.std]
 features = []"#
-        .to_string()
 }
 
 pub fn lib_rs(name: &str) -> String {
@@ -151,7 +148,7 @@ describe('{}', () => {{
     )
 }
 
-pub fn ts_config() -> String {
+pub fn ts_config() -> &'static str {
     r#"{
   "compilerOptions": {
     "types": ["mocha", "chai"],
@@ -163,5 +160,16 @@ pub fn ts_config() -> String {
   }
 }
 "#
-    .to_string()
+}
+
+pub fn git_ignore() -> &'static str {
+    r#"# ignore Mac OS noise
+.DS_Store
+
+# ignore the build directory for Rust/Anchor
+target
+
+# Ignore backup files creates by cargo fmt.
+**/*.rs.bk
+    "#
 }

@@ -194,6 +194,10 @@ fn init(name: String, typescript: bool) -> Result<()> {
     let mut virt_manifest = File::create("Cargo.toml")?;
     virt_manifest.write_all(template::virtual_manifest().as_bytes())?;
 
+    // Initialize .gitignore file
+    let mut virt_manifest = File::create(".gitignore")?;
+    virt_manifest.write_all(template::git_ignore().as_bytes())?;
+
     // Build the program.
     fs::create_dir("programs")?;
 
@@ -206,7 +210,7 @@ fn init(name: String, typescript: bool) -> Result<()> {
         let mut ts_config = File::create("tsconfig.json")?;
         ts_config.write_all(template::ts_config().as_bytes())?;
 
-        let mut mocha = File::create(&format!("tests/{}.ts", name))?;
+        let mut mocha = File::create(&format!("tests/{}.spec.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
     } else {
         let mut mocha = File::create(&format!("tests/{}.js", name))?;
