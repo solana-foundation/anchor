@@ -29,10 +29,12 @@ main() {
     # Deploy programs.
     #
     pushd ../../examples/composite/
+    anchor build
     anchor deploy
     local composite_pid=$(cat target/idl/composite.json | jq -r .metadata.address)
     popd
     pushd ../../examples/tutorial/basic-2/
+    anchor build
     anchor deploy
     local basic_2_pid=$(cat target/idl/basic_2.json | jq -r .metadata.address)
     popd
