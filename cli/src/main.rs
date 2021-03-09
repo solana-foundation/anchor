@@ -1,3 +1,5 @@
+//! CLI for workspace management of anchor programs.
+
 use crate::config::{read_all_programs, Config, Program};
 use anchor_lang::idl::IdlAccount;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
@@ -12,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::{AccountMeta, Instruction};
+use solana_sdk::account_utils::StateMut;
+use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -45,6 +49,16 @@ pub enum Command {
         /// Output directory for the IDL.
         #[clap(short, long)]
         idl: Option<String>,
+        /// True if the build artifiact needs to be deterministic and verifiable.
+        #[clap(short, long)]
+        verifiable: bool,
+    },
+    /// Verifies the on-chain bytecode matches the locally compiled artifact.
+    /// Run this command inside a program subdirectory, i.e., in the dir
+    /// containing the program's Cargo.toml.
+    Verify {
+        /// The deployed program to compare against.
+        program_id: Pubkey,
     },
     /// Runs integration tests against a localnetwork.
     Test {
@@ -82,6 +96,10 @@ pub enum Command {
         url: Option<String>,
         #[clap(short, long)]
         keypair: Option<String>,
+        /// True if the build should be verifiable. If deploying to mainnet,
+        /// this should almost always be set.
+        #[clap(short, long)]
+        verifiable: bool,
     },
     /// Upgrades a single program. The configured wallet must be the upgrade
     /// authority.
@@ -157,7 +175,8 @@ fn main() -> Result<()> {
     match opts.command {
         Command::Init { name, typescript } => init(name, typescript),
         Command::New { name } => new(name),
-        Command::Build { idl } => build(idl),
+        Command::Build { idl, verifiable } => build(idl, verifiable),
+        Command::Verify { program_id } => verify(program_id),
         Command::Deploy { url, keypair } => deploy(url, keypair),
         Command::Upgrade {
             program_id,
@@ -165,7 +184,11 @@ fn main() -> Result<()> {
         } => upgrade(program_id, program_filepath),
         Command::Idl { subcmd } => idl(subcmd),
         Command::Migrate { url } => migrate(url),
-        Command::Launch { url, keypair } => launch(url, keypair),
+        Command::Launch {
+            url,
+            keypair,
+            verifiable,
+        } => launch(url, keypair, verifiable),
         Command::Test {
             skip_deploy,
             skip_local_validator,
@@ -257,7 +280,7 @@ fn new_program(name: &str) -> Result<()> {
     Ok(())
 }
 
-fn build(idl: Option<String>) -> Result<()> {
+fn build(idl: Option<String>, verifiable: bool) -> Result<()> {
     let (cfg, path, cargo) = Config::discover()?.expect("Not in workspace.");
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
@@ -271,8 +294,8 @@ fn build(idl: Option<String>) -> Result<()> {
         }
     };
     match cargo {
-        None => build_all(&cfg, path, idl_out)?,
-        Some(ct) => build_cwd(ct, idl_out)?,
+        None => build_all(&cfg, path, idl_out, verifiable)?,
+        Some(ct) => build_cwd(path.as_path(), ct, idl_out, verifiable)?,
     };
 
     set_workspace_dir_or_exit();
@@ -280,27 +303,129 @@ fn build(idl: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn build_all(_cfg: &Config, cfg_path: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
-    match cfg_path.parent() {
+fn build_all(
+    _cfg: &Config,
+    cfg_path: PathBuf,
+    idl_out: Option<PathBuf>,
+    verifiable: bool,
+) -> Result<()> {
+    let cur_dir = std::env::current_dir()?;
+    let r = match cfg_path.parent() {
         None => Err(anyhow!("Invalid Anchor.toml at {}", cfg_path.display())),
         Some(parent) => {
             let files = fs::read_dir(parent.join("programs"))?;
             for f in files {
                 let p = f?.path();
-                build_cwd(p.join("Cargo.toml"), idl_out.clone())?;
+                build_cwd(
+                    cfg_path.as_path(),
+                    p.join("Cargo.toml"),
+                    idl_out.clone(),
+                    verifiable,
+                )?;
             }
             Ok(())
         }
-    }
+    };
+    std::env::set_current_dir(cur_dir)?;
+    r
 }
 
 // Runs the build command outside of a workspace.
-fn build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
+fn build_cwd(
+    cfg_path: &Path,
+    cargo_toml: PathBuf,
+    idl_out: Option<PathBuf>,
+    verifiable: bool,
+) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(&p)?,
     };
+    match verifiable {
+        false => _build_cwd(idl_out),
+        true => build_cwd_verifiable(cfg_path.parent().unwrap()),
+    }
+}
 
+// Builds an anchor program in a docker image and copies the build artifacts
+// into the `target/` directory.
+fn build_cwd_verifiable(workspace_dir: &Path) -> Result<()> {
+    // Docker vars.
+    let container_name = "anchor-program";
+    let image_name = "projectserum/build";
+    let volume_mount = format!(
+        "{}:/workdir",
+        workspace_dir.canonicalize()?.display().to_string()
+    );
+
+    // Create output dirs.
+    fs::create_dir_all(workspace_dir.join("target/deploy"))?;
+    fs::create_dir_all(workspace_dir.join("target/idl"))?;
+
+    // Build the program in docker.
+    let exit = std::process::Command::new("docker")
+        .args(&[
+            "run",
+            "--name",
+            &container_name,
+            "-v",
+            &volume_mount,
+            &image_name,
+            "anchor",
+            "build",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        println!("Error building program");
+        return Ok(());
+    }
+
+    let idl = extract_idl("src/lib.rs")?;
+
+    // Copy the binary out of the docker image.
+    let out_file = format!("../../target/deploy/{}.so", idl.name);
+    let bin_artifact = format!("{}:/workdir/target/deploy/{}.so", container_name, idl.name);
+    let exit = std::process::Command::new("docker")
+        .args(&["cp", &bin_artifact, &out_file])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        return Ok(());
+    }
+
+    // Copy the idl out of the docker image.
+    let out_file = format!("../../target/idl/{}.json", idl.name);
+    let idl_artifact = format!("{}:/workdir/target/idl/{}.json", container_name, idl.name);
+    let exit = std::process::Command::new("docker")
+        .args(&["cp", &idl_artifact, &out_file])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        return Ok(());
+    }
+
+    // Remove the docker image.
+    let exit = std::process::Command::new("docker")
+        .args(&["rm", &container_name])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        std::process::exit(exit.status.code().unwrap_or(1));
+    }
+
+    Ok(())
+}
+
+fn _build_cwd(idl_out: Option<PathBuf>) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg("build-bpf")
         .stdout(Stdio::inherit())
@@ -320,6 +445,83 @@ fn build_cwd(cargo_toml: PathBuf, idl_out: Option<PathBuf>) -> Result<()> {
     };
 
     write_idl(&idl, OutFile::File(out))
+}
+
+fn verify(program_id: Pubkey) -> Result<()> {
+    let (cfg, _path, cargo) = Config::discover()?.expect("Not in workspace.");
+    let cargo = cargo.ok_or(anyhow!("Must be inside program subdirectory."))?;
+    let program_dir = cargo.parent().unwrap();
+
+    // Build the program we want to verify.
+    let cur_dir = std::env::current_dir()?;
+    build(None, true)?;
+    std::env::set_current_dir(&cur_dir)?;
+
+    // Verify IDL.
+    std::env::set_current_dir(program_dir)?;
+    let local_idl = extract_idl("src/lib.rs")?;
+    let deployed_idl = fetch_idl(program_id)?;
+    if local_idl != deployed_idl {
+        println!("Error: IDLs don't match");
+        std::process::exit(1);
+    }
+
+    // Verify binary.
+    let bin_path = program_dir
+        .join("../../target/deploy/")
+        .join(format!("{}.so", local_idl.name));
+    verify_bin(program_id, &bin_path, cfg.cluster.url())?;
+
+    println!("{} is verified.", program_id);
+
+    Ok(())
+}
+
+fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<()> {
+    let client = RpcClient::new(cluster.to_string());
+
+    // Get the deployed build artifacts.
+    let deployed_bin = {
+        let account = client
+            .get_account_with_commitment(&program_id, CommitmentConfig::default())?
+            .value
+            .map_or(Err(anyhow!("Account not found")), Ok)?;
+        match account.state()? {
+            UpgradeableLoaderState::Program {
+                programdata_address,
+            } => client
+                .get_account_with_commitment(&programdata_address, CommitmentConfig::default())?
+                .value
+                .map_or(Err(anyhow!("Account not found")), Ok)?
+                .data[UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
+                .to_vec(),
+            UpgradeableLoaderState::Buffer { .. } => {
+                let offset = UpgradeableLoaderState::buffer_data_offset().unwrap_or(0);
+                account.data[offset..].to_vec()
+            }
+            _ => return Err(anyhow!("Invalid program id")),
+        }
+    };
+    let mut local_bin = {
+        let mut f = File::open(bin_path)?;
+        let mut contents = vec![];
+        f.read_to_end(&mut contents)?;
+        contents
+    };
+
+    // The deployed program probably has zero bytes appended. The default is
+    // 2x the binary size in case of an upgrade.
+    if local_bin.len() < deployed_bin.len() {
+        local_bin.append(&mut vec![0; deployed_bin.len() - local_bin.len()]);
+    }
+
+    // Finally, check the bytes.
+    if local_bin != deployed_bin {
+        println!("Error: Binaries don't match");
+        std::process::exit(1);
+    }
+
+    Ok(())
 }
 
 // Fetches an IDL for the given program_id.
@@ -517,6 +719,10 @@ fn idl_clear(cfg: &Config, program_id: &Pubkey) -> Result<()> {
 // and sending multiple transactions in the event the IDL doesn't fit into
 // a single transaction.
 fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl) -> Result<()> {
+    // Remove the metadata before deploy.
+    let mut idl = idl.clone();
+    idl.metadata = None;
+
     // Misc.
     let idl_address = IdlAccount::address(program_id);
     let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
@@ -525,7 +731,7 @@ fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl) -> Result<()> {
 
     // Serialize and compress the idl.
     let idl_data = {
-        let json_bytes = serde_json::to_vec(idl)?;
+        let json_bytes = serde_json::to_vec(&idl)?;
         let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
         e.write_all(&json_bytes)?;
         e.finish()?
@@ -612,7 +818,7 @@ fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
             "http://127.0.0.1:8899" => {
-                build(None)?;
+                build(None, false)?;
                 let flags = match skip_deploy {
                     true => None,
                     false => Some(genesis_flags(cfg)?),
@@ -624,6 +830,7 @@ fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
             }
             _ => {
                 if !skip_deploy {
+                    build(None, false)?;
                     deploy(None, None)?;
                 }
                 None
@@ -797,8 +1004,6 @@ fn deploy(url: Option<String>, keypair: Option<String>) -> Result<()> {
 
 fn _deploy(url: Option<String>, keypair: Option<String>) -> Result<Vec<(Pubkey, Program)>> {
     with_workspace(|cfg, _path, _cargo| {
-        build(None)?;
-
         // Fallback to config vars if not provided via CLI.
         let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
         let keypair = keypair.unwrap_or_else(|| cfg.wallet.to_string());
@@ -887,8 +1092,9 @@ fn upgrade(program_id: Pubkey, program_filepath: String) -> Result<()> {
     })
 }
 
-fn launch(url: Option<String>, keypair: Option<String>) -> Result<()> {
+fn launch(url: Option<String>, keypair: Option<String>, verifiable: bool) -> Result<()> {
     // Build and deploy.
+    build(None, verifiable)?;
     let programs = _deploy(url.clone(), keypair.clone())?;
 
     with_workspace(|cfg, _path, _cargo| {
@@ -1020,6 +1226,10 @@ fn migrate(url: Option<String>) -> Result<()> {
         let cur_dir = std::env::current_dir()?;
         let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
         let deploy_script_host_str = template::deploy_script_host(&url, &module_path);
+
+        if !Path::new(".anchor").exists() {
+            fs::create_dir(".anchor")?;
+        }
         std::env::set_current_dir(".anchor")?;
 
         std::fs::write("deploy.js", deploy_script_host_str)?;

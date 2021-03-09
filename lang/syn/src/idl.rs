@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Idl {
     pub version: String,
     pub name: String,
@@ -17,7 +17,7 @@ pub struct Idl {
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlState {
     #[serde(rename = "struct")]
     pub strct: IdlTypeDef,
@@ -26,7 +26,7 @@ pub struct IdlState {
 
 pub type IdlStateMethod = IdlIx;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlIx {
     pub name: String,
     pub accounts: Vec<IdlAccountItem>,
@@ -34,14 +34,14 @@ pub struct IdlIx {
 }
 
 // A single struct deriving `Accounts`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdlAccounts {
     pub name: String,
     pub accounts: Vec<IdlAccountItem>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum IdlAccountItem {
     IdlAccount(IdlAccount),
@@ -49,7 +49,7 @@ pub enum IdlAccountItem {
 }
 
 // A single field in the accounts struct.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdlAccount {
     pub name: String,
@@ -57,42 +57,42 @@ pub struct IdlAccount {
     pub is_signer: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlField {
     pub name: String,
     #[serde(rename = "type")]
     pub ty: IdlType,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlTypeDef {
     pub name: String,
     #[serde(rename = "type")]
     pub ty: IdlTypeDefTy,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase", tag = "kind")]
 pub enum IdlTypeDefTy {
     Struct { fields: Vec<IdlField> },
     Enum { variants: Vec<EnumVariant> },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EnumVariant {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub fields: Option<EnumFields>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum EnumFields {
     Named(Vec<IdlField>),
     Tuple(Vec<IdlType>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum IdlType {
     Bool,
@@ -114,7 +114,7 @@ pub enum IdlType {
     Vec(Box<IdlType>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlTypePublicKey;
 
 impl std::str::FromStr for IdlType {
@@ -166,7 +166,7 @@ impl std::str::FromStr for IdlType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlErrorCode {
     pub code: u32,
     pub name: String,

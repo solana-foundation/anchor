@@ -14,10 +14,11 @@ incremented for features.
 ## Features
 
 * ts: Allow preloading instructions for state rpc transactions ([cf9c84](https://github.com/project-serum/anchor/commit/cf9c847e4144989b5bc1936149d171e90204777b)).
-* ts: Export sighash coder function.
-* cli: Specify programs to embed into local validator genesis via Anchor.toml while testing.
-* cli: Allow skipping the creation of a local validator when testing against localnet.
+* ts: Export sighash coder function ([734c75](https://github.com/project-serum/anchor/commit/734c751882f43beec7ea3f0f4d988b502e3f24e4)).
+* cli: Specify programs to embed into local validator genesis via Anchor.toml while testing ([b3803a](https://github.com/project-serum/anchor/commit/b3803aec03fbbae1a794c9aa6a789e6cb58fda99)).
+* cli: Allow skipping the creation of a local validator when testing against localnet ([#93](https://github.com/project-serum/anchor/pull/93)).
 * cli: Adds support for tests with Typescript ([#94](https://github.com/project-serum/anchor/pull/94)).
+* cli: Deterministic and verifiable builds ([#100](https://github.com/project-serum/anchor/pull/100)).
 
 ## Fixes
 
