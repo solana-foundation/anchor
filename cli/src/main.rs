@@ -457,31 +457,34 @@ fn verify(program_id: Pubkey) -> Result<()> {
     build(None, true)?;
     std::env::set_current_dir(&cur_dir)?;
 
-    // Verify IDL.
-    std::env::set_current_dir(program_dir)?;
     let local_idl = extract_idl("src/lib.rs")?;
-    let deployed_idl = fetch_idl(program_id)?;
-    if local_idl != deployed_idl {
-        println!("Error: IDLs don't match");
-        std::process::exit(1);
-    }
 
     // Verify binary.
     let bin_path = program_dir
         .join("../../target/deploy/")
         .join(format!("{}.so", local_idl.name));
-    verify_bin(program_id, &bin_path, cfg.cluster.url())?;
+    let is_buffer = verify_bin(program_id, &bin_path, cfg.cluster.url())?;
+
+    // Verify IDL (only if it's not a buffer account).
+    if !is_buffer {
+        std::env::set_current_dir(program_dir)?;
+        let deployed_idl = fetch_idl(program_id)?;
+        if local_idl != deployed_idl {
+            println!("Error: IDLs don't match");
+            std::process::exit(1);
+        }
+    }
 
     println!("{} is verified.", program_id);
 
     Ok(())
 }
 
-fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<()> {
+fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<bool> {
     let client = RpcClient::new(cluster.to_string());
 
     // Get the deployed build artifacts.
-    let deployed_bin = {
+    let (deployed_bin, is_buffer) = {
         let account = client
             .get_account_with_commitment(&program_id, CommitmentConfig::default())?
             .value
@@ -489,15 +492,18 @@ fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<()> 
         match account.state()? {
             UpgradeableLoaderState::Program {
                 programdata_address,
-            } => client
-                .get_account_with_commitment(&programdata_address, CommitmentConfig::default())?
-                .value
-                .map_or(Err(anyhow!("Account not found")), Ok)?
-                .data[UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
-                .to_vec(),
+            } => (
+                client
+                    .get_account_with_commitment(&programdata_address, CommitmentConfig::default())?
+                    .value
+                    .map_or(Err(anyhow!("Account not found")), Ok)?
+                    .data[UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
+                    .to_vec(),
+                false,
+            ),
             UpgradeableLoaderState::Buffer { .. } => {
                 let offset = UpgradeableLoaderState::buffer_data_offset().unwrap_or(0);
-                account.data[offset..].to_vec()
+                (account.data[offset..].to_vec(), true)
             }
             _ => return Err(anyhow!("Invalid program id")),
         }
@@ -521,7 +527,7 @@ fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<()> 
         std::process::exit(1);
     }
 
-    Ok(())
+    Ok(is_buffer)
 }
 
 // Fetches an IDL for the given program_id.
