@@ -35,7 +35,7 @@ describe("token", () => {
   });
 
   it("Transfers a token", async () => {
-    await program.rpc.proxyTransfer(new anchor.BN(500), {
+    await program.rpc.proxyTransfer(new anchor.BN(400), {
       accounts: {
         authority: provider.wallet.publicKey,
         to,
@@ -47,12 +47,12 @@ describe("token", () => {
     const fromAccount = await getTokenAccount(provider, from);
     const toAccount = await getTokenAccount(provider, to);
 
-    assert.ok(fromAccount.amount.eq(new anchor.BN(500)));
-    assert.ok(fromAccount.amount.eq(new anchor.BN(500)));
+    assert.ok(fromAccount.amount.eq(new anchor.BN(600)));
+    assert.ok(toAccount.amount.eq(new anchor.BN(400)));
   });
 
   it("Burns a token", async () => {
-    await program.rpc.proxyBurn(new anchor.BN(499), {
+    await program.rpc.proxyBurn(new anchor.BN(399), {
       accounts: {
         authority: provider.wallet.publicKey,
         mint,
