@@ -3,6 +3,7 @@ import { sha256 } from "crypto-hash";
 import { struct } from "superstruct";
 import assert from "assert";
 import { PublicKey, AccountInfo, Connection } from "@solana/web3.js";
+import { idlAddress } from './idl';
 
 export const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -112,6 +113,7 @@ const utils = {
   bs58,
   sha256,
   getMultipleAccounts,
+  idlAddress,
 };
 
 export default utils;

@@ -8,6 +8,10 @@ edition = "2018"
 name = "anchor"
 path = "src/main.rs"
 
+[features]
+dev = []
+default = []
+
 [dependencies]
 clap = "3.0.0-beta.1"
 anyhow = "1.0.32"

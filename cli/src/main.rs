@@ -1,7 +1,7 @@
 //! CLI for workspace management of anchor programs.
 
 use crate::config::{read_all_programs, Config, Program};
-use anchor_lang::idl::IdlAccount;
+use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Result};
@@ -20,6 +20,7 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
+use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -110,6 +111,7 @@ pub enum Command {
         /// Filepath to the new program binary.
         program_filepath: String,
     },
+    #[cfg(feature = "dev")]
     /// Runs an airdrop loop, continuously funding the configured wallet.
     Airdrop {
         #[clap(short, long)]
@@ -125,7 +127,22 @@ pub enum IdlCommand {
         #[clap(short, long)]
         filepath: String,
     },
-    /// Upgrades the IDL to the new file.
+    /// Writes an IDL into a buffer account. This can be used with SetBuffer
+    /// to perform an upgrade.
+    WriteBuffer {
+        program_id: Pubkey,
+        #[clap(short, long)]
+        filepath: String,
+    },
+    /// Sets a new IDL buffer for the program.
+    SetBuffer {
+        program_id: Pubkey,
+        /// Address of the buffer account to set as the idl on the program.
+        #[clap(short, long)]
+        buffer: Pubkey,
+    },
+    /// Upgrades the IDL to the new file. An alias for first writing and then
+    /// then setting the idl buffer account.
     Upgrade {
         program_id: Pubkey,
         #[clap(short, long)]
@@ -133,6 +150,9 @@ pub enum IdlCommand {
     },
     /// Sets a new authority on the IDL account.
     SetAuthority {
+        /// The IDL account buffer to set the authority of. If none is given,
+        /// then the canonical IDL account is used.
+        address: Option<Pubkey>,
         /// Program to change the IDL authority.
         #[clap(short, long)]
         program_id: Pubkey,
@@ -161,9 +181,10 @@ pub enum IdlCommand {
         #[clap(short, long)]
         out: Option<String>,
     },
-    /// Fetches an IDL for the given program from a cluster.
+    /// Fetches an IDL for the given address from a cluster.
+    /// The address can be a program, IDL account, or IDL buffer.
     Fetch {
-        program_id: Pubkey,
+        address: Pubkey,
         /// Output file for the idl (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
@@ -193,6 +214,7 @@ fn main() -> Result<()> {
             skip_deploy,
             skip_local_validator,
         } => test(skip_deploy, skip_local_validator),
+        #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
     }
 }
@@ -531,16 +553,22 @@ fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<bool
 }
 
 // Fetches an IDL for the given program_id.
-fn fetch_idl(program_id: Pubkey) -> Result<Idl> {
+fn fetch_idl(idl_addr: Pubkey) -> Result<Idl> {
     let cfg = Config::discover()?.expect("Inside a workspace").0;
     let client = RpcClient::new(cfg.cluster.url().to_string());
 
-    let idl_addr = IdlAccount::address(&program_id);
-
-    let account = client
+    let mut account = client
         .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
         .value
         .map_or(Err(anyhow!("Account not found")), Ok)?;
+
+    if account.executable {
+        let idl_addr = IdlAccount::address(&idl_addr);
+        account = client
+            .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
+            .value
+            .map_or(Err(anyhow!("Account not found")), Ok)?;
+    }
 
     // Cut off account discriminator.
     let mut d: &[u8] = &account.data[8..];
@@ -563,18 +591,24 @@ fn idl(subcmd: IdlCommand) -> Result<()> {
             program_id,
             filepath,
         } => idl_init(program_id, filepath),
+        IdlCommand::WriteBuffer {
+            program_id,
+            filepath,
+        } => idl_write_buffer(program_id, filepath).map(|_| ()),
+        IdlCommand::SetBuffer { program_id, buffer } => idl_set_buffer(program_id, buffer),
         IdlCommand::Upgrade {
             program_id,
             filepath,
         } => idl_upgrade(program_id, filepath),
         IdlCommand::SetAuthority {
             program_id,
+            address,
             new_authority,
-        } => idl_set_authority(program_id, new_authority),
+        } => idl_set_authority(program_id, address, new_authority),
         IdlCommand::EraseAuthority { program_id } => idl_erase_authority(program_id),
         IdlCommand::Authority { program_id } => idl_authority(program_id),
         IdlCommand::Parse { file, out } => idl_parse(file, out),
-        IdlCommand::Fetch { program_id, out } => idl_fetch(program_id, out),
+        IdlCommand::Fetch { address, out } => idl_fetch(address, out),
     }
 }
 
@@ -592,22 +626,86 @@ fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
     })
 }
 
-fn idl_upgrade(program_id: Pubkey, idl_filepath: String) -> Result<()> {
+fn idl_write_buffer(program_id: Pubkey, idl_filepath: String) -> Result<Pubkey> {
     with_workspace(|cfg, _path, _cargo| {
+        let keypair = cfg.wallet.to_string();
+
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
 
-        idl_clear(cfg, &program_id)?;
-        idl_write(cfg, &program_id, &idl)?;
+        let idl_buffer = create_idl_buffer(&cfg, &keypair, &program_id, &idl)?;
+        idl_write(&cfg, &program_id, &idl, idl_buffer)?;
+
+        println!("Idl buffer created: {:?}", idl_buffer);
+
+        Ok(idl_buffer)
+    })
+}
+
+fn idl_set_buffer(program_id: Pubkey, buffer: Pubkey) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+            .map_err(|_| anyhow!("Unable to read keypair file"))?;
+        let client = RpcClient::new(cfg.cluster.url().to_string());
+
+        // Instruction to set the buffer onto the IdlAccount.
+        let set_buffer_ix = {
+            let accounts = vec![
+                AccountMeta::new(buffer, false),
+                AccountMeta::new(IdlAccount::address(&program_id), false),
+                AccountMeta::new(keypair.pubkey(), true),
+            ];
+            let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
+            data.append(&mut IdlInstruction::SetBuffer.try_to_vec()?);
+            Instruction {
+                program_id,
+                accounts,
+                data,
+            }
+        };
+
+        // Build the transaction.
+        let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+        let tx = Transaction::new_signed_with_payer(
+            &[set_buffer_ix],
+            Some(&keypair.pubkey()),
+            &[&keypair],
+            recent_hash,
+        );
+
+        // Send the transaction.
+        client.send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig::confirmed(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..RpcSendTransactionConfig::default()
+            },
+        )?;
 
         Ok(())
     })
 }
 
+fn idl_upgrade(program_id: Pubkey, idl_filepath: String) -> Result<()> {
+    let buffer = idl_write_buffer(program_id, idl_filepath)?;
+    idl_set_buffer(program_id, buffer)
+}
+
 fn idl_authority(program_id: Pubkey) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         let client = RpcClient::new(cfg.cluster.url().to_string());
-        let idl_address = IdlAccount::address(&program_id);
+        let idl_address = {
+            let account = client
+                .get_account_with_commitment(&program_id, CommitmentConfig::processed())?
+                .value
+                .map_or(Err(anyhow!("Account not found")), Ok)?;
+            if account.executable {
+                IdlAccount::address(&program_id)
+            } else {
+                program_id
+            }
+        };
 
         let account = client.get_account(&idl_address)?;
         let mut data: &[u8] = &account.data;
@@ -619,10 +717,17 @@ fn idl_authority(program_id: Pubkey) -> Result<()> {
     })
 }
 
-fn idl_set_authority(program_id: Pubkey, new_authority: Pubkey) -> Result<()> {
+fn idl_set_authority(
+    program_id: Pubkey,
+    address: Option<Pubkey>,
+    new_authority: Pubkey,
+) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Misc.
-        let idl_address = IdlAccount::address(&program_id);
+        let idl_address = match address {
+            None => IdlAccount::address(&program_id),
+            Some(addr) => addr,
+        };
         let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))?;
         let client = RpcClient::new(cfg.cluster.url().to_string());
@@ -679,44 +784,7 @@ fn idl_erase_authority(program_id: Pubkey) -> Result<()> {
 
     // Program will treat the zero authority as erased.
     let new_authority = Pubkey::new_from_array([0u8; 32]);
-    idl_set_authority(program_id, new_authority)?;
-
-    Ok(())
-}
-
-// Clears out *all* IDL data. The authority for the IDL must be the configured
-// wallet.
-fn idl_clear(cfg: &Config, program_id: &Pubkey) -> Result<()> {
-    let idl_address = IdlAccount::address(program_id);
-    let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
-        .map_err(|_| anyhow!("Unable to read keypair file"))?;
-    let client = RpcClient::new(cfg.cluster.url().to_string());
-
-    let data = serialize_idl_ix(anchor_lang::idl::IdlInstruction::Clear)?;
-    let accounts = vec![
-        AccountMeta::new(idl_address, false),
-        AccountMeta::new_readonly(keypair.pubkey(), true),
-    ];
-    let ix = Instruction {
-        program_id: *program_id,
-        accounts,
-        data,
-    };
-    let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
-    let tx = Transaction::new_signed_with_payer(
-        &[ix],
-        Some(&keypair.pubkey()),
-        &[&keypair],
-        recent_hash,
-    );
-    client.send_and_confirm_transaction_with_spinner_and_config(
-        &tx,
-        CommitmentConfig::confirmed(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..RpcSendTransactionConfig::default()
-        },
-    )?;
+    idl_set_authority(program_id, None, new_authority)?;
 
     Ok(())
 }
@@ -724,13 +792,12 @@ fn idl_clear(cfg: &Config, program_id: &Pubkey) -> Result<()> {
 // Write the idl to the account buffer, chopping up the IDL into pieces
 // and sending multiple transactions in the event the IDL doesn't fit into
 // a single transaction.
-fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl) -> Result<()> {
+fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl, idl_address: Pubkey) -> Result<()> {
     // Remove the metadata before deploy.
     let mut idl = idl.clone();
     idl.metadata = None;
 
     // Misc.
-    let idl_address = IdlAccount::address(program_id);
     let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
         .map_err(|_| anyhow!("Unable to read keypair file"))?;
     let client = RpcClient::new(cfg.cluster.url().to_string());
@@ -795,8 +862,8 @@ fn idl_parse(file: String, out: Option<String>) -> Result<()> {
     write_idl(&idl, out)
 }
 
-fn idl_fetch(program_id: Pubkey, out: Option<String>) -> Result<()> {
-    let idl = fetch_idl(program_id)?;
+fn idl_fetch(address: Pubkey, out: Option<String>) -> Result<()> {
+    let idl = fetch_idl(address)?;
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
@@ -1168,14 +1235,7 @@ fn create_idl_account(
     let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
         .map_err(|_| anyhow!("Unable to read keypair file"))?;
     let client = RpcClient::new(cfg.cluster.url().to_string());
-
-    // Serialize and compress the idl.
-    let idl_data = {
-        let json_bytes = serde_json::to_vec(idl)?;
-        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-        e.write_all(&json_bytes)?;
-        e.finish()?
-    };
+    let idl_data = serialize_idl(idl)?;
 
     // Run `Create instruction.
     {
@@ -1213,9 +1273,81 @@ fn create_idl_account(
         )?;
     }
 
-    idl_write(cfg, program_id, idl)?;
+    // Write directly to the IDL account buffer.
+    idl_write(cfg, program_id, idl, IdlAccount::address(program_id))?;
 
     Ok(idl_address)
+}
+
+fn create_idl_buffer(
+    cfg: &Config,
+    keypair_path: &str,
+    program_id: &Pubkey,
+    idl: &Idl,
+) -> Result<Pubkey> {
+    let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
+        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let client = RpcClient::new(cfg.cluster.url().to_string());
+
+    let buffer = Keypair::generate(&mut OsRng);
+
+    // Creates the new buffer account with the system program.
+    let create_account_ix = {
+        let space = 8 + 32 + 4 + serialize_idl(idl)?.len() as usize;
+        let lamports = client.get_minimum_balance_for_rent_exemption(space)?;
+        solana_sdk::system_instruction::create_account(
+            &keypair.pubkey(),
+            &buffer.pubkey(),
+            lamports,
+            space as u64,
+            program_id,
+        )
+    };
+
+    // Program instruction to create the buffer.
+    let create_buffer_ix = {
+        let accounts = vec![
+            AccountMeta::new(buffer.pubkey(), false),
+            AccountMeta::new_readonly(keypair.pubkey(), true),
+            AccountMeta::new_readonly(sysvar::rent::ID, false),
+        ];
+        let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
+        data.append(&mut IdlInstruction::CreateBuffer.try_to_vec()?);
+        Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        }
+    };
+
+    // Build the transaction.
+    let (recent_hash, _fee_calc) = client.get_recent_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[create_account_ix, create_buffer_ix],
+        Some(&keypair.pubkey()),
+        &[&keypair, &buffer],
+        recent_hash,
+    );
+
+    // Send the transaction.
+    client.send_and_confirm_transaction_with_spinner_and_config(
+        &tx,
+        CommitmentConfig::confirmed(),
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            ..RpcSendTransactionConfig::default()
+        },
+    )?;
+
+    Ok(buffer.pubkey())
+}
+
+// Serialize and compress the idl.
+fn serialize_idl(idl: &Idl) -> Result<Vec<u8>> {
+    let json_bytes = serde_json::to_vec(idl)?;
+    let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+    e.write_all(&json_bytes)?;
+    e.finish().map_err(Into::into)
 }
 
 fn serialize_idl_ix(ix_inner: anchor_lang::idl::IdlInstruction) -> Result<Vec<u8>> {
@@ -1282,6 +1414,7 @@ fn set_workspace_dir_or_exit() {
     }
 }
 
+#[cfg(feature = "dev")]
 fn airdrop(url: Option<String>) -> Result<()> {
     let url = url.unwrap_or_else(|| "https://devnet.solana.com".to_string());
     loop {

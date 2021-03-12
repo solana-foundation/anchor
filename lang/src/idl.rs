@@ -27,10 +27,12 @@ pub const IDL_IX_TAG: u64 = 0x0a69e9a778bcf440;
 pub enum IdlInstruction {
     // One time initializer for creating the program's idl account.
     Create { data_len: u64 },
-    // Appends to the end of the idl account data.
+    // Creates a new IDL account buffer. Can be called several times.
+    CreateBuffer,
+    // Appends the given data to the end of the idl account buffer.
     Write { data: Vec<u8> },
-    // Clear's the IdlInstruction data. Used to update the IDL.
-    Clear,
+    // Sets a new data buffer for the IdlAccount.
+    SetBuffer,
     // Sets a new authority on the IdlAccount.
     SetAuthority { new_authority: Pubkey },
 }
@@ -47,8 +49,34 @@ pub struct IdlAccounts<'info> {
     pub authority: AccountInfo<'info>,
 }
 
+// Accounts for creating an idl buffer.
+#[derive(Accounts)]
+pub struct IdlCreateBuffer<'info> {
+    #[account(init)]
+    pub buffer: ProgramAccount<'info, IdlAccount>,
+    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
+    pub authority: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+// Accounts for upgrading the canonical IdlAccount with the buffer.
+#[derive(Accounts)]
+pub struct IdlSetBuffer<'info> {
+    // The buffer with the new idl data.
+    #[account(mut, "buffer.authority == idl.authority")]
+    pub buffer: ProgramAccount<'info, IdlAccount>,
+    // The idl account to be updated with the buffer's data.
+    #[account(mut, has_one = authority)]
+    pub idl: ProgramAccount<'info, IdlAccount>,
+    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
+    pub authority: AccountInfo<'info>,
+}
+
 // The account holding a program's IDL. This is stored on chain so that clients
 // can fetch it and generate a client with nothing but a program's ID.
+//
+// Note: we use the same account for the "write buffer", similar to the
+//       bpf upgradeable loader's mechanism.
 #[account]
 #[derive(Debug)]
 pub struct IdlAccount {

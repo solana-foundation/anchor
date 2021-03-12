@@ -254,21 +254,26 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                         __idl_create_account(program_id, &mut accounts, data_len)?;
                         accounts.exit(program_id)?;
                     },
+                    anchor_lang::idl::IdlInstruction::CreateBuffer => {
+                        let mut accounts = anchor_lang::idl::IdlCreateBuffer::try_accounts(program_id, &mut accounts)?;
+                        __idl_create_buffer(program_id, &mut accounts)?;
+                        accounts.exit(program_id)?;
+                    },
                     anchor_lang::idl::IdlInstruction::Write { data } => {
                         let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
                         __idl_write(program_id, &mut accounts, data)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::Clear => {
-                        let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
-                        __idl_clear(program_id, &mut accounts)?;
                         accounts.exit(program_id)?;
                     },
                     anchor_lang::idl::IdlInstruction::SetAuthority { new_authority } => {
                         let mut accounts = anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts)?;
                         __idl_set_authority(program_id, &mut accounts, new_authority)?;
                         accounts.exit(program_id)?;
-                    }
+                    },
+                    anchor_lang::idl::IdlInstruction::SetBuffer => {
+                        let mut accounts = anchor_lang::idl::IdlSetBuffer::try_accounts(program_id, &mut accounts)?;
+                        __idl_set_buffer(program_id, &mut accounts)?;
+                        accounts.exit(program_id)?;
+                    },
                 }
                 Ok(())
             }
@@ -339,6 +344,16 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
             }
 
             #[inline(never)]
+            pub fn __idl_create_buffer(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlCreateBuffer,
+            ) -> ProgramResult {
+                let mut buffer = &mut accounts.buffer;
+                buffer.authority = *accounts.authority.key;
+                Ok(())
+            }
+
+            #[inline(never)]
             pub fn __idl_write(
                 program_id: &Pubkey,
                 accounts: &mut anchor_lang::idl::IdlAccounts,
@@ -350,21 +365,21 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
             }
 
             #[inline(never)]
-            pub fn __idl_clear(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlAccounts,
-            ) -> ProgramResult {
-                accounts.idl.data = vec![];
-                Ok(())
-            }
-
-            #[inline(never)]
             pub fn __idl_set_authority(
                 program_id: &Pubkey,
                 accounts: &mut anchor_lang::idl::IdlAccounts,
                 new_authority: Pubkey,
             ) -> ProgramResult {
                 accounts.idl.authority = new_authority;
+                Ok(())
+            }
+
+            #[inline(never)]
+            pub fn __idl_set_buffer(
+                program_id: &Pubkey,
+                accounts: &mut anchor_lang::idl::IdlSetBuffer,
+            ) -> ProgramResult {
+                accounts.idl.data = accounts.buffer.data.clone();
                 Ok(())
             }
         }

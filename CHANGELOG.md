@@ -19,6 +19,11 @@ incremented for features.
 * cli: Allow skipping the creation of a local validator when testing against localnet ([#93](https://github.com/project-serum/anchor/pull/93)).
 * cli: Adds support for tests with Typescript ([#94](https://github.com/project-serum/anchor/pull/94)).
 * cli: Deterministic and verifiable builds ([#100](https://github.com/project-serum/anchor/pull/100)).
+* cli, lang: Add write buffers for IDL upgrades ([#107](https://github.com/project-serum/anchor/pull/107)).
+
+## Breaking Changes
+
+* lang: Removes `IdlInstruction::Clear` ([#107](https://github.com/project-serum/anchor/pull/107)).
 
 ## Fixes
 
