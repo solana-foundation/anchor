@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.3.0] - 2021-03-12
+
 ## Features
 
 * ts: Allow preloading instructions for state rpc transactions ([cf9c84](https://github.com/project-serum/anchor/commit/cf9c847e4144989b5bc1936149d171e90204777b)).
@@ -27,7 +29,7 @@ incremented for features.
 
 ## Fixes
 
-* cli: Propagates mocha test exit status on error.
+* cli: Propagates mocha test exit status on error ([79b791](https://github.com/project-serum/anchor/commit/79b791ffa85ffae5b6163fa853562aa568650f21)).
 
 ## [0.2.1] - 2021-02-11
 
