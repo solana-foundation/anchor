@@ -9,4 +9,4 @@ description = "CPI clients for SPL programs"
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.3.0", features = ["derive"] }
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
-solana-program = "1.5.8"
+solana-program = "=1.5.15"
