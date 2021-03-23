@@ -165,7 +165,7 @@ dependencies = [
  "anchor-attribute-program",
  "anchor-attribute-state",
  "anchor-derive-accounts",
- "serum-borsh",
+ "borsh",
  "solana-program",
  "thiserror",
 ]
