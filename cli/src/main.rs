@@ -71,6 +71,7 @@ pub enum Command {
         /// url is a localnet.
         #[clap(long)]
         skip_local_validator: bool,
+        file: Option<String>,
     },
     /// Creates a new program.
     New { name: String },
@@ -213,7 +214,8 @@ fn main() -> Result<()> {
         Command::Test {
             skip_deploy,
             skip_local_validator,
-        } => test(skip_deploy, skip_local_validator),
+            file,
+        } => test(skip_deploy, skip_local_validator, file),
         #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
     }
@@ -886,7 +888,7 @@ enum OutFile {
 }
 
 // Builds, deploys, and tests all workspace programs in a single command.
-fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
+fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
@@ -914,21 +916,25 @@ fn test(skip_deploy: bool, skip_local_validator: bool) -> Result<()> {
         let ts_config_exist = Path::new("tsconfig.json").exists();
 
         // Run the tests.
+        let mut args = vec!["-t", "1000000"];
+        if let Some(ref file) = file {
+            args.push(file);
+        } else if ts_config_exist {
+            args.push("tests/**/*.spec.ts");
+        } else {
+            args.push("tests/");
+        }
         let exit = match ts_config_exist {
             true => std::process::Command::new("ts-mocha")
                 .arg("-p")
                 .arg("./tsconfig.json")
-                .arg("-t")
-                .arg("1000000")
-                .arg("tests/**/*.spec.ts")
+                .args(args)
                 .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()?,
             false => std::process::Command::new("mocha")
-                .arg("-t")
-                .arg("1000000")
-                .arg("tests/")
+                .args(args)
                 .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
