@@ -1,17 +1,21 @@
-//! idl.rs defines the instructions and account state used to store a
-//! program's IDL.
+//! idl.rs defines the instructions and account state used to store a program's
+//! IDL on-chain at a canonical account address, which can be derived as a
+//! function of nothing other than the program's ID.
 //!
-//! Note that the transaction to store the IDL can be larger than the max
-//! transaction size. As a reuslt, the transaction must be broken up into
-//! several pieces and stored into the IDL account with multiple transactions
-//! via the `Write` instruction to continuously append to the account's IDL data
-//! buffer.
+//! It can be upgraded in a way similar to a BPF upgradeable program. That is,
+//! one may invoke the `IdlInstruction::CreateBuffer` instruction to create
+//! a buffer, `IdlInstruction::Write` to write a new IDL into it, and then
+//! `IdlInstruction::SetBuffer` to copy the IDL into the program's canonical
+//! IDL account. In order to perform this upgrade, the buffer's `authority`
+//! must match the canonical IDL account's authority.
 //!
-//! To upgrade the IDL, first invoke the `Clear` instruction to reset the data.
-//! And invoke `Write` once more. To eliminate the ability to change the IDL,
-//! set the authority to a key for which you can't sign, e.g., the zero address
-//! or the system program ID, or compile the program with the "no-idl" feature
-//! and upgrade the program with the upgradeable BPF loader.
+//! Because the IDL can be larger than the max transaction size, the transaction
+//! must be broken up into several pieces and stored into the IDL account with
+//! multiple transactions via the `Write` instruction to continuously append to
+//! the account's IDL data buffer.
+//!
+//! Note that IDL account instructions are automatically inserted into all
+//! Anchor programs. To remove them, one can use the `no-idl` feature.
 
 use crate::prelude::*;
 use solana_program::pubkey::Pubkey;
