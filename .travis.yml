@@ -2,25 +2,7 @@ dist: bionic
 language: rust
 rust:
   - nightly
-cache:
-  directories:
-    - $HOME/.cargo
-    - $TRAVIS_BUILD_DIR/target
-    - $TRAVIS_BUILD_DIR/client/example/target
-    - $TRAVIS_BUILD_DIR/examples/sysvars/target
-    - $TRAVIS_BUILD_DIR/examples/composite/target
-    - $TRAVIS_BUILD_DIR/examples/errors/target
-    - $TRAVIS_BUILD_DIR/examples/spl/token-proxy/target
-    - $TRAVIS_BUILD_DIR/examples/multisig/target
-    - $TRAVIS_BUILD_DIR/examples/interface/target
-    - $TRAVIS_BUILD_DIR/examples/lockup/target
-    - $TRAVIS_BUILD_DIR/examples/misc/target
-    - $TRAVIS_BUILD_DIR/examples/cashiers-check/target
-    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-0/target
-    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-1/target
-    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-2/target
-    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-3/target
-    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-4/target
+cache: cargo
 env:
   - NODE_VERSION="14.7.0"
 
