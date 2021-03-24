@@ -169,6 +169,12 @@ pub trait InstructionData: AnchorSerialize {
     fn data(&self) -> Vec<u8>;
 }
 
+/// Calculates the size of an account, which may be larger than the deserialized
+/// data in it. This trait is currently only used for `#[state]` accounts.
+pub trait AccountSize: AnchorSerialize {
+    fn size(&self) -> Result<u64, ProgramError>;
+}
+
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {

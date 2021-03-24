@@ -420,9 +420,8 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                         let seed = anchor_lang::ProgramState::<#name>::seed();
                         let owner = ctor_accounts.program.key;
                         let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
-                        // Add 8 for the account discriminator.
-                        let space = 8 + instance.try_to_vec().map_err(|_| ProgramError::Custom(1))?.len();
-                        let lamports = ctor_accounts.rent.minimum_balance(space);
+                        let space = anchor_lang::AccountSize::size(&instance)?;
+                        let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
                         let seeds = &[&[nonce][..]];
                         let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
                             from,
@@ -430,7 +429,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                             &base,
                             seed,
                             lamports,
-                            space as u64,
+                            space,
                             owner,
                         );
                         anchor_lang::solana_program::program::invoke_signed(

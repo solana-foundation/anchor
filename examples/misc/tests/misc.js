@@ -5,10 +5,19 @@ const assert = require("assert");
 describe("misc", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
+  const program = anchor.workspace.Misc;
+
+  it("Can allocate extra space for a state constructor", async () => {
+    const tx = await program.state.rpc.new();
+    const addr = await program.state.address();
+    const state = await program.state();
+    const accountInfo = await program.provider.connection.getAccountInfo(addr);
+    assert.ok(state.v.equals(Buffer.from([])));
+    assert.ok(accountInfo.data.length === 99);
+  });
 
   it("Can use u128 and i128", async () => {
     const data = new anchor.web3.Account();
-    const program = anchor.workspace.Misc;
     const tx = await program.rpc.initialize(
       new anchor.BN(1234),
       new anchor.BN(22),

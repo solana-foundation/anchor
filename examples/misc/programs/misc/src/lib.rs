@@ -8,12 +8,29 @@ use anchor_lang::prelude::*;
 #[program]
 pub mod misc {
     use super::*;
+
+    pub const SIZE: u64 = 99;
+
+    #[state(SIZE)]
+    pub struct MyState {
+        pub v: Vec<u8>,
+    }
+
+    impl MyState {
+        pub fn new(_ctx: Context<Ctor>) -> Result<Self, ProgramError> {
+            Ok(Self { v: vec![] })
+        }
+    }
+
     pub fn initialize(ctx: Context<Initialize>, udata: u128, idata: i128) -> ProgramResult {
         ctx.accounts.data.udata = udata;
         ctx.accounts.data.idata = idata;
         Ok(())
     }
 }
+
+#[derive(Accounts)]
+pub struct Ctor {}
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
