@@ -2,7 +2,25 @@ dist: bionic
 language: rust
 rust:
   - nightly
-cache: cargo
+cache:
+  directories:
+    - $HOME/.cargo
+    - $TRAVIS_BUILD_DIR/target
+    - $TRAVIS_BUILD_DIR/client/example/target
+    - $TRAVIS_BUILD_DIR/examples/sysvars/target
+    - $TRAVIS_BUILD_DIR/examples/composite/target
+    - $TRAVIS_BUILD_DIR/examples/errors/target
+    - $TRAVIS_BUILD_DIR/examples/spl/token-proxy/target
+    - $TRAVIS_BUILD_DIR/examples/multisig/target
+    - $TRAVIS_BUILD_DIR/examples/interface/target
+    - $TRAVIS_BUILD_DIR/examples/lockup/target
+    - $TRAVIS_BUILD_DIR/examples/misc/target
+    - $TRAVIS_BUILD_DIR/examples/cashiers-check/target
+    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-0/target
+    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-1/target
+    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-2/target
+    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-3/target
+    - $TRAVIS_BUILD_DIR/examples/tutorial/basic-4/target
 env:
   - NODE_VERSION="14.7.0"
 
@@ -44,7 +62,7 @@ jobs:
         - yarn
         - yarn build
     - <<: *examples
-      name: Runs the examples
+      name: Runs the examples 1
       script:
         - pushd client/example && ./run-test.sh && popd
         - pushd examples/sysvars && anchor test && popd
@@ -56,6 +74,9 @@ jobs:
         - pushd examples/lockup && anchor test && popd
         - pushd examples/misc && anchor test && popd
         - pushd examples/cashiers-check && anchor test && popd
+    - <<: *examples
+      name: Runs the examples 2
+      script:
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd
