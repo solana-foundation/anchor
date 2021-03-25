@@ -19,6 +19,8 @@ anchor-attribute-program = { path = "./attribute/program", version = "0.3.0" }
 anchor-attribute-state = { path = "./attribute/state", version = "0.3.0" }
 anchor-attribute-interface = { path = "./attribute/interface", version = "0.3.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.3.0" }
+anchor-attribute-event = { path = "./attribute/event", version = "0.3.0" }
 borsh = "0.8.2"
 solana-program = "=1.5.15"
 thiserror = "1.0.20"
+base64 = "0.13.0"

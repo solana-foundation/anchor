@@ -12,6 +12,8 @@ pub struct Idl {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub types: Vec<IdlTypeDef>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub events: Option<Vec<IdlEvent>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub errors: Option<Vec<IdlErrorCode>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<serde_json::Value>,
@@ -62,6 +64,20 @@ pub struct IdlField {
     pub name: String,
     #[serde(rename = "type")]
     pub ty: IdlType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IdlEvent {
+    pub name: String,
+    pub fields: Vec<IdlEventField>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IdlEventField {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub ty: IdlType,
+    pub index: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -15,6 +15,11 @@ incremented for features.
 
 * cli: Specify test files to run ([#118](https://github.com/project-serum/anchor/pull/118)).
 * lang: Allow overriding the `#[state]` account's size ([#121](https://github.com/project-serum/anchor/pull/121)).
+* lang, client, ts: Add event emission and subscriptions ([#89](https://github.com/project-serum/anchor/pull/89)).
+
+## Breaking Changes
+
+* client: Replace url str with `Cluster` struct when constructing clients ([#89](https://github.com/project-serum/anchor/pull/89)).
 
 ## [0.3.0] - 2021-03-12
 

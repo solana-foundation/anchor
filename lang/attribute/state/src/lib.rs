@@ -26,7 +26,7 @@ pub fn state(
             // as the initialized value. Use the default implementation.
             quote! {
                 impl anchor_lang::AccountSize for #struct_ident {
-                    fn size(&self) -> Result<u64, ProgramError> {
+                    fn size(&self) -> std::result::Result<u64, anchor_lang::solana_program::program_error::ProgramError> {
                         Ok(8 + self
                            .try_to_vec()
                            .map_err(|_| ProgramError::Custom(1))?
@@ -39,7 +39,7 @@ pub fn state(
             // Size override given to the macro. Use it.
             quote! {
                 impl anchor_lang::AccountSize for #struct_ident {
-                    fn size(&self) -> Result<u64, ProgramError> {
+                    fn size(&self) -> std::result::Result<u64, anchor_lang::solana_program::program_error::ProgramError> {
                         Ok(#size)
                     }
                 }

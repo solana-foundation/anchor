@@ -8,7 +8,19 @@ export type Idl = {
   state?: IdlState;
   accounts?: IdlTypeDef[];
   types?: IdlTypeDef[];
+  events?: IdlEvent[];
   errors?: IdlErrorCode[];
+};
+
+export type IdlEvent = {
+  name: string;
+  fields: IdlEventField[];
+};
+
+export type IdlEventField = {
+  name: string;
+  type: IdlType;
+  index: boolean;
 };
 
 export type IdlInstruction = {

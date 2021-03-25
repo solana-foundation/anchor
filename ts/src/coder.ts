@@ -51,10 +51,16 @@ export default class Coder {
    */
   readonly state: StateCoder;
 
+  /**
+   * Coder for events.
+   */
+  readonly events: EventCoder;
+
   constructor(idl: Idl) {
     this.instruction = new InstructionCoder(idl);
     this.accounts = new AccountsCoder(idl);
     this.types = new TypesCoder(idl);
+    this.events = new EventCoder(idl);
     if (idl.state) {
       this.state = new StateCoder(idl);
     }
@@ -197,6 +203,46 @@ class TypesCoder {
 
   public decode<T = any>(accountName: string, ix: Buffer): T {
     const layout = this.layouts.get(accountName);
+    return layout.decode(ix);
+  }
+}
+
+class EventCoder {
+  /**
+   * Maps account type identifier to a layout.
+   */
+  private layouts: Map<string, Layout>;
+
+  public constructor(idl: Idl) {
+    if (idl.events === undefined) {
+      this.layouts = new Map();
+      return;
+    }
+    const layouts = idl.events.map((event) => {
+      let eventTypeDef: IdlTypeDef = {
+        name: event.name,
+        type: {
+          kind: "struct",
+          fields: event.fields.map((f) => {
+            return { name: f.name, type: f.type };
+          }),
+        },
+      };
+      return [event.name, IdlCoder.typeDefLayout(eventTypeDef, idl.types)];
+    });
+    // @ts-ignore
+    this.layouts = new Map(layouts);
+  }
+
+  public encode<T = any>(eventName: string, account: T): Buffer {
+    const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
+    const layout = this.layouts.get(eventName);
+    const len = layout.encode(account, buffer);
+    return buffer.slice(0, len);
+  }
+
+  public decode<T = any>(eventName: string, ix: Buffer): T {
+    const layout = this.layouts.get(eventName);
     return layout.decode(ix);
   }
 }
@@ -362,6 +408,11 @@ export async function accountDiscriminator(name: string): Promise<Buffer> {
 export async function stateDiscriminator(name: string): Promise<Buffer> {
   // @ts-ignore
   return Buffer.from(sha256.digest(`account:${name}`)).slice(0, 8);
+}
+
+export function eventDiscriminator(name: string): Buffer {
+  // @ts-ignore
+  return Buffer.from(sha256.digest(`event:${name}`)).slice(0, 8);
 }
 
 // Returns the size of the type in bytes. For variable length types, just return

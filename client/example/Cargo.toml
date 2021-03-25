@@ -7,9 +7,10 @@ edition = "2018"
 [workspace]
 
 [dependencies]
-anchor-client = { git = "https://github.com/project-serum/anchor" }
+anchor-client = { path = "../" }
 basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
 composite = { path = "../../examples/composite/programs/composite", features = ["no-entrypoint"] }
+events = { path = "../../examples/events/programs/events", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
 rand = "0.7.3"

@@ -1,27 +1,27 @@
 {
   "include": ["src"],
-	"compilerOptions": {
-		"moduleResolution": "node",
+  "compilerOptions": {
+    "moduleResolution": "node",
     "module": "es6",
     "target": "es2019",
 
     "outDir": "dist/esm/",
     "rootDir": "./src",
-		"declarationDir": "dist",
+    "declarationDir": "dist",
 
     "sourceMap": true,
     "declaration": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
 
     "esModuleInterop": true,
     "composite": true,
-		"baseUrl": ".",
-		"typeRoots": ["types/", "node_modules/@types"],
+    "baseUrl": ".",
+    "typeRoots": ["types/", "node_modules/@types"],
     "paths": {
-      "@solana/web3.js":  ["../../node_modules/@solana/web3.js/lib"]
+      "@solana/web3.js":  ["./node_modules/@solana/web3.js/lib"]
     }
   }
 }

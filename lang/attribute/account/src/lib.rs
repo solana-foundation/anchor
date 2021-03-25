@@ -66,6 +66,12 @@ pub fn account(
                     .map_err(|_| ProgramError::InvalidAccountData)
             }
         }
+
+        impl anchor_lang::Discriminator for #account_name {
+            fn discriminator() -> [u8; 8] {
+                #discriminator
+            }
+        }
     };
 
     proc_macro::TokenStream::from(quote! {

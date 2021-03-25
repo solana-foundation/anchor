@@ -5,8 +5,12 @@ use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
+use regex::Regex;
 use solana_client::client_error::ClientError as SolanaClientError;
+use solana_client::pubsub_client::{PubsubClient, PubsubClientError, PubsubClientSubscription};
 use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter};
+use solana_client::rpc_response::{Response as RpcResponse, RpcLogsResponse};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::{Keypair, Signature, Signer};
 use solana_sdk::transaction::Transaction;
@@ -14,8 +18,14 @@ use std::convert::Into;
 use thiserror::Error;
 
 pub use anchor_lang;
+pub use cluster::Cluster;
 pub use solana_client;
 pub use solana_sdk;
+
+mod cluster;
+
+/// EventHandle unsubscribes from a program event stream on drop.
+pub type EventHandle = PubsubClientSubscription<RpcResponse<RpcLogsResponse>>;
 
 /// Client defines the base configuration for building RPC clients to
 /// communitcate with Anchor programs running on a Solana cluster. It's
@@ -25,20 +35,20 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(cluster: &str, payer: Keypair) -> Self {
+    pub fn new(cluster: Cluster, payer: Keypair) -> Self {
         Self {
             cfg: Config {
-                cluster: cluster.to_string(),
+                cluster,
                 payer,
                 options: None,
             },
         }
     }
 
-    pub fn new_with_options(cluster: &str, payer: Keypair, options: CommitmentConfig) -> Self {
+    pub fn new_with_options(cluster: Cluster, payer: Keypair, options: CommitmentConfig) -> Self {
         Self {
             cfg: Config {
-                cluster: cluster.to_string(),
+                cluster,
                 payer,
                 options: Some(options),
             },
@@ -59,7 +69,7 @@ impl Client {
 
 // Internal configuration for a client.
 struct Config {
-    cluster: String,
+    cluster: Cluster,
     payer: Keypair,
     options: Option<CommitmentConfig>,
 }
@@ -79,7 +89,7 @@ impl Program {
     pub fn request(&self) -> RequestBuilder {
         RequestBuilder::new(
             self.program_id,
-            &self.cfg.cluster,
+            &self.cfg.cluster.url(),
             Keypair::from_bytes(&self.cfg.payer.to_bytes()).unwrap(),
             self.cfg.options,
         )
@@ -88,7 +98,7 @@ impl Program {
     /// Returns the account at the given address.
     pub fn account<T: AccountDeserialize>(&self, address: Pubkey) -> Result<T, ClientError> {
         let rpc_client = RpcClient::new_with_commitment(
-            self.cfg.cluster.clone(),
+            self.cfg.cluster.url().to_string(),
             self.cfg.options.unwrap_or_default(),
         );
         let account = rpc_client
@@ -101,7 +111,7 @@ impl Program {
 
     pub fn rpc(&self) -> RpcClient {
         RpcClient::new_with_commitment(
-            self.cfg.cluster.clone(),
+            self.cfg.cluster.url().to_string(),
             self.cfg.options.unwrap_or_default(),
         )
     }
@@ -109,6 +119,163 @@ impl Program {
     pub fn id(&self) -> Pubkey {
         self.program_id
     }
+
+    pub fn on<T: anchor_lang::EventData + anchor_lang::AnchorDeserialize>(
+        &self,
+        f: impl Fn(&EventContext, T) -> () + Send + 'static,
+    ) -> Result<EventHandle, ClientError> {
+        let addresses = vec![self.program_id.to_string()];
+        let filter = RpcTransactionLogsFilter::Mentions(addresses);
+        let ws_url = self.cfg.cluster.ws_url().to_string();
+        let cfg = RpcTransactionLogsConfig {
+            commitment: self.cfg.options,
+        };
+        let self_program_str = self.program_id.to_string();
+        let (client, receiver) = PubsubClient::logs_subscribe(&ws_url, filter.clone(), cfg)?;
+        std::thread::spawn(move || {
+            loop {
+                match receiver.recv() {
+                    Ok(logs) => {
+                        let ctx = EventContext {
+                            signature: logs.value.signature.parse().unwrap(),
+                            slot: logs.context.slot,
+                        };
+                        let mut logs = &logs.value.logs[..];
+                        if logs.len() > 0 {
+                            if let Ok(mut execution) = Execution::new(&mut logs) {
+                                for l in logs {
+                                    // Parse the log.
+                                    let (event, new_program, did_pop) = {
+                                        if self_program_str == execution.program() {
+                                            handle_program_log(&self_program_str, &l)
+                                                .unwrap_or_else(|e| {
+                                                    println!(
+                                                        "Unable to parse log: {}",
+                                                        e.to_string()
+                                                    );
+                                                    std::process::exit(1);
+                                                })
+                                        } else {
+                                            let (program, did_pop) =
+                                                handle_system_log(&self_program_str, &l);
+                                            (None, program, did_pop)
+                                        }
+                                    };
+                                    // Emit the event.
+                                    if let Some(e) = event {
+                                        f(&ctx, e);
+                                    }
+                                    // Switch program context on CPI.
+                                    if let Some(new_program) = new_program {
+                                        execution.push(new_program);
+                                    }
+                                    // Program returned.
+                                    if did_pop {
+                                        execution.pop();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(_err) => {
+                        return;
+                    }
+                }
+            }
+        });
+        Ok(client)
+    }
+}
+
+fn handle_program_log<T: anchor_lang::EventData + anchor_lang::AnchorDeserialize>(
+    self_program_str: &str,
+    l: &str,
+) -> Result<(Option<T>, Option<String>, bool), ClientError> {
+    // Log emitted from the current program.
+    if l.starts_with("Program log:") {
+        let log = l.to_string().split_off("Program log: ".len());
+        let borsh_bytes = anchor_lang::__private::base64::decode(log)
+            .map_err(|_| ClientError::LogParseError(l.to_string()))?;
+
+        let mut slice: &[u8] = &borsh_bytes[..];
+        let disc: [u8; 8] = {
+            let mut disc = [0; 8];
+            disc.copy_from_slice(&borsh_bytes[..8]);
+            slice = &slice[8..];
+            disc
+        };
+        let mut event = None;
+        if disc == T::discriminator() {
+            let e: T = anchor_lang::AnchorDeserialize::deserialize(&mut slice)
+                .map_err(|e| ClientError::LogParseError(e.to_string()))?;
+            event = Some(e);
+        }
+        Ok((event, None, false))
+    }
+    // System log.
+    else {
+        let (program, did_pop) = handle_system_log(&self_program_str, &l);
+        Ok((None, program, did_pop))
+    }
+}
+
+fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
+    if log.starts_with(&format!("Program {} log:", this_program_str)) {
+        (Some(this_program_str.to_string()), false)
+    } else if log.contains("invoke") {
+        (Some("cpi".to_string()), false) // Any string will do.
+    } else {
+        let re = Regex::new(r"^Program (.*) success*$").unwrap();
+        if re.is_match(log) {
+            (None, true)
+        } else {
+            (None, false)
+        }
+    }
+}
+
+struct Execution {
+    stack: Vec<String>,
+}
+
+impl Execution {
+    pub fn new(logs: &mut &[String]) -> Result<Self, ClientError> {
+        let l = &logs[0];
+        *logs = &logs[1..];
+
+        let re = Regex::new(r"^Program (.*) invoke.*$").unwrap();
+        let c = re
+            .captures(l)
+            .ok_or(ClientError::LogParseError(l.to_string()))?;
+        let program = c
+            .get(1)
+            .ok_or(ClientError::LogParseError(l.to_string()))?
+            .as_str()
+            .to_string();
+        Ok(Self {
+            stack: vec![program],
+        })
+    }
+
+    pub fn program(&self) -> String {
+        assert!(self.stack.len() > 0);
+        self.stack[self.stack.len() - 1].clone()
+    }
+
+    pub fn push(&mut self, new_program: String) {
+        self.stack.push(new_program);
+    }
+
+    pub fn pop(&mut self) {
+        assert!(self.stack.len() > 0);
+        self.stack.pop().unwrap();
+    }
+}
+
+#[derive(Debug)]
+pub struct EventContext {
+    pub signature: Signature,
+    pub slot: u64,
 }
 
 #[derive(Debug, Error)]
@@ -119,6 +286,10 @@ pub enum ClientError {
     ProgramError(#[from] ProgramError),
     #[error("{0}")]
     SolanaClientError(#[from] SolanaClientError),
+    #[error("{0}")]
+    SolanaClientPubsubError(#[from] PubsubClientError),
+    #[error("Unable to parse log: {0}")]
+    LogParseError(String),
 }
 
 /// `RequestBuilder` provides a builder interface to create and send
@@ -223,5 +394,36 @@ impl<'a> RequestBuilder<'a> {
         rpc_client
             .send_and_confirm_transaction(&tx)
             .map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn new_execution() {
+        let mut logs: &[String] =
+            &["Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string()];
+        let exe = Execution::new(&mut logs).unwrap();
+        assert_eq!(
+            exe.stack[0],
+            "7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw".to_string()
+        );
+    }
+
+    #[test]
+    fn handle_system_log_pop() {
+        let log = "Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw success";
+        let (program, did_pop) = handle_system_log("asdf", log);
+        assert_eq!(program, None);
+        assert_eq!(did_pop, true);
+    }
+
+    #[test]
+    fn handle_system_log_no_pop() {
+        let log = "Program 7swsTUiQ6KUK4uFYquQKg4epFRsBnvbrTf2fZQCa2sTJ qwer";
+        let (program, did_pop) = handle_system_log("asdf", log);
+        assert_eq!(program, None);
+        assert_eq!(did_pop, false);
     }
 }

@@ -55,6 +55,7 @@ jobs:
         - pushd examples/interface && anchor test && popd
         - pushd examples/lockup && anchor test && popd
         - pushd examples/misc && anchor test && popd
+        - pushd examples/events && anchor test && popd
         - pushd examples/cashiers-check && anchor test && popd
     - <<: *examples
       name: Runs the examples 2

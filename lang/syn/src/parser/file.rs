@@ -176,6 +176,36 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         })
         .collect::<Vec<_>>();
 
+    let events = parse_events(&f)
+        .iter()
+        .map(|e: &&syn::ItemStruct| {
+            let fields = match &e.fields {
+                syn::Fields::Named(n) => n,
+                _ => panic!("Event fields must be named"),
+            };
+            let fields = fields
+                .named
+                .iter()
+                .map(|f: &syn::Field| {
+                    let index = match f.attrs.iter().next() {
+                        None => false,
+                        Some(i) => parser::tts_to_string(&i.path) == "index",
+                    };
+                    IdlEventField {
+                        name: f.ident.clone().unwrap().to_string(),
+                        ty: parser::tts_to_string(&f.ty).to_string().parse().unwrap(),
+                        index,
+                    }
+                })
+                .collect::<Vec<IdlEventField>>();
+
+            IdlEvent {
+                name: e.ident.to_string(),
+                fields,
+            }
+        })
+        .collect::<Vec<IdlEvent>>();
+
     // All user defined types.
     let mut accounts = vec![];
     let mut types = vec![];
@@ -188,7 +218,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         if ty_def.name != error_name {
             if acc_names.contains(&ty_def.name) {
                 accounts.push(ty_def);
-            } else {
+            } else if events.iter().position(|e| e.name == ty_def.name).is_none() {
                 types.push(ty_def);
             }
         }
@@ -201,6 +231,11 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         instructions,
         types,
         accounts,
+        events: if events.is_empty() {
+            None
+        } else {
+            Some(events)
+        },
         errors: error_codes,
         metadata: None,
     })
@@ -256,6 +291,31 @@ fn parse_error_enum(f: &syn::File) -> Option<syn::ItemEnum> {
         .next()
         .cloned()
 }
+
+fn parse_events(f: &syn::File) -> Vec<&syn::ItemStruct> {
+    f.items
+        .iter()
+        .filter_map(|i| match i {
+            syn::Item::Struct(item_strct) => {
+                let attrs_count = item_strct
+                    .attrs
+                    .iter()
+                    .filter(|attr| {
+                        let segment = attr.path.segments.last().unwrap();
+                        segment.ident == "event"
+                    })
+                    .count();
+                match attrs_count {
+                    0 => None,
+                    1 => Some(item_strct),
+                    _ => panic!("Invalid syntax: one event attribute allowed"),
+                }
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 // Parse all structs implementing the `Accounts` trait.
 fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
     f.items

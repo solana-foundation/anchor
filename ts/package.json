@@ -1,6 +1,6 @@
 {
   "name": "@project-serum/anchor",
-  "version": "0.3.0",
+  "version": "0.3.1-beta.2",
   "description": "Anchor client",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -24,11 +24,12 @@
   },
   "dependencies": {
     "@project-serum/borsh": "^0.1.0",
-    "@solana/web3.js": "^0.90.4",
+    "@solana/web3.js": "^1.1.0",
     "@types/bn.js": "^4.11.6",
     "@types/bs58": "^4.0.1",
     "@types/crypto-hash": "^1.1.2",
     "@types/pako": "^1.0.1",
+    "base64-js": "^1.5.1",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
     "buffer-layout": "^1.2.0",
