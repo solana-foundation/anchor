@@ -15,5 +15,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { git = "https://github.com/project-serum/anchor" }
+anchor-lang = { path = "../../../../lang" }
 counter = { path = "../counter", features = ["cpi"] }

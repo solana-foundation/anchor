@@ -13,6 +13,6 @@ no-entrypoint = []
 cpi = ["no-entrypoint"]
 
 [dependencies]
-anchor-lang = { git = "https://github.com/project-serum/anchor", features = ["derive"] }
-anchor-spl = { git = "https://github.com/project-serum/anchor" }
+anchor-lang = { path = "../../../../lang" }
+anchor-spl = { path = "../../../../spl" }
 lockup = { path = "../lockup", features = ["cpi"] }
