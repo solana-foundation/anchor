@@ -81,7 +81,7 @@ pub struct IdlSetBuffer<'info> {
 //
 // Note: we use the same account for the "write buffer", similar to the
 //       bpf upgradeable loader's mechanism.
-#[account]
+#[account("internal")]
 #[derive(Debug)]
 pub struct IdlAccount {
     // Address that can modify the IDL.
