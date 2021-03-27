@@ -4,7 +4,7 @@ use crate::config::{read_all_programs, Config, Program};
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Clap;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
@@ -22,7 +22,7 @@ use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
-use std::fs::{self, File};
+use std::{fs::{self, File}};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
@@ -911,48 +911,62 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
                 None
             }
         };
+
         let log_streams = stream_logs(&cfg.cluster.url())?;
 
-        let ts_config_exist = Path::new("tsconfig.json").exists();
+        let result: Result<_> = {
+            let ts_config_exist = Path::new("tsconfig.json").exists();
 
-        // Run the tests.
-        let mut args = vec!["-t", "1000000"];
-        if let Some(ref file) = file {
-            args.push(file);
-        } else if ts_config_exist {
-            args.push("tests/**/*.spec.ts");
-        } else {
-            args.push("tests/");
-        }
-        let exit = match ts_config_exist {
-            true => std::process::Command::new("ts-mocha")
-                .arg("-p")
-                .arg("./tsconfig.json")
-                .args(args)
-                .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()?,
-            false => std::process::Command::new("mocha")
-                .args(args)
-                .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()?,
+            // Run the tests.
+            let mut args = vec!["-t", "1000000"];
+            if let Some(ref file) = file {
+                args.push(file);
+            } else if ts_config_exist {
+                args.push("tests/**/*.spec.ts");
+            } else {
+                args.push("tests/");
+            }
+            let exit = match ts_config_exist {
+                true => std::process::Command::new("ts-mocha")
+                    .arg("-p")
+                    .arg("./tsconfig.json")
+                    .args(args)
+                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .output().map_err(anyhow::Error::from).with_context(|| "ts-mocha"),
+                false => std::process::Command::new("mocha")
+                    .args(args)
+                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .output().map_err(anyhow::Error::from).with_context(|| "mocha"),
+            };
+
+            exit
         };
 
-        if !exit.status.success() {
-            if let Some(mut validator_handle) = validator_handle {
-                validator_handle.kill()?;
+        if let Some(mut child) = validator_handle {
+            if let Err(err) = child.kill() {
+                println!("Failed to kill subprocess {}: {}", child.id(), err);
             }
-            std::process::exit(exit.status.code().unwrap());
-        }
-        if let Some(mut validator_handle) = validator_handle {
-            validator_handle.kill()?;
         }
 
-        for mut stream in log_streams {
-            stream.kill()?;
+        for mut child in log_streams {
+            if let Err(err) = child.kill() {
+                println!("Failed to kill subprocess {}: {}", child.id(), err);
+            }
+        }
+
+        match result {
+            Ok(exit) => {
+                if !exit.status.success() {
+                    std::process::exit(exit.status.code().unwrap());
+                }
+            }
+            Err(err) => {
+                println!("Failed to run test: {:#}", err)
+            }
         }
 
         Ok(())
