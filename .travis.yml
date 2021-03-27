@@ -1,7 +1,7 @@
 dist: bionic
 language: rust
 rust:
-  - nightly
+  - stable
 cache: cargo
 env:
   - NODE_VERSION="14.7.0"
