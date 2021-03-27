@@ -1,7 +1,6 @@
 dist: bionic
 language: rust
-rust:
-  - nightly
+rust: nightly-2021-03-25
 cache: cargo
 env:
   - NODE_VERSION="14.7.0"

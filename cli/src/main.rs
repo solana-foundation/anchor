@@ -4,7 +4,7 @@ use crate::config::{read_all_programs, Config, Program};
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use clap::Clap;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
@@ -22,7 +22,7 @@ use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
-use std::{fs::{self, File}};
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
@@ -934,13 +934,17 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
                     .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
-                    .output().map_err(anyhow::Error::from).with_context(|| "ts-mocha"),
+                    .output()
+                    .map_err(anyhow::Error::from)
+                    .with_context(|| "ts-mocha"),
                 false => std::process::Command::new("mocha")
                     .args(args)
                     .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
-                    .output().map_err(anyhow::Error::from).with_context(|| "mocha"),
+                    .output()
+                    .map_err(anyhow::Error::from)
+                    .with_context(|| "mocha"),
             };
 
             exit
