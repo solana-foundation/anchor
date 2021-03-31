@@ -252,22 +252,26 @@ fn init(name: String, typescript: bool) -> Result<()> {
 
     // Build the test suite.
     fs::create_dir("tests")?;
+    // Build the migrations directory.
+    fs::create_dir("migrations")?;
+
     if typescript {
         // Build typescript config
         let mut ts_config = File::create("tsconfig.json")?;
         ts_config.write_all(template::ts_config().as_bytes())?;
+
+        let mut deploy = File::create("migrations/deploy.ts")?;
+        deploy.write_all(&template::ts_deploy_script().as_bytes())?;
 
         let mut mocha = File::create(&format!("tests/{}.spec.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
     } else {
         let mut mocha = File::create(&format!("tests/{}.js", name))?;
         mocha.write_all(template::mocha(&name).as_bytes())?;
-    }
 
-    // Build the migrations directory.
-    fs::create_dir("migrations")?;
-    let mut deploy = File::create("migrations/deploy.js")?;
-    deploy.write_all(&template::deploy_script().as_bytes())?;
+        let mut deploy = File::create("migrations/deploy.js")?;
+        deploy.write_all(&template::deploy_script().as_bytes())?;
+    }
 
     println!("{} initialized", name);
 
@@ -1206,7 +1210,8 @@ fn launch(url: Option<String>, keypair: Option<String>, verifiable: bool) -> Res
         }
 
         // Run migration script.
-        if Path::new("migrations/deploy.js").exists() {
+        if Path::new("migrations/deploy.js").exists() || Path::new("migrations/deploy.ts").exists()
+        {
             migrate(Some(url))?;
         }
 
@@ -1386,8 +1391,25 @@ fn migrate(url: Option<String>) -> Result<()> {
 
         let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
         let cur_dir = std::env::current_dir()?;
-        let module_path = format!("{}/migrations/deploy.js", cur_dir.display());
-        let deploy_script_host_str = template::deploy_script_host(&url, &module_path);
+        let module_path = cur_dir.join("migrations/deploy.js");
+
+        let ts_config_exist = Path::new("tsconfig.json").exists();
+        let ts_deploy_file_exists = Path::new("migrations/deploy.ts").exists();
+
+        if ts_config_exist && ts_deploy_file_exists {
+            let ts_module_path = cur_dir.join("migrations/deploy.ts");
+            let exit = std::process::Command::new("tsc")
+                .arg(&ts_module_path)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()?;
+            if !exit.status.success() {
+                std::process::exit(exit.status.code().unwrap());
+            }
+        };
+
+        let deploy_script_host_str =
+            template::deploy_script_host(&url, &module_path.display().to_string());
 
         if !Path::new(".anchor").exists() {
             fs::create_dir(".anchor")?;
@@ -1395,13 +1417,20 @@ fn migrate(url: Option<String>) -> Result<()> {
         std::env::set_current_dir(".anchor")?;
 
         std::fs::write("deploy.js", deploy_script_host_str)?;
-        if let Err(_e) = std::process::Command::new("node")
+        let exit = std::process::Command::new("node")
             .arg("deploy.js")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .output()
-        {
-            std::process::exit(1);
+            .output()?;
+
+        if ts_config_exist && ts_deploy_file_exists {
+            std::fs::remove_file(&module_path)
+                .map_err(|_| anyhow!("Unable to remove file {}", module_path.display()))?;
+        }
+
+        if !exit.status.success() {
+            println!("Deploy failed.");
+            std::process::exit(exit.status.code().unwrap());
         }
 
         println!("Deploy complete.");

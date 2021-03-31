@@ -17,6 +17,7 @@ incremented for features.
 * lang: Allow overriding the `#[state]` account's size ([#121](https://github.com/project-serum/anchor/pull/121)).
 * lang, client, ts: Add event emission and subscriptions ([#89](https://github.com/project-serum/anchor/pull/89)).
 * lang/account: Allow namespacing account discriminators ([#128](https://github.com/project-serum/anchor/pull/128)).
+* cli: TypeScript migrations ([#132](https://github.com/project-serum/anchor/pull/132)).
 
 ## Breaking Changes
 

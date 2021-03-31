@@ -56,6 +56,7 @@ jobs:
         - pushd examples/misc && anchor test && popd
         - pushd examples/events && anchor test && popd
         - pushd examples/cashiers-check && anchor test && popd
+        - pushd examples/typescript && yarn && anchor test && popd
     - <<: *examples
       name: Runs the examples 2
       script:
