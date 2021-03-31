@@ -72,6 +72,12 @@ describe("token", () => {
 const serumCmn = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
+// TODO: remove this constant once @project-serum/serum uses the same version
+//       of @solana/web3.js as anchor (or switch packages).
+const TOKEN_PROGRAM_ID = new anchor.web3.PublicKey(
+  TokenInstructions.TOKEN_PROGRAM_ID.toString()
+);
+
 async function getTokenAccount(provider, addr) {
   return await serumCmn.getTokenAccount(provider, addr);
 }
@@ -102,7 +108,7 @@ async function createMintInstructions(provider, authority, mint) {
       newAccountPubkey: mint,
       space: 82,
       lamports: await provider.connection.getMinimumBalanceForRentExemption(82),
-      programId: TokenInstructions.TOKEN_PROGRAM_ID,
+      programId: TOKEN_PROGRAM_ID,
     }),
     TokenInstructions.initializeMint({
       mint,
@@ -139,7 +145,7 @@ async function createTokenAccountInstrs(
       newAccountPubkey,
       space: 165,
       lamports,
-      programId: TokenInstructions.TOKEN_PROGRAM_ID,
+      programId: TOKEN_PROGRAM_ID,
     }),
     TokenInstructions.initializeAccount({
       account: newAccountPubkey,

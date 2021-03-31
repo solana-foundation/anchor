@@ -15,6 +15,7 @@ async function getMultipleAccounts(
   Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
 > {
   const args = [publicKeys.map((k) => k.toBase58()), { commitment: "recent" }];
+  // @ts-ignore
   const res = await connection._rpcRequest("getMultipleAccounts", args);
   if (res.error) {
     throw new Error(
