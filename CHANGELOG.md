@@ -18,6 +18,7 @@ incremented for features.
 * lang, client, ts: Add event emission and subscriptions ([#89](https://github.com/project-serum/anchor/pull/89)).
 * lang/account: Allow namespacing account discriminators ([#128](https://github.com/project-serum/anchor/pull/128)).
 * cli: TypeScript migrations ([#132](https://github.com/project-serum/anchor/pull/132)).
+* lang: Add `#[account(executable)]` attribute ([#140](https://github.com/project-serum/anchor/pull/140)).
 
 ## Breaking Changes
 

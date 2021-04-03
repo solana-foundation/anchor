@@ -42,4 +42,25 @@ describe("misc", () => {
     let accInfo = await anchor.getProvider().connection.getAccountInfo(pid);
     assert.ok(accInfo.executable);
   });
+
+  it("Can use the executable attribtue", async () => {
+    await program.rpc.testExecutable({
+      accounts: {
+        program: program.programId,
+      },
+    });
+
+    await assert.rejects(
+      async () => {
+        await program.rpc.testExecutable({
+          accounts: {
+            program: program.provider.wallet.publicKey,
+          },
+        });
+      },
+      (err) => {
+        return true;
+      }
+    );
+  });
 });

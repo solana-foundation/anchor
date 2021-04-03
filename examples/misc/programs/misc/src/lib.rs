@@ -27,6 +27,10 @@ pub mod misc {
         ctx.accounts.data.idata = idata;
         Ok(())
     }
+
+    pub fn test_executable(ctx: Context<TestExecutable>) -> ProgramResult {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -37,6 +41,12 @@ pub struct Initialize<'info> {
     #[account(init)]
     data: ProgramAccount<'info, Data>,
     rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct TestExecutable<'info> {
+    #[account(executable)]
+    program: AccountInfo<'info>,
 }
 
 #[account]

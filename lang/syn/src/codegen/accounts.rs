@@ -1,7 +1,7 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
-    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
-    Field, Ty,
+    ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
+    ConstraintSeeds, ConstraintSigner, Field, Ty,
 };
 use heck::SnakeCase;
 use quote::quote;
@@ -305,6 +305,7 @@ pub fn generate_field_constraint(f: &Field, c: &Constraint) -> proc_macro2::Toke
         Constraint::Owner(c) => generate_constraint_owner(f, c),
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
         Constraint::Seeds(c) => generate_constraint_seeds(f, c),
+        Constraint::Executable(c) => generate_constraint_executable(f, c),
     }
 }
 
@@ -408,6 +409,18 @@ pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeeds) -> proc_macro2:
         ).map_err(|_| anchor_lang::solana_program::program_error::ProgramError::Custom(1))?; // todo
         if #name.to_account_info().key != &program_signer {
             return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo
+        }
+    }
+}
+
+pub fn generate_constraint_executable(
+    f: &Field,
+    _c: &ConstraintExecutable,
+) -> proc_macro2::TokenStream {
+    let name = &f.ident;
+    quote! {
+        if !#name.to_account_info().executable {
+            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(5)) // todo
         }
     }
 }

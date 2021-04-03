@@ -271,6 +271,7 @@ pub enum Constraint {
     Owner(ConstraintOwner),
     RentExempt(ConstraintRentExempt),
     Seeds(ConstraintSeeds),
+    Executable(ConstraintExecutable),
 }
 
 #[derive(Debug)]
@@ -302,6 +303,9 @@ pub enum ConstraintRentExempt {
 pub struct ConstraintSeeds {
     pub seeds: proc_macro2::Group,
 }
+
+#[derive(Debug)]
+pub struct ConstraintExecutable {}
 
 #[derive(Debug)]
 pub struct Error {

@@ -1,7 +1,8 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
-    ConstraintLiteral, ConstraintOwner, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
-    CpiAccountTy, Field, ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
+    ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
+    ConstraintSeeds, ConstraintSigner, CpiAccountTy, Field, ProgramAccountTy, ProgramStateTy,
+    SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -269,6 +270,9 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
                             };
                         }
                     };
+                }
+                "executable" => {
+                    constraints.push(Constraint::Executable(ConstraintExecutable {}));
                 }
                 _ => {
                     panic!("invalid syntax");
