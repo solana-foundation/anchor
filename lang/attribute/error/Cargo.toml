@@ -13,5 +13,5 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "=1.0.57", features = ["full"] }
+syn = { version = "1.0.60", features = ["full"] }
 anchor-syn = { path = "../../syn", version = "0.3.0" }

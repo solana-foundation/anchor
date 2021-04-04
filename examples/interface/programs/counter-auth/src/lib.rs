@@ -3,8 +3,6 @@
 //! to be incremented if it changes the counter from odd -> even or even -> odd.
 //! Creative, I know. :P.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 use counter::Auth;
 

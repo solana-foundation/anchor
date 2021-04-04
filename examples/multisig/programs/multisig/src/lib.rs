@@ -17,8 +17,6 @@
 //! the `execute_transaction`, once enough (i.e. `threhsold`) of the owners have
 //! signed.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program;
 use anchor_lang::solana_program::instruction::Instruction;

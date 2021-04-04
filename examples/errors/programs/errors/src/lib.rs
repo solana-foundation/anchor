@@ -1,8 +1,6 @@
 //! This example demonstrates how custom errors and associated error messsages
 //! can be defined and transparently propagated to clients.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 
 #[program]

@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene)]
-
 // #region core
 use anchor_lang::prelude::*;
 use puppet::{Puppet, SetData};

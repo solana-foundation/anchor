@@ -1,7 +1,5 @@
 //! This example demonstrates the use of the `anchor_spl::token` CPI client.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, Transfer};
 

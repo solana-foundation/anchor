@@ -10,6 +10,6 @@ description = "Rust client for Anchor programs"
 anchor-lang = { path = "../lang", version = "0.3.0" }
 anyhow = "1.0.32"
 regex = "1.4.5"
-solana-client = "=1.5.15"
-solana-sdk = "=1.5.15"
+solana-client = "1.6.3"
+solana-sdk = "1.6.3"
 thiserror = "1.0.20"

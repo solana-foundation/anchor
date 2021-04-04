@@ -1,8 +1,6 @@
 //! A relatively advanced example of a lockup program. If you're new to Anchor,
 //! it's suggested to start with the other examples.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::solana_program::program;

@@ -1,8 +1,6 @@
 //! Misc example is a catchall program for testing unrelated features.
 //! It's not too instructive/coherent by itself, so please see other examples.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 
 #[program]

@@ -1,8 +1,6 @@
 //! A relatively advanced example of a staking program. If you're new to Anchor,
 //! it's suggested to start with the other examples.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};

@@ -104,9 +104,7 @@ features = []"#
 
 pub fn lib_rs(name: &str) -> String {
     format!(
-        r#"#![feature(proc_macro_hygiene)]
-
-use anchor_lang::prelude::*;
+        r#"use anchor_lang::prelude::*;
 
 #[program]
 pub mod {} {{

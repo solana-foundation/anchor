@@ -6,8 +6,6 @@
 //! Here, we have a counter, where, in order to set the count, the `Auth`
 //! program must first approve the transaction.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 
 #[program]

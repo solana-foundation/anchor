@@ -1,8 +1,6 @@
 //! This example demonstrates the ability to compose together multiple
 //! structs deriving `Accounts`. See `CompositeUpdate`, below.
 
-#![feature(proc_macro_hygiene)]
-
 use anchor_lang::prelude::*;
 
 #[program]

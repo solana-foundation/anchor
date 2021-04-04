@@ -22,7 +22,7 @@ _examples: &examples
   - npm install -g @project-serum/common
   - npm install -g @solana/spl-token
   - sudo apt-get install -y pkg-config build-essential libudev-dev
-  - sh -c "$(curl -sSfL https://release.solana.com/v1.5.5/install)"
+  - sh -c "$(curl -sSfL https://release.solana.com/v1.6.3/install)"
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
   - export NODE_PATH="/home/travis/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/:$NODE_PATH"
   - yes | solana-keygen new

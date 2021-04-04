@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene)]
-
 // #region code
 use anchor_lang::prelude::*;
 
