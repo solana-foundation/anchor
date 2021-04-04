@@ -1,12 +1,12 @@
 [package]
 name = "anchor-spl"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
 license = "Apache-2.0"
 description = "CPI clients for SPL programs"
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.3.0", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.4.0", features = ["derive"] }
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
 solana-program = "1.6.3"

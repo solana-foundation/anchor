@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.4.0] - 2021-04-04
+
 ## Features
 
 * cli: Specify test files to run ([#118](https://github.com/project-serum/anchor/pull/118)).

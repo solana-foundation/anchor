@@ -22,8 +22,6 @@ use syn::parse_macro_input;
 /// First we define the program that depends on an external interface.
 ///
 /// ```ignore
-/// #![feature(proc_macro_hygiene)]
-///
 /// use anchor_lang::prelude::*;
 ///
 /// #[interface]
@@ -95,8 +93,6 @@ use syn::parse_macro_input;
 /// program will call.
 ///
 /// ```ignore
-/// #![feature(proc_macro_hygiene)]
-///
 /// use anchor_lang::prelude::*;
 /// use counter::Auth;
 ///

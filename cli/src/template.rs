@@ -28,7 +28,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.3.0"
+anchor-lang = "0.4.0"
 "#,
         name,
         name.to_snake_case(),
