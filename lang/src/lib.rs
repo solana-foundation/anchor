@@ -42,6 +42,7 @@ mod sysvar;
 mod vec;
 
 // Internal module used by macros.
+#[doc(hidden)]
 pub mod __private {
     pub use base64;
 }

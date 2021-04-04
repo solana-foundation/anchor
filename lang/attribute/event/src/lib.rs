@@ -3,7 +3,10 @@ extern crate proc_macro;
 use quote::quote;
 use syn::parse_macro_input;
 
-/// A data structure representing a Solana account.
+/// The event attribute allows a struct to be used with
+/// [emit!](./macro.emit.html) so that programs can log significant events in
+/// their programs that clients can subscribe to. Currently, this macro is for
+/// structs only.
 #[proc_macro_attribute]
 pub fn event(
     _args: proc_macro::TokenStream,
@@ -42,6 +45,10 @@ pub fn event(
     })
 }
 
+/// Creates an event in an Anchor program, which can subsequently be subscribed
+/// to by clients. Calling this method will internally borsh serialize the
+/// [event](./attr.event.html), base64 encode the bytes, and then add a
+/// [msg!](../solana_program/macro.msg.html) log to the transaction.
 #[proc_macro]
 pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
