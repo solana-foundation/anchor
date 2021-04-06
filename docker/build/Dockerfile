@@ -1,9 +1,15 @@
+#
+# Docker image to generate deterministic, verifiable builds of Anchor programs.
+# This must be run *after* a given ANCHOR_CLI version is published and a git tag
+# is released on GitHub.
+#
+
 FROM ubuntu:18.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG SOLANA_CHANNEL=v1.2.17
-ARG SOLANA_CLI=v1.5.6
+ARG SOLANA_CLI
+ARG ANCHOR_CLI
 
 ENV HOME="/root"
 ENV PATH="${HOME}/.cargo/bin:${PATH}"
@@ -21,16 +27,10 @@ RUN curl "https://sh.rustup.rs" -sfo rustup.sh && \
     rustup component add rustfmt clippy
 
 # Install Solana tools.
-RUN curl -sSf https://raw.githubusercontent.com/solana-labs/solana/${SOLANA_CLI}/install/solana-install-init.sh | sh -s - ${SOLANA_CLI} && \
-  # BPF sdk.
-  curl -L --retry 5 --retry-delay 2 -o bpf-sdk.tar.bz2 http://solana-sdk.s3.amazonaws.com/${SOLANA_CHANNEL}/bpf-sdk.tar.bz2 && \
-  rm -rf bpf-sdk && \
-  mkdir -p bpf-sdk && \
-  tar jxf bpf-sdk.tar.bz2 && \
-  rm -f bpf-sdk.tar.bz2
+RUN sh -c "$(curl -sSfL https://release.solana.com/${SOLANA_CLI}/install)"
 
 # Install anchor.
-RUN cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
+RUN cargo install --git https://github.com/project-serum/anchor --tag ${ANCHOR_CLI} anchor-cli --locked
 
 # Build a dummy program to bootstrap the BPF SDK (doing this speeds up builds).
 RUN mkdir -p /tmp && cd tmp && anchor init dummy && cd dummy && anchor build

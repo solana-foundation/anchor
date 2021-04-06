@@ -31,6 +31,9 @@ use std::string::ToString;
 mod config;
 mod template;
 
+// Version of the docker image.
+const DOCKER_BUILDER_VER: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Debug, Clap)]
 pub struct Opts {
     #[clap(subcommand)]
@@ -380,7 +383,7 @@ fn build_cwd(
 fn build_cwd_verifiable(workspace_dir: &Path) -> Result<()> {
     // Docker vars.
     let container_name = "anchor-program";
-    let image_name = "projectserum/build";
+    let image_name = format!("projectserum/build:v{}", DOCKER_BUILDER_VER);
     let volume_mount = format!(
         "{}:/workdir",
         workspace_dir.canonicalize()?.display().to_string()
