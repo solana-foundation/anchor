@@ -57,9 +57,11 @@ If you look at the `Cargo.toml` for this example, you'll see
 
 Often it's useful for a program to sign instructions. For example, if a program controls a token
 account and wants to send tokens to another account, it must sign. In Solana, this is done by specifying
-"signer seeds" on CPI (TODO: add link to docs). To do this using the example above, simply change
+"signer seeds" on CPI. To do this using the example above, simply change
 `CpiContext::new(cpi_accounts, cpi_program)` to
 `CpiContext::new_with_signer(cpi_accounts, cpi_program, signer_seeds)`.
+
+For more background on signing with program derived addresses, see the official Solana [documentation](https://docs.solana.com/developing/programming-model/calling-between-programs#program-signed-accounts).
 
 ## Return values
 
