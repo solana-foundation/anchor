@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.4.1] - 2021-04-06
+
 * cli: Version verifiable docker builder ([#145](https://github.com/project-serum/anchor/pull/145)).
 
 ## [0.4.0] - 2021-04-04
