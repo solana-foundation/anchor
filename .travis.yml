@@ -1,9 +1,11 @@
 dist: bionic
 language: rust
-rust: nightly-2021-03-25
+rust:
+  - stable
 cache: cargo
 env:
-  - NODE_VERSION="14.7.0"
+  global:
+    - NODE_VERSION="14.7.0"
 
 _defaults: &defaults
   before_install:
