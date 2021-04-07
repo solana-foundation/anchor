@@ -162,9 +162,10 @@ and engage with the maintainers in [Discord](https://discord.com/channels/739225
 When contributing, please make sure your code adheres to some basic coding guidlines:
 
 * Code must be formatted with the configured formatters (e.g. rustfmt and prettier).
-* Comments should be 80 chars and written with proper grammar and punctuation.
+* Comment lines should be no longer than 80 characters and written with proper grammar and punctuation.
 * Commit messages should be prefixed with the package(s) they modify. Changes affecting multiple
   packages should list all packages. In rare cases, changes may omit the package name prefix.
+* All notable changes should be documented in the [Change Log](https://github.com/project-serum/anchor/blob/master/CHANGELOG.md).
 
 ## License
 
