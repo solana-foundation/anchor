@@ -32,9 +32,11 @@ mod config;
 mod template;
 
 // Version of the docker image.
-const DOCKER_BUILDER_VER: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DOCKER_BUILDER_VERSION: &str = VERSION;
 
 #[derive(Debug, Clap)]
+#[clap(version = VERSION)]
 pub struct Opts {
     #[clap(subcommand)]
     pub command: Command,
@@ -383,7 +385,7 @@ fn build_cwd(
 fn build_cwd_verifiable(workspace_dir: &Path) -> Result<()> {
     // Docker vars.
     let container_name = "anchor-program";
-    let image_name = format!("projectserum/build:v{}", DOCKER_BUILDER_VER);
+    let image_name = format!("projectserum/build:v{}", DOCKER_BUILDER_VERSION);
     let volume_mount = format!(
         "{}:/workdir",
         workspace_dir.canonicalize()?.display().to_string()
