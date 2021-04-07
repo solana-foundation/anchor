@@ -61,7 +61,7 @@ Here, several `#[account(..)]` attributes are used.
 
 If any of these constraints do not hold, then the `increment` instruction will never be executed.
 This allows us to completely separate account validation from our program's business logic, allowing us
-to reason about each concern more easily. For more, see the full [list](https://github.com/project-serum/anchor#accounts-attribute-syntax) of account constraints.
+to reason about each concern more easily. For more, see the full [list](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html) of account constraints.
 
 ## Next Steps
 
