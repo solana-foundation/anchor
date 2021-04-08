@@ -647,7 +647,10 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                     #program_name::#ix_name(
                         Context::new(program_id, &mut accounts, remaining_accounts),
                         #(#ix_arg_names),*
-                    )?;
+                    ).map_err(|e| {
+                        anchor_lang::solana_program::msg!(&e.to_string());
+                        e
+                    })?;
                     accounts.exit(program_id)
                 }
             }

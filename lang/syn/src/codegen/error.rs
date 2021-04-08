@@ -2,8 +2,36 @@ use crate::Error;
 use quote::quote;
 
 pub fn generate(error: Error) -> proc_macro2::TokenStream {
-    let error_enum = error.raw_enum;
+    let error_enum = &error.raw_enum;
     let enum_name = &error.ident;
+    // Each arm of the `match` statement for implementing `std::fmt::Display`
+    // on the user defined error code.
+    let variant_dispatch: Vec<proc_macro2::TokenStream> = error
+        .raw_enum
+        .variants
+        .iter()
+        .enumerate()
+        .map(|(idx, variant)| {
+            let ident = &variant.ident;
+            let error_code = &error.codes[idx];
+            let msg = match &error_code.msg {
+                None => {
+                    quote! {
+                        <Self as std::fmt::Debug>::fmt(self, fmt)
+                    }
+                }
+                Some(msg) => {
+                    quote! {
+                        write!(fmt, #msg)
+                    }
+                }
+            };
+            quote! {
+                #enum_name::#ident => #msg
+            }
+        })
+        .collect();
+
     quote! {
         type Result<T> = std::result::Result<T, Error>;
 
@@ -11,7 +39,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         pub enum Error {
             #[error(transparent)]
             ProgramError(#[from] ProgramError),
-            #[error("{0:?}")]
+            #[error(transparent)]
             ErrorCode(#[from] #enum_name),
         }
 
@@ -21,7 +49,9 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
 
         impl std::fmt::Display for #enum_name {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-                <Self as std::fmt::Debug>::fmt(self, fmt)
+                match self {
+                    #(#variant_dispatch),*
+                }
             }
         }
 
