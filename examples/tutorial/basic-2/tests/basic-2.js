@@ -1,5 +1,6 @@
-import assert from 'assert'
-import * as anchor from '@project-serum/anchor'
+const assert = require('assert');
+const anchor = require('@project-serum/anchor');
+
 describe('basic-2', () => {
   const provider = anchor.Provider.local()
 
