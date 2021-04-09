@@ -2,6 +2,7 @@ use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Error, Result};
 use serde::{Deserialize, Serialize};
 use serum_common::client::Cluster;
+use solana_sdk::signature::Keypair;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -57,6 +58,11 @@ impl Config {
         }
 
         Ok(None)
+    }
+
+    pub fn wallet_kp(&self) -> Result<Keypair> {
+        solana_sdk::signature::read_keypair_file(&self.wallet.to_string())
+            .map_err(|_| anyhow!("Unable to read keypair file"))
     }
 }
 

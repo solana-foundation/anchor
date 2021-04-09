@@ -909,7 +909,7 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
                 };
                 match skip_local_validator {
                     true => None,
-                    false => Some(start_test_validator(flags)?),
+                    false => Some(start_test_validator(cfg, flags)?),
                 }
             }
             _ => {
@@ -1058,7 +1058,7 @@ pub struct IdlTestMetadata {
     address: String,
 }
 
-fn start_test_validator(flags: Option<Vec<String>>) -> Result<Child> {
+fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Child> {
     fs::create_dir_all(".anchor")?;
     let test_ledger_filename = ".anchor/test-ledger";
     let test_ledger_log_filename = ".anchor/test-ledger-log.txt";
@@ -1076,6 +1076,8 @@ fn start_test_validator(flags: Option<Vec<String>>) -> Result<Child> {
     let validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_filename)
+        .arg("--mint")
+        .arg(cfg.wallet_kp()?.pubkey().to_string())
         .args(flags.unwrap_or_default())
         .stdout(Stdio::from(test_validator_stdout))
         .stderr(Stdio::from(test_validator_stderr))
