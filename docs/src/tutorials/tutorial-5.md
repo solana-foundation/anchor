@@ -30,7 +30,7 @@ pub enum ErrorCode {
 }
 ```
 
-Observe the [#[error]](https://docs.rs/anchor-lang/0.1.0/anchor_lang/attr.error.html) attribute on the `ErrorCode` enum. This macro generates two types: an `Error` and a `Result`, both of which can be used when returning from your program.
+Observe the [#[error]](https://docs.rs/anchor-lang/latest/anchor_lang/attr.error.html) attribute on the `ErrorCode` enum. This macro generates two types: an `Error` and a `Result`, both of which can be used when returning from your program.
 
 To use the `Error`, one can simply use the user defined `ErrorCode` with Rust's [From](https://doc.rust-lang.org/std/convert/trait.From.html) trait. If you're unfamiliar with `From`, no worries. Just know that you need to either call
 `.into()` when using your `ErrorCode`. Or use Rust's `?` operator, when returning an error.
