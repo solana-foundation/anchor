@@ -14,6 +14,7 @@ incremented for features.
 ## Features
 
 * cli: Fund Anchor.toml configured wallet when testing ([#164](https://github.com/project-serum/anchor/pull/164)).
+* spl: Add initialize_account instruction for spl tokens ([#166](https://github.com/project-serum/anchor/pull/166)).
 
 ## [0.4.1] - 2021-04-06
 
