@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.4.2] - 2021-04-10
+
 ## Features
 
 * cli: Fund Anchor.toml configured wallet when testing ([#164](https://github.com/project-serum/anchor/pull/164)).
