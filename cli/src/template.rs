@@ -1,5 +1,5 @@
-use heck::CamelCase;
-use heck::SnakeCase;
+use crate::VERSION;
+use heck::{CamelCase, SnakeCase};
 
 pub fn virtual_manifest() -> &'static str {
     r#"[workspace]
@@ -28,10 +28,11 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.4.1"
+anchor-lang = "{2}"
 "#,
         name,
         name.to_snake_case(),
+        VERSION,
     )
 }
 
