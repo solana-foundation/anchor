@@ -241,6 +241,8 @@ pub fn interface(
     proc_macro::TokenStream::from(quote! {
         #item_trait
 
+        /// Anchor generated module for invoking programs implementing an
+        /// `#[interface]` via CPI.
         mod #mod_name {
             use super::*;
             #(#methods)*

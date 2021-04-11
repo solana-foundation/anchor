@@ -33,8 +33,13 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        type Result<T> = std::result::Result<T, Error>;
+        /// Anchor generated Result to be used as the return type for the
+        /// program.
+        pub type Result<T> = std::result::Result<T, Error>;
 
+        /// Anchor generated error allowing one to easily return a
+        /// `ProgramError` or a custom, user defined error code by utilizing
+        /// its `From` implementation.
         #[derive(thiserror::Error, Debug)]
         pub enum Error {
             #[error(transparent)]

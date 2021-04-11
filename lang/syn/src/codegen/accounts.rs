@@ -230,6 +230,15 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     };
 
     quote! {
+        /// An internal, Anchor generated module. This is used (as an
+        /// implementation detail), to generate a struct for a given
+        /// `#[derive(Accounts)]` implementation, where each field is a Pubkey,
+        /// instead of an `AccountInfo`. This is useful for clients that want
+        /// to generate a list of accounts, without explicitly knowing the
+        /// order all the fields should be in.
+        ///
+        /// To access the struct in this module, one should use the sibling
+        /// `accounts` module (also generated), which re-exports this.
         mod #account_mod_name {
             use super::*;
             use anchor_lang::prelude::borsh;
