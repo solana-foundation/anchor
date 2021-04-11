@@ -1,5 +1,7 @@
 use solana_program::program_error::ProgramError;
 
+// Error type that can be returned by internal framework code.
+#[doc(hidden)]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]

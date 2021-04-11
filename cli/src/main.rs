@@ -921,12 +921,12 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
             }
         };
 
-        let log_streams = stream_logs(&cfg.cluster.url())?;
+        // Setup log reader.
+        let log_streams = stream_logs(&cfg.cluster.url());
 
-        let result: Result<_> = {
+        // Run the tests.
+        let test_result: Result<_> = {
             let ts_config_exist = Path::new("tsconfig.json").exists();
-
-            // Run the tests.
             let mut args = vec!["-t", "1000000"];
             if let Some(ref file) = file {
                 args.push(file);
@@ -959,19 +959,18 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
             exit
         };
 
+        // Check all errors and shut down.
         if let Some(mut child) = validator_handle {
             if let Err(err) = child.kill() {
                 println!("Failed to kill subprocess {}: {}", child.id(), err);
             }
         }
-
-        for mut child in log_streams {
+        for mut child in log_streams? {
             if let Err(err) = child.kill() {
                 println!("Failed to kill subprocess {}: {}", child.id(), err);
             }
         }
-
-        match result {
+        match test_result {
             Ok(exit) => {
                 if !exit.status.success() {
                     std::process::exit(exit.status.code().unwrap());

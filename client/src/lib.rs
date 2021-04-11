@@ -120,7 +120,7 @@ impl Program {
         self.program_id
     }
 
-    pub fn on<T: anchor_lang::EventData + anchor_lang::AnchorDeserialize>(
+    pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
         f: impl Fn(&EventContext, T) -> () + Send + 'static,
     ) -> Result<EventHandle, ClientError> {
@@ -187,7 +187,7 @@ impl Program {
     }
 }
 
-fn handle_program_log<T: anchor_lang::EventData + anchor_lang::AnchorDeserialize>(
+fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {

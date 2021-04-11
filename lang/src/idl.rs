@@ -1,4 +1,4 @@
-//! idl.rs defines the instructions and account state used to store a program's
+//! Defines the instructions and account state used to store a program's
 //! IDL on-chain at a canonical account address, which can be derived as a
 //! function of nothing other than the program's ID.
 //!

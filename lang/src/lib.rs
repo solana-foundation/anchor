@@ -35,6 +35,7 @@ mod context;
 mod cpi_account;
 mod ctor;
 mod error;
+#[doc(hidden)]
 pub mod idl;
 mod program_account;
 mod state;
@@ -44,26 +45,27 @@ mod vec;
 // Internal module used by macros.
 #[doc(hidden)]
 pub mod __private {
+    pub use crate::ctor::Ctor;
+    pub use crate::error::Error;
+    pub use anchor_attribute_event::EventIndex;
     pub use base64;
 }
 
 pub use crate::context::{Context, CpiContext};
 pub use crate::cpi_account::CpiAccount;
-pub use crate::ctor::Ctor;
 pub use crate::program_account::ProgramAccount;
 pub use crate::state::ProgramState;
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::account;
 pub use anchor_attribute_error::error;
-pub use anchor_attribute_event::{emit, event, EventIndex};
+pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_interface::interface;
 pub use anchor_attribute_program::program;
 pub use anchor_attribute_state::state;
 pub use anchor_derive_accounts::Accounts;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
-pub use error::Error;
 pub use solana_program;
 
 /// A data structure of validated accounts that can be deserialized from the
@@ -176,18 +178,27 @@ pub trait InstructionData: AnchorSerialize {
     fn data(&self) -> Vec<u8>;
 }
 
-/// Calculates the size of an account, which may be larger than the deserialized
-/// data in it. This trait is currently only used for `#[state]` accounts.
+// Calculates the size of an account, which may be larger than the deserialized
+// data in it. This trait is currently only used for `#[state]` accounts.
+#[doc(hidden)]
 pub trait AccountSize: AnchorSerialize {
     fn size(&self) -> Result<u64, ProgramError>;
 }
 
-/// The serialized event data to be emitted via a Solana log.
+/// An event that can be emitted via a Solana log.
+pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
+    fn data(&self) -> Vec<u8>;
+}
+
+// The serialized event data to be emitted via a Solana log.
+// TODO: remove this on the next major version upgrade.
+#[doc(hidden)]
+#[deprecated(since = "0.4.2", note = "Please use Event instead")]
 pub trait EventData: AnchorSerialize + Discriminator {
     fn data(&self) -> Vec<u8>;
 }
 
-/// 8 byte identifier for a type.
+/// 8 byte unique identifier for a type.
 pub trait Discriminator {
     fn discriminator() -> [u8; 8];
 }
@@ -198,7 +209,7 @@ pub mod prelude {
     pub use super::{
         access_control, account, emit, error, event, interface, program, state, AccountDeserialize,
         AccountSerialize, Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize,
-        Context, CpiAccount, CpiContext, Ctor, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
+        Context, CpiAccount, CpiContext, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
         ToAccountInfos, ToAccountMetas,
     };
 

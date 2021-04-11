@@ -26,10 +26,10 @@ pub fn event(
     };
 
     proc_macro::TokenStream::from(quote! {
-        #[derive(anchor_lang::EventIndex, AnchorSerialize, AnchorDeserialize)]
+        #[derive(anchor_lang::__private::EventIndex, AnchorSerialize, AnchorDeserialize)]
         #event_strct
 
-        impl anchor_lang::EventData for #event_name {
+        impl anchor_lang::Event for #event_name {
             fn data(&self) -> Vec<u8> {
                 let mut d = #discriminator.to_vec();
                 d.append(&mut self.try_to_vec().unwrap());
@@ -45,16 +45,16 @@ pub fn event(
     })
 }
 
-/// Creates an event in an Anchor program, which can subsequently be subscribed
-/// to by clients. Calling this method will internally borsh serialize the
-/// [event](./attr.event.html), base64 encode the bytes, and then add a
-/// [msg!](../solana_program/macro.msg.html) log to the transaction.
+/// Creates an event that can be subscribed to by clients. Calling this method
+/// will internally borsh serialize the [event](./attr.event.html), base64
+/// encode the bytes, and then add a [msg!](../solana_program/macro.msg.html)
+/// log to the transaction.
 #[proc_macro]
 pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            let data = anchor_lang::EventData::data(&#data);
+            let data = anchor_lang::Event::data(&#data);
             let msg_str = &anchor_lang::__private::base64::encode(data);
             anchor_lang::solana_program::msg!(msg_str);
         }

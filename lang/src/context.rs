@@ -9,6 +9,7 @@ pub struct Context<'a, 'b, 'c, 'info, T> {
     /// Deserialized accounts.
     pub accounts: &'b mut T,
     /// Remaining accounts given but not deserialized or validated.
+    /// Be very careful when using this directly.
     pub remaining_accounts: &'c [AccountInfo<'info>],
 }
 

@@ -401,7 +401,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                         let mut remaining_accounts: &[AccountInfo] = accounts;
 
                         // Deserialize accounts.
-                        let ctor_accounts = anchor_lang::Ctor::try_accounts(program_id, &mut remaining_accounts)?;
+                        let ctor_accounts = anchor_lang::__private::Ctor::try_accounts(program_id, &mut remaining_accounts)?;
                         let mut ctor_user_def_accounts = #anchor_ident::try_accounts(program_id, &mut remaining_accounts)?;
 
                         // Invoke the ctor.
