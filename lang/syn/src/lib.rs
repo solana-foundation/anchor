@@ -301,9 +301,8 @@ pub struct ConstraintLiteral {
 }
 
 #[derive(Debug)]
-pub enum ConstraintOwner {
-    Program,
-    Skip,
+pub struct ConstraintOwner {
+    pub owner_target: proc_macro2::Ident,
 }
 
 #[derive(Debug)]

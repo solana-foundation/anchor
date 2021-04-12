@@ -374,18 +374,11 @@ pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenS
 
 pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2::TokenStream {
     let ident = &f.ident;
-    let info = match f.ty {
-        Ty::AccountInfo => quote! { #ident },
-        Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
-        _ => panic!("Invalid syntax: owner cannot be specified."),
-    };
-    match c {
-        ConstraintOwner::Skip => quote! {},
-        ConstraintOwner::Program => quote! {
-            if #info.owner != program_id {
-                return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
-            }
-        },
+    let owner_target = c.owner_target.clone();
+    quote! {
+        if #ident.to_account_info().owner != #owner_target.to_account_info().key {
+            return Err(ProgramError::Custom(76)); // todo: proper error.
+        }
     }
 }
 
@@ -446,6 +439,9 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
         // Checks the given state account is the canonical state account for
         // the target program.
         if #ident.to_account_info().key != &anchor_lang::CpiState::<#account_ty>::address(#program_target.to_account_info().key) {
+            return Err(ProgramError::Custom(1)); // todo: proper error.
+        }
+        if #ident.to_account_info().owner != #program_target.to_account_info().key {
             return Err(ProgramError::Custom(1)); // todo: proper error.
         }
     }

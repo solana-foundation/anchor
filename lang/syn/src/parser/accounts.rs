@@ -243,16 +243,11 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
                         }
                         _ => panic!("invalid syntax"),
                     };
-                    let owner = match inner_tts.next().unwrap() {
+                    let owner_target = match inner_tts.next().unwrap() {
                         proc_macro2::TokenTree::Ident(ident) => ident,
                         _ => panic!("invalid syntax"),
                     };
-                    let constraint = match owner.to_string().as_str() {
-                        "program" => ConstraintOwner::Program,
-                        "skip" => ConstraintOwner::Skip,
-                        _ => panic!("invalid syntax"),
-                    };
-                    constraints.push(Constraint::Owner(constraint));
+                    constraints.push(Constraint::Owner(ConstraintOwner { owner_target }));
                 }
                 "rent_exempt" => {
                     match inner_tts.next() {

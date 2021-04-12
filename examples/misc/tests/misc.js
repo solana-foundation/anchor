@@ -17,8 +17,9 @@ describe("misc", () => {
     assert.ok(accountInfo.data.length === 99);
   });
 
+  const data = new anchor.web3.Account();
+
   it("Can use u128 and i128", async () => {
-    const data = new anchor.web3.Account();
     const tx = await program.rpc.initialize(
       new anchor.BN(1234),
       new anchor.BN(22),
@@ -42,6 +43,29 @@ describe("misc", () => {
     );
     let accInfo = await anchor.getProvider().connection.getAccountInfo(pid);
     assert.ok(accInfo.executable);
+  });
+
+  it("Can use the owner constraint", async () => {
+    await program.rpc.testOwner({
+      accounts: {
+        data: data.publicKey,
+        misc: program.programId,
+      },
+    });
+
+    await assert.rejects(
+      async () => {
+        await program.rpc.testOwner({
+          accounts: {
+            data: program.provider.wallet.publicKey,
+            misc: program.programId,
+          },
+        });
+      },
+      (err) => {
+        return true;
+      }
+    );
   });
 
   it("Can use the executable attribtue", async () => {

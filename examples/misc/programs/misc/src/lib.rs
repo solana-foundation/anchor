@@ -28,6 +28,10 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_owner(_ctx: Context<TestOwner>) -> ProgramResult {
+        Ok(())
+    }
+
     pub fn test_executable(_ctx: Context<TestExecutable>) -> ProgramResult {
         Ok(())
     }
@@ -50,6 +54,13 @@ pub struct Initialize<'info> {
     #[account(init)]
     data: ProgramAccount<'info, Data>,
     rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct TestOwner<'info> {
+    #[account(owner = misc)]
+    data: AccountInfo<'info>,
+    misc: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

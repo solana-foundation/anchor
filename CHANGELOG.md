@@ -14,6 +14,7 @@ incremented for features.
 ## Features
 
 * lang: CPI clients for program state instructions ([#43](https://github.com/project-serum/anchor/pull/43)).
+* lang: Add `#[account(owner = <program>)]` constraint ([#178](https://github.com/project-serum/anchor/pull/178)).
 
 ## Fixes
 
