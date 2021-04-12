@@ -1,12 +1,12 @@
 [package]
-name = "misc"
+name = "misc2"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "misc"
+name = "misc2"
 
 [features]
 no-entrypoint = []
@@ -16,4 +16,3 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-misc2 = { path = "../misc2", features = ["cpi"] }

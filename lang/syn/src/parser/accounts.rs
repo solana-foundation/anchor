@@ -1,8 +1,8 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
     ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
-    ConstraintSeeds, ConstraintSigner, CpiAccountTy, Field, ProgramAccountTy, ProgramStateTy,
-    SysvarTy, Ty,
+    ConstraintSeeds, ConstraintSigner, ConstraintState, CpiAccountTy, CpiStateTy, Field,
+    ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -68,7 +68,8 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
 
 fn is_field_primitive(f: &syn::Field) -> bool {
     match ident_string(f).as_str() {
-        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo" => true,
+        "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo"
+        | "CpiState" => true,
         _ => false,
     }
 }
@@ -80,6 +81,7 @@ fn parse_ty(f: &syn::Field) -> Ty {
     };
     match ident_string(f).as_str() {
         "ProgramState" => Ty::ProgramState(parse_program_state(&path)),
+        "CpiState" => Ty::CpiState(parse_cpi_state(&path)),
         "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)),
         "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)),
@@ -102,6 +104,11 @@ fn ident_string(f: &syn::Field) -> String {
 fn parse_program_state(path: &syn::Path) -> ProgramStateTy {
     let account_ident = parse_account(&path);
     ProgramStateTy { account_ident }
+}
+
+fn parse_cpi_state(path: &syn::Path) -> CpiStateTy {
+    let account_ident = parse_account(&path);
+    CpiStateTy { account_ident }
 }
 
 fn parse_cpi_account(path: &syn::Path) -> CpiAccountTy {
@@ -273,6 +280,20 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
                 }
                 "executable" => {
                     constraints.push(Constraint::Executable(ConstraintExecutable {}));
+                }
+                "state" => {
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    let program_target = match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Ident(ident) => ident,
+                        _ => panic!("invalid syntax"),
+                    };
+                    constraints.push(Constraint::State(ConstraintState { program_target }));
                 }
                 _ => {
                     panic!("invalid syntax");

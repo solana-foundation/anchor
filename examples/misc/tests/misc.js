@@ -6,6 +6,7 @@ describe("misc", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
   const program = anchor.workspace.Misc;
+  const misc2Program = anchor.workspace.Misc2;
 
   it("Can allocate extra space for a state constructor", async () => {
     const tx = await program.state.rpc.new();
@@ -62,5 +63,28 @@ describe("misc", () => {
         return true;
       }
     );
+  });
+
+  it("Can CPI to state instructions", async () => {
+    const oldData = new anchor.BN(0);
+    await misc2Program.state.rpc.new({
+      accounts: {
+        authority: program.provider.wallet.publicKey,
+      },
+    });
+    let stateAccount = await misc2Program.state();
+    assert.ok(stateAccount.data.eq(oldData));
+    assert.ok(stateAccount.auth.equals(program.provider.wallet.publicKey));
+    const newData = new anchor.BN(2134);
+    await program.rpc.testStateCpi(newData, {
+      accounts: {
+        authority: program.provider.wallet.publicKey,
+        cpiState: await misc2Program.state.address(),
+        misc2Program: misc2Program.programId,
+      },
+    });
+    stateAccount = await misc2Program.state();
+    assert.ok(stateAccount.data.eq(newData));
+    assert.ok(stateAccount.auth.equals(program.provider.wallet.publicKey));
   });
 });

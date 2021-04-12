@@ -33,6 +33,7 @@ mod account_info;
 mod boxed;
 mod context;
 mod cpi_account;
+mod cpi_state;
 mod ctor;
 mod error;
 #[doc(hidden)]
@@ -51,8 +52,9 @@ pub mod __private {
     pub use base64;
 }
 
-pub use crate::context::{Context, CpiContext};
+pub use crate::context::{Context, CpiContext, StateCpiContext};
 pub use crate::cpi_account::CpiAccount;
+pub use crate::cpi_state::CpiState;
 pub use crate::program_account::ProgramAccount;
 pub use crate::state::ProgramState;
 pub use crate::sysvar::Sysvar;
@@ -209,8 +211,8 @@ pub mod prelude {
     pub use super::{
         access_control, account, emit, error, event, interface, program, state, AccountDeserialize,
         AccountSerialize, Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize,
-        Context, CpiAccount, CpiContext, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        Context, CpiAccount, CpiContext, CpiState, ProgramAccount, ProgramState, StateCpiContext,
+        Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 
     pub use borsh;

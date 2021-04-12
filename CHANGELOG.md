@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+## Features
+
+* lang: CPI clients for program state instructions ([#43](https://github.com/project-serum/anchor/pull/43)).
+
 ## [0.4.2] - 2021-04-10
 
 ## Features

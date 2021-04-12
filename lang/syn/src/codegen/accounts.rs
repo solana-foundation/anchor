@@ -1,7 +1,7 @@
 use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
     ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
-    ConstraintSeeds, ConstraintSigner, Field, Ty,
+    ConstraintSeeds, ConstraintSigner, ConstraintState, Field, Ty,
 };
 use heck::SnakeCase;
 use quote::quote;
@@ -315,6 +315,7 @@ pub fn generate_field_constraint(f: &Field, c: &Constraint) -> proc_macro2::Toke
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
         Constraint::Seeds(c) => generate_constraint_seeds(f, c),
         Constraint::Executable(c) => generate_constraint_executable(f, c),
+        Constraint::State(c) => generate_constraint_state(f, c),
     }
 }
 
@@ -430,6 +431,22 @@ pub fn generate_constraint_executable(
     quote! {
         if !#name.to_account_info().executable {
             return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(5)) // todo
+        }
+    }
+}
+
+pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2::TokenStream {
+    let program_target = c.program_target.clone();
+    let ident = &f.ident;
+    let account_ty = match &f.ty {
+        Ty::CpiState(ty) => &ty.account_ident,
+        _ => panic!("Invalid syntax"),
+    };
+    quote! {
+        // Checks the given state account is the canonical state account for
+        // the target program.
+        if #ident.to_account_info().key != &anchor_lang::CpiState::<#account_ty>::address(#program_target.to_account_info().key) {
+            return Err(ProgramError::Custom(1)); // todo: proper error.
         }
     }
 }

@@ -55,6 +55,7 @@ where
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
+        // No owner check is done here.
         let pa = CpiAccount::try_from(account)?;
         Ok(pa)
     }

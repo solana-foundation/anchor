@@ -1,5 +1,5 @@
 use crate::parser;
-use crate::{IxArg, Program, State};
+use crate::{IxArg, Program, State, StateIx};
 use heck::{CamelCase, SnakeCase};
 use quote::quote;
 
@@ -1096,7 +1096,59 @@ fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
 }
 
 fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
-    let cpi_methods: Vec<proc_macro2::TokenStream> = program
+    // Generate cpi methods for the state struct.
+    // The Ctor is not exposed via CPI, since it is a one time use function.
+    let state_cpi_methods: Vec<proc_macro2::TokenStream> = program
+        .state
+        .as_ref()
+        .map(|state| {
+            state
+                .impl_block_and_methods
+                .as_ref()
+                .map(|(_, methods)| {
+                    methods
+                        .iter()
+                        .map(|method: &StateIx| {
+                            let accounts_ident = &method.anchor_ident;
+                            let ix_variant = generate_ix_variant(
+                                method.raw_method.sig.ident.to_string(),
+                                &method.args,
+                            );
+                            let method_name = &method.ident;
+                            let args: Vec<&syn::PatType> =
+                                method.args.iter().map(|arg| &arg.raw_arg).collect();
+
+                            quote! {
+                                pub fn #method_name<'a, 'b, 'c, 'info>(
+                                    ctx: StateCpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                                    #(#args),*
+                                ) -> ProgramResult {
+                                    let ix = {
+                                        let ix = instruction::state::#ix_variant;
+                                        let data = anchor_lang::InstructionData::data(&ix);
+                                        let accounts = ctx.to_account_metas(None);
+                                        anchor_lang::solana_program::instruction::Instruction {
+                                            program_id: *ctx.program().key,
+                                            accounts,
+                                            data,
+                                        }
+                                    };
+                                    let mut acc_infos = ctx.to_account_infos();
+                                    anchor_lang::solana_program::program::invoke_signed(
+                                        &ix,
+                                        &acc_infos,
+                                        ctx.signer_seeds(),
+                                    )
+                                }
+                            }
+                        })
+                        .collect()
+                })
+                .unwrap_or(vec![])
+        })
+        .unwrap_or(vec![]);
+    // Generate cpi methods for global methods.
+    let global_cpi_methods: Vec<proc_macro2::TokenStream> = program
         .ixs
         .iter()
         .map(|ix| {
@@ -1146,7 +1198,13 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
         pub mod cpi {
             use super::*;
 
-            #(#cpi_methods)*
+            pub mod state {
+                use super::*;
+
+                #(#state_cpi_methods)*
+            }
+
+            #(#global_cpi_methods)*
         }
     }
 }

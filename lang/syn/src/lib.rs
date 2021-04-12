@@ -184,6 +184,12 @@ impl Field {
                     ProgramState<#account>
                 }
             }
+            Ty::CpiState(ty) => {
+                let account = &ty.account_ident;
+                quote! {
+                    CpiState<#account>
+                }
+            }
             Ty::ProgramAccount(ty) => {
                 let account = &ty.account_ident;
                 quote! {
@@ -226,6 +232,7 @@ impl Field {
 pub enum Ty {
     AccountInfo,
     ProgramState(ProgramStateTy),
+    CpiState(CpiStateTy),
     ProgramAccount(ProgramAccountTy),
     CpiAccount(CpiAccountTy),
     Sysvar(SysvarTy),
@@ -251,6 +258,11 @@ pub struct ProgramStateTy {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct CpiStateTy {
+    pub account_ident: syn::Ident,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ProgramAccountTy {
     // The struct type of the account.
     pub account_ident: syn::Ident,
@@ -272,6 +284,7 @@ pub enum Constraint {
     RentExempt(ConstraintRentExempt),
     Seeds(ConstraintSeeds),
     Executable(ConstraintExecutable),
+    State(ConstraintState),
 }
 
 #[derive(Debug)]
@@ -306,6 +319,11 @@ pub struct ConstraintSeeds {
 
 #[derive(Debug)]
 pub struct ConstraintExecutable {}
+
+#[derive(Debug)]
+pub struct ConstraintState {
+    pub program_target: proc_macro2::Ident,
+}
 
 #[derive(Debug)]
 pub struct Error {

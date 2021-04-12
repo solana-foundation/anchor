@@ -2,6 +2,8 @@
 //! It's not too instructive/coherent by itself, so please see other examples.
 
 use anchor_lang::prelude::*;
+use misc2::misc2::MyState;
+use misc2::Auth;
 
 #[program]
 pub mod misc {
@@ -26,8 +28,17 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_executable(ctx: Context<TestExecutable>) -> ProgramResult {
+    pub fn test_executable(_ctx: Context<TestExecutable>) -> ProgramResult {
         Ok(())
+    }
+
+    pub fn test_state_cpi(ctx: Context<TestStateCpi>, data: u64) -> ProgramResult {
+        let cpi_program = ctx.accounts.misc2_program.clone();
+        let cpi_accounts = Auth {
+            authority: ctx.accounts.authority.clone(),
+        };
+        let ctx = ctx.accounts.cpi_state.context(cpi_program, cpi_accounts);
+        misc2::cpi::state::set_data(ctx, data)
     }
 }
 
@@ -45,6 +56,16 @@ pub struct Initialize<'info> {
 pub struct TestExecutable<'info> {
     #[account(executable)]
     program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestStateCpi<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+    #[account(mut, state = misc2_program)]
+    cpi_state: CpiState<'info, MyState>,
+    #[account(executable)]
+    misc2_program: AccountInfo<'info>,
 }
 
 #[account]
