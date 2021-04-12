@@ -70,12 +70,12 @@ where
 
 /// Context specifying non-argument inputs for cross-program-invocations
 /// targeted at program state instructions.
-pub struct StateCpiContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
+pub struct CpiStateContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
     state: AccountInfo<'info>,
     cpi_ctx: CpiContext<'a, 'b, 'c, 'info, T>,
 }
 
-impl<'a, 'b, 'c, 'info, T: Accounts<'info>> StateCpiContext<'a, 'b, 'c, 'info, T> {
+impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiStateContext<'a, 'b, 'c, 'info, T> {
     pub fn new(program: AccountInfo<'info>, state: AccountInfo<'info>, accounts: T) -> Self {
         Self {
             state,
@@ -118,7 +118,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> StateCpiContext<'a, 'b, 'c, 'info, T
 }
 
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountMetas
-    for StateCpiContext<'a, 'b, 'c, 'info, T>
+    for CpiStateContext<'a, 'b, 'c, 'info, T>
 {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         // State account is always first for state instructions.
@@ -132,7 +132,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountMetas
 }
 
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountInfos<'info>
-    for StateCpiContext<'a, 'b, 'c, 'info, T>
+    for CpiStateContext<'a, 'b, 'c, 'info, T>
 {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         let mut infos = self.cpi_ctx.accounts.to_account_infos();

@@ -52,7 +52,7 @@ pub mod __private {
     pub use base64;
 }
 
-pub use crate::context::{Context, CpiContext, StateCpiContext};
+pub use crate::context::{Context, CpiContext, CpiStateContext};
 pub use crate::cpi_account::CpiAccount;
 pub use crate::cpi_state::CpiState;
 pub use crate::program_account::ProgramAccount;
@@ -211,7 +211,7 @@ pub mod prelude {
     pub use super::{
         access_control, account, emit, error, event, interface, program, state, AccountDeserialize,
         AccountSerialize, Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize,
-        Context, CpiAccount, CpiContext, CpiState, ProgramAccount, ProgramState, StateCpiContext,
+        Context, CpiAccount, CpiContext, CpiState, CpiStateContext, ProgramAccount, ProgramState,
         Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 

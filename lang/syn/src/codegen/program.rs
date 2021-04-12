@@ -1120,7 +1120,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
 
                             quote! {
                                 pub fn #method_name<'a, 'b, 'c, 'info>(
-                                    ctx: StateCpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                                    ctx: CpiStateContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                                     #(#args),*
                                 ) -> ProgramResult {
                                     let ix = {

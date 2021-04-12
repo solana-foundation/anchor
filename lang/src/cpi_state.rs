@@ -1,5 +1,5 @@
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, ProgramState, StateCpiContext,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiStateContext, ProgramState,
     ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -47,13 +47,13 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> CpiState<'info, T>
         Pubkey::create_with_seed(&base, seed, owner).unwrap()
     }
 
-    /// Convenience api for creating a `StateCpiContext`.
+    /// Convenience api for creating a `CpiStateContext`.
     pub fn context<'a, 'b, 'c, A: Accounts<'info>>(
         &self,
         program: AccountInfo<'info>,
         accounts: A,
-    ) -> StateCpiContext<'a, 'b, 'c, 'info, A> {
-        StateCpiContext::new(program, self.inner.info.clone(), accounts)
+    ) -> CpiStateContext<'a, 'b, 'c, 'info, A> {
+        CpiStateContext::new(program, self.inner.info.clone(), accounts)
     }
 }
 
