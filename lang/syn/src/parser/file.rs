@@ -7,6 +7,7 @@ use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
+use std::iter::FromIterator;
 use std::path::Path;
 
 const DERIVE_NAME: &str = "Accounts";
@@ -22,16 +23,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
 
     let p = program::parse(parse_program_mod(&f));
 
-    let accs = parse_accounts(&f);
-    let acc_names = {
-        let mut acc_names = HashSet::new();
-        for accs_strct in accs.values() {
-            for a in accs_strct.account_tys(&accs)? {
-                acc_names.insert(a);
-            }
-        }
-        acc_names
-    };
+    let accs = parse_account_derives(&f);
 
     let state = match p.state {
         None => None,
@@ -211,12 +203,17 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let mut types = vec![];
     let ty_defs = parse_ty_defs(&f)?;
 
+    let account_structs = parse_accounts(&f);
+    let account_names: HashSet<String> =
+        HashSet::from_iter(account_structs.iter().map(|a| a.ident.to_string()));
+
     let error_name = error.map(|e| e.name).unwrap_or_else(|| "".to_string());
 
+    // All types that aren't in the accounts section, are in the types section.
     for ty_def in ty_defs {
         // Don't add the error type to the types or accounts sections.
         if ty_def.name != error_name {
-            if acc_names.contains(&ty_def.name) {
+            if account_names.contains(&ty_def.name) {
                 accounts.push(ty_def);
             } else if events.iter().position(|e| e.name == ty_def.name).is_none() {
                 types.push(ty_def);
@@ -316,8 +313,32 @@ fn parse_events(f: &syn::File) -> Vec<&syn::ItemStruct> {
         .collect()
 }
 
+fn parse_accounts(f: &syn::File) -> Vec<&syn::ItemStruct> {
+    f.items
+        .iter()
+        .filter_map(|i| match i {
+            syn::Item::Struct(item_strct) => {
+                let attrs_count = item_strct
+                    .attrs
+                    .iter()
+                    .filter(|attr| {
+                        let segment = attr.path.segments.last().unwrap();
+                        segment.ident == "account"
+                    })
+                    .count();
+                match attrs_count {
+                    0 => None,
+                    1 => Some(item_strct),
+                    _ => panic!("Invalid syntax: one event attribute allowed"),
+                }
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 // Parse all structs implementing the `Accounts` trait.
-fn parse_accounts(f: &syn::File) -> HashMap<String, AccountsStruct> {
+fn parse_account_derives(f: &syn::File) -> HashMap<String, AccountsStruct> {
     f.items
         .iter()
         .filter_map(|i| match i {

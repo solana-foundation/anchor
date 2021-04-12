@@ -15,6 +15,10 @@ incremented for features.
 
 * lang: CPI clients for program state instructions ([#43](https://github.com/project-serum/anchor/pull/43)).
 
+## Fixes
+
+* lang: Unused `#[account]`s are now parsed into the IDL correctly ([#177](https://github.com/project-serum/anchor/pull/177)).
+
 ## [0.4.2] - 2021-04-10
 
 ## Features
