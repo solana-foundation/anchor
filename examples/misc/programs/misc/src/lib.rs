@@ -88,8 +88,8 @@ pub struct TestStateCpi<'info> {
 }
 
 // `my_account` is the associated token account being created.
-// `authority` must be a signer since it will pay for the creation of the
-// associated token account. `state` is used as an association, i.e., one
+// `authority` must be a `mut` and `signer` since it will pay for the creation
+// of the associated token account. `state` is used as an association, i.e., one
 // can *optionally* identify targets to be used as seeds for the program
 // derived address by using `with` (and it doesn't have to be a state account).
 // For example, the SPL token program uses a `Mint` account. Lastly,
@@ -100,7 +100,7 @@ pub struct TestStateCpi<'info> {
 pub struct TestAssociatedAccount<'info> {
     #[account(associated = authority, with = state)]
     my_account: ProgramAccount<'info, TestData>,
-    #[account(signer)]
+    #[account(mut, signer)]
     authority: AccountInfo<'info>,
     state: ProgramState<'info, MyState>,
     rent: Sysvar<'info, Rent>,
