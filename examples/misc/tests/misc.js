@@ -68,7 +68,7 @@ describe("misc", () => {
     );
   });
 
-  it("Can use the executable attribtue", async () => {
+  it("Can use the executable attribute", async () => {
     await program.rpc.testExecutable({
       accounts: {
         program: program.programId,
@@ -110,5 +110,50 @@ describe("misc", () => {
     stateAccount = await misc2Program.state();
     assert.ok(stateAccount.data.eq(newData));
     assert.ok(stateAccount.auth.equals(program.provider.wallet.publicKey));
+  });
+
+  it("Can create an associated program account", async () => {
+    const state = await program.state.address();
+
+    // Manual associated address calculation for test only. Clients should use
+    // the generated methods.
+    const [
+      associatedAccount,
+      nonce,
+    ] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from([97, 110, 99, 104, 111, 114]), // b"anchor".
+        program.provider.wallet.publicKey.toBuffer(),
+        state.toBuffer(),
+      ],
+      program.programId
+    );
+    await assert.rejects(
+      async () => {
+        await program.account.testData(associatedAccount);
+      },
+      (err) => {
+        assert.ok(
+          err.toString() ===
+            `Error: Account does not exist ${associatedAccount.toString()}`
+        );
+        return true;
+      }
+    );
+    await program.rpc.testAssociatedAccountCreation(new anchor.BN(1234), {
+      accounts: {
+        myAccount: associatedAccount,
+        authority: program.provider.wallet.publicKey,
+        state,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+    });
+    // Try out the generated associated method.
+    const account = await program.account.testData.associated(
+      program.provider.wallet.publicKey,
+      state
+    );
+    assert.ok(account.data.toNumber() === 1234);
   });
 });

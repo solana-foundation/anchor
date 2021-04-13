@@ -59,7 +59,7 @@ pub use crate::program_account::ProgramAccount;
 pub use crate::state::ProgramState;
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
-pub use anchor_attribute_account::account;
+pub use anchor_attribute_account::{account, associated};
 pub use anchor_attribute_error::error;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_interface::interface;
@@ -205,14 +205,20 @@ pub trait Discriminator {
     fn discriminator() -> [u8; 8];
 }
 
+/// Bump seed for program derived addresses.
+pub trait Bump {
+    fn seed(&self) -> u8;
+}
+
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
     pub use super::{
-        access_control, account, emit, error, event, interface, program, state, AccountDeserialize,
-        AccountSerialize, Accounts, AccountsExit, AccountsInit, AnchorDeserialize, AnchorSerialize,
-        Context, CpiAccount, CpiContext, CpiState, CpiStateContext, ProgramAccount, ProgramState,
-        Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        access_control, account, associated, emit, error, event, interface, program, state,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit,
+        AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext, CpiState,
+        CpiStateContext, ProgramAccount, ProgramState, Sysvar, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas,
     };
 
     pub use borsh;

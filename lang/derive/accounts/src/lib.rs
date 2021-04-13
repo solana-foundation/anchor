@@ -40,7 +40,7 @@ use syn::parse_macro_input;
 /// |:--|:--|:--|
 /// | `#[account(signer)]` | On raw `AccountInfo` structs. | Checks the given account signed the transaction. |
 /// | `#[account(mut)]` | On `AccountInfo`, `ProgramAccount` or `CpiAccount` structs. | Marks the account as mutable and persists the state transition. |
-/// | `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, skipping the account discriminator check. |
+/// | `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, skipping the account discriminator check. When using `init`, a `rent` `Sysvar` must be present in the `Accounts` struct. |
 /// | `#[account(belongs_to = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
 /// | `#[account(has_one = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Semantically different, but otherwise the same as `belongs_to`. |
 /// | `#[account(seeds = [<seeds>])]` | On `AccountInfo` structs | Seeds for the program derived address an `AccountInfo` struct represents. |
@@ -49,6 +49,9 @@ use syn::parse_macro_input;
 /// | `#[account(executable)]` | On `AccountInfo` structs | Checks the given account is an executable program. |
 /// | `#[account(state = <target>)]` | On `CpiState` structs | Checks the given state is the canonical state account for the target program. |
 /// | `#[account(owner = <target>)]` | On `CpiState`, `CpiAccount`, and `AccountInfo` | Checks the account owner matches the target. |
+/// | `#[account(associated = <target>, with? = <target>, payer? = <target>, space? = "<literal>")]` | On `ProgramAccount` | Creates an associated program account at a program derived address. `associated` is the SOL address to create the account for. `with` is an optional association, for example, a `Mint` account in the SPL token program. `payer` is an optional account to pay for the account creation, defaulting to the `associated` target if none is given. `space` is an optional literal specifying how large the account is, defaulting to the account's serialized `Default::default` size (+ 8 for the account discriminator) if none is given. When creating an associated account, a `rent` `Sysvar` and `system_program` `AccountInfo` must be present in the `Accounts` struct. |
+// TODO: How do we make the markdown render correctly without putting everything
+//       on absurdly long lines?
 #[proc_macro_derive(Accounts, attributes(account))]
 pub fn derive_anchor_deserialize(item: TokenStream) -> TokenStream {
     let strct = parse_macro_input!(item as syn::ItemStruct);

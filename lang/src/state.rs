@@ -66,11 +66,13 @@ where
         *accounts = &accounts[1..];
 
         if account.key != &Self::address(program_id) {
+            solana_program::msg!("Invalid state address");
             return Err(ProgramError::Custom(1)); // todo: proper error.
         }
 
         let pa = ProgramState::try_from(account)?;
         if pa.inner.info.owner != program_id {
+            solana_program::msg!("Invalid state owner");
             return Err(ProgramError::Custom(1)); // todo: proper error.
         }
         Ok(pa)

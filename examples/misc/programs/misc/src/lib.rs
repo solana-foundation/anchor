@@ -44,6 +44,14 @@ pub mod misc {
         let ctx = ctx.accounts.cpi_state.context(cpi_program, cpi_accounts);
         misc2::cpi::state::set_data(ctx, data)
     }
+
+    pub fn test_associated_account_creation(
+        ctx: Context<TestAssociatedAccount>,
+        data: u64,
+    ) -> ProgramResult {
+        ctx.accounts.my_account.data = data;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -77,6 +85,31 @@ pub struct TestStateCpi<'info> {
     cpi_state: CpiState<'info, MyState>,
     #[account(executable)]
     misc2_program: AccountInfo<'info>,
+}
+
+// `my_account` is the associated token account being created.
+// `authority` must be a signer since it will pay for the creation of the
+// associated token account. `state` is used as an association, i.e., one
+// can *optionally* identify targets to be used as seeds for the program
+// derived address by using `with` (and it doesn't have to be a state account).
+// For example, the SPL token program uses a `Mint` account. Lastly,
+// `rent` and `system_program` are *required* by convention, since the
+// accounts are needed when creating the associated program address within
+// the program.
+#[derive(Accounts)]
+pub struct TestAssociatedAccount<'info> {
+    #[account(associated = authority, with = state)]
+    my_account: ProgramAccount<'info, TestData>,
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+    state: ProgramState<'info, MyState>,
+    rent: Sysvar<'info, Rent>,
+    system_program: AccountInfo<'info>,
+}
+
+#[associated]
+pub struct TestData {
+    data: u64,
 }
 
 #[account]

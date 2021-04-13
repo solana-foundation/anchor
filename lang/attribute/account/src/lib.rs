@@ -90,3 +90,50 @@ pub fn account(
         #coder
     })
 }
+
+/// Extends the `#[account]` attribute to allow one to create associated token
+/// accounts. This includes a `Default` implementation, which means all fields
+/// in an `#[associated]` struct must implement `Default` and an
+/// `anchor_lang::Bump` trait implementation, which allows the account to be
+/// used as a program derived address.
+#[proc_macro_attribute]
+pub fn associated(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let mut account_strct = parse_macro_input!(input as syn::ItemStruct);
+
+    // Add a `__nonce: u8` field to the struct to hold the bump seed for
+    // the program dervied address.
+    match &mut account_strct.fields {
+        syn::Fields::Named(fields) => {
+            let mut segments = syn::punctuated::Punctuated::new();
+            segments.push(syn::PathSegment {
+                ident: syn::Ident::new("u8", proc_macro2::Span::call_site()),
+                arguments: syn::PathArguments::None,
+            });
+            fields.named.push(syn::Field {
+                attrs: Vec::new(),
+                vis: syn::Visibility::Inherited,
+                ident: Some(syn::Ident::new("__nonce", proc_macro2::Span::call_site())),
+                colon_token: Some(syn::token::Colon {
+                    spans: [proc_macro2::Span::call_site()],
+                }),
+                ty: syn::Type::Path(syn::TypePath {
+                    qself: None,
+                    path: syn::Path {
+                        leading_colon: None,
+                        segments,
+                    },
+                }),
+            });
+        }
+        _ => panic!("Fields must be named"),
+    }
+
+    proc_macro::TokenStream::from(quote! {
+        #[anchor_lang::account]
+        #[derive(Default)]
+        #account_strct
+    })
+}

@@ -98,6 +98,8 @@ type AccountProps = {
   subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
   unsubscribe: (address: PublicKey) => void;
   createInstruction: (account: Account) => Promise<TransactionInstruction>;
+  associated: (...args: PublicKey[]) => Promise<any>;
+  associatedAddress: (...args: PublicKey[]) => Promise<PublicKey>;
 };
 
 /**
@@ -563,6 +565,28 @@ export class RpcFactory {
               };
             })
         );
+      };
+
+      // Function returning the associated address. Args are keys to associate.
+      // Order matters.
+      accountsNamespace["associatedAddress"] = async (
+        ...args: PublicKey[]
+      ): Promise<PublicKey> => {
+        let seeds = [Buffer.from([97, 110, 99, 104, 111, 114])]; // b"anchor".
+        args.forEach((arg) => {
+          seeds.push(arg.toBuffer());
+        });
+        const [assoc] = await PublicKey.findProgramAddress(seeds, programId);
+        return assoc;
+      };
+
+      // Function returning the associated account. Args are keys to associate.
+      // Order matters.
+      accountsNamespace["associated"] = async (
+        ...args: PublicKey[]
+      ): Promise<any> => {
+        const addr = await accountsNamespace["associatedAddress"](...args);
+        return await accountsNamespace(addr);
       };
 
       accountFns[name] = accountsNamespace;

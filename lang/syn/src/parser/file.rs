@@ -323,7 +323,7 @@ fn parse_accounts(f: &syn::File) -> Vec<&syn::ItemStruct> {
                     .iter()
                     .filter(|attr| {
                         let segment = attr.path.segments.last().unwrap();
-                        segment.ident == "account"
+                        segment.ident == "account" || segment.ident == "associated"
                     })
                     .count();
                 match attrs_count {

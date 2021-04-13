@@ -1,8 +1,8 @@
 use crate::{
-    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
-    ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
-    ConstraintSeeds, ConstraintSigner, ConstraintState, CpiAccountTy, CpiStateTy, Field,
-    ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
+    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintAssociated,
+    ConstraintBelongsTo, ConstraintExecutable, ConstraintLiteral, ConstraintOwner,
+    ConstraintRentExempt, ConstraintSeeds, ConstraintSigner, ConstraintState, CpiAccountTy,
+    CpiStateTy, Field, ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -41,8 +41,8 @@ fn parse_account_attr(f: &syn::Field) -> Option<&syn::Attribute> {
 
 fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField {
     let ident = f.ident.clone().unwrap();
-    let (constraints, is_mut, is_signer, is_init) = match anchor {
-        None => (vec![], false, false, false),
+    let (constraints, is_mut, is_signer, is_init, payer, space, associated_seed) = match anchor {
+        None => (vec![], false, false, false, None, None, None),
         Some(anchor) => parse_constraints(anchor),
     };
     match is_field_primitive(f) {
@@ -55,6 +55,9 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
                 is_mut,
                 is_signer,
                 is_init,
+                payer,
+                space,
+                associated_seed,
             })
         }
         false => AccountField::AccountsStruct(CompositeField {
@@ -174,7 +177,17 @@ fn parse_sysvar(path: &syn::Path) -> SysvarTy {
     }
 }
 
-fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, bool) {
+fn parse_constraints(
+    anchor: &syn::Attribute,
+) -> (
+    Vec<Constraint>,
+    bool,
+    bool,
+    bool,
+    Option<syn::Ident>,
+    Option<proc_macro2::TokenStream>,
+    Option<syn::Ident>,
+) {
     let mut tts = anchor.tokens.clone().into_iter();
     let g_stream = match tts.next().expect("Must have a token group") {
         proc_macro2::TokenTree::Group(g) => g.stream(),
@@ -186,6 +199,10 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
     let mut is_signer = false;
     let mut constraints = vec![];
     let mut is_rent_exempt = None;
+    let mut payer = None;
+    let mut space = None;
+    let mut is_associated = false;
+    let mut associated_seed = None;
 
     let mut inner_tts = g_stream.into_iter();
     while let Some(token) = inner_tts.next() {
@@ -290,6 +307,68 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
                     };
                     constraints.push(Constraint::State(ConstraintState { program_target }));
                 }
+                "associated" => {
+                    is_associated = true;
+                    is_mut = true;
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    let associated_target = match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Ident(ident) => ident,
+                        _ => panic!("invalid syntax"),
+                    };
+                    constraints.push(Constraint::Associated(ConstraintAssociated {
+                        associated_target,
+                    }));
+                }
+                "with" => {
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    associated_seed = match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Ident(ident) => Some(ident),
+                        _ => panic!("invalid syntax"),
+                    };
+                }
+                "payer" => {
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    let _payer = match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Ident(ident) => ident,
+                        _ => panic!("invalid syntax"),
+                    };
+                    payer = Some(_payer);
+                }
+                "space" => {
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Punct(punct) => {
+                            assert!(punct.as_char() == '=');
+                            punct
+                        }
+                        _ => panic!("invalid syntax"),
+                    };
+                    match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Literal(literal) => {
+                            let tokens: proc_macro2::TokenStream =
+                                literal.to_string().replace("\"", "").parse().unwrap();
+                            space = Some(tokens);
+                        }
+                        _ => panic!("invalid space"),
+                    }
+                }
                 _ => {
                     panic!("invalid syntax");
                 }
@@ -310,6 +389,11 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
         }
     }
 
+    // If `associated` is given, remove `init` since it's redundant.
+    if is_associated {
+        is_init = false;
+    }
+
     if let Some(is_re) = is_rent_exempt {
         match is_re {
             false => constraints.push(Constraint::RentExempt(ConstraintRentExempt::Skip)),
@@ -317,5 +401,13 @@ fn parse_constraints(anchor: &syn::Attribute) -> (Vec<Constraint>, bool, bool, b
         }
     }
 
-    (constraints, is_mut, is_signer, is_init)
+    (
+        constraints,
+        is_mut,
+        is_signer,
+        is_init,
+        payer,
+        space,
+        associated_seed,
+    )
 }

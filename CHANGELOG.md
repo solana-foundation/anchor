@@ -15,6 +15,7 @@ incremented for features.
 
 * lang: CPI clients for program state instructions ([#43](https://github.com/project-serum/anchor/pull/43)).
 * lang: Add `#[account(owner = <program>)]` constraint ([#178](https://github.com/project-serum/anchor/pull/178)).
+* lang, cli, ts: Add `#[account(associated = <target>)]` and `#[associated]` attributes for creating associated program accounts within programs. The TypeScript package can fetch these accounts with a new `<program>.account.<account-name>.associated` (and `associatedAddress`) method ([#186](https://github.com/project-serum/anchor/pull/186)).
 
 ## Fixes
 

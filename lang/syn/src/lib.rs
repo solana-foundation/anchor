@@ -170,6 +170,14 @@ pub struct Field {
     pub is_mut: bool,
     pub is_signer: bool,
     pub is_init: bool,
+    // TODO: move associated out of the constraints and put into tis own
+    //       field + struct.
+    // Used by the associated attribute only.
+    pub payer: Option<syn::Ident>,
+    // Used by the associated attribute only.
+    pub space: Option<proc_macro2::TokenStream>,
+    // Used by the associated attribute only.
+    pub associated_seed: Option<syn::Ident>,
 }
 
 impl Field {
@@ -285,6 +293,7 @@ pub enum Constraint {
     Seeds(ConstraintSeeds),
     Executable(ConstraintExecutable),
     State(ConstraintState),
+    Associated(ConstraintAssociated),
 }
 
 #[derive(Debug)]
@@ -322,6 +331,11 @@ pub struct ConstraintExecutable {}
 #[derive(Debug)]
 pub struct ConstraintState {
     pub program_target: proc_macro2::Ident,
+}
+
+#[derive(Debug)]
+pub struct ConstraintAssociated {
+    pub associated_target: proc_macro2::Ident,
 }
 
 #[derive(Debug)]

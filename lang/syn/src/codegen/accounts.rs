@@ -1,43 +1,85 @@
 use crate::{
-    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintBelongsTo,
-    ConstraintExecutable, ConstraintLiteral, ConstraintOwner, ConstraintRentExempt,
-    ConstraintSeeds, ConstraintSigner, ConstraintState, Field, Ty,
+    AccountField, AccountsStruct, CompositeField, Constraint, ConstraintAssociated,
+    ConstraintBelongsTo, ConstraintExecutable, ConstraintLiteral, ConstraintOwner,
+    ConstraintRentExempt, ConstraintSeeds, ConstraintSigner, ConstraintState, Field, Ty,
 };
 use heck::SnakeCase;
 use quote::quote;
 
 pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
-    // Deserialization for each field.
+    // All fields without an `#[account(associated)]` attribute.
+    let non_associated_fields: Vec<&AccountField> =
+        accs.fields.iter().filter(|af| !is_associated(af)).collect();
+
+    // Deserialization for each field
     let deser_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|af: &AccountField| match af {
-            AccountField::AccountsStruct(s) => {
-                let name = &s.ident;
-                let ty = &s.raw_field.ty;
-                quote! {
-                    let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
+        .map(|af: &AccountField| {
+            match af {
+                AccountField::AccountsStruct(s) => {
+                    let name = &s.ident;
+                    let ty = &s.raw_field.ty;
+                    quote! {
+                        let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
+                    }
                 }
-            }
-            AccountField::Field(f) => {
-                let name = f.typed_ident();
-                match f.is_init {
-                    false => quote! {
-                        let #name = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
-                    },
-                    true => quote! {
-                        let #name = anchor_lang::AccountsInit::try_accounts_init(program_id, accounts)?;
-                    },
+                AccountField::Field(f) => {
+                    // Associated fields are *first* deserialized into
+                    // AccountInfos, and then later deserialized into
+                    // ProgramAccounts in the "constraint check" phase.
+                    if is_associated(af) {
+                        let name = &f.ident;
+                        quote!{
+                            let #name = &accounts[0];
+                            *accounts = &accounts[1..];
+                        }
+                    } else {
+                        let name = &f.typed_ident();
+                        match f.is_init {
+                            false => quote! {
+                                let #name = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
+                            },
+                            true => quote! {
+                                let #name = anchor_lang::AccountsInit::try_accounts_init(program_id, accounts)?;
+                            },
+                        }
+                    }
                 }
             }
         })
         .collect();
 
-    // Constraint checks for each account fields.
-    let access_checks: Vec<proc_macro2::TokenStream> = accs
+    // Deserialization for each *associated* field. This must be after
+    // the deser_fields.
+    let deser_associated_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|af: &AccountField| {
+        .filter_map(|af| match af {
+            AccountField::AccountsStruct(_s) => None,
+            AccountField::Field(f) => match is_associated(af) {
+                false => None,
+                true => Some(f),
+            },
+        })
+        .map(|field: &Field| {
+            // TODO: the constraints should be sorted so that the associated
+            //       constraint comes first.
+            let checks = field
+                .constraints
+                .iter()
+                .map(|c| generate_field_constraint(&field, c))
+                .collect::<Vec<proc_macro2::TokenStream>>();
+            quote! {
+                #(#checks)*
+            }
+        })
+        .collect();
+
+    // Constraint checks for each account fields.
+    let access_checks: Vec<proc_macro2::TokenStream> = non_associated_fields
+        .iter()
+        .map(|af: &&AccountField| {
             let checks: Vec<proc_macro2::TokenStream> = match af {
                 AccountField::Field(f) => f
                     .constraints
@@ -265,10 +307,15 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
             fn try_accounts(program_id: &anchor_lang::solana_program::pubkey::Pubkey, accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
                 // Deserialize each account.
                 #(#deser_fields)*
-
+                // Deserialize each associated account.
+                //
+                // Associated accounts are treated specially, because the fields
+                // do deserialization + constraint checks in a single go,
+                // whereas all other fields, i.e. the `deser_fields`, first
+                // deserialize, and then do constraint checks.
+                #(#deser_associated_fields)*
                 // Perform constraint checks on each account.
                 #(#access_checks)*
-
                 // Success. Return the validated accounts.
                 Ok(#name {
                     #(#return_tys),*
@@ -306,6 +353,22 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     }
 }
 
+// Returns true if the given AccountField has an associated constraint.
+fn is_associated(af: &AccountField) -> bool {
+    match af {
+        AccountField::AccountsStruct(_s) => false,
+        AccountField::Field(f) => f
+            .constraints
+            .iter()
+            .filter(|c| match c {
+                Constraint::Associated(_c) => true,
+                _ => false,
+            })
+            .next()
+            .is_some(),
+    }
+}
+
 pub fn generate_field_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::BelongsTo(c) => generate_constraint_belongs_to(f, c),
@@ -316,6 +379,7 @@ pub fn generate_field_constraint(f: &Field, c: &Constraint) -> proc_macro2::Toke
         Constraint::Seeds(c) => generate_constraint_seeds(f, c),
         Constraint::Executable(c) => generate_constraint_executable(f, c),
         Constraint::State(c) => generate_constraint_state(f, c),
+        Constraint::Associated(c) => generate_constraint_associated(f, c),
     }
 }
 
@@ -444,5 +508,114 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
         if #ident.to_account_info().owner != #program_target.to_account_info().key {
             return Err(ProgramError::Custom(1)); // todo: proper error.
         }
+    }
+}
+
+pub fn generate_constraint_associated(
+    f: &Field,
+    c: &ConstraintAssociated,
+) -> proc_macro2::TokenStream {
+    let associated_target = c.associated_target.clone();
+    let field = &f.ident;
+    let account_ty = match &f.ty {
+        Ty::ProgramAccount(ty) => &ty.account_ident,
+        _ => panic!("Invalid syntax"),
+    };
+
+    let space = match &f.space {
+        None => quote! {
+            let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+        },
+        Some(s) => quote! {
+            let space = #s;
+        },
+    };
+
+    let payer = match &f.payer {
+        None => quote! {
+            let payer = #associated_target.to_account_info();
+        },
+        Some(p) => quote! {
+            let payer = #p.to_account_info();
+        },
+    };
+
+    let seeds_no_nonce = match &f.associated_seed {
+        None => quote! {
+            [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+            ]
+        },
+        Some(seed) => quote! {
+            [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+                #seed.to_account_info().key.as_ref(),
+            ]
+        },
+    };
+    let seeds_with_nonce = match &f.associated_seed {
+        None => quote! {
+            [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+                &[nonce],
+            ]
+        },
+        Some(seed) => quote! {
+            [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+                #seed.to_account_info().key.as_ref(),
+                &[nonce],
+            ]
+        },
+    };
+
+    quote! {
+        let #field: anchor_lang::ProgramAccount<#account_ty> = {
+            #space
+            #payer
+
+            let (associated_field, nonce) = Pubkey::find_program_address(
+                &#seeds_no_nonce,
+                program_id,
+            );
+            if &associated_field != #field.key {
+                return Err(ProgramError::Custom(45)); // todo: proper error.
+            }
+            let lamports = rent.minimum_balance(space);
+            let ix = anchor_lang::solana_program::system_instruction::create_account(
+                payer.key,
+                #field.key,
+                lamports,
+                space as u64,
+                program_id,
+            );
+
+            let seeds = #seeds_with_nonce;
+            let signer = &[&seeds[..]];
+            anchor_lang::solana_program::program::invoke_signed(
+                &ix,
+                &[
+
+                    #field.clone(),
+                    payer.clone(),
+                    system_program.clone(),
+                ],
+                signer,
+            ).map_err(|e| {
+                anchor_lang::solana_program::msg!("Unable to create associated account");
+                e
+            })?;
+            // For now, we assume all accounts created with the `associated`
+            // attribute have a `nonce` field in their account.
+            let mut pa: anchor_lang::ProgramAccount<#account_ty> = anchor_lang::ProgramAccount::try_from_init(
+                &#field,
+            )?;
+            pa.__nonce = nonce;
+            pa
+        };
     }
 }
