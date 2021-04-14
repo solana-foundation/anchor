@@ -94,3 +94,9 @@ We can use them with the example above as follows
 <<< @/../examples/tutorial/basic-5/tests/basic-5.js#test
 
 Notice that, in both apis, the "seeds" given match what is expected by the `#[account(associated = <target, with = <target>)]` attribute, where order matters. The `associated` target must come before the `with` target.
+
+## Conclusion
+
+Here, we introduced associated accounts from the perspective of simplifying UX for
+a user wallet. However, deterministic addressing can be used beyond this and is a convenient
+tool to have in your Solana toolbox. For more, it's recommended to see the Solana [docs](https://docs.solana.com/developing/programming-model/calling-between-programs#program-derived-addresses).
