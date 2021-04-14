@@ -12,13 +12,12 @@ Why should you care? UX.
 
 Consider a wallet. Would you rather have a wallet with a single SOL address, which you
 can use to receive *all* SPL tokens, or would you rather have a wallet with a different
-address for every SPL token. Now generalize this. For everyone program you use, do you
+address for every SPL token. Now generalize this. For every program you use, do you
 want a single account, i.e. your SOL wallet, to define your application state? Or do
-you want to keep track of all your account addresses for every program in existance?
+you want to keep track of all your account addresses, separately, for every program in existance?
 
-Associated accounts allow you to easily calculate addresses, and thus find,
-accounts for any program of any type. A huge improvement on the account model introduced
-thus far.
+Associated accounts allow your users to reason about single address, their main SOL wallet,
+a huge improvement on the account model introduced thus far.
 
 Luckily, Anchor provides the ability to easily created associated program accounts for your program.
 
@@ -68,6 +67,18 @@ auxilliary piece of metadata which has the effect of namespacing the associated 
 This can be used, for example, to create multiple different associated accounts, each of
 which is associated *with* a new piece of metadata. In the token program, these pieces
 of metadata are mints, i.e., different token types.
+
+Lastly, notice the two accounts at the bottom of account context.
+
+```rust
+    rent: Sysvar<'info, Rent>,
+    system_program: AccountInfo<'info>,
+```
+
+Although a bit of an implementaion detail, these accounts are required so that Anchor
+can create your associated account. By convention, the names must be as given here.
+
+For more details on how to use `#[account(associated)]`, see [docs.rs](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
 
 ## Using the Client
 
