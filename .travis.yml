@@ -67,3 +67,4 @@ jobs:
         - pushd examples/tutorial/basic-2 && anchor test && popd
         - pushd examples/tutorial/basic-3 && anchor test && popd
         - pushd examples/tutorial/basic-4 && anchor test && popd
+        - pushd examples/tutorial/basic-5 && anchor test && popd

@@ -64,6 +64,15 @@ To invoke an instruction,
 
 <<< @/../examples/tutorial/basic-4/tests/basic-4.js#instruction
 
+## CPI
+
+Performing CPI from one Anchor program to another's state methods is very similar to performing CPI to normal Anchor instructions, except for two differences:
+
+1. All the generated instructions are located under the `<my_program>::cpi::state` module.
+2. One must use a [CpiStateContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiStateContext.html), instead of a `[CpiContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiContext.html).
+
+For a full example, see the `test_state_cpi` instruction, [here](https://github.com/project-serum/anchor/blob/master/examples/misc/programs/misc/src/lib.rs#L39).
+
 ## Conclusion
 
 Using state structs is intuitive. However, due to the fact that accounts
