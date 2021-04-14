@@ -12,11 +12,11 @@ Why should you care? UX.
 
 Consider a wallet. Would you rather have a wallet with a single SOL address, which you
 can use to receive *all* SPL tokens, or would you rather have a wallet with a different
-address for every SPL token. Now generalize this. For every program you use, do you
+address for every SPL token? Now generalize this. For every program you use, do you
 want a single account, i.e. your SOL wallet, to define your application state? Or do
 you want to keep track of all your account addresses, separately, for every program in existance?
 
-Associated accounts allow your users to reason about single address, their main SOL wallet,
+Associated accounts allow your users to reason about a single address, their main SOL wallet,
 a huge improvement on the account model introduced thus far.
 
 Luckily, Anchor provides the ability to easily created associated program accounts for your program.
@@ -55,6 +55,8 @@ does nothing other than create a mint and *associated* token account.
 
 <<< @/../examples/tutorial/basic-5/programs/basic-5/src/lib.rs#code
 
+### Deriving Accounts
+
 Two new keywords are introduced to the `CreateToken` account context:
 
 * `associated = <target>`
@@ -79,6 +81,16 @@ Although a bit of an implementaion detail, these accounts are required so that A
 can create your associated account. By convention, the names must be as given here.
 
 For more details on how to use `#[account(associated)]`, see [docs.rs](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
+
+### Defining an Associated Account
+
+The new `#[acount(associated)]` attribute will allow you to create a new associated account similar to `#[account(init)]`, but
+to actually define an account as associated, one must use the `#[associated]` attribute *instead* of the `#[account]` attribute.
+
+This new `#[associated]` attribute extends `#[account]` to include two things
+
+* A `Default` implementation, which is required for automatic size detection (performed when `#[account(space = "<size>")]` is omitted from the accounts context).
+* The implementation of the [Bump](https://docs.rs/anchor-lang/latest/anchor_lang/trait.Bump.html) trait, which is a bit of an implementation but is required for program derived addresses on Solana.
 
 ## Using the Client
 
