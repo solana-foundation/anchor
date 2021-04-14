@@ -475,7 +475,10 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                 remaining_accounts,
                             ),
                             #(#ctor_untyped_args),*
-                        )?;
+                        ).map_err(|e| {
+                            anchor_lang::solana_program::msg!(&e.to_string());
+                            e
+                        })?;
 
                         // Create the solana account for the ctor data.
                         let from = ctor_accounts.from.key;
@@ -572,7 +575,10 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                 state.#ix_name(
                                     ctx,
                                     #(#ix_arg_names),*
-                                )?;
+                                ).map_err(|e| {
+                                    anchor_lang::solana_program::msg!(&e.to_string());
+                                    e
+                                })?;
 
                                 // Serialize the state and save it to storage.
                                 accounts.exit(program_id)?;
@@ -648,7 +654,10 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                             state.#ix_name(
                                                 ctx,
                                                 #(#ix_arg_names),*
-                                            )?;
+                                            ).map_err(|e| {
+                                                anchor_lang::solana_program::msg!(&e.to_string());
+                                                e
+                                            })?;
 
                                             // Serialize the state and save it to storage.
                                             accounts.exit(program_id)?;
@@ -677,7 +686,10 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                             #state_name::#ix_name(
                                                 Context::new(program_id, &mut accounts, remaining_accounts),
                                                 #(#ix_arg_names),*
-                                            )?;
+                                            ).map_err(|e| {
+                                                anchor_lang::solana_program::msg!(&e.to_string());
+                                                e
+                                            })?;
                                             accounts.exit(program_id)
                                         }
                                     }
