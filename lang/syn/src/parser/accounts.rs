@@ -41,8 +41,8 @@ fn parse_account_attr(f: &syn::Field) -> Option<&syn::Attribute> {
 
 fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField {
     let ident = f.ident.clone().unwrap();
-    let (constraints, is_mut, is_signer, is_init, payer, space, associated_seed) = match anchor {
-        None => (vec![], false, false, false, None, None, None),
+    let (constraints, is_mut, is_signer, is_init, payer, space, associated_seeds) = match anchor {
+        None => (vec![], false, false, false, None, None, Vec::new()),
         Some(anchor) => parse_constraints(anchor),
     };
     match is_field_primitive(f) {
@@ -57,7 +57,7 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
                 is_init,
                 payer,
                 space,
-                associated_seed,
+                associated_seeds,
             })
         }
         false => AccountField::AccountsStruct(CompositeField {
@@ -186,7 +186,7 @@ fn parse_constraints(
     bool,
     Option<syn::Ident>,
     Option<proc_macro2::TokenStream>,
-    Option<syn::Ident>,
+    Vec<syn::Ident>,
 ) {
     let mut tts = anchor.tokens.clone().into_iter();
     let g_stream = match tts.next().expect("Must have a token group") {
@@ -202,7 +202,7 @@ fn parse_constraints(
     let mut payer = None;
     let mut space = None;
     let mut is_associated = false;
-    let mut associated_seed = None;
+    let mut associated_seeds = Vec::new();
 
     let mut inner_tts = g_stream.into_iter();
     while let Some(token) = inner_tts.next() {
@@ -333,10 +333,10 @@ fn parse_constraints(
                         }
                         _ => panic!("invalid syntax"),
                     };
-                    associated_seed = match inner_tts.next().unwrap() {
-                        proc_macro2::TokenTree::Ident(ident) => Some(ident),
+                    associated_seeds.push(match inner_tts.next().unwrap() {
+                        proc_macro2::TokenTree::Ident(ident) => ident,
                         _ => panic!("invalid syntax"),
-                    };
+                    });
                 }
                 "payer" => {
                     match inner_tts.next().unwrap() {
@@ -408,6 +408,6 @@ fn parse_constraints(
         is_init,
         payer,
         space,
-        associated_seed,
+        associated_seeds,
     )
 }

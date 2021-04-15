@@ -177,7 +177,7 @@ pub struct Field {
     // Used by the associated attribute only.
     pub space: Option<proc_macro2::TokenStream>,
     // Used by the associated attribute only.
-    pub associated_seed: Option<syn::Ident>,
+    pub associated_seeds: Vec<syn::Ident>,
 }
 
 impl Field {

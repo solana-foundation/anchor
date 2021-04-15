@@ -98,11 +98,12 @@ pub struct TestStateCpi<'info> {
 // the program.
 #[derive(Accounts)]
 pub struct TestAssociatedAccount<'info> {
-    #[account(associated = authority, with = state)]
+    #[account(associated = authority, with = state, with = data)]
     my_account: ProgramAccount<'info, TestData>,
     #[account(mut, signer)]
     authority: AccountInfo<'info>,
     state: ProgramState<'info, MyState>,
+    data: ProgramAccount<'info, Data>,
     rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
 }

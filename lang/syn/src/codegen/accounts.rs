@@ -540,37 +540,43 @@ pub fn generate_constraint_associated(
         },
     };
 
-    let seeds_no_nonce = match &f.associated_seed {
-        None => quote! {
+    let seeds_no_nonce = match f.associated_seeds.len() {
+        0 => quote! {
             [
                 &b"anchor"[..],
                 #associated_target.to_account_info().key.as_ref(),
             ]
         },
-        Some(seed) => quote! {
-            [
-                &b"anchor"[..],
-                #associated_target.to_account_info().key.as_ref(),
-                #seed.to_account_info().key.as_ref(),
-            ]
-        },
+        _ => {
+            let seeds = to_seeds_tts(&f.associated_seeds);
+            quote! {
+                [
+                    &b"anchor"[..],
+                    #associated_target.to_account_info().key.as_ref(),
+                    #seeds
+                ]
+            }
+        }
     };
-    let seeds_with_nonce = match &f.associated_seed {
-        None => quote! {
+    let seeds_with_nonce = match f.associated_seeds.len() {
+        0 => quote! {
             [
                 &b"anchor"[..],
                 #associated_target.to_account_info().key.as_ref(),
                 &[nonce],
             ]
         },
-        Some(seed) => quote! {
-            [
-                &b"anchor"[..],
-                #associated_target.to_account_info().key.as_ref(),
-                #seed.to_account_info().key.as_ref(),
-                &[nonce],
-            ]
-        },
+        _ => {
+            let seeds = to_seeds_tts(&f.associated_seeds);
+            quote! {
+                [
+                    &b"anchor"[..],
+                    #associated_target.to_account_info().key.as_ref(),
+                    #seeds
+                    &[nonce],
+                ]
+            }
+        }
     };
 
     quote! {
@@ -618,4 +624,20 @@ pub fn generate_constraint_associated(
             pa
         };
     }
+}
+
+// Returns the inner part of the seeds slice as a token stream.
+fn to_seeds_tts(seeds: &[syn::Ident]) -> proc_macro2::TokenStream {
+    assert!(seeds.len() > 0);
+    let seed_0 = &seeds[0];
+    let mut tts = quote! {
+        #seed_0.to_account_info().key.as_ref(),
+    };
+    for seed in &seeds[1..] {
+        tts = quote! {
+            #tts
+            #seed.to_account_info().key.as_ref(),
+        };
+    }
+    tts
 }

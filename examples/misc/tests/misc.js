@@ -125,6 +125,7 @@ describe("misc", () => {
         Buffer.from([97, 110, 99, 104, 111, 114]), // b"anchor".
         program.provider.wallet.publicKey.toBuffer(),
         state.toBuffer(),
+        data.publicKey.toBuffer(),
       ],
       program.programId
     );
@@ -145,6 +146,7 @@ describe("misc", () => {
         myAccount: associatedAccount,
         authority: program.provider.wallet.publicKey,
         state,
+        data: data.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
@@ -152,7 +154,8 @@ describe("misc", () => {
     // Try out the generated associated method.
     const account = await program.account.testData.associated(
       program.provider.wallet.publicKey,
-      state
+      state,
+      data.publicKey,
     );
     assert.ok(account.data.toNumber() === 1234);
   });
