@@ -123,6 +123,11 @@ pub enum Command {
         #[clap(short, long)]
         url: Option<String>,
     },
+    /// Cluster commands.
+    Cluster {
+        #[clap(subcommand)]
+        subcmd: ClusterCommand,
+    },
 }
 
 #[derive(Debug, Clap)]
@@ -197,6 +202,12 @@ pub enum IdlCommand {
     },
 }
 
+#[derive(Debug, Clap)]
+pub enum ClusterCommand {
+    /// Prints common cluster urls.
+    List,
+}
+
 fn main() -> Result<()> {
     let opts = Opts::parse();
     match opts.command {
@@ -223,6 +234,7 @@ fn main() -> Result<()> {
         } => test(skip_deploy, skip_local_validator, file),
         #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
+        Command::Cluster { subcmd } => cluster(subcmd),
     }
 }
 
@@ -1492,4 +1504,13 @@ fn airdrop(url: Option<String>) -> Result<()> {
         }
         std::thread::sleep(std::time::Duration::from_millis(10000));
     }
+}
+
+fn cluster(_cmd: ClusterCommand) -> Result<()> {
+    println!("Cluster Endpoints:\n");
+    println!("* Mainnet - https://solana-api.projectserum.com");
+    println!("* Mainnet - https://api.mainnet-beta.solana.com");
+    println!("* Devnet  - https://devnet.solana.com");
+    println!("* Testnet - https://testnet.solana.com");
+    Ok(())
 }
