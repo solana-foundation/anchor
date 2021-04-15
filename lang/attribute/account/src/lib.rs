@@ -102,6 +102,7 @@ pub fn associated(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let mut account_strct = parse_macro_input!(input as syn::ItemStruct);
+    let account_name = &account_strct.ident;
 
     // Add a `__nonce: u8` field to the struct to hold the bump seed for
     // the program dervied address.
@@ -135,5 +136,11 @@ pub fn associated(
         #[anchor_lang::account]
         #[derive(Default)]
         #account_strct
+
+        impl anchor_lang::Bump for #account_name {
+            fn seed(&self) -> u8 {
+                self.__nonce
+            }
+        }
     })
 }
