@@ -90,7 +90,7 @@ where
 {
     #[inline(never)]
     fn try_accounts_init(
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
@@ -98,7 +98,11 @@ where
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
-        ProgramAccount::try_from_init(account)
+        let pa = ProgramAccount::try_from_init(account)?;
+        if pa.inner.info.owner != program_id {
+            return Err(ProgramError::Custom(1)); // todo: proper error
+        }
+        Ok(pa)
     }
 }
 

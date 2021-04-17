@@ -14,6 +14,8 @@ incremented for features.
 ## Features
 
 * lang: Allows one to specify multiple `with` targets when creating associated acconts ([#197](https://github.com/project-serum/anchor/pull/197)).
+* lang, ts: Add array support ([#202](https://github.com/project-serum/anchor/pull/202)).
+* lang: Zero copy deserialization for accounts ([#202](https://github.com/project-serum/anchor/pull/202)).
 
 ## [0.4.3] - 2021-04-13
 

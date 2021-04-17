@@ -2,7 +2,7 @@ use crate::{
     AccountField, AccountsStruct, CompositeField, Constraint, ConstraintAssociated,
     ConstraintBelongsTo, ConstraintExecutable, ConstraintLiteral, ConstraintOwner,
     ConstraintRentExempt, ConstraintSeeds, ConstraintSigner, ConstraintState, CpiAccountTy,
-    CpiStateTy, Field, ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
+    CpiStateTy, Field, LoaderTy, ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
 };
 
 pub fn parse(strct: &syn::ItemStruct) -> AccountsStruct {
@@ -72,7 +72,7 @@ fn parse_field(f: &syn::Field, anchor: Option<&syn::Attribute>) -> AccountField 
 fn is_field_primitive(f: &syn::Field) -> bool {
     match ident_string(f).as_str() {
         "ProgramState" | "ProgramAccount" | "CpiAccount" | "Sysvar" | "AccountInfo"
-        | "CpiState" => true,
+        | "CpiState" | "Loader" => true,
         _ => false,
     }
 }
@@ -89,6 +89,7 @@ fn parse_ty(f: &syn::Field) -> Ty {
         "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)),
         "AccountInfo" => Ty::AccountInfo,
+        "Loader" => Ty::Loader(parse_program_account_zero_copy(&path)),
         _ => panic!("invalid account type"),
     }
 }
@@ -122,6 +123,11 @@ fn parse_cpi_account(path: &syn::Path) -> CpiAccountTy {
 fn parse_program_account(path: &syn::Path) -> ProgramAccountTy {
     let account_ident = parse_account(path);
     ProgramAccountTy { account_ident }
+}
+
+fn parse_program_account_zero_copy(path: &syn::Path) -> LoaderTy {
+    let account_ident = parse_account(path);
+    LoaderTy { account_ident }
 }
 
 fn parse_account(path: &syn::Path) -> syn::Ident {

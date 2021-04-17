@@ -23,6 +23,7 @@
 
 extern crate self as anchor_lang;
 
+use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
@@ -38,28 +39,21 @@ mod ctor;
 mod error;
 #[doc(hidden)]
 pub mod idl;
+mod loader;
 mod program_account;
 mod state;
 mod sysvar;
 mod vec;
 
-// Internal module used by macros.
-#[doc(hidden)]
-pub mod __private {
-    pub use crate::ctor::Ctor;
-    pub use crate::error::Error;
-    pub use anchor_attribute_event::EventIndex;
-    pub use base64;
-}
-
 pub use crate::context::{Context, CpiContext, CpiStateContext};
 pub use crate::cpi_account::CpiAccount;
 pub use crate::cpi_state::CpiState;
+pub use crate::loader::Loader;
 pub use crate::program_account::ProgramAccount;
 pub use crate::state::ProgramState;
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
-pub use anchor_attribute_account::{account, associated};
+pub use anchor_attribute_account::{account, associated, zero_copy};
 pub use anchor_attribute_error::error;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_interface::interface;
@@ -172,6 +166,9 @@ pub trait AccountDeserialize: Sized {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 }
 
+/// An account data structure capable of zero copy deserialization.
+pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
+
 /// Calculates the data for an instruction invocation, where the data is
 /// `Sha256(<namespace>::<method_name>)[..8] || BorshSerialize(args)`.
 /// `args` is a borsh serialized struct of named fields for each argument given
@@ -215,10 +212,10 @@ pub trait Bump {
 pub mod prelude {
     pub use super::{
         access_control, account, associated, emit, error, event, interface, program, state,
-        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit,
+        zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit,
         AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext, CpiState,
-        CpiStateContext, ProgramAccount, ProgramState, Sysvar, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        CpiStateContext, Loader, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
+        ToAccountInfos, ToAccountMetas,
     };
 
     pub use borsh;
@@ -240,4 +237,32 @@ pub mod prelude {
     pub use solana_program::sysvar::stake_history::StakeHistory;
     pub use solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
+}
+
+// Internal module used by macros.
+#[doc(hidden)]
+pub mod __private {
+    use solana_program::pubkey::Pubkey;
+
+    pub use crate::ctor::Ctor;
+    pub use crate::error::Error;
+    pub use anchor_attribute_account::ZeroCopyAccessor;
+    pub use anchor_attribute_event::EventIndex;
+    pub use base64;
+    pub use bytemuck;
+
+    // Very experimental trait.
+    pub trait ZeroCopyAccessor<Ty> {
+        fn get(&self) -> Ty;
+        fn set(input: &Ty) -> Self;
+    }
+
+    impl ZeroCopyAccessor<Pubkey> for [u8; 32] {
+        fn get(&self) -> Pubkey {
+            Pubkey::new(self)
+        }
+        fn set(input: &Pubkey) -> [u8; 32] {
+            input.to_bytes()
+        }
+    }
 }

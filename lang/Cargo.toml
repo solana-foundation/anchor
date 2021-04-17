@@ -18,9 +18,10 @@ anchor-attribute-error = { path = "./attribute/error", version = "0.4.3" }
 anchor-attribute-program = { path = "./attribute/program", version = "0.4.3" }
 anchor-attribute-state = { path = "./attribute/state", version = "0.4.3" }
 anchor-attribute-interface = { path = "./attribute/interface", version = "0.4.3" }
-anchor-derive-accounts = { path = "./derive/accounts", version = "0.4.3" }
 anchor-attribute-event = { path = "./attribute/event", version = "0.4.3" }
+anchor-derive-accounts = { path = "./derive/accounts", version = "0.4.3" }
+base64 = "0.13.0"
 borsh = "0.8.2"
+bytemuck = "1.4.0"
 solana-program = "1.6.3"
 thiserror = "1.0.20"
-base64 = "0.13.0"

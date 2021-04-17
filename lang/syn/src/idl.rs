@@ -128,6 +128,7 @@ pub enum IdlType {
     Defined(String),
     Option(Box<IdlType>),
     Vec(Box<IdlType>),
+    Array(Box<IdlType>, usize),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -140,7 +141,6 @@ impl std::str::FromStr for IdlType {
         // Eliminate whitespace.
         let mut s = s.to_string();
         s.retain(|c| !c.is_whitespace());
-
         let r = match s.as_str() {
             "bool" => IdlType::Bool,
             "u8" => IdlType::U8,
@@ -158,7 +158,17 @@ impl std::str::FromStr for IdlType {
             "Pubkey" => IdlType::PublicKey,
             _ => match s.to_string().strip_prefix("Option<") {
                 None => match s.to_string().strip_prefix("Vec<") {
-                    None => IdlType::Defined(s.to_string()),
+                    None => match s.to_string().strip_prefix("[") {
+                        None => IdlType::Defined(s.to_string()),
+                        Some(inner) => {
+                            let inner = &inner[..inner.len() - 1];
+                            let mut parts = inner.split(";");
+                            let ty = IdlType::from_str(parts.next().unwrap()).unwrap();
+                            let len = parts.next().unwrap().parse::<usize>().unwrap();
+                            assert!(parts.next().is_none());
+                            IdlType::Array(Box::new(ty), len)
+                        }
+                    },
                     Some(inner) => {
                         let inner_ty = Self::from_str(
                             inner

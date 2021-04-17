@@ -399,8 +399,12 @@ pub fn generate_constraint_belongs_to(
 ) -> proc_macro2::TokenStream {
     let target = c.join_target.clone();
     let ident = &f.ident;
+    let field = match &f.ty {
+        Ty::Loader(_) => quote! {#ident.load()?},
+        _ => quote! {#ident},
+    };
     quote! {
-        if &#ident.#target != #target.to_account_info().key {
+        if &#field.#target != #target.to_account_info().key {
             return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
         }
     }
@@ -454,6 +458,7 @@ pub fn generate_constraint_rent_exempt(
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
+        Ty::Loader(_) => quote! { #ident.to_account_info() },
         _ => panic!("Invalid syntax: rent exemption cannot be specified."),
     };
     match c {
@@ -497,7 +502,7 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
     let ident = &f.ident;
     let account_ty = match &f.ty {
         Ty::CpiState(ty) => &ty.account_ident,
-        _ => panic!("Invalid syntax"),
+        _ => panic!("Invalid state constraint"),
     };
     quote! {
         // Checks the given state account is the canonical state account for
@@ -517,15 +522,28 @@ pub fn generate_constraint_associated(
 ) -> proc_macro2::TokenStream {
     let associated_target = c.associated_target.clone();
     let field = &f.ident;
-    let account_ty = match &f.ty {
-        Ty::ProgramAccount(ty) => &ty.account_ident,
-        _ => panic!("Invalid syntax"),
+    let (account_ty, is_zero_copy) = match &f.ty {
+        Ty::ProgramAccount(ty) => (&ty.account_ident, false),
+        Ty::Loader(ty) => (&ty.account_ident, true),
+        _ => panic!("Invalid associated constraint"),
     };
 
     let space = match &f.space {
-        None => quote! {
-            let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+        // If no explicit space param was given, serialize the type to bytes
+        // and take the length (with +8 for the discriminator.)
+        None => match is_zero_copy {
+            false => {
+                quote! {
+                    let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+                }
+            }
+            true => {
+                quote! {
+                    let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
+                }
+            }
         },
+        // Explicit account size given. Use it.
         Some(s) => quote! {
             let space = #s;
         },
@@ -579,8 +597,24 @@ pub fn generate_constraint_associated(
         }
     };
 
+    let account_wrapper_ty = match is_zero_copy {
+        false => quote! {
+            anchor_lang::ProgramAccount
+        },
+        true => quote! {
+            anchor_lang::Loader
+        },
+    };
+    let nonce_assignment = match is_zero_copy {
+        false => quote! {},
+        // Zero copy is not deserialized, so the data must be lazy loaded.
+        true => quote! {
+            .load_init()?
+        },
+    };
+
     quote! {
-        let #field: anchor_lang::ProgramAccount<#account_ty> = {
+        let #field: #account_wrapper_ty<#account_ty> = {
             #space
             #payer
 
@@ -617,10 +651,10 @@ pub fn generate_constraint_associated(
             })?;
             // For now, we assume all accounts created with the `associated`
             // attribute have a `nonce` field in their account.
-            let mut pa: anchor_lang::ProgramAccount<#account_ty> = anchor_lang::ProgramAccount::try_from_init(
+            let mut pa: #account_wrapper_ty<#account_ty> = #account_wrapper_ty::try_from_init(
                 &#field,
             )?;
-            pa.__nonce = nonce;
+            pa#nonce_assignment.__nonce = nonce;
             pa
         };
     }

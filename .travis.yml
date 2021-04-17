@@ -19,7 +19,7 @@ _examples: &examples
   - npm install -g mocha
   - npm install -g ts-mocha
   - npm install -g typescript
-  - npm install -g @project-serum/anchor
+  - cd ts && yarn && yarn build && npm link && cd ../
   - npm install -g @project-serum/serum
   - npm install -g @project-serum/common
   - npm install -g @solana/spl-token
@@ -28,7 +28,7 @@ _examples: &examples
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
   - export NODE_PATH="/home/travis/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/:$NODE_PATH"
   - yes | solana-keygen new
-  - cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
+  - cargo install --path $TRAVIS_BUILD_DIR/cli anchor-cli --locked
 
 jobs:
   include:
@@ -59,6 +59,7 @@ jobs:
         - pushd examples/events && anchor test && popd
         - pushd examples/cashiers-check && anchor test && popd
         - pushd examples/typescript && yarn && anchor test && popd
+        - pushd examples/zero-copy && yarn && anchor test && popd
     - <<: *examples
       name: Runs the examples 2
       script:
