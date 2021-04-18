@@ -145,7 +145,7 @@ pub fn generate_dispatch(program: &Program) -> proc_macro2::TokenStream {
                             ix.args.iter().map(|arg| &arg.name).collect();
                         let name = &ix.raw_method.sig.ident.to_string();
                         let ix_method_name: proc_macro2::TokenStream =
-                            { format!("__{}", name).parse().unwrap() };
+                        { format!("__{}", name).parse().unwrap() };
                         let variant_arm =
                             generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
                         let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
@@ -447,6 +447,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
             }
         }
     };
+    // Constructor handler.
     let non_inlined_ctor: proc_macro2::TokenStream = match &program.state {
         None => quote! {},
         Some(state) => match state.ctor_and_anchor.as_ref() {
@@ -456,72 +457,145 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                 let ctor_untyped_args = generate_ctor_args(state);
                 let name = &state.strct.ident;
                 let mod_name = &program.name;
-                quote! {
-                    // One time state account initializer. Will faill on subsequent
-                    // invocations.
-                    #[inline(never)]
-                    pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], #(#ctor_typed_args),*) -> ProgramResult {
-                        let mut remaining_accounts: &[AccountInfo] = accounts;
+                if state.is_zero_copy {
+                    quote! {
+                        // One time state account initializer. Will faill on subsequent
+                        // invocations.
+                        #[inline(never)]
+                        pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], #(#ctor_typed_args),*) -> ProgramResult {
+                            let mut remaining_accounts: &[AccountInfo] = accounts;
 
-                        // Deserialize accounts.
-                        let ctor_accounts = anchor_lang::__private::Ctor::try_accounts(program_id, &mut remaining_accounts)?;
-                        let mut ctor_user_def_accounts = #anchor_ident::try_accounts(program_id, &mut remaining_accounts)?;
+                            // Deserialize accounts.
+                            let ctor_accounts = anchor_lang::__private::Ctor::try_accounts(program_id, &mut remaining_accounts)?;
+                            let mut ctor_user_def_accounts = #anchor_ident::try_accounts(program_id, &mut remaining_accounts)?;
 
-                        // Invoke the ctor.
-                        let instance = #mod_name::#name::new(
-                            anchor_lang::Context::new(
-                                program_id,
-                                &mut ctor_user_def_accounts,
-                                remaining_accounts,
-                            ),
-                            #(#ctor_untyped_args),*
-                        ).map_err(|e| {
-                            anchor_lang::solana_program::msg!(&e.to_string());
-                            e
-                        })?;
+                            // Create the solana account for the ctor data.
+                            let from = ctor_accounts.from.key;
+                            let (base, nonce) = Pubkey::find_program_address(&[], ctor_accounts.program.key);
+                            let seed = anchor_lang::__private::PROGRAM_STATE_SEED;
+                            let owner = ctor_accounts.program.key;
+                            let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
+                            let space = 8 + std::mem::size_of::<#name>();
+                            let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
+                            let seeds = &[&[nonce][..]];
+                            let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
+                                from,
+                                &to,
+                                &base,
+                                seed,
+                                lamports,
+                                space as u64,
+                                owner,
+                            );
+                            anchor_lang::solana_program::program::invoke_signed(
+                                &ix,
+                                &[
+                                    ctor_accounts.from.clone(),
+                                    ctor_accounts.to.clone(),
+                                    ctor_accounts.base.clone(),
+                                    ctor_accounts.system_program.clone(),
+                                ],
+                                &[seeds],
+                            )?;
 
-                        // Create the solana account for the ctor data.
-                        let from = ctor_accounts.from.key;
-                        let (base, nonce) = Pubkey::find_program_address(&[], ctor_accounts.program.key);
-                        let seed = anchor_lang::ProgramState::<#name>::seed();
-                        let owner = ctor_accounts.program.key;
-                        let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
-                        let space = anchor_lang::AccountSize::size(&instance)?;
-                        let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
-                        let seeds = &[&[nonce][..]];
-                        let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
-                            from,
-                            &to,
-                            &base,
-                            seed,
-                            lamports,
-                            space,
-                            owner,
-                        );
-                        anchor_lang::solana_program::program::invoke_signed(
-                            &ix,
-                            &[
-                                ctor_accounts.from.clone(),
-                                ctor_accounts.to.clone(),
-                                ctor_accounts.base.clone(),
-                                ctor_accounts.system_program.clone(),
-                            ],
-                            &[seeds],
-                        )?;
+                            // Zero copy deserialize.
+                            let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from_init(&ctor_accounts.to)?;
 
-                        // Serialize the state and save it to storage.
-                        ctor_user_def_accounts.exit(program_id)?;
-                        let mut data = ctor_accounts.to.try_borrow_mut_data()?;
-                        let dst: &mut [u8] = &mut data;
-                        let mut cursor = std::io::Cursor::new(dst);
-                        instance.try_serialize(&mut cursor)?;
+                            // Invoke the ctor in a new lexical scope so that
+                            // the zero-copy RefMut gets dropped. Required
+                            // so that we can subsequently run the exit routine.
+                            {
+                                let mut instance = loader.load_init()?;
+                                instance.new(
+                                    anchor_lang::Context::new(
+                                        program_id,
+                                        &mut ctor_user_def_accounts,
+                                        remaining_accounts,
+                                    ),
+                                    #(#ctor_untyped_args),*
+                                ).map_err(|e| {
+                                    anchor_lang::solana_program::msg!(&e.to_string());
+                                    e
+                                })?;
+                            }
 
-                        Ok(())
+                            // Exit routines.
+                            ctor_user_def_accounts.exit(program_id)?;
+                            loader.exit(program_id)?;
+
+                            Ok(())
+                        }
+                    }
+                } else {
+                    quote! {
+                        // One time state account initializer. Will faill on subsequent
+                        // invocations.
+                        #[inline(never)]
+                        pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], #(#ctor_typed_args),*) -> ProgramResult {
+                            let mut remaining_accounts: &[AccountInfo] = accounts;
+
+                            // Deserialize accounts.
+                            let ctor_accounts = anchor_lang::__private::Ctor::try_accounts(program_id, &mut remaining_accounts)?;
+                            let mut ctor_user_def_accounts = #anchor_ident::try_accounts(program_id, &mut remaining_accounts)?;
+
+                            // Invoke the ctor.
+                            let instance = #mod_name::#name::new(
+                                anchor_lang::Context::new(
+                                    program_id,
+                                    &mut ctor_user_def_accounts,
+                                    remaining_accounts,
+                                ),
+                                #(#ctor_untyped_args),*
+                            ).map_err(|e| {
+                                anchor_lang::solana_program::msg!(&e.to_string());
+                                e
+                            })?;
+
+                            // Create the solana account for the ctor data.
+                            let from = ctor_accounts.from.key;
+                            let (base, nonce) = Pubkey::find_program_address(&[], ctor_accounts.program.key);
+                            let seed = anchor_lang::ProgramState::<#name>::seed();
+                            let owner = ctor_accounts.program.key;
+                            let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
+                            let space = anchor_lang::__private::AccountSize::size(&instance)?;
+                            let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
+                            let seeds = &[&[nonce][..]];
+                            let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
+                                from,
+                                &to,
+                                &base,
+                                seed,
+                                lamports,
+                                space,
+                                owner,
+                            );
+                            anchor_lang::solana_program::program::invoke_signed(
+                                &ix,
+                                &[
+                                    ctor_accounts.from.clone(),
+                                    ctor_accounts.to.clone(),
+                                    ctor_accounts.base.clone(),
+                                    ctor_accounts.system_program.clone(),
+                                ],
+                                &[seeds],
+                            )?;
+
+                            // Serialize the state and save it to storage.
+                            ctor_user_def_accounts.exit(program_id)?;
+                            let mut data = ctor_accounts.to.try_borrow_mut_data()?;
+                            let dst: &mut [u8] = &mut data;
+                            let mut cursor = std::io::Cursor::new(dst);
+                            instance.try_serialize(&mut cursor)?;
+
+                            Ok(())
+                        }
                     }
                 }
             }
         },
     };
+
+    // State method handlers.
     let non_inlined_state_handlers: Vec<proc_macro2::TokenStream> = match &program.state {
         None => vec![],
         Some(state) => state
@@ -541,60 +615,107 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                         let ix_name = &ix.raw_method.sig.ident;
                         let state_ty: proc_macro2::TokenStream = state.name.parse().unwrap();
                         let anchor_ident = &ix.anchor_ident;
-                        quote! {
-                            #[inline(never)]
-                            pub fn #private_ix_name(
-                                program_id: &Pubkey,
-                                accounts: &[AccountInfo],
-                                #(#ix_params),*
-                            ) -> ProgramResult {
+                        let name = &state.strct.ident;
+                        let mod_name = &program.name;
 
-                                let mut remaining_accounts: &[AccountInfo] = accounts;
-                                if remaining_accounts.is_empty() {
-                                    return Err(ProgramError::Custom(1)); // todo
+                        if state.is_zero_copy {
+                            quote! {
+                                #[inline(never)]
+                                pub fn #private_ix_name(
+                                    program_id: &Pubkey,
+                                    accounts: &[AccountInfo],
+                                    #(#ix_params),*
+                                ) -> ProgramResult {
+                                    let mut remaining_accounts: &[AccountInfo] = accounts;
+                                    if remaining_accounts.is_empty() {
+                                        return Err(ProgramError::Custom(1)); // todo
+                                    }
+
+                                    let state_account = &remaining_accounts[0];
+                                    let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from(&state_account)?;
+                                    remaining_accounts = &remaining_accounts[1..];
+
+                                    // Deserialize the program's execution context.
+                                    let mut accounts = #anchor_ident::try_accounts(
+                                        program_id,
+                                        &mut remaining_accounts,
+                                    )?;
+                                    let ctx = Context::new(program_id, &mut accounts, remaining_accounts);
+                                    // Execute user defined function.
+                                    {
+                                        let mut state = loader.load_mut()?;
+                                        state.#ix_name(
+                                            ctx,
+                                            #(#ix_arg_names),*
+                                        ).map_err(|e| {
+                                            anchor_lang::solana_program::msg!(&e.to_string());
+                                            e
+                                        })?;
+                                    }
+                                    // Serialize the state and save it to storage.
+                                    accounts.exit(program_id)?;
+                                    loader.exit(program_id)?;
+
+                                    Ok(())
                                 }
+                            }
+                        } else {
+                            quote! {
+                                #[inline(never)]
+                                pub fn #private_ix_name(
+                                    program_id: &Pubkey,
+                                    accounts: &[AccountInfo],
+                                    #(#ix_params),*
+                                ) -> ProgramResult {
+                                    let mut remaining_accounts: &[AccountInfo] = accounts;
+                                    if remaining_accounts.is_empty() {
+                                        return Err(ProgramError::Custom(1)); // todo
+                                    }
 
-                                // Deserialize the program state account.
-                                let state_account = &remaining_accounts[0];
-                                let mut state: #state_ty = {
-                                    let data = state_account.try_borrow_data()?;
-                                    let mut sliced: &[u8] = &data;
-                                    anchor_lang::AccountDeserialize::try_deserialize(&mut sliced)?
-                                };
+                                    // Deserialize the program state account.
+                                    let state_account = &remaining_accounts[0];
+                                    let mut state: #state_ty = {
+                                        let data = state_account.try_borrow_data()?;
+                                        let mut sliced: &[u8] = &data;
+                                        anchor_lang::AccountDeserialize::try_deserialize(&mut sliced)?
+                                    };
 
-                                remaining_accounts = &remaining_accounts[1..];
+                                    remaining_accounts = &remaining_accounts[1..];
 
-                                // Deserialize the program's execution context.
-                                let mut accounts = #anchor_ident::try_accounts(
-                                    program_id,
-                                    &mut remaining_accounts,
-                                )?;
-                                let ctx = Context::new(program_id, &mut accounts, remaining_accounts);
+                                    // Deserialize the program's execution context.
+                                    let mut accounts = #anchor_ident::try_accounts(
+                                        program_id,
+                                        &mut remaining_accounts,
+                                    )?;
+                                    let ctx = Context::new(program_id, &mut accounts, remaining_accounts);
 
-                                // Execute user defined function.
-                                state.#ix_name(
-                                    ctx,
-                                    #(#ix_arg_names),*
-                                ).map_err(|e| {
-                                    anchor_lang::solana_program::msg!(&e.to_string());
-                                    e
-                                })?;
+                                    // Execute user defined function.
+                                    state.#ix_name(
+                                        ctx,
+                                        #(#ix_arg_names),*
+                                    ).map_err(|e| {
+                                        anchor_lang::solana_program::msg!(&e.to_string());
+                                        e
+                                    })?;
 
-                                // Serialize the state and save it to storage.
-                                accounts.exit(program_id)?;
-                                let mut data = state_account.try_borrow_mut_data()?;
-                                let dst: &mut [u8] = &mut data;
-                                let mut cursor = std::io::Cursor::new(dst);
-                                state.try_serialize(&mut cursor)?;
+                                    // Serialize the state and save it to storage.
+                                    accounts.exit(program_id)?;
+                                    let mut data = state_account.try_borrow_mut_data()?;
+                                    let dst: &mut [u8] = &mut data;
+                                    let mut cursor = std::io::Cursor::new(dst);
+                                    state.try_serialize(&mut cursor)?;
 
-                                Ok(())
+                                    Ok(())
+                                }
                             }
                         }
                     })
                     .collect()
             })
-            .unwrap_or_default()
+            .unwrap_or_default(),
     };
+
+    // State trait handlers.
     let non_inlined_state_trait_handlers: Vec<proc_macro2::TokenStream> = match &program.state {
         None => Vec::new(),
         Some(state) => state
@@ -618,6 +739,12 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                 let ix_name = &ix.raw_method.sig.ident;
                                 let state_ty: proc_macro2::TokenStream = state.name.parse().unwrap();
                                 let anchor_ident = &ix.anchor_ident;
+
+                                if state.is_zero_copy {
+                                    // Easy to implement. Just need to write a test.
+                                    // Feel free to open a PR.
+                                    panic!("Trait implementations not yet implemented for zero copy state structs. Please file an issue.");
+                                }
 
                                 if ix.has_receiver {
                                     quote! {
@@ -802,7 +929,12 @@ fn generate_ctor_typed_args(state: &State) -> Vec<syn::PatType> {
                         }
                         Some(pat_ty.clone())
                     }
-                    _ => panic!("Invalid syntaxe,"),
+                    _ => {
+                        if !state.is_zero_copy {
+                            panic!("Cannot pass self as parameter")
+                        }
+                        None
+                    }
                 })
                 .collect()
         })
@@ -826,7 +958,12 @@ fn generate_ctor_args(state: &State) -> Vec<syn::Pat> {
                         }
                         Some(*pat_ty.pat.clone())
                     }
-                    _ => panic!(""),
+                    _ => {
+                        if !state.is_zero_copy {
+                            panic!("Cannot pass self as parameter");
+                        }
+                        None
+                    }
                 })
                 .collect()
         })

@@ -33,6 +33,7 @@ pub struct State {
     pub ctor_and_anchor: Option<(syn::ImplItemMethod, syn::Ident)>,
     pub impl_block_and_methods: Option<(syn::ItemImpl, Vec<StateIx>)>,
     pub interfaces: Option<Vec<StateInterface>>,
+    pub is_zero_copy: bool,
 }
 
 #[derive(Debug)]

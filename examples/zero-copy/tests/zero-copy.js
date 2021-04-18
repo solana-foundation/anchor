@@ -9,6 +9,45 @@ describe("zero-copy", () => {
 
   const foo = new anchor.web3.Account();
 
+  it("Creates zero copy state", async () => {
+    await program.state.rpc.new({
+      accounts: {
+        authority: program.provider.wallet.publicKey,
+      },
+    });
+    const state = await program.state();
+    assert.ok(state.authority.equals(program.provider.wallet.publicKey));
+    assert.ok(state.events.length === 250);
+    state.events.forEach((event, idx) => {
+      assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+      assert.ok(event.data.toNumber() === 0);
+    });
+  });
+
+  it("Updates zero copy state", async () => {
+    let event = {
+      from: new anchor.web3.PublicKey(),
+      data: new anchor.BN(1234),
+    };
+    await program.state.rpc.setEvent(5, event, {
+      accounts: {
+        authority: program.provider.wallet.publicKey,
+      },
+    });
+    const state = await program.state();
+    assert.ok(state.authority.equals(program.provider.wallet.publicKey));
+    assert.ok(state.events.length === 250);
+    state.events.forEach((event, idx) => {
+      if (idx === 5) {
+        assert.ok(event.from.equals(event.from));
+        assert.ok(event.data.eq(event.data));
+      } else {
+        assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+        assert.ok(event.data.toNumber() === 0);
+      }
+    });
+  });
+
   it("Is creates a zero copy account", async () => {
     await program.rpc.createFoo({
       accounts: {

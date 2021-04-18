@@ -9,6 +9,8 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::ops::{Deref, DerefMut};
 
+pub const PROGRAM_STATE_SEED: &'static str = "unversioned";
+
 /// Boxed container for the program state singleton.
 #[derive(Clone)]
 pub struct ProgramState<'info, T: AccountSerialize + AccountDeserialize + Clone> {
@@ -39,7 +41,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
     }
 
     pub fn seed() -> &'static str {
-        "unversioned"
+        PROGRAM_STATE_SEED
     }
 
     pub fn address(program_id: &Pubkey) -> Pubkey {

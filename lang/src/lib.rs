@@ -177,13 +177,6 @@ pub trait InstructionData: AnchorSerialize {
     fn data(&self) -> Vec<u8>;
 }
 
-// Calculates the size of an account, which may be larger than the deserialized
-// data in it. This trait is currently only used for `#[state]` accounts.
-#[doc(hidden)]
-pub trait AccountSize: AnchorSerialize {
-    fn size(&self) -> Result<u64, ProgramError>;
-}
-
 /// An event that can be emitted via a Solana log.
 pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
     fn data(&self) -> Vec<u8>;
@@ -242,6 +235,7 @@ pub mod prelude {
 // Internal module used by macros.
 #[doc(hidden)]
 pub mod __private {
+    use solana_program::program_error::ProgramError;
     use solana_program::pubkey::Pubkey;
 
     pub use crate::ctor::Ctor;
@@ -250,6 +244,13 @@ pub mod __private {
     pub use anchor_attribute_event::EventIndex;
     pub use base64;
     pub use bytemuck;
+
+    // Calculates the size of an account, which may be larger than the deserialized
+    // data in it. This trait is currently only used for `#[state]` accounts.
+    #[doc(hidden)]
+    pub trait AccountSize {
+        fn size(&self) -> Result<u64, ProgramError>;
+    }
 
     // Very experimental trait.
     pub trait ZeroCopyAccessor<Ty> {
@@ -265,4 +266,6 @@ pub mod __private {
             input.to_bytes()
         }
     }
+
+    pub use crate::state::PROGRAM_STATE_SEED;
 }

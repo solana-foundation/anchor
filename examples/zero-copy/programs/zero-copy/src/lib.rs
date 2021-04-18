@@ -9,6 +9,41 @@ use anchor_lang::prelude::*;
 pub mod zero_copy {
     use super::*;
 
+    #[state(zero_copy)]
+    pub struct Globals {
+        pub authority: Pubkey,
+        // The solana runtime currently restricts how much one can resize an
+        // account on CPI to ~10240 bytes. State accounts are program derived
+        // addresses, which means its max size is limited by this restriction
+        // (i.e., this is not an Anchor specific issue).
+        //
+        // As a result, we only use 250 events here.
+        //
+        // For larger zero-copy data structures, one must use non-state anchor
+        // accounts, as is demonstrated below.
+        pub events: [Event; 250],
+    }
+
+    impl Globals {
+        // Note that the `new` constructor is different from non-zero-copy
+        // state accounts. Namely, it takes in a `&mut self` parameter.
+        pub fn new(&mut self, ctx: Context<New>) -> ProgramResult {
+            self.authority = *ctx.accounts.authority.key;
+            Ok(())
+        }
+
+        #[access_control(auth(&self, &ctx))]
+        pub fn set_event(
+            &mut self,
+            ctx: Context<SetEvent>,
+            idx: u32,
+            event: RpcEvent,
+        ) -> ProgramResult {
+            self.events[idx as usize] = event.into();
+            Ok(())
+        }
+    }
+
     pub fn create_foo(ctx: Context<CreateFoo>) -> ProgramResult {
         let foo = &mut ctx.accounts.foo.load_init()?;
         foo.authority = *ctx.accounts.authority.key;
@@ -56,6 +91,18 @@ pub mod zero_copy {
         };
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct New<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetEvent<'info> {
+    #[account(signer)]
+    authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -141,4 +188,37 @@ pub struct EventQ {
 pub struct Event {
     pub from: Pubkey,
     pub data: u64,
+}
+
+// A separate type is used for the RPC interface for two main reasons.
+//
+// 1. AnchorSerialize and AnchorDeserialize must be derived. Anchor requires
+//    *all* instructions to implement the AnchorSerialize and AnchorDeserialize
+//    traits, so any types in method signatures must as well.
+// 2. All types for zero copy deserialization are `#[repr(packed)]`. However,
+//    the implementation of AnchorSerialize (i.e. borsh), uses references
+//    to the fields it serializes. So if we were to just throw tehse derives
+//    onto the other `Event` struct, we would have references to
+//    `#[repr(packed)]` fields, which is unsafe. To avoid the unsafeness, we
+//    just use a separate type.
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct RpcEvent {
+    pub from: Pubkey,
+    pub data: u64,
+}
+
+impl From<RpcEvent> for Event {
+    fn from(e: RpcEvent) -> Event {
+        Event {
+            from: e.from,
+            data: e.data,
+        }
+    }
+}
+
+fn auth(globals: &Globals, ctx: &Context<SetEvent>) -> ProgramResult {
+    if &globals.authority != ctx.accounts.authority.key {
+        return Err(ProgramError::Custom(1)); // Arbitrary error.
+    }
+    Ok(())
 }
