@@ -23,5 +23,5 @@ anchor-derive-accounts = { path = "./derive/accounts", version = "0.4.3" }
 base64 = "0.13.0"
 borsh = "0.8.2"
 bytemuck = "1.4.0"
-solana-program = "1.6.3"
+solana-program = "1.6.6"
 thiserror = "1.0.20"
