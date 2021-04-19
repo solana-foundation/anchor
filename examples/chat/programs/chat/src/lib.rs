@@ -84,7 +84,7 @@ impl ChatRoom {
         self.head += 1;
     }
     fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter % 10000).unwrap()
+        std::convert::TryInto::try_into(counter % 33607).unwrap()
     }
 }
 
