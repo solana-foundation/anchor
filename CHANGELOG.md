@@ -11,11 +11,14 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.4.4] - 2021-04-18
+
 ## Features
 
 * lang: Allows one to specify multiple `with` targets when creating associated acconts ([#197](https://github.com/project-serum/anchor/pull/197)).
 * lang, ts: Add array support ([#202](https://github.com/project-serum/anchor/pull/202)).
-* lang: Zero copy deserialization for accounts ([#202](https://github.com/project-serum/anchor/pull/202)).
+* lang: Zero copy deserialization for accounts ([#202](https://github.com/project-serum/anchor/pull/202), [#206](https://github.com/project-serum/anchor/pull/206)).
+* lang, spl, cli, client: Upgrade solana toolchain to 1.6.6 ([#210](https://github.com/project-serum/anchor/pull/210)).
 
 ## [0.4.3] - 2021-04-13
 

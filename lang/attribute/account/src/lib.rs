@@ -20,6 +20,13 @@ use syn::parse_macro_input;
 ///
 /// # Zero Copy Deserialization
 ///
+/// **WARNING**: Zero copy deserialization is an experimental feature. It's
+/// recommended to use it only when necessary, i.e., when you have extremely
+/// large accounts that cannot be Borsh deserialized without hitting stack or
+/// heap limits.
+///
+/// ## Usage
+///
 /// To enable zero-copy-deserialization, one can pass in the `zero_copy`
 /// argument to the macro as follows:
 ///
@@ -29,14 +36,22 @@ use syn::parse_macro_input;
 ///
 /// This can be used to conveniently implement
 /// [`ZeroCopy`](./trait.ZeroCopy.html) so that the account can be used
-/// with [`AccountLoader`](./struct.AccountLoader.html).
+/// with [`Loader`](./struct.Loader.html).
 ///
 /// Other than being more efficient, the most salient benefit this provides is
 /// the ability to define account types larger than the max stack or heap size.
-/// This is used in special cases, for example, the Serum DEX event queue. When
-/// using borsh, one is limited, since the account has to be copied and
-/// deserialized into a new data structure. With zero copy deserialization,
-/// everything is, effectively, lazy loaded on field access.
+/// When using borsh, the account has to be copied and deserialized into a new
+/// data structure and thus is constrained by stack and heap limits imposed by
+/// the BPF VM. With zero copy deserialization, all bytes from the account's
+/// backing `RefCell<&mut [u8]>` are simply re-interpreted as a reference to
+/// the data structure. No allocations or copies necessary. Hence the ability
+/// to get around stack and heap limitations.
+///
+/// To facilitate this, all fields in an account must be constrained to be
+/// "plain old  data", i.e., they must implement
+/// [`Pod`](../bytemuck/trait.Pod.html). Please review the
+/// [`safety`](file:///home/armaniferrante/Documents/code/src/github.com/project-serum/anchor/target/doc/bytemuck/trait.Pod.html#safety)
+/// section before using.
 #[proc_macro_attribute]
 pub fn account(
     args: proc_macro::TokenStream,
