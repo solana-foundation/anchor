@@ -202,7 +202,10 @@ pub struct InitializePool<'info> {
     #[account(init)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
     pub pool_signer: AccountInfo<'info>,
-    #[account("redeemable_mint.mint_authority == COption::Some(*pool_signer.key)")]
+    #[account(
+        "redeemable_mint.mint_authority == COption::Some(*pool_signer.key)",
+        "redeemable_mint.supply == 0"
+    )]
     pub redeemable_mint: CpiAccount<'info, Mint>,
     #[account("usdc_mint.decimals == redeemable_mint.decimals")]
     pub usdc_mint: CpiAccount<'info, Mint>,
