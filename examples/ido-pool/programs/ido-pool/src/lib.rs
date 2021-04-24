@@ -18,10 +18,7 @@ pub mod ido_pool {
         end_deposits_ts: i64,
         end_ido_ts: i64,
     ) -> Result<()> {
-        if !(ctx.accounts.clock.unix_timestamp < start_ido_ts
-            && start_ido_ts < end_deposits_ts
-            && end_deposits_ts <= end_ido_ts)
-        {
+        if !(start_ido_ts < end_deposits_ts && end_deposits_ts <= end_ido_ts) {
             return Err(ErrorCode::InitTime.into());
         }
 
@@ -36,12 +33,6 @@ pub mod ido_pool {
         pool_account.start_ido_ts = start_ido_ts;
         pool_account.end_deposits_ts = end_deposits_ts;
         pool_account.end_ido_ts = end_ido_ts;
-
-        msg!(
-            "pool usdc owner: {}, pool signer key: {}",
-            ctx.accounts.pool_usdc.owner,
-            ctx.accounts.pool_signer.key
-        );
 
         // Transfer Watermelon from creator to pool account.
         let cpi_accounts = Transfer {
@@ -220,7 +211,6 @@ pub struct InitializePool<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub clock: Sysvar<'info, Clock>,
 }
 
 impl<'info> InitializePool<'info> {
