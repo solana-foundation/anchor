@@ -110,6 +110,7 @@ describe("ido-pool", () => {
           poolUsdc,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
         },
         signers: [poolAccount],
         instructions: [
