@@ -6,6 +6,8 @@ cache: cargo
 env:
   global:
     - NODE_VERSION="14.7.0"
+git:
+  submodules: true
 
 _defaults: &defaults
   before_install:
@@ -65,6 +67,7 @@ jobs:
       script:
         - pushd examples/chat && yarn && anchor test && popd
         - pushd examples/ido-pool && yarn && anchor test && popd
+        - pushd examples/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd

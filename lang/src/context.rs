@@ -34,6 +34,7 @@ where
     T: ToAccountMetas + ToAccountInfos<'info>,
 {
     pub accounts: T,
+    pub remaining_accounts: Vec<AccountInfo<'info>>,
     pub program: AccountInfo<'info>,
     pub signer_seeds: &'a [&'b [&'c [u8]]],
 }
@@ -46,6 +47,7 @@ where
         Self {
             accounts,
             program,
+            remaining_accounts: Vec::new(),
             signer_seeds: &[],
         }
     }
@@ -59,12 +61,27 @@ where
             accounts,
             program,
             signer_seeds,
+            remaining_accounts: Vec::new(),
         }
     }
 
     pub fn with_signer(mut self, signer_seeds: &'a [&'b [&'c [u8]]]) -> Self {
         self.signer_seeds = signer_seeds;
         self
+    }
+
+    pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo<'info>>) -> Self {
+        self.remaining_accounts = ra;
+        self
+    }
+}
+
+impl<'info, T: Accounts<'info>> ToAccountInfos<'info> for CpiContext<'_, '_, '_, 'info, T> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        let mut infos = self.accounts.to_account_infos();
+        infos.extend_from_slice(&self.remaining_accounts);
+        infos.push(self.program.clone());
+        infos
     }
 }
 
@@ -83,6 +100,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiStateContext<'a, 'b, 'c, 'info, T
                 accounts,
                 program,
                 signer_seeds: &[],
+                remaining_accounts: Vec::new(),
             },
         }
     }
@@ -99,6 +117,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiStateContext<'a, 'b, 'c, 'info, T
                 accounts,
                 program,
                 signer_seeds,
+                remaining_accounts: Vec::new(),
             },
         }
     }

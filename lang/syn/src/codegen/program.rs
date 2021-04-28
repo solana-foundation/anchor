@@ -82,6 +82,10 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
             };
 
             dispatch(program_id, accounts, sighash, ix_data)
+                .map_err(|e| {
+                    anchor_lang::solana_program::msg!(&e.to_string());
+                    e
+                })
         }
 
         #dispatch
@@ -355,9 +359,12 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                 accounts: &mut anchor_lang::idl::IdlCreateAccounts,
                 data_len: u64,
             ) -> ProgramResult {
+                if program_id != accounts.program.key {
+                    return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(98)); // todo proper error
+                }
                 // Create the IDL's account.
                 let from = accounts.from.key;
-                let (base, nonce) = Pubkey::find_program_address(&[], accounts.program.key);
+                let (base, nonce) = Pubkey::find_program_address(&[], program_id);
                 let seed = anchor_lang::idl::IdlAccount::seed();
                 let owner = accounts.program.key;
                 let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
@@ -513,10 +520,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                         remaining_accounts,
                                     ),
                                     #(#ctor_untyped_args),*
-                                ).map_err(|e| {
-                                    anchor_lang::solana_program::msg!(&e.to_string());
-                                    e
-                                })?;
+                                )?;
                             }
 
                             // Exit routines.
@@ -546,10 +550,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                     remaining_accounts,
                                 ),
                                 #(#ctor_untyped_args),*
-                            ).map_err(|e| {
-                                anchor_lang::solana_program::msg!(&e.to_string());
-                                e
-                            })?;
+                            )?;
 
                             // Create the solana account for the ctor data.
                             let from = ctor_accounts.from.key;
@@ -647,10 +648,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                         state.#ix_name(
                                             ctx,
                                             #(#ix_arg_names),*
-                                        ).map_err(|e| {
-                                            anchor_lang::solana_program::msg!(&e.to_string());
-                                            e
-                                        })?;
+                                        )?;
                                     }
                                     // Serialize the state and save it to storage.
                                     accounts.exit(program_id)?;
@@ -693,10 +691,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                     state.#ix_name(
                                         ctx,
                                         #(#ix_arg_names),*
-                                    ).map_err(|e| {
-                                        anchor_lang::solana_program::msg!(&e.to_string());
-                                        e
-                                    })?;
+                                    )?;
 
                                     // Serialize the state and save it to storage.
                                     accounts.exit(program_id)?;
@@ -781,10 +776,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                             state.#ix_name(
                                                 ctx,
                                                 #(#ix_arg_names),*
-                                            ).map_err(|e| {
-                                                anchor_lang::solana_program::msg!(&e.to_string());
-                                                e
-                                            })?;
+                                            )?;
 
                                             // Serialize the state and save it to storage.
                                             accounts.exit(program_id)?;
@@ -813,10 +805,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                                             #state_name::#ix_name(
                                                 Context::new(program_id, &mut accounts, remaining_accounts),
                                                 #(#ix_arg_names),*
-                                            ).map_err(|e| {
-                                                anchor_lang::solana_program::msg!(&e.to_string());
-                                                e
-                                            })?;
+                                            )?;
                                             accounts.exit(program_id)
                                         }
                                     }
@@ -849,10 +838,7 @@ pub fn generate_non_inlined_handlers(program: &Program) -> proc_macro2::TokenStr
                     #program_name::#ix_name(
                         Context::new(program_id, &mut accounts, remaining_accounts),
                         #(#ix_arg_names),*
-                    ).map_err(|e| {
-                        anchor_lang::solana_program::msg!(&e.to_string());
-                        e
-                    })?;
+                    )?;
                     accounts.exit(program_id)
                 }
             }

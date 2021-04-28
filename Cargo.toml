@@ -8,3 +8,6 @@ members = [
     "lang/syn",
     "spl",
 ]
+exclude = [
+    "examples/swap/deps/serum-dex"
+]

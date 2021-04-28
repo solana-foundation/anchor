@@ -1,0 +1,3 @@
+[submodule "examples/swap/deps/serum-dex"]
+	path = examples/swap/deps/serum-dex
+	url = https://github.com/project-serum/serum-dex

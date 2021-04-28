@@ -3,6 +3,7 @@ use anchor_lang::solana_program::account_info::AccountInfo;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::program_pack::Pack;
+use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{Accounts, CpiContext};
 use std::ops::Deref;
 
@@ -199,5 +200,25 @@ impl Deref for Mint {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+// Field parsers to save compute. All account validation is assumed to be done
+// outside of these methods.
+pub mod accessor {
+    use super::*;
+
+    pub fn amount<'info>(account: &AccountInfo<'info>) -> Result<u64, ProgramError> {
+        let bytes = account.try_borrow_data()?;
+        let mut amount_bytes = [0u8; 8];
+        amount_bytes.copy_from_slice(&bytes[64..72]);
+        Ok(u64::from_le_bytes(amount_bytes))
+    }
+
+    pub fn mint<'info>(account: &AccountInfo<'info>) -> Result<Pubkey, ProgramError> {
+        let bytes = account.try_borrow_data()?;
+        let mut mint_bytes = [0u8; 32];
+        mint_bytes.copy_from_slice(&bytes[..32]);
+        Ok(Pubkey::new_from_array(mint_bytes))
     }
 }
