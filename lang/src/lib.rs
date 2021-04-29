@@ -88,7 +88,7 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     ) -> Result<Self, ProgramError>;
 }
 
-/// The exit procedure for an account. Any cleanup or persistance to storage
+/// The exit procedure for an account. Any cleanup or persistence to storage
 /// should be done here.
 pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
     /// `program_id` is the currently executing program.
