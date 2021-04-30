@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.4.5] - 2021-04-29
+
 * spl: Add serum DEX CPI client ([#224](https://github.com/project-serum/anchor/pull/224)).
 
 ## [0.4.4] - 2021-04-18

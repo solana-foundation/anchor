@@ -1,13 +1,13 @@
 [package]
 name = "anchor-client"
-version = "0.4.4"
+version = "0.4.5"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
 license = "Apache-2.0"
 description = "Rust client for Anchor programs"
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.4.4" }
+anchor-lang = { path = "../lang", version = "0.4.5" }
 anyhow = "1.0.32"
 regex = "1.4.5"
 solana-client = "1.6.6"

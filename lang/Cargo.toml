@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang"
-version = "0.4.4"
+version = "0.4.5"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 repository = "https://github.com/project-serum/anchor"
 edition = "2018"
@@ -12,14 +12,14 @@ derive = []
 default = []
 
 [dependencies]
-anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.4.4" }
-anchor-attribute-account = { path = "./attribute/account", version = "0.4.4" }
-anchor-attribute-error = { path = "./attribute/error", version = "0.4.4" }
-anchor-attribute-program = { path = "./attribute/program", version = "0.4.4" }
-anchor-attribute-state = { path = "./attribute/state", version = "0.4.4" }
-anchor-attribute-interface = { path = "./attribute/interface", version = "0.4.4" }
-anchor-attribute-event = { path = "./attribute/event", version = "0.4.4" }
-anchor-derive-accounts = { path = "./derive/accounts", version = "0.4.4" }
+anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.4.5" }
+anchor-attribute-account = { path = "./attribute/account", version = "0.4.5" }
+anchor-attribute-error = { path = "./attribute/error", version = "0.4.5" }
+anchor-attribute-program = { path = "./attribute/program", version = "0.4.5" }
+anchor-attribute-state = { path = "./attribute/state", version = "0.4.5" }
+anchor-attribute-interface = { path = "./attribute/interface", version = "0.4.5" }
+anchor-attribute-event = { path = "./attribute/event", version = "0.4.5" }
+anchor-derive-accounts = { path = "./derive/accounts", version = "0.4.5" }
 base64 = "0.13.0"
 borsh = "0.8.2"
 bytemuck = "1.4.0"
