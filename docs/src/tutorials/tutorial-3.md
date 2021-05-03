@@ -73,4 +73,4 @@ retrieve the return value. In future work, Anchor should do this transparently.
 
 That's it for the introductory tutorials for Anchor. For more, see the `examples/` directory in the
 [repository](https://github.com/project-serum/anchor). For feature requests or bugs, GitHub issues
-are appreciated. For direct questions or support, join the [Serum Discord](https://discord.com/channels/739225212658122886/752530209848295555).
+are appreciated. For direct questions or support, join the [Serum Discord](https://discord.gg/rg5ZZPmmTm).
