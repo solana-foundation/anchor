@@ -70,7 +70,7 @@ it will generate a *new* program address.
 ## Upgrade
 
 ```
-anchor upgrade <target/deplooy/program.so> --program-id <program-id>
+anchor upgrade <target/deploy/program.so> --program-id <program-id>
 ```
 
 Uses Solana's upgradeable BPF loader to upgrade the on chain program code.

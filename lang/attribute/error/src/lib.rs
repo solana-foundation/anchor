@@ -29,7 +29,7 @@ use syn::parse_macro_input;
 ///
 /// #[error]
 /// pub enum MyError {
-///     #[msg("This is an error message clients cant automatically display")]
+///     #[msg("This is an error message clients will automatically display")]
 ///     Hello,
 /// }
 /// ```
