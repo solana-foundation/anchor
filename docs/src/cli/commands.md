@@ -16,7 +16,9 @@ FLAGS:
 
 SUBCOMMANDS:
     build      Builds the workspace
+    cluster    Cluster commands
     deploy     Deploys each program in the workspace
+    help       Prints this message or the help of the given subcommand(s)
     idl        Commands for interacting with interface definitions
     init       Initializes a workspace
     launch     Deploys, initializes an IDL, and migrates all in one command
@@ -24,6 +26,9 @@ SUBCOMMANDS:
     new        Creates a new program
     test       Runs integration tests against a localnetwork
     upgrade    Upgrades a single program. The configured wallet must be the upgrade authority
+    verify     Verifies the on-chain bytecode matches the locally compiled artifact. Run this
+               command inside a program subdirectory, i.e., in the dir containing the program's
+               Cargo.toml
 ```
 
 ## Init
@@ -35,6 +40,7 @@ anchor init
 Initializes a project workspace wit the following structure.
 
 * `Anchor.toml`: Anchor configuration file.
+* `Cargo.toml`: Rust workspace configuration file.
 * `programs/`: Directory for Solana program crates.
 * `app/`: Directory for your application frontend.
 * `tests/`: Directory for JavaScript integration tests.
@@ -193,3 +199,26 @@ anchor new <program-name>
 ```
 
 Creates a new program in the workspace's `programs/` directory initialized with boilerplate.
+
+## Cluster
+
+### Cluster list
+
+```
+anchor cluster list
+```
+
+This lists cluster endpoints:
+
+```
+Cluster Endpoints:
+
+* Mainnet - https://solana-api.projectserum.com
+* Mainnet - https://api.mainnet-beta.solana.com
+* Devnet  - https://devnet.solana.com
+* Testnet - https://testnet.solana.com
+```
+
+## Verify
+
+Verifies the on-chain bytecode matches the locally compiled artifact.
