@@ -7,8 +7,8 @@ pub mod basic_4 {
 
     #[state]
     pub struct Counter {
-        authority: Pubkey,
-        count: u64,
+        pub authority: Pubkey,
+        pub count: u64,
     }
 
     impl Counter {

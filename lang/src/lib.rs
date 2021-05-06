@@ -232,7 +232,7 @@ pub mod prelude {
     pub use thiserror;
 }
 
-// Internal module used by macros.
+// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
     use solana_program::program_error::ProgramError;
@@ -244,6 +244,10 @@ pub mod __private {
     pub use anchor_attribute_event::EventIndex;
     pub use base64;
     pub use bytemuck;
+
+    pub mod state {
+        pub use crate::state::*;
+    }
 
     // Calculates the size of an account, which may be larger than the deserialized
     // data in it. This trait is currently only used for `#[state]` accounts.

@@ -11,6 +11,15 @@ incremented for features.
 
 ## [Unreleased]
 
+## Features
+
+* client: Adds support for state instructions ([#248](https://github.com/project-serum/anchor/pull/248)).
+
+## Breaking
+
+* client: Renames `RequestBuilder::new` to `RequestBuilder::from` ([#248](https://github.com/project-serum/anchor/pull/248)).
+* lang: Renames the generated `instruction::state::Ctor` struct to `instruction::state::New` ([#248](https://github.com/project-serum/anchor/pull/248)).
+
 ## [0.4.5] - 2021-04-29
 
 * spl: Add serum DEX CPI client ([#224](https://github.com/project-serum/anchor/pull/224)).

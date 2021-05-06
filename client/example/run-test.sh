@@ -38,15 +38,21 @@ main() {
     anchor deploy
     local basic_2_pid=$(cat target/idl/basic_2.json | jq -r .metadata.address)
     popd
+    pushd ../../examples/tutorial/basic-4/
+    anchor build
+    anchor deploy
+    local basic_4_pid=$(cat target/idl/basic_4.json | jq -r .metadata.address)
+    popd
     pushd ../../examples/events
     anchor build
     anchor deploy
     local events_pid=$(cat target/idl/events.json | jq -r .metadata.address)
     popd
+
     #
     # Run Test.
     #
-    cargo run -- --composite-pid $composite_pid --basic-2-pid $basic_2_pid --events-pid $events_pid
+    cargo run -- --composite-pid $composite_pid --basic-2-pid $basic_2_pid --basic-4-pid $basic_4_pid --events-pid $events_pid
 }
 
 cleanup() {

@@ -45,10 +45,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
     }
 
     pub fn address(program_id: &Pubkey) -> Pubkey {
-        let (base, _nonce) = Pubkey::find_program_address(&[], program_id);
-        let seed = Self::seed();
-        let owner = program_id;
-        Pubkey::create_with_seed(&base, seed, owner).unwrap()
+        address(program_id)
     }
 }
 
@@ -144,4 +141,11 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
         self.inner.account.try_serialize(&mut cursor)?;
         Ok(())
     }
+}
+
+pub fn address(program_id: &Pubkey) -> Pubkey {
+    let (base, _nonce) = Pubkey::find_program_address(&[], program_id);
+    let seed = PROGRAM_STATE_SEED;
+    let owner = program_id;
+    Pubkey::create_with_seed(&base, seed, owner).unwrap()
 }

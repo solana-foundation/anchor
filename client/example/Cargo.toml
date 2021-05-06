@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 anchor-client = { path = "../" }
 basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
+basic-4 = { path = "../../examples/tutorial/basic-4/programs/basic-4", features = ["no-entrypoint"] }
 composite = { path = "../../examples/composite/programs/composite", features = ["no-entrypoint"] }
 events = { path = "../../examples/events/programs/events", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
