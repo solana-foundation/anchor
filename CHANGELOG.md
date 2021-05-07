@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.5.0] - 2021-05-07
+
 ## Features
 
 * client: Adds support for state instructions ([#248](https://github.com/project-serum/anchor/pull/248)).

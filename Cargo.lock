@@ -50,7 +50,7 @@ checksum = "6b2d54853319fd101b8dd81de382bcbf3e03410a64d8928bbee85a3e7dcde483"
 
 [[package]]
 name = "anchor-attribute-access-control"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-account"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-error"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "proc-macro2 1.0.24",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-event"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-interface"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -106,7 +106,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-program"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-state"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-cli"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-lang",
  "anchor-syn",
@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-lang",
  "anyhow",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-spl"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anchor-lang",
  "lazy_static",
@@ -205,7 +205,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-syn"
-version = "0.4.5"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "bs58",
