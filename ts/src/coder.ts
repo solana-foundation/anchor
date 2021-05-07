@@ -285,6 +285,9 @@ class IdlCoder {
       case "u8": {
         return borsh.u8(fieldName);
       }
+      case "u16": {
+        return borsh.u16(fieldName);
+      }
       case "u32": {
         return borsh.u32(fieldName);
       }

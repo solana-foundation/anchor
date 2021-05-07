@@ -37,6 +37,20 @@ describe("misc", () => {
     assert.ok(dataAccount.idata.eq(new anchor.BN(22)));
   });
 
+  it("Can use u16", async () => {
+    const data = new anchor.web3.Account();
+    const tx = await program.rpc.testU16(99, {
+      accounts: {
+        myAccount: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [await program.account.dataU16.createInstruction(data)],
+    });
+    const dataAccount = await program.account.dataU16(data.publicKey);
+    assert.ok(dataAccount.data === 99);
+  });
+
   it("Can embed programs into genesis from the Anchor.toml", async () => {
     const pid = new anchor.web3.PublicKey(
       "FtMNMKp9DZHKWUyVAsj3Q5QV8ow4P3fUPP7ZrWEQJzKr"
@@ -155,7 +169,7 @@ describe("misc", () => {
     const account = await program.account.testData.associated(
       program.provider.wallet.publicKey,
       state,
-      data.publicKey,
+      data.publicKey
     );
     assert.ok(account.data.toNumber() === 1234);
   });

@@ -52,6 +52,11 @@ pub mod misc {
         ctx.accounts.my_account.data = data;
         Ok(())
     }
+
+    pub fn test_u16(ctx: Context<TestU16>, data: u16) -> ProgramResult {
+        ctx.accounts.my_account.data = data;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -108,6 +113,13 @@ pub struct TestAssociatedAccount<'info> {
     system_program: AccountInfo<'info>,
 }
 
+#[derive(Accounts)]
+pub struct TestU16<'info> {
+    #[account(init)]
+    my_account: ProgramAccount<'info, DataU16>,
+    rent: Sysvar<'info, Rent>,
+}
+
 #[associated]
 pub struct TestData {
     data: u64,
@@ -117,4 +129,9 @@ pub struct TestData {
 pub struct Data {
     udata: u128,
     idata: i128,
+}
+
+#[account]
+pub struct DataU16 {
+    data: u16,
 }
