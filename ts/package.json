@@ -20,7 +20,7 @@
     "prepublishOnly": "yarn build"
   },
   "dependencies": {
-    "@project-serum/borsh": "^0.1.1",
+    "@project-serum/borsh": "^0.2.1",
     "@solana/web3.js": "^1.2.0",
     "@types/bn.js": "^4.11.6",
     "@types/bs58": "^4.0.1",
