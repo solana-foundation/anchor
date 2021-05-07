@@ -10,6 +10,17 @@ description = "Solana Sealevel eDSL"
 [features]
 derive = []
 default = []
+anchor-debug = [
+    "anchor-attribute-access-control/anchor-debug",
+    "anchor-attribute-account/anchor-debug",
+    "anchor-attribute-error/anchor-debug",
+    "anchor-attribute-event/anchor-debug",
+    "anchor-attribute-interface/anchor-debug",
+    "anchor-attribute-program/anchor-debug",
+    "anchor-attribute-program/anchor-debug",
+    "anchor-attribute-state/anchor-debug",
+    "anchor-derive-accounts/anchor-debug"
+]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.4.5" }

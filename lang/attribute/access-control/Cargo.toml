@@ -10,6 +10,9 @@ edition = "2018"
 [lib]
 proc-macro = true
 
+[features]
+anchor-debug = ["anchor-syn/anchor-debug"]
+
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"

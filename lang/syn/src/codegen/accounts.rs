@@ -21,7 +21,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                     let name = &s.ident;
                     let ty = &s.raw_field.ty;
                     quote! {
-                        #[cfg(feature = "debug-log")]
+                        #[cfg(feature = "anchor-debug")]
                         ::solana_program::log::sol_log(stringify!(#name));
                         let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
                     }
@@ -40,12 +40,12 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                         let name = &f.typed_ident();
                         match f.is_init {
                             false => quote! {
-                                #[cfg(feature = "debug-log")]
+                                #[cfg(feature = "anchor-debug")]
                                 ::solana_program::log::sol_log(stringify!(#name));
                                 let #name = anchor_lang::Accounts::try_accounts(program_id, accounts)?;
                             },
                             true => quote! {
-                                #[cfg(feature = "debug-log")]
+                                #[cfg(feature = "anchor-debug")]
                                 ::solana_program::log::sol_log(stringify!(#name));
                                 let #name = anchor_lang::AccountsInit::try_accounts_init(program_id, accounts)?;
                             },

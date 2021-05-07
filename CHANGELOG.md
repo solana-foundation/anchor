@@ -14,6 +14,7 @@ incremented for features.
 ## Features
 
 * client: Adds support for state instructions ([#248](https://github.com/project-serum/anchor/pull/248)).
+* lang: Add `anchor-debug` feature flag for logging ([#253](https://github.com/project-serum/anchor/pull/253)).
 * ts: Add support for u16 ([#255](https://github.com/project-serum/anchor/pull/255)).
 
 ## Breaking

@@ -11,6 +11,7 @@ edition = "2018"
 idl = []
 hash = []
 default = []
+anchor-debug = []
 
 [dependencies]
 proc-macro2 = "1.0"

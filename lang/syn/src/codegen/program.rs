@@ -67,6 +67,10 @@ pub fn generate(program: Program) -> proc_macro2::TokenStream {
         /// program, where execution begins.
         #[cfg(not(feature = "no-entrypoint"))]
         fn entry(program_id: &Pubkey, accounts: &[AccountInfo], ix_data: &[u8]) -> ProgramResult {
+            #[cfg(feature = "anchor-debug")]
+            {
+                msg!("anchor-debug is active");
+            }
             if ix_data.len() < 8 {
                 return Err(ProgramError::Custom(99));
             }
