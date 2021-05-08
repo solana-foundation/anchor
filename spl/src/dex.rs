@@ -7,7 +7,11 @@ use std::num::NonZeroU64;
 
 pub use serum_dex;
 
+#[cfg(not(feature = "devnet"))]
 anchor_lang::solana_program::declare_id!("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
+
+#[cfg(feature = "devnet")]
+anchor_lang::solana_program::declare_id!("DESVgJVGajEgKGXhb6XmqDHGz3VjdgP7rEVESBgxmroY");
 
 pub fn new_order_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, NewOrderV3<'info>>,
