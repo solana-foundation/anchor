@@ -19,7 +19,7 @@ cd anchor/examples/tutorial/basic-0
 
 ## Starting a Localnet
 
-In a separate terminal, start a local network for testing. If you're running solana
+In a separate terminal, start a local network. If you're running solana
 for the first time, generate a wallet.
 
 ```
@@ -31,6 +31,10 @@ Then run
 ```
 solana-test-validator
 ```
+
+Then, shut it down.
+
+The test validator will be used when testing Anchor programs. Make sure to turn off the validator before you begin testing Anchor programs.
 
 ::: details
 As you'll see later, starting a localnet manually like this is not necessary when testing with Anchor,
