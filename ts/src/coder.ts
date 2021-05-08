@@ -1,6 +1,6 @@
 import camelCase from "camelcase";
 import { snakeCase } from "snake-case";
-import { Layout, seq } from "buffer-layout";
+import { Layout } from "buffer-layout";
 import * as sha256 from "js-sha256";
 import * as borsh from "@project-serum/borsh";
 import {

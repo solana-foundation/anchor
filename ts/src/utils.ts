@@ -69,6 +69,14 @@ async function getMultipleAccounts(
   });
 }
 
+export function decodeUtf8(array: Uint8Array): string {
+  const decoder =
+    typeof TextDecoder === "undefined"
+      ? new (require("util").TextDecoder)("utf-8") // Node.
+      : new TextDecoder("utf-8"); // Browser.
+  return decoder.decode(array);
+}
+
 const utils = {
   bs58,
   sha256,
