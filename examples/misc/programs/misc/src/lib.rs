@@ -57,6 +57,13 @@ pub mod misc {
         ctx.accounts.my_account.data = data;
         Ok(())
     }
+
+    pub fn test_simulate(_ctx: Context<TestSimulate>, data: u32) -> ProgramResult {
+        emit!(E1 { data });
+        emit!(E2 { data: 1234 });
+        emit!(E3 { data: 9 });
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -120,6 +127,9 @@ pub struct TestU16<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+#[derive(Accounts)]
+pub struct TestSimulate {}
+
 #[associated]
 pub struct TestData {
     data: u64,
@@ -134,4 +144,19 @@ pub struct Data {
 #[account]
 pub struct DataU16 {
     data: u16,
+}
+
+#[event]
+pub struct E1 {
+    data: u32,
+}
+
+#[event]
+pub struct E2 {
+    data: u32,
+}
+
+#[event]
+pub struct E3 {
+    data: u32,
 }

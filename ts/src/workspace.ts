@@ -29,9 +29,7 @@ export default new Proxy({} as any, {
       }
 
       if (projectRoot === undefined) {
-        throw new Error(
-          "Could not find workspace root. Perhaps set the `OASIS_WORKSPACE` env var?"
-        );
+        throw new Error("Could not find workspace root.");
       }
 
       find

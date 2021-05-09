@@ -6,6 +6,9 @@ import {
   TransactionSignature,
   ConfirmOptions,
   sendAndConfirmRawTransaction,
+  RpcResponseAndContext,
+  SimulatedTransactionResponse,
+  Commitment,
 } from "@solana/web3.js";
 
 export default class Provider {
@@ -134,6 +137,35 @@ export default class Provider {
 
     return sigs;
   }
+
+  async simulate(
+    tx: Transaction,
+    signers?: Array<Account | undefined>,
+    opts?: ConfirmOptions
+  ): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
+    if (signers === undefined) {
+      signers = [];
+    }
+    if (opts === undefined) {
+      opts = this.opts;
+    }
+
+    const signerKps = signers.filter((s) => s !== undefined) as Array<Account>;
+    const signerPubkeys = [this.wallet.publicKey].concat(
+      signerKps.map((s) => s.publicKey)
+    );
+
+    tx.setSigners(...signerPubkeys);
+    tx.recentBlockhash = (
+      await this.connection.getRecentBlockhash(opts.preflightCommitment)
+    ).blockhash;
+
+    await this.wallet.signTransaction(tx);
+    signerKps.forEach((kp) => {
+      tx.partialSign(kp);
+    });
+    return await simulateTransaction(this.connection, tx, opts.commitment);
+  }
 }
 
 export type SendTxRequest = {
@@ -181,4 +213,31 @@ export class NodeWallet implements Wallet {
   get publicKey(): PublicKey {
     return this.payer.publicKey;
   }
+}
+
+// Copy of Connection.simulateTransaction that takes a commitment parameter.
+async function simulateTransaction(
+  connection: Connection,
+  transaction: Transaction,
+  commitment: Commitment
+): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
+  // @ts-ignore
+  transaction.recentBlockhash = await connection._recentBlockhash(
+    // @ts-ignore
+    connection._disableBlockhashCaching
+  );
+
+  const signData = transaction.serializeMessage();
+  // @ts-ignore
+  const wireTransaction = transaction._serialize(signData);
+  const encodedTransaction = wireTransaction.toString("base64");
+  const config: any = { encoding: "base64", commitment };
+  const args = [encodedTransaction, config];
+
+  // @ts-ignore
+  const res = await connection._rpcRequest("simulateTransaction", args);
+  if (res.error) {
+    throw new Error("failed to simulate transaction: " + res.error.message);
+  }
+  return res.result;
 }

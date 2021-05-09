@@ -13,6 +13,7 @@ incremented for features.
 
 ## Features
 
+* ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
 
 ## [0.5.0] - 2021-05-07

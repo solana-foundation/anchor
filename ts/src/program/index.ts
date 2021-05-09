@@ -3,7 +3,14 @@ import { PublicKey } from "@solana/web3.js";
 import Provider from "../provider";
 import { Idl, idlAddress, decodeIdlAccount } from "../idl";
 import Coder from "../coder";
-import NamespaceFactory, { Rpcs, Ixs, Txs, Accounts, State } from "./namespace";
+import NamespaceFactory, {
+  Rpcs,
+  Ixs,
+  Txs,
+  Accounts,
+  State,
+  Simulate,
+} from "./namespace";
 import { getProvider } from "../";
 import { decodeUtf8 } from "../utils";
 import { EventParser } from "./event";
@@ -23,8 +30,7 @@ export class Program {
   readonly idl: Idl;
 
   /**
-   * Async functions to invoke instructions against a Solana priogram running
-   * on a cluster.
+   * Async functions to invoke instructions against an Anchor program.
    */
   readonly rpc: Rpcs;
 
@@ -42,6 +48,11 @@ export class Program {
    * Functions to build `Transaction` objects.
    */
   readonly transaction: Txs;
+
+  /**
+   * Async functions to simulate instructions against an Anchor program.
+   */
+  readonly simulate: Simulate;
 
   /**
    * Coder for serializing rpc requests.
@@ -67,7 +78,7 @@ export class Program {
     const coder = new Coder(idl);
 
     // Build the dynamic namespaces.
-    const [rpcs, ixs, txs, accounts, state] = NamespaceFactory.build(
+    const [rpcs, ixs, txs, accounts, state, simulate] = NamespaceFactory.build(
       idl,
       coder,
       programId,
@@ -79,6 +90,7 @@ export class Program {
     this.account = accounts;
     this.coder = coder;
     this.state = state;
+    this.simulate = simulate;
   }
 
   /**
@@ -105,22 +117,20 @@ export class Program {
   /**
    * Invokes the given callback everytime the given event is emitted.
    */
-  public addEventListener<T>(
+  public addEventListener(
     eventName: string,
-    callback: (event: T, slot: number) => void
+    callback: (event: any, slot: number) => void
   ): number {
-    const eventParser = new EventParser<T>(
-      this.coder,
-      this.programId,
-      eventName
-    );
+    const eventParser = new EventParser(this.coder, this.programId, this.idl);
     return this.provider.connection.onLogs(this.programId, (logs, ctx) => {
       if (logs.err) {
         console.error(logs);
         return;
       }
       eventParser.parseLogs(logs.logs, (event) => {
-        callback(event, ctx.slot);
+        if (event.name === eventName) {
+          callback(event.data, ctx.slot);
+        }
       });
     });
   }
