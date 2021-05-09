@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+## Features
+
+* cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
+
 ## [0.5.0] - 2021-05-07
 
 ## Features

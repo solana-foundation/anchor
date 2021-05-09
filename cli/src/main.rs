@@ -76,6 +76,9 @@ pub enum Command {
         /// url is a localnet.
         #[clap(long)]
         skip_local_validator: bool,
+        /// Use this flag if you want to use yarn as your package manager.
+        #[clap(long)]
+        yarn: bool,
         file: Option<String>,
     },
     /// Creates a new program.
@@ -230,8 +233,9 @@ fn main() -> Result<()> {
         Command::Test {
             skip_deploy,
             skip_local_validator,
+            yarn,
             file,
-        } => test(skip_deploy, skip_local_validator, file),
+        } => test(skip_deploy, skip_local_validator, yarn, file),
         #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
         Command::Cluster { subcmd } => cluster(subcmd),
@@ -909,7 +913,12 @@ enum OutFile {
 }
 
 // Builds, deploys, and tests all workspace programs in a single command.
-fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> Result<()> {
+fn test(
+    skip_deploy: bool,
+    skip_local_validator: bool,
+    use_yarn: bool,
+    file: Option<String>,
+) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
@@ -936,6 +945,11 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
         // Setup log reader.
         let log_streams = stream_logs(&cfg.cluster.url());
 
+        // Check to see if yarn is installed, panic if not.
+        if use_yarn {
+            which::which("yarn").unwrap();
+        }
+
         // Run the tests.
         let test_result: Result<_> = {
             let ts_config_exist = Path::new("tsconfig.json").exists();
@@ -947,8 +961,9 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
             } else {
                 args.push("tests/");
             }
-            let exit = match ts_config_exist {
-                true => std::process::Command::new("ts-mocha")
+            let exit = match (ts_config_exist, use_yarn) {
+                (true, true) => std::process::Command::new("yarn")
+                    .arg("ts-mocha")
                     .arg("-p")
                     .arg("./tsconfig.json")
                     .args(args)
@@ -958,7 +973,26 @@ fn test(skip_deploy: bool, skip_local_validator: bool, file: Option<String>) -> 
                     .output()
                     .map_err(anyhow::Error::from)
                     .with_context(|| "ts-mocha"),
-                false => std::process::Command::new("mocha")
+                (false, true) => std::process::Command::new("yarn")
+                    .arg("mocha")
+                    .args(args)
+                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .output()
+                    .map_err(anyhow::Error::from)
+                    .with_context(|| "mocha"),
+                (true, false) => std::process::Command::new("ts-mocha")
+                    .arg("-p")
+                    .arg("./tsconfig.json")
+                    .args(args)
+                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .output()
+                    .map_err(anyhow::Error::from)
+                    .with_context(|| "ts-mocha"),
+                (false, false) => std::process::Command::new("mocha")
                     .args(args)
                     .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
                     .stdout(Stdio::inherit())
