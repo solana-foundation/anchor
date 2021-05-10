@@ -21,9 +21,7 @@ export { SimulateNamespace } from "./simulate";
 
 export default class NamespaceFactory {
   /**
-   * build dynamically generates RPC methods.
-   *
-   * @returns an object with all the RPC methods attached.
+   * Generates all namespaces for a given program.
    */
   public static build(
     idl: Idl,
@@ -54,12 +52,12 @@ export default class NamespaceFactory {
     );
 
     idl.instructions.forEach((idlIx) => {
-      const ix = InstructionFactory.build(idlIx, coder, programId);
-      const tx = TransactionFactory.build(idlIx, ix);
-      const rpc = RpcFactory.build(idlIx, tx, idlErrors, provider);
-      const simulate = SimulateFactory.build(
+      const ixItem = InstructionFactory.build(idlIx, coder, programId);
+      const txItem = TransactionFactory.build(idlIx, ixItem);
+      const rpcItem = RpcFactory.build(idlIx, txItem, idlErrors, provider);
+      const simulateItem = SimulateFactory.build(
         idlIx,
-        tx,
+        txItem,
         idlErrors,
         provider,
         coder,
@@ -69,16 +67,16 @@ export default class NamespaceFactory {
 
       const name = camelCase(idlIx.name);
 
-      instruction[name] = ix;
-      transaction[name] = tx;
-      rpc[name] = rpc;
-      simulate[name] = simulate;
+      instruction[name] = ixItem;
+      transaction[name] = txItem;
+      rpc[name] = rpcItem;
+      simulate[name] = simulateItem;
     });
 
-    const accountFns = idl.accounts
+    const account = idl.accounts
       ? AccountFactory.build(idl, coder, programId, provider)
       : {};
 
-    return [rpc, instruction, transaction, accountFns, state, simulate];
+    return [rpc, instruction, transaction, account, state, simulate];
   }
 }

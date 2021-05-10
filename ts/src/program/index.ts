@@ -65,7 +65,7 @@ export class Program {
    * const txSignature = await program.rpc.increment({
    *   accounts: {
    *     counter,
-	 *     authority,
+   *     authority,
    *   },
    * });
    * ```
