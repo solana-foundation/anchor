@@ -8,7 +8,7 @@ import { TxFn } from "./transaction";
 /**
  * Dynamically generated rpc namespace.
  */
-export interface Rpcs {
+export interface RpcNamespace {
   [key: string]: RpcFn;
 }
 
@@ -17,7 +17,7 @@ export interface Rpcs {
  */
 export type RpcFn = (...args: any[]) => Promise<TransactionSignature>;
 
-export default class RpcNamespace {
+export default class RpcFactory {
   // Builds the rpc namespace.
   public static build(
     idlIx: IdlInstruction,

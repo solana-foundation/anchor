@@ -3,12 +3,12 @@ import { IdlAccount, IdlInstruction, IdlAccountItem } from "../../idl";
 import { IdlError } from "../../error";
 import Coder from "../../coder";
 import { toInstruction, validateAccounts } from "../common";
-import { RpcAccounts, splitArgsAndCtx } from "../context";
+import { Accounts, splitArgsAndCtx } from "../context";
 
 /**
  * Dynamically generated instruction namespace.
  */
-export interface Ixs {
+export interface InstructionNamespace {
   [key: string]: IxFn;
 }
 
@@ -17,10 +17,10 @@ export interface Ixs {
  */
 export type IxFn = IxProps & ((...args: any[]) => any);
 type IxProps = {
-  accounts: (ctx: RpcAccounts) => any;
+  accounts: (ctx: Accounts) => any;
 };
 
-export default class InstructionNamespace {
+export default class InstructionNamespaceFactory {
   // Builds the instuction namespace.
   public static build(
     idlIx: IdlInstruction,
@@ -36,7 +36,7 @@ export default class InstructionNamespace {
       validateAccounts(idlIx.accounts, ctx.accounts);
       validateInstruction(idlIx, ...args);
 
-      const keys = InstructionNamespace.accountsArray(
+      const keys = InstructionNamespaceFactory.accountsArray(
         ctx.accounts,
         idlIx.accounts
       );
@@ -59,25 +59,22 @@ export default class InstructionNamespace {
     };
 
     // Utility fn for ordering the accounts for this instruction.
-    ix["accounts"] = (accs: RpcAccounts) => {
-      return InstructionNamespace.accountsArray(accs, idlIx.accounts);
+    ix["accounts"] = (accs: Accounts) => {
+      return InstructionNamespaceFactory.accountsArray(accs, idlIx.accounts);
     };
 
     return ix;
   }
 
-  public static accountsArray(
-    ctx: RpcAccounts,
-    accounts: IdlAccountItem[]
-  ): any {
+  public static accountsArray(ctx: Accounts, accounts: IdlAccountItem[]): any {
     return accounts
       .map((acc: IdlAccountItem) => {
         // Nested accounts.
         // @ts-ignore
         const nestedAccounts: IdlAccountItem[] | undefined = acc.accounts;
         if (nestedAccounts !== undefined) {
-          const rpcAccs = ctx[acc.name] as RpcAccounts;
-          return InstructionNamespace.accountsArray(
+          const rpcAccs = ctx[acc.name] as Accounts;
+          return InstructionNamespaceFactory.accountsArray(
             rpcAccs,
             nestedAccounts
           ).flat();

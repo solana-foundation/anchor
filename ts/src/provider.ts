@@ -11,7 +11,16 @@ import {
   Commitment,
 } from "@solana/web3.js";
 
+/**
+ * The network and wallet context used to send transactions paid for and signed
+ * by the provider.
+ */
 export default class Provider {
+  /**
+   * @param connection The cluster connection where the program is deployed.
+   * @param wallet     The wallet used to pay for and sign all transactions.
+   * @param opts       Transaction confirmation options to use by default.
+   */
   constructor(
     readonly connection: Connection,
     readonly wallet: Wallet,
@@ -25,7 +34,14 @@ export default class Provider {
     };
   }
 
-  // Node only api.
+  /**
+   * Returns a `Provider` with a wallet read from the local filesystem.
+   *
+   * @param url  The network cluster url.
+   * @param opts The default transaction confirmation options.
+   *
+   * (This api is for Node only.)
+   */
   static local(url?: string, opts?: ConfirmOptions): Provider {
     opts = opts || Provider.defaultOptions();
     const connection = new Connection(
@@ -36,7 +52,12 @@ export default class Provider {
     return new Provider(connection, wallet, opts);
   }
 
-  // Node only api.
+  /**
+   * Returns a `Provider` read from the `ANCHOR_PROVIDER_URL` envirnment
+   * variable
+   *
+   * (This api is for Node only.)
+   */
   static env(): Provider {
     const process = require("process");
     const url = process.env.ANCHOR_PROVIDER_URL;
@@ -50,6 +71,14 @@ export default class Provider {
     return new Provider(connection, wallet, options);
   }
 
+  /**
+   * Sends the given transaction, ppaid for and signed by the provider's wallet.
+   *
+   * @param tx      The transaction to send.
+   * @param signers The set of signers in addition to the provdier wallet that
+   *                will sign the transaction.
+   * @param opts    Transaction confirmation options.
+   */
   async send(
     tx: Transaction,
     signers?: Array<Account | undefined>,
@@ -88,6 +117,9 @@ export default class Provider {
     return txId;
   }
 
+  /**
+   * Similar to `send`, but for an array of transactions and signers.
+   */
   async sendAll(
     reqs: Array<SendTxRequest>,
     opts?: ConfirmOptions
@@ -138,6 +170,14 @@ export default class Provider {
     return sigs;
   }
 
+  /**
+   * Simulates the given transaction, returning emitted logs from execution.
+   *
+   * @param tx      The transaction to send.
+   * @param signers The set of signers in addition to the provdier wallet that
+   *                will sign the transaction.
+   * @param opts    Transaction confirmation options.
+   */
   async simulate(
     tx: Transaction,
     signers?: Array<Account | undefined>,
@@ -173,12 +213,18 @@ export type SendTxRequest = {
   signers: Array<Account | undefined>;
 };
 
+/**
+ * Wallet interface for objects that can be used to sign provider transactions.
+ */
 export interface Wallet {
   signTransaction(tx: Transaction): Promise<Transaction>;
   signAllTransactions(txs: Transaction[]): Promise<Transaction[]>;
   publicKey: PublicKey;
 }
 
+/**
+ * Node only wallet.
+ */
 export class NodeWallet implements Wallet {
   constructor(readonly payer: Account) {}
 

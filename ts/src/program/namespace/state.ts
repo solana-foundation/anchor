@@ -11,27 +11,27 @@ import {
 import Provider from "../../provider";
 import { Idl, IdlStateMethod } from "../../idl";
 import Coder, { stateDiscriminator } from "../../coder";
-import { Rpcs, Ixs } from "./";
+import { RpcNamespace, InstructionNamespace } from "./";
 import {
   Subscription,
   translateError,
   toInstruction,
   validateAccounts,
 } from "../common";
-import { RpcAccounts, splitArgsAndCtx } from "../context";
-import InstructionNamespace from "./instruction";
+import { Accounts, splitArgsAndCtx } from "../context";
+import InstructionNamespaceFactory from "./instruction";
 
-export type State = () =>
+export type StateNamespace = () =>
   | Promise<any>
   | {
       address: () => Promise<PublicKey>;
-      rpc: Rpcs;
-      instruction: Ixs;
+      rpc: RpcNamespace;
+      instruction: InstructionNamespace;
       subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
       unsubscribe: (address: PublicKey) => void;
     };
 
-export default class StateNamespace {
+export default class StateFactory {
   // Builds the state namespace.
   public static build(
     idl: Idl,
@@ -39,7 +39,7 @@ export default class StateNamespace {
     programId: PublicKey,
     idlErrors: Map<number, string>,
     provider: Provider
-  ): State | undefined {
+  ): StateNamespace | undefined {
     if (idl.state === undefined) {
       return undefined;
     }
@@ -62,11 +62,11 @@ export default class StateNamespace {
     };
 
     // Namespace with all rpc functions.
-    const rpc: Rpcs = {};
-    const ix: Ixs = {};
+    const rpc: RpcNamespace = {};
+    const ix: InstructionNamespace = {};
 
     idl.state.methods.forEach((m: IdlStateMethod) => {
-      const accounts = async (accounts: RpcAccounts): Promise<any> => {
+      const accounts = async (accounts: Accounts): Promise<any> => {
         const keys = await stateInstructionKeys(
           programId,
           provider,
@@ -74,7 +74,7 @@ export default class StateNamespace {
           accounts
         );
         return keys.concat(
-          InstructionNamespace.accountsArray(accounts, m.accounts)
+          InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
         );
       };
       const ixFn = async (...args: any[]): Promise<TransactionInstruction> => {
@@ -177,7 +177,7 @@ async function stateInstructionKeys(
   programId: PublicKey,
   provider: Provider,
   m: IdlStateMethod,
-  accounts: RpcAccounts
+  accounts: Accounts
 ) {
   if (m.name === "new") {
     // Ctor `new` method.

@@ -11,7 +11,7 @@ import { Idl } from "../../idl";
 /**
  * Dynamically generated simualte namespace.
  */
-export interface Simulate {
+export interface SimulateNamespace {
   [key: string]: SimulateFn;
 }
 
@@ -25,7 +25,7 @@ type SimulateResponse = {
   raw: string[];
 };
 
-export default class SimulateNamespace {
+export default class SimulateFactory {
   // Builds the rpc namespace.
   public static build(
     idlIx: IdlInstruction,

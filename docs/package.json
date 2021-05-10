@@ -9,7 +9,7 @@
   },
   "repository": "/anchor",
   "scripts": {
-    "deploy": "yarn build && gh-pages -d src/.vuepress/dist",
+    "deploy": "gh-pages -d src/.vuepress/dist",
     "dev": "vuepress dev src",
     "build": "vuepress build src"
   },

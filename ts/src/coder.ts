@@ -98,7 +98,7 @@ class InstructionCoder {
     return this._encode(SIGHASH_STATE_NAMESPACE, ixName, ix);
   }
 
-  public _encode(nameSpace: string, ixName: string, ix: any): Buffer {
+  private _encode(nameSpace: string, ixName: string, ix: any): Buffer {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const methodName = camelCase(ixName);
     const len = this.ixLayout.get(methodName).encode(ix, buffer);

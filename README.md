@@ -17,7 +17,7 @@ If you're familiar with developing in Ethereum's [Solidity](https://docs.solidit
 ## Getting Started
 
 For a quickstart guide and in depth tutorials, see the guided [documentation](https://project-serum.github.io/anchor/getting-started/introduction.html).
-To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples). For the latest Rust API documentation, see [docs.rs](https://docs.rs/anchor-lang).
+To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples). For the latest Rust and TypeScript API documentation, see [docs.rs](https://docs.rs/anchor-lang) and the [typedoc](https://project-serum.github.io/anchor/ts/index.html).
 
 ## Packages
 
@@ -26,7 +26,8 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 | `anchor-lang` | Rust primitives for writing programs on Solana | [![Crates.io](https://img.shields.io/crates/v/anchor-lang?color=blue)](https://crates.io/crates/anchor-lang) | [![Docs.rs](https://docs.rs/anchor-lang/badge.svg)](https://docs.rs/anchor-lang) |
 | `anchor-spl` | CPI clients for SPL programs on Solana | ![crates](https://img.shields.io/crates/v/anchor-spl?color=blue) | [![Docs.rs](https://docs.rs/anchor-spl/badge.svg)](https://docs.rs/anchor-spl) |
 | `anchor-client` | Rust client for Anchor programs | ![crates](https://img.shields.io/crates/v/anchor-client?color=blue) | [![Docs.rs](https://docs.rs/anchor-client/badge.svg)](https://docs.rs/anchor-client) |
-| `@project-serum/anchor` | TypeScript client for Anchor programs | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | [![Docs](https://img.shields.io/badge/docs-tutorials-blue)](https://project-serum.github.io/anchor/) |
+| `@project-serum/anchor` | TypeScript client for Anchor programs | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://project-serum.github.io/anchor/ts/index.html) |
+
 ## Note
 
 * **Anchor is in active development, so all APIs are subject to change.**

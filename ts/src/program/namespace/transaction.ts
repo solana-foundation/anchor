@@ -6,7 +6,7 @@ import { IxFn } from "./instruction";
 /**
  * Dynamically generated transaction namespace.
  */
-export interface Txs {
+export interface TransactionNamespace {
   [key: string]: TxFn;
 }
 
@@ -15,7 +15,7 @@ export interface Txs {
  */
 export type TxFn = (...args: any[]) => Transaction;
 
-export default class TransactionNamespace {
+export default class TransactionFactory {
   // Builds the transaction namespace.
   public static build(idlIx: IdlInstruction, ixFn: IxFn): TxFn {
     const txFn = (...args: any[]): Transaction => {

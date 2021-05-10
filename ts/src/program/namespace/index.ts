@@ -4,20 +4,20 @@ import Coder from "../../coder";
 import Provider from "../../provider";
 import { Idl } from "../../idl";
 import { parseIdlErrors } from "../common";
-import StateNamespace, { State } from "./state";
-import InstructionNamespace, { Ixs } from "./instruction";
-import TransactionNamespace, { Txs } from "./transaction";
-import RpcNamespace, { Rpcs } from "./rpc";
-import AccountNamespace, { Accounts } from "./account";
-import SimulateNamespace, { Simulate } from "./simulate";
+import StateFactory, { StateNamespace } from "./state";
+import InstructionFactory, { InstructionNamespace } from "./instruction";
+import TransactionFactory, { TransactionNamespace } from "./transaction";
+import RpcFactory, { RpcNamespace } from "./rpc";
+import AccountFactory, { AccountNamespace } from "./account";
+import SimulateFactory, { SimulateNamespace } from "./simulate";
 
 // Re-exports.
-export { State } from "./state";
-export { Ixs } from "./instruction";
-export { Txs, TxFn } from "./transaction";
-export { Rpcs, RpcFn } from "./rpc";
-export { Accounts, AccountFn, ProgramAccount } from "./account";
-export { Simulate } from "./simulate";
+export { StateNamespace } from "./state";
+export { InstructionNamespace } from "./instruction";
+export { TransactionNamespace, TxFn } from "./transaction";
+export { RpcNamespace, RpcFn } from "./rpc";
+export { AccountNamespace, AccountFn, ProgramAccount } from "./account";
+export { SimulateNamespace } from "./simulate";
 
 export default class NamespaceFactory {
   /**
@@ -30,15 +30,22 @@ export default class NamespaceFactory {
     coder: Coder,
     programId: PublicKey,
     provider: Provider
-  ): [Rpcs, Ixs, Txs, Accounts, State, Simulate] {
+  ): [
+    RpcNamespace,
+    InstructionNamespace,
+    TransactionNamespace,
+    AccountNamespace,
+    StateNamespace,
+    SimulateNamespace
+  ] {
     const idlErrors = parseIdlErrors(idl);
 
-    const rpcs: Rpcs = {};
-    const ixFns: Ixs = {};
-    const txFns: Txs = {};
-    const simulateFns: Simulate = {};
+    const rpc: RpcNamespace = {};
+    const instruction: InstructionNamespace = {};
+    const transaction: TransactionNamespace = {};
+    const simulate: SimulateNamespace = {};
 
-    const state = StateNamespace.build(
+    const state = StateFactory.build(
       idl,
       coder,
       programId,
@@ -47,10 +54,10 @@ export default class NamespaceFactory {
     );
 
     idl.instructions.forEach((idlIx) => {
-      const ix = InstructionNamespace.build(idlIx, coder, programId);
-      const tx = TransactionNamespace.build(idlIx, ix);
-      const rpc = RpcNamespace.build(idlIx, tx, idlErrors, provider);
-      const simulate = SimulateNamespace.build(
+      const ix = InstructionFactory.build(idlIx, coder, programId);
+      const tx = TransactionFactory.build(idlIx, ix);
+      const rpc = RpcFactory.build(idlIx, tx, idlErrors, provider);
+      const simulate = SimulateFactory.build(
         idlIx,
         tx,
         idlErrors,
@@ -62,16 +69,16 @@ export default class NamespaceFactory {
 
       const name = camelCase(idlIx.name);
 
-      ixFns[name] = ix;
-      txFns[name] = tx;
-      rpcs[name] = rpc;
-      simulateFns[name] = simulate;
+      instruction[name] = ix;
+      transaction[name] = tx;
+      rpc[name] = rpc;
+      simulate[name] = simulate;
     });
 
     const accountFns = idl.accounts
-      ? AccountNamespace.build(idl, coder, programId, provider)
+      ? AccountFactory.build(idl, coder, programId, provider)
       : {};
 
-    return [rpcs, ixFns, txFns, accountFns, state, simulateFns];
+    return [rpc, instruction, transaction, accountFns, state, simulate];
   }
 }

@@ -4,8 +4,14 @@ import { Program } from "./program";
 
 let _populatedWorkspace = false;
 
-// Workspace program discovery only works for node environments.
-export default new Proxy({} as any, {
+/**
+ * The `workspace` namespace provides a convenience API to automatically
+ * search for and deserialize [[Program]] objects defined by compiled IDLs
+ * in an Anchor workspace.
+ *
+ * This API is for Node only.
+ */
+const workspace = new Proxy({} as any, {
   get(workspaceCache: { [key: string]: Program }, programName: string) {
     const find = require("find");
     const fs = require("fs");
@@ -51,3 +57,5 @@ export default new Proxy({} as any, {
     return workspaceCache[programName];
   },
 });
+
+export default workspace;

@@ -21,7 +21,7 @@ import { Subscription } from "../common";
  * Accounts is a dynamically generated object to fetch any given account
  * of a program.
  */
-export interface Accounts {
+export interface AccountNamespace {
   [key: string]: AccountFn;
 }
 
@@ -44,6 +44,8 @@ type AccountProps = {
 };
 
 /**
+ * @hidden
+ *
  * Deserialized account owned by a program.
  */
 export type ProgramAccount<T = any> = {
@@ -54,15 +56,15 @@ export type ProgramAccount<T = any> = {
 // Tracks all subscriptions.
 const subscriptions: Map<string, Subscription> = new Map();
 
-export default class AccountNamespace {
+export default class AccountFactory {
   // Returns the generated accounts namespace.
   public static build(
     idl: Idl,
     coder: Coder,
     programId: PublicKey,
     provider: Provider
-  ): Accounts {
-    const accountFns: Accounts = {};
+  ): AccountNamespace {
+    const accountFns: AccountNamespace = {};
 
     idl.accounts.forEach((idlAccount) => {
       const name = camelCase(idlAccount.name);

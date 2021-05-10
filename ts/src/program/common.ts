@@ -1,7 +1,7 @@
 import EventEmitter from "eventemitter3";
 import { Idl, IdlInstruction, IdlAccountItem, IdlStateMethod } from "../idl";
 import { ProgramError } from "../error";
-import { RpcAccounts } from "./context";
+import { Accounts } from "./context";
 
 export type Subscription = {
   listener: number;
@@ -40,7 +40,7 @@ export function toInstruction(
 // Throws error if any account required for the `ix` is not given.
 export function validateAccounts(
   ixAccounts: IdlAccountItem[],
-  accounts: RpcAccounts
+  accounts: Accounts
 ) {
   ixAccounts.forEach((acc) => {
     // @ts-ignore

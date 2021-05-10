@@ -7,6 +7,7 @@ import workspace from "./workspace";
 import utils from "./utils";
 import { Program } from "./program";
 import { ProgramAccount } from "./program/namespace";
+import { Context, Accounts } from "./program/context";
 
 let _provider: Provider | null = null;
 
@@ -25,6 +26,8 @@ export {
   workspace,
   Program,
   ProgramAccount,
+  Context,
+  Accounts,
   Coder,
   setProvider,
   getProvider,
