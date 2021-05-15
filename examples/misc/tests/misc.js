@@ -192,4 +192,32 @@ describe("misc", () => {
     assert.ok(resp.events[2].name === "E3");
     assert.ok(resp.events[2].data.data === 9);
   });
+
+  it("Can use i8 in the idl", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.testI8(-3, {
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      instructions: [await program.account.dataI8.createInstruction(data)],
+      signers: [data],
+    });
+    const dataAccount = await program.account.dataI8(data.publicKey);
+    assert.ok(dataAccount.data === -3);
+  });
+
+  it("Can use i16 in the idl", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.testI16(-2048, {
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      instructions: [await program.account.dataI16.createInstruction(data)],
+      signers: [data],
+    });
+    const dataAccount = await program.account.dataI16(data.publicKey);
+    assert.ok(dataAccount.data === -2048);
+  });
 });

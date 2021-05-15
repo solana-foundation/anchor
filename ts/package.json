@@ -21,7 +21,7 @@
     "docs": "typedoc --excludePrivate --out ../docs/src/.vuepress/dist/ts/ src/index.ts"
   },
   "dependencies": {
-    "@project-serum/borsh": "^0.2.1",
+    "@project-serum/borsh": "^0.2.2",
     "@solana/web3.js": "^1.11.0",
     "@types/bn.js": "^4.11.6",
     "@types/bs58": "^4.0.1",

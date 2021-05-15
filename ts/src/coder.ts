@@ -285,11 +285,20 @@ class IdlCoder {
       case "u8": {
         return borsh.u8(fieldName);
       }
+      case "i8": {
+        return borsh.i8(fieldName);
+      }
       case "u16": {
         return borsh.u16(fieldName);
       }
+      case "i16": {
+        return borsh.i16(fieldName);
+      }
       case "u32": {
         return borsh.u32(fieldName);
+      }
+      case "i32": {
+        return borsh.i32(fieldName);
       }
       case "u64": {
         return borsh.u64(fieldName);
@@ -442,9 +451,13 @@ function typeSize(idl: Idl, ty: IdlType): number {
       return 1;
     case "i8":
       return 1;
+    case "i16":
+      return 2;
     case "u16":
       return 2;
     case "u32":
+      return 4;
+    case "i32":
       return 4;
     case "u64":
       return 8;

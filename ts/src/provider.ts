@@ -197,14 +197,20 @@ export default class Provider {
 
     tx.setSigners(...signerPubkeys);
     tx.recentBlockhash = (
-      await this.connection.getRecentBlockhash(opts.preflightCommitment)
+      await this.connection.getRecentBlockhash(
+        opts.preflightCommitment ?? this.opts.preflightCommitment
+      )
     ).blockhash;
 
     await this.wallet.signTransaction(tx);
     signerKps.forEach((kp) => {
       tx.partialSign(kp);
     });
-    return await simulateTransaction(this.connection, tx, opts.commitment);
+    return await simulateTransaction(
+      this.connection,
+      tx,
+      opts.commitment ?? this.opts.commitment
+    );
   }
 }
 

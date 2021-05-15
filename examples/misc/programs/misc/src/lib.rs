@@ -64,6 +64,16 @@ pub mod misc {
         emit!(E3 { data: 9 });
         Ok(())
     }
+
+    pub fn test_i8(ctx: Context<TestI8>, data: i8) -> ProgramResult {
+        ctx.accounts.data.data = data;
+        Ok(())
+    }
+
+    pub fn test_i16(ctx: Context<TestI16>, data: i16) -> ProgramResult {
+        ctx.accounts.data.data = data;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -128,7 +138,21 @@ pub struct TestU16<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TestI16<'info> {
+    #[account(init)]
+    data: ProgramAccount<'info, DataI16>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
 pub struct TestSimulate {}
+
+#[derive(Accounts)]
+pub struct TestI8<'info> {
+    #[account(init)]
+    data: ProgramAccount<'info, DataI8>,
+    rent: Sysvar<'info, Rent>,
+}
 
 #[associated]
 pub struct TestData {
@@ -144,6 +168,16 @@ pub struct Data {
 #[account]
 pub struct DataU16 {
     data: u16,
+}
+
+#[account]
+pub struct DataI8 {
+    data: i8,
+}
+
+#[account]
+pub struct DataI16 {
+    data: i16,
 }
 
 #[event]
