@@ -85,7 +85,7 @@ describe("ido-pool", () => {
     );
     poolUsdc = await createTokenAccount(provider, usdcMint, poolSigner);
 
-    poolAccount = new anchor.web3.Account();
+    poolAccount = anchor.web3.Keypair.generate();
     const nowBn = new anchor.BN(Date.now() / 1000);
     startIdoTs = nowBn.add(new anchor.BN(5));
     endDepositsTs = nowBn.add(new anchor.BN(10));

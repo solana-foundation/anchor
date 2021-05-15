@@ -56,7 +56,7 @@ describe("Lockup and Registry", () => {
   });
 
   it("Sets a new authority", async () => {
-    const newAuthority = new anchor.web3.Account();
+    const newAuthority = anchor.web3.Keypair.generate();
     await lockup.state.rpc.setAuthority(newAuthority.publicKey, {
       accounts: {
         authority: provider.wallet.publicKey,
@@ -81,7 +81,7 @@ describe("Lockup and Registry", () => {
 
   it("Adds to the whitelist", async () => {
     const generateEntry = async () => {
-      let programId = new anchor.web3.Account().publicKey;
+      let programId = anchor.web3.Keypair.generate().publicKey;
       return {
         programId,
       };
@@ -133,7 +133,7 @@ describe("Lockup and Registry", () => {
     assert.deepEqual(lockupAccount.whitelist, entries.slice(1));
   });
 
-  const vesting = new anchor.web3.Account();
+  const vesting = anchor.web3.Keypair.generate();
   let vestingAccount = null;
   let vestingSigner = null;
 
@@ -144,7 +144,7 @@ describe("Lockup and Registry", () => {
     const beneficiary = provider.wallet.publicKey;
     const depositAmount = new anchor.BN(100);
 
-    const vault = new anchor.web3.Account();
+    const vault = anchor.web3.Keypair.generate();
     let [
       _vestingSigner,
       nonce,
@@ -259,8 +259,8 @@ describe("Lockup and Registry", () => {
     assert.ok(tokenAccount.amount.eq(new anchor.BN(100)));
   });
 
-  const registrar = new anchor.web3.Account();
-  const rewardQ = new anchor.web3.Account();
+  const registrar = anchor.web3.Keypair.generate();
+  const rewardQ = anchor.web3.Keypair.generate();
   const withdrawalTimelock = new anchor.BN(4);
   const stakeRate = new anchor.BN(2);
   const rewardQLen = 170;
@@ -335,7 +335,7 @@ describe("Lockup and Registry", () => {
     assert.ok(registrarAccount.withdrawalTimelock.eq(withdrawalTimelock));
   });
 
-  const member = new anchor.web3.Account();
+  const member = anchor.web3.Keypair.generate();
   let memberAccount = null;
   let memberSigner = null;
   let balances = null;
@@ -462,8 +462,8 @@ describe("Lockup and Registry", () => {
     assert.ok(spt.amount.eq(new anchor.BN(10)));
   });
 
-  const unlockedVendor = new anchor.web3.Account();
-  const unlockedVendorVault = new anchor.web3.Account();
+  const unlockedVendor = anchor.web3.Keypair.generate();
+  const unlockedVendorVault = anchor.web3.Keypair.generate();
   let unlockedVendorSigner = null;
 
   it("Drops an unlocked reward", async () => {
@@ -575,8 +575,8 @@ describe("Lockup and Registry", () => {
     assert.ok(memberAccount.rewardsCursor == 1);
   });
 
-  const lockedVendor = new anchor.web3.Account();
-  const lockedVendorVault = new anchor.web3.Account();
+  const lockedVendor = anchor.web3.Keypair.generate();
+  const lockedVendorVault = anchor.web3.Keypair.generate();
   let lockedVendorSigner = null;
   let lockedRewardAmount = null;
   let lockedRewardKind = null;
@@ -668,8 +668,8 @@ describe("Lockup and Registry", () => {
   let vendoredVestingSigner = null;
 
   it("Claims a locked reward", async () => {
-    vendoredVesting = new anchor.web3.Account();
-    vendoredVestingVault = new anchor.web3.Account();
+    vendoredVesting = anchor.web3.Keypair.generate();
+    vendoredVestingVault = anchor.web3.Keypair.generate();
     let [
       _vendoredVestingSigner,
       nonce,
@@ -788,7 +788,7 @@ describe("Lockup and Registry", () => {
     );
   });
 
-  const pendingWithdrawal = new anchor.web3.Account();
+  const pendingWithdrawal = anchor.web3.Keypair.generate();
 
   it("Unstakes (unlocked)", async () => {
     const unstakeAmount = new anchor.BN(10);

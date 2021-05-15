@@ -139,8 +139,8 @@ async function registrarInit(
   rewardQLen,
   mint
 ) {
-  const registrar = new anchor.web3.Account();
-  const rewardQ = new anchor.web3.Account();
+  const registrar = anchor.web3.Keypair.generate();
+  const rewardQ = anchor.web3.Keypair.generate();
   const withdrawalTimelock = new anchor.BN(_withdrawalTimelock);
   const stakeRate = new anchor.BN(_stakeRate);
   const [

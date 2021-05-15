@@ -16,6 +16,10 @@ incremented for features.
 * ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
 
+## Breaking Changes
+
+* ts: Replace deprecated `web3.Account` with `web3.Keypair` ([#274](https://github.com/project-serum/anchor/pull/274)).
+
 ## [0.5.0] - 2021-05-07
 
 ## Features

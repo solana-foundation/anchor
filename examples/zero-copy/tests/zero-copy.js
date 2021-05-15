@@ -7,7 +7,7 @@ describe("zero-copy", () => {
 
   const program = anchor.workspace.ZeroCopy;
 
-  const foo = new anchor.web3.Account();
+  const foo = anchor.web3.Keypair.generate();
 
   it("Creates zero copy state", async () => {
     await program.state.rpc.new({
@@ -155,7 +155,7 @@ describe("zero-copy", () => {
     assert.ok(bar.data.toNumber() === 99);
   });
 
-  const eventQ = new anchor.web3.Account();
+  const eventQ = anchor.web3.Keypair.generate();
   const size = 1000000 + 8; // Account size in bytes.
 
   it("Creates a large event queue", async () => {

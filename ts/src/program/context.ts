@@ -1,6 +1,6 @@
 import {
-  Account,
   AccountMeta,
+  Keypair,
   PublicKey,
   ConfirmOptions,
   TransactionInstruction,
@@ -25,7 +25,7 @@ export type Context = {
   /**
    * Accounts that must sign a given transaction.
    */
-  signers?: Array<Account>;
+  signers?: Array<Keypair>;
 
   /**
    * Instructions to run *before* a given method. Often this is used, for

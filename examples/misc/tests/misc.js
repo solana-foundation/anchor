@@ -17,7 +17,7 @@ describe("misc", () => {
     assert.ok(accountInfo.data.length === 99);
   });
 
-  const data = new anchor.web3.Account();
+  const data = anchor.web3.Keypair.generate();
 
   it("Can use u128 and i128", async () => {
     const tx = await program.rpc.initialize(
@@ -38,7 +38,7 @@ describe("misc", () => {
   });
 
   it("Can use u16", async () => {
-    const data = new anchor.web3.Account();
+    const data = anchor.web3.Keypair.generate();
     const tx = await program.rpc.testU16(99, {
       accounts: {
         myAccount: data.publicKey,

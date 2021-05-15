@@ -8,7 +8,7 @@ describe('basic-2', () => {
   anchor.setProvider(provider)
 
   // Counter for the tests.
-  const counter = new anchor.web3.Account()
+  const counter = anchor.web3.Keypair.generate()
 
   // Program for the tests.
   const program = anchor.workspace.Basic2

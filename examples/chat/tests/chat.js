@@ -9,7 +9,7 @@ describe("chat", () => {
   const program = anchor.workspace.Chat;
 
   // Chat room account.
-  const chatRoom = new anchor.web3.Account();
+  const chatRoom = anchor.web3.Keypair.generate();
 
   it("Creates a chat room", async () => {
     // Add your test here.

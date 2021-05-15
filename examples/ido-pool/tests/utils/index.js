@@ -23,7 +23,7 @@ async function createMint(provider, authority) {
   if (authority === undefined) {
     authority = provider.wallet.publicKey;
   }
-  const mint = new anchor.web3.Account();
+  const mint = anchor.web3.Keypair.generate();
   const instructions = await createMintInstructions(
     provider,
     authority,
@@ -57,7 +57,7 @@ async function createMintInstructions(provider, authority, mint) {
 }
 
 async function createTokenAccount(provider, mint, owner) {
-  const vault = new anchor.web3.Account();
+  const vault = anchor.web3.Keypair.generate();
   const tx = new anchor.web3.Transaction();
   tx.add(
     ...(await createTokenAccountInstrs(provider, vault.publicKey, mint, owner))

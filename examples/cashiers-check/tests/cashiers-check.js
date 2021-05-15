@@ -28,8 +28,8 @@ describe("cashiers-check", () => {
     );
   });
 
-  const check = new anchor.web3.Account();
-  const vault = new anchor.web3.Account();
+  const check = anchor.web3.Keypair.generate();
+  const vault = anchor.web3.Keypair.generate();
 
   let checkSigner = null;
 

@@ -10,8 +10,8 @@ describe("composite", () => {
   it("Is initialized!", async () => {
     const program = anchor.workspace.Composite;
 
-    const dummyA = new anchor.web3.Account();
-    const dummyB = new anchor.web3.Account();
+    const dummyA = anchor.web3.Keypair.generate();
+    const dummyB = anchor.web3.Keypair.generate();
 
     const tx = await program.rpc.initialize({
       accounts: {

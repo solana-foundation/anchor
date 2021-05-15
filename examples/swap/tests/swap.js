@@ -28,8 +28,8 @@ describe("swap", () => {
     marketBVaultSigner;
 
   // Open orders accounts on the two markets for the provider.
-  const openOrdersA = new anchor.web3.Account();
-  const openOrdersB = new anchor.web3.Account();
+  const openOrdersA = anchor.web3.Keypair.generate();
+  const openOrdersB = anchor.web3.Keypair.generate();
 
   it("BOILERPLATE: Sets up two markets with resting orders", async () => {
     ORDERBOOK_ENV = await utils.setupTwoMarkets({

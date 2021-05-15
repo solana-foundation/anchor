@@ -13,7 +13,7 @@ describe("basic-1", () => {
     const program = anchor.workspace.Basic1;
 
     // The Account to create.
-    const myAccount = new anchor.web3.Account();
+    const myAccount = anchor.web3.Keypair.generate();
 
     // Create account transaction.
     const tx = new anchor.web3.Transaction();
@@ -58,7 +58,7 @@ describe("basic-1", () => {
 
     // #region code
     // The Account to create.
-    const myAccount = new anchor.web3.Account();
+    const myAccount = anchor.web3.Keypair.generate();
 
     // Atomically create the new account and initialize it with the program.
     await program.rpc.initialize(new anchor.BN(1234), {
@@ -93,7 +93,7 @@ describe("basic-1", () => {
     const program = anchor.workspace.Basic1;
 
     // The Account to create.
-    const myAccount = new anchor.web3.Account();
+    const myAccount = anchor.web3.Keypair.generate();
 
     // Atomically create the new account and initialize it with the program.
     // #region code-simplified

@@ -12,7 +12,7 @@ describe("basic-3", () => {
     const puppet = anchor.workspace.Puppet;
 
     // Initialize a new puppet account.
-    const newPuppetAccount = new anchor.web3.Account();
+    const newPuppetAccount = anchor.web3.Keypair.generate();
     const tx = await puppet.rpc.initialize({
       accounts: {
         puppet: newPuppetAccount.publicKey,

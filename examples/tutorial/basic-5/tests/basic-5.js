@@ -7,7 +7,7 @@ describe("basic-5", () => {
 
   const program = anchor.workspace.Basic5;
 
-  const mint = new anchor.web3.Account();
+  const mint = anchor.web3.Keypair.generate();
 
   // Setup. Not important for the point of the example.
   it("Sets up the test", async () => {

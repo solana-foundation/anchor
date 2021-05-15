@@ -1,6 +1,6 @@
 import {
   Connection,
-  Account,
+  Keypair,
   PublicKey,
   Transaction,
   TransactionSignature,
@@ -81,7 +81,7 @@ export default class Provider {
    */
   async send(
     tx: Transaction,
-    signers?: Array<Account | undefined>,
+    signers?: Array<Keypair | undefined>,
     opts?: ConfirmOptions
   ): Promise<TransactionSignature> {
     if (signers === undefined) {
@@ -91,7 +91,7 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Account>;
+    const signerKps = signers.filter((s) => s !== undefined) as Array<Keypair>;
     const signerPubkeys = [this.wallet.publicKey].concat(
       signerKps.map((s) => s.publicKey)
     );
@@ -141,7 +141,7 @@ export default class Provider {
 
       const signerKps = signers.filter(
         (s) => s !== undefined
-      ) as Array<Account>;
+      ) as Array<Keypair>;
       const signerPubkeys = [this.wallet.publicKey].concat(
         signerKps.map((s) => s.publicKey)
       );
@@ -180,7 +180,7 @@ export default class Provider {
    */
   async simulate(
     tx: Transaction,
-    signers?: Array<Account | undefined>,
+    signers?: Array<Keypair | undefined>,
     opts?: ConfirmOptions
   ): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
     if (signers === undefined) {
@@ -190,7 +190,7 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Account>;
+    const signerKps = signers.filter((s) => s !== undefined) as Array<Keypair>;
     const signerPubkeys = [this.wallet.publicKey].concat(
       signerKps.map((s) => s.publicKey)
     );
@@ -210,7 +210,7 @@ export default class Provider {
 
 export type SendTxRequest = {
   tx: Transaction;
-  signers: Array<Account | undefined>;
+  signers: Array<Keypair | undefined>;
 };
 
 /**
@@ -226,10 +226,10 @@ export interface Wallet {
  * Node only wallet.
  */
 export class NodeWallet implements Wallet {
-  constructor(readonly payer: Account) {}
+  constructor(readonly payer: Keypair) {}
 
   static local(): NodeWallet {
-    const payer = new Account(
+    const payer = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
           require("fs").readFileSync(
