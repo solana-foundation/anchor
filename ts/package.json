@@ -23,10 +23,6 @@
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
     "@solana/web3.js": "^1.11.0",
-    "@types/bn.js": "^4.11.6",
-    "@types/bs58": "^4.0.1",
-    "@types/crypto-hash": "^1.1.2",
-    "@types/pako": "^1.0.1",
     "base64-js": "^1.5.1",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
@@ -42,7 +38,11 @@
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
+    "@types/bn.js": "^4.11.6",
+    "@types/bs58": "^4.0.1",
+    "@types/crypto-hash": "^1.1.2",
     "@types/jest": "^26.0.15",
+    "@types/pako": "^1.0.1",
     "@typescript-eslint/eslint-plugin": "^4.6.0",
     "@typescript-eslint/parser": "^4.6.0",
     "eslint": "^7.12.1",
