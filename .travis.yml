@@ -21,6 +21,7 @@ _examples: &examples
   - npm install -g mocha
   - npm install -g ts-mocha
   - npm install -g typescript
+  - npm install -g buffer
   - cd ts && yarn && yarn build && npm link && cd ../
   - npm install -g @project-serum/serum
   - npm install -g @project-serum/common
@@ -68,6 +69,7 @@ jobs:
         - pushd examples/chat && yarn && anchor test && popd
         - pushd examples/ido-pool && yarn && anchor test && popd
         - pushd examples/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
+        - pushd examples/pyth && yarn && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd
