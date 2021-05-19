@@ -43,9 +43,9 @@ export default class Provider {
    * (This api is for Node only.)
    */
   static local(url?: string, opts?: ConfirmOptions): Provider {
-    opts = opts || Provider.defaultOptions();
+    opts = opts ?? Provider.defaultOptions();
     const connection = new Connection(
-      url || "http://localhost:8899",
+      url ?? "http://localhost:8899",
       opts.preflightCommitment
     );
     const wallet = NodeWallet.local();

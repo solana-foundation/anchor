@@ -18,7 +18,7 @@
     "lint:fix": "prettier src/** -w",
     "watch": "tsc -p tsconfig.cjs.json --watch",
     "prepublishOnly": "yarn build",
-    "docs": "typedoc --excludePrivate --out ../docs/src/.vuepress/dist/ts/ src/index.ts"
+    "docs": "typedoc --excludePrivate --includeVersion --out ../docs/src/.vuepress/dist/ts/ src/index.ts"
   },
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
