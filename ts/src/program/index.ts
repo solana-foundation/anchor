@@ -301,11 +301,7 @@ export class Program {
     eventName: string,
     callback: (event: any, slot: number) => void
   ): number {
-    const eventParser = new EventParser(
-      this._coder,
-      this._programId,
-      this._idl
-    );
+    const eventParser = new EventParser(this._coder, this._programId);
     return this._provider.connection.onLogs(this._programId, (logs, ctx) => {
       if (logs.err) {
         console.error(logs);

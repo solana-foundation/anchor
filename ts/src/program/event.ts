@@ -1,8 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import * as base64 from "base64-js";
 import * as assert from "assert";
-import Coder, { eventDiscriminator } from "../coder";
-import { Idl } from "../idl";
+import Coder from "../coder";
 
 const LOG_START_INDEX = "Program log: ".length;
 
@@ -15,20 +14,10 @@ export type Event = {
 export class EventParser {
   private coder: Coder;
   private programId: PublicKey;
-  // Maps base64 encoded event discriminator to event name.
-  private discriminators: Map<string, string>;
 
-  constructor(coder: Coder, programId: PublicKey, idl: Idl) {
+  constructor(coder: Coder, programId: PublicKey) {
     this.coder = coder;
     this.programId = programId;
-    this.discriminators = new Map<string, string>(
-      idl.events === undefined
-        ? []
-        : idl.events.map((e) => [
-            base64.fromByteArray(eventDiscriminator(e.name)),
-            e.name,
-          ])
-    );
   }
 
   // Each log given, represents an array of messages emitted by
@@ -88,17 +77,7 @@ export class EventParser {
     // This is a `msg!` log.
     if (log.startsWith("Program log:")) {
       const logStr = log.slice(LOG_START_INDEX);
-      const logArr = Buffer.from(base64.toByteArray(logStr));
-      const disc = base64.fromByteArray(logArr.slice(0, 8));
-      // Only deserialize if the discriminator implies a proper event.
-      let event = null;
-      let eventName = this.discriminators.get(disc);
-      if (eventName !== undefined) {
-        event = {
-          name: eventName,
-          data: this.coder.events.decode(eventName, logArr.slice(8)),
-        };
-      }
+      const event = this.coder.events.decode(logStr);
       return [event, null, false];
     }
     // System log.
