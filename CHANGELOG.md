@@ -18,7 +18,7 @@ incremented for features.
 
 ## Breaking Changes
 
-* ts: Replace deprecated `web3.Account` with `web3.Keypair` ([#274](https://github.com/project-serum/anchor/pull/274)).
+* ts: Replace deprecated `web3.Account` with `web3.Signer` in public APIs ([#296](https://github.com/project-serum/anchor/pull/296)).
 
 ## [0.5.0] - 2021-05-07
 

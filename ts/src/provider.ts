@@ -1,6 +1,7 @@
 import {
   Connection,
   Keypair,
+  Signer,
   PublicKey,
   Transaction,
   TransactionSignature,
@@ -81,7 +82,7 @@ export default class Provider {
    */
   async send(
     tx: Transaction,
-    signers?: Array<Keypair | undefined>,
+    signers?: Array<Signer | undefined>,
     opts?: ConfirmOptions
   ): Promise<TransactionSignature> {
     if (signers === undefined) {
@@ -91,7 +92,7 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Keypair>;
+    const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
     const signerPubkeys = [this.wallet.publicKey].concat(
       signerKps.map((s) => s.publicKey)
     );
@@ -139,9 +140,7 @@ export default class Provider {
         signers = [];
       }
 
-      const signerKps = signers.filter(
-        (s) => s !== undefined
-      ) as Array<Keypair>;
+      const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
       const signerPubkeys = [this.wallet.publicKey].concat(
         signerKps.map((s) => s.publicKey)
       );
@@ -180,7 +179,7 @@ export default class Provider {
    */
   async simulate(
     tx: Transaction,
-    signers?: Array<Keypair | undefined>,
+    signers?: Array<Signer | undefined>,
     opts?: ConfirmOptions
   ): Promise<RpcResponseAndContext<SimulatedTransactionResponse>> {
     if (signers === undefined) {
@@ -190,7 +189,7 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Keypair>;
+    const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
     const signerPubkeys = [this.wallet.publicKey].concat(
       signerKps.map((s) => s.publicKey)
     );
@@ -216,7 +215,7 @@ export default class Provider {
 
 export type SendTxRequest = {
   tx: Transaction;
-  signers: Array<Keypair | undefined>;
+  signers: Array<Signer | undefined>;
 };
 
 /**

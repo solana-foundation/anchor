@@ -2,7 +2,7 @@ import camelCase from "camelcase";
 import EventEmitter from "eventemitter3";
 import * as bs58 from "bs58";
 import {
-  Keypair,
+  Signer,
   PublicKey,
   SystemProgram,
   TransactionInstruction,
@@ -38,7 +38,7 @@ type AccountProps = {
   all: (filter?: Buffer) => Promise<ProgramAccount<any>[]>;
   subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
   unsubscribe: (address: PublicKey) => void;
-  createInstruction: (keypair: Keypair) => Promise<TransactionInstruction>;
+  createInstruction: (signer: Signer) => Promise<TransactionInstruction>;
   associated: (...args: PublicKey[]) => Promise<any>;
   associatedAddress: (...args: PublicKey[]) => Promise<PublicKey>;
 };
@@ -93,7 +93,7 @@ export default class AccountFactory {
       // Returns an instruction for creating this account.
       // @ts-ignore
       accountsNamespace["createInstruction"] = async (
-        keypair: Keypair,
+        signer: Signer,
         sizeOverride?: number
       ): Promise<TransactionInstruction> => {
         // @ts-ignore
@@ -101,7 +101,7 @@ export default class AccountFactory {
 
         return SystemProgram.createAccount({
           fromPubkey: provider.wallet.publicKey,
-          newAccountPubkey: keypair.publicKey,
+          newAccountPubkey: signer.publicKey,
           space: sizeOverride ?? size,
           lamports: await provider.connection.getMinimumBalanceForRentExemption(
             sizeOverride ?? size
