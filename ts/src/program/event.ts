@@ -1,5 +1,4 @@
 import { PublicKey } from "@solana/web3.js";
-import * as base64 from "base64-js";
 import * as assert from "assert";
 import Coder from "../coder";
 

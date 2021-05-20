@@ -38,7 +38,7 @@ export default class SimulateFactory {
   ): SimulateFn {
     const simulate = async (...args: any[]): Promise<SimulateResponse> => {
       const tx = txFn(...args);
-      const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
+      const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
       let resp = undefined;
       try {
         resp = await provider.simulate(tx, ctx.signers, ctx.options);

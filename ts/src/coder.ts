@@ -13,6 +13,7 @@ import {
   IdlStateMethod,
 } from "./idl";
 import { IdlError } from "./error";
+import { Event } from "./program/event";
 
 /**
  * Number of bytes of the account discriminator.
@@ -249,18 +250,19 @@ class EventCoder {
     );
   }
 
-  public decode<T = any>(log: string): T | null {
+  public decode(log: string): Event | null {
     const logArr = Buffer.from(base64.toByteArray(log));
     const disc = base64.fromByteArray(logArr.slice(0, 8));
 
     // Only deserialize if the discriminator implies a proper event.
     const eventName = this.discriminators.get(disc);
     if (eventName === undefined) {
-      return undefined;
+      return null;
     }
 
     const layout = this.layouts.get(eventName);
-    return layout.decode(logArr.slice(8));
+    const data = layout.decode(logArr.slice(8));
+    return { data, name: eventName };
   }
 }
 
