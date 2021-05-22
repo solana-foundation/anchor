@@ -1,6 +1,7 @@
 //! CLI for workspace management of anchor programs.
 
-use crate::config::{read_all_programs, Config, Program};
+use crate::config::{read_all_programs, Config, Program, ProgramWorkspace};
+use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
@@ -22,10 +23,12 @@ use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
+use std::str::FromStr;
 use std::string::ToString;
 
 mod config;
@@ -138,6 +141,16 @@ pub enum Command {
     Cluster {
         #[clap(subcommand)]
         subcmd: ClusterCommand,
+    },
+    /// Starts a node shell with an Anchor client setup according to the local
+    /// config.
+    Shell {
+        /// The cluster config to use.
+        #[clap(short, long)]
+        cluster: Option<String>,
+        /// Local path to the wallet keypair file.
+        #[clap(short, long)]
+        wallet: Option<String>,
     },
 }
 
@@ -253,6 +266,7 @@ fn main() -> Result<()> {
         #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
         Command::Cluster { subcmd } => cluster(subcmd),
+        Command::Shell { cluster, wallet } => shell(cluster, wallet),
     }
 }
 
@@ -1588,4 +1602,53 @@ fn cluster(_cmd: ClusterCommand) -> Result<()> {
     println!("* Devnet  - https://devnet.solana.com");
     println!("* Testnet - https://testnet.solana.com");
     Ok(())
+}
+
+fn shell(cluster: Option<String>, wallet: Option<String>) -> Result<()> {
+    with_workspace(|cfg, _path, _cargo| {
+        let cluster = match cluster {
+            None => cfg.cluster.clone(),
+            Some(c) => Cluster::from_str(&c)?,
+        };
+        let wallet = match wallet {
+            None => cfg.wallet.to_string(),
+            Some(c) => c,
+        };
+        let programs = {
+            let idls: HashMap<String, Idl> = read_all_programs()?
+                .iter()
+                .map(|program| (program.idl.name.clone(), program.idl.clone()))
+                .collect();
+            match cfg.clusters.get(&cluster) {
+                None => Vec::new(),
+                Some(programs) => programs
+                    .iter()
+                    .map(|(name, program_deployment)| ProgramWorkspace {
+                        name: name.to_string(),
+                        program_id: program_deployment.program_id,
+                        idl: match idls.get(name) {
+                            None => {
+                                println!("Unable to find IDL for {}", name);
+                                std::process::exit(1);
+                            }
+                            Some(idl) => idl.clone(),
+                        },
+                    })
+                    .collect::<Vec<ProgramWorkspace>>(),
+            }
+        };
+        let js_code = template::node_shell(cluster.url(), &wallet, programs)?;
+        let mut child = std::process::Command::new("node")
+            .args(&["-e", &js_code, "-i", "--experimental-repl-await"])
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+
+        if !child.wait()?.success() {
+            println!("Error running node shell");
+            return Ok(());
+        }
+        Ok(())
+    })
 }

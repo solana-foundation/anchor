@@ -1,8 +1,10 @@
+use anchor_client::Cluster;
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Error, Result};
 use serde::{Deserialize, Serialize};
-use serum_common::client::Cluster;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -12,6 +14,7 @@ use std::str::FromStr;
 #[derive(Debug, Default)]
 pub struct Config {
     pub cluster: Cluster,
+    pub clusters: Clusters,
     pub wallet: WalletPath,
     pub test: Option<Test>,
 }
@@ -73,14 +76,24 @@ struct _Config {
     cluster: String,
     wallet: String,
     test: Option<Test>,
+    clusters: Option<BTreeMap<String, BTreeMap<String, String>>>,
 }
 
 impl ToString for Config {
     fn to_string(&self) -> String {
+        let clusters = {
+            let c = ser_clusters(&self.clusters);
+            if c.len() == 0 {
+                None
+            } else {
+                Some(c)
+            }
+        };
         let cfg = _Config {
             cluster: format!("{}", self.cluster),
             wallet: self.wallet.to_string(),
             test: self.test.clone(),
+            clusters,
         };
 
         toml::to_string(&cfg).expect("Must be well formed")
@@ -97,8 +110,51 @@ impl FromStr for Config {
             cluster: cfg.cluster.parse()?,
             wallet: shellexpand::tilde(&cfg.wallet).parse()?,
             test: cfg.test,
+            clusters: cfg
+                .clusters
+                .map_or(Ok(BTreeMap::new()), |c| deser_clusters(c))?,
         })
     }
+}
+
+fn ser_clusters(
+    clusters: &BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>,
+) -> BTreeMap<String, BTreeMap<String, String>> {
+    clusters
+        .iter()
+        .map(|(cluster, programs)| {
+            let cluster = cluster.to_string();
+            let programs = programs
+                .iter()
+                .map(|(name, deployment)| (name.clone(), deployment.program_id.to_string()))
+                .collect::<BTreeMap<String, String>>();
+            (cluster, programs)
+        })
+        .collect::<BTreeMap<String, BTreeMap<String, String>>>()
+}
+
+fn deser_clusters(
+    clusters: BTreeMap<String, BTreeMap<String, String>>,
+) -> Result<BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>> {
+    clusters
+        .iter()
+        .map(|(cluster, programs)| {
+            let cluster: Cluster = cluster.parse()?;
+            let programs = programs
+                .iter()
+                .map(|(name, program_id)| {
+                    Ok((
+                        name.clone(),
+                        ProgramDeployment {
+                            name: name.clone(),
+                            program_id: program_id.parse()?,
+                        },
+                    ))
+                })
+                .collect::<Result<BTreeMap<String, ProgramDeployment>>>()?;
+            Ok((cluster, programs))
+        })
+        .collect::<Result<BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>>>()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +231,20 @@ impl Program {
             .expect("Must have current dir")
             .join(format!("target/deploy/{}.so", self.lib_name))
     }
+}
+
+pub type Clusters = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
+
+#[derive(Debug, Default)]
+pub struct ProgramDeployment {
+    pub name: String,
+    pub program_id: Pubkey,
+}
+
+pub struct ProgramWorkspace {
+    pub name: String,
+    pub program_id: Pubkey,
+    pub idl: Idl,
 }
 
 serum_common::home_path!(WalletPath, ".config/solana/id.json");

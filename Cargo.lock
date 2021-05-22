@@ -130,6 +130,7 @@ dependencies = [
 name = "anchor-cli"
 version = "0.5.0"
 dependencies = [
+ "anchor-client",
  "anchor-lang",
  "anchor-syn",
  "anyhow",
@@ -158,6 +159,7 @@ dependencies = [
  "anchor-lang",
  "anyhow",
  "regex",
+ "serde",
  "solana-client",
  "solana-sdk",
  "thiserror",
