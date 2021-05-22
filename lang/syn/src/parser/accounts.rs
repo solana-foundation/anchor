@@ -173,7 +173,7 @@ fn parse_sysvar(path: &syn::Path) -> SysvarTy {
         "Rent" => SysvarTy::Rent,
         "EpochSchedule" => SysvarTy::EpochSchedule,
         "Fees" => SysvarTy::Fees,
-        "RecentBlockhashes" => SysvarTy::RecentBlockHashes,
+        "RecentBlockhashes" => SysvarTy::RecentBlockhashes,
         "SlotHashes" => SysvarTy::SlotHashes,
         "SlotHistory" => SysvarTy::SlotHistory,
         "StakeHistory" => SysvarTy::StakeHistory,
