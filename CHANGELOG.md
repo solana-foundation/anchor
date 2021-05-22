@@ -15,6 +15,7 @@ incremented for features.
 
 * ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
+* cli: Add `--skip-build` flag to test command ([301](https://github.com/project-serum/anchor/pull/301)).
 
 ## Breaking Changes
 

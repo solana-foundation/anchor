@@ -76,6 +76,10 @@ pub enum Command {
         /// url is a localnet.
         #[clap(long)]
         skip_local_validator: bool,
+        /// Flag to skip building the program in the workspace,
+        /// use this to save time when running test and the program code is not altered.
+        #[clap(long)]
+        skip_build: bool,
         /// Use this flag if you want to use yarn as your package manager.
         #[clap(long)]
         yarn: bool,
@@ -242,9 +246,10 @@ fn main() -> Result<()> {
         Command::Test {
             skip_deploy,
             skip_local_validator,
+            skip_build,
             yarn,
             file,
-        } => test(skip_deploy, skip_local_validator, yarn, file),
+        } => test(skip_deploy, skip_local_validator, skip_build, yarn, file),
         #[cfg(feature = "dev")]
         Command::Airdrop { url } => airdrop(url),
         Command::Cluster { subcmd } => cluster(subcmd),
@@ -925,6 +930,7 @@ enum OutFile {
 fn test(
     skip_deploy: bool,
     skip_local_validator: bool,
+    skip_build: bool,
     use_yarn: bool,
     file: Option<String>,
 ) -> Result<()> {
@@ -932,7 +938,10 @@ fn test(
         // Bootup validator, if needed.
         let validator_handle = match cfg.cluster.url() {
             "http://127.0.0.1:8899" => {
-                build(None, false)?;
+                match skip_build {
+                    true => None,
+                    false => Some(build(None, false)?),
+                };
                 let flags = match skip_deploy {
                     true => None,
                     false => Some(genesis_flags(cfg)?),
