@@ -18,7 +18,7 @@ rustup component add rustfmt
 See the solana [docs](https://docs.solana.com/cli/install-solana-cli-tools) for installation instructions. On macOS and Linux,
 
 ```bash
-sh -c "$(curl -sSfL https://release.solana.com/v1.6.6/install)"
+sh -c "$(curl -sSfL https://release.solana.com/v1.6.9/install)"
 ```
 
 ## Install Mocha
@@ -34,7 +34,7 @@ npm install -g mocha
 For now, we can use Cargo to install the CLI.
 
 ```bash
-cargo install --git https://github.com/project-serum/anchor --tag v0.5.0 anchor-cli --locked
+cargo install --git https://github.com/project-serum/anchor --tag v0.6.0 anchor-cli --locked
 ```
 
 On Linux systems you may need to install additional dependencies if `cargo install` fails. On Ubuntu,

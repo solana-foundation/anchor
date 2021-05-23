@@ -11,14 +11,17 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.6.0] - 2021-05-23
+
 ## Features
 
 * ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
 * ts: Introduce `Address` type, allowing one to use Base 58 encoded strings in public APIs ([#304](https://github.com/project-serum/anchor/pull/304)).
+* ts: Replace deprecated `web3.Account` with `web3.Signer` in public APIs ([#296](https://github.com/project-serum/anchor/pull/296)).
+* ts: Generated `anchor.workspace` clients can now be customized per network with `[cluster.<slug>]` in the Anchor.toml ([#308](https://github.com/project-serum/anchor/pull/308)).
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
 * cli: Add `--skip-build` flag to test command ([301](https://github.com/project-serum/anchor/pull/301)).
 * cli: Add `anchor shell` command to spawn a node shell populated with an Anchor.toml based environment ([#303](https://github.com/project-serum/anchor/pull/303)).
-* ts: Replace deprecated `web3.Account` with `web3.Signer` in public APIs ([#296](https://github.com/project-serum/anchor/pull/296)).
 
 ## Breaking Changes
 
