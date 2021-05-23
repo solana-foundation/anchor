@@ -19,7 +19,7 @@ export default class TransactionFactory {
   // Builds the transaction namespace.
   public static build(idlIx: IdlInstruction, ixFn: IxFn): TxFn {
     const txFn = (...args: any[]): Transaction => {
-      const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
+      const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
       const tx = new Transaction();
       if (ctx.instructions !== undefined) {
         tx.add(...ctx.instructions);

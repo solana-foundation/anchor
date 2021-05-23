@@ -6,6 +6,7 @@ import { Idl } from "./idl";
 import workspace from "./workspace";
 import utils from "./utils";
 import { Program } from "./program";
+import { Address } from "./program/common";
 import { ProgramAccount } from "./program/namespace";
 import { Context, Accounts } from "./program/context";
 
@@ -37,4 +38,5 @@ export {
   Idl,
   utils,
   Wallet,
+  Address,
 };

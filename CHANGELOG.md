@@ -14,6 +14,7 @@ incremented for features.
 ## Features
 
 * ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
+* ts: Introduce `Address` type, allowing one to use Base 58 encoded strings in public APIs ([#304](https://github.com/project-serum/anchor/pull/304)).
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
 * cli: Add `--skip-build` flag to test command ([301](https://github.com/project-serum/anchor/pull/301)).
 * cli: Add `anchor shell` command to spawn a node shell populated with an Anchor.toml based environment ([#303](https://github.com/project-serum/anchor/pull/303)).

@@ -1,10 +1,10 @@
 import {
   AccountMeta,
   Signer,
-  PublicKey,
   ConfirmOptions,
   TransactionInstruction,
 } from "@solana/web3.js";
+import { Address } from "./common";
 import { IdlInstruction } from "../idl";
 
 /**
@@ -56,7 +56,7 @@ export type Context = {
  * nested here.
  */
 export type Accounts = {
-  [key: string]: PublicKey | Accounts;
+  [key: string]: Address | Accounts;
 };
 
 export function splitArgsAndCtx(

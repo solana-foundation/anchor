@@ -1,7 +1,10 @@
 import EventEmitter from "eventemitter3";
+import * as bs58 from "bs58";
+import { PublicKey } from "@solana/web3.js";
 import { Idl, IdlInstruction, IdlAccountItem, IdlStateMethod } from "../idl";
 import { ProgramError } from "../error";
 import { Accounts } from "./context";
+import Provider from "../provider";
 
 export type Subscription = {
   listener: number;
@@ -77,3 +80,19 @@ export function translateError(
     }
   }
 }
+
+// Translates an address to a Pubkey.
+export function translateAddress(address: Address): PublicKey {
+  if (typeof address === "string") {
+    const pk = new PublicKey(address);
+    return pk;
+  } else {
+    return address;
+  }
+}
+
+/**
+ * An address to identify an account on chain. Can be a [[PublicKey]],
+ * or Base 58 encoded string.
+ */
+export type Address = PublicKey | string;

@@ -15,7 +15,7 @@ import Coder, {
   accountDiscriminator,
   accountSize,
 } from "../../coder";
-import { Subscription } from "../common";
+import { Subscription, Address, translateAddress } from "../common";
 
 /**
  * Accounts is a dynamically generated object to fetch any given account
@@ -36,8 +36,8 @@ export type AccountFn<T = any> = AccountProps & ((address: PublicKey) => T);
 type AccountProps = {
   size: number;
   all: (filter?: Buffer) => Promise<ProgramAccount<any>[]>;
-  subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
-  unsubscribe: (address: PublicKey) => void;
+  subscribe: (address: Address, commitment?: Commitment) => EventEmitter;
+  unsubscribe: (address: Address) => void;
   createInstruction: (signer: Signer) => Promise<TransactionInstruction>;
   associated: (...args: PublicKey[]) => Promise<any>;
   associatedAddress: (...args: PublicKey[]) => Promise<PublicKey>;
@@ -70,8 +70,10 @@ export default class AccountFactory {
       const name = camelCase(idlAccount.name);
 
       // Fetches the decoded account from the network.
-      const accountsNamespace = async (address: PublicKey): Promise<any> => {
-        const accountInfo = await provider.connection.getAccountInfo(address);
+      const accountsNamespace = async (address: Address): Promise<any> => {
+        const accountInfo = await provider.connection.getAccountInfo(
+          translateAddress(address)
+        );
         if (accountInfo === null) {
           throw new Error(`Account does not exist ${address.toString()}`);
         }
@@ -113,14 +115,15 @@ export default class AccountFactory {
       // Subscribes to all changes to this account.
       // @ts-ignore
       accountsNamespace["subscribe"] = (
-        address: PublicKey,
+        address: Address,
         commitment?: Commitment
       ): EventEmitter => {
         if (subscriptions.get(address.toString())) {
           return subscriptions.get(address.toString()).ee;
         }
-        const ee = new EventEmitter();
 
+        const ee = new EventEmitter();
+        address = translateAddress(address);
         const listener = provider.connection.onAccountChange(
           address,
           (acc) => {
@@ -140,7 +143,7 @@ export default class AccountFactory {
 
       // Unsubscribes to account changes.
       // @ts-ignore
-      accountsNamespace["unsubscribe"] = (address: PublicKey) => {
+      accountsNamespace["unsubscribe"] = (address: Address) => {
         let sub = subscriptions.get(address.toString());
         if (!sub) {
           console.warn("Address is not subscribed");
@@ -200,11 +203,11 @@ export default class AccountFactory {
       // Function returning the associated address. Args are keys to associate.
       // Order matters.
       accountsNamespace["associatedAddress"] = async (
-        ...args: PublicKey[]
+        ...args: Address[]
       ): Promise<PublicKey> => {
         let seeds = [Buffer.from([97, 110, 99, 104, 111, 114])]; // b"anchor".
         args.forEach((arg) => {
-          seeds.push(arg.toBuffer());
+          seeds.push(translateAddress(arg).toBuffer());
         });
         const [assoc] = await PublicKey.findProgramAddress(seeds, programId);
         return assoc;
@@ -213,7 +216,7 @@ export default class AccountFactory {
       // Function returning the associated account. Args are keys to associate.
       // Order matters.
       accountsNamespace["associated"] = async (
-        ...args: PublicKey[]
+        ...args: Address[]
       ): Promise<any> => {
         const addr = await accountsNamespace["associatedAddress"](...args);
         return await accountsNamespace(addr);

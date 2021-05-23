@@ -14,6 +14,7 @@ import NamespaceFactory, {
 import { getProvider } from "../";
 import { decodeUtf8 } from "../utils";
 import { EventParser } from "./event";
+import { Address, translateAddress } from "./common";
 
 /**
  * ## Program
@@ -78,19 +79,19 @@ export class Program {
    * ## account
    *
    * ```javascript
-   * program.account.<account>(publicKey);
+   * program.account.<account>(address);
    * ```
    *
    * ## Parameters
    *
-   * 1. `publicKey` - The [[PublicKey]] of the account.
+   * 1. `address` - The [[Address]] of the account.
    *
    * ## Example
    *
    * To fetch a `Counter` object from the above example,
    *
    * ```javascript
-   * const counter = await program.account.counter(publicKey);
+   * const counter = await program.account.counter(address);
    * ```
    */
   readonly account: AccountNamespace;
@@ -233,7 +234,9 @@ export class Program {
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    */
-  public constructor(idl: Idl, programId: PublicKey, provider?: Provider) {
+  public constructor(idl: Idl, programId: Address, provider?: Provider) {
+    programId = translateAddress(programId);
+
     // Fields.
     this._idl = idl;
     this._programId = programId;
@@ -266,7 +269,9 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async at(programId: PublicKey, provider?: Provider) {
+  public static async at(address: Address, provider?: Provider) {
+    const programId = translateAddress(address);
+
     const idl = await Program.fetchIdl(programId, provider);
     return new Program(idl, programId, provider);
   }
@@ -280,10 +285,12 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async fetchIdl(programId: PublicKey, provider?: Provider) {
+  public static async fetchIdl(address: Address, provider?: Provider) {
     provider = provider ?? getProvider();
-    const address = await idlAddress(programId);
-    const accountInfo = await provider.connection.getAccountInfo(address);
+    const programId = translateAddress(address);
+
+    const idlAddr = await idlAddress(programId);
+    const accountInfo = await provider.connection.getAccountInfo(idlAddr);
     // Chop off account discriminator.
     let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
     const inflatedIdl = inflate(idlAccount.data);

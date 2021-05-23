@@ -2,7 +2,12 @@ import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { IdlAccount, IdlInstruction, IdlAccountItem } from "../../idl";
 import { IdlError } from "../../error";
 import Coder from "../../coder";
-import { toInstruction, validateAccounts } from "../common";
+import {
+  toInstruction,
+  validateAccounts,
+  translateAddress,
+  Address,
+} from "../common";
 import { Accounts, splitArgsAndCtx } from "../context";
 
 /**
@@ -81,7 +86,7 @@ export default class InstructionNamespaceFactory {
         } else {
           const account: IdlAccount = acc as IdlAccount;
           return {
-            pubkey: ctx[acc.name],
+            pubkey: translateAddress(ctx[acc.name] as Address),
             isWritable: account.isMut,
             isSigner: account.isSigner,
           };

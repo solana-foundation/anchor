@@ -27,7 +27,7 @@ export default class RpcFactory {
   ): RpcFn {
     const rpc = async (...args: any[]): Promise<TransactionSignature> => {
       const tx = txFn(...args);
-      const [_, ctx] = splitArgsAndCtx(idlIx, [...args]);
+      const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
       try {
         const txSig = await provider.send(tx, ctx.signers, ctx.options);
         return txSig;

@@ -27,8 +27,8 @@ export type StateNamespace = () =>
       address: () => Promise<PublicKey>;
       rpc: RpcNamespace;
       instruction: InstructionNamespace;
-      subscribe: (address: PublicKey, commitment?: Commitment) => EventEmitter;
-      unsubscribe: (address: PublicKey) => void;
+      subscribe: (commitment?: Commitment) => EventEmitter;
+      unsubscribe: () => void;
     };
 
 export default class StateFactory {
@@ -92,7 +92,7 @@ export default class StateFactory {
       ix[m.name] = ixFn;
 
       rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
-        const [_, ctx] = splitArgsAndCtx(m, [...args]);
+        const [, ctx] = splitArgsAndCtx(m, [...args]);
         const tx = new Transaction();
         if (ctx.instructions !== undefined) {
           tx.add(...ctx.instructions);
@@ -164,10 +164,7 @@ export default class StateFactory {
 
 // Calculates the deterministic address of the program's "state" account.
 async function programStateAddress(programId: PublicKey): Promise<PublicKey> {
-  let [registrySigner, _nonce] = await PublicKey.findProgramAddress(
-    [],
-    programId
-  );
+  let [registrySigner] = await PublicKey.findProgramAddress([], programId);
   return PublicKey.createWithSeed(registrySigner, "unversioned", programId);
 }
 
@@ -181,10 +178,7 @@ async function stateInstructionKeys(
 ) {
   if (m.name === "new") {
     // Ctor `new` method.
-    const [programSigner, _nonce] = await PublicKey.findProgramAddress(
-      [],
-      programId
-    );
+    const [programSigner] = await PublicKey.findProgramAddress([], programId);
     return [
       {
         pubkey: provider.wallet.publicKey,

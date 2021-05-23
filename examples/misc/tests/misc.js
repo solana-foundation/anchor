@@ -207,6 +207,8 @@ describe("misc", () => {
     assert.ok(dataAccount.data === -3);
   });
 
+  let dataPubkey;
+
   it("Can use i16 in the idl", async () => {
     const data = anchor.web3.Keypair.generate();
     await program.rpc.testI16(-2048, {
@@ -218,6 +220,13 @@ describe("misc", () => {
       signers: [data],
     });
     const dataAccount = await program.account.dataI16(data.publicKey);
+    assert.ok(dataAccount.data === -2048);
+
+    dataPubkey = data.publicKey;
+  });
+
+  it("Can use base58 strings to fetch an account", async () => {
+    const dataAccount = await program.account.dataI16(dataPubkey.toString());
     assert.ok(dataAccount.data === -2048);
   });
 });
