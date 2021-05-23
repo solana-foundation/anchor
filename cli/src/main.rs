@@ -952,10 +952,9 @@ fn test(
         // Bootup validator, if needed.
         let validator_handle = match cfg.provider.cluster.url() {
             "http://127.0.0.1:8899" => {
-                match skip_build {
-                    true => None,
-                    false => Some(build(None, false)?),
-                };
+                if !skip_build {
+                    build(None, false)?;
+                }
                 let flags = match skip_deploy {
                     true => None,
                     false => Some(genesis_flags(cfg)?),
@@ -1181,8 +1180,6 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
     Ok(validator_handle)
 }
 
-// TODO: Testing and deploys should use separate sections of metadata.
-//       Similarly, each network should have separate metadata.
 fn deploy(
     url: Option<String>,
     keypair: Option<String>,
@@ -1324,28 +1321,6 @@ fn launch(
 
         Ok(())
     })
-}
-
-// with_workspace ensures the current working directory is always the top level
-// workspace directory, i.e., where the `Anchor.toml` file is located, before
-// and after the closure invocation.
-//
-// The closure passed into this function must never change the working directory
-// to be outside the workspace. Doing so will have undefined behavior.
-fn with_workspace<R>(f: impl FnOnce(&Config, PathBuf, Option<PathBuf>) -> R) -> R {
-    set_workspace_dir_or_exit();
-
-    clear_program_keys().unwrap();
-
-    let (cfg, cfg_path, cargo_toml) = Config::discover()
-        .expect("Previously set the workspace dir")
-        .expect("Anchor.toml must always exist");
-    let r = f(&cfg, cfg_path, cargo_toml);
-
-    set_workspace_dir_or_exit();
-    clear_program_keys().unwrap();
-
-    r
 }
 
 // The Solana CLI doesn't redeploy a program if this file exists.
@@ -1651,4 +1626,26 @@ fn shell(cluster: Option<String>, wallet: Option<String>) -> Result<()> {
         }
         Ok(())
     })
+}
+
+// with_workspace ensures the current working directory is always the top level
+// workspace directory, i.e., where the `Anchor.toml` file is located, before
+// and after the closure invocation.
+//
+// The closure passed into this function must never change the working directory
+// to be outside the workspace. Doing so will have undefined behavior.
+fn with_workspace<R>(f: impl FnOnce(&Config, PathBuf, Option<PathBuf>) -> R) -> R {
+    set_workspace_dir_or_exit();
+
+    clear_program_keys().unwrap();
+
+    let (cfg, cfg_path, cargo_toml) = Config::discover()
+        .expect("Previously set the workspace dir")
+        .expect("Anchor.toml must always exist");
+    let r = f(&cfg, cfg_path, cargo_toml);
+
+    set_workspace_dir_or_exit();
+    clear_program_keys().unwrap();
+
+    r
 }

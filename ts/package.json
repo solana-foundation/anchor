@@ -33,7 +33,8 @@
     "find": "^0.3.0",
     "js-sha256": "^0.9.0",
     "pako": "^2.0.3",
-    "snake-case": "^3.0.4"
+    "snake-case": "^3.0.4",
+    "toml": "^3.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
