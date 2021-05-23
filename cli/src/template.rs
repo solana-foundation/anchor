@@ -182,15 +182,11 @@ pub fn ts_config() -> &'static str {
 }
 
 pub fn git_ignore() -> &'static str {
-    r#"# ignore Mac OS noise
+    r#"
 .DS_Store
-
-# ignore the build directory for Rust/Anchor
 target
-
-# Ignore backup files creates by cargo fmt.
 **/*.rs.bk
-    "#
+"#
 }
 
 pub fn node_shell(

@@ -13,11 +13,18 @@ use std::str::FromStr;
 
 #[derive(Debug, Default)]
 pub struct Config {
-    pub cluster: Cluster,
-    pub clusters: Clusters,
-    pub wallet: WalletPath,
+    pub provider: ProviderConfig,
+    pub clusters: ClustersConfig,
     pub test: Option<Test>,
 }
+
+#[derive(Debug, Default)]
+pub struct ProviderConfig {
+    pub cluster: Cluster,
+    pub wallet: WalletPath,
+}
+
+pub type ClustersConfig = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
 
 impl Config {
     // Searches all parent directories for an Anchor.toml file.
@@ -64,7 +71,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        solana_sdk::signature::read_keypair_file(&self.wallet.to_string())
+        solana_sdk::signature::read_keypair_file(&self.provider.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))
     }
 }
@@ -73,10 +80,15 @@ impl Config {
 // into base 58 strings.
 #[derive(Debug, Serialize, Deserialize)]
 struct _Config {
-    cluster: String,
-    wallet: String,
+    provider: Provider,
     test: Option<Test>,
     clusters: Option<BTreeMap<String, BTreeMap<String, String>>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Provider {
+    cluster: String,
+    wallet: String,
 }
 
 impl ToString for Config {
@@ -90,8 +102,10 @@ impl ToString for Config {
             }
         };
         let cfg = _Config {
-            cluster: format!("{}", self.cluster),
-            wallet: self.wallet.to_string(),
+            provider: Provider {
+                cluster: format!("{}", self.provider.cluster),
+                wallet: self.provider.wallet.to_string(),
+            },
             test: self.test.clone(),
             clusters,
         };
@@ -107,8 +121,10 @@ impl FromStr for Config {
         let cfg: _Config = toml::from_str(s)
             .map_err(|e| anyhow::format_err!("Unable to deserialize config: {}", e.to_string()))?;
         Ok(Config {
-            cluster: cfg.cluster.parse()?,
-            wallet: shellexpand::tilde(&cfg.wallet).parse()?,
+            provider: ProviderConfig {
+                cluster: cfg.provider.cluster.parse()?,
+                wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
+            },
             test: cfg.test,
             clusters: cfg
                 .clusters
@@ -232,8 +248,6 @@ impl Program {
             .join(format!("target/deploy/{}.so", self.lib_name))
     }
 }
-
-pub type Clusters = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
 
 #[derive(Debug, Default)]
 pub struct ProgramDeployment {

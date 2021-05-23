@@ -540,7 +540,7 @@ fn verify(program_id: Pubkey) -> Result<()> {
     let bin_path = program_dir
         .join("../../target/deploy/")
         .join(format!("{}.so", local_idl.name));
-    let is_buffer = verify_bin(program_id, &bin_path, cfg.cluster.url())?;
+    let is_buffer = verify_bin(program_id, &bin_path, cfg.provider.cluster.url())?;
 
     // Verify IDL (only if it's not a buffer account).
     if !is_buffer {
@@ -610,7 +610,7 @@ fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<bool
 // Fetches an IDL for the given program_id.
 fn fetch_idl(idl_addr: Pubkey) -> Result<Idl> {
     let cfg = Config::discover()?.expect("Inside a workspace").0;
-    let client = RpcClient::new(cfg.cluster.url().to_string());
+    let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
     let mut account = client
         .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
@@ -669,7 +669,7 @@ fn idl(subcmd: IdlCommand) -> Result<()> {
 
 fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
-        let keypair = cfg.wallet.to_string();
+        let keypair = cfg.provider.wallet.to_string();
 
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
@@ -683,7 +683,7 @@ fn idl_init(program_id: Pubkey, idl_filepath: String) -> Result<()> {
 
 fn idl_write_buffer(program_id: Pubkey, idl_filepath: String) -> Result<Pubkey> {
     with_workspace(|cfg, _path, _cargo| {
-        let keypair = cfg.wallet.to_string();
+        let keypair = cfg.provider.wallet.to_string();
 
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
@@ -699,9 +699,9 @@ fn idl_write_buffer(program_id: Pubkey, idl_filepath: String) -> Result<Pubkey> 
 
 fn idl_set_buffer(program_id: Pubkey, buffer: Pubkey) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
-        let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+        let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))?;
-        let client = RpcClient::new(cfg.cluster.url().to_string());
+        let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
         // Instruction to set the buffer onto the IdlAccount.
         let set_buffer_ix = {
@@ -749,7 +749,7 @@ fn idl_upgrade(program_id: Pubkey, idl_filepath: String) -> Result<()> {
 
 fn idl_authority(program_id: Pubkey) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
-        let client = RpcClient::new(cfg.cluster.url().to_string());
+        let client = RpcClient::new(cfg.provider.cluster.url().to_string());
         let idl_address = {
             let account = client
                 .get_account_with_commitment(&program_id, CommitmentConfig::processed())?
@@ -783,9 +783,9 @@ fn idl_set_authority(
             None => IdlAccount::address(&program_id),
             Some(addr) => addr,
         };
-        let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+        let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))?;
-        let client = RpcClient::new(cfg.cluster.url().to_string());
+        let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
         // Instruction data.
         let data =
@@ -853,9 +853,9 @@ fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl, idl_address: Pubkey) 
     idl.metadata = None;
 
     // Misc.
-    let keypair = solana_sdk::signature::read_keypair_file(&cfg.wallet.to_string())
+    let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
         .map_err(|_| anyhow!("Unable to read keypair file"))?;
-    let client = RpcClient::new(cfg.cluster.url().to_string());
+    let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
     // Serialize and compress the idl.
     let idl_data = {
@@ -950,7 +950,7 @@ fn test(
 ) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         // Bootup validator, if needed.
-        let validator_handle = match cfg.cluster.url() {
+        let validator_handle = match cfg.provider.cluster.url() {
             "http://127.0.0.1:8899" => {
                 match skip_build {
                     true => None,
@@ -975,7 +975,7 @@ fn test(
         };
 
         // Setup log reader.
-        let log_streams = stream_logs(&cfg.cluster.url());
+        let log_streams = stream_logs(&cfg.provider.cluster.url());
 
         // Check to see if yarn is installed, panic if not.
         if use_yarn {
@@ -999,7 +999,7 @@ fn test(
                     .arg("-p")
                     .arg("./tsconfig.json")
                     .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
                     .output()
@@ -1008,7 +1008,7 @@ fn test(
                 (false, true) => std::process::Command::new("yarn")
                     .arg("mocha")
                     .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
                     .output()
@@ -1018,7 +1018,7 @@ fn test(
                     .arg("-p")
                     .arg("./tsconfig.json")
                     .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
                     .output()
@@ -1026,7 +1026,7 @@ fn test(
                     .with_context(|| "ts-mocha"),
                 (false, false) => std::process::Command::new("mocha")
                     .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.cluster.url())
+                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
                     .stdout(Stdio::inherit())
                     .stderr(Stdio::inherit())
                     .output()
@@ -1198,8 +1198,8 @@ fn _deploy(
 ) -> Result<Vec<(Pubkey, Program)>> {
     with_workspace(|cfg, _path, _cargo| {
         // Fallback to config vars if not provided via CLI.
-        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
-        let keypair = keypair.unwrap_or_else(|| cfg.wallet.to_string());
+        let url = url.unwrap_or_else(|| cfg.provider.cluster.url().to_string());
+        let keypair = keypair.unwrap_or_else(|| cfg.provider.wallet.to_string());
 
         // Deploy the programs.
         println!("Deploying workspace: {}", url);
@@ -1277,9 +1277,9 @@ fn upgrade(program_id: Pubkey, program_filepath: String) -> Result<()> {
             .arg("program")
             .arg("deploy")
             .arg("--url")
-            .arg(cfg.cluster.url())
+            .arg(cfg.provider.cluster.url())
             .arg("--keypair")
-            .arg(&cfg.wallet.to_string())
+            .arg(&cfg.provider.wallet.to_string())
             .arg("--program-id")
             .arg(program_id.to_string())
             .arg(&program_filepath)
@@ -1306,8 +1306,8 @@ fn launch(
     let programs = _deploy(url.clone(), keypair.clone(), program_name.clone())?;
 
     with_workspace(|cfg, _path, _cargo| {
-        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
-        let keypair = keypair.unwrap_or_else(|| cfg.wallet.to_string());
+        let url = url.unwrap_or_else(|| cfg.provider.cluster.url().to_string());
+        let keypair = keypair.unwrap_or_else(|| cfg.provider.wallet.to_string());
 
         // Add metadata to all IDLs.
         for (address, program) in programs {
@@ -1370,7 +1370,7 @@ fn create_idl_account(
     let idl_address = IdlAccount::address(program_id);
     let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
         .map_err(|_| anyhow!("Unable to read keypair file"))?;
-    let client = RpcClient::new(cfg.cluster.url().to_string());
+    let client = RpcClient::new(cfg.provider.cluster.url().to_string());
     let idl_data = serialize_idl(idl)?;
 
     // Run `Create instruction.
@@ -1423,7 +1423,7 @@ fn create_idl_buffer(
 ) -> Result<Pubkey> {
     let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
         .map_err(|_| anyhow!("Unable to read keypair file"))?;
-    let client = RpcClient::new(cfg.cluster.url().to_string());
+    let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
     let buffer = Keypair::generate(&mut OsRng);
 
@@ -1496,7 +1496,7 @@ fn migrate(url: Option<String>) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         println!("Running migration deploy script");
 
-        let url = url.unwrap_or_else(|| cfg.cluster.url().to_string());
+        let url = url.unwrap_or_else(|| cfg.provider.cluster.url().to_string());
         let cur_dir = std::env::current_dir()?;
         let module_path = cur_dir.join("migrations/deploy.js");
 
@@ -1607,11 +1607,11 @@ fn cluster(_cmd: ClusterCommand) -> Result<()> {
 fn shell(cluster: Option<String>, wallet: Option<String>) -> Result<()> {
     with_workspace(|cfg, _path, _cargo| {
         let cluster = match cluster {
-            None => cfg.cluster.clone(),
+            None => cfg.provider.cluster.clone(),
             Some(c) => Cluster::from_str(&c)?,
         };
         let wallet = match wallet {
-            None => cfg.wallet.to_string(),
+            None => cfg.provider.wallet.to_string(),
             Some(c) => c,
         };
         let programs = {

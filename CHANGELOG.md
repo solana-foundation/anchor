@@ -18,12 +18,13 @@ incremented for features.
 * cli: Add yarn flag to test command ([#267](https://github.com/project-serum/anchor/pull/267)).
 * cli: Add `--skip-build` flag to test command ([301](https://github.com/project-serum/anchor/pull/301)).
 * cli: Add `anchor shell` command to spawn a node shell populated with an Anchor.toml based environment ([#303](https://github.com/project-serum/anchor/pull/303)).
+* ts: Replace deprecated `web3.Account` with `web3.Signer` in public APIs ([#296](https://github.com/project-serum/anchor/pull/296)).
 
 ## Breaking Changes
 
+* cli: The Anchor.toml's `wallet` and `cluster` settings must now be under the `[provider]` table ([#305](https://github.com/project-serum/anchor/pull/305)).
 * ts: Event coder `decode` API changed to decode strings directly instead of buffers ([#292](https://github.com/project-serum/anchor/pull/292)).
 * ts: Event coder `encode` API removed ([#292](https://github.com/project-serum/anchor/pull/292)).
-* ts: Replace deprecated `web3.Account` with `web3.Signer` in public APIs ([#296](https://github.com/project-serum/anchor/pull/296)).
 
 ## [0.5.0] - 2021-05-07
 
