@@ -183,6 +183,7 @@ pub fn ts_config() -> &'static str {
 
 pub fn git_ignore() -> &'static str {
     r#"
+.anchor
 .DS_Store
 target
 **/*.rs.bk
