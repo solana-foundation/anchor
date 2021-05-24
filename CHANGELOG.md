@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+## Features
+
+* ts: Address metadata is now optional for `anchor.workspace` clients ([#310](https://github.com/project-serum/anchor/pull/310)).
+
 ## [0.6.0] - 2021-05-23
 
 ## Features
