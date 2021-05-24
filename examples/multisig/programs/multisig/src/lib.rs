@@ -4,17 +4,17 @@
 //! Pubkey can govern. One can use the multisig as a BPF program upgrade
 //! authority, a mint authority, etc.
 //!
-//! To use, one must first create a `Multisig` account, sepcifying two important
+//! To use, one must first create a `Multisig` account, specifying two important
 //! parameters:
 //!
 //! 1. Owners - the set of addresses that sign transactions for the multisig.
-//! 2. Threhsold - the number of signers required to execute a transaction.
+//! 2. Threshold - the number of signers required to execute a transaction.
 //!
-//! Once the `Multisig` account is created, once can create a `Transaction`
+//! Once the `Multisig` account is created, one can create a `Transaction`
 //! account, specifying the parameters for a normal solana transaction.
 //!
-//! To sign, owners shold invoke the `approve` instruction, and finally,
-//! the `execute_transaction`, once enough (i.e. `threhsold`) of the owners have
+//! To sign, owners should invoke the `approve` instruction, and finally,
+//! the `execute_transaction`, once enough (i.e. `threshold`) of the owners have
 //! signed.
 
 use anchor_lang::prelude::*;
@@ -118,7 +118,7 @@ pub mod multisig {
             return Err(ErrorCode::AlreadyExecuted.into());
         }
 
-        // Do we have enough signers.
+        // Do we have enough signers?
         let sig_count = ctx
             .accounts
             .transaction
@@ -226,7 +226,7 @@ pub struct Transaction {
     multisig: Pubkey,
     // Target program to execute against.
     program_id: Pubkey,
-    // Accounts requried for the transaction.
+    // Accounts required for the transaction.
     accounts: Vec<TransactionAccount>,
     // Instruction data for the transaction.
     data: Vec<u8>,

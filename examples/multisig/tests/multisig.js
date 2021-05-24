@@ -89,7 +89,7 @@ describe("multisig", () => {
     assert.ok(txAccount.multisig.equals(multisig.publicKey));
     assert.equal(txAccount.didExecute, false);
 
-    // Other owner approves transactoin.
+    // Other owner approves transaction.
     await program.rpc.approve({
       accounts: {
         multisig: multisig.publicKey,
@@ -99,7 +99,7 @@ describe("multisig", () => {
       signers: [ownerB],
     });
 
-    // Now that we've reached the threshold, send the transactoin.
+    // Now that we've reached the threshold, send the transaction.
     await program.rpc.executeTransaction({
       accounts: {
         multisig: multisig.publicKey,
