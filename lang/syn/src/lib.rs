@@ -350,6 +350,7 @@ pub struct ConstraintState {
 #[derive(Debug)]
 pub struct ConstraintAssociated {
     pub associated_target: proc_macro2::Ident,
+    pub is_init: bool,
 }
 
 #[derive(Debug)]

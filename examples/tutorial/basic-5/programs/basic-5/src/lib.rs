@@ -34,7 +34,7 @@ pub struct CreateMint<'info> {
 
 #[derive(Accounts)]
 pub struct CreateToken<'info> {
-    #[account(associated = authority, with = mint)]
+    #[account(init, associated = authority, with = mint)]
     token: ProgramAccount<'info, Token>,
     #[account(mut, signer)]
     authority: AccountInfo<'info>,

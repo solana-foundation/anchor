@@ -132,7 +132,7 @@ pub struct UpdateFooSecond<'info> {
 
 #[derive(Accounts)]
 pub struct CreateBar<'info> {
-    #[account(associated = authority, with = foo)]
+    #[account(init, associated = authority, with = foo)]
     bar: Loader<'info, Bar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -143,10 +143,11 @@ pub struct CreateBar<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateBar<'info> {
-    #[account(mut, has_one = authority)]
+    #[account(mut, associated = authority, with = foo, has_one = authority)]
     bar: Loader<'info, Bar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
+    foo: Loader<'info, Foo>,
 }
 
 #[derive(Accounts)]

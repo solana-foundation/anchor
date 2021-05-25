@@ -45,7 +45,15 @@ pub mod misc {
         misc2::cpi::state::set_data(ctx, data)
     }
 
-    pub fn test_associated_account_creation(
+    pub fn test_init_associated_account(
+        ctx: Context<TestInitAssociatedAccount>,
+        data: u64,
+    ) -> ProgramResult {
+        ctx.accounts.my_account.data = data;
+        Ok(())
+    }
+
+    pub fn test_associated_account(
         ctx: Context<TestAssociatedAccount>,
         data: u64,
     ) -> ProgramResult {
@@ -119,8 +127,8 @@ pub struct TestStateCpi<'info> {
 // accounts are needed when creating the associated program address within
 // the program.
 #[derive(Accounts)]
-pub struct TestAssociatedAccount<'info> {
-    #[account(associated = authority, with = state, with = data)]
+pub struct TestInitAssociatedAccount<'info> {
+    #[account(init, associated = authority, with = state, with = data)]
     my_account: ProgramAccount<'info, TestData>,
     #[account(mut, signer)]
     authority: AccountInfo<'info>,
@@ -128,6 +136,16 @@ pub struct TestAssociatedAccount<'info> {
     data: ProgramAccount<'info, Data>,
     rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestAssociatedAccount<'info> {
+    #[account(associated = authority, with = state, with = data)]
+    my_account: ProgramAccount<'info, TestData>,
+    #[account(mut, signer)]
+    authority: AccountInfo<'info>,
+    state: ProgramState<'info, MyState>,
+    data: ProgramAccount<'info, Data>,
 }
 
 #[derive(Accounts)]

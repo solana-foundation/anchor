@@ -17,6 +17,10 @@ incremented for features.
 * cli: Add global options for override Anchor.toml values ([#313](https://github.com/project-serum/anchor/pull/313)).
 * spl: Add `SetAuthority` instruction ([#307](https://github.com/project-serum/anchor/pull/307/files)).
 
+## Breaking Changes
+
+* lang: `#[account(associated)]` now requires `init` to be provided to create an associated account. If not provided, then the address will be assumed to exist, and a constraint will be added to ensure its correctness ([#318](https://github.com/project-serum/anchor/pull/318)).
+
 ## [0.6.0] - 2021-05-23
 
 ## Features

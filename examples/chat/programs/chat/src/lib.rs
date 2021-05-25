@@ -36,7 +36,7 @@ pub mod chat {
 
 #[derive(Accounts)]
 pub struct CreateUser<'info> {
-    #[account(associated = authority, space = "312")]
+    #[account(init, associated = authority, space = "312")]
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -53,7 +53,7 @@ pub struct CreateChatRoom<'info> {
 
 #[derive(Accounts)]
 pub struct SendMessage<'info> {
-    #[account(has_one = authority)]
+    #[account(associated = authority, has_one = authority)]
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,

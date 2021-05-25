@@ -1,4 +1,6 @@
 const anchor = require("@project-serum/anchor");
+const PublicKey = anchor.web3.PublicKey;
+const BN = anchor.BN;
 const assert = require("assert");
 
 describe("zero-copy", () => {
@@ -19,15 +21,15 @@ describe("zero-copy", () => {
     assert.ok(state.authority.equals(program.provider.wallet.publicKey));
     assert.ok(state.events.length === 250);
     state.events.forEach((event, idx) => {
-      assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+      assert.ok(event.from.equals(new PublicKey()));
       assert.ok(event.data.toNumber() === 0);
     });
   });
 
   it("Updates zero copy state", async () => {
     let event = {
-      from: new anchor.web3.PublicKey(),
-      data: new anchor.BN(1234),
+      from: new PublicKey(),
+      data: new BN(1234),
     };
     await program.state.rpc.setEvent(5, event, {
       accounts: {
@@ -42,7 +44,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(event.from));
         assert.ok(event.data.eq(event.data));
       } else {
-        assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+        assert.ok(event.from.equals(new PublicKey()));
         assert.ok(event.data.toNumber() === 0);
       }
     });
@@ -72,7 +74,7 @@ describe("zero-copy", () => {
   });
 
   it("Updates a zero copy account field", async () => {
-    await program.rpc.updateFoo(new anchor.BN(1234), {
+    await program.rpc.updateFoo(new BN(1234), {
       accounts: {
         foo: foo.publicKey,
         authority: program.provider.wallet.publicKey,
@@ -94,7 +96,7 @@ describe("zero-copy", () => {
   });
 
   it("Updates a a second zero copy account field", async () => {
-    await program.rpc.updateFooSecond(new anchor.BN(55), {
+    await program.rpc.updateFooSecond(new BN(55), {
       accounts: {
         foo: foo.publicKey,
         secondAuthority: program.provider.wallet.publicKey,
@@ -138,13 +140,14 @@ describe("zero-copy", () => {
   });
 
   it("Updates an associated zero copy account", async () => {
-    await program.rpc.updateBar(new anchor.BN(99), {
+    await program.rpc.updateBar(new BN(99), {
       accounts: {
         bar: await program.account.bar.associatedAddress(
           program.provider.wallet.publicKey,
           foo.publicKey
         ),
         authority: program.provider.wallet.publicKey,
+        foo: foo.publicKey,
       },
     });
     const bar = await program.account.bar.associated(
@@ -172,14 +175,14 @@ describe("zero-copy", () => {
     const account = await program.account.eventQ(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event) => {
-      assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+      assert.ok(event.from.equals(new PublicKey()));
       assert.ok(event.data.toNumber() === 0);
     });
   });
 
   it("Updates a large event queue", async () => {
     // Set index 0.
-    await program.rpc.updateLargeAccount(0, new anchor.BN(48), {
+    await program.rpc.updateLargeAccount(0, new BN(48), {
       accounts: {
         eventQ: eventQ.publicKey,
         from: program.provider.wallet.publicKey,
@@ -193,13 +196,13 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 48);
       } else {
-        assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+        assert.ok(event.from.equals(new PublicKey()));
         assert.ok(event.data.toNumber() === 0);
       }
     });
 
     // Set index 11111.
-    await program.rpc.updateLargeAccount(11111, new anchor.BN(1234), {
+    await program.rpc.updateLargeAccount(11111, new BN(1234), {
       accounts: {
         eventQ: eventQ.publicKey,
         from: program.provider.wallet.publicKey,
@@ -216,13 +219,13 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 1234);
       } else {
-        assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+        assert.ok(event.from.equals(new PublicKey()));
         assert.ok(event.data.toNumber() === 0);
       }
     });
 
     // Set last index.
-    await program.rpc.updateLargeAccount(24999, new anchor.BN(99), {
+    await program.rpc.updateLargeAccount(24999, new BN(99), {
       accounts: {
         eventQ: eventQ.publicKey,
         from: program.provider.wallet.publicKey,
@@ -242,7 +245,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 99);
       } else {
-        assert.ok(event.from.equals(new anchor.web3.PublicKey()));
+        assert.ok(event.from.equals(new PublicKey()));
         assert.ok(event.data.toNumber() === 0);
       }
     });
@@ -252,7 +255,7 @@ describe("zero-copy", () => {
     // Fail to set non existing index.
     await assert.rejects(
       async () => {
-        await program.rpc.updateLargeAccount(25000, new anchor.BN(1), {
+        await program.rpc.updateLargeAccount(25000, new BN(1), {
           accounts: {
             eventQ: eventQ.publicKey,
             from: program.provider.wallet.publicKey,

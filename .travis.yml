@@ -41,12 +41,6 @@ jobs:
         - cargo build
         - cargo fmt -- --check
         - cargo test
-    - <<: *defaults
-      name: Build and test TypeScript
-      script:
-        - cd ts
-        - yarn
-        - yarn build
     - <<: *examples
       name: Runs the examples 1
       script:
@@ -58,17 +52,20 @@ jobs:
         - pushd examples/multisig && anchor test && popd
         - pushd examples/interface && anchor test && popd
         - pushd examples/lockup && anchor test && popd
+    - <<: *examples
+      name: Runs the examples 2
+      script:
         - pushd examples/misc && anchor test && popd
         - pushd examples/events && anchor test && popd
         - pushd examples/cashiers-check && anchor test && popd
         - pushd examples/typescript && yarn && anchor test && popd
         - pushd examples/zero-copy && yarn && anchor test && popd
-    - <<: *examples
-      name: Runs the examples 2
-      script:
         - pushd examples/chat && yarn && anchor test && popd
         - pushd examples/ido-pool && yarn && anchor test && popd
         - pushd examples/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
+    - <<: *examples
+      name: Runs the examples 3
+      script:
         - pushd examples/pyth && yarn && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd

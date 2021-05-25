@@ -329,6 +329,7 @@ fn parse_constraints(
                     };
                     constraints.push(Constraint::Associated(ConstraintAssociated {
                         associated_target,
+                        is_init,
                     }));
                 }
                 "with" => {
@@ -391,6 +392,15 @@ fn parse_constraints(
             }
             _ => {
                 panic!("invalid syntax");
+            }
+        }
+    }
+
+    // If init, then tag the associated constraint as being part of init.
+    if is_init {
+        for c in &mut constraints {
+            if let Constraint::Associated(ConstraintAssociated { is_init, .. }) = c {
+                *is_init = true;
             }
         }
     }

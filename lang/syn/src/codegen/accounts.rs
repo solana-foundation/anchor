@@ -8,8 +8,11 @@ use quote::quote;
 
 pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     // All fields without an `#[account(associated)]` attribute.
-    let non_associated_fields: Vec<&AccountField> =
-        accs.fields.iter().filter(|af| !is_associated(af)).collect();
+    let non_associated_fields: Vec<&AccountField> = accs
+        .fields
+        .iter()
+        .filter(|af| !is_associated_init(af))
+        .collect();
 
     // Deserialization for each field
     let deser_fields: Vec<proc_macro2::TokenStream> = accs
@@ -30,7 +33,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
                     // Associated fields are *first* deserialized into
                     // AccountInfos, and then later deserialized into
                     // ProgramAccounts in the "constraint check" phase.
-                    if is_associated(af) {
+                    if is_associated_init(af) {
                         let name = &f.ident;
                         quote!{
                             let #name = &accounts[0];
@@ -63,7 +66,7 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
         .iter()
         .filter_map(|af| match af {
             AccountField::AccountsStruct(_s) => None,
-            AccountField::Field(f) => match is_associated(af) {
+            AccountField::Field(f) => match is_associated_init(af) {
                 false => None,
                 true => Some(f),
             },
@@ -359,15 +362,15 @@ pub fn generate(accs: AccountsStruct) -> proc_macro2::TokenStream {
     }
 }
 
-// Returns true if the given AccountField has an associated constraint.
-fn is_associated(af: &AccountField) -> bool {
+// Returns true if the given AccountField has an associated init constraint.
+fn is_associated_init(af: &AccountField) -> bool {
     match af {
         AccountField::AccountsStruct(_s) => false,
         AccountField::Field(f) => f
             .constraints
             .iter()
             .filter(|c| match c {
-                Constraint::Associated(_c) => true,
+                Constraint::Associated(c) => c.is_init,
                 _ => false,
             })
             .next()
@@ -526,6 +529,16 @@ pub fn generate_constraint_associated(
     f: &Field,
     c: &ConstraintAssociated,
 ) -> proc_macro2::TokenStream {
+    if c.is_init {
+        generate_constraint_associated_init(f, c)
+    } else {
+        generate_constraint_associated_seeds(f, c)
+    }
+}
+pub fn generate_constraint_associated_init(
+    f: &Field,
+    c: &ConstraintAssociated,
+) -> proc_macro2::TokenStream {
     let associated_target = c.associated_target.clone();
     let field = &f.ident;
     let (account_ty, is_zero_copy) = match &f.ty {
@@ -564,24 +577,8 @@ pub fn generate_constraint_associated(
         },
     };
 
-    let seeds_no_nonce = match f.associated_seeds.len() {
-        0 => quote! {
-            [
-                &b"anchor"[..],
-                #associated_target.to_account_info().key.as_ref(),
-            ]
-        },
-        _ => {
-            let seeds = to_seeds_tts(&f.associated_seeds);
-            quote! {
-                [
-                    &b"anchor"[..],
-                    #associated_target.to_account_info().key.as_ref(),
-                    #seeds
-                ]
-            }
-        }
-    };
+    let associated_pubkey_and_nonce = generate_associated_pubkey(f, c);
+
     let seeds_with_nonce = match f.associated_seeds.len() {
         0 => quote! {
             [
@@ -624,11 +621,9 @@ pub fn generate_constraint_associated(
             #space
             #payer
 
-            let (associated_field, nonce) = Pubkey::find_program_address(
-                &#seeds_no_nonce,
-                program_id,
-            );
-            if &associated_field != #field.key {
+            #associated_pubkey_and_nonce
+
+            if &__associated_field != #field.key {
                 return Err(ProgramError::Custom(45)); // todo: proper error.
             }
             let lamports = rent.minimum_balance(space);
@@ -663,6 +658,48 @@ pub fn generate_constraint_associated(
             pa#nonce_assignment.__nonce = nonce;
             pa
         };
+    }
+}
+
+pub fn generate_constraint_associated_seeds(
+    f: &Field,
+    c: &ConstraintAssociated,
+) -> proc_macro2::TokenStream {
+    let generated_associated_pubkey_and_nonce = generate_associated_pubkey(f, c);
+    let name = &f.ident;
+    quote! {
+        #generated_associated_pubkey_and_nonce
+        if #name.to_account_info().key != &__associated_field {
+            // TODO: proper error.
+            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(45));
+        }
+    }
+}
+pub fn generate_associated_pubkey(f: &Field, c: &ConstraintAssociated) -> proc_macro2::TokenStream {
+    let associated_target = c.associated_target.clone();
+    let seeds_no_nonce = match f.associated_seeds.len() {
+        0 => quote! {
+            [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+            ]
+        },
+        _ => {
+            let seeds = to_seeds_tts(&f.associated_seeds);
+            quote! {
+                [
+                    &b"anchor"[..],
+                    #associated_target.to_account_info().key.as_ref(),
+                    #seeds
+                ]
+            }
+        }
+    };
+    quote! {
+        let (__associated_field, nonce) = Pubkey::find_program_address(
+            &#seeds_no_nonce,
+            program_id,
+        );
     }
 }
 

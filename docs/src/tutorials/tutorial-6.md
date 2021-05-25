@@ -77,8 +77,9 @@ Lastly, notice the two accounts at the bottom of account context.
     system_program: AccountInfo<'info>,
 ```
 
-Although a bit of an implementaion detail, these accounts are required so that Anchor
-can create your associated account. By convention, the names must be as given here.
+In the same way that `rent` is required when using `init` in the previous tutorials,
+`rent` and additionally the `system-program` must be provided when creating an associated
+account. By convention, the names must be as given here.
 
 For more details on how to use `#[account(associated)]`, see [docs.rs](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
 
