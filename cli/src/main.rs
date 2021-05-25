@@ -957,29 +957,32 @@ fn test(
     file: Option<String>,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg, _path, _cargo| {
-        // Bootup validator, if needed.
-        let validator_handle = match cfg.provider.cluster.url() {
-            "http://127.0.0.1:8899" => {
-                if !skip_build {
-                    build(cfg_override, None, false)?;
-                }
-                let flags = match skip_deploy {
-                    true => None,
-                    false => Some(genesis_flags(cfg)?),
-                };
-                match skip_local_validator {
-                    true => None,
-                    false => Some(start_test_validator(cfg, flags)?),
-                }
+        // Build if needed.
+        if !skip_build {
+            build(cfg_override, None, false)?;
+        }
+
+        // Run the deploy against the cluster in two cases:
+        //
+        // 1. The cluster is not localnet.
+        // 2. The cluster is localnet, but we're not booting a local validator.
+        //
+        // In either case, skip the deploy if the user specifies.
+        let is_localnet = cfg.provider.cluster == Cluster::Localnet;
+        if !is_localnet || (is_localnet && skip_local_validator) {
+            if !skip_deploy {
+                deploy(cfg_override, None)?;
             }
-            _ => {
-                if !skip_deploy {
-                    build(cfg_override, None, false)?;
-                    deploy(cfg_override, None)?;
-                }
-                None
-            }
-        };
+        }
+        // Start local test validator, if needed.
+        let mut validator_handle = None;
+        if is_localnet && (!skip_local_validator) {
+            let flags = match skip_deploy {
+                true => None,
+                false => Some(genesis_flags(cfg)?),
+            };
+            validator_handle = Some(start_test_validator(cfg, flags)?);
+        }
 
         // Setup log reader.
         let log_streams = stream_logs(&cfg.provider.cluster.url());
