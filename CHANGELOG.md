@@ -15,6 +15,7 @@ incremented for features.
 
 * ts: Address metadata is now optional for `anchor.workspace` clients ([#310](https://github.com/project-serum/anchor/pull/310)).
 * cli: Add global options for override Anchor.toml values ([#313](https://github.com/project-serum/anchor/pull/313)).
+* spl: Add `SetAuthority` instruction ([#307](https://github.com/project-serum/anchor/pull/307/files)).
 
 ## [0.6.0] - 2021-05-23
 

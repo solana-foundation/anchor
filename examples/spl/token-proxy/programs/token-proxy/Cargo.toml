@@ -15,3 +15,4 @@ cpi = ["no-entrypoint"]
 [dependencies]
 anchor-lang = { path = "../../../../../lang" }
 anchor-spl = { path = "../../../../../spl" }
+spl-token = { version = "3.1.1", features = ["no-entrypoint"] }

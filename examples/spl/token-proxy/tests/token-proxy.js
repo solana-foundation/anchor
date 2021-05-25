@@ -64,6 +64,24 @@ describe("token", () => {
     const toAccount = await getTokenAccount(provider, to);
     assert.ok(toAccount.amount.eq(new anchor.BN(1)));
   });
+
+  it("Set new mint authority", async () => {
+    const newMintAuthority = anchor.web3.Keypair.generate();
+    await program.rpc.proxySetAuthority(
+      { mintTokens: {} },
+      newMintAuthority.publicKey,
+      {
+        accounts: {
+          accountOrMint: mint,
+          currentAuthority: provider.wallet.publicKey,
+          tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+        },
+      }
+    );
+
+    const mintInfo = await getMintInfo(provider, mint);
+    assert.ok(mintInfo.mintAuthority.equals(newMintAuthority.publicKey));
+  });
 });
 
 // SPL token client boilerplate for test initialization. Everything below here is
@@ -80,6 +98,10 @@ const TOKEN_PROGRAM_ID = new anchor.web3.PublicKey(
 
 async function getTokenAccount(provider, addr) {
   return await serumCmn.getTokenAccount(provider, addr);
+}
+
+async function getMintInfo(provider, mintAddr) {
+  return await serumCmn.getMintInfo(provider, mintAddr);
 }
 
 async function createMint(provider, authority) {
