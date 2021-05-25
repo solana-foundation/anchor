@@ -228,7 +228,7 @@ anchor.setProvider(provider);
             r#"
 anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
 "#,
-            program.name,
+            program.name.to_camel_case(),
             serde_json::to_string(&program.idl)?,
             program.program_id.to_string()
         ));
