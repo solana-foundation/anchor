@@ -1362,7 +1362,7 @@ fn generate_cpi(program: &Program) -> proc_macro2::TokenStream {
 // However, we do namespace methods in the preeimage so that we can use
 // different traits with the same method name.
 pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
-    let preimage = format!("{}::{}", namespace, name);
+    let preimage = format!("{}:{}", namespace, name);
 
     let mut sighash = [0u8; 8];
     sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
@@ -1371,7 +1371,7 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
 
 fn sighash_ctor() -> [u8; 8] {
     let namespace = SIGHASH_STATE_NAMESPACE;
-    let preimage = format!("{}::new", namespace);
+    let preimage = format!("{}:new", namespace);
 
     let mut sighash = [0u8; 8];
     sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);

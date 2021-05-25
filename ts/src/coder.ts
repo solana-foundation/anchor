@@ -566,7 +566,7 @@ export function accountSize(
 // doesn't allow function overloading.
 function sighash(nameSpace: string, ixName: string): Buffer {
   let name = snakeCase(ixName);
-  let preimage = `${nameSpace}::${name}`;
+  let preimage = `${nameSpace}:${name}`;
   // @ts-ignore
   return Buffer.from(sha256.digest(preimage)).slice(0, 8);
 }

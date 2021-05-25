@@ -15,6 +15,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.5.0"
+anchor-lang = { path = "../../../../lang" }
 arrayref = "0.3.6"
 bytemuck = { version = "1.4.0" }
