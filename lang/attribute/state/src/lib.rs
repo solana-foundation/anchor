@@ -71,8 +71,8 @@ pub fn state(
     };
 
     let attribute = match is_zero_copy {
-        false => quote! {#[account]},
-        true => quote! {#[account(zero_copy)]},
+        false => quote! {#[account("state")]},
+        true => quote! {#[account("state", zero_copy)]},
     };
 
     proc_macro::TokenStream::from(quote! {

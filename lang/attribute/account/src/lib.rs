@@ -57,14 +57,24 @@ pub fn account(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let namespace = args.to_string().replace("\"", "");
-    let is_zero_copy = match args.into_iter().next() {
-        None => false,
-        Some(tt) => match tt {
-            proc_macro::TokenTree::Literal(_) => false,
-            _ => namespace == "zero_copy",
-        },
-    };
+    let mut namespace = "".to_string();
+    let mut is_zero_copy = false;
+    if args.to_string().split(",").collect::<Vec<_>>().len() > 2 {
+        panic!("Only two args are allowed to the account attribute.")
+    }
+    for arg in args.to_string().split(",") {
+        let ns = arg
+            .to_string()
+            .replace("\"", "")
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
+        if ns == "zero_copy" {
+            is_zero_copy = true;
+        } else {
+            namespace = ns;
+        }
+    }
 
     let account_strct = parse_macro_input!(input as syn::ItemStruct);
     let account_name = &account_strct.ident;
@@ -73,7 +83,7 @@ pub fn account(
         // Namespace the discriminator to prevent collisions.
         let discriminator_preimage = {
             // For now, zero copy accounts can't be namespaced.
-            if is_zero_copy || namespace.is_empty() {
+            if namespace.is_empty() {
                 format!("account:{}", account_name.to_string())
             } else {
                 format!("{}:{}", namespace, account_name.to_string())

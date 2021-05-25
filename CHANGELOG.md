@@ -20,6 +20,7 @@ incremented for features.
 ## Breaking Changes
 
 * lang: `#[account(associated)]` now requires `init` to be provided to create an associated account. If not provided, then the address will be assumed to exist, and a constraint will be added to ensure its correctness ([#318](https://github.com/project-serum/anchor/pull/318)).
+* lang, ts: Change account discriminator pre-image of the `#[state]` account discriminator to be namespaced by "state:". This change should only be noticed by library maintainers ([#320](https://github.com/project-serum/anchor/pull/320)).
 * lang, ts: Change domain delimiters for the pre-image of the instruciton sighash to be a single colon `:` to be consistent with accounts. This change should only be noticed by library maintainers.
 
 ## [0.6.0] - 2021-05-23

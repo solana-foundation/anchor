@@ -340,7 +340,6 @@ class IdlCoder {
       case "publicKey": {
         return borsh.publicKey(fieldName);
       }
-      // TODO: all the other types that need to be exported by the borsh package.
       default: {
         // @ts-ignore
         if (field.type.vec) {
@@ -452,7 +451,7 @@ export async function accountDiscriminator(name: string): Promise<Buffer> {
 // Calculates unique 8 byte discriminator prepended to all anchor state accounts.
 export async function stateDiscriminator(name: string): Promise<Buffer> {
   // @ts-ignore
-  return Buffer.from(sha256.digest(`account:${name}`)).slice(0, 8);
+  return Buffer.from(sha256.digest(`state:${name}`)).slice(0, 8);
 }
 
 export function eventDiscriminator(name: string): Buffer {
