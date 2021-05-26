@@ -17,7 +17,7 @@ describe("zero-copy", () => {
         authority: program.provider.wallet.publicKey,
       },
     });
-    const state = await program.state();
+    const state = await program.state.fetch();
     assert.ok(state.authority.equals(program.provider.wallet.publicKey));
     assert.ok(state.events.length === 250);
     state.events.forEach((event, idx) => {
@@ -36,7 +36,7 @@ describe("zero-copy", () => {
         authority: program.provider.wallet.publicKey,
       },
     });
-    const state = await program.state();
+    const state = await program.state.fetch();
     assert.ok(state.authority.equals(program.provider.wallet.publicKey));
     assert.ok(state.events.length === 250);
     state.events.forEach((event, idx) => {
@@ -60,7 +60,7 @@ describe("zero-copy", () => {
       instructions: [await program.account.foo.createInstruction(foo)],
       signers: [foo],
     });
-    const account = await program.account.foo(foo.publicKey);
+    const account = await program.account.foo.fetch(foo.publicKey);
     assert.ok(
       JSON.stringify(account.authority.toBuffer()) ===
         JSON.stringify(program.provider.wallet.publicKey.toBuffer())
@@ -81,7 +81,7 @@ describe("zero-copy", () => {
       },
     });
 
-    const account = await program.account.foo(foo.publicKey);
+    const account = await program.account.foo.fetch(foo.publicKey);
 
     assert.ok(
       JSON.stringify(account.authority.toBuffer()) ===
@@ -103,7 +103,7 @@ describe("zero-copy", () => {
       },
     });
 
-    const account = await program.account.foo(foo.publicKey);
+    const account = await program.account.foo.fetch(foo.publicKey);
 
     assert.ok(
       JSON.stringify(account.authority.toBuffer()) ===
@@ -172,7 +172,7 @@ describe("zero-copy", () => {
       ],
       signers: [eventQ],
     });
-    const account = await program.account.eventQ(eventQ.publicKey);
+    const account = await program.account.eventQ.fetch(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event) => {
       assert.ok(event.from.equals(new PublicKey()));
@@ -189,7 +189,7 @@ describe("zero-copy", () => {
       },
     });
     // Verify update.
-    let account = await program.account.eventQ(eventQ.publicKey);
+    let account = await program.account.eventQ.fetch(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {
@@ -209,7 +209,7 @@ describe("zero-copy", () => {
       },
     });
     // Verify update.
-    account = await program.account.eventQ(eventQ.publicKey);
+    account = await program.account.eventQ.fetch(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {
@@ -232,7 +232,7 @@ describe("zero-copy", () => {
       },
     });
     // Verify update.
-    account = await program.account.eventQ(eventQ.publicKey);
+    account = await program.account.eventQ.fetch(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {

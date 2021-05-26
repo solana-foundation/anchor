@@ -37,7 +37,7 @@ describe("Lockup and Registry", () => {
     });
 
     lockupAddress = await lockup.state.address();
-    const lockupAccount = await lockup.state();
+    const lockupAccount = await lockup.state.fetch();
 
     assert.ok(lockupAccount.authority.equals(provider.wallet.publicKey));
     assert.ok(lockupAccount.whitelist.length === WHITELIST_SIZE);
@@ -63,7 +63,7 @@ describe("Lockup and Registry", () => {
       },
     });
 
-    let lockupAccount = await lockup.state();
+    let lockupAccount = await lockup.state.fetch();
     assert.ok(lockupAccount.authority.equals(newAuthority.publicKey));
 
     await lockup.state.rpc.setAuthority(provider.wallet.publicKey, {
@@ -73,7 +73,7 @@ describe("Lockup and Registry", () => {
       signers: [newAuthority],
     });
 
-    lockupAccount = await lockup.state();
+    lockupAccount = await lockup.state.fetch();
     assert.ok(lockupAccount.authority.equals(provider.wallet.publicKey));
   });
 
@@ -97,7 +97,7 @@ describe("Lockup and Registry", () => {
 
     await lockup.state.rpc.whitelistAdd(entries[0], { accounts });
 
-    let lockupAccount = await lockup.state();
+    let lockupAccount = await lockup.state.fetch();
 
     assert.ok(lockupAccount.whitelist.length === 1);
     assert.deepEqual(lockupAccount.whitelist, [entries[0]]);
@@ -106,7 +106,7 @@ describe("Lockup and Registry", () => {
       await lockup.state.rpc.whitelistAdd(entries[k], { accounts });
     }
 
-    lockupAccount = await lockup.state();
+    lockupAccount = await lockup.state.fetch();
 
     assert.deepEqual(lockupAccount.whitelist, entries);
 
@@ -129,7 +129,7 @@ describe("Lockup and Registry", () => {
         authority: provider.wallet.publicKey,
       },
     });
-    let lockupAccount = await lockup.state();
+    let lockupAccount = await lockup.state.fetch();
     assert.deepEqual(lockupAccount.whitelist, entries.slice(1));
   });
 
@@ -185,7 +185,7 @@ describe("Lockup and Registry", () => {
       }
     );
 
-    vestingAccount = await lockup.account.vesting(vesting.publicKey);
+    vestingAccount = await lockup.account.vesting.fetch(vesting.publicKey);
 
     assert.ok(vestingAccount.beneficiary.equals(provider.wallet.publicKey));
     assert.ok(vestingAccount.mint.equals(mint));
@@ -246,7 +246,7 @@ describe("Lockup and Registry", () => {
       },
     });
 
-    vestingAccount = await lockup.account.vesting(vesting.publicKey);
+    vestingAccount = await lockup.account.vesting.fetch(vesting.publicKey);
     assert.ok(vestingAccount.outstanding.eq(new anchor.BN(0)));
 
     const vaultAccount = await serumCmn.getTokenAccount(
@@ -287,7 +287,7 @@ describe("Lockup and Registry", () => {
       accounts: { lockupProgram: lockup.programId },
     });
 
-    const state = await registry.state();
+    const state = await registry.state.fetch();
     assert.ok(state.lockupProgram.equals(lockup.programId));
 
     // Should not allow a second initializatoin.
@@ -324,7 +324,7 @@ describe("Lockup and Registry", () => {
       }
     );
 
-    registrarAccount = await registry.account.registrar(registrar.publicKey);
+    registrarAccount = await registry.account.registrar.fetch(registrar.publicKey);
 
     assert.ok(registrarAccount.authority.equals(provider.wallet.publicKey));
     assert.equal(registrarAccount.nonce, nonce);
@@ -385,7 +385,7 @@ describe("Lockup and Registry", () => {
 
     let txSigs = await provider.sendAll(allTxs);
 
-    memberAccount = await registry.account.member(member.publicKey);
+    memberAccount = await registry.account.member.fetch(member.publicKey);
 
     assert.ok(memberAccount.registrar.equals(registrar.publicKey));
     assert.ok(memberAccount.beneficiary.equals(provider.wallet.publicKey));
@@ -516,7 +516,7 @@ describe("Lockup and Registry", () => {
       }
     );
 
-    const vendorAccount = await registry.account.rewardVendor(
+    const vendorAccount = await registry.account.rewardVendor.fetch(
       unlockedVendor.publicKey
     );
 
@@ -531,7 +531,7 @@ describe("Lockup and Registry", () => {
     assert.ok(vendorAccount.rewardEventQCursor === 0);
     assert.deepEqual(vendorAccount.kind, rewardKind);
 
-    const rewardQAccount = await registry.account.rewardQueue(
+    const rewardQAccount = await registry.account.rewardQueue.fetch(
       rewardQ.publicKey
     );
     assert.ok(rewardQAccount.head === 1);
@@ -571,7 +571,7 @@ describe("Lockup and Registry", () => {
     let tokenAccount = await serumCmn.getTokenAccount(provider, token);
     assert.ok(tokenAccount.amount.eq(new anchor.BN(200)));
 
-    const memberAccount = await registry.account.member(member.publicKey);
+    const memberAccount = await registry.account.member.fetch(member.publicKey);
     assert.ok(memberAccount.rewardsCursor == 1);
   });
 
@@ -635,7 +635,7 @@ describe("Lockup and Registry", () => {
       }
     );
 
-    const vendorAccount = await registry.account.rewardVendor(
+    const vendorAccount = await registry.account.rewardVendor.fetch(
       lockedVendor.publicKey
     );
 
@@ -653,7 +653,7 @@ describe("Lockup and Registry", () => {
       JSON.stringify(lockedRewardKind)
     );
 
-    const rewardQAccount = await registry.account.rewardQueue(
+    const rewardQAccount = await registry.account.rewardQueue.fetch(
       rewardQ.publicKey
     );
     assert.ok(rewardQAccount.head === 2);
@@ -727,7 +727,7 @@ describe("Lockup and Registry", () => {
       ],
     });
 
-    const lockupAccount = await lockup.account.vesting(
+    const lockupAccount = await lockup.account.vesting.fetch(
       vendoredVesting.publicKey
     );
 

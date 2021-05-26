@@ -1,176 +1,224 @@
 import EventEmitter from "eventemitter3";
+import camelCase from "camelcase";
 import {
   PublicKey,
   SystemProgram,
-  Transaction,
-  TransactionSignature,
-  TransactionInstruction,
   SYSVAR_RENT_PUBKEY,
   Commitment,
 } from "@solana/web3.js";
 import Provider from "../../provider";
 import { Idl, IdlStateMethod } from "../../idl";
 import Coder, { stateDiscriminator } from "../../coder";
-import { RpcNamespace, InstructionNamespace } from "./";
-import {
-  Subscription,
-  translateError,
-  toInstruction,
-  validateAccounts,
-} from "../common";
-import { Accounts, splitArgsAndCtx } from "../context";
+import { RpcNamespace, InstructionNamespace, TransactionNamespace } from "./";
+import { getProvider } from "../../";
+import { Subscription, validateAccounts, parseIdlErrors } from "../common";
+import { findProgramAddressSync, createWithSeedSync } from "../../utils/pubkey";
+import { Accounts } from "../context";
 import InstructionNamespaceFactory from "./instruction";
-
-export type StateNamespace = () =>
-  | Promise<any>
-  | {
-      address: () => Promise<PublicKey>;
-      rpc: RpcNamespace;
-      instruction: InstructionNamespace;
-      subscribe: (commitment?: Commitment) => EventEmitter;
-      unsubscribe: () => void;
-    };
+import RpcNamespaceFactory from "./rpc";
+import TransactionNamespaceFactory from "./transaction";
 
 export default class StateFactory {
-  // Builds the state namespace.
   public static build(
     idl: Idl,
     coder: Coder,
     programId: PublicKey,
-    idlErrors: Map<number, string>,
     provider: Provider
-  ): StateNamespace | undefined {
+  ): StateClient | undefined {
     if (idl.state === undefined) {
       return undefined;
     }
+    return new StateClient(idl, programId, provider, coder);
+  }
+}
 
-    // Fetches the state object from the blockchain.
-    const state = async (): Promise<any> => {
-      const addr = await programStateAddress(programId);
-      const accountInfo = await provider.connection.getAccountInfo(addr);
-      if (accountInfo === null) {
-        throw new Error(`Account does not exist ${addr.toString()}`);
-      }
-      // Assert the account discriminator is correct.
-      const expectedDiscriminator = await stateDiscriminator(
-        idl.state.struct.name
-      );
-      if (expectedDiscriminator.compare(accountInfo.data.slice(0, 8))) {
-        throw new Error("Invalid account discriminator");
-      }
-      return coder.state.decode(accountInfo.data);
-    };
+/**
+ * A client for the program state. Similar to the base [[Program]] client,
+ * one can use this to send transactions and read accounts for the state
+ * abstraction.
+ */
+export class StateClient {
+  /**
+   * [[RpcNamespace]] for all state methods.
+   */
+  readonly rpc: RpcNamespace;
 
-    // Namespace with all rpc functions.
-    const rpc: RpcNamespace = {};
-    const ix: InstructionNamespace = {};
+  /**
+   * [[InstructionNamespace]] for all state methods.
+   */
+  readonly instruction: InstructionNamespace;
 
-    idl.state.methods.forEach((m: IdlStateMethod) => {
-      const accounts = async (accounts: Accounts): Promise<any> => {
-        const keys = await stateInstructionKeys(
-          programId,
-          provider,
+  /**
+   * [[TransactionNamespace]] for all state methods.
+   */
+  readonly transaction: TransactionNamespace;
+
+  /**
+   * Returns the program ID owning the state.
+   */
+  get programId(): PublicKey {
+    return this._programId;
+  }
+  private _programId: PublicKey;
+
+  /**
+   * Returns the client's wallet and network provider.
+   */
+  get provider(): Provider {
+    return this._provider;
+  }
+  private _provider: Provider;
+
+  /**
+   * Returns the coder.
+   */
+  get coder(): Coder {
+    return this._coder;
+  }
+
+  private _address: PublicKey;
+  private _coder: Coder;
+  private _idl: Idl;
+  private _sub: Subscription | null;
+
+  constructor(
+    idl: Idl,
+    programId: PublicKey,
+    provider?: Provider,
+    coder?: Coder
+  ) {
+    this._idl = idl;
+    this._programId = programId;
+    this._address = programStateAddress(programId);
+    this._provider = provider ?? getProvider();
+    this._coder = coder ?? new Coder(idl);
+    this._sub = null;
+
+    // Build namespaces.
+    const [instruction, transaction, rpc] = ((): [
+      InstructionNamespace,
+      TransactionNamespace,
+      RpcNamespace
+    ] => {
+      let instruction: InstructionNamespace = {};
+      let transaction: TransactionNamespace = {};
+      let rpc: RpcNamespace = {};
+
+      idl.state.methods.forEach((m: IdlStateMethod) => {
+        // Build instruction method.
+        const ixItem = InstructionNamespaceFactory.build(
           m,
-          accounts
+          (ixName: string, ix: any) =>
+            coder.instruction.encodeState(ixName, ix),
+          programId
         );
-        return keys.concat(
-          InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
-        );
-      };
-      const ixFn = async (...args: any[]): Promise<TransactionInstruction> => {
-        const [ixArgs, ctx] = splitArgsAndCtx(m, [...args]);
-        return new TransactionInstruction({
-          keys: await accounts(ctx.accounts),
-          programId,
-          data: coder.instruction.encodeState(
-            m.name,
-            toInstruction(m, ...ixArgs)
-          ),
-        });
-      };
-      ixFn["accounts"] = accounts;
-      ix[m.name] = ixFn;
-
-      rpc[m.name] = async (...args: any[]): Promise<TransactionSignature> => {
-        const [, ctx] = splitArgsAndCtx(m, [...args]);
-        const tx = new Transaction();
-        if (ctx.instructions !== undefined) {
-          tx.add(...ctx.instructions);
-        }
-        tx.add(await ix[m.name](...args));
-        try {
-          const txSig = await provider.send(tx, ctx.signers, ctx.options);
-          return txSig;
-        } catch (err) {
-          let translatedErr = translateError(idlErrors, err);
-          if (translatedErr === null) {
-            throw err;
-          }
-          throw translatedErr;
-        }
-      };
-    });
-
-    state["rpc"] = rpc;
-    state["instruction"] = ix;
-    // Calculates the address of the program's global state object account.
-    state["address"] = async (): Promise<PublicKey> =>
-      programStateAddress(programId);
-
-    // Subscription singleton.
-    let sub: null | Subscription = null;
-
-    // Subscribe to account changes.
-    state["subscribe"] = (commitment?: Commitment): EventEmitter => {
-      if (sub !== null) {
-        return sub.ee;
-      }
-      const ee = new EventEmitter();
-
-      state["address"]().then((address) => {
-        const listener = provider.connection.onAccountChange(
-          address,
-          (acc) => {
-            const account = coder.state.decode(acc.data);
-            ee.emit("change", account);
-          },
-          commitment
-        );
-
-        sub = {
-          ee,
-          listener,
+        ixItem["accounts"] = (accounts: Accounts) => {
+          const keys = stateInstructionKeys(programId, provider, m, accounts);
+          return keys.concat(
+            InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
+          );
         };
+        // Build transaction method.
+        const txItem = TransactionNamespaceFactory.build(m, ixItem);
+        // Build RPC method.
+        const rpcItem = RpcNamespaceFactory.build(
+          m,
+          txItem,
+          parseIdlErrors(idl),
+          provider
+        );
+
+        // Attach them all to their respective namespaces.
+        const name = camelCase(m.name);
+        instruction[name] = ixItem;
+        transaction[name] = txItem;
+        rpc[name] = rpcItem;
       });
 
-      return ee;
+      return [instruction, transaction, rpc];
+    })();
+    this.instruction = instruction;
+    this.transaction = transaction;
+    this.rpc = rpc;
+  }
+
+  /**
+   * Returns the deserialized state account.
+   */
+  async fetch(): Promise<Object> {
+    const addr = this.address();
+    const accountInfo = await this.provider.connection.getAccountInfo(addr);
+    if (accountInfo === null) {
+      throw new Error(`Account does not exist ${addr.toString()}`);
+    }
+    // Assert the account discriminator is correct.
+    const expectedDiscriminator = await stateDiscriminator(
+      this._idl.state.struct.name
+    );
+    if (expectedDiscriminator.compare(accountInfo.data.slice(0, 8))) {
+      throw new Error("Invalid account discriminator");
+    }
+    return this.coder.state.decode(accountInfo.data);
+  }
+
+  /**
+   * Returns the state address.
+   */
+  address(): PublicKey {
+    return this._address;
+  }
+
+  /**
+   * Returns an `EventEmitter` with a `"change"` event that's fired whenever
+   * the state account cahnges.
+   */
+  subscribe(commitment?: Commitment): EventEmitter {
+    if (this._sub !== null) {
+      return this._sub.ee;
+    }
+    const ee = new EventEmitter();
+
+    const listener = this.provider.connection.onAccountChange(
+      this.address(),
+      (acc) => {
+        const account = this.coder.state.decode(acc.data);
+        ee.emit("change", account);
+      },
+      commitment
+    );
+
+    this._sub = {
+      ee,
+      listener,
     };
 
-    // Unsubscribe from account changes.
-    state["unsubscribe"] = () => {
-      if (sub !== null) {
-        provider.connection
-          .removeAccountChangeListener(sub.listener)
-          .then(async () => {
-            sub = null;
-          })
-          .catch(console.error);
-      }
-    };
+    return ee;
+  }
 
-    return state;
+  /**
+   * Unsubscribes to state changes.
+   */
+  unsubscribe() {
+    if (this._sub !== null) {
+      this.provider.connection
+        .removeAccountChangeListener(this._sub.listener)
+        .then(async () => {
+          this._sub = null;
+        })
+        .catch(console.error);
+    }
   }
 }
 
 // Calculates the deterministic address of the program's "state" account.
-async function programStateAddress(programId: PublicKey): Promise<PublicKey> {
-  let [registrySigner] = await PublicKey.findProgramAddress([], programId);
-  return PublicKey.createWithSeed(registrySigner, "unversioned", programId);
+function programStateAddress(programId: PublicKey): PublicKey {
+  let [registrySigner] = findProgramAddressSync([], programId);
+  return createWithSeedSync(registrySigner, "unversioned", programId);
 }
 
 // Returns the common keys that are prepended to all instructions targeting
 // the "state" of a program.
-async function stateInstructionKeys(
+function stateInstructionKeys(
   programId: PublicKey,
   provider: Provider,
   m: IdlStateMethod,
@@ -178,7 +226,7 @@ async function stateInstructionKeys(
 ) {
   if (m.name === "new") {
     // Ctor `new` method.
-    const [programSigner] = await PublicKey.findProgramAddress([], programId);
+    const [programSigner] = findProgramAddressSync([], programId);
     return [
       {
         pubkey: provider.wallet.publicKey,
@@ -186,7 +234,7 @@ async function stateInstructionKeys(
         isSigner: true,
       },
       {
-        pubkey: await programStateAddress(programId),
+        pubkey: programStateAddress(programId),
         isWritable: true,
         isSigner: false,
       },
@@ -208,7 +256,7 @@ async function stateInstructionKeys(
     validateAccounts(m.accounts, accounts);
     return [
       {
-        pubkey: await programStateAddress(programId),
+        pubkey: programStateAddress(programId),
         isWritable: true,
         isSigner: false,
       },

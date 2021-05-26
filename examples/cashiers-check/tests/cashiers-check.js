@@ -63,7 +63,7 @@ describe("cashiers-check", () => {
       ],
     });
 
-    const checkAccount = await program.account.check(check.publicKey);
+    const checkAccount = await program.account.check.fetch(check.publicKey);
     assert.ok(checkAccount.from.equals(god));
     assert.ok(checkAccount.to.equals(receiver));
     assert.ok(checkAccount.amount.eq(new anchor.BN(100)));
@@ -91,7 +91,7 @@ describe("cashiers-check", () => {
       },
     });
 
-    const checkAccount = await program.account.check(check.publicKey);
+    const checkAccount = await program.account.check.fetch(check.publicKey);
     assert.ok(checkAccount.burned === true);
 
     let vaultAccount = await serumCmn.getTokenAccount(

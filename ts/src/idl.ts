@@ -29,8 +29,6 @@ export type IdlInstruction = {
   args: IdlField[];
 };
 
-// IdlStateMethods are similar to instructions, except they only allow
-// for a single account, the state account.
 export type IdlState = {
   struct: IdlTypeDef;
   methods: IdlStateMethod[];
@@ -80,6 +78,8 @@ export type IdlType =
   | "i32"
   | "u64"
   | "i64"
+  | "u128"
+  | "i128"
   | "bytes"
   | "string"
   | "publicKey"

@@ -21,7 +21,7 @@ describe("basic-4", () => {
 
     // Fetch the state struct from the network.
     // #region accessor
-    const state = await program.state();
+    const state = await program.state.fetch();
     // #endregion accessor
 
     assert.ok(state.count.eq(new anchor.BN(0)));
@@ -35,7 +35,7 @@ describe("basic-4", () => {
       },
     });
     // #endregion instruction
-    const state = await program.state();
+    const state = await program.state.fetch();
     assert.ok(state.count.eq(new anchor.BN(1)));
   });
 });

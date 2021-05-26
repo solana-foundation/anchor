@@ -41,7 +41,7 @@ describe("basic-3", () => {
     });
 
     // Check the state updated.
-    puppetAccount = await puppet.account.puppet(newPuppetAccount.publicKey);
+    puppetAccount = await puppet.account.puppet.fetch(newPuppetAccount.publicKey);
     assert.ok(puppetAccount.data.eq(new anchor.BN(111)));
   });
 });

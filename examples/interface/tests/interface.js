@@ -10,7 +10,7 @@ describe("interface", () => {
   it("Is initialized!", async () => {
     await counter.state.rpc.new(counterAuth.programId);
 
-    const stateAccount = await counter.state();
+    const stateAccount = await counter.state.fetch();
     assert.ok(stateAccount.count.eq(new anchor.BN(0)));
     assert.ok(stateAccount.authProgram.equals(counterAuth.programId));
   });
@@ -39,7 +39,7 @@ describe("interface", () => {
         authProgram: counterAuth.programId,
       },
     });
-    const stateAccount = await counter.state();
+    const stateAccount = await counter.state.fetch();
     assert.ok(stateAccount.count.eq(new anchor.BN(3)));
   });
 });

@@ -1,10 +1,8 @@
 import EventEmitter from "eventemitter3";
-import * as bs58 from "bs58";
 import { PublicKey } from "@solana/web3.js";
 import { Idl, IdlInstruction, IdlAccountItem, IdlStateMethod } from "../idl";
 import { ProgramError } from "../error";
 import { Accounts } from "./context";
-import Provider from "../provider";
 
 export type Subscription = {
   listener: number;

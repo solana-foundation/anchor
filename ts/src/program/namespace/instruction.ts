@@ -1,7 +1,6 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { IdlAccount, IdlInstruction, IdlAccountItem } from "../../idl";
 import { IdlError } from "../../error";
-import Coder from "../../coder";
 import {
   toInstruction,
   validateAccounts,
@@ -10,28 +9,12 @@ import {
 } from "../common";
 import { Accounts, splitArgsAndCtx } from "../context";
 
-/**
- * Dynamically generated instruction namespace.
- */
-export interface InstructionNamespace {
-  [key: string]: IxFn;
-}
-
-/**
- * Ix is a function to create a `TransactionInstruction` generated from an IDL.
- */
-export type IxFn = IxProps & ((...args: any[]) => any);
-type IxProps = {
-  accounts: (ctx: Accounts) => any;
-};
-
 export default class InstructionNamespaceFactory {
-  // Builds the instuction namespace.
   public static build(
     idlIx: IdlInstruction,
-    coder: Coder,
+    encodeFn: InstructionEncodeFn,
     programId: PublicKey
-  ): IxFn {
+  ): InstructionFn {
     if (idlIx.name === "_inner") {
       throw new IdlError("the _inner name is reserved");
     }
@@ -41,10 +24,7 @@ export default class InstructionNamespaceFactory {
       validateAccounts(idlIx.accounts, ctx.accounts);
       validateInstruction(idlIx, ...args);
 
-      const keys = InstructionNamespaceFactory.accountsArray(
-        ctx.accounts,
-        idlIx.accounts
-      );
+      const keys = ix.accounts(ctx.accounts);
 
       if (ctx.remainingAccounts !== undefined) {
         keys.push(...ctx.remainingAccounts);
@@ -56,10 +36,7 @@ export default class InstructionNamespaceFactory {
       return new TransactionInstruction({
         keys,
         programId,
-        data: coder.instruction.encode(
-          idlIx.name,
-          toInstruction(idlIx, ...ixArgs)
-        ),
+        data: encodeFn(idlIx.name, toInstruction(idlIx, ...ixArgs)),
       });
     };
 
@@ -95,6 +72,51 @@ export default class InstructionNamespaceFactory {
       .flat();
   }
 }
+
+/**
+ * The namespace provides functions to build [[TransactionInstruction]]
+ * objects for each method of a program.
+ *
+ * ## Usage
+ *
+ * ```javascript
+ * instruction.<method>(...args, ctx);
+ * ```
+ *
+ * ## Parameters
+ *
+ * 1. `args` - The positional arguments for the program. The type and number
+ *    of these arguments depend on the program being used.
+ * 2. `ctx`  - [[Context]] non-argument parameters to pass to the method.
+ *    Always the last parameter in the method call.
+ *
+ * ## Example
+ *
+ * To create an instruction for the `increment` method above,
+ *
+ * ```javascript
+ * const tx = await program.instruction.increment({
+ *   accounts: {
+ *     counter,
+ *   },
+ * });
+ * ```
+ */
+export interface InstructionNamespace {
+  [key: string]: InstructionFn;
+}
+
+/**
+ * Function to create a `TransactionInstruction` generated from an IDL.
+ * Additionally it provides an `accounts` utility method, returning a list
+ * of ordered accounts for the instruction.
+ */
+export type InstructionFn = IxProps & ((...args: any[]) => any);
+type IxProps = {
+  accounts: (ctx: Accounts) => any;
+};
+
+export type InstructionEncodeFn = (ixName: string, ix: any) => Buffer;
 
 // Throws error if any argument required for the `ix` is not given.
 function validateInstruction(ix: IdlInstruction, ...args: any[]) {

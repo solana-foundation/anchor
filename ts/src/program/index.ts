@@ -8,7 +8,7 @@ import NamespaceFactory, {
   InstructionNamespace,
   TransactionNamespace,
   AccountNamespace,
-  StateNamespace,
+  StateClient,
   SimulateNamespace,
 } from "./namespace";
 import { getProvider } from "../";
@@ -28,27 +28,29 @@ import { Address, translateAddress } from "./common";
  * changes, and listen to events.
  *
  * In addition to field accessors and methods, the object provides a set of
- * dynamically generated properties (internally referred to as namespaces) that
- * map one-to-one to program instructions and accounts. These namespaces
- * generally can be used as follows:
+ * dynamically generated properties, also known as namespaces, that
+ * map one-to-one to program methods and accounts. These namespaces generally
+ *  can be used as follows:
+ *
+ * ## Usage
  *
  * ```javascript
- * program.<namespace>.<program-specific-field>
+ * program.<namespace>.<program-specific-method>
  * ```
  *
  * API specifics are namespace dependent. The examples used in the documentation
  * below will refer to the two counter examples found
- * [here](https://project-serum.github.io/anchor/ts/#examples).
+ * [here](https://github.com/project-serum/anchor#examples).
  */
 export class Program {
   /**
-   * Async methods to send signed transactions invoking *non*-state methods
-   * on an Anchor program.
+   * Async methods to send signed transactions to *non*-state methods on the
+   * program, returning a [[TransactionSignature]].
    *
-   * ## rpc
+   * ## Usage
    *
    * ```javascript
-   * program.rpc.<method>(...args, ctx);
+   * rpc.<method>(...args, ctx);
    * ```
    *
    * ## Parameters
@@ -74,32 +76,32 @@ export class Program {
   readonly rpc: RpcNamespace;
 
   /**
-   * Async functions to fetch deserialized program accounts from a cluster.
+   * The namespace provides handles to an [[AccountClient]] object for each
+   * account in the program.
    *
-   * ## account
+   * ## Usage
    *
    * ```javascript
-   * program.account.<account>(address);
+   * program.account.<account-client>
    * ```
-   *
-   * ## Parameters
-   *
-   * 1. `address` - The [[Address]] of the account.
    *
    * ## Example
    *
-   * To fetch a `Counter` object from the above example,
+   * To fetch a `Counter` account from the above example,
    *
    * ```javascript
-   * const counter = await program.account.counter(address);
+   * const counter = await program.account.counter.fetch(address);
    * ```
+   *
+   * For the full API, see the [[AccountClient]] reference.
    */
   readonly account: AccountNamespace;
 
   /**
-   * Functions to build [[TransactionInstruction]] objects for program methods.
+   * The namespace provides functions to build [[TransactionInstruction]]
+   * objects for each method of a program.
    *
-   * ## instruction
+   * ## Usage
    *
    * ```javascript
    * program.instruction.<method>(...args, ctx);
@@ -127,9 +129,10 @@ export class Program {
   readonly instruction: InstructionNamespace;
 
   /**
-   * Functions to build [[Transaction]] objects.
+   * The namespace provides functions to build [[Transaction]] objects for each
+   * method of a program.
    *
-   * ## transaction
+   * ## Usage
    *
    * ```javascript
    * program.transaction.<method>(...args, ctx);
@@ -157,8 +160,9 @@ export class Program {
   readonly transaction: TransactionNamespace;
 
   /**
-   * Async functions to simulate instructions against an Anchor program,
-   * returning a list of deserialized events *and* raw program logs.
+   * The namespace provides functions to simulate transactions for each method
+   * of a program, returning a list of deserialized events *and* raw program
+   * logs.
    *
    * One can use this to read data calculated from a program on chain, by
    * emitting an event in the program and reading the emitted event client side
@@ -182,7 +186,7 @@ export class Program {
    * To simulate the `increment` method above,
    *
    * ```javascript
-   * const tx = await program.simulate.increment({
+   * const events = await program.simulate.increment({
    *   accounts: {
    *     counter,
    *   },
@@ -192,9 +196,11 @@ export class Program {
   readonly simulate: SimulateNamespace;
 
   /**
-   * Object with state account accessors and rpcs.
+   * A client for the program state. Similar to the base [[Program]] client,
+   * one can use this to send transactions and read accounts for the state
+   * abstraction.
    */
-  readonly state: StateNamespace;
+  readonly state: StateClient;
 
   /**
    * Address of the program.
@@ -249,15 +255,15 @@ export class Program {
       instruction,
       transaction,
       account,
-      state,
       simulate,
+      state,
     ] = NamespaceFactory.build(idl, this._coder, programId, this._provider);
     this.rpc = rpc;
     this.instruction = instruction;
     this.transaction = transaction;
     this.account = account;
-    this.state = state;
     this.simulate = simulate;
+    this.state = state;
   }
 
   /**

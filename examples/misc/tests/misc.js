@@ -11,7 +11,7 @@ describe("misc", () => {
   it("Can allocate extra space for a state constructor", async () => {
     const tx = await program.state.rpc.new();
     const addr = await program.state.address();
-    const state = await program.state();
+    const state = await program.state.fetch();
     const accountInfo = await program.provider.connection.getAccountInfo(addr);
     assert.ok(state.v.equals(Buffer.from([])));
     assert.ok(accountInfo.data.length === 99);
@@ -32,7 +32,7 @@ describe("misc", () => {
         instructions: [await program.account.data.createInstruction(data)],
       }
     );
-    const dataAccount = await program.account.data(data.publicKey);
+    const dataAccount = await program.account.data.fetch(data.publicKey);
     assert.ok(dataAccount.udata.eq(new anchor.BN(1234)));
     assert.ok(dataAccount.idata.eq(new anchor.BN(22)));
   });
@@ -47,7 +47,7 @@ describe("misc", () => {
       signers: [data],
       instructions: [await program.account.dataU16.createInstruction(data)],
     });
-    const dataAccount = await program.account.dataU16(data.publicKey);
+    const dataAccount = await program.account.dataU16.fetch(data.publicKey);
     assert.ok(dataAccount.data === 99);
   });
 
@@ -110,7 +110,7 @@ describe("misc", () => {
         authority: program.provider.wallet.publicKey,
       },
     });
-    let stateAccount = await misc2Program.state();
+    let stateAccount = await misc2Program.state.fetch();
     assert.ok(stateAccount.data.eq(oldData));
     assert.ok(stateAccount.auth.equals(program.provider.wallet.publicKey));
     const newData = new anchor.BN(2134);
@@ -121,7 +121,7 @@ describe("misc", () => {
         misc2Program: misc2Program.programId,
       },
     });
-    stateAccount = await misc2Program.state();
+    stateAccount = await misc2Program.state.fetch();
     assert.ok(stateAccount.data.eq(newData));
     assert.ok(stateAccount.auth.equals(program.provider.wallet.publicKey));
   });
@@ -145,7 +145,7 @@ describe("misc", () => {
     );
     await assert.rejects(
       async () => {
-        await program.account.testData(associatedAccount);
+        await program.account.testData.fetch(associatedAccount);
       },
       (err) => {
         assert.ok(
@@ -234,7 +234,7 @@ describe("misc", () => {
       instructions: [await program.account.dataI8.createInstruction(data)],
       signers: [data],
     });
-    const dataAccount = await program.account.dataI8(data.publicKey);
+    const dataAccount = await program.account.dataI8.fetch(data.publicKey);
     assert.ok(dataAccount.data === -3);
   });
 
@@ -250,14 +250,14 @@ describe("misc", () => {
       instructions: [await program.account.dataI16.createInstruction(data)],
       signers: [data],
     });
-    const dataAccount = await program.account.dataI16(data.publicKey);
+    const dataAccount = await program.account.dataI16.fetch(data.publicKey);
     assert.ok(dataAccount.data === -2048);
 
     dataPubkey = data.publicKey;
   });
 
   it("Can use base58 strings to fetch an account", async () => {
-    const dataAccount = await program.account.dataI16(dataPubkey.toString());
+    const dataAccount = await program.account.dataI16.fetch(dataPubkey.toString());
     assert.ok(dataAccount.data === -2048);
   });
 });

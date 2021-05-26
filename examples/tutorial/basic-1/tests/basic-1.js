@@ -43,7 +43,7 @@ describe("basic-1", () => {
     // #endregion code-separated
 
     // Fetch the newly created account from the cluster.
-    const account = await program.account.myAccount(myAccount.publicKey);
+    const account = await program.account.myAccount.fetch(myAccount.publicKey);
 
     // Check it's state was initialized.
     assert.ok(account.data.eq(new anchor.BN(1234)));
@@ -81,7 +81,7 @@ describe("basic-1", () => {
     });
 
     // Fetch the newly created account from the cluster.
-    const account = await program.account.myAccount(myAccount.publicKey);
+    const account = await program.account.myAccount.fetch(myAccount.publicKey);
 
     // Check it's state was initialized.
     assert.ok(account.data.eq(new anchor.BN(1234)));
@@ -108,7 +108,7 @@ describe("basic-1", () => {
     // #endregion code-simplified
 
     // Fetch the newly created account from the cluster.
-    const account = await program.account.myAccount(myAccount.publicKey);
+    const account = await program.account.myAccount.fetch(myAccount.publicKey);
 
     // Check it's state was initialized.
     assert.ok(account.data.eq(new anchor.BN(1234)));
@@ -133,7 +133,7 @@ describe("basic-1", () => {
     });
 
     // Fetch the newly updated account.
-    const account = await program.account.myAccount(myAccount.publicKey);
+    const account = await program.account.myAccount.fetch(myAccount.publicKey);
 
     // Check it's state was mutated.
     assert.ok(account.data.eq(new anchor.BN(4321)));

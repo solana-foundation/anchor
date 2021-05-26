@@ -3,21 +3,21 @@ import { PublicKey } from "@solana/web3.js";
 import Coder from "../../coder";
 import Provider from "../../provider";
 import { Idl } from "../../idl";
-import { parseIdlErrors } from "../common";
-import StateFactory, { StateNamespace } from "./state";
+import StateFactory, { StateClient } from "./state";
 import InstructionFactory, { InstructionNamespace } from "./instruction";
 import TransactionFactory, { TransactionNamespace } from "./transaction";
 import RpcFactory, { RpcNamespace } from "./rpc";
 import AccountFactory, { AccountNamespace } from "./account";
 import SimulateFactory, { SimulateNamespace } from "./simulate";
+import { parseIdlErrors } from "../common";
 
 // Re-exports.
-export { StateNamespace } from "./state";
-export { InstructionNamespace } from "./instruction";
-export { TransactionNamespace, TxFn } from "./transaction";
+export { StateClient } from "./state";
+export { InstructionNamespace, InstructionFn } from "./instruction";
+export { TransactionNamespace, TransactionFn } from "./transaction";
 export { RpcNamespace, RpcFn } from "./rpc";
-export { AccountNamespace, AccountFn, ProgramAccount } from "./account";
-export { SimulateNamespace } from "./simulate";
+export { AccountNamespace, AccountClient, ProgramAccount } from "./account";
+export { SimulateNamespace, SimulateFn } from "./simulate";
 
 export default class NamespaceFactory {
   /**
@@ -33,26 +33,24 @@ export default class NamespaceFactory {
     InstructionNamespace,
     TransactionNamespace,
     AccountNamespace,
-    StateNamespace,
-    SimulateNamespace
+    SimulateNamespace,
+    StateClient
   ] {
-    const idlErrors = parseIdlErrors(idl);
-
     const rpc: RpcNamespace = {};
     const instruction: InstructionNamespace = {};
     const transaction: TransactionNamespace = {};
     const simulate: SimulateNamespace = {};
 
-    const state = StateFactory.build(
-      idl,
-      coder,
-      programId,
-      idlErrors,
-      provider
-    );
+    const idlErrors = parseIdlErrors(idl);
+
+    const state = StateFactory.build(idl, coder, programId, provider);
 
     idl.instructions.forEach((idlIx) => {
-      const ixItem = InstructionFactory.build(idlIx, coder, programId);
+      const ixItem = InstructionFactory.build(
+        idlIx,
+        (ixName: string, ix: any) => coder.instruction.encode(ixName, ix),
+        programId
+      );
       const txItem = TransactionFactory.build(idlIx, ixItem);
       const rpcItem = RpcFactory.build(idlIx, txItem, idlErrors, provider);
       const simulateItem = SimulateFactory.build(
@@ -77,6 +75,6 @@ export default class NamespaceFactory {
       ? AccountFactory.build(idl, coder, programId, provider)
       : {};
 
-    return [rpc, instruction, transaction, account, state, simulate];
+    return [rpc, instruction, transaction, account, simulate, state];
   }
 }

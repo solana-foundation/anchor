@@ -41,8 +41,8 @@ describe("composite", () => {
       }
     );
 
-    const dummyAAccount = await program.account.dummyA(dummyA.publicKey);
-    const dummyBAccount = await program.account.dummyB(dummyB.publicKey);
+    const dummyAAccount = await program.account.dummyA.fetch(dummyA.publicKey);
+    const dummyBAccount = await program.account.dummyB.fetch(dummyB.publicKey);
 
     assert.ok(dummyAAccount.data.eq(new anchor.BN(1234)));
     assert.ok(dummyBAccount.data.eq(new anchor.BN(4321)));

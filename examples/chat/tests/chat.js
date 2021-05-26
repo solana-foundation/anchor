@@ -25,7 +25,7 @@ describe("chat", () => {
       signers: [chatRoom],
     });
 
-    const chat = await program.account.chatRoom(chatRoom.publicKey);
+    const chat = await program.account.chatRoom.fetch(chatRoom.publicKey);
     const name = new TextDecoder("utf-8").decode(new Uint8Array(chat.name));
     assert.ok(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
     assert.ok(chat.messages.length === 33607);
@@ -76,7 +76,7 @@ describe("chat", () => {
     }
 
     // Check the chat room state is as expected.
-    const chat = await program.account.chatRoom(chatRoom.publicKey);
+    const chat = await program.account.chatRoom.fetch(chatRoom.publicKey);
     const name = new TextDecoder("utf-8").decode(new Uint8Array(chat.name));
     assert.ok(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
     assert.ok(chat.messages.length === 33607);

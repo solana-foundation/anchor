@@ -19,9 +19,10 @@ incremented for features.
 
 ## Breaking Changes
 
+* ts: Retrieving deserialized accounts from the `<program>.account.<my-account>` and `<program>.state` namespaces now require explicitly invoking the `fetch` API. For example, `program.account.myAccount(<adddress>)` and `program.state()` is now `program.account.myAccount.fetch(<address>)` and `program.state.fetch()` ([#322](https://github.com/project-serum/anchor/pull/322)).
 * lang: `#[account(associated)]` now requires `init` to be provided to create an associated account. If not provided, then the address will be assumed to exist, and a constraint will be added to ensure its correctness ([#318](https://github.com/project-serum/anchor/pull/318)).
-* lang, ts: Change account discriminator pre-image of the `#[state]` account discriminator to be namespaced by "state:". This change should only be noticed by library maintainers ([#320](https://github.com/project-serum/anchor/pull/320)).
-* lang, ts: Change domain delimiters for the pre-image of the instruciton sighash to be a single colon `:` to be consistent with accounts. This change should only be noticed by library maintainers.
+* lang, ts: Change account discriminator pre-image of the `#[state]` account discriminator to be namespaced by "state:" ([#320](https://github.com/project-serum/anchor/pull/320)).
+* lang, ts: Change domain delimiters for the pre-image of the instruciton sighash to be a single colon `:` to be consistent with accounts ([#321](https://github.com/project-serum/anchor/pull/321)).
 
 ## [0.6.0] - 2021-05-23
 

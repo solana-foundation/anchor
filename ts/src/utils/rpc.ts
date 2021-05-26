@@ -1,14 +1,7 @@
-import * as bs58 from "bs58";
-import { sha256 } from "crypto-hash";
 import assert from "assert";
 import { PublicKey, AccountInfo, Connection } from "@solana/web3.js";
-import { idlAddress } from "./idl";
 
-export const TOKEN_PROGRAM_ID = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-);
-
-async function getMultipleAccounts(
+export async function getMultipleAccounts(
   connection: Connection,
   publicKeys: PublicKey[]
 ): Promise<
@@ -68,20 +61,3 @@ async function getMultipleAccounts(
     };
   });
 }
-
-export function decodeUtf8(array: Uint8Array): string {
-  const decoder =
-    typeof TextDecoder === "undefined"
-      ? new (require("util").TextDecoder)("utf-8") // Node.
-      : new TextDecoder("utf-8"); // Browser.
-  return decoder.decode(array);
-}
-
-const utils = {
-  bs58,
-  sha256,
-  getMultipleAccounts,
-  idlAddress,
-};
-
-export default utils;
