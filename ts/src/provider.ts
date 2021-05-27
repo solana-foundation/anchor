@@ -92,20 +92,17 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
-    const signerPubkeys = [this.wallet.publicKey].concat(
-      signerKps.map((s) => s.publicKey)
-    );
-
-    tx.setSigners(...signerPubkeys);
+    tx.feePayer = this.wallet.publicKey;
     tx.recentBlockhash = (
       await this.connection.getRecentBlockhash(opts.preflightCommitment)
     ).blockhash;
 
     await this.wallet.signTransaction(tx);
-    signerKps.forEach((kp) => {
-      tx.partialSign(kp);
-    });
+    signers
+      .filter((s) => s !== undefined)
+      .forEach((kp) => {
+        tx.partialSign(kp);
+      });
 
     const rawTx = tx.serialize();
 
@@ -140,16 +137,14 @@ export default class Provider {
         signers = [];
       }
 
-      const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
-      const signerPubkeys = [this.wallet.publicKey].concat(
-        signerKps.map((s) => s.publicKey)
-      );
-
-      tx.setSigners(...signerPubkeys);
+      tx.feePayer = this.wallet.publicKey;
       tx.recentBlockhash = blockhash.blockhash;
-      signerKps.forEach((kp) => {
-        tx.partialSign(kp);
-      });
+
+      signers
+        .filter((s) => s !== undefined)
+        .forEach((kp) => {
+          tx.partialSign(kp);
+        });
 
       return tx;
     });
@@ -189,12 +184,7 @@ export default class Provider {
       opts = this.opts;
     }
 
-    const signerKps = signers.filter((s) => s !== undefined) as Array<Signer>;
-    const signerPubkeys = [this.wallet.publicKey].concat(
-      signerKps.map((s) => s.publicKey)
-    );
-
-    tx.setSigners(...signerPubkeys);
+    tx.feePayer = this.wallet.publicKey;
     tx.recentBlockhash = (
       await this.connection.getRecentBlockhash(
         opts.preflightCommitment ?? this.opts.preflightCommitment
@@ -202,9 +192,12 @@ export default class Provider {
     ).blockhash;
 
     await this.wallet.signTransaction(tx);
-    signerKps.forEach((kp) => {
-      tx.partialSign(kp);
-    });
+    signers
+      .filter((s) => s !== undefined)
+      .forEach((kp) => {
+        tx.partialSign(kp);
+      });
+
     return await simulateTransaction(
       this.connection,
       tx,
