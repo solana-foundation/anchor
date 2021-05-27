@@ -9,7 +9,7 @@ import Coder, {
 } from "./coder";
 import { Idl } from "./idl";
 import workspace from "./workspace";
-import utils from "./utils";
+import * as utils from "./utils";
 import { Program } from "./program";
 import { Address } from "./program/common";
 import { Event } from "./program/event";

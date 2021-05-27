@@ -13,7 +13,7 @@
     "node": ">=10"
   },
   "scripts": {
-    "build": "yarn build:node",
+    "build": "rm -rf dist/ && yarn build:node",
     "build:node": "tsc && tsc -p tsconfig.cjs.json",
     "lint:fix": "prettier src/** -w",
     "watch": "tsc -p tsconfig.cjs.json --watch",

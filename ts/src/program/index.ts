@@ -12,7 +12,7 @@ import NamespaceFactory, {
   SimulateNamespace,
 } from "./namespace";
 import { getProvider } from "../";
-import { decodeUtf8 } from "../utils";
+import { utf8 } from "../utils/bytes";
 import { EventParser } from "./event";
 import { Address, translateAddress } from "./common";
 
@@ -300,7 +300,7 @@ export class Program {
     // Chop off account discriminator.
     let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
     const inflatedIdl = inflate(idlAccount.data);
-    return JSON.parse(decodeUtf8(inflatedIdl));
+    return JSON.parse(utf8.decode(inflatedIdl));
   }
 
   /**
