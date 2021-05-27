@@ -292,3 +292,23 @@ async function simulateTransaction(
   }
   return res.result;
 }
+
+/**
+ * Sets the default provider on the client.
+ */
+export function setProvider(provider: Provider) {
+  _provider = provider;
+}
+
+/**
+ * Returns the default provider being used by the client.
+ */
+export function getProvider(): Provider {
+  if (_provider === null) {
+    return Provider.local();
+  }
+  return _provider;
+}
+
+// Global provider used as the default when a provider is not given.
+let _provider: Provider | null = null;
