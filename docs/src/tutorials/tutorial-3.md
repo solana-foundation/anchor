@@ -71,6 +71,9 @@ retrieve the return value. In future work, Anchor should do this transparently.
 
 ## Conclusion
 
-That's it for the introductory tutorials for Anchor. For more, see the `examples/` directory in the
-[repository](https://github.com/project-serum/anchor). For feature requests or bugs, GitHub issues
-are appreciated. For direct questions or support, join the [Serum Discord](https://discord.gg/rg5ZZPmmTm).
+Now that you can have your programs call other programs, you should be able to access all the work being done by other developers in your own applications! 
+
+## Next Steps
+
+Up until now, we've treated programs on Solana as stateless. In the next tutorial we will learn how to add a global state to our program.
+
