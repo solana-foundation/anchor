@@ -19,17 +19,7 @@ describe("basic-3", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [newPuppetAccount],
-      instructions: [
-        anchor.web3.SystemProgram.createAccount({
-          fromPubkey: provider.wallet.publicKey,
-          newAccountPubkey: newPuppetAccount.publicKey,
-          space: 8 + 8, // Add 8 for the account discriminator.
-          lamports: await provider.connection.getMinimumBalanceForRentExemption(
-            8 + 8
-          ),
-          programId: puppet.programId,
-        }),
-      ],
+      instructions: [await puppet.account.puppet.createInstruction(newPuppetAccount)],
     });
 
     // Invoke the puppet master to perform a CPI to the puppet.

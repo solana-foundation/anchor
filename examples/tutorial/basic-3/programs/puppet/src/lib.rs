@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[program]
-mod puppet {
+pub mod puppet {
     use super::*;
     pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
         Ok(())
