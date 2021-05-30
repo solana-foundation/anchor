@@ -43,7 +43,8 @@ use syn::parse_macro_input;
 /// | `#[account(belongs_to = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. |
 /// | `#[account(has_one = <target>)]` | On `ProgramAccount` or `CpiAccount` structs | Semantically different, but otherwise the same as `belongs_to`. |
 /// | `#[account(seeds = [<seeds>])]` | On `AccountInfo` structs | Seeds for the program derived address an `AccountInfo` struct represents. |
-/// | `#[account("<literal>")]` | On any type deriving `Accounts` | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
+/// | `#[account(constraint = <expression>)]` | On any type deriving `Accounts` | Executes the given code as a constraint. The expression should evaluate to a boolean. |
+/// | `#[account("<literal>")]` | Deprecated | Executes the given code literal as a constraint. The literal should evaluate to a boolean. |
 /// | `#[account(rent_exempt = <skip>)]` | On `AccountInfo` or `ProgramAccount` structs | Optional attribute to skip the rent exemption check. By default, all accounts marked with `#[account(init)]` will be rent exempt, and so this should rarely (if ever) be used. Similarly, omitting `= skip` will mark the account rent exempt. |
 /// | `#[account(executable)]` | On `AccountInfo` structs | Checks the given account is an executable program. |
 /// | `#[account(state = <target>)]` | On `CpiState` structs | Checks the given state is the canonical state account for the target program. |

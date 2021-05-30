@@ -29,12 +29,7 @@ fn ctx_accounts_ident(path_ty: &syn::PatType) -> ParseResult<proc_macro2::Ident>
 
     let generic_args = match &segment.arguments {
         syn::PathArguments::AngleBracketed(args) => args,
-        _ => {
-            return Err(ParseError::new(
-                segment.arguments.span(),
-                "expected generic arguments here",
-            ))
-        }
+        _ => return Err(ParseError::new(path_ty.span(), "missing accounts context")),
     };
     let generic_ty = generic_args
         .args
