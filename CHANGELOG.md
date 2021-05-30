@@ -11,22 +11,28 @@ incremented for features.
 
 ## [Unreleased]
 
-## Features
+### Features
 
-* ts: Address metadata is now optional for `anchor.workspace` clients ([#310](https://github.com/project-serum/anchor/pull/310)).
 * cli: Add global options for override Anchor.toml values ([#313](https://github.com/project-serum/anchor/pull/313)).
 * spl: Add `SetAuthority` instruction ([#307](https://github.com/project-serum/anchor/pull/307/files)).
+* lang: `constraint = <expression>` added as a replacement for (the now deprecated) string literal constraints ([#341](https://github.com/project-serum/anchor/pull/341)).
+* lang: Span information is now preserved, providing informative compiler error messages ([#341](https://github.com/project-serum/anchor/pull/341)).
+* ts: Address metadata is now optional for `anchor.workspace` clients ([#310](https://github.com/project-serum/anchor/pull/310)).
 
-## Breaking Changes
+### Breaking Changes
 
 * ts: Retrieving deserialized accounts from the `<program>.account.<my-account>` and `<program>.state` namespaces now require explicitly invoking the `fetch` API. For example, `program.account.myAccount(<adddress>)` and `program.state()` is now `program.account.myAccount.fetch(<address>)` and `program.state.fetch()` ([#322](https://github.com/project-serum/anchor/pull/322)).
-* lang: `#[account(associated)]` now requires `init` to be provided to create an associated account. If not provided, then the address will be assumed to exist, and a constraint will be added to ensure its correctness ([#318](https://github.com/project-serum/anchor/pull/318)).
+* lang: `#[account(associated)]` now requires `init` to be provided to create an associated account. If not provided, then the address will be assumed to exist, and a constraint will be added to ensure the correctness of the address ([#318](https://github.com/project-serum/anchor/pull/318)).
 * lang, ts: Change account discriminator pre-image of the `#[state]` account discriminator to be namespaced by "state:" ([#320](https://github.com/project-serum/anchor/pull/320)).
 * lang, ts: Change domain delimiters for the pre-image of the instruciton sighash to be a single colon `:` to be consistent with accounts ([#321](https://github.com/project-serum/anchor/pull/321)).
+* lang: Associated constraints no longer automatically implement `mut` ([#341](https://github.com/project-serum/anchor/pull/341)).
+* lang: Associated `space` constraints must now be literal integers instead of literal strings ([#341](https://github.com/project-serum/anchor/pull/341)).
+
+### Fixes
 
 ## [0.6.0] - 2021-05-23
 
-## Features
+### Features
 
 * ts: Add `program.simulate` namespace ([#266](https://github.com/project-serum/anchor/pull/266)).
 * ts: Introduce `Address` type, allowing one to use Base 58 encoded strings in public APIs ([#304](https://github.com/project-serum/anchor/pull/304)).
@@ -36,7 +42,7 @@ incremented for features.
 * cli: Add `--skip-build` flag to test command ([301](https://github.com/project-serum/anchor/pull/301)).
 * cli: Add `anchor shell` command to spawn a node shell populated with an Anchor.toml based environment ([#303](https://github.com/project-serum/anchor/pull/303)).
 
-## Breaking Changes
+### Breaking Changes
 
 * cli: The Anchor.toml's `wallet` and `cluster` settings must now be under the `[provider]` table ([#305](https://github.com/project-serum/anchor/pull/305)).
 * ts: Event coder `decode` API changed to decode strings directly instead of buffers ([#292](https://github.com/project-serum/anchor/pull/292)).
@@ -44,13 +50,13 @@ incremented for features.
 
 ## [0.5.0] - 2021-05-07
 
-## Features
+### Features
 
 * client: Adds support for state instructions ([#248](https://github.com/project-serum/anchor/pull/248)).
 * lang: Add `anchor-debug` feature flag for logging ([#253](https://github.com/project-serum/anchor/pull/253)).
 * ts: Add support for u16 ([#255](https://github.com/project-serum/anchor/pull/255)).
 
-## Breaking
+### Breaking Changes
 
 * client: Renames `RequestBuilder::new` to `RequestBuilder::from` ([#248](https://github.com/project-serum/anchor/pull/248)).
 * lang: Renames the generated `instruction::state::Ctor` struct to `instruction::state::New` ([#248](https://github.com/project-serum/anchor/pull/248)).
@@ -61,7 +67,7 @@ incremented for features.
 
 ## [0.4.4] - 2021-04-18
 
-## Features
+### Features
 
 * lang: Allows one to specify multiple `with` targets when creating associated acconts ([#197](https://github.com/project-serum/anchor/pull/197)).
 * lang, ts: Add array support ([#202](https://github.com/project-serum/anchor/pull/202)).
@@ -70,19 +76,19 @@ incremented for features.
 
 ## [0.4.3] - 2021-04-13
 
-## Features
+### Features
 
 * lang: CPI clients for program state instructions ([#43](https://github.com/project-serum/anchor/pull/43)).
 * lang: Add `#[account(owner = <program>)]` constraint ([#178](https://github.com/project-serum/anchor/pull/178)).
 * lang, cli, ts: Add `#[account(associated = <target>)]` and `#[associated]` attributes for creating associated program accounts within programs. The TypeScript package can fetch these accounts with a new `<program>.account.<account-name>.associated` (and `associatedAddress`) method ([#186](https://github.com/project-serum/anchor/pull/186)).
 
-## Fixes
+### Fixes
 
 * lang: Unused `#[account]`s are now parsed into the IDL correctly ([#177](https://github.com/project-serum/anchor/pull/177)).
 
 ## [0.4.2] - 2021-04-10
 
-## Features
+### Features
 
 * cli: Fund Anchor.toml configured wallet when testing ([#164](https://github.com/project-serum/anchor/pull/164)).
 * spl: Add initialize_account instruction for spl tokens ([#166](https://github.com/project-serum/anchor/pull/166)).
@@ -93,7 +99,7 @@ incremented for features.
 
 ## [0.4.0] - 2021-04-04
 
-## Features
+### Features
 
 * cli: Specify test files to run ([#118](https://github.com/project-serum/anchor/pull/118)).
 * lang: Allow overriding the `#[state]` account's size ([#121](https://github.com/project-serum/anchor/pull/121)).
@@ -102,7 +108,7 @@ incremented for features.
 * cli: TypeScript migrations ([#132](https://github.com/project-serum/anchor/pull/132)).
 * lang: Add `#[account(executable)]` attribute ([#140](https://github.com/project-serum/anchor/pull/140)).
 
-## Breaking Changes
+### Breaking Changes
 
 * client: Replace url str with `Cluster` struct when constructing clients ([#89](https://github.com/project-serum/anchor/pull/89)).
 * lang: Changes the account discriminator of `IdlAccount` to be namespaced by `"internal"` ([#128](https://github.com/project-serum/anchor/pull/128)).
@@ -110,7 +116,7 @@ incremented for features.
 
 ## [0.3.0] - 2021-03-12
 
-## Features
+### Features
 
 * ts: Allow preloading instructions for state rpc transactions ([cf9c84](https://github.com/project-serum/anchor/commit/cf9c847e4144989b5bc1936149d171e90204777b)).
 * ts: Export sighash coder function ([734c75](https://github.com/project-serum/anchor/commit/734c751882f43beec7ea3f0f4d988b502e3f24e4)).
@@ -124,7 +130,7 @@ incremented for features.
 
 * lang: Removes `IdlInstruction::Clear` ([#107](https://github.com/project-serum/anchor/pull/107)).
 
-## Fixes
+### Fixes
 
 * cli: Propagates mocha test exit status on error ([79b791](https://github.com/project-serum/anchor/commit/79b791ffa85ffae5b6163fa853562aa568650f21)).
 

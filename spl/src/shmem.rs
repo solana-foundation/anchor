@@ -1,6 +1,7 @@
 //! CPI API for interacting with the SPL shared memory
 //! [program](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory).
 
+use anchor_lang::ToAccountInfo;
 use anchor_lang::{Accounts, CpiContext};
 use solana_program::account_info::AccountInfo;
 use solana_program::declare_id;
@@ -42,8 +43,8 @@ pub struct Ret<'info> {
 #[derive(Accounts)]
 pub struct Shmem<'info> {
     // Shared memory account to write the return value into.
-    #[account(mut, "shmem.owner == shmem_program.key")]
+    #[account(mut, constraint = shmem.owner == shmem_program.key)]
     pub shmem: AccountInfo<'info>,
-    #[account("shmem_program.key == &ID")]
+    #[account(constraint = shmem_program.key == &ID)]
     pub shmem_program: AccountInfo<'info>,
 }

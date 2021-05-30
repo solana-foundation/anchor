@@ -140,7 +140,7 @@ pub struct TestInitAssociatedAccount<'info> {
 
 #[derive(Accounts)]
 pub struct TestAssociatedAccount<'info> {
-    #[account(associated = authority, with = state, with = data)]
+    #[account(mut, associated = authority, with = state, with = data)]
     my_account: ProgramAccount<'info, TestData>,
     #[account(mut, signer)]
     authority: AccountInfo<'info>,

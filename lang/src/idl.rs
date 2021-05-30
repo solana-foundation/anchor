@@ -49,7 +49,7 @@ pub type IdlCreateAccounts<'info> = crate::ctor::Ctor<'info>;
 pub struct IdlAccounts<'info> {
     #[account(mut, has_one = authority)]
     pub idl: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
+    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
     pub authority: AccountInfo<'info>,
 }
 
@@ -58,7 +58,7 @@ pub struct IdlAccounts<'info> {
 pub struct IdlCreateBuffer<'info> {
     #[account(init)]
     pub buffer: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
+    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
     pub authority: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
 }
@@ -67,12 +67,12 @@ pub struct IdlCreateBuffer<'info> {
 #[derive(Accounts)]
 pub struct IdlSetBuffer<'info> {
     // The buffer with the new idl data.
-    #[account(mut, "buffer.authority == idl.authority")]
+    #[account(mut, constraint = buffer.authority == idl.authority)]
     pub buffer: ProgramAccount<'info, IdlAccount>,
     // The idl account to be updated with the buffer's data.
     #[account(mut, has_one = authority)]
     pub idl: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, "authority.key != &Pubkey::new_from_array([0u8; 32])")]
+    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
     pub authority: AccountInfo<'info>,
 }
 

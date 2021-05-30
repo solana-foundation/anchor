@@ -633,7 +633,7 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
 
 fn extract_idl(file: &str) -> Result<Idl> {
     let file = shellexpand::tilde(file);
-    anchor_syn::parser::file::parse(&*file)
+    anchor_syn::idl::file::parse(&*file)
 }
 
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {

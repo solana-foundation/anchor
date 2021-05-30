@@ -1,8 +1,7 @@
 extern crate proc_macro;
 
-use anchor_syn::codegen::accounts as accounts_codegen;
-use anchor_syn::parser::accounts as accounts_parser;
 use proc_macro::TokenStream;
+use quote::ToTokens;
 use syn::parse_macro_input;
 
 /// Implements an [`Accounts`](./trait.Accounts.html) deserializer on the given
@@ -54,7 +53,7 @@ use syn::parse_macro_input;
 //       on absurdly long lines?
 #[proc_macro_derive(Accounts, attributes(account))]
 pub fn derive_anchor_deserialize(item: TokenStream) -> TokenStream {
-    let strct = parse_macro_input!(item as syn::ItemStruct);
-    let tts = accounts_codegen::generate(accounts_parser::parse(&strct));
-    proc_macro::TokenStream::from(tts)
+    parse_macro_input!(item as anchor_syn::AccountsStruct)
+        .to_token_stream()
+        .into()
 }

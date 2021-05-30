@@ -210,7 +210,7 @@ pub fn read_all_programs() -> Result<Vec<Program>> {
     let mut r = vec![];
     for f in files {
         let path = f?.path();
-        let idl = anchor_syn::parser::file::parse(path.join("src/lib.rs"))?;
+        let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
         let lib_name = extract_lib_name(&path.join("Cargo.toml"))?;
         r.push(Program {
             lib_name,

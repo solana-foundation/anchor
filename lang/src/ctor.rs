@@ -1,4 +1,4 @@
-use crate::{Accounts, Sysvar};
+use crate::{Accounts, Sysvar, ToAccountInfo};
 use solana_program::account_info::AccountInfo;
 use solana_program::sysvar::rent::Rent;
 

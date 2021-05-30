@@ -201,7 +201,7 @@ pub fn interface(
                 }
             };
 
-            let sighash_arr = anchor_syn::codegen::program::sighash(&trait_name, &method_name.to_string());
+            let sighash_arr = anchor_syn::codegen::program::common::sighash(&trait_name, &method_name.to_string());
             let sighash_tts: proc_macro2::TokenStream =
                 format!("{:?}", sighash_arr).parse().unwrap();
             quote! {

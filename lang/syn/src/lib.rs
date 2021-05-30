@@ -1,12 +1,17 @@
-//! DSL syntax tokens.
-
-#[cfg(feature = "idl")]
-use crate::idl::{IdlAccount, IdlAccountItem, IdlAccounts};
-use anyhow::Result;
-#[cfg(feature = "idl")]
-use heck::MixedCase;
-use quote::quote;
-use std::collections::HashMap;
+use codegen::accounts as accounts_codegen;
+use codegen::program as program_codegen;
+use parser::accounts as accounts_parser;
+use parser::program as program_parser;
+use proc_macro2::{Span, TokenStream};
+use quote::ToTokens;
+use std::ops::Deref;
+use syn::parse::{Parse, ParseStream, Result as ParseResult};
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::{
+    Expr, Generics, Ident, ImplItemMethod, ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, LitInt,
+    LitStr, PatType, Token,
+};
 
 pub mod codegen;
 #[cfg(feature = "hash")]
@@ -21,27 +26,45 @@ pub mod parser;
 pub struct Program {
     pub state: Option<State>,
     pub ixs: Vec<Ix>,
-    pub name: syn::Ident,
-    pub program_mod: syn::ItemMod,
+    pub name: Ident,
+    pub program_mod: ItemMod,
 }
 
-// State struct singleton.
+impl Parse for Program {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        let program_mod = <ItemMod as Parse>::parse(input)?;
+        program_parser::parse(program_mod)
+    }
+}
+
+impl From<&Program> for TokenStream {
+    fn from(program: &Program) -> Self {
+        program_codegen::generate(program)
+    }
+}
+
+impl ToTokens for Program {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.extend::<TokenStream>(self.into());
+    }
+}
+
 #[derive(Debug)]
 pub struct State {
     pub name: String,
-    pub strct: syn::ItemStruct,
-    pub ctor_and_anchor: Option<(syn::ImplItemMethod, syn::Ident)>,
-    pub impl_block_and_methods: Option<(syn::ItemImpl, Vec<StateIx>)>,
+    pub strct: ItemStruct,
+    pub ctor_and_anchor: Option<(ImplItemMethod, Ident)>,
+    pub impl_block_and_methods: Option<(ItemImpl, Vec<StateIx>)>,
     pub interfaces: Option<Vec<StateInterface>>,
     pub is_zero_copy: bool,
 }
 
 #[derive(Debug)]
 pub struct StateIx {
-    pub raw_method: syn::ImplItemMethod,
-    pub ident: syn::Ident,
+    pub raw_method: ImplItemMethod,
+    pub ident: Ident,
     pub args: Vec<IxArg>,
-    pub anchor_ident: syn::Ident,
+    pub anchor_ident: Ident,
     // True if there exists a &self on the method.
     pub has_receiver: bool,
 }
@@ -54,31 +77,50 @@ pub struct StateInterface {
 
 #[derive(Debug)]
 pub struct Ix {
-    pub raw_method: syn::ItemFn,
-    pub ident: syn::Ident,
+    pub raw_method: ItemFn,
+    pub ident: Ident,
     pub args: Vec<IxArg>,
     // The ident for the struct deriving Accounts.
-    pub anchor_ident: syn::Ident,
+    pub anchor_ident: Ident,
 }
 
 #[derive(Debug)]
 pub struct IxArg {
-    pub name: proc_macro2::Ident,
-    pub raw_arg: syn::PatType,
+    pub name: Ident,
+    pub raw_arg: PatType,
 }
 
 #[derive(Debug)]
 pub struct AccountsStruct {
     // Name of the accounts struct.
-    pub ident: syn::Ident,
+    pub ident: Ident,
     // Generics + lifetimes on the accounts struct.
-    pub generics: syn::Generics,
+    pub generics: Generics,
     // Fields on the accounts struct.
     pub fields: Vec<AccountField>,
 }
 
+impl Parse for AccountsStruct {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        let strct = <ItemStruct as Parse>::parse(input)?;
+        accounts_parser::parse(&strct)
+    }
+}
+
+impl From<&AccountsStruct> for TokenStream {
+    fn from(accounts: &AccountsStruct) -> Self {
+        accounts_codegen::generate(accounts)
+    }
+}
+
+impl ToTokens for AccountsStruct {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.extend::<TokenStream>(self.into());
+    }
+}
+
 impl AccountsStruct {
-    pub fn new(strct: syn::ItemStruct, fields: Vec<AccountField>) -> Self {
+    pub fn new(strct: ItemStruct, fields: Vec<AccountField>) -> Self {
         let ident = strct.ident.clone();
         let generics = strct.generics;
         Self {
@@ -87,159 +129,27 @@ impl AccountsStruct {
             fields,
         }
     }
-
-    // Returns all program owned accounts in the Accounts struct.
-    //
-    // `global_accs` is given to "link" account types that are embedded
-    // in each other.
-    pub fn account_tys(
-        &self,
-        global_accs: &HashMap<String, AccountsStruct>,
-    ) -> Result<Vec<String>> {
-        let mut tys = vec![];
-        for f in &self.fields {
-            match f {
-                AccountField::Field(f) => {
-                    if let Ty::ProgramAccount(pty) = &f.ty {
-                        tys.push(pty.account_ident.to_string());
-                    }
-                }
-                AccountField::AccountsStruct(comp_f) => {
-                    let accs = global_accs.get(&comp_f.symbol).ok_or_else(|| {
-                        anyhow::format_err!("Invalid account type: {}", comp_f.symbol)
-                    })?;
-                    tys.extend(accs.account_tys(global_accs)?);
-                }
-            }
-        }
-        Ok(tys)
-    }
-
-    #[cfg(feature = "idl")]
-    pub fn idl_accounts(
-        &self,
-        global_accs: &HashMap<String, AccountsStruct>,
-    ) -> Vec<IdlAccountItem> {
-        self.fields
-            .iter()
-            .map(|acc: &AccountField| match acc {
-                AccountField::AccountsStruct(comp_f) => {
-                    let accs_strct = global_accs
-                        .get(&comp_f.symbol)
-                        .expect("Could not reslve Accounts symbol");
-                    let accounts = accs_strct.idl_accounts(global_accs);
-                    IdlAccountItem::IdlAccounts(IdlAccounts {
-                        name: comp_f.ident.to_string().to_mixed_case(),
-                        accounts,
-                    })
-                }
-                AccountField::Field(acc) => IdlAccountItem::IdlAccount(IdlAccount {
-                    name: acc.ident.to_string().to_mixed_case(),
-                    is_mut: acc.is_mut,
-                    is_signer: acc.is_signer,
-                }),
-            })
-            .collect::<Vec<_>>()
-    }
 }
 
 #[derive(Debug)]
 pub enum AccountField {
-    // Use a `String` instead of the `AccountsStruct` because all
-    // accounts structs aren't visible to a single derive macro.
-    //
-    // When we need the global context, we fill in the String with the
-    // appropriate values. See, `account_tys` as an example.
-    AccountsStruct(CompositeField), // Composite
-    Field(Field),                   // Primitive
+    Field(Field),
+    CompositeField(CompositeField),
+}
+
+#[derive(Debug)]
+pub struct Field {
+    pub ident: Ident,
+    pub constraints: ConstraintGroup,
+    pub ty: Ty,
 }
 
 #[derive(Debug)]
 pub struct CompositeField {
-    pub ident: syn::Ident,
+    pub ident: Ident,
+    pub constraints: ConstraintGroup,
     pub symbol: String,
-    pub constraints: Vec<Constraint>,
     pub raw_field: syn::Field,
-}
-
-// An account in the accounts struct.
-#[derive(Debug)]
-pub struct Field {
-    pub ident: syn::Ident,
-    pub ty: Ty,
-    pub constraints: Vec<Constraint>,
-    pub is_mut: bool,
-    pub is_signer: bool,
-    pub is_init: bool,
-    // TODO: move associated out of the constraints and put into tis own
-    //       field + struct.
-    // Used by the associated attribute only.
-    pub payer: Option<syn::Ident>,
-    // Used by the associated attribute only.
-    pub space: Option<proc_macro2::TokenStream>,
-    // Used by the associated attribute only.
-    pub associated_seeds: Vec<syn::Ident>,
-}
-
-impl Field {
-    pub fn typed_ident(&self) -> proc_macro2::TokenStream {
-        let name = &self.ident;
-
-        let ty = match &self.ty {
-            Ty::AccountInfo => quote! { AccountInfo },
-            Ty::ProgramState(ty) => {
-                let account = &ty.account_ident;
-                quote! {
-                    ProgramState<#account>
-                }
-            }
-            Ty::CpiState(ty) => {
-                let account = &ty.account_ident;
-                quote! {
-                    CpiState<#account>
-                }
-            }
-            Ty::ProgramAccount(ty) => {
-                let account = &ty.account_ident;
-                quote! {
-                    ProgramAccount<#account>
-                }
-            }
-            Ty::Loader(ty) => {
-                let account = &ty.account_ident;
-                quote! {
-                    Loader<#account>
-                }
-            }
-            Ty::CpiAccount(ty) => {
-                let account = &ty.account_ident;
-                quote! {
-                    CpiAccount<#account>
-                }
-            }
-            Ty::Sysvar(ty) => {
-                let account = match ty {
-                    SysvarTy::Clock => quote! {Clock},
-                    SysvarTy::Rent => quote! {Rent},
-                    SysvarTy::EpochSchedule => quote! {EpochSchedule},
-                    SysvarTy::Fees => quote! {Fees},
-                    SysvarTy::RecentBlockhashes => quote! {RecentBlockhashes},
-                    SysvarTy::SlotHashes => quote! {SlotHashes},
-                    SysvarTy::SlotHistory => quote! {SlotHistory},
-                    SysvarTy::StakeHistory => quote! {StakeHistory},
-                    SysvarTy::Instructions => quote! {Instructions},
-                    SysvarTy::Rewards => quote! {Rewards},
-                };
-                quote! {
-                    Sysvar<#account>
-                }
-            }
-        };
-
-        quote! {
-            #name: #ty
-        }
-    }
 }
 
 // A type of an account field.
@@ -270,100 +180,228 @@ pub enum SysvarTy {
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramStateTy {
-    pub account_ident: syn::Ident,
+    pub account_ident: Ident,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CpiStateTy {
-    pub account_ident: syn::Ident,
+    pub account_ident: Ident,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramAccountTy {
     // The struct type of the account.
-    pub account_ident: syn::Ident,
+    pub account_ident: Ident,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CpiAccountTy {
     // The struct type of the account.
-    pub account_ident: syn::Ident,
+    pub account_ident: Ident,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct LoaderTy {
     // The struct type of the account.
-    pub account_ident: syn::Ident,
-}
-
-// An access control constraint for an account.
-#[derive(Debug)]
-pub enum Constraint {
-    Signer(ConstraintSigner),
-    BelongsTo(ConstraintBelongsTo),
-    Literal(ConstraintLiteral),
-    Owner(ConstraintOwner),
-    RentExempt(ConstraintRentExempt),
-    Seeds(ConstraintSeeds),
-    Executable(ConstraintExecutable),
-    State(ConstraintState),
-    Associated(ConstraintAssociated),
-}
-
-#[derive(Debug)]
-pub struct ConstraintBelongsTo {
-    pub join_target: proc_macro2::Ident,
-}
-
-#[derive(Debug)]
-pub struct ConstraintSigner {}
-
-#[derive(Debug)]
-pub struct ConstraintLiteral {
-    pub tokens: proc_macro2::TokenStream,
-}
-
-#[derive(Debug)]
-pub struct ConstraintOwner {
-    pub owner_target: proc_macro2::Ident,
-}
-
-#[derive(Debug)]
-pub enum ConstraintRentExempt {
-    Enforce,
-    Skip,
-}
-
-#[derive(Debug)]
-pub struct ConstraintSeeds {
-    pub seeds: proc_macro2::Group,
-}
-
-#[derive(Debug)]
-pub struct ConstraintExecutable {}
-
-#[derive(Debug)]
-pub struct ConstraintState {
-    pub program_target: proc_macro2::Ident,
-}
-
-#[derive(Debug)]
-pub struct ConstraintAssociated {
-    pub associated_target: proc_macro2::Ident,
-    pub is_init: bool,
+    pub account_ident: Ident,
 }
 
 #[derive(Debug)]
 pub struct Error {
     pub name: String,
-    pub raw_enum: syn::ItemEnum,
-    pub ident: syn::Ident,
+    pub raw_enum: ItemEnum,
+    pub ident: Ident,
     pub codes: Vec<ErrorCode>,
 }
 
 #[derive(Debug)]
 pub struct ErrorCode {
     pub id: u32,
-    pub ident: syn::Ident,
+    pub ident: Ident,
     pub msg: Option<String>,
+}
+
+// All well formed constraints on a single `Accounts` field.
+#[derive(Debug, Default, Clone)]
+pub struct ConstraintGroup {
+    init: Option<ConstraintInit>,
+    mutable: Option<ConstraintMut>,
+    signer: Option<ConstraintSigner>,
+    owner: Option<ConstraintOwner>,
+    rent_exempt: Option<ConstraintRentExempt>,
+    seeds: Option<ConstraintSeeds>,
+    executable: Option<ConstraintExecutable>,
+    state: Option<ConstraintState>,
+    associated: Option<ConstraintAssociatedGroup>,
+    belongs_to: Vec<ConstraintBelongsTo>,
+    literal: Vec<ConstraintLiteral>,
+    raw: Vec<ConstraintRaw>,
+}
+
+impl ConstraintGroup {
+    pub fn is_init(&self) -> bool {
+        self.init.is_some()
+    }
+
+    pub fn is_mutable(&self) -> bool {
+        self.mutable.is_some()
+    }
+
+    pub fn is_signer(&self) -> bool {
+        self.signer.is_some()
+    }
+}
+
+// A single account constraint *after* merging all tokens into a well formed
+// constraint. Some constraints like "associated" are defined by multiple
+// tokens, so a merging phase is required.
+#[derive(Debug)]
+pub enum Constraint {
+    Init(ConstraintInit),
+    Mut(ConstraintMut),
+    Signer(ConstraintSigner),
+    BelongsTo(ConstraintBelongsTo),
+    Literal(ConstraintLiteral),
+    Raw(ConstraintRaw),
+    Owner(ConstraintOwner),
+    RentExempt(ConstraintRentExempt),
+    Seeds(ConstraintSeeds),
+    Executable(ConstraintExecutable),
+    State(ConstraintState),
+    AssociatedGroup(ConstraintAssociatedGroup),
+}
+
+// Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
+#[derive(Debug)]
+pub enum ConstraintToken {
+    Init(Context<ConstraintInit>),
+    Mut(Context<ConstraintMut>),
+    Signer(Context<ConstraintSigner>),
+    BelongsTo(Context<ConstraintBelongsTo>),
+    Literal(Context<ConstraintLiteral>),
+    Raw(Context<ConstraintRaw>),
+    Owner(Context<ConstraintOwner>),
+    RentExempt(Context<ConstraintRentExempt>),
+    Seeds(Context<ConstraintSeeds>),
+    Executable(Context<ConstraintExecutable>),
+    State(Context<ConstraintState>),
+    AssociatedGroup(ConstraintAssociatedGroup),
+    Associated(Context<ConstraintAssociated>),
+    AssociatedPayer(Context<ConstraintAssociatedPayer>),
+    AssociatedSpace(Context<ConstraintAssociatedSpace>),
+    AssociatedWith(Context<ConstraintAssociatedWith>),
+}
+
+impl Parse for ConstraintToken {
+    fn parse(stream: ParseStream) -> ParseResult<Self> {
+        accounts_parser::constraints::parse_token(stream)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintInit {}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMut {}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintSigner {}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintBelongsTo {
+    pub join_target: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintLiteral {
+    pub lit: LitStr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintRaw {
+    pub raw: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintOwner {
+    pub owner_target: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub enum ConstraintRentExempt {
+    Enforce,
+    Skip,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintSeeds {
+    pub seeds: Punctuated<Expr, Token![,]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExecutable {}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintState {
+    pub program_target: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintAssociatedGroup {
+    pub is_init: bool,
+    pub associated_target: Ident,
+    pub associated_seeds: Vec<Ident>,
+    pub payer: Option<Ident>,
+    pub space: Option<LitInt>,
+}
+
+#[derive(Debug)]
+pub struct ConstraintAssociated {
+    pub target: Ident,
+}
+
+#[derive(Debug)]
+pub struct ConstraintAssociatedPayer {
+    pub target: Ident,
+}
+
+#[derive(Debug)]
+pub struct ConstraintAssociatedWith {
+    pub target: Ident,
+}
+
+#[derive(Debug)]
+pub struct ConstraintAssociatedSpace {
+    pub space: LitInt,
+}
+
+// Syntaxt context object for preserving metadata about the inner item.
+#[derive(Debug, Clone)]
+pub struct Context<T> {
+    span: Span,
+    inner: T,
+}
+
+impl<T> Context<T> {
+    pub fn new(span: Span, inner: T) -> Self {
+        Self { span, inner }
+    }
+
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+}
+
+impl<T> Deref for Context<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T> Spanned for Context<T> {
+    fn span(&self) -> Span {
+        self.span
+    }
 }

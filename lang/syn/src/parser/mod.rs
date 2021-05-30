@@ -1,7 +1,5 @@
 pub mod accounts;
 pub mod error;
-#[cfg(feature = "idl")]
-pub mod file;
 pub mod program;
 
 pub fn tts_to_string<T: quote::ToTokens>(item: T) -> String {

@@ -1,7 +1,6 @@
 extern crate proc_macro;
 
-use anchor_syn::codegen::program as program_codegen;
-use anchor_syn::parser::program as program_parser;
+use quote::ToTokens;
 use syn::parse_macro_input;
 
 /// The `#[program]` attribute defines the module containing all instruction
@@ -11,7 +10,7 @@ pub fn program(
     _args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let program_mod = parse_macro_input!(input as syn::ItemMod);
-    let code = program_codegen::generate(program_parser::parse(program_mod));
-    proc_macro::TokenStream::from(code)
+    parse_macro_input!(input as anchor_syn::Program)
+        .to_token_stream()
+        .into()
 }

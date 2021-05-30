@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub mod file;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Idl {
     pub version: String,

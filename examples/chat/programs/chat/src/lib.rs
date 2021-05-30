@@ -36,7 +36,7 @@ pub mod chat {
 
 #[derive(Accounts)]
 pub struct CreateUser<'info> {
-    #[account(init, associated = authority, space = "312")]
+    #[account(init, associated = authority, space = 312)]
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
