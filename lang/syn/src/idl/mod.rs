@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 pub mod file;
 
@@ -6,38 +7,35 @@ pub mod file;
 pub struct Idl {
     pub version: String,
     pub name: String,
-    pub instructions: Vec<IdlIx>,
+    pub instructions: Vec<IdlInstruction>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub state: Option<IdlState>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub accounts: Vec<IdlTypeDef>,
+    pub accounts: Vec<IdlTypeDefinition>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub types: Vec<IdlTypeDef>,
+    pub types: Vec<IdlTypeDefinition>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub events: Option<Vec<IdlEvent>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub errors: Option<Vec<IdlErrorCode>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub metadata: Option<serde_json::Value>,
+    pub metadata: Option<JsonValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlState {
     #[serde(rename = "struct")]
-    pub strct: IdlTypeDef,
-    pub methods: Vec<IdlStateMethod>,
+    pub strct: IdlTypeDefinition,
+    pub methods: Vec<IdlInstruction>,
 }
 
-pub type IdlStateMethod = IdlIx;
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct IdlIx {
+pub struct IdlInstruction {
     pub name: String,
     pub accounts: Vec<IdlAccountItem>,
     pub args: Vec<IdlField>,
 }
 
-// A single struct deriving `Accounts`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdlAccounts {
@@ -52,7 +50,6 @@ pub enum IdlAccountItem {
     IdlAccounts(IdlAccounts),
 }
 
-// A single field in the accounts struct.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IdlAccount {
@@ -83,21 +80,21 @@ pub struct IdlEventField {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct IdlTypeDef {
+pub struct IdlTypeDefinition {
     pub name: String,
     #[serde(rename = "type")]
-    pub ty: IdlTypeDefTy,
+    pub ty: IdlTypeDefinitionTy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase", tag = "kind")]
-pub enum IdlTypeDefTy {
+pub enum IdlTypeDefinitionTy {
     Struct { fields: Vec<IdlField> },
-    Enum { variants: Vec<EnumVariant> },
+    Enum { variants: Vec<IdlEnumVariant> },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct EnumVariant {
+pub struct IdlEnumVariant {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub fields: Option<EnumFields>,
@@ -133,14 +130,10 @@ pub enum IdlType {
     Array(Box<IdlType>, usize),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct IdlTypePublicKey;
-
 impl std::str::FromStr for IdlType {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Eliminate whitespace.
         let mut s = s.to_string();
         s.retain(|c| !c.is_whitespace());
         let r = match s.as_str() {

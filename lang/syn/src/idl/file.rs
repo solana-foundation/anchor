@@ -53,7 +53,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                                 let accounts_strct =
                                     accs.get(&method.anchor_ident.to_string()).unwrap();
                                 let accounts = idl_accounts(accounts_strct, &accs);
-                                IdlStateMethod {
+                                IdlInstruction {
                                     name,
                                     args,
                                     accounts,
@@ -70,7 +70,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                         .iter()
                         .filter(|arg| match arg {
                             syn::FnArg::Typed(pat_ty) => {
-                                // TODO: this filtering should be donein the parser.
+                                // TODO: this filtering should be done in the parser.
                                 let mut arg_str = parser::tts_to_string(&pat_ty.ty);
                                 arg_str.retain(|c| !c.is_whitespace());
                                 !arg_str.starts_with("Context<")
@@ -92,7 +92,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                         .collect();
                     let accounts_strct = accs.get(&anchor_ident.to_string()).unwrap();
                     let accounts = idl_accounts(&accounts_strct, &accs);
-                    IdlStateMethod {
+                    IdlInstruction {
                         name,
                         args,
                         accounts,
@@ -118,9 +118,9 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                             .collect::<Vec<IdlField>>(),
                         _ => panic!("State must be a struct"),
                     };
-                    IdlTypeDef {
+                    IdlTypeDefinition {
                         name: state.name,
-                        ty: IdlTypeDefTy::Struct { fields },
+                        ty: IdlTypeDefinitionTy::Struct { fields },
                     }
                 };
 
@@ -160,7 +160,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
             // todo: don't unwrap
             let accounts_strct = accs.get(&ix.anchor_ident.to_string()).unwrap();
             let accounts = idl_accounts(accounts_strct, &accs);
-            IdlIx {
+            IdlInstruction {
                 name: ix.ident.to_string().to_mixed_case(),
                 accounts,
                 args,
@@ -359,7 +359,7 @@ fn parse_account_derives(f: &syn::File) -> HashMap<String, AccountsStruct> {
 }
 
 // Parse all user defined types in the file.
-fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
+fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDefinition>> {
     f.items
         .iter()
         .filter_map(|i| match i {
@@ -387,9 +387,9 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                         _ => panic!("Only named structs are allowed."),
                     };
 
-                    return Some(fields.map(|fields| IdlTypeDef {
+                    return Some(fields.map(|fields| IdlTypeDefinition {
                         name,
-                        ty: IdlTypeDefTy::Struct { fields },
+                        ty: IdlTypeDefinitionTy::Struct { fields },
                     }));
                 }
                 None
@@ -421,12 +421,12 @@ fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDef>> {
                                 Some(EnumFields::Named(fields))
                             }
                         };
-                        EnumVariant { name, fields }
+                        IdlEnumVariant { name, fields }
                     })
-                    .collect::<Vec<EnumVariant>>();
-                Some(Ok(IdlTypeDef {
+                    .collect::<Vec<IdlEnumVariant>>();
+                Some(Ok(IdlTypeDefinition {
                     name,
-                    ty: IdlTypeDefTy::Enum { variants },
+                    ty: IdlTypeDefinitionTy::Enum { variants },
                 }))
             }
             _ => None,
