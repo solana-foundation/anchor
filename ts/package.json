@@ -1,6 +1,6 @@
 {
   "name": "@project-serum/anchor",
-  "version": "0.6.1-beta.1",
+  "version": "0.7.0",
   "description": "Anchor client",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",

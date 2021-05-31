@@ -1,13 +1,13 @@
 [package]
 name = "anchor-client"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
 license = "Apache-2.0"
 description = "Rust client for Anchor programs"
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.6.0" }
+anchor-lang = { path = "../lang", version = "0.7.0" }
 anyhow = "1.0.32"
 regex = "1.4.5"
 serde = { version = "1.0.122", features = ["derive"] }

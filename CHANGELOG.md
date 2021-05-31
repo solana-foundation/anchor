@@ -11,10 +11,13 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.7.0] - 2021-05-31
+
 ### Features
 
 * cli: Add global options for override Anchor.toml values ([#313](https://github.com/project-serum/anchor/pull/313)).
 * spl: Add `SetAuthority` instruction ([#307](https://github.com/project-serum/anchor/pull/307/files)).
+* spl: Add init and close open orders instructions ([#245](https://github.com/project-serum/anchor/pull/245)).
 * lang: `constraint = <expression>` added as a replacement for (the now deprecated) string literal constraints ([#341](https://github.com/project-serum/anchor/pull/341)).
 * lang: Span information is now preserved, providing informative compiler error messages ([#341](https://github.com/project-serum/anchor/pull/341)).
 * ts: Address metadata is now optional for `anchor.workspace` clients ([#310](https://github.com/project-serum/anchor/pull/310)).

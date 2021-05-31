@@ -1,6 +1,6 @@
 [package]
 name = "anchor-derive-accounts"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 repository = "https://github.com/project-serum/anchor"
 license = "Apache-2.0"
@@ -19,4 +19,4 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0.60", features = ["full"] }
 anyhow = "1.0.32"
-anchor-syn = { path = "../../syn", version = "0.6.0" }
+anchor-syn = { path = "../../syn", version = "0.7.0" }
