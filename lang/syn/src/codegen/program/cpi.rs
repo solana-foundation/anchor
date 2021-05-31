@@ -80,14 +80,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 .map_err(|_| ProgramError::InvalidInstructionData)?;
                             let mut data = #sighash_tts.to_vec();
                             data.append(&mut ix_data);
-                            let accounts = ctx.accounts.to_account_metas(None);
+                            let accounts = ctx.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
                                 program_id: *ctx.program.key,
                                 accounts,
                                 data,
                             }
                         };
-                        let mut acc_infos = ctx.accounts.to_account_infos();
+                        let mut acc_infos = ctx.to_account_infos();
                         acc_infos.push(ctx.program.clone());
                         anchor_lang::solana_program::program::invoke_signed(
                             &ix,

@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+* lang: Allows one to use `remaining_accounts` with `CpiContext` by implementing the `ToAccountMetas` trait on `CpiContext` ([#351](https://github.com/project-serum/anchor/pull/351/files)).
+
 ## [0.7.0] - 2021-05-31
 
 ### Features
@@ -30,8 +34,6 @@ incremented for features.
 * lang, ts: Change domain delimiters for the pre-image of the instruciton sighash to be a single colon `:` to be consistent with accounts ([#321](https://github.com/project-serum/anchor/pull/321)).
 * lang: Associated constraints no longer automatically implement `mut` ([#341](https://github.com/project-serum/anchor/pull/341)).
 * lang: Associated `space` constraints must now be literal integers instead of literal strings ([#341](https://github.com/project-serum/anchor/pull/341)).
-
-### Fixes
 
 ## [0.6.0] - 2021-05-23
 

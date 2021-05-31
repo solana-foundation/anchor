@@ -85,6 +85,23 @@ impl<'info, T: Accounts<'info>> ToAccountInfos<'info> for CpiContext<'_, '_, '_,
     }
 }
 
+impl<'info, T: Accounts<'info>> ToAccountMetas for CpiContext<'_, '_, '_, 'info, T> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+        let mut metas = self.accounts.to_account_metas(is_signer);
+        metas.append(
+            &mut self
+                .remaining_accounts
+                .iter()
+                .map(|acc| match acc.is_writable {
+                    false => AccountMeta::new_readonly(*acc.key, acc.is_signer),
+                    true => AccountMeta::new(*acc.key, acc.is_signer),
+                })
+                .collect(),
+        );
+        metas
+    }
+}
+
 /// Context specifying non-argument inputs for cross-program-invocations
 /// targeted at program state instructions.
 pub struct CpiStateContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
