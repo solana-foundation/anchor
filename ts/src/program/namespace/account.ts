@@ -84,7 +84,7 @@ export class AccountClient {
   private _programId: PublicKey;
 
   /**
-   * Returns the cleint's wallet and network provider.
+   * Returns the client's wallet and network provider.
    */
   get provider(): Provider {
     return this._provider;

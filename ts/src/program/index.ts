@@ -304,7 +304,7 @@ export class Program {
   }
 
   /**
-   * Invokes the given callback everytime the given event is emitted.
+   * Invokes the given callback every time the given event is emitted.
    *
    * @param eventName The PascalCase name of the event, provided by the IDL.
    * @param callback  The function to invoke whenever the event is emitted from
