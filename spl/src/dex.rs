@@ -82,6 +82,41 @@ pub fn settle_funds<'info>(
     Ok(())
 }
 
+pub fn init_open_orders<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, InitOpenOrders<'info>>,
+) -> ProgramResult {
+    let ix = serum_dex::instruction::init_open_orders(
+        &ID,
+        ctx.accounts.open_orders.key,
+        ctx.accounts.authority.key,
+        ctx.accounts.market.key,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
+pub fn close_open_orders<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CloseOpenOrders<'info>>,
+) -> ProgramResult {
+    let ix = serum_dex::instruction::close_open_orders(
+        &ID,
+        ctx.accounts.open_orders.key,
+        ctx.accounts.authority.key,
+        ctx.accounts.destination.key,
+        ctx.accounts.market.key,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct NewOrderV3<'info> {
     pub market: AccountInfo<'info>,
@@ -115,4 +150,20 @@ pub struct SettleFunds<'info> {
     pub pc_wallet: AccountInfo<'info>,
     pub vault_signer: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitOpenOrders<'info> {
+    pub open_orders: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+    pub market: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CloseOpenOrders<'info> {
+    pub open_orders: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub market: AccountInfo<'info>,
 }

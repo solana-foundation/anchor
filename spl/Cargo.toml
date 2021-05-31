@@ -12,6 +12,6 @@ devnet = []
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.6.0", features = ["derive"] }
 lazy_static = "1.4.0"
-serum_dex = { git = "https://github.com/project-serum/serum-dex", version = "0.3.0", features = ["no-entrypoint"] }
+serum_dex = { git = "https://github.com/project-serum/serum-dex", tag = "v0.3.1", version = "0.3.1", features = ["no-entrypoint"] }
 solana-program = "1.6.6"
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
