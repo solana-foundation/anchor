@@ -89,7 +89,7 @@ from the stake pool is complete, and the funds are ready to be used again.
 Feel free to skip this section and jump to the **Reward Vendors** section if you want to
 just see how rewards work.
 
-One could imagine several ways to drop rewards onto a staking pool, each with their own downsides.
+One could imagine several ways to drop rewards onto a staking pool, each with there own downsides.
 Of course what you want is, for a given reward amount, to atomically snapshot the state
 of the staking pool and to distribute it proportionally to all stake holders. Effectively,
 an on chain program such as

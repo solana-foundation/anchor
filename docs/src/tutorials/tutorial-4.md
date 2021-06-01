@@ -43,7 +43,7 @@ to the full power of the lower level Solana accounts API. Of course, Anchor will
 
 ### Invoke the constructor
 
-To access the `#[state]` account and associated instructions, one can use the
+To access the `#[state]` account and associated instructions, you can use the
 `anchor.state` namespace on the client. For example, to invoke the constructor,
 
 <<< @/../examples/tutorial/basic-4/tests/basic-4.js#ctor
@@ -69,7 +69,7 @@ To invoke an instruction,
 Performing CPI from one Anchor program to another's state methods is very similar to performing CPI to normal Anchor instructions, except for two differences:
 
 1. All the generated instructions are located under the `<my_program>::cpi::state` module.
-2. One must use a [CpiStateContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiStateContext.html), instead of a `[CpiContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiContext.html).
+2. You must use a [CpiStateContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiStateContext.html), instead of a `[CpiContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiContext.html).
 
 For a full example, see the `test_state_cpi` instruction, [here](https://github.com/project-serum/anchor/blob/master/examples/misc/programs/misc/src/lib.rs#L39).
 

@@ -65,7 +65,7 @@ accounts, we skip this (important) detail.
 
 ## Building and Emitting an IDL
 
-After creating a program, one can use the `anchor` CLI to build and emit an IDL, from which clients
+After creating a program, you can use the `anchor` CLI to build and emit an IDL, from which clients
 can be generated.
 
 ```bash

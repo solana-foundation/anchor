@@ -5,7 +5,7 @@ somewhat unique to the parallel nature of Solana.
 
 On Solana, a transaction must specify all accounts required for execution. And because an untrusted client specifies those accounts, a program must responsibly validate all such accounts are what the client claims they are--in addition to any instruction specific access control the program needs to do.
 
-For example, one could imagine easily writing a faulty token program that forgets to check if the **signer** of a transaction claiming to be the **owner** of a Token `Account` actually matches the **owner** on that account. Furthermore, imagine what might happen if the program expects a `Mint` account but a malicious user gives a token `Account`.
+For example, you could imagine easily writing a faulty token program that forgets to check if the **signer** of a transaction claiming to be the **owner** of a Token `Account` actually matches the **owner** on that account. Furthermore, imagine what might happen if the program expects a `Mint` account but a malicious user gives a token `Account`.
 
 To address these problems, Anchor provides several types, traits, and macros. It's easiest to understand by seeing how they're used in an example, but a couple include
 

@@ -26,7 +26,7 @@ We start with the program that will be called by another program, the puppet.
 If you've followed along the other tutorials, this should be straight forward. We have
 a program with two instructions, `initialize`, which does nothing other than the
 initialization of the account (remember, the program *transparently* prepends a unique 8
-byte discriminator the first time an account is used). and `set_data`, which takes a previously
+byte discriminator the first time an account is used), and `set_data`, which takes a previously
 initialized account, and sets its data field.
 
 Now, suppose we wanted to call `set_data` from another program.
@@ -65,7 +65,7 @@ For more background on signing with program derived addresses, see the official 
 
 ## Return values
 
-Solana currently has no way to return values from CPI, alas. However, one can approximate this
+Solana currently has no way to return values from CPI, alas. However, you can approximate this
 by having the callee write return values to an account and the caller read that account to
 retrieve the return value. In future work, Anchor should do this transparently.
 

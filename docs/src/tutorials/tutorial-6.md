@@ -16,10 +16,10 @@ address for every SPL token? Now generalize this. For every program you use, do 
 want a single account, i.e. your SOL wallet, to define your application state? Or do
 you want to keep track of all your account addresses, separately, for every program in existance?
 
-Associated accounts allow your users to reason about a single address, their main SOL wallet,
+Associated accounts allow your users to reason about a single address, their main SOL wallet.  This is
 a huge improvement on the account model introduced thus far.
 
-Luckily, Anchor provides the ability to easily created associated program accounts for your program.
+Luckily, Anchor provides the ability to easily create associated program accounts for your program.
 
 ::: details
 If you've explored Solana, you may have come across the [Associated Token Account Program](https://spl.solana.com/associated-token-account) which uniquely and deterministically defines
@@ -31,7 +31,7 @@ Unfortunately, the SPL token program doesn't do this, strictly. It was built *be
 of associated token accounts (associated token accounts were built as an add-on).
 So in reality, there are non associated token accounts floating around Solanaland.
 However, for new programs, this isn't necessary, and it's recommend to only use associated
-accounts, when creating accounts on behalf of users, for example, a token account.
+accounts when creating accounts on behalf of users, such as a token account.
 :::
 
 ## Clone the Repo
@@ -62,7 +62,7 @@ Two new keywords are introduced to the `CreateToken` account context:
 * `associated = <target>`
 * `with = <target>`
 
-Both of these allow one to define input "seeds" that
+Both of these allow you to define input "seeds" that
 uniquely define the associated account. By convention, `associated` is used to define
 the main address to associate, i.e., the wallet, while `with` is used to define an
 auxilliary piece of metadata which has the effect of namespacing the associated account.
@@ -86,7 +86,7 @@ For more details on how to use `#[account(associated)]`, see [docs.rs](https://d
 ### Defining an Associated Account
 
 The new `#[acount(associated)]` attribute will allow you to create a new associated account similar to `#[account(init)]`, but
-to actually define an account as associated, one must use the `#[associated]` attribute *instead* of the `#[account]` attribute.
+to actually define an account as associated, you must use the `#[associated]` attribute *instead* of the `#[account]` attribute.
 
 This new `#[associated]` attribute extends `#[account]` to include two things
 

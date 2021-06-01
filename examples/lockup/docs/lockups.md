@@ -84,7 +84,7 @@ a single admin, or the zero address--in which case the authority ceases to exist
 program will reject transactions signing from that address. Although the **authority** can never
 move a **Vesting** account's funds, whoever controls the **authority** key
 controls the whitelist. So when using the **Lockup** program, one should always be
-cognizant of it's whitelist governance, which ultimately anchors one's trust in the program,
+cognizant of its whitelist governance, which ultimately anchors one's trust in the program,
 if any at all.
 
 ## Creating a Whitelisted Program
