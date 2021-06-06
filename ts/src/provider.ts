@@ -73,7 +73,7 @@ export default class Provider {
   }
 
   /**
-   * Sends the given transaction, ppaid for and signed by the provider's wallet.
+   * Sends the given transaction, paid for and signed by the provider's wallet.
    *
    * @param tx      The transaction to send.
    * @param signers The set of signers in addition to the provdier wallet that
