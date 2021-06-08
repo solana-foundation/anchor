@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* cli: Add `--program-name` option for build command to build a single program at a time ([#362](https://github.com/project-serum/anchor/pull/362)).
+
 ### Fixes
 
 * lang: Allows one to use `remaining_accounts` with `CpiContext` by implementing the `ToAccountMetas` trait on `CpiContext` ([#351](https://github.com/project-serum/anchor/pull/351/files)).

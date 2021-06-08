@@ -72,6 +72,8 @@ pub enum Command {
         /// True if the build artifact needs to be deterministic and verifiable.
         #[clap(short, long)]
         verifiable: bool,
+        #[clap(short, long)]
+        program_name: Option<String>,
     },
     /// Verifies the on-chain bytecode matches the locally compiled artifact.
     /// Run this command inside a program subdirectory, i.e., in the dir
@@ -230,7 +232,11 @@ fn main() -> Result<()> {
     match opts.command {
         Command::Init { name, typescript } => init(&opts.cfg_override, name, typescript),
         Command::New { name } => new(&opts.cfg_override, name),
-        Command::Build { idl, verifiable } => build(&opts.cfg_override, idl, verifiable),
+        Command::Build {
+            idl,
+            verifiable,
+            program_name,
+        } => build(&opts.cfg_override, idl, verifiable, program_name),
         Command::Verify { program_id } => verify(&opts.cfg_override, program_id),
         Command::Deploy { program_name } => deploy(&opts.cfg_override, program_name),
         Command::Upgrade {
@@ -351,7 +357,20 @@ fn new_program(name: &str) -> Result<()> {
     Ok(())
 }
 
-fn build(cfg_override: &ConfigOverride, idl: Option<String>, verifiable: bool) -> Result<()> {
+fn build(
+    cfg_override: &ConfigOverride,
+    idl: Option<String>,
+    verifiable: bool,
+    program_name: Option<String>,
+) -> Result<()> {
+    if let Some(program_name) = program_name {
+        for program in read_all_programs()? {
+            let p = program.path.file_name().unwrap().to_str().unwrap();
+            if program_name.as_str() == p {
+                std::env::set_current_dir(&program.path)?;
+            }
+        }
+    }
     let (cfg, path, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
@@ -525,7 +544,7 @@ fn verify(cfg_override: &ConfigOverride, program_id: Pubkey) -> Result<()> {
 
     // Build the program we want to verify.
     let cur_dir = std::env::current_dir()?;
-    build(cfg_override, None, true)?;
+    build(cfg_override, None, true, None)?;
     std::env::set_current_dir(&cur_dir)?;
 
     let local_idl = extract_idl("src/lib.rs")?;
@@ -959,7 +978,7 @@ fn test(
     with_workspace(cfg_override, |cfg, _path, _cargo| {
         // Build if needed.
         if !skip_build {
-            build(cfg_override, None, false)?;
+            build(cfg_override, None, false, None)?;
         }
 
         // Run the deploy against the cluster in two cases:
@@ -1307,7 +1326,7 @@ fn launch(
     program_name: Option<String>,
 ) -> Result<()> {
     // Build and deploy.
-    build(cfg_override, None, verifiable)?;
+    build(cfg_override, None, verifiable, program_name.clone())?;
     let programs = _deploy(cfg_override, program_name.clone())?;
 
     with_workspace(cfg_override, |cfg, _path, _cargo| {
