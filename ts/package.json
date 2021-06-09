@@ -10,7 +10,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=11"
   },
   "scripts": {
     "build": "rm -rf dist/ && yarn build:node",
