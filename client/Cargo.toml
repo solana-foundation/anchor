@@ -11,7 +11,7 @@ anchor-lang = { path = "../lang", version = "0.7.0" }
 anyhow = "1.0.32"
 regex = "1.4.5"
 serde = { version = "1.0.122", features = ["derive"] }
-solana-client = "1.6.6"
-solana-sdk = "1.6.6"
+solana-client = "1.7.1"
+solana-sdk = "1.7.1"
 thiserror = "1.0.20"
 url = "2.2.2"
