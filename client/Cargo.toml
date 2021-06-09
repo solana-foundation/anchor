@@ -14,3 +14,4 @@ serde = { version = "1.0.122", features = ["derive"] }
 solana-client = "1.6.6"
 solana-sdk = "1.6.6"
 thiserror = "1.0.20"
+url = "2.2.2"

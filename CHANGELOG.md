@@ -14,6 +14,7 @@ incremented for features.
 ### Features
 
 * cli: Add `--program-name` option for build command to build a single program at a time ([#362](https://github.com/project-serum/anchor/pull/362)).
+* cli, client: Parse custom cluster urls from str ([#369](https://github.com/project-serum/anchor/pull/369)).
 
 ### Fixes
 

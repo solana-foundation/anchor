@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use url::Url;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Cluster {
@@ -27,6 +28,21 @@ impl FromStr for Cluster {
             "d" | "devnet" => Ok(Cluster::Devnet),
             "l" | "localnet" => Ok(Cluster::Localnet),
             "g" | "debug" => Ok(Cluster::Debug),
+            url if url.contains("http") => {
+                let http_url = url;
+
+                // Websocket port is always +1 the http port.
+                let mut ws_url = Url::parse(http_url)?;
+                if let Some(port) = ws_url.port() {
+                    ws_url.set_port(Some(port + 1))
+                        .map_err(|_| anyhow!("Unable to set port"))?;
+                } else {
+                    ws_url.set_port(Some(8900))
+                        .map_err(|_| anyhow!("Unable to set port"))?;
+                }
+
+                Ok(Cluster::Custom(http_url.to_string(), ws_url.to_string()))
+            }
             _ => Err(anyhow::Error::msg(
                 "Cluster must be one of [localnet, testnet, mainnet, devnet] or be an http or https url\n",
             )),
@@ -93,5 +109,25 @@ mod tests {
     fn test_cluster_bad_parse() {
         let bad_url = "httq://my_custom_url.test.net";
         Cluster::from_str(bad_url).unwrap();
+    }
+
+    #[test]
+    fn test_http_port() {
+        let url = "http://my-url.com:7000/";
+        let cluster = Cluster::from_str(url).unwrap();
+        assert_eq!(
+            Cluster::Custom(url.to_string(), "http://my-url.com:7001/".to_string()),
+            cluster
+        );
+    }
+
+    #[test]
+    fn test_http_no_port() {
+        let url = "http://my-url.com/";
+        let cluster = Cluster::from_str(url).unwrap();
+        assert_eq!(
+            Cluster::Custom(url.to_string(), "http://my-url.com:8900/".to_string()),
+            cluster
+        );
     }
 }
