@@ -257,7 +257,60 @@ describe("misc", () => {
   });
 
   it("Can use base58 strings to fetch an account", async () => {
-    const dataAccount = await program.account.dataI16.fetch(dataPubkey.toString());
+    const dataAccount = await program.account.dataI16.fetch(
+      dataPubkey.toString()
+    );
     assert.ok(dataAccount.data === -2048);
+  });
+
+  it("Should fail to close an account when sending lamports to itself", async () => {
+    try {
+      await program.rpc.testClose({
+        accounts: {
+          data: data.publicKey,
+          solDest: data.publicKey,
+        },
+      });
+      assert.ok(false);
+    } catch (err) {
+      const errMsg = "A close constraint was violated";
+      assert.equal(err.toString(), errMsg);
+      assert.equal(err.msg, errMsg);
+      assert.equal(err.code, 151);
+    }
+  });
+
+  it("Can close an account", async () => {
+    const openAccount = await program.provider.connection.getAccountInfo(
+      data.publicKey
+    );
+    assert.ok(openAccount !== null);
+
+    let beforeBalance = (
+      await program.provider.connection.getAccountInfo(
+        program.provider.wallet.publicKey
+      )
+    ).lamports;
+
+    await program.rpc.testClose({
+      accounts: {
+        data: data.publicKey,
+        solDest: program.provider.wallet.publicKey,
+      },
+    });
+
+    let afterBalance = (
+      await program.provider.connection.getAccountInfo(
+        program.provider.wallet.publicKey
+      )
+    ).lamports;
+
+    // Retrieved rent exemption sol.
+    assert.ok(afterBalance > beforeBalance);
+
+    const closedAccount = await program.provider.connection.getAccountInfo(
+      data.publicKey
+    );
+    assert.ok(closedAccount === null);
   });
 });

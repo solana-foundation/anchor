@@ -1,6 +1,7 @@
 use crate::error::ErrorCode;
 use crate::{
-    Accounts, AccountsExit, AccountsInit, ToAccountInfo, ToAccountInfos, ToAccountMetas, ZeroCopy,
+    Accounts, AccountsClose, AccountsExit, AccountsInit, ToAccountInfo, ToAccountInfos,
+    ToAccountMetas, ZeroCopy,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -172,6 +173,12 @@ impl<'info, T: ZeroCopy> AccountsExit<'info> for Loader<'info, T> {
         let mut cursor = std::io::Cursor::new(dst);
         cursor.write_all(&T::discriminator()).unwrap();
         Ok(())
+    }
+}
+
+impl<'info, T: ZeroCopy> AccountsClose<'info> for Loader<'info, T> {
+    fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
+        crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 

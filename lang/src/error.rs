@@ -42,6 +42,8 @@ pub enum ErrorCode {
     ConstraintAssociated,
     #[msg("An associated init constraint was violated")]
     ConstraintAssociatedInit,
+    #[msg("A close constraint was violated")]
+    ConstraintClose,
 
     // Accounts.
     #[msg("The account discriminator was already set on this account")]

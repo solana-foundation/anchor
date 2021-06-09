@@ -163,6 +163,7 @@ dependencies = [
  "solana-client",
  "solana-sdk",
  "thiserror",
+ "url",
 ]
 
 [[package]]

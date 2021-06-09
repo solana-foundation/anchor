@@ -257,6 +257,7 @@ pub struct ConstraintGroup {
     belongs_to: Vec<ConstraintBelongsTo>,
     literal: Vec<ConstraintLiteral>,
     raw: Vec<ConstraintRaw>,
+    close: Option<ConstraintClose>,
 }
 
 impl ConstraintGroup {
@@ -270,6 +271,10 @@ impl ConstraintGroup {
 
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
+    }
+
+    pub fn is_close(&self) -> bool {
+        self.close.is_some()
     }
 }
 
@@ -290,6 +295,7 @@ pub enum Constraint {
     Executable(ConstraintExecutable),
     State(ConstraintState),
     AssociatedGroup(ConstraintAssociatedGroup),
+    Close(ConstraintClose),
 }
 
 // Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
@@ -306,7 +312,7 @@ pub enum ConstraintToken {
     Seeds(Context<ConstraintSeeds>),
     Executable(Context<ConstraintExecutable>),
     State(Context<ConstraintState>),
-    AssociatedGroup(ConstraintAssociatedGroup),
+    Close(Context<ConstraintClose>),
     Associated(Context<ConstraintAssociated>),
     AssociatedPayer(Context<ConstraintAssociatedPayer>),
     AssociatedSpace(Context<ConstraintAssociatedSpace>),
@@ -394,6 +400,11 @@ pub struct ConstraintAssociatedWith {
 #[derive(Debug)]
 pub struct ConstraintAssociatedSpace {
     pub space: LitInt,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintClose {
+    pub sol_dest: Ident,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

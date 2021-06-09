@@ -19,11 +19,21 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             }
             AccountField::Field(f) => {
                 let ident = &f.ident;
-                match f.constraints.is_mutable() {
-                    false => quote! {},
-                    true => quote! {
-                        anchor_lang::AccountsExit::exit(&self.#ident, program_id)?;
-                    },
+                if f.constraints.is_close() {
+                    let close_target = &f.constraints.close.as_ref().unwrap().sol_dest;
+                    quote! {
+                        anchor_lang::AccountsClose::close(
+                            &self.#ident,
+                            self.#close_target.to_account_info(),
+                        )?;
+                    }
+                } else {
+                    match f.constraints.is_mutable() {
+                        false => quote! {},
+                        true => quote! {
+                            anchor_lang::AccountsExit::exit(&self.#ident, program_id)?;
+                        },
+                    }
                 }
             }
         })

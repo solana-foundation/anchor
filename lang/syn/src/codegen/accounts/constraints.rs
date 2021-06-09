@@ -1,5 +1,5 @@
 use crate::{
-    CompositeField, Constraint, ConstraintAssociatedGroup, ConstraintBelongsTo,
+    CompositeField, Constraint, ConstraintAssociatedGroup, ConstraintBelongsTo, ConstraintClose,
     ConstraintExecutable, ConstraintGroup, ConstraintInit, ConstraintLiteral, ConstraintMut,
     ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
     ConstraintState, Field, Ty,
@@ -50,6 +50,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         executable,
         state,
         associated,
+        close,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -94,6 +95,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = state {
         constraints.push(Constraint::State(c));
     }
+    if let Some(c) = close {
+        constraints.push(Constraint::Close(c));
+    }
     constraints
 }
 
@@ -111,6 +115,7 @@ fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
         Constraint::Executable(c) => generate_constraint_executable(f, c),
         Constraint::State(c) => generate_constraint_state(f, c),
         Constraint::AssociatedGroup(c) => generate_constraint_associated(f, c),
+        Constraint::Close(c) => generate_constraint_close(f, c),
     }
 }
 
@@ -124,6 +129,16 @@ fn generate_constraint_composite(_f: &CompositeField, c: &Constraint) -> proc_ma
 
 pub fn generate_constraint_init(_f: &Field, _c: &ConstraintInit) -> proc_macro2::TokenStream {
     quote! {}
+}
+
+pub fn generate_constraint_close(f: &Field, c: &ConstraintClose) -> proc_macro2::TokenStream {
+    let field = &f.ident;
+    let target = &c.sol_dest;
+    quote! {
+        if #field.to_account_info().key == #target.to_account_info().key {
+            return Err(anchor_lang::__private::ErrorCode::ConstraintClose.into());
+        }
+    }
 }
 
 pub fn generate_constraint_mut(f: &Field, _c: &ConstraintMut) -> proc_macro2::TokenStream {

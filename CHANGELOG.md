@@ -15,6 +15,7 @@ incremented for features.
 
 * cli: Add `--program-name` option for build command to build a single program at a time ([#362](https://github.com/project-serum/anchor/pull/362)).
 * cli, client: Parse custom cluster urls from str ([#369](https://github.com/project-serum/anchor/pull/369)).
+* lang: Add `#[account(close = <destination>)]` constraint for closing accounts and sending the rent exemption lamports to a specified destination account ([#371](https://github.com/project-serum/anchor/pull/371)).
 
 ### Fixes
 

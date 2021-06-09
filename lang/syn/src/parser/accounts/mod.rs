@@ -25,24 +25,26 @@ pub fn parse(strct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
 }
 
 pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
-    let constraints = constraints::parse(f)?;
-
     let ident = f.ident.clone().unwrap();
     let account_field = match is_field_primitive(f)? {
         true => {
             let ty = parse_ty(f)?;
+            let constraints = constraints::parse(f, Some(&ty))?;
             AccountField::Field(Field {
                 ident,
                 ty,
                 constraints,
             })
         }
-        false => AccountField::CompositeField(CompositeField {
-            ident,
-            constraints,
-            symbol: ident_string(f)?,
-            raw_field: f.clone(),
-        }),
+        false => {
+            let constraints = constraints::parse(f, None)?;
+            AccountField::CompositeField(CompositeField {
+                ident,
+                constraints,
+                symbol: ident_string(f)?,
+                raw_field: f.clone(),
+            })
+        }
     };
     Ok(account_field)
 }

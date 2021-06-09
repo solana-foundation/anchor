@@ -1,7 +1,7 @@
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit, CpiAccount,
-    ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, AccountsInit,
+    CpiAccount, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -117,6 +117,14 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
         let mut cursor = std::io::Cursor::new(dst);
         self.inner.account.try_serialize(&mut cursor)?;
         Ok(())
+    }
+}
+
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
+    for ProgramAccount<'info, T>
+{
+    fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
+        crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 

@@ -82,6 +82,10 @@ pub mod misc {
         ctx.accounts.data.data = data;
         Ok(())
     }
+
+    pub fn test_close(_ctx: Context<TestClose>) -> ProgramResult {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -115,6 +119,13 @@ pub struct TestStateCpi<'info> {
     cpi_state: CpiState<'info, MyState>,
     #[account(executable)]
     misc2_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestClose<'info> {
+    #[account(mut, close = sol_dest)]
+    data: ProgramAccount<'info, Data>,
+    sol_dest: AccountInfo<'info>,
 }
 
 // `my_account` is the associated token account being created.

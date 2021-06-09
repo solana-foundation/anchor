@@ -68,6 +68,7 @@ const LangErrorCode = {
   ConstraintState: 148,
   ConstraintAssociated: 149,
   ConstraintAssociatedInit: 150,
+  ConstraintClose: 151,
 
   // Accounts.
   AccountDiscriminatorAlreadySet: 160,
@@ -129,6 +130,10 @@ const LangErrorMessage = new Map([
   [
     LangErrorCode.ConstraintAssociatedInit,
     "An associated init constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintClose,
+    "A close constraint was violated"
   ],
 
   // Accounts.
