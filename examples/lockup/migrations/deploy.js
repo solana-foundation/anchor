@@ -31,7 +31,7 @@ module.exports = async function (provider) {
   });
 
   // Delete the default whitelist entries.
-  const defaultEntry = { programId: new anchor.web3.PublicKey() };
+  const defaultEntry = { programId: new anchor.web3.PublicKey.default };
   await lockup.state.rpc.whitelistDelete(defaultEntry, {
     accounts: {
       authority: provider.wallet.publicKey,

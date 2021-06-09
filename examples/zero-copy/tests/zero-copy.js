@@ -21,14 +21,14 @@ describe("zero-copy", () => {
     assert.ok(state.authority.equals(program.provider.wallet.publicKey));
     assert.ok(state.events.length === 250);
     state.events.forEach((event, idx) => {
-      assert.ok(event.from.equals(new PublicKey()));
+      assert.ok(event.from.equals(PublicKey.default));
       assert.ok(event.data.toNumber() === 0);
     });
   });
 
   it("Updates zero copy state", async () => {
     let event = {
-      from: new PublicKey(),
+      from: PublicKey.default,
       data: new BN(1234),
     };
     await program.state.rpc.setEvent(5, event, {
@@ -44,7 +44,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(event.from));
         assert.ok(event.data.eq(event.data));
       } else {
-        assert.ok(event.from.equals(new PublicKey()));
+        assert.ok(event.from.equals(PublicKey.default));
         assert.ok(event.data.toNumber() === 0);
       }
     });
@@ -175,7 +175,7 @@ describe("zero-copy", () => {
     const account = await program.account.eventQ.fetch(eventQ.publicKey);
     assert.ok(account.events.length === 25000);
     account.events.forEach((event) => {
-      assert.ok(event.from.equals(new PublicKey()));
+      assert.ok(event.from.equals(PublicKey.default));
       assert.ok(event.data.toNumber() === 0);
     });
   });
@@ -196,7 +196,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 48);
       } else {
-        assert.ok(event.from.equals(new PublicKey()));
+        assert.ok(event.from.equals(PublicKey.default));
         assert.ok(event.data.toNumber() === 0);
       }
     });
@@ -219,7 +219,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 1234);
       } else {
-        assert.ok(event.from.equals(new PublicKey()));
+        assert.ok(event.from.equals(PublicKey.default));
         assert.ok(event.data.toNumber() === 0);
       }
     });
@@ -245,7 +245,7 @@ describe("zero-copy", () => {
         assert.ok(event.from.equals(program.provider.wallet.publicKey));
         assert.ok(event.data.toNumber() === 99);
       } else {
-        assert.ok(event.from.equals(new PublicKey()));
+        assert.ok(event.from.equals(PublicKey.default));
         assert.ok(event.data.toNumber() === 0);
       }
     });

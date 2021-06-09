@@ -1,9 +1,9 @@
 import { TransactionSignature } from "@solana/web3.js";
 import Provider from "../../provider";
 import { IdlInstruction } from "../../idl";
-import { translateError } from "../common";
 import { splitArgsAndCtx } from "../context";
 import { TransactionFn } from "./transaction";
+import { ProgramError } from "../../error";
 
 export default class RpcFactory {
   public static build(
@@ -20,7 +20,7 @@ export default class RpcFactory {
         return txSig;
       } catch (err) {
         console.log("Translating error", err);
-        let translatedErr = translateError(idlErrors, err);
+        let translatedErr = ProgramError.parse(err, idlErrors);
         if (translatedErr === null) {
           throw err;
         }

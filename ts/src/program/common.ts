@@ -1,7 +1,6 @@
 import EventEmitter from "eventemitter3";
 import { PublicKey } from "@solana/web3.js";
 import { Idl, IdlInstruction, IdlAccountItem, IdlStateMethod } from "../idl";
-import { ProgramError } from "../error";
 import { Accounts } from "./context";
 
 export type Subscription = {
@@ -54,29 +53,6 @@ export function validateAccounts(
       }
     }
   });
-}
-
-export function translateError(
-  idlErrors: Map<number, string>,
-  err: any
-): Error | null {
-  // TODO: don't rely on the error string. web3.js should preserve the error
-  //       code information instead of giving us an untyped string.
-  let components = err.toString().split("custom program error: ");
-  if (components.length === 2) {
-    try {
-      const errorCode = parseInt(components[1]);
-      let errorMsg = idlErrors.get(errorCode);
-      if (errorMsg === undefined) {
-        // Unexpected error code so just throw the untranslated error.
-        return null;
-      }
-      return new ProgramError(errorCode, errorMsg);
-    } catch (parseErr) {
-      // Unable to parse the error. Just return the untranslated error.
-      return null;
-    }
-  }
 }
 
 // Translates an address to a Pubkey.

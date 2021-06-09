@@ -1,12 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
 import Provider from "../../provider";
 import { IdlInstruction } from "../../idl";
-import { translateError } from "../common";
 import { splitArgsAndCtx } from "../context";
 import { TransactionFn } from "./transaction";
 import { EventParser } from "../event";
 import Coder from "../../coder";
 import { Idl } from "../../idl";
+import { ProgramError } from "../../error";
 
 export default class SimulateFactory {
   public static build(
@@ -26,7 +26,7 @@ export default class SimulateFactory {
         resp = await provider.simulate(tx, ctx.signers, ctx.options);
       } catch (err) {
         console.log("Translating error", err);
-        let translatedErr = translateError(idlErrors, err);
+        let translatedErr = ProgramError.parse(err, idlErrors);
         if (translatedErr === null) {
           throw err;
         }

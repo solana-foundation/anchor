@@ -239,7 +239,7 @@ pub mod __private {
     use solana_program::pubkey::Pubkey;
 
     pub use crate::ctor::Ctor;
-    pub use crate::error::Error;
+    pub use crate::error::{Error, ErrorCode};
     pub use anchor_attribute_account::ZeroCopyAccessor;
     pub use anchor_attribute_event::EventIndex;
     pub use base64;
@@ -248,6 +248,9 @@ pub mod __private {
     pub mod state {
         pub use crate::state::*;
     }
+
+    // The starting point for user defined error codes.
+    pub const ERROR_CODE_OFFSET: u32 = 300;
 
     // Calculates the size of an account, which may be larger than the deserialized
     // data in it. This trait is currently only used for `#[state]` accounts.

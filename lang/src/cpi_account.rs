@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
@@ -51,7 +52,7 @@ where
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];

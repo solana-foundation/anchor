@@ -20,7 +20,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let mut data: &[u8] = idl_ix_data;
 
                 let ix = anchor_lang::idl::IdlInstruction::deserialize(&mut data)
-                    .map_err(|_| ProgramError::Custom(2))?; // todo
+                    .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
 
                 match ix {
                     anchor_lang::idl::IdlInstruction::Create { data_len } => {
@@ -55,7 +55,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #[inline(never)]
             #[cfg(feature = "no-idl")]
             pub fn __idl_dispatch(program_id: &Pubkey, accounts: &[AccountInfo], idl_ix_data: &[u8]) -> ProgramResult {
-                Err(anchor_lang::solana_program::program_error::ProgramError::Custom(99))
+                Err(anchor_lang::__private::ErrorCode::IdlInstructionStub.into())
             }
 
             // One time IDL account initializer. Will faill on subsequent
@@ -67,7 +67,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 data_len: u64,
             ) -> ProgramResult {
                 if program_id != accounts.program.key {
-                    return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(98)); // todo proper error
+                    return Err(anchor_lang::__private::ErrorCode::IdlInstructionInvalidProgram.into());
                 }
                 // Create the IDL's account.
                 let from = accounts.from.key;
@@ -336,7 +336,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 ) -> ProgramResult {
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
-                                        return Err(ProgramError::Custom(1)); // todo
+                                        return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                     }
 
                                     let state_account = &remaining_accounts[0];
@@ -374,7 +374,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 ) -> ProgramResult {
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
-                                        return Err(ProgramError::Custom(1)); // todo
+                                        return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                     }
 
                                     // Deserialize the program state account.
@@ -459,7 +459,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                                             let mut remaining_accounts: &[AccountInfo] = accounts;
                                             if remaining_accounts.is_empty() {
-                                                return Err(ProgramError::Custom(1)); // todo
+                                                return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                             }
 
                                             // Deserialize the program state account.

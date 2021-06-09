@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit, CpiAccount,
     ToAccountInfo, ToAccountInfos, ToAccountMetas,
@@ -52,7 +53,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
         disc_bytes.copy_from_slice(&data[..8]);
         let discriminator = u64::from_le_bytes(disc_bytes);
         if discriminator != 0 {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
         }
 
         Ok(ProgramAccount::new(
@@ -72,13 +73,13 @@ where
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
         let pa = ProgramAccount::try_from(account)?;
         if pa.inner.info.owner != program_id {
-            return Err(ProgramError::Custom(1)); // todo: proper error
+            return Err(ErrorCode::AccountNotProgramOwned.into());
         }
         Ok(pa)
     }
@@ -94,13 +95,13 @@ where
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
         let pa = ProgramAccount::try_from_init(account)?;
         if pa.inner.info.owner != program_id {
-            return Err(ProgramError::Custom(1)); // todo: proper error
+            return Err(ErrorCode::AccountNotProgramOwned.into());
         }
         Ok(pa)
     }

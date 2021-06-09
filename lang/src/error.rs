@@ -1,34 +1,71 @@
-use solana_program::program_error::ProgramError;
+use crate::error;
 
-// Error type that can be returned by internal framework code.
-#[doc(hidden)]
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    ProgramError(#[from] ProgramError),
-    #[error("{0:?}")]
-    ErrorCode(#[from] ErrorCode),
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u32)]
+// Error codes that can be returned by internal framework code.
+#[error(offset = 0)]
 pub enum ErrorCode {
-    WrongSerialization = 1,
-}
+    // Instructions.
+    #[msg("8 byte instruction identifier not provided")]
+    InstructionMissing = 100,
+    #[msg("Fallback functions are not supported")]
+    InstructionFallbackNotFound,
+    #[msg("The program could not deserialize the given instruction")]
+    InstructionDidNotDeserialize,
+    #[msg("The program could not serialize the given instruction")]
+    InstructionDidNotSerialize,
 
-impl std::fmt::Display for ErrorCode {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        <Self as std::fmt::Debug>::fmt(self, fmt)
-    }
-}
+    // IDL instructions.
+    #[msg("The program was compiled without idl instructions")]
+    IdlInstructionStub = 120,
+    #[msg("Invalid program given to the IDL instruction")]
+    IdlInstructionInvalidProgram,
 
-impl std::error::Error for ErrorCode {}
+    // Constraints.
+    #[msg("A mut constraint was violated")]
+    ConstraintMut = 140,
+    #[msg("A belongs to constraint was violated")]
+    ConstraintBelongsTo,
+    #[msg("A signer constraint as violated")]
+    ConstraintSigner,
+    #[msg("A raw constraint was violated")]
+    ConstraintRaw,
+    #[msg("An owner constraint was violated")]
+    ConstraintOwner,
+    #[msg("A rent exemption constraint was violated")]
+    ConstraintRentExempt,
+    #[msg("A seeds constraint was violated")]
+    ConstraintSeeds,
+    #[msg("An executable constraint was violated")]
+    ConstraintExecutable,
+    #[msg("A state constraint was violated")]
+    ConstraintState,
+    #[msg("An associated constraint was violated")]
+    ConstraintAssociated,
+    #[msg("An associated init constraint was violated")]
+    ConstraintAssociatedInit,
 
-impl std::convert::From<Error> for ProgramError {
-    fn from(e: Error) -> ProgramError {
-        match e {
-            Error::ProgramError(e) => e,
-            Error::ErrorCode(c) => ProgramError::Custom(c as u32),
-        }
-    }
+    // Accounts.
+    #[msg("The account discriminator was already set on this account")]
+    AccountDiscriminatorAlreadySet = 160,
+    #[msg("No 8 byte discriminator was found on the account")]
+    AccountDiscriminatorNotFound,
+    #[msg("8 byte discriminator did not match what was expected")]
+    AccountDiscriminatorMismatch,
+    #[msg("Failed to deserialize the account")]
+    AccountDidNotDeserialize,
+    #[msg("Failed to serialize the account")]
+    AccountDidNotSerialize,
+    #[msg("Not enough account keys given to the instruction")]
+    AccountNotEnoughKeys,
+    #[msg("The given account is not mutable")]
+    AccountNotMutable,
+    #[msg("The given account is not owned by the executing program")]
+    AccountNotProgramOwned,
+
+    // State.
+    #[msg("The given state account does not have the correct address")]
+    StateInvalidAddress = 180,
+
+    // Used for APIs that shouldn't be used anymore.
+    #[msg("The API being used is deprecated and should no longer be used")]
+    Deprecated = 299,
 }

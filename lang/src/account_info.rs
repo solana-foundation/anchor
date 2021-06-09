@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::{Accounts, AccountsExit, AccountsInit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -11,7 +12,7 @@ impl<'info> Accounts<'info> for AccountInfo<'info> {
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
@@ -25,7 +26,7 @@ impl<'info> AccountsInit<'info> for AccountInfo<'info> {
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
 
         let account = &accounts[0];
@@ -37,7 +38,7 @@ impl<'info> AccountsInit<'info> for AccountInfo<'info> {
         disc_bytes.copy_from_slice(&data[..8]);
         let discriminator = u64::from_le_bytes(disc_bytes);
         if discriminator != 0 {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
         }
 
         Ok(account.clone())

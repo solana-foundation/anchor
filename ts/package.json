@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
-    "@solana/web3.js": "^1.11.0",
+    "@solana/web3.js": "^1.17.0",
     "base64-js": "^1.5.1",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",

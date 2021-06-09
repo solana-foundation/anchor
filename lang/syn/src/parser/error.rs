@@ -1,7 +1,7 @@
-use crate::{Error, ErrorCode};
+use crate::{Error, ErrorArgs, ErrorCode};
 
 // Removes any internal #[msg] attributes, as they are inert.
-pub fn parse(error_enum: &mut syn::ItemEnum) -> Error {
+pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
     let ident = error_enum.ident.clone();
     let mut last_discriminant = 0;
     let codes: Vec<ErrorCode> = error_enum
@@ -30,12 +30,12 @@ pub fn parse(error_enum: &mut syn::ItemEnum) -> Error {
             ErrorCode { id, ident, msg }
         })
         .collect();
-
     Error {
         name: error_enum.ident.to_string(),
         raw_enum: error_enum.clone(),
         ident,
         codes,
+        args,
     }
 }
 

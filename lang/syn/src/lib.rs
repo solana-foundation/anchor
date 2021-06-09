@@ -5,7 +5,8 @@ use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
 use std::ops::Deref;
-use syn::parse::{Parse, ParseStream, Result as ParseResult};
+use syn::ext::IdentExt;
+use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
@@ -212,6 +213,26 @@ pub struct Error {
     pub raw_enum: ItemEnum,
     pub ident: Ident,
     pub codes: Vec<ErrorCode>,
+    pub args: Option<ErrorArgs>,
+}
+
+#[derive(Debug)]
+pub struct ErrorArgs {
+    pub offset: LitInt,
+}
+
+impl Parse for ErrorArgs {
+    fn parse(stream: ParseStream) -> ParseResult<Self> {
+        let offset_span = stream.span();
+        let offset = stream.call(Ident::parse_any)?;
+        if offset.to_string().as_str() != "offset" {
+            return Err(ParseError::new(offset_span, "expected keyword offset"));
+        }
+        stream.parse::<Token![=]>()?;
+        Ok(ErrorArgs {
+            offset: stream.parse()?,
+        })
+    }
 }
 
 #[derive(Debug)]

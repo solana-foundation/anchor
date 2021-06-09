@@ -52,7 +52,7 @@ pub fn generate(_program: &Program) -> proc_macro2::TokenStream {
                 msg!("anchor-debug is active");
             }
             if ix_data.len() < 8 {
-                return Err(ProgramError::Custom(99));
+                return Err(anchor_lang::__private::ErrorCode::InstructionMissing.into());
             }
 
             // Split the instruction data into the first 8 byte method

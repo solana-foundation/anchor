@@ -130,7 +130,7 @@ pub fn generate_constraint_mut(f: &Field, _c: &ConstraintMut) -> proc_macro2::To
     let ident = &f.ident;
     quote! {
         if !#ident.to_account_info().is_writable {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(36)); // todo: error codes
+            return Err(anchor_lang::__private::ErrorCode::ConstraintMut.into());
         }
     }
 }
@@ -147,7 +147,7 @@ pub fn generate_constraint_belongs_to(
     };
     quote! {
         if &#field.#target != #target.to_account_info().key {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
+            return Err(anchor_lang::__private::ErrorCode::ConstraintBelongsTo.into());
         }
     }
 }
@@ -167,7 +167,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
         // This check will be performed on the other end of the invocation.
         if cfg!(not(feature = "cpi")) {
             if !#info.to_account_info().is_signer {
-                return Err(anchor_lang::solana_program::program_error::ProgramError::MissingRequiredSignature);
+                return Err(anchor_lang::__private::ErrorCode::ConstraintSigner.into());
             }
         }
     }
@@ -181,7 +181,7 @@ pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenS
     };
     quote! {
         if !(#lit) {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo: error codes
+            return Err(anchor_lang::__private::ErrorCode::Deprecated.into());
         }
     }
 }
@@ -190,7 +190,7 @@ pub fn generate_constraint_raw(c: &ConstraintRaw) -> proc_macro2::TokenStream {
     let raw = &c.raw;
     quote! {
         if !(#raw) {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(14)); // todo: error codes
+            return Err(anchor_lang::__private::ErrorCode::ConstraintRaw.into());
         }
     }
 }
@@ -200,7 +200,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
     let owner_target = c.owner_target.clone();
     quote! {
         if #ident.to_account_info().owner != #owner_target.to_account_info().key {
-            return Err(ProgramError::Custom(76)); // todo: proper error.
+            return Err(anchor_lang::__private::ErrorCode::ConstraintOwner.into());
         }
     }
 }
@@ -220,7 +220,7 @@ pub fn generate_constraint_rent_exempt(
         ConstraintRentExempt::Skip => quote! {},
         ConstraintRentExempt::Enforce => quote! {
             if !rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
-                return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(2)); // todo: error codes
+                return Err(anchor_lang::__private::ErrorCode::ConstraintRentExempt.into());
             }
         },
     }
@@ -233,9 +233,9 @@ pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeeds) -> proc_macro2:
         let program_signer = Pubkey::create_program_address(
             &[#seeds],
             program_id,
-        ).map_err(|_| anchor_lang::solana_program::program_error::ProgramError::Custom(1))?; // todo
+        ).map_err(|_| anchor_lang::__private::ErrorCode::ConstraintSeeds)?;
         if #name.to_account_info().key != &program_signer {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(1)); // todo
+            return Err(anchor_lang::__private::ErrorCode::ConstraintSeeds.into());
         }
     }
 }
@@ -247,7 +247,7 @@ pub fn generate_constraint_executable(
     let name = &f.ident;
     quote! {
         if !#name.to_account_info().executable {
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(5)) // todo
+            return Err(anchor_lang::__private::ErrorCode::ConstraintExecutable.into());
         }
     }
 }
@@ -263,10 +263,10 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
         // Checks the given state account is the canonical state account for
         // the target program.
         if #ident.to_account_info().key != &anchor_lang::CpiState::<#account_ty>::address(#program_target.to_account_info().key) {
-            return Err(ProgramError::Custom(1)); // todo: proper error.
+            return Err(anchor_lang::__private::ErrorCode::ConstraintState.into());
         }
         if #ident.to_account_info().owner != #program_target.to_account_info().key {
-            return Err(ProgramError::Custom(1)); // todo: proper error.
+            return Err(anchor_lang::__private::ErrorCode::ConstraintState.into());
         }
     }
 }
@@ -371,7 +371,7 @@ pub fn generate_constraint_associated_init(
             #associated_pubkey_and_nonce
 
             if &__associated_field != #field.key {
-                return Err(ProgramError::Custom(45)); // todo: proper error.
+                return Err(anchor_lang::__private::ErrorCode::ConstraintAssociatedInit.into());
             }
             let lamports = rent.minimum_balance(space);
             let ix = anchor_lang::solana_program::system_instruction::create_account(
@@ -417,8 +417,7 @@ pub fn generate_constraint_associated_seeds(
     quote! {
         #generated_associated_pubkey_and_nonce
         if #name.to_account_info().key != &__associated_field {
-            // TODO: proper error.
-            return Err(anchor_lang::solana_program::program_error::ProgramError::Custom(45));
+            return Err(anchor_lang::__private::ErrorCode::ConstraintAssociated.into());
         }
     }
 }

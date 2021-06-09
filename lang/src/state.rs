@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiAccount, ToAccountInfo,
     ToAccountInfos, ToAccountMetas,
@@ -59,20 +60,20 @@ where
         accounts: &mut &[AccountInfo<'info>],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
-            return Err(ProgramError::NotEnoughAccountKeys);
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
 
         if account.key != &Self::address(program_id) {
             solana_program::msg!("Invalid state address");
-            return Err(ProgramError::Custom(1)); // todo: proper error.
+            return Err(ErrorCode::StateInvalidAddress.into());
         }
 
         let pa = ProgramState::try_from(account)?;
         if pa.inner.info.owner != program_id {
             solana_program::msg!("Invalid state owner");
-            return Err(ProgramError::Custom(1)); // todo: proper error.
+            return Err(ErrorCode::AccountNotProgramOwned.into());
         }
         Ok(pa)
     }

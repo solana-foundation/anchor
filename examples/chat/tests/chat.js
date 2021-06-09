@@ -89,7 +89,7 @@ describe("chat", () => {
         assert.ok(msg.from.equals(user));
         assert.ok(data.startsWith(messages[idx]));
       } else {
-        assert.ok(new anchor.web3.PublicKey());
+        assert.ok(anchor.web3.PublicKey.default);
         assert.ok(
           JSON.stringify(msg.data) === JSON.stringify(new Array(280).fill(0))
         );

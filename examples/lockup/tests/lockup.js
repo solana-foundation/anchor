@@ -42,12 +42,12 @@ describe("Lockup and Registry", () => {
     assert.ok(lockupAccount.authority.equals(provider.wallet.publicKey));
     assert.ok(lockupAccount.whitelist.length === WHITELIST_SIZE);
     lockupAccount.whitelist.forEach((e) => {
-      assert.ok(e.programId.equals(new anchor.web3.PublicKey()));
+      assert.ok(e.programId.equals(anchor.web3.PublicKey.default));
     });
   });
 
   it("Deletes the default whitelisted addresses", async () => {
-    const defaultEntry = { programId: new anchor.web3.PublicKey() };
+    const defaultEntry = { programId: anchor.web3.PublicKey.default };
     await lockup.state.rpc.whitelistDelete(defaultEntry, {
       accounts: {
         authority: provider.wallet.publicKey,
@@ -116,7 +116,7 @@ describe("Lockup and Registry", () => {
         await lockup.state.rpc.whitelistAdd(e, { accounts });
       },
       (err) => {
-        assert.equal(err.code, 108);
+        assert.equal(err.code, 308);
         assert.equal(err.msg, "Whitelist is full");
         return true;
       }
@@ -216,7 +216,7 @@ describe("Lockup and Registry", () => {
         });
       },
       (err) => {
-        assert.equal(err.code, 107);
+        assert.equal(err.code, 307);
         assert.equal(err.msg, "Insufficient withdrawal balance.");
         return true;
       }
@@ -389,7 +389,7 @@ describe("Lockup and Registry", () => {
 
     assert.ok(memberAccount.registrar.equals(registrar.publicKey));
     assert.ok(memberAccount.beneficiary.equals(provider.wallet.publicKey));
-    assert.ok(memberAccount.metadata.equals(new anchor.web3.PublicKey()));
+    assert.ok(memberAccount.metadata.equals(anchor.web3.PublicKey.default));
     assert.equal(
       JSON.stringify(memberAccount.balances),
       JSON.stringify(balances)
@@ -781,7 +781,7 @@ describe("Lockup and Registry", () => {
       (err) => {
         // Solana doesn't propagate errors across CPI. So we receive the registry's error code,
         // not the lockup's.
-        const errorCode = "custom program error: 0x78";
+        const errorCode = "custom program error: 0x140";
         assert.ok(err.toString().split(errorCode).length === 2);
         return true;
       }
@@ -863,7 +863,7 @@ describe("Lockup and Registry", () => {
         await tryEndUnstake();
       },
       (err) => {
-        assert.equal(err.code, 109);
+        assert.equal(err.code, 309);
         assert.equal(err.msg, "The unstake timelock has not yet expired.");
         return true;
       }

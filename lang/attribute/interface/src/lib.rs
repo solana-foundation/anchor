@@ -101,15 +101,7 @@ use syn::parse_macro_input;
 ///     use super::*;
 ///
 ///     #[state]
-///     pub struct CounterAuth {}
-///
-///     // TODO: remove this impl block after addressing
-///     //       https://github.com/project-serum/anchor/issues/71.
-///     impl CounterAuth {
-///         pub fn new(_ctx: Context<Empty>) -> Result<Self, ProgramError> {
-///             Ok(Self {})
-///         }
-///     }
+///     pub struct CounterAuth;
 ///
 ///     impl<'info> Auth<'info, Empty> for CounterAuth {
 ///         fn is_authorized(_ctx: Context<Empty>, current: u64, new: u64) -> ProgramResult {
@@ -216,7 +208,7 @@ pub fn interface(
                             #(#args_no_tys),*
                         };
                         let mut ix_data = anchor_lang::AnchorSerialize::try_to_vec(&ix)
-                            .map_err(|_| anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)?;
+                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotSerialize)?;
                         let mut data = #sighash_tts.to_vec();
                         data.append(&mut ix_data);
                         let accounts = ctx.accounts.to_account_metas(None);

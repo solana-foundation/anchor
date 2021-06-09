@@ -20,7 +20,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #sighash_tts => {
                         let ix = instruction::state::#ix_name::deserialize(&mut ix_data)
-                            .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
                         let instruction::state::#variant_arm = ix;
                         __private::__state::__ctor(program_id, accounts, #(#ctor_args),*)
                     }
@@ -53,7 +53,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         quote! {
                             #sighash_tts => {
                                 let ix = instruction::state::#ix_name::deserialize(&mut ix_data)
-                                    .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                                    .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
                                 let instruction::state::#variant_arm = ix;
                                 __private::__state::#ix_method_name(program_id, accounts, #(#ix_arg_names),*)
                             }
@@ -109,7 +109,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     #sighash_tts => {
                                         #args_struct
                                         let ix = Args::deserialize(&mut ix_data)
-                                            .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
                                         let Args {
                                             #(#ix_arg_names),*
                                         } = ix;
@@ -139,7 +139,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             quote! {
                 #sighash_tts => {
                     let ix = instruction::#ix_name::deserialize(&mut ix_data)
-                        .map_err(|_| ProgramError::Custom(1))?; // todo: error code
+                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
                     let instruction::#variant_arm = ix;
                     __private::__global::#ix_method_name(program_id, accounts, #(#ix_arg_names),*)
                 }
@@ -182,7 +182,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #(#global_dispatch_arms)*
                 _ => {
                     msg!("Fallback functions are not supported. If you have a use case, please file an issue.");
-                    Err(ProgramError::Custom(99))
+                    Err(anchor_lang::__private::ErrorCode::InstructionFallbackNotFound.into())
                 }
             }
         }
