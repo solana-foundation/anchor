@@ -1,9 +1,19 @@
 import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
 import * as borsh from "@project-serum/borsh";
-import { Idl, IdlField, IdlStateMethod } from "../idl";
+import * as bs58 from "bs58";
+import {
+  Idl,
+  IdlField,
+  IdlStateMethod,
+  IdlType,
+  IdlTypeDef,
+  IdlAccount,
+  IdlAccountItem,
+} from "../idl";
 import { IdlCoder } from "./idl";
 import { sighash } from "./common";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
 
 /**
  * Namespace for state method function signatures.
@@ -19,13 +29,35 @@ export const SIGHASH_GLOBAL_NAMESPACE = "global";
  * Encodes and decodes program instructions.
  */
 export class InstructionCoder {
-  /**
-   * Instruction args layout. Maps namespaced method
-   */
+  // Instruction args layout. Maps namespaced method
   private ixLayout: Map<string, Layout>;
 
-  public constructor(idl: Idl) {
+  // Base58 encoded sighash to instruction layout.
+  private sighashLayouts: Map<string, { layout: Layout; name: string }>;
+
+  public constructor(private idl: Idl) {
     this.ixLayout = InstructionCoder.parseIxLayout(idl);
+
+    const sighashLayouts = new Map();
+    idl.instructions.forEach((ix) => {
+      const sh = sighash(SIGHASH_GLOBAL_NAMESPACE, ix.name);
+      sighashLayouts.set(bs58.encode(sh), {
+        layout: this.ixLayout.get(ix.name),
+        name: ix.name,
+      });
+    });
+
+    if (idl.state) {
+      idl.state.methods.map((ix) => {
+        const sh = sighash(SIGHASH_STATE_NAMESPACE, ix.name);
+        sighashLayouts.set(bs58.encode(sh), {
+          layout: this.ixLayout.get(ix.name) as Layout,
+          name: ix.name,
+        });
+      });
+    }
+
+    this.sighashLayouts = sighashLayouts;
   }
 
   /**
@@ -72,5 +104,252 @@ export class InstructionCoder {
       );
     // @ts-ignore
     return new Map(ixLayouts);
+  }
+
+  /**
+   * Dewcodes a program instruction.
+   */
+  public decode(ix: Buffer | string): Instruction | null {
+    if (typeof ix === "string") {
+      ix = bs58.decode(ix);
+    }
+    let sighash = bs58.encode(ix.slice(0, 8));
+    let data = ix.slice(8);
+    const decoder = this.sighashLayouts.get(sighash);
+    if (!decoder) {
+      return null;
+    }
+    return {
+      data: decoder.layout.decode(data),
+      name: decoder.name,
+    };
+  }
+
+  /**
+   * Returns a formatted table of all the fields in the given instruction data.
+   */
+  public format(
+    ix: Instruction,
+    accountMetas: AccountMeta[]
+  ): InstructionDisplay | null {
+    return InstructionFormatter.format(ix, accountMetas, this.idl);
+  }
+}
+
+export type Instruction = {
+  name: string;
+  data: Object;
+};
+
+export type InstructionDisplay = {
+  args: { name: string; type: string; data: string }[];
+  accounts: {
+    name?: string;
+    pubkey: PublicKey;
+    isSigner: boolean;
+    isWritable: boolean;
+  }[];
+};
+
+class InstructionFormatter {
+  public static format(
+    ix: Instruction,
+    accountMetas: AccountMeta[],
+    idl: Idl
+  ): InstructionDisplay | null {
+    const idlIx = idl.instructions.filter((i) => ix.name === i.name)[0];
+    if (idlIx === undefined) {
+      console.error("Invalid instruction given");
+      return null;
+    }
+
+    const args = idlIx.args.map((idlField) => {
+      return {
+        name: idlField.name,
+        type: InstructionFormatter.formatIdlType(idlField.type),
+        data: InstructionFormatter.formatIdlData(
+          idlField,
+          ix.data[idlField.name],
+          idl.types
+        ),
+      };
+    });
+
+    const flatIdlAccounts = InstructionFormatter.flattenIdlAccounts(
+      idlIx.accounts
+    );
+
+    const accounts = accountMetas.map((meta, idx) => {
+      if (idx < flatIdlAccounts.length) {
+        return {
+          name: flatIdlAccounts[idx].name,
+          ...meta,
+        };
+      }
+      // "Remaining accounts" are unnamed in Anchor.
+      else {
+        return {
+          name: undefined,
+          ...meta,
+        };
+      }
+    });
+
+    return {
+      args,
+      accounts,
+    };
+  }
+
+  private static formatIdlType(idlType: IdlType): string {
+    if (typeof idlType === "string") {
+      return idlType as string;
+    }
+
+    // @ts-ignore
+    if (idlType.vec) {
+      // @ts-ignore
+      return `Vec<${this.formatIdlType(idlType.vec)}>`;
+    }
+    // @ts-ignore
+    if (idlType.option) {
+      // @ts-ignore
+      return `Option<${this.formatIdlType(idlType.option)}>`;
+    }
+    // @ts-ignore
+    if (idlType.defined) {
+      // @ts-ignore
+      return idlType.defined;
+    }
+  }
+
+  private static formatIdlData(
+    idlField: IdlField,
+    data: Object,
+    types?: IdlTypeDef[]
+  ): string {
+    if (typeof idlField.type === "string") {
+      return data.toString();
+    }
+    // @ts-ignore
+    if (idlField.type.vec) {
+      // @ts-ignore
+      return (
+        "[" +
+        data
+          // @ts-ignore
+          .map((d: IdlField) =>
+            this.formatIdlData(
+              // @ts-ignore
+              { name: "", type: idlField.type.vec },
+              d
+            )
+          )
+          .join(", ") +
+        "]"
+      );
+    }
+    // @ts-ignore
+    if (idlField.type.option) {
+      // @ts-ignore
+      return data === null
+        ? "null"
+        : this.formatIdlData(
+            // @ts-ignore
+            { name: "", type: idlField.type.option },
+            data
+          );
+    }
+    // @ts-ignore
+    if (idlField.type.defined) {
+      if (types === undefined) {
+        throw new Error("User defined types not provided");
+      }
+      // @ts-ignore
+      const filtered = types.filter((t) => t.name === idlField.type.defined);
+      if (filtered.length !== 1) {
+        // @ts-ignore
+        throw new Error(`Type not found: ${idlField.type.defined}`);
+      }
+      return InstructionFormatter.formatIdlDataDefined(
+        filtered[0],
+        data,
+        types
+      );
+    }
+
+    return "unknown";
+  }
+
+  private static formatIdlDataDefined(
+    typeDef: IdlTypeDef,
+    data: Object,
+    types: IdlTypeDef[]
+  ): string {
+    if (typeDef.type.kind === "struct") {
+      const fields = Object.keys(data)
+        .map((k) => {
+          const f = typeDef.type.fields.filter((f) => f.name === k)[0];
+          if (f === undefined) {
+            throw new Error("Unable to find type");
+          }
+          return (
+            k + ": " + InstructionFormatter.formatIdlData(f, data[k], types)
+          );
+        })
+        .join(", ");
+      return "{ " + fields + " }";
+    } else {
+      if (typeDef.type.variants.length === 0) {
+        return "{}";
+      }
+      // Struct enum.
+      if (typeDef.type.variants[0].name) {
+        const variant = Object.keys(data)[0];
+        const enumType = data[variant];
+        const namedFields = Object.keys(enumType)
+          .map((f) => {
+            const fieldData = enumType[f];
+            const idlField = typeDef.type.variants[variant]?.filter(
+              (v: IdlField) => v.name === f
+            )[0];
+            if (idlField === undefined) {
+              throw new Error("Unable to find variant");
+            }
+            return (
+              f +
+              ": " +
+              InstructionFormatter.formatIdlData(idlField, fieldData, types)
+            );
+          })
+          .join(", ");
+
+        const variantName = camelCase(variant, { pascalCase: true });
+        if (namedFields.length === 0) {
+          return variantName;
+        }
+        return `${variantName} { ${namedFields} }`;
+      }
+      // Tuple enum.
+      else {
+        // TODO.
+        return "Tuple formatting not yet implemented";
+      }
+    }
+  }
+
+  private static flattenIdlAccounts(accounts: IdlAccountItem[]): IdlAccount[] {
+    // @ts-ignore
+    return accounts
+      .map((account) => {
+        // @ts-ignore
+        if (account.accounts) {
+          // @ts-ignore
+          return InstructionFormatter.flattenIdlAccounts(account.accounts);
+        } else {
+          return account;
+        }
+      })
+      .flat();
   }
 }

@@ -11,6 +11,7 @@ import Coder, {
   StateCoder,
   TypesCoder,
 } from "./coder";
+import { Instruction } from "./coder/instruction";
 import { Idl } from "./idl";
 import workspace from "./workspace";
 import * as utils from "./utils";
@@ -56,6 +57,7 @@ export {
   StateCoder,
   TypesCoder,
   Event,
+  Instruction,
   setProvider,
   getProvider,
   Provider,
