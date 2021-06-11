@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.8.0] - 2021-06-10
+
 ### Features
 
 * cli: Add `--program-name` option for build command to build a single program at a time ([#362](https://github.com/project-serum/anchor/pull/362)).
