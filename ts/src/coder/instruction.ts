@@ -351,6 +351,7 @@ class InstructionFormatter {
           const newPrefix = prefix ? `${prefix} > ${accName}` : accName;
           // @ts-ignore
           return InstructionFormatter.flattenIdlAccounts(
+            // @ts-ignore
             account.accounts,
             newPrefix
           );
