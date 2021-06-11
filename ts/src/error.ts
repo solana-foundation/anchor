@@ -131,10 +131,7 @@ const LangErrorMessage = new Map([
     LangErrorCode.ConstraintAssociatedInit,
     "An associated init constraint was violated",
   ],
-  [
-    LangErrorCode.ConstraintClose,
-    "A close constraint was violated"
-  ],
+  [LangErrorCode.ConstraintClose, "A close constraint was violated"],
 
   // Accounts.
   [

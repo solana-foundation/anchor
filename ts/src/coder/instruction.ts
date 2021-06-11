@@ -338,18 +338,34 @@ class InstructionFormatter {
     }
   }
 
-  private static flattenIdlAccounts(accounts: IdlAccountItem[]): IdlAccount[] {
+  private static flattenIdlAccounts(
+    accounts: IdlAccountItem[],
+    prefix?: string
+  ): IdlAccount[] {
     // @ts-ignore
     return accounts
       .map((account) => {
+        const accName = sentenceCase(account.name);
         // @ts-ignore
         if (account.accounts) {
+          const newPrefix = prefix ? `${prefix} > ${accName}` : accName;
           // @ts-ignore
-          return InstructionFormatter.flattenIdlAccounts(account.accounts);
+          return InstructionFormatter.flattenIdlAccounts(
+            account.accounts,
+            newPrefix
+          );
         } else {
-          return account;
+          return {
+            ...account,
+            name: prefix ? `${prefix} > ${accName}` : accName,
+          };
         }
       })
       .flat();
   }
+}
+
+function sentenceCase(field: string): string {
+  const result = field.replace(/([A-Z])/g, " $1");
+  return result.charAt(0).toUpperCase() + result.slice(1);
 }
