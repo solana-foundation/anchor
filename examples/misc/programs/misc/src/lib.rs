@@ -2,7 +2,7 @@
 //! It's not too instructive/coherent by itself, so please see other examples.
 
 use anchor_lang::prelude::*;
-use misc2::misc2::MyState;
+use misc2::misc2::MyState as Misc2State;
 use misc2::Auth;
 
 #[program]
@@ -19,6 +19,13 @@ pub mod misc {
     impl MyState {
         pub fn new(_ctx: Context<Ctor>) -> Result<Self, ProgramError> {
             Ok(Self { v: vec![] })
+        }
+
+        pub fn remaining_accounts(&mut self, ctx: Context<RemainingAccounts>) -> ProgramResult {
+            if ctx.remaining_accounts.len() != 1 {
+                return Err(ProgramError::Custom(1)); // Arbitrary error.
+            }
+            Ok(())
         }
     }
 
@@ -92,6 +99,9 @@ pub mod misc {
 pub struct Ctor {}
 
 #[derive(Accounts)]
+pub struct RemainingAccounts {}
+
+#[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init)]
     data: ProgramAccount<'info, Data>,
@@ -116,7 +126,7 @@ pub struct TestStateCpi<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
     #[account(mut, state = misc2_program)]
-    cpi_state: CpiState<'info, MyState>,
+    cpi_state: CpiState<'info, Misc2State>,
     #[account(executable)]
     misc2_program: AccountInfo<'info>,
 }

@@ -17,6 +17,14 @@ describe("misc", () => {
     assert.ok(accountInfo.data.length === 99);
   });
 
+  it("Can use remaining accounts for a state instruction", async () => {
+    await program.state.rpc.remainingAccounts({
+      remainingAccounts: [
+        { pubkey: misc2Program.programId, isWritable: false, isSigner: false },
+      ],
+    });
+  });
+
   const data = anchor.web3.Keypair.generate();
 
   it("Can use u128 and i128", async () => {
