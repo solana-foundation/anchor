@@ -19,8 +19,11 @@ const workspace = new Proxy({} as any, {
     const fs = require("fs");
     const process = require("process");
 
-    if (typeof window !== "undefined") {
-      // Workspaces aren't available in the browser, yet.
+    if (
+      typeof window !== "undefined" &&
+      !window.process?.hasOwnProperty("type")
+    ) {
+      // Workspaces are available in electron, but not in the browser, yet.
       return undefined;
     }
 
