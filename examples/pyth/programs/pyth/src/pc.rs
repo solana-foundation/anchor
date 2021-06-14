@@ -79,13 +79,21 @@ pub struct Price {
     pub expo: i32,        // Price exponent.
     pub num: u32,         // Number of component prices.
     pub unused: u32,
-    pub curr_slot: u64,  // Currently accumulating price slot.
-    pub valid_slot: u64, // Valid slot-time of agg price.
-    pub prod: AccKey,
-    pub next: AccKey,
-    pub agg_pub: AccKey,
-    pub agg: PriceInfo,
-    pub comp: [PriceComp; 16],
+    pub curr_slot: u64,        // Currently accumulating price slot.
+    pub valid_slot: u64,       // Valid slot-time of agg. price.
+    pub twap: i64,             // Time-weighted average price.
+    pub avol: u64,             // Annualized price volatility.
+    pub drv0: i64,             // Space for future derived values.
+    pub drv1: i64,             // Space for future derived values.
+    pub drv2: i64,             // Space for future derived values.
+    pub drv3: i64,             // Space for future derived values.
+    pub drv4: i64,             // Space for future derived values.
+    pub drv5: i64,             // Space for future derived values.
+    pub prod: AccKey,          // Product account key.
+    pub next: AccKey,          // Next Price account in linked list.
+    pub agg_pub: AccKey,       // Quoter who computed last aggregate price.
+    pub agg: PriceInfo,        // Aggregate price info.
+    pub comp: [PriceComp; 32], // Price components one per quoter.
 }
 
 impl Price {

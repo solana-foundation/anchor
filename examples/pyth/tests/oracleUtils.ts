@@ -32,8 +32,8 @@ export const createPriceFeed = async ({
       web3.SystemProgram.createAccount({
         fromPubkey: oracleProgram.provider.wallet.publicKey,
         newAccountPubkey: collateralTokenFeed.publicKey,
-        space: 1712,
-        lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(1712),
+        space: 3312,
+        lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(3312),
         programId: oracleProgram.programId,
       }),
     ],
@@ -56,38 +56,160 @@ export const getFeedData = async (oracleProgram: Program, priceFeed: web3.Public
   return parsePriceData(info.data)
 }
 
-export const parseMappingData = (data: Buffer) => {
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/errors.js#L758
+const ERR_BUFFER_OUT_OF_BOUNDS = () => new Error('Attempt to access memory outside buffer bounds')
+
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/errors.js#L968
+const ERR_INVALID_ARG_TYPE = (name: string, expected: string, actual: any) =>
+  new Error(`The "${name}" argument must be of type ${expected}. Received ${actual}`)
+
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/errors.js#L1262
+const ERR_OUT_OF_RANGE = (str: string, range: string, received: number) =>
+  new Error(`The value of "${str} is out of range. It must be ${range}. Received ${received}`)
+
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/validators.js#L127-L130
+function validateNumber(value: any, name: string) {
+  if (typeof value !== 'number') throw ERR_INVALID_ARG_TYPE(name, 'number', value)
+}
+
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/buffer.js#L68-L80
+function boundsError(value: number, length: number) {
+  if (Math.floor(value) !== value) {
+    validateNumber(value, 'offset')
+    throw ERR_OUT_OF_RANGE('offset', 'an integer', value)
+  }
+
+  if (length < 0) throw ERR_BUFFER_OUT_OF_BOUNDS()
+
+  throw ERR_OUT_OF_RANGE('offset', `>= 0 and <= ${length}`, value)
+}
+
+export function readBigInt64LE(buffer: Buffer, offset = 0): bigint {
+  validateNumber(offset, 'offset')
+  const first = buffer[offset]
+  const last = buffer[offset + 7]
+  if (first === undefined || last === undefined) boundsError(offset, buffer.length - 8)
+  const val =
+    buffer[offset + 4] + buffer[offset + 5] * 2 ** 8 + buffer[offset + 6] * 2 ** 16 + (last << 24) // Overflow
+  return (
+    (BigInt(val) << BigInt(32)) +
+    BigInt(
+      first + buffer[++offset] * 2 ** 8 + buffer[++offset] * 2 ** 16 + buffer[++offset] * 2 ** 24
+    )
+  )
+}
+
+// https://github.com/nodejs/node/blob/v14.17.0/lib/internal/buffer.js#L89-L107
+export function readBigUInt64LE(buffer: Buffer, offset = 0): bigint {
+  validateNumber(offset, 'offset')
+  const first = buffer[offset]
+  const last = buffer[offset + 7]
+  if (first === undefined || last === undefined) boundsError(offset, buffer.length - 8)
+
+  const lo =
+    first + buffer[++offset] * 2 ** 8 + buffer[++offset] * 2 ** 16 + buffer[++offset] * 2 ** 24
+
+  const hi =
+    buffer[++offset] + buffer[++offset] * 2 ** 8 + buffer[++offset] * 2 ** 16 + last * 2 ** 24
+
+  return BigInt(lo) + (BigInt(hi) << BigInt(32)) // tslint:disable-line:no-bitwise
+}
+
+export const parsePriceData = (data: Buffer) => {
   // Pyth magic number.
   const magic = data.readUInt32LE(0)
   // Program version.
   const version = data.readUInt32LE(4)
   // Account type.
   const type = data.readUInt32LE(8)
-  // Account used size.
+  // Price account size.
   const size = data.readUInt32LE(12)
-  // Number of product accounts.
-  const numProducts = data.readUInt32LE(16)
-  // Unused.
-  // const unused = accountInfo.data.readUInt32LE(20)
-  // TODO: check and use this.
-  // Next mapping account (if any).
-  const nextMappingAccount = PKorNull(data.slice(24, 56))
-  // Read each symbol account.
-  let offset = 56
-  const productAccountKeys = []
-  for (let i = 0; i < numProducts; i++) {
-    const productAccountBytes = data.slice(offset, offset + 32)
-    const productAccountKey = new web3.PublicKey(productAccountBytes)
+  // Price or calculation type.
+  const priceType = data.readUInt32LE(16)
+  // Price exponent.
+  const exponent = data.readInt32LE(20)
+  // Number of component prices.
+  const numComponentPrices = data.readUInt32LE(24)
+  // unused
+  // const unused = accountInfo.data.readUInt32LE(28)
+  // Currently accumulating price slot.
+  const currentSlot = readBigUInt64LE(data, 32)
+  // Valid on-chain slot of aggregate price.
+  const validSlot = readBigUInt64LE(data, 40)
+  // Time-weighted average price.
+  const twapComponent = readBigInt64LE(data, 48)
+  const twap = Number(twapComponent) * 10 ** exponent
+  // Annualized price volatility.
+  const avolComponent = readBigUInt64LE(data, 56)
+  const avol = Number(avolComponent) * 10 ** exponent
+  // Space for future derived values.
+  const drv0Component = readBigInt64LE(data, 64)
+  const drv0 = Number(drv0Component) * 10 ** exponent
+  const drv1Component = readBigInt64LE(data, 72)
+  const drv1 = Number(drv1Component) * 10 ** exponent
+  const drv2Component = readBigInt64LE(data, 80)
+  const drv2 = Number(drv2Component) * 10 ** exponent
+  const drv3Component = readBigInt64LE(data, 88)
+  const drv3 = Number(drv3Component) * 10 ** exponent
+  const drv4Component = readBigInt64LE(data, 96)
+  const drv4 = Number(drv4Component) * 10 ** exponent
+  const drv5Component = readBigInt64LE(data, 104)
+  const drv5 = Number(drv5Component) * 10 ** exponent
+  // Product id / reference account.
+  const productAccountKey = new web3.PublicKey(data.slice(112, 144))
+  // Next price account in list.
+  const nextPriceAccountKey = PKorNull(data.slice(144, 176))
+  // Aggregate price updater.
+  const aggregatePriceUpdaterAccountKey = new web3.PublicKey(data.slice(176, 208))
+  const aggregatePriceInfo = parsePriceInfo(data.slice(208, 240), exponent)
+  // Price components - up to 32.
+  const priceComponents = []
+  let offset = 240
+  let shouldContinue = true
+  while (offset < data.length && shouldContinue) {
+    const publisher = PKorNull(data.slice(offset, offset + 32))
     offset += 32
-    productAccountKeys.push(productAccountKey)
+    if (publisher) {
+      const aggregate = parsePriceInfo(data.slice(offset, offset + 32), exponent)
+      offset += 32
+      const latest = parsePriceInfo(data.slice(offset, offset + 32), exponent)
+      offset += 32
+      priceComponents.push({ publisher, aggregate, latest })
+    } else {
+      shouldContinue = false
+    }
   }
   return {
     magic,
     version,
     type,
     size,
-    nextMappingAccount,
-    productAccountKeys,
+    priceType,
+    exponent,
+    numComponentPrices,
+    currentSlot,
+    validSlot,
+    twapComponent,
+    twap,
+    avolComponent,
+    avol,
+    drv0Component,
+    drv0,
+    drv1Component,
+    drv1,
+    drv2Component,
+    drv2,
+    drv3Component,
+    drv3,
+    drv4Component,
+    drv4,
+    drv5Component,
+    drv5,
+    productAccountKey,
+    nextPriceAccountKey,
+    aggregatePriceUpdaterAccountKey,
+    ...aggregatePriceInfo,
+    priceComponents,
   }
 }
 
@@ -146,68 +268,5 @@ const parsePriceInfo = (data: Buffer, exponent: number) => {
     status,
     corporateAction,
     publishSlot,
-  }
-}
-
-export const parsePriceData = (data: Buffer) => {
-  // Pyth magic number.
-  const magic = data.readUInt32LE(0)
-  // Program version.
-  const version = data.readUInt32LE(4)
-  // Account type.
-  const type = data.readUInt32LE(8)
-  // Price account size.
-  const size = data.readUInt32LE(12)
-  // Price or calculation type.
-  const priceType = data.readUInt32LE(16)
-  // Price exponent.
-  const exponent = data.readInt32LE(20)
-  // Number of component prices.
-  const numComponentPrices = data.readUInt32LE(24)
-  // Unused.
-  // const unused = accountInfo.data.readUInt32LE(28)
-  // Currently accumulating price slot.
-  const currentSlot = data.readBigUInt64LE(32)
-  // Valid on-chain slot of aggregate price.
-  const validSlot = data.readBigUInt64LE(40)
-  // Product id / reference account.
-  const productAccountKey = new web3.PublicKey(data.slice(48, 80))
-  // Next price account in list.
-  const nextPriceAccountKey = new web3.PublicKey(data.slice(80, 112))
-  // Aggregate price updater.
-  const aggregatePriceUpdaterAccountKey = new web3.PublicKey(data.slice(112, 144))
-  const aggregatePriceInfo = parsePriceInfo(data.slice(144, 176), exponent)
-  // Urice components - up to 16.
-  const priceComponents = []
-  let offset = 176
-  let shouldContinue = true
-  while (offset < data.length && shouldContinue) {
-    const publisher = PKorNull(data.slice(offset, offset + 32))
-    offset += 32
-    if (publisher) {
-      const aggregate = parsePriceInfo(data.slice(offset, offset + 32), exponent)
-      offset += 32
-      const latest = parsePriceInfo(data.slice(offset, offset + 32), exponent)
-      offset += 32
-      priceComponents.push({ publisher, aggregate, latest })
-    } else {
-      shouldContinue = false
-    }
-  }
-  return {
-    magic,
-    version,
-    type,
-    size,
-    priceType,
-    exponent,
-    numComponentPrices,
-    currentSlot,
-    validSlot,
-    productAccountKey,
-    nextPriceAccountKey,
-    aggregatePriceUpdaterAccountKey,
-    ...aggregatePriceInfo,
-    priceComponents,
   }
 }
