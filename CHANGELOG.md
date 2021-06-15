@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Breaking
+
+* lang: Event field names in IDLs are now mixed case. ([#379](https://github.com/project-serum/anchor/pull/379)).
+
 ## [0.8.0] - 2021-06-10
 
 ### Features

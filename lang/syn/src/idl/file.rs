@@ -186,7 +186,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                         Some(i) => parser::tts_to_string(&i.path) == "index",
                     };
                     IdlEventField {
-                        name: f.ident.clone().unwrap().to_string(),
+                        name: f.ident.clone().unwrap().to_string().to_mixed_case(),
                         ty: parser::tts_to_string(&f.ty).to_string().parse().unwrap(),
                         index,
                     }
