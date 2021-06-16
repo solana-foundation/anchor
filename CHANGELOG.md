@@ -11,9 +11,17 @@ incremented for features.
 
 ## [Unreleased]
 
-### Breaking
+## [0.9.0] - 2021-06-15
+
+### Features
+
+* lang: Instruction data is now available to accounts constraints ([#386](https://github.com/project-serum/anchor/pull/386)).
+* lang: Initialize program derived addresses with accounts constraints ([#386](https://github.com/project-serum/anchor/pull/386)).
+
+### Breaking Changes
 
 * lang: Event field names in IDLs are now mixed case. ([#379](https://github.com/project-serum/anchor/pull/379)).
+* lang: Accounts trait now accepts an additional `&[u8]` parameter ([#386](https://github.com/project-serum/anchor/pull/386)).
 
 ## [0.8.0] - 2021-06-10
 
@@ -24,8 +32,6 @@ incremented for features.
 * cli, client, lang: Update solana toolchain to v1.7.1 ([#368](https://github.com/project-serum/anchor/pull/369)).
 * ts: Instruction decoding and formatting ([#372](https://github.com/project-serum/anchor/pull/372)).
 * lang: Add `#[account(close = <destination>)]` constraint for closing accounts and sending the rent exemption lamports to a specified destination account ([#371](https://github.com/project-serum/anchor/pull/371)).
-* lang: Instruction data is now available to accounts constraints ([#386](https://github.com/project-serum/anchor/pull/386)).
-* lang: Initialize program derived addresses with accounts constraints ([#386](https://github.com/project-serum/anchor/pull/386)).
 
 ### Fixes
 
@@ -34,7 +40,6 @@ incremented for features.
 ### Breaking
 
 * lang, ts: Framework defined error codes are introduced, reserving error codes 0-300 for Anchor, and 300 and up for user defined error codes ([#354](https://github.com/project-serum/anchor/pull/354)).
-* lang: Accounts trait now accepts an additional `&[u8]` parameter ([#386](https://github.com/project-serum/anchor/pull/386)).
 
 ## [0.7.0] - 2021-05-31
 
