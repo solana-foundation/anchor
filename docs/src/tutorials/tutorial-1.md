@@ -49,7 +49,7 @@ for the first time (and thus its data field is all zero). If `#[account(init)]` 
 when account data is zero initialized, the transaction will be rejected.
 3. The `Rent` **sysvar** is required for the rent exemption check, which the framework enforces
 by default for any account marked with `#[account(init)]`. To be more explicit about the check,
-one can specify `#[account(init, rent_exempt)]`. To skip this check, (and thus
+one can specify `#[account(init, rent_exempt = enforce)]`. To skip this check, (and thus
 allowing you to omit the `Rent` acccount), you can specify
 `#[account(init, rent_exempt = skip)]` on the account being initialized (here, `my_account`).
 
