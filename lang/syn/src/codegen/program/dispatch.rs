@@ -133,7 +133,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// With this 8 byte identifier, Anchor performs method dispatch,
         /// matching the given 8 byte identifier to the associated method
         /// handler, which leads to user defined code being eventually invoked.
-        fn dispatch(program_id: &Pubkey, accounts: &[AccountInfo], sighash: [u8; 8], mut ix_data: &[u8]) -> ProgramResult {
+        fn dispatch(program_id: &Pubkey, accounts: &[AccountInfo], sighash: [u8; 8], ix_data: &[u8]) -> ProgramResult {
             // If the method identifier is the IDL tag, then execute an IDL
             // instruction, injected into all Anchor programs.
             if cfg!(not(feature = "no-idl")) {
