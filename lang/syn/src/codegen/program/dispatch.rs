@@ -1,6 +1,5 @@
 use crate::codegen::program::common::*;
-use crate::{Program, State};
-use heck::CamelCase;
+use crate::Program;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -10,19 +9,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         Some(state) => match state.ctor_and_anchor.is_some() {
             false => quote! {},
             true => {
-                let variant_arm = generate_ctor_variant(state);
-                let ctor_args = generate_ctor_args(state);
-                let ix_name: proc_macro2::TokenStream =
-                    generate_ctor_variant_name().parse().unwrap();
                 let sighash_arr = sighash_ctor();
                 let sighash_tts: proc_macro2::TokenStream =
                     format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {
                     #sighash_tts => {
-                        let ix = instruction::state::#ix_name::deserialize(&mut ix_data)
-                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-                        let instruction::state::#variant_arm = ix;
-                        __private::__state::__ctor(program_id, accounts, #(#ctor_args),*)
+                        __private::__state::__ctor(
+                            program_id,
+                            accounts,
+                            ix_data,
+                        )
                     }
                 }
             }
@@ -39,23 +35,19 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 methods
                     .iter()
                     .map(|ix: &crate::StateIx| {
-                        let ix_arg_names: Vec<&syn::Ident> =
-                            ix.args.iter().map(|arg| &arg.name).collect();
                         let name = &ix.raw_method.sig.ident.to_string();
                         let ix_method_name: proc_macro2::TokenStream =
-                        { format!("__{}", name).parse().unwrap() };
-                        let variant_arm =
-                            generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
-                        let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
+                            { format!("__{}", name).parse().unwrap() };
                         let sighash_arr = sighash(SIGHASH_STATE_NAMESPACE, &name);
                         let sighash_tts: proc_macro2::TokenStream =
                             format!("{:?}", sighash_arr).parse().unwrap();
                         quote! {
                             #sighash_tts => {
-                                let ix = instruction::state::#ix_name::deserialize(&mut ix_data)
-                                    .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-                                let instruction::state::#variant_arm = ix;
-                                __private::__state::#ix_method_name(program_id, accounts, #(#ix_arg_names),*)
+                                __private::__state::#ix_method_name(
+                                    program_id,
+                                    accounts,
+                                    ix_data,
+                                )
                             }
                         }
                     })
@@ -78,42 +70,19 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             .methods
                             .iter()
                             .map(|m: &crate::StateIx| {
-                                let ix_arg_names: Vec<&syn::Ident> =
-                                    m.args.iter().map(|arg| &arg.name).collect();
-                                let name = &m.raw_method.sig.ident.to_string();
-                                let ix_name: proc_macro2::TokenStream =  format!("__{}_{}", iface.trait_name, name).parse().unwrap();
-                                let raw_args: Vec<&syn::PatType> = m
-                                    .args
-                                    .iter()
-                                    .map(|arg: &crate::IxArg| &arg.raw_arg)
-                                    .collect();
                                 let sighash_arr = sighash(&iface.trait_name, &m.ident.to_string());
                                 let sighash_tts: proc_macro2::TokenStream =
                                     format!("{:?}", sighash_arr).parse().unwrap();
-                                let args_struct = {
-                                    if m.args.is_empty() {
-                                        quote! {
-                                            #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
-                                            struct Args;
-                                        }
-                                    } else {
-                                        quote! {
-                                            #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
-                                            struct Args {
-                                                #(#raw_args),*
-                                            }
-                                        }
-                                    }
-                                };
+                                let name = &m.raw_method.sig.ident.to_string();
+                                let ix_method_name: proc_macro2::TokenStream =
+                                    format!("__{}_{}", iface.trait_name, name).parse().unwrap();
                                 quote! {
                                     #sighash_tts => {
-                                        #args_struct
-                                        let ix = Args::deserialize(&mut ix_data)
-                                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-                                        let Args {
-                                            #(#ix_arg_names),*
-                                        } = ix;
-                                        __private::__interface::#ix_name(program_id, accounts, #(#ix_arg_names),*)
+                                        __private::__interface::#ix_method_name(
+                                            program_id,
+                                            accounts,
+                                            ix_data,
+                                        )
                                     }
                                 }
                             })
@@ -121,7 +90,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     })
                     .collect()
             })
-            .unwrap_or_default()
+            .unwrap_or_default(),
     };
 
     // Dispatch all global instructions.
@@ -129,19 +98,17 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
-            let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
-            let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
             let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &ix_method_name.to_string());
             let sighash_tts: proc_macro2::TokenStream =
                 format!("{:?}", sighash_arr).parse().unwrap();
-            let variant_arm = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
             quote! {
                 #sighash_tts => {
-                    let ix = instruction::#ix_name::deserialize(&mut ix_data)
-                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-                    let instruction::#variant_arm = ix;
-                    __private::__global::#ix_method_name(program_id, accounts, #(#ix_arg_names),*)
+                    __private::__global::#ix_method_name(
+                        program_id,
+                        accounts,
+                        ix_data,
+                    )
                 }
             }
         })
@@ -171,7 +138,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             // instruction, injected into all Anchor programs.
             if cfg!(not(feature = "no-idl")) {
                 if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
-                    return __private::__idl::__idl_dispatch(program_id, accounts, &ix_data);
+                    return __private::__idl::__idl_dispatch(
+                        program_id,
+                        accounts,
+                        &ix_data,
+                    );
                 }
             }
 
@@ -187,29 +158,4 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
         }
     }
-}
-
-fn generate_ctor_variant_name() -> String {
-    "New".to_string()
-}
-
-fn generate_ctor_variant(state: &State) -> proc_macro2::TokenStream {
-    let ctor_args = generate_ctor_args(state);
-    let ctor_variant_name: proc_macro2::TokenStream = generate_ctor_variant_name().parse().unwrap();
-    if ctor_args.is_empty() {
-        quote! {
-            #ctor_variant_name
-        }
-    } else {
-        quote! {
-            #ctor_variant_name {
-                #(#ctor_args),*
-            }
-        }
-    }
-}
-
-fn generate_ix_variant_name(name: String) -> proc_macro2::TokenStream {
-    let n = name.to_camel_case();
-    n.parse().unwrap()
 }

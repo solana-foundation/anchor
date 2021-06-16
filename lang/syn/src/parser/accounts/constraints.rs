@@ -2,8 +2,8 @@ use crate::{
     ConstraintAssociated, ConstraintAssociatedGroup, ConstraintAssociatedPayer,
     ConstraintAssociatedSpace, ConstraintAssociatedWith, ConstraintBelongsTo, ConstraintClose,
     ConstraintExecutable, ConstraintGroup, ConstraintInit, ConstraintLiteral, ConstraintMut,
-    ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeeds, ConstraintSigner,
-    ConstraintState, ConstraintToken, Context, Ty,
+    ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeeds, ConstraintSeedsGroup,
+    ConstraintSigner, ConstraintState, ConstraintToken, Context, Ty,
 };
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
@@ -12,20 +12,46 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{bracketed, Expr, Ident, LitStr, Token};
 
-pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
+pub fn parse(
+    f: &syn::Field,
+    f_ty: Option<&Ty>,
+    has_instruction_api: bool,
+) -> ParseResult<(ConstraintGroup, ConstraintGroup)> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
     for attr in f.attrs.iter().filter(is_account) {
         for c in attr.parse_args_with(Punctuated::<ConstraintToken, Comma>::parse_terminated)? {
             constraints.add(c)?;
         }
     }
-    constraints.build()
+    let account_constraints = constraints.build()?;
+
+    let mut constraints = ConstraintGroupBuilder::new(f_ty);
+    for attr in f.attrs.iter().filter(is_instruction) {
+        if !has_instruction_api {
+            return Err(ParseError::new(
+                attr.span(),
+                "an instruction api must be declared",
+            ));
+        }
+        for c in attr.parse_args_with(Punctuated::<ConstraintToken, Comma>::parse_terminated)? {
+            constraints.add(c)?;
+        }
+    }
+    let instruction_constraints = constraints.build()?;
+
+    Ok((account_constraints, instruction_constraints))
 }
 
 pub fn is_account(attr: &&syn::Attribute) -> bool {
     attr.path
         .get_ident()
         .map_or(false, |ident| ident == "account")
+}
+
+pub fn is_instruction(attr: &&syn::Attribute) -> bool {
+    attr.path
+        .get_ident()
+        .map_or(false, |ident| ident == "instruction")
 }
 
 // Parses a single constraint from a parse stream for `#[account(<STREAM>)]`.
@@ -198,6 +224,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
             }
         }
+        if let Some(i) = &self.seeds {
+            if self.init.is_some() && self.associated_payer.is_none() {
+                return Err(ParseError::new(
+                    i.span(),
+                    "payer must be provided when creating a program derived address",
+                ));
+            }
+        }
 
         let ConstraintGroupBuilder {
             f_ty: _,
@@ -224,6 +258,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ($opt:ident) => {
                 $opt.map(|c| c.into_inner())
             };
+            ($opt:expr) => {
+                $opt.map(|c| c.into_inner())
+            };
         }
         // Converts Vec<Context<T>> - Vec<T>.
         macro_rules! into_inner_vec {
@@ -242,7 +279,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
             rent_exempt: into_inner!(rent_exempt),
-            seeds: into_inner!(seeds),
+            seeds: seeds.map(|c| ConstraintSeedsGroup {
+                is_init,
+                seeds: c.into_inner().seeds,
+                payer: into_inner!(associated_payer.clone()).map(|a| a.target),
+                space: associated_space.clone().map(|s| s.space.clone()),
+            }),
             executable: into_inner!(executable),
             state: into_inner!(state),
             associated: associated.map(|associated| ConstraintAssociatedGroup {
@@ -370,6 +412,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.seeds.is_some() {
             return Err(ParseError::new(c.span(), "seeds already provided"));
         }
+        if self.associated.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "both seeds and associated cannot be defined together",
+            ));
+        }
         self.seeds.replace(c);
         Ok(())
     }
@@ -394,15 +442,21 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.associated.is_some() {
             return Err(ParseError::new(c.span(), "associated already provided"));
         }
+        if self.seeds.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "both seeds and associated cannot be defined together",
+            ));
+        }
         self.associated.replace(c);
         Ok(())
     }
 
     fn add_associated_payer(&mut self, c: Context<ConstraintAssociatedPayer>) -> ParseResult<()> {
-        if self.associated.is_none() {
+        if self.associated.is_none() && self.seeds.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "associated must be provided before payer",
+                "associated or seeds must be provided before payer",
             ));
         }
         if self.associated_payer.is_some() {
@@ -413,10 +467,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     }
 
     fn add_associated_space(&mut self, c: Context<ConstraintAssociatedSpace>) -> ParseResult<()> {
-        if self.associated.is_none() {
+        if self.associated.is_none() && self.seeds.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "associated must be provided before space",
+                "associated or seeds must be provided before space",
             ));
         }
         if self.associated_space.is_some() {

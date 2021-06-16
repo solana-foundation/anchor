@@ -87,6 +87,7 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     fn try_accounts(
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
+        ix_data: &[u8],
     ) -> Result<Self, ProgramError>;
 }
 

@@ -49,6 +49,7 @@ pub struct Mint {
 }
 
 #[associated]
+#[derive(Default)]
 pub struct Token {
     pub amount: u32,
     pub authority: Pubkey,

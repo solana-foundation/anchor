@@ -1,4 +1,5 @@
 const anchor = require("@project-serum/anchor");
+const PublicKey = anchor.web3.PublicKey;
 const serumCmn = require("@project-serum/common");
 const assert = require("assert");
 
@@ -320,5 +321,85 @@ describe("misc", () => {
       data.publicKey
     );
     assert.ok(closedAccount === null);
+  });
+
+  it("Can use instruction data in accounts constraints", async () => {
+    // b"my-seed"
+    const seed = Buffer.from([109, 121, 45, 115, 101, 101, 100]);
+    const [myPda, nonce] = await PublicKey.findProgramAddress(
+      [seed, anchor.web3.SYSVAR_RENT_PUBKEY.toBuffer()],
+      program.programId
+    );
+
+    await program.rpc.testInstructionConstraint(nonce, {
+      accounts: {
+        myPda,
+        myAccount: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+    });
+  });
+
+  it("Can create a PDA account with instruction data", async () => {
+    const seed = Buffer.from([1, 2, 3, 4]);
+    const domain = "my-domain";
+    const foo = anchor.web3.SYSVAR_RENT_PUBKEY;
+    const [myPda, nonce] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("my-seed")),
+        Buffer.from(anchor.utils.bytes.utf8.encode(domain)),
+        foo.toBuffer(),
+        seed,
+      ],
+      program.programId
+    );
+
+    await program.rpc.testPdaInit(domain, seed, nonce, {
+      accounts: {
+        myPda,
+        myPayer: program.provider.wallet.publicKey,
+        foo,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+    });
+
+    const myPdaAccount = await program.account.dataU16.fetch(myPda);
+    assert.ok(myPdaAccount.data === 6);
+  });
+
+  it("Can create a zero copy PDA account", async () => {
+    const [myPda, nonce] = await PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("my-seed"))],
+      program.programId
+    );
+    await program.rpc.testPdaInitZeroCopy(nonce, {
+      accounts: {
+        myPda,
+        myPayer: program.provider.wallet.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+    });
+
+    const myPdaAccount = await program.account.dataZeroCopy.fetch(myPda);
+    assert.ok(myPdaAccount.data === 9);
+    assert.ok((myPdaAccount.bump = nonce));
+  });
+
+  it("Can write to a zero copy PDA account", async () => {
+    const [myPda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("my-seed"))],
+      program.programId
+    );
+    await program.rpc.testPdaMutZeroCopy({
+      accounts: {
+        myPda,
+        myPayer: program.provider.wallet.publicKey,
+      },
+    });
+
+    const myPdaAccount = await program.account.dataZeroCopy.fetch(myPda);
+    assert.ok(myPdaAccount.data === 1234);
+    assert.ok((myPdaAccount.bump = bump));
   });
 });

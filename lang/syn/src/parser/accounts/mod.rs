@@ -3,16 +3,30 @@ use crate::{
     ProgramAccountTy, ProgramStateTy, SysvarTy, Ty,
 };
 use syn::parse::{Error as ParseError, Result as ParseResult};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token::Comma;
+use syn::Expr;
 
 pub mod constraints;
 
 pub fn parse(strct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
+    let instruction_api: Option<Punctuated<Expr, Comma>> = strct
+        .attrs
+        .iter()
+        .filter(|a| {
+            a.path
+                .get_ident()
+                .map_or(false, |ident| ident == "instruction")
+        })
+        .next()
+        .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<Expr, Comma>::parse_terminated))
+        .transpose()?;
     let fields = match &strct.fields {
         syn::Fields::Named(fields) => fields
             .named
             .iter()
-            .map(parse_account_field)
+            .map(|f| parse_account_field(f, instruction_api.is_some()))
             .collect::<ParseResult<Vec<AccountField>>>()?,
         _ => {
             return Err(ParseError::new_spanned(
@@ -21,26 +35,30 @@ pub fn parse(strct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
             ))
         }
     };
-    Ok(AccountsStruct::new(strct.clone(), fields))
+    Ok(AccountsStruct::new(strct.clone(), fields, instruction_api))
 }
 
-pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
+pub fn parse_account_field(f: &syn::Field, has_instruction_api: bool) -> ParseResult<AccountField> {
     let ident = f.ident.clone().unwrap();
     let account_field = match is_field_primitive(f)? {
         true => {
             let ty = parse_ty(f)?;
-            let constraints = constraints::parse(f, Some(&ty))?;
+            let (account_constraints, instruction_constraints) =
+                constraints::parse(f, Some(&ty), has_instruction_api)?;
             AccountField::Field(Field {
                 ident,
                 ty,
-                constraints,
+                constraints: account_constraints,
+                instruction_constraints,
             })
         }
         false => {
-            let constraints = constraints::parse(f, None)?;
+            let (account_constraints, instruction_constraints) =
+                constraints::parse(f, None, has_instruction_api)?;
             AccountField::CompositeField(CompositeField {
                 ident,
-                constraints,
+                constraints: account_constraints,
+                instruction_constraints,
                 symbol: ident_string(f)?,
                 raw_field: f.clone(),
             })

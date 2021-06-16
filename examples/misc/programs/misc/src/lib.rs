@@ -93,6 +93,76 @@ pub mod misc {
     pub fn test_close(_ctx: Context<TestClose>) -> ProgramResult {
         Ok(())
     }
+
+    pub fn test_instruction_constraint(
+        _ctx: Context<TestInstructionConstraint>,
+        _nonce: u8,
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    pub fn test_pda_init(
+        ctx: Context<TestPdaInit>,
+        _domain: String,
+        _seed: Vec<u8>,
+        _bump: u8,
+    ) -> ProgramResult {
+        ctx.accounts.my_pda.data = 6;
+        Ok(())
+    }
+
+    pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>, bump: u8) -> ProgramResult {
+        let mut acc = ctx.accounts.my_pda.load_init()?;
+        acc.data = 9;
+        acc.bump = bump;
+        Ok(())
+    }
+
+    pub fn test_pda_mut_zero_copy(ctx: Context<TestPdaMutZeroCopy>) -> ProgramResult {
+        let mut acc = ctx.accounts.my_pda.load_mut()?;
+        acc.data = 1234;
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+#[instruction(nonce: u8)]
+pub struct TestInstructionConstraint<'info> {
+    #[account(seeds = [b"my-seed", my_account.key.as_ref(), &[nonce]])]
+    pub my_pda: AccountInfo<'info>,
+    pub my_account: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(domain: String, seed: Vec<u8>, bump: u8)]
+pub struct TestPdaInit<'info> {
+    #[account(
+        init,
+        seeds = [b"my-seed", domain.as_bytes(), foo.key.as_ref(), &seed, &[bump]],
+        payer = my_payer,
+    )]
+    my_pda: ProgramAccount<'info, DataU16>,
+    my_payer: AccountInfo<'info>,
+    foo: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
+    system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct TestPdaInitZeroCopy<'info> {
+    #[account(init, seeds = [b"my-seed".as_ref(), &[bump]], payer = my_payer)]
+    my_pda: Loader<'info, DataZeroCopy>,
+    my_payer: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
+    system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestPdaMutZeroCopy<'info> {
+    #[account(mut, seeds = [b"my-seed".as_ref(), &[my_pda.load()?.bump]])]
+    my_pda: Loader<'info, DataZeroCopy>,
+    my_payer: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -194,6 +264,7 @@ pub struct TestI8<'info> {
 }
 
 #[associated]
+#[derive(Default)]
 pub struct TestData {
     data: u64,
 }
@@ -205,6 +276,7 @@ pub struct Data {
 }
 
 #[account]
+#[derive(Default)]
 pub struct DataU16 {
     data: u16,
 }
@@ -217,6 +289,13 @@ pub struct DataI8 {
 #[account]
 pub struct DataI16 {
     data: i16,
+}
+
+#[account(zero_copy)]
+#[derive(Default)]
+pub struct DataZeroCopy {
+    data: u16,
+    bump: u8,
 }
 
 #[event]

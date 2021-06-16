@@ -71,6 +71,7 @@ where
     fn try_accounts(
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
+        _ix_data: &[u8],
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

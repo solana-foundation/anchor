@@ -53,7 +53,7 @@ use syn::parse_macro_input;
 /// | `#[account(associated = <target>, with? = <target>, payer? = <target>, space? = "<literal>")]` | On `ProgramAccount` | Whe `init` is provided, creates an associated program account at a program derived address. `associated` is the SOL address to create the account for. `with` is an optional association, for example, a `Mint` account in the SPL token program. `payer` is an optional account to pay for the account creation, defaulting to the `associated` target if none is given. `space` is an optional literal specifying how large the account is, defaulting to the account's serialized `Default::default` size (+ 8 for the account discriminator) if none is given. When creating an associated account, a `rent` `Sysvar` and `system_program` `AccountInfo` must be present in the `Accounts` struct. When `init` is not provided, then ensures the given associated account has the expected address, defined by the program and the given seeds. |
 // TODO: How do we make the markdown render correctly without putting everything
 //       on absurdly long lines?
-#[proc_macro_derive(Accounts, attributes(account))]
+#[proc_macro_derive(Accounts, attributes(account, instruction))]
 pub fn derive_anchor_deserialize(item: TokenStream) -> TokenStream {
     parse_macro_input!(item as anchor_syn::AccountsStruct)
         .to_token_stream()

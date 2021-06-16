@@ -175,6 +175,7 @@ pub struct Foo {
 }
 
 #[associated(zero_copy)]
+#[derive(Default)]
 pub struct Bar {
     pub authority: Pubkey,
     pub data: u64,

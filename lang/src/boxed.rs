@@ -10,8 +10,9 @@ impl<'info, T: Accounts<'info>> Accounts<'info> for Box<T> {
     fn try_accounts(
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
+        ix_data: &[u8],
     ) -> Result<Self, ProgramError> {
-        T::try_accounts(program_id, accounts).map(Box::new)
+        T::try_accounts(program_id, accounts, ix_data).map(Box::new)
     }
 }
 

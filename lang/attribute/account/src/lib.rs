@@ -238,7 +238,6 @@ pub fn associated(
     let args: proc_macro2::TokenStream = args.into();
     proc_macro::TokenStream::from(quote! {
         #[anchor_lang::account(#args)]
-        #[derive(Default)]
         #account_strct
 
         impl anchor_lang::Bump for #account_name {
