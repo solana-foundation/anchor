@@ -15,7 +15,6 @@ let _populatedWorkspace = false;
  */
 const workspace = new Proxy({} as any, {
   get(workspaceCache: { [key: string]: Program }, programName: string) {
-    const find = require("find");
     const fs = require("fs");
     const process = require("process");
 
@@ -43,23 +42,25 @@ const workspace = new Proxy({} as any, {
         throw new Error("Could not find workspace root.");
       }
 
-      const idlMap = new Map<string, Idl>();
+      const idlFolder = `${projectRoot}/target/idl`;
+      if (!fs.existsSync(idlFolder)) {
+        throw new Error(`${idlFolder} doesn't exist. Did you use "anchor build"?`);
+      }
 
-      find
-        .fileSync(/target\/idl\/.*\.json/, projectRoot)
-        .reduce((programs: any, path: string) => {
-          const idlStr = fs.readFileSync(path);
-          const idl = JSON.parse(idlStr);
-          idlMap.set(idl.name, idl);
-          const name = camelCase(idl.name, { pascalCase: true });
-          if (idl.metadata && idl.metadata.address) {
-            programs[name] = new Program(
-              idl,
-              new PublicKey(idl.metadata.address)
-            );
-          }
-          return programs;
-        }, workspaceCache);
+      const idlMap = new Map<string, Idl>();
+      fs.readdirSync(idlFolder).forEach(file => {
+        const filePath = `${idlFolder}/${file}`;
+        const idlStr = fs.readFileSync(filePath);
+        const idl = JSON.parse(idlStr);
+        idlMap.set(idl.name, idl);
+        const name = camelCase(idl.name, {pascalCase: true});
+        if (idl.metadata && idl.metadata.address) {
+          workspaceCache[name] = new Program(
+            idl,
+            new PublicKey(idl.metadata.address)
+          );
+        }
+      });
 
       // Override the workspace programs if the user put them in the config.
       const anchorToml = toml.parse(
