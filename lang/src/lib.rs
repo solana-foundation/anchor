@@ -32,6 +32,7 @@ use solana_program::pubkey::Pubkey;
 use std::io::Write;
 
 mod account_info;
+mod account_meta;
 mod boxed;
 mod common;
 mod context;
@@ -43,7 +44,7 @@ mod error;
 pub mod idl;
 mod loader;
 mod program_account;
-mod state;
+pub mod state;
 mod sysvar;
 mod vec;
 
