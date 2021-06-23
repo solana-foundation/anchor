@@ -67,6 +67,7 @@ jobs:
     - <<: *examples
       name: Runs the examples 3
       script:
+        - pushd examples/escrow && yarn && anchor test && popd
         - pushd examples/pyth && yarn && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
