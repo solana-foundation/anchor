@@ -464,7 +464,7 @@ async function signTransactions({
       wallet.publicKey,
       ...signers.map((s) => s.publicKey)
     );
-    if (signers?.length > 0) {
+    if (signers.length > 0) {
       transaction.partialSign(...signers);
     }
   });
