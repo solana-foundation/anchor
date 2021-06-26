@@ -1,7 +1,9 @@
-//! This example demonstrates the use of zero copy deserialization for accounts.
-//! The main noticeable benefit one achieves using zero copy is the ability
-//! to create accounts larger than the size of the stack or heap, as is
-//! demonstrated by the event queue in this example.
+//! This example demonstrates the use of zero-copy deserialization for accounts.
+//! Zero-copy is a deserialization technique that creates data structures by borrowing
+//! (not copying!) from the array holding the input, avoiding the expensive memory
+//! allocation and processing of traditional deserialization.
+//! With zero-copy, we can create accounts larger than the size of the stack or heap,
+//! as is demonstrated by the event queue in this example.
 
 use anchor_lang::prelude::*;
 
