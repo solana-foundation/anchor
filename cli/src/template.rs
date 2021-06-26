@@ -102,7 +102,8 @@ module.exports = async function (provider) {
 
 pub fn xargo_toml() -> &'static str {
     r#"[target.bpfel-unknown-unknown.dependencies.std]
-features = []"#
+features = []
+"#
 }
 
 pub fn lib_rs(name: &str) -> String {
@@ -118,7 +119,8 @@ pub mod {} {{
 }}
 
 #[derive(Accounts)]
-pub struct Initialize {{}}"#,
+pub struct Initialize {{}}
+"#,
         name.to_snake_case(),
     )
 }
