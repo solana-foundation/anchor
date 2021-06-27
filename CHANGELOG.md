@@ -19,6 +19,10 @@ incremented for features.
 * cli: Add `[scripts]` section to the Anchor.toml for specifying workspace scripts that can be run via `anchor run <script>` ([#400](https://github.com/project-serum/anchor/pull/400)).
 * cli: `[clusters.<network>]` table entries can now also use `{ address = <base58-str>, idl = <filepath-str> }` to specify workspace programs ([#400](https://github.com/project-serum/anchor/pull/400)).
 
+### Breaking Changes
+
+* cli: Remove `--yarn` flag in favor of using `npx` ([#432](https://github.com/project-serum/anchor/pull/432)).
+
 ## [0.9.0] - 2021-06-15
 
 ### Features

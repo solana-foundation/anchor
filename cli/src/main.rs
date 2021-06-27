@@ -96,9 +96,6 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
-        /// Use this flag if you want to use yarn as your package manager.
-        #[clap(long)]
-        yarn: bool,
         file: Option<String>,
     },
     /// Creates a new program.
@@ -258,14 +255,12 @@ fn main() -> Result<()> {
             skip_deploy,
             skip_local_validator,
             skip_build,
-            yarn,
             file,
         } => test(
             &opts.cfg_override,
             skip_deploy,
             skip_local_validator,
             skip_build,
-            yarn,
             file,
         ),
         #[cfg(feature = "dev")]
@@ -978,7 +973,6 @@ fn test(
     skip_deploy: bool,
     skip_local_validator: bool,
     skip_build: bool,
-    use_yarn: bool,
     file: Option<String>,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg, _path, _cargo| {
@@ -1012,64 +1006,35 @@ fn test(
         // Setup log reader.
         let log_streams = stream_logs(&cfg.provider.cluster.url());
 
-        // Check to see if yarn is installed, panic if not.
-        if use_yarn {
-            which::which("yarn").unwrap();
-        }
-
         // Run the tests.
         let test_result: Result<_> = {
             let ts_config_exist = Path::new("tsconfig.json").exists();
-            let mut args = vec!["-t", "1000000"];
-            if let Some(ref file) = file {
-                args.push(file);
-            } else if ts_config_exist {
-                args.push("tests/**/*.spec.ts");
+            let cmd = if ts_config_exist { "ts-mocha" } else { "mocha" };
+            let mut args = if ts_config_exist {
+                vec![cmd, "-p", "./tsconfig.json"]
             } else {
-                args.push("tests/");
-            }
-            let exit = match (ts_config_exist, use_yarn) {
-                (true, true) => std::process::Command::new("yarn")
-                    .arg("ts-mocha")
-                    .arg("-p")
-                    .arg("./tsconfig.json")
-                    .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .output()
-                    .map_err(anyhow::Error::from)
-                    .with_context(|| "ts-mocha"),
-                (false, true) => std::process::Command::new("yarn")
-                    .arg("mocha")
-                    .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .output()
-                    .map_err(anyhow::Error::from)
-                    .with_context(|| "mocha"),
-                (true, false) => std::process::Command::new("ts-mocha")
-                    .arg("-p")
-                    .arg("./tsconfig.json")
-                    .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .output()
-                    .map_err(anyhow::Error::from)
-                    .with_context(|| "ts-mocha"),
-                (false, false) => std::process::Command::new("mocha")
-                    .args(args)
-                    .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .output()
-                    .map_err(anyhow::Error::from)
-                    .with_context(|| "mocha"),
+                vec![cmd]
             };
+            args.extend_from_slice(&[
+                "-t",
+                "1000000",
+                if let Some(ref file) = file {
+                    file
+                } else if ts_config_exist {
+                    "tests/**/*.spec.ts"
+                } else {
+                    "tests/"
+                },
+            ]);
 
-            exit
+            std::process::Command::new("npx")
+                .args(args)
+                .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()
+                .map_err(anyhow::Error::from)
+                .context(cmd)
         };
 
         // Check all errors and shut down.
