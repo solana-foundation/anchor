@@ -316,26 +316,25 @@ pub fn generate_constraint_associated_init(
         },
     };
     let associated_seeds_constraint = generate_constraint_associated_seeds(f, c);
-    let seeds_with_nonce = match c.associated_seeds.len() {
-        0 => quote! {
+    let seeds_with_nonce = if c.associated_seeds.is_empty() {
+        quote! {
             #associated_seeds_constraint
             let seeds = [
                 &b"anchor"[..],
                 #associated_target.to_account_info().key.as_ref(),
                 &[nonce],
             ];
-        },
-        _ => {
-            let seeds = to_seeds_tts(&c.associated_seeds);
-            quote! {
-                #associated_seeds_constraint
-                let seeds = [
-                    &b"anchor"[..],
-                    #associated_target.to_account_info().key.as_ref(),
-                    #seeds
-                    &[nonce],
-                ];
-            }
+        }
+    } else {
+        let seeds = to_seeds_tts(&c.associated_seeds);
+        quote! {
+            #associated_seeds_constraint
+            let seeds = [
+                &b"anchor"[..],
+                #associated_target.to_account_info().key.as_ref(),
+                #seeds
+                &[nonce],
+            ];
         }
     };
     generate_pda(f, seeds_with_nonce, payer, &c.space, true)
@@ -443,29 +442,44 @@ pub fn generate_constraint_associated_seeds(
 ) -> proc_macro2::TokenStream {
     let field = &f.ident;
     let associated_target = c.associated_target.clone();
-    let seeds_no_nonce = match c.associated_seeds.len() {
-        0 => quote! {
-            [
-                &b"anchor"[..],
-                #associated_target.to_account_info().key.as_ref(),
-            ]
-        },
-        _ => {
-            let seeds = to_seeds_tts(&c.associated_seeds);
-            quote! {
-                [
-                    &b"anchor"[..],
-                    #associated_target.to_account_info().key.as_ref(),
-                    #seeds
-                ]
+    let seeds_no_nonce = if c.associated_seeds.is_empty() {
+        quote! {
+            &b"anchor"[..],
+            #associated_target.to_account_info().key.as_ref(),
+        }
+    } else {
+        let seeds = to_seeds_tts(&c.associated_seeds);
+        quote! {
+            &b"anchor"[..],
+            #associated_target.to_account_info().key.as_ref(),
+            #seeds
+        }
+    };
+    let associated_field = if c.is_init {
+        quote! {
+            let (__associated_field, nonce) = Pubkey::find_program_address(
+                &[#seeds_no_nonce],
+                program_id,
+            );
+        }
+    } else {
+        let nonce = match &f.ty {
+            Ty::ProgramAccount(_) => quote! { #field.__nonce },
+            Ty::Loader(_) => {
+                // Zero copy is not deserialized, so the data must be lazy loaded.
+                quote! { #field.load()?.__nonce }
             }
+            _ => panic!("Invalid type for initializing a program derived address"),
+        };
+        quote! {
+            let __associated_field = Pubkey::create_program_address(
+                &[#seeds_no_nonce &[#nonce]],
+                program_id,
+            )?;
         }
     };
     quote! {
-        let (__associated_field, nonce) = Pubkey::find_program_address(
-            &#seeds_no_nonce,
-            program_id,
-        );
+        #associated_field
         if &__associated_field != #field.to_account_info().key {
             return Err(anchor_lang::__private::ErrorCode::ConstraintAssociatedInit.into());
         }
