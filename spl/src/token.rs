@@ -120,6 +120,7 @@ pub fn initialize_account<'a, 'b, 'c, 'info>(
             ctx.accounts.account.clone(),
             ctx.accounts.mint.clone(),
             ctx.accounts.authority.clone(),
+            ctx.accounts.rent.clone(),
             ctx.program.clone(),
         ],
         ctx.signer_seeds,
@@ -188,6 +189,7 @@ pub struct InitializeAccount<'info> {
     pub account: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
