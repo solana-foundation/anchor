@@ -30,6 +30,10 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
         ))
     }
 
+    pub fn try_from_init(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>, ProgramError> {
+        Self::try_from(info)
+    }
+
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
     pub fn reload(&self) -> Result<CpiAccount<'a, T>, ProgramError> {

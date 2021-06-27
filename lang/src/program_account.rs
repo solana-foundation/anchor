@@ -61,6 +61,10 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
             T::try_deserialize_unchecked(&mut data)?,
         ))
     }
+
+    pub fn into_inner(self) -> T {
+        self.inner.account
+    }
 }
 
 impl<'info, T> Accounts<'info> for ProgramAccount<'info, T>

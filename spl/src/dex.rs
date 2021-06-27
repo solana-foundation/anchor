@@ -117,6 +117,24 @@ pub fn close_open_orders<'info>(
     Ok(())
 }
 
+pub fn sweep_fees<'info>(ctx: CpiContext<'_, '_, '_, 'info, SweepFees<'info>>) -> ProgramResult {
+    let ix = serum_dex::instruction::sweep_fees(
+        &ID,
+        ctx.accounts.market.key,
+        ctx.accounts.pc_vault.key,
+        ctx.accounts.sweep_authority.key,
+        ctx.accounts.sweep_receiver.key,
+        ctx.accounts.vault_signer.key,
+        ctx.accounts.token_program.key,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct NewOrderV3<'info> {
     pub market: AccountInfo<'info>,
@@ -166,4 +184,14 @@ pub struct CloseOpenOrders<'info> {
     pub authority: AccountInfo<'info>,
     pub destination: AccountInfo<'info>,
     pub market: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SweepFees<'info> {
+    pub market: AccountInfo<'info>,
+    pub pc_vault: AccountInfo<'info>,
+    pub sweep_authority: AccountInfo<'info>,
+    pub sweep_receiver: AccountInfo<'info>,
+    pub vault_signer: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
 }

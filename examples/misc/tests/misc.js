@@ -2,6 +2,7 @@ const anchor = require("@project-serum/anchor");
 const PublicKey = anchor.web3.PublicKey;
 const serumCmn = require("@project-serum/common");
 const assert = require("assert");
+const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
 
 describe("misc", () => {
   // Configure the client to use the local cluster.
@@ -140,18 +141,17 @@ describe("misc", () => {
 
     // Manual associated address calculation for test only. Clients should use
     // the generated methods.
-    const [
-      associatedAccount,
-      nonce,
-    ] = await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from([97, 110, 99, 104, 111, 114]), // b"anchor".
-        program.provider.wallet.publicKey.toBuffer(),
-        state.toBuffer(),
-        data.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
+    const [associatedAccount, nonce] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [
+          anchor.utils.bytes.utf8.encode("anchor"),
+          program.provider.wallet.publicKey.toBuffer(),
+          state.toBuffer(),
+          data.publicKey.toBuffer(),
+          anchor.utils.bytes.utf8.encode("my-seed"),
+        ],
+        program.programId
+      );
     await assert.rejects(
       async () => {
         await program.account.testData.fetch(associatedAccount);
@@ -178,25 +178,25 @@ describe("misc", () => {
     const account = await program.account.testData.associated(
       program.provider.wallet.publicKey,
       state,
-      data.publicKey
+      data.publicKey,
+      anchor.utils.bytes.utf8.encode("my-seed")
     );
     assert.ok(account.data.toNumber() === 1234);
   });
 
   it("Can use an associated program account", async () => {
     const state = await program.state.address();
-    const [
-      associatedAccount,
-      nonce,
-    ] = await anchor.web3.PublicKey.findProgramAddress(
-      [
-        Buffer.from([97, 110, 99, 104, 111, 114]), // b"anchor".
-        program.provider.wallet.publicKey.toBuffer(),
-        state.toBuffer(),
-        data.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
+    const [associatedAccount, nonce] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [
+          anchor.utils.bytes.utf8.encode("anchor"),
+          program.provider.wallet.publicKey.toBuffer(),
+          state.toBuffer(),
+          data.publicKey.toBuffer(),
+          anchor.utils.bytes.utf8.encode("my-seed"),
+        ],
+        program.programId
+      );
     await program.rpc.testAssociatedAccount(new anchor.BN(5), {
       accounts: {
         myAccount: associatedAccount,
@@ -209,7 +209,8 @@ describe("misc", () => {
     const account = await program.account.testData.associated(
       program.provider.wallet.publicKey,
       state,
-      data.publicKey
+      data.publicKey,
+      anchor.utils.bytes.utf8.encode("my-seed")
     );
     assert.ok(account.data.toNumber() === 5);
   });
@@ -401,5 +402,37 @@ describe("misc", () => {
     const myPdaAccount = await program.account.dataZeroCopy.fetch(myPda);
     assert.ok(myPdaAccount.data === 1234);
     assert.ok((myPdaAccount.bump = bump));
+  });
+
+  it("Can create a token account from seeds pda", async () => {
+    const mint = await Token.createMint(
+      program.provider.connection,
+      program.provider.wallet.payer,
+      program.provider.wallet.publicKey,
+      null,
+      0,
+      TOKEN_PROGRAM_ID
+    );
+    const [myPda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("my-token-seed"))],
+      program.programId
+    );
+    await program.rpc.testTokenSeedsInit(bump, {
+      accounts: {
+        myPda,
+        mint: mint.publicKey,
+        authority: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+    });
+
+    const account = await mint.getAccountInfo(myPda);
+    assert.ok(account.state === 1);
+    assert.ok(account.amount.toNumber() === 0);
+    assert.ok(account.isInitialized);
+    assert.ok(account.owner.equals(program.provider.wallet.publicKey));
+    assert.ok(account.mint.equals(mint.publicKey));
   });
 });

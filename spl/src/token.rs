@@ -201,6 +201,10 @@ pub struct SetAuthority<'info> {
 #[derive(Clone)]
 pub struct TokenAccount(spl_token::state::Account);
 
+impl TokenAccount {
+    pub const LEN: usize = spl_token::state::Account::LEN;
+}
+
 impl anchor_lang::AccountDeserialize for TokenAccount {
     fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
         TokenAccount::try_deserialize_unchecked(buf)

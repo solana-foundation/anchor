@@ -11,6 +11,14 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: Add `#[account(address = <expr>)]` constraint for asserting the address of an account ([#400](https://github.com/project-serum/anchor/pull/400)).
+* lang: Add `#[account(init, token = <mint-target>, authority = <token-owner-target>...)]` constraint for initializing SPL token accounts as program derived addresses for the program. Can be used when initialized via `seeds` or `associated` ([#400](https://github.com/project-serum/anchor/pull/400)).
+* lang: Add `associated_seeds!` macro for generating signer seeds for CPIs signed by an `#[account(associated = <target>)]` account ([#400](https://github.com/project-serum/anchor/pull/400)).
+* cli: Add `[scripts]` section to the Anchor.toml for specifying workspace scripts that can be run via `anchor run <script>` ([#400](https://github.com/project-serum/anchor/pull/400)).
+* cli: `[clusters.<network>]` table entries can now also use `{ address = <base58-str>, idl = <filepath-str> }` to specify workspace programs ([#400](https://github.com/project-serum/anchor/pull/400)).
+
 ## [0.9.0] - 2021-06-15
 
 ### Features

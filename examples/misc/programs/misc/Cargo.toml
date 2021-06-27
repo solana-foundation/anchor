@@ -16,4 +16,5 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
+anchor-spl = { path = "../../../../spl" }
 misc2 = { path = "../misc2", features = ["cpi"] }

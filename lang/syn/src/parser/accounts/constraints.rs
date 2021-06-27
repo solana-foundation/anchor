@@ -1,9 +1,10 @@
 use crate::{
-    ConstraintAssociated, ConstraintAssociatedGroup, ConstraintAssociatedPayer,
+    ConstraintAddress, ConstraintAssociated, ConstraintAssociatedGroup, ConstraintAssociatedPayer,
     ConstraintAssociatedSpace, ConstraintAssociatedWith, ConstraintBelongsTo, ConstraintClose,
     ConstraintExecutable, ConstraintGroup, ConstraintInit, ConstraintLiteral, ConstraintMut,
     ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeeds, ConstraintSeedsGroup,
-    ConstraintSigner, ConstraintState, ConstraintToken, Context, Ty,
+    ConstraintSigner, ConstraintState, ConstraintToken, ConstraintTokenAuthority,
+    ConstraintTokenMint, Context, PdaKind, Ty,
 };
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
@@ -154,6 +155,24 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         sol_dest: stream.parse()?,
                     },
                 )),
+                "address" => ConstraintToken::Address(Context::new(
+                    span,
+                    ConstraintAddress {
+                        address: stream.parse()?,
+                    },
+                )),
+                "token" => ConstraintToken::TokenMint(Context::new(
+                    ident.span(),
+                    ConstraintTokenMint {
+                        mint: stream.parse()?,
+                    },
+                )),
+                "authority" => ConstraintToken::TokenAuthority(Context::new(
+                    ident.span(),
+                    ConstraintTokenAuthority {
+                        auth: stream.parse()?,
+                    },
+                )),
                 _ => Err(ParseError::new(ident.span(), "Invalid attribute"))?,
             }
         }
@@ -181,6 +200,9 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub associated_space: Option<Context<ConstraintAssociatedSpace>>,
     pub associated_with: Vec<Context<ConstraintAssociatedWith>>,
     pub close: Option<Context<ConstraintClose>>,
+    pub address: Option<Context<ConstraintAddress>>,
+    pub token_mint: Option<Context<ConstraintTokenMint>>,
+    pub token_authority: Option<Context<ConstraintTokenAuthority>>,
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
@@ -203,6 +225,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             associated_space: None,
             associated_with: Vec::new(),
             close: None,
+            address: None,
+            token_mint: None,
+            token_authority: None,
         }
     }
     pub fn build(mut self) -> ParseResult<ConstraintGroup> {
@@ -233,6 +258,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
         }
 
+        if let Some(token_mint) = &self.token_mint {
+            if self.init.is_none() || (self.associated.is_none() && self.seeds.is_none()) {
+                return Err(ParseError::new(
+                    token_mint.span(),
+                    "init is required for a pda token",
+                ));
+            }
+        }
+
         let ConstraintGroupBuilder {
             f_ty: _,
             init,
@@ -251,6 +285,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             associated_space,
             associated_with,
             close,
+            address,
+            token_mint,
+            token_authority,
         } = self;
 
         // Converts Option<Context<T>> -> Option<T>.
@@ -279,12 +316,29 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
             rent_exempt: into_inner!(rent_exempt),
-            seeds: seeds.map(|c| ConstraintSeedsGroup {
-                is_init,
-                seeds: c.into_inner().seeds,
-                payer: into_inner!(associated_payer.clone()).map(|a| a.target),
-                space: associated_space.clone().map(|s| s.space.clone()),
-            }),
+            seeds: seeds
+                .map(|c| {
+                    Ok(ConstraintSeedsGroup {
+                        is_init,
+                        seeds: c.into_inner().seeds,
+                        payer: into_inner!(associated_payer.clone()).map(|a| a.target),
+                        space: associated_space.clone().map(|s| s.space.clone()),
+                        kind: match &token_mint {
+                            None => PdaKind::Program,
+                            Some(tm) => PdaKind::Token {
+                                mint: tm.clone().into_inner().mint,
+                                owner: match &token_authority {
+                                    Some(a) => a.clone().into_inner().auth,
+                                    None => return Err(ParseError::new(
+                                        tm.span(),
+                                        "authority must be provided to initialize a token program derived address"
+                                    )),
+                                },
+                            },
+                        },
+                    })
+                })
+                .transpose()?,
             executable: into_inner!(executable),
             state: into_inner!(state),
             associated: associated.map(|associated| ConstraintAssociatedGroup {
@@ -293,8 +347,19 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 associated_seeds: associated_with.iter().map(|s| s.target.clone()).collect(),
                 payer: associated_payer.map(|p| p.target.clone()),
                 space: associated_space.map(|s| s.space.clone()),
+                kind: match token_mint {
+                    None => PdaKind::Program,
+                    Some(tm) => PdaKind::Token {
+                        mint: tm.into_inner().mint,
+                        owner: match token_authority {
+                            Some(a) => a.into_inner().auth,
+                            None => associated.target.clone(),
+                        },
+                    },
+                },
             }),
             close: into_inner!(close),
+            address: into_inner!(address),
         })
     }
 
@@ -316,6 +381,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::AssociatedSpace(c) => self.add_associated_space(c),
             ConstraintToken::AssociatedWith(c) => self.add_associated_with(c),
             ConstraintToken::Close(c) => self.add_close(c),
+            ConstraintToken::Address(c) => self.add_address(c),
+            ConstraintToken::TokenAuthority(c) => self.add_token_authority(c),
+            ConstraintToken::TokenMint(c) => self.add_token_mint(c),
         }
     }
 
@@ -346,6 +414,45 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "close already provided"));
         }
         self.close.replace(c);
+        Ok(())
+    }
+
+    fn add_address(&mut self, c: Context<ConstraintAddress>) -> ParseResult<()> {
+        if self.address.is_some() {
+            return Err(ParseError::new(c.span(), "address already provided"));
+        }
+        self.address.replace(c);
+        Ok(())
+    }
+
+    fn add_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
+        if self.token_mint.is_some() {
+            return Err(ParseError::new(c.span(), "token mint already provided"));
+        }
+        if self.init.is_none() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before token",
+            ));
+        }
+        self.token_mint.replace(c);
+        Ok(())
+    }
+
+    fn add_token_authority(&mut self, c: Context<ConstraintTokenAuthority>) -> ParseResult<()> {
+        if self.token_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "token authority already provided",
+            ));
+        }
+        if self.token_mint.is_none() {
+            return Err(ParseError::new(
+                c.span(),
+                "token must bne provided before authority",
+            ));
+        }
+        self.token_authority.replace(c);
         Ok(())
     }
 

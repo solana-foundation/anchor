@@ -64,6 +64,7 @@ jobs:
         - pushd examples/chat && yarn && anchor test && popd
         - pushd examples/ido-pool && yarn && anchor test && popd
         - pushd examples/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
+        - pushd examples/cfo && anchor run test && popd
     - <<: *examples
       name: Runs the examples 3
       script:
