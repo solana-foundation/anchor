@@ -4,6 +4,7 @@ use crate::{
     ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeedsGroup, ConstraintSigner,
     ConstraintState, Field, Ty,
 };
+use proc_macro2_diagnostics::SpanDiagnosticExt;
 use quote::quote;
 use syn::LitInt;
 
@@ -192,8 +193,13 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
 pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenStream {
     let lit: proc_macro2::TokenStream = {
         let lit = &c.lit;
-        let lit_ts: proc_macro2::TokenStream = quote! {#lit};
-        lit_ts.to_string().replace("\"", "").parse().unwrap()
+        let constraint = lit.value().replace("\"", "");
+        let message = format!(
+            "Deprecated. Should be used with constraint: #[account(constraint = {})]",
+            constraint,
+        );
+        lit.span().warning(message).emit_as_item_tokens();
+        constraint.parse().unwrap()
     };
     quote! {
         if !(#lit) {
