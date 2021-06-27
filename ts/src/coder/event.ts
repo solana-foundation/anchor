@@ -47,7 +47,13 @@ export class EventCoder {
   }
 
   public decode(log: string): Event | null {
-    const logArr = Buffer.from(base64.toByteArray(log));
+    let logArr: Buffer;
+    // This will throw if log length is not a multiple of 4.
+    try {
+      logArr = Buffer.from(base64.toByteArray(log));
+    } catch (e){
+      return null;
+    }
     const disc = base64.fromByteArray(logArr.slice(0, 8));
 
     // Only deserialize if the discriminator implies a proper event.
