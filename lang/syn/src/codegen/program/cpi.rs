@@ -52,9 +52,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         })
                         .collect()
                 })
-                .unwrap_or(vec![])
+                .unwrap_or_else(Vec::new)
         })
-        .unwrap_or(vec![]);
+        .unwrap_or_else(Vec::new);
     // Generate cpi methods for global methods.
     let global_cpi_methods: Vec<proc_macro2::TokenStream> = program
         .ixs
@@ -66,7 +66,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let method_name = &ix.ident;
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
                 let name = &ix.raw_method.sig.ident.to_string();
-                let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &name);
+                let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, name);
                 let sighash_tts: proc_macro2::TokenStream =
                     format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {

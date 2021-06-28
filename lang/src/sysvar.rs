@@ -19,7 +19,7 @@ impl<'info, T: solana_program::sysvar::Sysvar> Sysvar<'info, T> {
     ) -> Result<Sysvar<'info, T>, ProgramError> {
         Ok(Sysvar {
             info: acc_info.clone(),
-            account: T::from_account_info(&acc_info)?,
+            account: T::from_account_info(acc_info)?,
         })
     }
 }

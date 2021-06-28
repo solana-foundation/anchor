@@ -68,7 +68,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<Option<State>> {
                 .items
                 .iter()
                 .filter_map(|item: &syn::ImplItem| match item {
-                    syn::ImplItem::Method(m) => match m.sig.ident.to_string() == CTOR_METHOD_NAME {
+                    syn::ImplItem::Method(m) => match m.sig.ident == CTOR_METHOD_NAME {
                         false => None,
                         true => Some(m),
                     },
@@ -143,7 +143,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<Option<State>> {
                             }
                         }
                     };
-                    Ok((m.clone(), ctx_accounts_ident(&ctx_arg)?))
+                    Ok((m.clone(), ctx_accounts_ident(ctx_arg)?))
                 })
                 .next();
             r.transpose()
@@ -159,7 +159,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<Option<State>> {
                 .items
                 .iter()
                 .filter_map(|item| match item {
-                    syn::ImplItem::Method(m) => match m.sig.ident.to_string() != CTOR_METHOD_NAME {
+                    syn::ImplItem::Method(m) => match m.sig.ident != CTOR_METHOD_NAME {
                         false => None,
                         true => Some(m),
                     },
@@ -238,12 +238,10 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<Option<State>> {
                         })
                         .map(|m: &syn::ImplItemMethod| {
                             match m.sig.inputs.first() {
-                                None => {
-                                    return Err(ParseError::new(
-                                        m.sig.inputs.span(),
-                                        "state methods must have a self argument",
-                                    ))
-                                }
+                                None => Err(ParseError::new(
+                                    m.sig.inputs.span(),
+                                    "state methods must have a self argument",
+                                )),
                                 Some(_arg) => {
                                     let mut has_receiver = false;
                                     let mut args = m

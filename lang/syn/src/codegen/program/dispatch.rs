@@ -38,7 +38,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let name = &ix.raw_method.sig.ident.to_string();
                         let ix_method_name: proc_macro2::TokenStream =
                             { format!("__{}", name).parse().unwrap() };
-                        let sighash_arr = sighash(SIGHASH_STATE_NAMESPACE, &name);
+                        let sighash_arr = sighash(SIGHASH_STATE_NAMESPACE, name);
                         let sighash_tts: proc_macro2::TokenStream =
                             format!("{:?}", sighash_arr).parse().unwrap();
                         quote! {

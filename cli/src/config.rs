@@ -118,7 +118,7 @@ impl ToString for Config {
     fn to_string(&self) -> String {
         let clusters = {
             let c = ser_clusters(&self.clusters);
-            if c.len() == 0 {
+            if c.is_empty() {
                 None
             } else {
                 Some(c)
@@ -152,11 +152,9 @@ impl FromStr for Config {
                 cluster: cfg.provider.cluster.parse()?,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
             },
-            scripts: cfg.scripts.unwrap_or_else(|| BTreeMap::new()),
+            scripts: cfg.scripts.unwrap_or_else(BTreeMap::new),
             test: cfg.test,
-            clusters: cfg
-                .clusters
-                .map_or(Ok(BTreeMap::new()), |c| deser_clusters(c))?,
+            clusters: cfg.clusters.map_or(Ok(BTreeMap::new()), deser_clusters)?,
         })
     }
 }

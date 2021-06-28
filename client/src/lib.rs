@@ -91,7 +91,7 @@ impl Program {
     pub fn request(&self) -> RequestBuilder {
         RequestBuilder::from(
             self.program_id,
-            &self.cfg.cluster.url(),
+            self.cfg.cluster.url(),
             Keypair::from_bytes(&self.cfg.payer.to_bytes()).unwrap(),
             self.cfg.options,
             RequestNamespace::Global,
@@ -102,7 +102,7 @@ impl Program {
     pub fn state_request(&self) -> RequestBuilder {
         RequestBuilder::from(
             self.program_id,
-            &self.cfg.cluster.url(),
+            self.cfg.cluster.url(),
             Keypair::from_bytes(&self.cfg.payer.to_bytes()).unwrap(),
             self.cfg.options,
             RequestNamespace::State { new: false },
@@ -140,7 +140,7 @@ impl Program {
 
     pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) -> () + Send + 'static,
+        f: impl Fn(&EventContext, T) + Send + 'static,
     ) -> Result<EventHandle, ClientError> {
         let addresses = vec![self.program_id.to_string()];
         let filter = RpcTransactionLogsFilter::Mentions(addresses);
@@ -149,7 +149,7 @@ impl Program {
             commitment: self.cfg.options,
         };
         let self_program_str = self.program_id.to_string();
-        let (client, receiver) = PubsubClient::logs_subscribe(&ws_url, filter.clone(), cfg)?;
+        let (client, receiver) = PubsubClient::logs_subscribe(&ws_url, filter, cfg)?;
         std::thread::spawn(move || {
             loop {
                 match receiver.recv() {
@@ -159,23 +159,24 @@ impl Program {
                             slot: logs.context.slot,
                         };
                         let mut logs = &logs.value.logs[..];
-                        if logs.len() > 0 {
+                        if !logs.is_empty() {
                             if let Ok(mut execution) = Execution::new(&mut logs) {
                                 for l in logs {
                                     // Parse the log.
                                     let (event, new_program, did_pop) = {
                                         if self_program_str == execution.program() {
-                                            handle_program_log(&self_program_str, &l)
-                                                .unwrap_or_else(|e| {
+                                            handle_program_log(&self_program_str, l).unwrap_or_else(
+                                                |e| {
                                                     println!(
                                                         "Unable to parse log: {}",
                                                         e.to_string()
                                                     );
                                                     std::process::exit(1);
-                                                })
+                                                },
+                                            )
                                         } else {
                                             let (program, did_pop) =
-                                                handle_system_log(&self_program_str, &l);
+                                                handle_system_log(&self_program_str, l);
                                             (None, program, did_pop)
                                         }
                                     };
@@ -232,7 +233,7 @@ fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     }
     // System log.
     else {
-        let (program, did_pop) = handle_system_log(&self_program_str, &l);
+        let (program, did_pop) = handle_system_log(self_program_str, l);
         Ok((None, program, did_pop))
     }
 }
@@ -264,10 +265,10 @@ impl Execution {
         let re = Regex::new(r"^Program (.*) invoke.*$").unwrap();
         let c = re
             .captures(l)
-            .ok_or(ClientError::LogParseError(l.to_string()))?;
+            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?;
         let program = c
             .get(1)
-            .ok_or(ClientError::LogParseError(l.to_string()))?
+            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?
             .as_str()
             .to_string();
         Ok(Self {
@@ -276,7 +277,7 @@ impl Execution {
     }
 
     pub fn program(&self) -> String {
-        assert!(self.stack.len() > 0);
+        assert!(!self.stack.is_empty());
         self.stack[self.stack.len() - 1].clone()
     }
 
@@ -285,7 +286,7 @@ impl Execution {
     }
 
     pub fn pop(&mut self) {
-        assert!(self.stack.len() > 0);
+        assert!(!self.stack.is_empty());
         self.stack.pop().unwrap();
     }
 }
@@ -394,6 +395,7 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Invokes the `#[state]`'s `new` constructor.
+    #[allow(clippy::wrong_self_convention)]
     pub fn new(mut self, args: impl InstructionData) -> Self {
         assert!(self.namespace == RequestNamespace::State { new: false });
         self.namespace = RequestNamespace::State { new: true };
@@ -483,7 +485,7 @@ mod tests {
         let log = "Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw success";
         let (program, did_pop) = handle_system_log("asdf", log);
         assert_eq!(program, None);
-        assert_eq!(did_pop, true);
+        assert!(did_pop);
     }
 
     #[test]
@@ -491,6 +493,6 @@ mod tests {
         let log = "Program 7swsTUiQ6KUK4uFYquQKg4epFRsBnvbrTf2fZQCa2sTJ qwer";
         let (program, did_pop) = handle_system_log("asdf", log);
         assert_eq!(program, None);
-        assert_eq!(did_pop, false);
+        assert!(!did_pop);
     }
 }

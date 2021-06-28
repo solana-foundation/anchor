@@ -311,7 +311,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
         ts_config.write_all(template::ts_config().as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.ts")?;
-        deploy.write_all(&template::ts_deploy_script().as_bytes())?;
+        deploy.write_all(template::ts_deploy_script().as_bytes())?;
 
         let mut mocha = File::create(&format!("tests/{}.spec.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
@@ -320,7 +320,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
         mocha.write_all(template::mocha(&name).as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.js")?;
-        deploy.write_all(&template::deploy_script().as_bytes())?;
+        deploy.write_all(template::deploy_script().as_bytes())?;
     }
 
     println!("{} initialized", name);
@@ -350,11 +350,11 @@ fn new_program(name: &str) -> Result<()> {
     fs::create_dir(&format!("programs/{}", name))?;
     fs::create_dir(&format!("programs/{}/src/", name))?;
     let mut cargo_toml = File::create(&format!("programs/{}/Cargo.toml", name))?;
-    cargo_toml.write_all(template::cargo_toml(&name).as_bytes())?;
+    cargo_toml.write_all(template::cargo_toml(name).as_bytes())?;
     let mut xargo_toml = File::create(&format!("programs/{}/Xargo.toml", name))?;
     xargo_toml.write_all(template::xargo_toml().as_bytes())?;
     let mut lib_rs = File::create(&format!("programs/{}/src/lib.rs", name))?;
-    lib_rs.write_all(template::lib_rs(&name).as_bytes())?;
+    lib_rs.write_all(template::lib_rs(name).as_bytes())?;
     Ok(())
 }
 
@@ -458,7 +458,7 @@ fn build_cwd_verifiable(workspace_dir: &Path) -> Result<()> {
         .args(&[
             "run",
             "--name",
-            &container_name,
+            container_name,
             "-v",
             &volume_mount,
             &image_name,
@@ -504,7 +504,7 @@ fn build_cwd_verifiable(workspace_dir: &Path) -> Result<()> {
 
     // Remove the docker image.
     let exit = std::process::Command::new("docker")
-        .args(&["rm", &container_name])
+        .args(&["rm", container_name])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -540,7 +540,7 @@ fn _build_cwd(idl_out: Option<PathBuf>) -> Result<()> {
 
 fn verify(cfg_override: &ConfigOverride, program_id: Pubkey) -> Result<()> {
     let (cfg, _path, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let cargo = cargo.ok_or(anyhow!("Must be inside program subdirectory."))?;
+    let cargo = cargo.ok_or_else(|| anyhow!("Must be inside program subdirectory."))?;
     let program_dir = cargo.parent().unwrap();
 
     // Build the program we want to verify.
@@ -692,7 +692,7 @@ fn idl_init(cfg_override: &ConfigOverride, program_id: Pubkey, idl_filepath: Str
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
 
-        let idl_address = create_idl_account(&cfg, &keypair, &program_id, &idl)?;
+        let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl)?;
 
         println!("Idl account created: {:?}", idl_address);
         Ok(())
@@ -710,8 +710,8 @@ fn idl_write_buffer(
         let bytes = std::fs::read(idl_filepath)?;
         let idl: Idl = serde_json::from_reader(&*bytes)?;
 
-        let idl_buffer = create_idl_buffer(&cfg, &keypair, &program_id, &idl)?;
-        idl_write(&cfg, &program_id, &idl, idl_buffer)?;
+        let idl_buffer = create_idl_buffer(cfg, &keypair, &program_id, &idl)?;
+        idl_write(cfg, &program_id, &idl, idl_buffer)?;
 
         println!("Idl buffer created: {:?}", idl_buffer);
 
@@ -988,10 +988,8 @@ fn test(
         //
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
-        if !is_localnet || (is_localnet && skip_local_validator) {
-            if !skip_deploy {
-                deploy(cfg_override, None)?;
-            }
+        if (!is_localnet || skip_local_validator) && !skip_deploy {
+            deploy(cfg_override, None)?;
         }
         // Start local test validator, if needed.
         let mut validator_handle = None;
@@ -1004,7 +1002,7 @@ fn test(
         }
 
         // Setup log reader.
-        let log_streams = stream_logs(&cfg.provider.cluster.url());
+        let log_streams = stream_logs(cfg.provider.cluster.url());
 
         // Run the tests.
         let test_result: Result<_> = {
@@ -1298,7 +1296,7 @@ fn launch(
 ) -> Result<()> {
     // Build and deploy.
     build(cfg_override, None, verifiable, program_name.clone())?;
-    let programs = _deploy(cfg_override, program_name.clone())?;
+    let programs = _deploy(cfg_override, program_name)?;
 
     with_workspace(cfg_override, |cfg, _path, _cargo| {
         let keypair = cfg.provider.wallet.to_string();
@@ -1306,7 +1304,7 @@ fn launch(
         // Add metadata to all IDLs.
         for (address, program) in programs {
             // Store the IDL on chain.
-            let idl_address = create_idl_account(&cfg, &keypair, &address, &program.idl)?;
+            let idl_address = create_idl_account(cfg, &keypair, &address, &program.idl)?;
             println!("IDL account created: {}", idl_address.to_string());
         }
 
@@ -1589,7 +1587,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
                 .map(|program| (program.idl.name.clone(), program.idl.clone()))
                 .collect();
             // Insert all manually specified idls into the idl map.
-            cfg.clusters.get(&cfg.provider.cluster).map(|programs| {
+            if let Some(programs) = cfg.clusters.get(&cfg.provider.cluster) {
                 let _ = programs
                     .iter()
                     .map(|(name, pd)| {
@@ -1601,7 +1599,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
                         }
                     })
                     .collect::<Vec<_>>();
-            });
+            }
             match cfg.clusters.get(&cfg.provider.cluster) {
                 None => Vec::new(),
                 Some(programs) => programs
@@ -1645,7 +1643,7 @@ fn run(cfg_override: &ConfigOverride, script: String) -> Result<()> {
         let script = cfg
             .scripts
             .get(&script)
-            .ok_or(anyhow!("Unable to find script"))?;
+            .ok_or_else(|| anyhow!("Unable to find script"))?;
         let exit = std::process::Command::new("bash")
             .arg("-c")
             .arg(&script)

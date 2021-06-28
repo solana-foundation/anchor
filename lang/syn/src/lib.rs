@@ -140,6 +140,7 @@ impl AccountsStruct {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum AccountField {
     Field(Field),
@@ -292,6 +293,7 @@ impl ConstraintGroup {
 // A single account constraint *after* merging all tokens into a well formed
 // constraint. Some constraints like "associated" are defined by multiple
 // tokens, so a merging phase is required.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Constraint {
     Init(ConstraintInit),
@@ -311,6 +313,7 @@ pub enum Constraint {
 }
 
 // Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum ConstraintToken {
     Init(Context<ConstraintInit>),
@@ -433,6 +436,7 @@ pub struct ConstraintAssociatedSpace {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum PdaKind {
     Program,
     Token { owner: Expr, mint: Expr },

@@ -76,7 +76,10 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
         }
         _ => {
             stream.parse::<Token![=]>()?;
-            let span = ident.span().join(stream.span()).unwrap_or(ident.span());
+            let span = ident
+                .span()
+                .join(stream.span())
+                .unwrap_or_else(|| ident.span());
             match kw.as_str() {
                 "belongs_to" | "has_one" => ConstraintToken::BelongsTo(Context::new(
                     span,
@@ -173,7 +176,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         auth: stream.parse()?,
                     },
                 )),
-                _ => Err(ParseError::new(ident.span(), "Invalid attribute"))?,
+                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
     };

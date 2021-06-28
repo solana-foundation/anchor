@@ -59,10 +59,10 @@ pub fn account(
 ) -> proc_macro::TokenStream {
     let mut namespace = "".to_string();
     let mut is_zero_copy = false;
-    if args.to_string().split(",").collect::<Vec<_>>().len() > 2 {
+    if args.to_string().split(',').count() > 2 {
         panic!("Only two args are allowed to the account attribute.")
     }
-    for arg in args.to_string().split(",") {
+    for arg in args.to_string().split(',') {
         let ns = arg
             .to_string()
             .replace("\"", "")
@@ -264,14 +264,7 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
             field
                 .attrs
                 .iter()
-                .filter(|attr| {
-                    let name = anchor_syn::parser::tts_to_string(&attr.path);
-                    if name != "accessor" {
-                        return false;
-                    }
-                    return true;
-                })
-                .next()
+                .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "accessor")
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
                     let g_stream = match tts.next().expect("Must have a token group") {

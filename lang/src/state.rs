@@ -10,7 +10,7 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::ops::{Deref, DerefMut};
 
-pub const PROGRAM_STATE_SEED: &'static str = "unversioned";
+pub const PROGRAM_STATE_SEED: &str = "unversioned";
 
 /// Boxed container for the program state singleton.
 #[derive(Clone)]

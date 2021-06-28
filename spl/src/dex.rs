@@ -13,6 +13,7 @@ anchor_lang::solana_program::declare_id!("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9P
 #[cfg(feature = "devnet")]
 anchor_lang::solana_program::declare_id!("DESVgJVGajEgKGXhb6XmqDHGz3VjdgP7rEVESBgxmroY");
 
+#[allow(clippy::too_many_arguments)]
 pub fn new_order_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, NewOrderV3<'info>>,
     side: Side,
@@ -24,7 +25,7 @@ pub fn new_order_v3<'info>(
     client_order_id: u64,
     limit: u16,
 ) -> ProgramResult {
-    let referral = ctx.remaining_accounts.iter().next();
+    let referral = ctx.remaining_accounts.get(0);
     let ix = serum_dex::instruction::new_order(
         ctx.accounts.market.key,
         ctx.accounts.open_orders.key,
@@ -60,7 +61,7 @@ pub fn new_order_v3<'info>(
 pub fn settle_funds<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, SettleFunds<'info>>,
 ) -> ProgramResult {
-    let referral = ctx.remaining_accounts.iter().next();
+    let referral = ctx.remaining_accounts.get(0);
     let ix = serum_dex::instruction::settle_funds(
         &ID,
         ctx.accounts.market.key,

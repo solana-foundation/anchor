@@ -7,7 +7,6 @@ use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
-use std::iter::FromIterator;
 use std::path::Path;
 
 const DERIVE_NAME: &str = "Accounts";
@@ -57,8 +56,8 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                                 let accounts = idl_accounts(accounts_strct, &accs);
                                 IdlInstruction {
                                     name,
-                                    args,
                                     accounts,
+                                    args,
                                 }
                             })
                             .collect::<Vec<_>>()
@@ -93,11 +92,11 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                         })
                         .collect();
                     let accounts_strct = accs.get(&anchor_ident.to_string()).unwrap();
-                    let accounts = idl_accounts(&accounts_strct, &accs);
+                    let accounts = idl_accounts(accounts_strct, &accs);
                     IdlInstruction {
                         name,
-                        args,
                         accounts,
+                        args,
                     }
                 };
 
@@ -181,13 +180,13 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
                 .named
                 .iter()
                 .map(|f: &syn::Field| {
-                    let index = match f.attrs.iter().next() {
+                    let index = match f.attrs.get(0) {
                         None => false,
                         Some(i) => parser::tts_to_string(&i.path) == "index",
                     };
                     IdlEventField {
                         name: f.ident.clone().unwrap().to_string().to_mixed_case(),
-                        ty: parser::tts_to_string(&f.ty).to_string().parse().unwrap(),
+                        ty: parser::tts_to_string(&f.ty).parse().unwrap(),
                         index,
                     }
                 })
@@ -206,8 +205,10 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     let ty_defs = parse_ty_defs(&f)?;
 
     let account_structs = parse_accounts(&f);
-    let account_names: HashSet<String> =
-        HashSet::from_iter(account_structs.iter().map(|a| a.ident.to_string()));
+    let account_names: HashSet<String> = account_structs
+        .iter()
+        .map(|a| a.ident.to_string())
+        .collect::<HashSet<_>>();
 
     let error_name = error.map(|e| e.name).unwrap_or_else(|| "".to_string());
 
@@ -217,7 +218,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         if ty_def.name != error_name {
             if account_names.contains(&ty_def.name) {
                 accounts.push(ty_def);
-            } else if events.iter().position(|e| e.name == ty_def.name).is_none() {
+            } else if !events.iter().any(|e| e.name == ty_def.name) {
                 types.push(ty_def);
             }
         }

@@ -35,7 +35,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             *accounts = &accounts[1..];
                         }
                     } else {
-                        let name = typed_ident(&f);
+                        let name = typed_ident(f);
                         match f.constraints.is_init() {
                             false => quote! {
                                 #[cfg(feature = "anchor-debug")]

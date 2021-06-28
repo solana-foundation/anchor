@@ -12,7 +12,7 @@ git:
 
 _defaults: &defaults
   before_install:
-  - rustup component add rustfmt
+  - rustup component add rustfmt clippy
   - nvm install $NODE_VERSION
   - sudo apt-get install -y pkg-config build-essential libudev-dev
 
@@ -41,6 +41,7 @@ jobs:
       script:
         - cargo build
         - cargo fmt -- --check
+        - cargo clippy --all-targets -- -D warnings
         - cargo test
     - <<: *examples
       name: Runs the examples 1

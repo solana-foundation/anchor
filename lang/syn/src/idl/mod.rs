@@ -153,11 +153,11 @@ impl std::str::FromStr for IdlType {
             "Pubkey" => IdlType::PublicKey,
             _ => match s.to_string().strip_prefix("Option<") {
                 None => match s.to_string().strip_prefix("Vec<") {
-                    None => match s.to_string().strip_prefix("[") {
+                    None => match s.to_string().strip_prefix('[') {
                         None => IdlType::Defined(s.to_string()),
                         Some(inner) => {
                             let inner = &inner[..inner.len() - 1];
-                            let mut parts = inner.split(";");
+                            let mut parts = inner.split(';');
                             let ty = IdlType::from_str(parts.next().unwrap()).unwrap();
                             let len = parts.next().unwrap().parse::<usize>().unwrap();
                             assert!(parts.next().is_none());
@@ -167,7 +167,7 @@ impl std::str::FromStr for IdlType {
                     Some(inner) => {
                         let inner_ty = Self::from_str(
                             inner
-                                .strip_suffix(">")
+                                .strip_suffix('>')
                                 .ok_or_else(|| anyhow::anyhow!("Invalid option"))?,
                         )?;
                         IdlType::Vec(Box::new(inner_ty))
@@ -176,7 +176,7 @@ impl std::str::FromStr for IdlType {
                 Some(inner) => {
                     let inner_ty = Self::from_str(
                         inner
-                            .strip_suffix(">")
+                            .strip_suffix('>')
                             .ok_or_else(|| anyhow::anyhow!("Invalid option"))?,
                     )?;
                     IdlType::Option(Box::new(inner_ty))

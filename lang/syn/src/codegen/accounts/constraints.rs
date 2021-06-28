@@ -73,19 +73,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = signer {
         constraints.push(Constraint::Signer(c));
     }
-    constraints.append(
-        &mut belongs_to
-            .into_iter()
-            .map(|c| Constraint::BelongsTo(c))
-            .collect(),
-    );
-    constraints.append(
-        &mut literal
-            .into_iter()
-            .map(|c| Constraint::Literal(c))
-            .collect(),
-    );
-    constraints.append(&mut raw.into_iter().map(|c| Constraint::Raw(c)).collect());
+    constraints.append(&mut belongs_to.into_iter().map(Constraint::BelongsTo).collect());
+    constraints.append(&mut literal.into_iter().map(Constraint::Literal).collect());
+    constraints.append(&mut raw.into_iter().map(Constraint::Raw).collect());
     if let Some(c) = owner {
         constraints.push(Constraint::Owner(c));
     }
@@ -405,7 +395,7 @@ pub fn generate_pda(
     kind: &PdaKind,
 ) -> proc_macro2::TokenStream {
     let field = &f.ident;
-    let (account_ty, account_wrapper_ty, is_zero_copy) = parse_ty(&f);
+    let (account_ty, account_wrapper_ty, is_zero_copy) = parse_ty(f);
 
     let space = match space {
         // If no explicit space param was given, serialize the type to bytes
@@ -647,7 +637,7 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
 
 // Returns the inner part of the seeds slice as a token stream.
 fn to_seeds_tts(seeds: &[syn::Expr]) -> proc_macro2::TokenStream {
-    assert!(seeds.len() > 0);
+    assert!(!seeds.is_empty());
     let seed_0 = &seeds[0];
     let mut tts = match seed_0 {
         syn::Expr::Path(_) => quote! {
