@@ -3,6 +3,7 @@ import * as toml from "toml";
 import { PublicKey } from "@solana/web3.js";
 import { Program } from "./program";
 import { Idl } from "./idl";
+import { isBrowser } from "./utils/common";
 
 let _populatedWorkspace = false;
 
@@ -15,16 +16,13 @@ let _populatedWorkspace = false;
  */
 const workspace = new Proxy({} as any, {
   get(workspaceCache: { [key: string]: Program }, programName: string) {
-    const fs = require("fs");
-    const process = require("process");
-
-    if (
-      typeof window !== "undefined" &&
-      !window.process?.hasOwnProperty("type")
-    ) {
-      // Workspaces are available in electron, but not in the browser, yet.
+    if (isBrowser) {
+      console.log("Workspaces aren't available in the browser");
       return undefined;
     }
+
+    const fs = require("fs");
+    const process = require("process");
 
     if (!_populatedWorkspace) {
       const path = require("path");

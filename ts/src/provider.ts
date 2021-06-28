@@ -11,6 +11,7 @@ import {
   SimulatedTransactionResponse,
   Commitment,
 } from "@solana/web3.js";
+import { isBrowser } from "./utils/common";
 
 /**
  * The network and wallet context used to send transactions paid for and signed
@@ -54,12 +55,14 @@ export default class Provider {
   }
 
   /**
-   * Returns a `Provider` read from the `ANCHOR_PROVIDER_URL` envirnment
+   * Returns a `Provider` read from the `ANCHOR_PROVIDER_URL` environment
    * variable
    *
    * (This api is for Node only.)
    */
   static env(): Provider {
+    if (isBrowser) return;
+
     const process = require("process");
     const url = process.env.ANCHOR_PROVIDER_URL;
     if (url === undefined) {
