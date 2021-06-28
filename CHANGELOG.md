@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.10.0] - 2021-06-27
+
 ### Features
 
 * lang: Add `#[account(address = <expr>)]` constraint for asserting the address of an account ([#400](https://github.com/project-serum/anchor/pull/400)).
