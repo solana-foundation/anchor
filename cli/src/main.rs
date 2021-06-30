@@ -313,7 +313,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
         let mut deploy = File::create("migrations/deploy.ts")?;
         deploy.write_all(template::ts_deploy_script().as_bytes())?;
 
-        let mut mocha = File::create(&format!("tests/{}.spec.ts", name))?;
+        let mut mocha = File::create(&format!("tests/{}.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
     } else {
         let mut mocha = File::create(&format!("tests/{}.js", name))?;
@@ -1019,7 +1019,7 @@ fn test(
                 if let Some(ref file) = file {
                     file
                 } else if ts_config_exist {
-                    "tests/**/*.spec.ts"
+                    "tests/**/*.ts"
                 } else {
                     "tests/"
                 },

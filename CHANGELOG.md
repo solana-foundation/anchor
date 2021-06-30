@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+* cli: Remove `.spec` suffix on TypeScript tests files ([#441](https://github.com/project-serum/anchor/pull/441)).
+
 ## [0.10.0] - 2021-06-27
 
 ### Features
