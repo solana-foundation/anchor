@@ -48,7 +48,14 @@ module.exports = {
       },
       {
         collapsable: false,
-        title: "Programs",
+        title: "Teams",
+        children: [
+          "/getting-started/projects",
+        ],
+      },
+      {
+        collapsable: false,
+        title: "Tutorials",
         children: [
           "/tutorials/tutorial-0",
           "/tutorials/tutorial-1",
