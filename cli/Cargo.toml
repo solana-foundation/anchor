@@ -23,9 +23,9 @@ serde_json = "1.0"
 shellexpand = "2.1.0"
 toml = "0.5.8"
 serde = { version = "1.0.122", features = ["derive"] }
-solana-sdk = "1.7.2"
-solana-program = "1.7.2"
-solana-client = "1.7.2"
+solana-sdk = "1.7.4"
+solana-program = "1.7.4"
+solana-client = "1.7.4"
 serum-common = { git = "https://github.com/project-serum/serum-dex", features = ["client"] }
 dirs = "3.0"
 heck = "0.3.1"

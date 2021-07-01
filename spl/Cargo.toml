@@ -13,5 +13,5 @@ devnet = []
 anchor-lang = { path = "../lang", version = "0.10.0", features = ["derive"] }
 lazy_static = "1.4.0"
 serum_dex = { git = "https://github.com/project-serum/serum-dex", tag = "v0.3.1", version = "0.3.1", features = ["no-entrypoint"] }
-solana-program = "1.6.6"
+solana-program = "1.7.4"
 spl-token = { version = "3.1.1", features = ["no-entrypoint"] }

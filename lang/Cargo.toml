@@ -32,7 +32,7 @@ anchor-attribute-interface = { path = "./attribute/interface", version = "0.10.0
 anchor-attribute-event = { path = "./attribute/event", version = "0.10.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.10.0" }
 base64 = "0.13.0"
-borsh = "0.8.2"
+borsh = "0.9"
 bytemuck = "1.4.0"
-solana-program = "1.7.2"
+solana-program = "1.7.4"
 thiserror = "1.0.20"
