@@ -2,8 +2,9 @@ const assert = require("assert");
 const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
-
 const utils = require("./utils");
+
+anchor.utils.features.set('anchor-deprecated-state');
 
 describe("Lockup and Registry", () => {
   // Read the provider from the configured environmnet.
