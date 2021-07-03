@@ -8,3 +8,4 @@ Projects using Anchor include
 * [Zeta Markets](https://zeta.markets/)
 * [Saber](https://saber.so)
 * [Mello](https://github.com/mello-markets/Mello)
+* [Parrot Finance](https://parrot.fi/)
