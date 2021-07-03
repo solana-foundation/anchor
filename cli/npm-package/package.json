@@ -12,17 +12,11 @@
   },
   "license": "(MIT OR Apache-2.0)",
   "bin": {
-    "anchor": "anchor"
+    "anchor": "./anchor.js"
   },
   "scripts": {
-    "prepack": "[ \"$(uname -op)\" != \"x86_64 GNU/Linux\" ] && (echo Only for x86_64 GNU/Linux && exit 1) || ([ \"$(./anchor --version)\" != \"anchor-cli $(jq -r .version package.json)\" ] && (echo Check anchor binary version && exit 2) || exit 0)"
+    "prepack": "[ \"$(uname -op)\" != \"x86_64 GNU/Linux\" ] && (echo Can be packed only on x86_64 GNU/Linux && exit 1) || ([ \"$(./anchor --version)\" != \"anchor-cli $(jq -r .version package.json)\" ] && (echo Check anchor binary version && exit 2) || exit 0)"
   },
-  "os": [
-    "linux"
-  ],
-  "cpu": [
-    "x64"
-  ],
   "publishConfig": {
     "access": "public"
   }
