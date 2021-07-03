@@ -23,7 +23,7 @@ mod errors {
         Ok(())
     }
 
-    pub fn belongs_to_error(_ctx: Context<BelongsToError>) -> Result<()> {
+    pub fn has_one_error(_ctx: Context<HasOneError>) -> Result<()> {
         Ok(())
     }
 
@@ -42,9 +42,9 @@ pub struct MutError<'info> {
 }
 
 #[derive(Accounts)]
-pub struct BelongsToError<'info> {
-    #[account(init, belongs_to = owner)]
-    my_account: ProgramAccount<'info, BelongsToAccount>,
+pub struct HasOneError<'info> {
+    #[account(init, has_one = owner)]
+    my_account: ProgramAccount<'info, HasOneAccount>,
     owner: AccountInfo<'info>,
     rent: Sysvar<'info, Rent>,
 }
@@ -56,7 +56,7 @@ pub struct SignerError<'info> {
 }
 
 #[account]
-pub struct BelongsToAccount {
+pub struct HasOneAccount {
     owner: Pubkey,
 }
 

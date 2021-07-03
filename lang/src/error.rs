@@ -22,8 +22,8 @@ pub enum ErrorCode {
     // Constraints.
     #[msg("A mut constraint was violated")]
     ConstraintMut = 140,
-    #[msg("A belongs to constraint was violated")]
-    ConstraintBelongsTo,
+    #[msg("A has one constraint was violated")]
+    ConstraintHasOne,
     #[msg("A signer constraint as violated")]
     ConstraintSigner,
     #[msg("A raw constraint was violated")]

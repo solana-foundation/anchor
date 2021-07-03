@@ -1,7 +1,7 @@
 use crate::{
     ConstraintAddress, ConstraintAssociated, ConstraintAssociatedGroup, ConstraintAssociatedPayer,
-    ConstraintAssociatedSpace, ConstraintAssociatedWith, ConstraintBelongsTo, ConstraintClose,
-    ConstraintExecutable, ConstraintGroup, ConstraintInit, ConstraintLiteral, ConstraintMut,
+    ConstraintAssociatedSpace, ConstraintAssociatedWith, ConstraintClose, ConstraintExecutable,
+    ConstraintGroup, ConstraintHasOne, ConstraintInit, ConstraintLiteral, ConstraintMut,
     ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeeds, ConstraintSeedsGroup,
     ConstraintSigner, ConstraintState, ConstraintToken, ConstraintTokenAuthority,
     ConstraintTokenMint, Context, PdaKind, Ty,
@@ -81,9 +81,16 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 .join(stream.span())
                 .unwrap_or_else(|| ident.span());
             match kw.as_str() {
-                "belongs_to" | "has_one" => ConstraintToken::BelongsTo(Context::new(
+                // Deprecated since 0.11
+                "belongs_to" => {
+                    return Err(ParseError::new(
+                        ident.span(),
+                        "belongs_to is deprecated, please use has_one",
+                    ))
+                }
+                "has_one" => ConstraintToken::HasOne(Context::new(
                     span,
-                    ConstraintBelongsTo {
+                    ConstraintHasOne {
                         join_target: stream.parse()?,
                     },
                 )),
@@ -190,7 +197,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub init: Option<Context<ConstraintInit>>,
     pub mutable: Option<Context<ConstraintMut>>,
     pub signer: Option<Context<ConstraintSigner>>,
-    pub belongs_to: Vec<Context<ConstraintBelongsTo>>,
+    pub has_one: Vec<Context<ConstraintHasOne>>,
     pub literal: Vec<Context<ConstraintLiteral>>,
     pub raw: Vec<Context<ConstraintRaw>>,
     pub owner: Option<Context<ConstraintOwner>>,
@@ -215,7 +222,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             init: None,
             mutable: None,
             signer: None,
-            belongs_to: Vec::new(),
+            has_one: Vec::new(),
             literal: Vec::new(),
             raw: Vec::new(),
             owner: None,
@@ -275,7 +282,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             init,
             mutable,
             signer,
-            belongs_to,
+            has_one,
             literal,
             raw,
             owner,
@@ -314,7 +321,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             init: into_inner!(init),
             mutable: into_inner!(mutable),
             signer: into_inner!(signer),
-            belongs_to: into_inner_vec!(belongs_to),
+            has_one: into_inner_vec!(has_one),
             literal: into_inner_vec!(literal),
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
@@ -371,7 +378,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::Init(c) => self.add_init(c),
             ConstraintToken::Mut(c) => self.add_mut(c),
             ConstraintToken::Signer(c) => self.add_signer(c),
-            ConstraintToken::BelongsTo(c) => self.add_belongs_to(c),
+            ConstraintToken::HasOne(c) => self.add_has_one(c),
             ConstraintToken::Literal(c) => self.add_literal(c),
             ConstraintToken::Raw(c) => self.add_raw(c),
             ConstraintToken::Owner(c) => self.add_owner(c),
@@ -475,20 +482,17 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_belongs_to(&mut self, c: Context<ConstraintBelongsTo>) -> ParseResult<()> {
+    fn add_has_one(&mut self, c: Context<ConstraintHasOne>) -> ParseResult<()> {
         if self
-            .belongs_to
+            .has_one
             .iter()
             .filter(|item| item.join_target == c.join_target)
             .count()
             > 0
         {
-            return Err(ParseError::new(
-                c.span(),
-                "belongs_to target already provided",
-            ));
+            return Err(ParseError::new(c.span(), "has_one target already provided"));
         }
-        self.belongs_to.push(c);
+        self.has_one.push(c);
         Ok(())
     }
 

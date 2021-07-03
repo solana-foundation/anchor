@@ -19,6 +19,7 @@ incremented for features.
 ### Breaking Changes
 
 * cli: Remove `.spec` suffix on TypeScript tests files ([#441](https://github.com/project-serum/anchor/pull/441)).
+* lang: Remove `belongs_to` constraint ([#459](https://github.com/project-serum/anchor/pull/459)).
 
 ## [0.10.0] - 2021-06-27
 

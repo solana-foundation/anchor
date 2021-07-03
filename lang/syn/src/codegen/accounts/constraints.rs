@@ -1,6 +1,6 @@
 use crate::{
-    CompositeField, Constraint, ConstraintAddress, ConstraintAssociatedGroup, ConstraintBelongsTo,
-    ConstraintClose, ConstraintExecutable, ConstraintGroup, ConstraintInit, ConstraintLiteral,
+    CompositeField, Constraint, ConstraintAddress, ConstraintAssociatedGroup, ConstraintClose,
+    ConstraintExecutable, ConstraintGroup, ConstraintHasOne, ConstraintInit, ConstraintLiteral,
     ConstraintMut, ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeedsGroup,
     ConstraintSigner, ConstraintState, Field, PdaKind, Ty,
 };
@@ -43,7 +43,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         init,
         mutable,
         signer,
-        belongs_to,
+        has_one,
         literal,
         raw,
         owner,
@@ -73,7 +73,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = signer {
         constraints.push(Constraint::Signer(c));
     }
-    constraints.append(&mut belongs_to.into_iter().map(Constraint::BelongsTo).collect());
+    constraints.append(&mut has_one.into_iter().map(Constraint::HasOne).collect());
     constraints.append(&mut literal.into_iter().map(Constraint::Literal).collect());
     constraints.append(&mut raw.into_iter().map(Constraint::Raw).collect());
     if let Some(c) = owner {
@@ -101,7 +101,7 @@ fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Init(c) => generate_constraint_init(f, c),
         Constraint::Mut(c) => generate_constraint_mut(f, c),
-        Constraint::BelongsTo(c) => generate_constraint_belongs_to(f, c),
+        Constraint::HasOne(c) => generate_constraint_has_one(f, c),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
         Constraint::Literal(c) => generate_constraint_literal(c),
         Constraint::Raw(c) => generate_constraint_raw(c),
@@ -157,10 +157,7 @@ pub fn generate_constraint_mut(f: &Field, _c: &ConstraintMut) -> proc_macro2::To
     }
 }
 
-pub fn generate_constraint_belongs_to(
-    f: &Field,
-    c: &ConstraintBelongsTo,
-) -> proc_macro2::TokenStream {
+pub fn generate_constraint_has_one(f: &Field, c: &ConstraintHasOne) -> proc_macro2::TokenStream {
     let target = c.join_target.clone();
     let ident = &f.ident;
     let field = match &f.ty {
@@ -169,7 +166,7 @@ pub fn generate_constraint_belongs_to(
     };
     quote! {
         if &#field.#target != #target.to_account_info().key {
-            return Err(anchor_lang::__private::ErrorCode::ConstraintBelongsTo.into());
+            return Err(anchor_lang::__private::ErrorCode::ConstraintHasOne.into());
         }
     }
 }

@@ -183,7 +183,7 @@ pub struct CreateTransaction<'info> {
 #[derive(Accounts)]
 pub struct Approve<'info> {
     multisig: ProgramAccount<'info, Multisig>,
-    #[account(mut, belongs_to = multisig)]
+    #[account(mut, has_one = multisig)]
     transaction: ProgramAccount<'info, Transaction>,
     // One of the multisig owners. Checked in the handler.
     #[account(signer)]
@@ -209,7 +209,7 @@ pub struct ExecuteTransaction<'info> {
         &[multisig.nonce],
     ])]
     multisig_signer: AccountInfo<'info>,
-    #[account(mut, belongs_to = multisig)]
+    #[account(mut, has_one = multisig)]
     transaction: ProgramAccount<'info, Transaction>,
 }
 
