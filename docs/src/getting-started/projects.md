@@ -1,6 +1,6 @@
 # Projects
 
-Projects using Anchor include
+Open a pull request to add your project to the [list](https://github.com/project-serum/anchor/blob/master/docs/src/getting-started/projects.md).
 
 * [Serum](https://github.com/project-serum)
 * [Synthetify](https://github.com/Synthetify)

@@ -5,7 +5,7 @@ module.exports = {
   /**
    * Ref：https://v1.vuepress.vuejs.org/config/#title
    */
-  title: "Anchor",
+  title: "⚓ Anchor",
   /**
    * Ref：https://v1.vuepress.vuejs.org/config/#description
    */
