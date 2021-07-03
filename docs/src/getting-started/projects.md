@@ -10,3 +10,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Mello](https://github.com/mello-markets/Mello)
 * [Parrot Finance](https://parrot.fi/)
 * [Marinade Finance](https://marinade.finance/)
+* [Cryptocurrencies.Ai](https://dex.cryptocurrencies.ai/)
