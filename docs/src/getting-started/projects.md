@@ -7,3 +7,4 @@ Projects using Anchor include
 * [SolFarm](https://solfarm.io/)
 * [Zeta Markets](https://zeta.markets/)
 * [Saber](https://saber.so)
+* [Mello](https://github.com/mello-markets/Mello)
