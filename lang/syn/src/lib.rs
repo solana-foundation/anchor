@@ -30,6 +30,7 @@ pub struct Program {
     pub ixs: Vec<Ix>,
     pub name: Ident,
     pub program_mod: ItemMod,
+    pub fallback_fn: Option<FallbackFn>,
 }
 
 impl Parse for Program {
@@ -90,6 +91,11 @@ pub struct Ix {
 pub struct IxArg {
     pub name: Ident,
     pub raw_arg: PatType,
+}
+
+#[derive(Debug)]
+pub struct FallbackFn {
+    raw_method: ItemFn,
 }
 
 #[derive(Debug)]

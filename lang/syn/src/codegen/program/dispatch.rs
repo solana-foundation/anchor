@@ -113,7 +113,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
         })
         .collect();
-
+    let fallback_fn = gen_fallback(program).unwrap_or(quote! {
+        Err(anchor_lang::__private::ErrorCode::InstructionFallbackNotFound.into())
+    });
     quote! {
         /// Performs method dispatch.
         ///
@@ -152,10 +154,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #(#trait_dispatch_arms)*
                 #(#global_dispatch_arms)*
                 _ => {
-                    msg!("Fallback functions are not supported. If you have a use case, please file an issue.");
-                    Err(anchor_lang::__private::ErrorCode::InstructionFallbackNotFound.into())
+                    #fallback_fn
                 }
             }
         }
     }
+}
+
+pub fn gen_fallback(program: &Program) -> Option<proc_macro2::TokenStream> {
+    program.fallback_fn.as_ref().map(|fallback_fn| {
+        let program_name = &program.name;
+        let method = &fallback_fn.raw_method;
+        let fn_name = &method.sig.ident;
+        quote! {
+            #program_name::#fn_name(program_id, accounts, ix_data)
+        }
+    })
 }

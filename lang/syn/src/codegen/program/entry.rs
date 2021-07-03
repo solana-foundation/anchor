@@ -1,7 +1,11 @@
+use crate::program_codegen::dispatch;
 use crate::Program;
 use quote::quote;
 
-pub fn generate(_program: &Program) -> proc_macro2::TokenStream {
+pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    let fallback_maybe = dispatch::gen_fallback(program).unwrap_or(quote! {
+        Err(anchor_lang::__private::ErrorCode::InstructionMissing.into());
+    });
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
@@ -52,7 +56,7 @@ pub fn generate(_program: &Program) -> proc_macro2::TokenStream {
                 msg!("anchor-debug is active");
             }
             if ix_data.len() < 8 {
-                return Err(anchor_lang::__private::ErrorCode::InstructionMissing.into());
+                return #fallback_maybe
             }
 
             // Split the instruction data into the first 8 byte method

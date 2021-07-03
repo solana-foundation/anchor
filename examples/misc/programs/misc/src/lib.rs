@@ -128,6 +128,14 @@ pub mod misc {
     pub fn test_token_seeds_init(_ctx: Context<TestTokenSeedsInit>, _nonce: u8) -> ProgramResult {
         Ok(())
     }
+
+    pub fn default<'info>(
+        _program_id: &Pubkey,
+        _accounts: &[AccountInfo<'info>],
+        _data: &[u8],
+    ) -> ProgramResult {
+        Err(ProgramError::Custom(1234))
+    }
 }
 
 #[derive(Accounts)]

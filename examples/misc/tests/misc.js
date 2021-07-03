@@ -141,17 +141,19 @@ describe("misc", () => {
 
     // Manual associated address calculation for test only. Clients should use
     // the generated methods.
-    const [associatedAccount, nonce] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [
-          anchor.utils.bytes.utf8.encode("anchor"),
-          program.provider.wallet.publicKey.toBuffer(),
-          state.toBuffer(),
-          data.publicKey.toBuffer(),
-          anchor.utils.bytes.utf8.encode("my-seed"),
-        ],
-        program.programId
-      );
+    const [
+      associatedAccount,
+      nonce,
+    ] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode("anchor"),
+        program.provider.wallet.publicKey.toBuffer(),
+        state.toBuffer(),
+        data.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode("my-seed"),
+      ],
+      program.programId
+    );
     await assert.rejects(
       async () => {
         await program.account.testData.fetch(associatedAccount);
@@ -186,17 +188,19 @@ describe("misc", () => {
 
   it("Can use an associated program account", async () => {
     const state = await program.state.address();
-    const [associatedAccount, nonce] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [
-          anchor.utils.bytes.utf8.encode("anchor"),
-          program.provider.wallet.publicKey.toBuffer(),
-          state.toBuffer(),
-          data.publicKey.toBuffer(),
-          anchor.utils.bytes.utf8.encode("my-seed"),
-        ],
-        program.programId
-      );
+    const [
+      associatedAccount,
+      nonce,
+    ] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode("anchor"),
+        program.provider.wallet.publicKey.toBuffer(),
+        state.toBuffer(),
+        data.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode("my-seed"),
+      ],
+      program.programId
+    );
     await program.rpc.testAssociatedAccount(new anchor.BN(5), {
       accounts: {
         myAccount: associatedAccount,
@@ -434,5 +438,17 @@ describe("misc", () => {
     assert.ok(account.isInitialized);
     assert.ok(account.owner.equals(program.provider.wallet.publicKey));
     assert.ok(account.mint.equals(mint.publicKey));
+  });
+
+  it("Can execute a fallback function", async () => {
+    await assert.rejects(
+      async () => {
+        await anchor.utils.rpc.invoke(program.programId);
+      },
+      (err) => {
+        assert.ok(err.toString().includes("custom program error: 0x4d2"));
+        return true;
+      }
+    );
   });
 });
