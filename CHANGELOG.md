@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.11.0] - 2021-07-03
+
 ### Features
 
 * lang: Add fallback functions ([#457](https://github.com/project-serum/anchor/pull/457)).
