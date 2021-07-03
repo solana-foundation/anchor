@@ -9,3 +9,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Saber](https://saber.so)
 * [Mello](https://github.com/mello-markets/Mello)
 * [Parrot Finance](https://parrot.fi/)
+* [Marinade Finance](https://marinade.finance/)
