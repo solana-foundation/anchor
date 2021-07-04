@@ -11,3 +11,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Parrot Finance](https://parrot.fi/)
 * [Marinade Finance](https://marinade.finance/)
 * [Cryptocurrencies.Ai](https://dex.cryptocurrencies.ai/)
+* [Cyclos](https://cyclos.io/)
