@@ -195,21 +195,21 @@ pub struct InitializePool<'info> {
     pub pool_account: ProgramAccount<'info, PoolAccount>,
     pub pool_signer: AccountInfo<'info>,
     #[account(
-        "redeemable_mint.mint_authority == COption::Some(*pool_signer.key)",
-        "redeemable_mint.supply == 0"
+        constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key),
+        constraint = redeemable_mint.supply == 0
     )]
     pub redeemable_mint: CpiAccount<'info, Mint>,
-    #[account("usdc_mint.decimals == redeemable_mint.decimals")]
+    #[account(constraint = usdc_mint.decimals == redeemable_mint.decimals)]
     pub usdc_mint: CpiAccount<'info, Mint>,
-    #[account(mut, "pool_watermelon.owner == *pool_signer.key")]
+    #[account(mut, constraint = pool_watermelon.owner == *pool_signer.key)]
     pub pool_watermelon: CpiAccount<'info, TokenAccount>,
-    #[account("pool_usdc.owner == *pool_signer.key")]
+    #[account(constraint = pool_usdc.owner == *pool_signer.key)]
     pub pool_usdc: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub distribution_authority: AccountInfo<'info>,
-    #[account(mut, "creator_watermelon.owner == *distribution_authority.key")]
+    #[account(mut, constraint = creator_watermelon.owner == *distribution_authority.key)]
     pub creator_watermelon: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub clock: Sysvar<'info, Clock>,
@@ -237,18 +237,18 @@ pub struct ExchangeUsdcForRedeemable<'info> {
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
-        "redeemable_mint.mint_authority == COption::Some(*pool_signer.key)"
+        constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
     pub redeemable_mint: CpiAccount<'info, Mint>,
-    #[account(mut, "pool_usdc.owner == *pool_signer.key")]
+    #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
     pub pool_usdc: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
-    #[account(mut, "user_usdc.owner == *user_authority.key")]
+    #[account(mut, constraint = user_usdc.owner == *user_authority.key)]
     pub user_usdc: CpiAccount<'info, TokenAccount>,
-    #[account(mut, "user_redeemable.owner == *user_authority.key")]
+    #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
     pub user_redeemable: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
 }
@@ -261,18 +261,18 @@ pub struct ExchangeRedeemableForUsdc<'info> {
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
-        "redeemable_mint.mint_authority == COption::Some(*pool_signer.key)"
+        constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
     pub redeemable_mint: CpiAccount<'info, Mint>,
-    #[account(mut, "pool_usdc.owner == *pool_signer.key")]
+    #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
     pub pool_usdc: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
-    #[account(mut, "user_usdc.owner == *user_authority.key")]
+    #[account(mut, constraint = user_usdc.owner == *user_authority.key)]
     pub user_usdc: CpiAccount<'info, TokenAccount>,
-    #[account(mut, "user_redeemable.owner == *user_authority.key")]
+    #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
     pub user_redeemable: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
 }
@@ -285,18 +285,18 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
-        "redeemable_mint.mint_authority == COption::Some(*pool_signer.key)"
+        constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
     pub redeemable_mint: CpiAccount<'info, Mint>,
-    #[account(mut, "pool_watermelon.owner == *pool_signer.key")]
+    #[account(mut, constraint = pool_watermelon.owner == *pool_signer.key)]
     pub pool_watermelon: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
-    #[account(mut, "user_watermelon.owner == *user_authority.key")]
+    #[account(mut, constraint = user_watermelon.owner == *user_authority.key)]
     pub user_watermelon: CpiAccount<'info, TokenAccount>,
-    #[account(mut, "user_redeemable.owner == *user_authority.key")]
+    #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
     pub user_redeemable: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
 }
@@ -307,13 +307,13 @@ pub struct WithdrawPoolUsdc<'info> {
     pub pool_account: ProgramAccount<'info, PoolAccount>,
     #[account(seeds = [pool_account.watermelon_mint.as_ref(), &[pool_account.nonce]])]
     pub pool_signer: AccountInfo<'info>,
-    #[account(mut, "pool_usdc.owner == *pool_signer.key")]
+    #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
     pub pool_usdc: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub distribution_authority: AccountInfo<'info>,
-    #[account(mut, "creator_usdc.owner == *distribution_authority.key")]
+    #[account(mut, constraint = creator_usdc.owner == *distribution_authority.key)]
     pub creator_usdc: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
 }
