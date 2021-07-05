@@ -1468,42 +1468,36 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
 
         let url = cfg.provider.cluster.url().to_string();
         let cur_dir = std::env::current_dir()?;
-        let module_path = cur_dir.join("migrations/deploy.js");
 
-        let ts_config_exist = Path::new("tsconfig.json").exists();
-        let ts_deploy_file_exists = Path::new("migrations/deploy.ts").exists();
-
-        if ts_config_exist && ts_deploy_file_exists {
-            let ts_module_path = cur_dir.join("migrations/deploy.ts");
-            let exit = std::process::Command::new("tsc")
-                .arg(&ts_module_path)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()?;
-            if !exit.status.success() {
-                std::process::exit(exit.status.code().unwrap());
-            }
-        };
-
-        let deploy_script_host_str =
-            template::deploy_script_host(&url, &module_path.display().to_string());
+        let use_ts =
+            Path::new("tsconfig.json").exists() && Path::new("migrations/deploy.ts").exists();
 
         if !Path::new(".anchor").exists() {
             fs::create_dir(".anchor")?;
         }
         std::env::set_current_dir(".anchor")?;
 
-        std::fs::write("deploy.js", deploy_script_host_str)?;
-        let exit = std::process::Command::new("node")
-            .arg("deploy.js")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()?;
-
-        if ts_config_exist && ts_deploy_file_exists {
-            std::fs::remove_file(&module_path)
-                .map_err(|_| anyhow!("Unable to remove file {}", module_path.display()))?;
-        }
+        let exit = if use_ts {
+            let module_path = cur_dir.join("migrations/deploy.ts");
+            let deploy_script_host_str =
+                template::deploy_ts_script_host(&url, &module_path.display().to_string());
+            std::fs::write("deploy.ts", deploy_script_host_str)?;
+            std::process::Command::new("ts-node")
+                .arg("deploy.ts")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()?
+        } else {
+            let module_path = cur_dir.join("migrations/deploy.js");
+            let deploy_script_host_str =
+                template::deploy_js_script_host(&url, &module_path.display().to_string());
+            std::fs::write("deploy.js", deploy_script_host_str)?;
+            std::process::Command::new("node")
+                .arg("deploy.js")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()?
+        };
 
         if !exit.status.success() {
             println!("Deploy failed.");

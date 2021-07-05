@@ -22,6 +22,7 @@ _examples: &examples
   - npm install -g mocha
   - npm install -g ts-mocha
   - npm install -g typescript
+  - npm install -g ts-node
   - npm install -g buffer
   - cd ts && yarn && yarn build && npm link && cd ../
   - npm install -g @project-serum/serum
