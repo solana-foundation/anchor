@@ -58,6 +58,30 @@ pub fn new_order_v3<'info>(
     Ok(())
 }
 
+pub fn cancel_order_v2<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CancelOrderV2<'info>>,
+    side: Side,
+    order_id: u128,
+) -> ProgramResult {
+    let ix = serum_dex::instruction::cancel_order(
+        &ID,
+        ctx.accounts.market.key,
+        ctx.accounts.market_bids.key,
+        ctx.accounts.market_asks.key,
+        ctx.accounts.open_orders.key,
+        ctx.accounts.open_orders_authority.key,
+        ctx.accounts.event_queue.key,
+        side,
+        order_id,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 pub fn settle_funds<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, SettleFunds<'info>>,
 ) -> ProgramResult {
@@ -156,6 +180,16 @@ pub struct NewOrderV3<'info> {
     pub pc_vault: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
     pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelOrderV2<'info> {
+    pub market: AccountInfo<'info>,
+    pub market_bids: AccountInfo<'info>,
+    pub market_asks: AccountInfo<'info>,
+    pub open_orders: AccountInfo<'info>,
+    pub open_orders_authority: AccountInfo<'info>,
+    pub event_queue: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
