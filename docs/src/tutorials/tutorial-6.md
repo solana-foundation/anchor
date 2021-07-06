@@ -30,7 +30,7 @@ if you only use associated token addresses.
 Unfortunately, the SPL token program doesn't do this, strictly. It was built *before* the existance
 of associated token accounts (associated token accounts were built as an add-on).
 So in reality, there are non associated token accounts floating around Solanaland.
-However, for new programs, this isn't necessary, and it's recommend to only use associated
+However, for new programs, this isn't necessary, and it's recommended to only use associated
 accounts when creating accounts on behalf of users, such as a token account.
 :::
 
