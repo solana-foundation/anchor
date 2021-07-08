@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use quote::quote;
-use syn::parse_macro_input;
+use syn::{parse_macro_input, parse_quote};
 
 /// A data structure representing a Solana account, implementing various traits:
 ///
@@ -218,7 +218,12 @@ pub fn associated(
             });
             fields.named.push(syn::Field {
                 attrs: Vec::new(),
-                vis: syn::Visibility::Inherited,
+                vis: syn::Visibility::Restricted(syn::VisRestricted {
+                    pub_token: syn::token::Pub::default(),
+                    paren_token: syn::token::Paren::default(),
+                    in_token: None,
+                    path: Box::new(parse_quote!(crate))
+                }),
                 ident: Some(syn::Ident::new("__nonce", proc_macro2::Span::call_site())),
                 colon_token: Some(syn::token::Colon {
                     spans: [proc_macro2::Span::call_site()],
