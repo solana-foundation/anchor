@@ -222,7 +222,7 @@ pub fn associated(
                     pub_token: syn::token::Pub::default(),
                     paren_token: syn::token::Paren::default(),
                     in_token: None,
-                    path: Box::new(parse_quote!(crate))
+                    path: Box::new(parse_quote!(crate)),
                 }),
                 ident: Some(syn::Ident::new("__nonce", proc_macro2::Span::call_site())),
                 colon_token: Some(syn::token::Colon {
