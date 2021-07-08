@@ -13,3 +13,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Cryptocurrencies.Ai](https://dex.cryptocurrencies.ai/)
 * [Cyclos](https://cyclos.io/)
 * [Solend](https://solend.fi)
+* [Moët Finance](https://t.co/9eDHRAnGob?amp=1)
