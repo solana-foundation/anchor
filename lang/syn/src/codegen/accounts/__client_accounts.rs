@@ -115,6 +115,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 #(#account_struct_fields),*
             }
 
+            #[automatically_derived]
             impl anchor_lang::ToAccountMetas for #name {
                 fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                     let mut account_metas = vec![];

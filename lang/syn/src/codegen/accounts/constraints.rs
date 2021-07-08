@@ -355,24 +355,24 @@ pub fn generate_constraint_associated_init(
     )
 }
 
-fn parse_ty(f: &Field) -> (&syn::Ident, proc_macro2::TokenStream, bool) {
+fn parse_ty(f: &Field) -> (&syn::TypePath, proc_macro2::TokenStream, bool) {
     match &f.ty {
         Ty::ProgramAccount(ty) => (
-            &ty.account_ident,
+            &ty.account_type_path,
             quote! {
                 anchor_lang::ProgramAccount
             },
             false,
         ),
         Ty::Loader(ty) => (
-            &ty.account_ident,
+            &ty.account_type_path,
             quote! {
                 anchor_lang::Loader
             },
             true,
         ),
         Ty::CpiAccount(ty) => (
-            &ty.account_ident,
+            &ty.account_type_path,
             quote! {
                 anchor_lang::CpiAccount
             },
@@ -617,7 +617,7 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
     let program_target = c.program_target.clone();
     let ident = &f.ident;
     let account_ty = match &f.ty {
-        Ty::CpiState(ty) => &ty.account_ident,
+        Ty::CpiState(ty) => &ty.account_type_path,
         _ => panic!("Invalid state constraint"),
     };
     quote! {

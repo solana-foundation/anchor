@@ -12,7 +12,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{
     Expr, Generics, Ident, ImplItemMethod, ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, LitInt,
-    LitStr, PatType, Token,
+    LitStr, PatType, Token, TypePath,
 };
 
 pub mod codegen;
@@ -198,30 +198,30 @@ pub enum SysvarTy {
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramStateTy {
-    pub account_ident: Ident,
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CpiStateTy {
-    pub account_ident: Ident,
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramAccountTy {
     // The struct type of the account.
-    pub account_ident: Ident,
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CpiAccountTy {
     // The struct type of the account.
-    pub account_ident: Ident,
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct LoaderTy {
     // The struct type of the account.
-    pub account_ident: Ident,
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug)]

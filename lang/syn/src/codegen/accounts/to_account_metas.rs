@@ -1,11 +1,9 @@
-use crate::codegen::accounts::generics;
 use crate::{AccountField, AccountsStruct};
 use quote::quote;
 
 // Generates the `ToAccountMetas` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let name = &accs.ident;
-    let (combined_generics, _trait_generics, strct_generics) = generics(accs);
 
     let to_acc_metas: Vec<proc_macro2::TokenStream> = accs
         .fields
@@ -26,8 +24,12 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             }
         })
         .collect();
+
+    let (impl_gen, ty_gen, where_clause) = accs.generics.split_for_impl();
+
     quote! {
-        impl#combined_generics anchor_lang::ToAccountMetas for #name#strct_generics {
+        #[automatically_derived]
+        impl#impl_gen anchor_lang::ToAccountMetas for #name #ty_gen #where_clause{
             fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                 let mut account_metas = vec![];
 
