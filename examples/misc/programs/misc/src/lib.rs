@@ -81,6 +81,20 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_simulate_associated_account(
+        ctx: Context<TestSimulateAssociatedAccount>,
+        data: u32,
+    ) -> ProgramResult {
+        let associated_account = *ctx.accounts.my_account.to_account_info().key;
+        emit!(E1 { data });
+        emit!(E2 { data: 1234 });
+        emit!(E3 { data: 9 });
+        emit!(E4 {
+            data: associated_account
+        });
+        Ok(())
+    }
+
     pub fn test_i8(ctx: Context<TestI8>, data: i8) -> ProgramResult {
         ctx.accounts.data.data = data;
         Ok(())
@@ -289,6 +303,16 @@ pub struct TestI16<'info> {
 pub struct TestSimulate {}
 
 #[derive(Accounts)]
+pub struct TestSimulateAssociatedAccount<'info> {
+    #[account(init, associated = authority)]
+    my_account: ProgramAccount<'info, TestData>,
+    #[account(mut, signer)]
+    authority: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
+    system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct TestI8<'info> {
     #[account(init)]
     data: ProgramAccount<'info, DataI8>,
@@ -343,4 +367,9 @@ pub struct E2 {
 #[event]
 pub struct E3 {
     data: u32,
+}
+
+#[event]
+pub struct E4 {
+    data: Pubkey,
 }

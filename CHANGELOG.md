@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+* ts: Event listener not firing when creating associated accounts ([#356](https://github.com/project-serum/anchor/issues/356)).
+
 ## [0.11.0] - 2021-07-03
 
 ### Features
