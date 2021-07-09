@@ -54,6 +54,12 @@ anchor build
 
 Builds programs in the workspace targeting Solana's BPF runtime and emitting IDLs in the `target/idl` directory.
 
+```
+anchor build --verifiable
+```
+
+Runs the build inside a docker image so that the output binary is deterministic (assuming a Cargo.lock file is used). This command must be run from within a single crate subdirectory within the workspace. For example, `programs/<my-program>/`.
+
 ## Deploy
 
 ```
@@ -194,6 +200,12 @@ useful when simultaneously developing an app against a Localnet or Devnet. For m
 recommended to run each command separately, since transactions can sometimes be
 unreliable depending on the Solana RPC node being used.
 
+```
+anchor launch --verifiable
+```
+
+Runs the build inside a docker image so that the output binary is deterministic (assuming a Cargo.lock file is used).
+    
 ## New
 
 ```
@@ -223,4 +235,9 @@ Cluster Endpoints:
 
 ## Verify
 
+```
+anchor verify <program-id>
+```
+
 Verifies the on-chain bytecode matches the locally compiled artifact.
+    
