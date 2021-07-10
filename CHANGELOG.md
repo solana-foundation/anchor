@@ -11,8 +11,15 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: Adds `require` macro for specifying assertions that return error codes on failure ([#483](https://github.com/project-serum/anchor/pull/483)).
+* lang: Allow one to specify arbitrary programs as the owner when creating PDA ([#483](https://github.com/project-serum/anchor/pull/483)).
+* lang: A new `bump` keyword is added to the accounts constraints, which is used to add an optional bump seed to the end of a `seeds` array. When used in conjunction with *both* `init` and `seeds`, then the program executes `find_program_address` to assert that the given bump is the canonical bump ([#483](https://github.com/project-serum/anchor/pull/483)).
+
 ### Fixes
 
+* lang: Preserve all instruction data for fallback functions ([#483](https://github.com/project-serum/anchor/pull/483)).
 * ts: Event listener not firing when creating associated accounts ([#356](https://github.com/project-serum/anchor/issues/356)).
 
 ## [0.11.0] - 2021-07-03

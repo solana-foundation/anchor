@@ -341,6 +341,7 @@ pub enum ConstraintToken {
     Address(Context<ConstraintAddress>),
     TokenMint(Context<ConstraintTokenMint>),
     TokenAuthority(Context<ConstraintTokenAuthority>),
+    Bump(Context<ConstraintTokenBump>),
 }
 
 impl Parse for ConstraintToken {
@@ -396,6 +397,7 @@ pub struct ConstraintSeedsGroup {
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
     pub kind: PdaKind,
+    pub bump: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -444,7 +446,7 @@ pub struct ConstraintAssociatedSpace {
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum PdaKind {
-    Program,
+    Program { owner: Option<Expr> },
     Token { owner: Expr, mint: Expr },
 }
 
@@ -461,6 +463,11 @@ pub struct ConstraintTokenMint {
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenAuthority {
     auth: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintTokenBump {
+    bump: Expr,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

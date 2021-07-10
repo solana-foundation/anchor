@@ -135,7 +135,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// With this 8 byte identifier, Anchor performs method dispatch,
         /// matching the given 8 byte identifier to the associated method
         /// handler, which leads to user defined code being eventually invoked.
-        fn dispatch(program_id: &Pubkey, accounts: &[AccountInfo], sighash: [u8; 8], ix_data: &[u8]) -> ProgramResult {
+        fn dispatch(
+            program_id: &Pubkey,
+            accounts: &[AccountInfo],
+            data: &[u8],
+        ) -> ProgramResult {
+            // Split the instruction data into the first 8 byte method
+            // identifier (sighash) and the serialized instruction data.
+            let mut ix_data: &[u8] = data;
+            let sighash: [u8; 8] = {
+                let mut sighash: [u8; 8] = [0; 8];
+                sighash.copy_from_slice(&ix_data[..8]);
+                ix_data = &ix_data[8..];
+                sighash
+            };
+
             // If the method identifier is the IDL tag, then execute an IDL
             // instruction, injected into all Anchor programs.
             if cfg!(not(feature = "no-idl")) {
@@ -167,7 +181,7 @@ pub fn gen_fallback(program: &Program) -> Option<proc_macro2::TokenStream> {
         let method = &fallback_fn.raw_method;
         let fn_name = &method.sig.ident;
         quote! {
-            #program_name::#fn_name(program_id, accounts, ix_data)
+            #program_name::#fn_name(program_id, accounts, data)
         }
     })
 }

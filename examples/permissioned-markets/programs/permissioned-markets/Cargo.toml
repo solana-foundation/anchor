@@ -1,0 +1,21 @@
+[package]
+name = "permissioned-markets"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "permissioned_markets"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+anchor-spl = { path = "../../../../spl" }
+serum_dex = { path = "../../deps/serum-dex/dex", features = ["no-entrypoint"] }
+solana-program = "1.7.4"

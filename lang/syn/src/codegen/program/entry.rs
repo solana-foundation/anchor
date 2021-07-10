@@ -50,26 +50,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
         #[cfg(not(feature = "no-entrypoint"))]
-        fn entry(program_id: &Pubkey, accounts: &[AccountInfo], ix_data: &[u8]) -> ProgramResult {
+        fn entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
             }
-            if ix_data.len() < 8 {
+            if data.len() < 8 {
                 return #fallback_maybe
             }
 
-            // Split the instruction data into the first 8 byte method
-            // identifier (sighash) and the serialized instruction data.
-            let mut ix_data: &[u8] = ix_data;
-            let sighash: [u8; 8] = {
-                let mut sighash: [u8; 8] = [0; 8];
-                sighash.copy_from_slice(&ix_data[..8]);
-                ix_data = &ix_data[8..];
-                sighash
-            };
-
-            dispatch(program_id, accounts, sighash, ix_data)
+            dispatch(program_id, accounts, data)
                 .map_err(|e| {
                     anchor_lang::solana_program::msg!(&e.to_string());
                     e

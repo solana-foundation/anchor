@@ -1,0 +1,13 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "anchor run build && anchor test"
+build = "anchor run build-deps && anchor build"
+build-deps = "anchor run build-dex"
+build-dex = "pushd deps/serum-dex/dex/ && cargo build-bpf && popd"
+
+[[test.genesis]]
+address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
+program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"
