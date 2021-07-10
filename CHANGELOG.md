@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.11.1] - 2021-07-09
+
 ### Features
 
 * lang: Adds `require` macro for specifying assertions that return error codes on failure ([#483](https://github.com/project-serum/anchor/pull/483)).
