@@ -35,53 +35,8 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 
 ## Examples
 
-Build stateful programs on Solana by defining a state struct with associated
-methods. Here's a classic counter example, where only the designated `authority`
+Here's a counter program, where only the designated `authority`
 can increment the count.
-
-```rust
-#[program]
-mod counter {
-
-    #[state]
-    pub struct Counter {
-      authority: Pubkey,
-      count: u64,
-    }
-
-    pub fn new(ctx: Context<Auth>) -> Result<Self> {
-        Ok(Self {
-            auth: *ctx.accounts.authority.key
-        })
-    }
-
-    pub fn increment(&mut self, ctx: Context<Auth>) -> Result<()> {
-        if &self.authority != ctx.accounts.authority.key {
-            return Err(ErrorCode::Unauthorized.into());
-        }
-
-        self.count += 1;
-
-        Ok(())
-    }
-}
-
-#[derive(Accounts)]
-pub struct Auth<'info> {
-    #[account(signer)]
-    authority: AccountInfo<'info>,
-}
-
-#[error]
-pub enum ErrorCode {
-    #[msg("You are not authorized to perform this action.")]
-    Unauthorized,
-}
-```
-
-Additionally, one can utilize the full power of Solana's parallel execution model by
-keeping the program stateless and working with accounts directly. The above example
-can be rewritten as follows.
 
 ```rust
 use anchor::prelude::*;
@@ -135,11 +90,6 @@ pub enum ErrorCode {
     Unauthorized,
 }
 ```
-
-Due to the fact that account sizes on Solana are fixed, some combination of
-the above is often required. For example, one can store store global state
-associated with the entire program in the `#[state]` struct and local
-state assocated with each user in individual `#[account]` structs.
 
 For more, see the [examples](https://github.com/project-serum/anchor/tree/master/examples)
 directory.
