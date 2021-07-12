@@ -105,7 +105,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         ///
         /// To access the struct in this module, one should use the sibling
         /// `accounts` module (also generated), which re-exports this.
-        mod #account_mod_name {
+        pub(crate) mod #account_mod_name {
             use super::*;
             use anchor_lang::prelude::borsh;
             #(#re_exports)*
