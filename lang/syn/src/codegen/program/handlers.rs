@@ -353,12 +353,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     accounts: &[AccountInfo],
                                     ix_data: &[u8],
                                 ) -> ProgramResult {
-																		// Deserialize instruction.
-																		let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-																				.map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-																		let instruction::state::#variant_arm = ix;
+                                    // Deserialize instruction.
+                                    let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
+                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                    let instruction::state::#variant_arm = ix;
 
-																		// Load state.
+                                    // Load state.
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
                                         return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
@@ -398,12 +398,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     accounts: &[AccountInfo],
                                     ix_data: &[u8],
                                 ) -> ProgramResult {
-																		// Deserialize instruction.
-																		let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-																				.map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-																		let instruction::state::#variant_arm = ix;
+                                    // Deserialize instruction.
+                                    let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
+                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                    let instruction::state::#variant_arm = ix;
 
-																		// Load state.
+                                    // Load state.
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
                                         return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
@@ -498,14 +498,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     }
                                 };
 
-																let deserialize_instruction = quote! {
-																		#args_struct
-																		let ix = Args::deserialize(&mut &ix_data[..])
-																				.map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
-																		let Args {
-																				#(#ix_arg_names),*
-																		} = ix;
-																};
+                                let deserialize_instruction = quote! {
+                                    #args_struct
+                                    let ix = Args::deserialize(&mut &ix_data[..])
+                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                    let Args {
+                                        #(#ix_arg_names),*
+                                    } = ix;
+                                };
 
                                 if ix.has_receiver {
                                     quote! {
@@ -515,10 +515,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             accounts: &[AccountInfo],
                                             ix_data: &[u8],
                                         ) -> ProgramResult {
-																						// Deserialize instruction.
-																						#deserialize_instruction
+                                            // Deserialize instruction.
+                                            #deserialize_instruction
 
-																						// Deserialize the program state account.
+                                            // Deserialize the program state account.
                                             let mut remaining_accounts: &[AccountInfo] = accounts;
                                             if remaining_accounts.is_empty() {
                                                 return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
@@ -564,10 +564,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             accounts: &[AccountInfo],
                                             ix_data: &[u8],
                                         ) -> ProgramResult {
-																						// Deserialize instruction.
-																						#deserialize_instruction
+                                            // Deserialize instruction.
+                                            #deserialize_instruction
 
-																						// Deserialize accounts.
+                                            // Deserialize accounts.
                                             let mut remaining_accounts: &[AccountInfo] = accounts;
                                             let mut accounts = #anchor_ident::try_accounts(
                                                 program_id,
@@ -575,13 +575,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                                 ix_data,
                                             )?;
 
-																						// Execute user defined function.
+                                            // Execute user defined function.
                                             #state_name::#ix_method_name(
                                                 Context::new(program_id, &mut accounts, remaining_accounts),
                                                 #(#ix_arg_names),*
                                             )?;
 
-																						// Exit procedure.
+                                            // Exit procedure.
                                             accounts.exit(program_id)
                                         }
                                     }
@@ -610,12 +610,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     accounts: &[AccountInfo],
                     ix_data: &[u8],
                 ) -> ProgramResult {
-										// Deserialize data.
+                    // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &ix_data[..])
                         .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
                     let instruction::#variant_arm = ix;
 
-										// Deserialize accounts.
+                    // Deserialize accounts.
                     let mut remaining_accounts: &[AccountInfo] = accounts;
                     let mut accounts = #anchor::try_accounts(
                         program_id,
@@ -623,13 +623,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         ix_data,
                     )?;
 
-										// Invoke user defined handler.
+                    // Invoke user defined handler.
                     #program_name::#ix_method_name(
                         Context::new(program_id, &mut accounts, remaining_accounts),
                         #(#ix_arg_names),*
                     )?;
 
-										// Exit routine.
+                    // Exit routine.
                     accounts.exit(program_id)
                 }
             }
