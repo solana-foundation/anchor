@@ -58,7 +58,7 @@ export class EventParser {
     log: string
   ): [Event | null, string | null, boolean] {
     // Executing program is this program.
-    if (execution.program() === this.programId.toString()) {
+    if (execution.stack.length > 0 && execution.program() === this.programId.toString()) {
       return this.handleProgramLog(log);
     }
     // Executing program is not this program.

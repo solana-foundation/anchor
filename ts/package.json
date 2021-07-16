@@ -18,7 +18,8 @@
     "lint:fix": "prettier src/** -w",
     "watch": "tsc -p tsconfig.cjs.json --watch",
     "prepublishOnly": "yarn build",
-    "docs": "typedoc --excludePrivate --includeVersion --out ../docs/src/.vuepress/dist/ts/ --readme none src/index.ts"
+    "docs": "typedoc --excludePrivate --includeVersion --out ../docs/src/.vuepress/dist/ts/ --readme none src/index.ts",
+    "test": "jest tests --detectOpenHandles"
   },
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
