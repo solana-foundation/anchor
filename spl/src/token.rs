@@ -127,6 +127,30 @@ pub fn initialize_account<'a, 'b, 'c, 'info>(
     )
 }
 
+pub fn initialize_mint<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, InitializeMint<'info>>,
+    decimals: u8,
+    authority: &Pubkey,
+    freeze_authority: Option<&Pubkey>
+) -> ProgramResult {
+    let ix = spl_token::instruction::initialize_mint(
+        &spl_token::ID,
+        ctx.accounts.mint.key,
+        &authority,
+        freeze_authority,
+        decimals
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.mint.clone(),
+            ctx.accounts.rent.clone(),
+            ctx.program.clone(),
+        ],
+        ctx.signer_seeds,
+    )
+}
+
 pub fn set_authority<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, SetAuthority<'info>>,
     authority_type: spl_token::instruction::AuthorityType,
@@ -189,6 +213,12 @@ pub struct InitializeAccount<'info> {
     pub account: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeMint<'info> {
+    pub mint: AccountInfo<'info>,
     pub rent: AccountInfo<'info>,
 }
 
