@@ -1,12 +1,11 @@
 use crate::idl::*;
+use crate::parser::context::CrateContext;
 use crate::parser::{self, accounts, error, program};
 use crate::{AccountField, AccountsStruct, StateIx};
 use anyhow::Result;
 use heck::MixedCase;
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 
 const DERIVE_NAME: &str = "Accounts";
@@ -15,16 +14,11 @@ const ERROR_CODE_OFFSET: u32 = 300;
 
 // Parse an entire interface file.
 pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
-    let mut file = File::open(&filename)?;
+    let ctx = CrateContext::parse(filename)?;
 
-    let mut src = String::new();
-    file.read_to_string(&mut src).expect("Unable to read file");
+    let p = program::parse(parse_program_mod(&ctx))?;
 
-    let f = syn::parse_file(&src).expect("Unable to parse file");
-
-    let p = program::parse(parse_program_mod(&f))?;
-
-    let accs = parse_account_derives(&f);
+    let accs = parse_account_derives(&ctx);
 
     let state = match p.state {
         None => None,
@@ -129,7 +123,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
             }
         },
     };
-    let error = parse_error_enum(&f).map(|mut e| error::parse(&mut e, None));
+    let error = parse_error_enum(&ctx).map(|mut e| error::parse(&mut e, None));
     let error_codes = error.as_ref().map(|e| {
         e.codes
             .iter()
@@ -169,7 +163,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
         })
         .collect::<Vec<_>>();
 
-    let events = parse_events(&f)
+    let events = parse_events(&ctx)
         .iter()
         .map(|e: &&syn::ItemStruct| {
             let fields = match &e.fields {
@@ -202,9 +196,9 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
     // All user defined types.
     let mut accounts = vec![];
     let mut types = vec![];
-    let ty_defs = parse_ty_defs(&f)?;
+    let ty_defs = parse_ty_defs(&ctx)?;
 
-    let account_structs = parse_accounts(&f);
+    let account_structs = parse_accounts(&ctx);
     let account_names: HashSet<String> = account_structs
         .iter()
         .map(|a| a.ident.to_string())
@@ -242,10 +236,10 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Idl> {
 }
 
 // Parse the main program mod.
-fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
-    let mods = f
-        .items
-        .iter()
+fn parse_program_mod(ctx: &CrateContext) -> syn::ItemMod {
+    let root = ctx.root_module();
+    let mods = root
+        .items()
         .filter_map(|i| match i {
             syn::Item::Mod(item_mod) => {
                 let mod_count = item_mod
@@ -267,173 +261,168 @@ fn parse_program_mod(f: &syn::File) -> syn::ItemMod {
     mods[0].clone()
 }
 
-fn parse_error_enum(f: &syn::File) -> Option<syn::ItemEnum> {
-    f.items
-        .iter()
-        .filter_map(|i| match i {
-            syn::Item::Enum(item_enum) => {
-                let attrs_count = item_enum
-                    .attrs
-                    .iter()
-                    .filter(|attr| {
-                        let segment = attr.path.segments.last().unwrap();
-                        segment.ident == "error"
-                    })
-                    .count();
-                match attrs_count {
-                    0 => None,
-                    1 => Some(item_enum),
-                    _ => panic!("Invalid syntax: one error attribute allowed"),
-                }
+fn parse_error_enum(ctx: &CrateContext) -> Option<syn::ItemEnum> {
+    ctx.enums()
+        .filter_map(|item_enum| {
+            let attrs_count = item_enum
+                .attrs
+                .iter()
+                .filter(|attr| {
+                    let segment = attr.path.segments.last().unwrap();
+                    segment.ident == "error"
+                })
+                .count();
+            match attrs_count {
+                0 => None,
+                1 => Some(item_enum),
+                _ => panic!("Invalid syntax: one error attribute allowed"),
             }
-            _ => None,
         })
         .next()
         .cloned()
 }
 
-fn parse_events(f: &syn::File) -> Vec<&syn::ItemStruct> {
-    f.items
-        .iter()
-        .filter_map(|i| match i {
-            syn::Item::Struct(item_strct) => {
-                let attrs_count = item_strct
-                    .attrs
-                    .iter()
-                    .filter(|attr| {
-                        let segment = attr.path.segments.last().unwrap();
-                        segment.ident == "event"
-                    })
-                    .count();
-                match attrs_count {
-                    0 => None,
-                    1 => Some(item_strct),
-                    _ => panic!("Invalid syntax: one event attribute allowed"),
-                }
+fn parse_events(ctx: &CrateContext) -> Vec<&syn::ItemStruct> {
+    ctx.structs()
+        .filter_map(|item_strct| {
+            let attrs_count = item_strct
+                .attrs
+                .iter()
+                .filter(|attr| {
+                    let segment = attr.path.segments.last().unwrap();
+                    segment.ident == "event"
+                })
+                .count();
+            match attrs_count {
+                0 => None,
+                1 => Some(item_strct),
+                _ => panic!("Invalid syntax: one event attribute allowed"),
             }
-            _ => None,
         })
         .collect()
 }
 
-fn parse_accounts(f: &syn::File) -> Vec<&syn::ItemStruct> {
-    f.items
-        .iter()
-        .filter_map(|i| match i {
-            syn::Item::Struct(item_strct) => {
-                let attrs_count = item_strct
-                    .attrs
-                    .iter()
-                    .filter(|attr| {
-                        let segment = attr.path.segments.last().unwrap();
-                        segment.ident == "account" || segment.ident == "associated"
-                    })
-                    .count();
-                match attrs_count {
-                    0 => None,
-                    1 => Some(item_strct),
-                    _ => panic!("Invalid syntax: one event attribute allowed"),
-                }
+fn parse_accounts(ctx: &CrateContext) -> Vec<&syn::ItemStruct> {
+    ctx.structs()
+        .filter_map(|item_strct| {
+            let attrs_count = item_strct
+                .attrs
+                .iter()
+                .filter(|attr| {
+                    let segment = attr.path.segments.last().unwrap();
+                    segment.ident == "account" || segment.ident == "associated"
+                })
+                .count();
+            match attrs_count {
+                0 => None,
+                1 => Some(item_strct),
+                _ => panic!("Invalid syntax: one event attribute allowed"),
             }
-            _ => None,
         })
         .collect()
 }
 
 // Parse all structs implementing the `Accounts` trait.
-fn parse_account_derives(f: &syn::File) -> HashMap<String, AccountsStruct> {
-    f.items
-        .iter()
-        .filter_map(|i| match i {
-            syn::Item::Struct(i_strct) => {
-                for attr in &i_strct.attrs {
-                    if attr.tokens.to_string().contains(DERIVE_NAME) {
-                        let strct = accounts::parse(i_strct).expect("Code not parseable");
-                        return Some((strct.ident.to_string(), strct));
-                    }
+fn parse_account_derives(ctx: &CrateContext) -> HashMap<String, AccountsStruct> {
+    // TODO: parse manual implementations. Currently we only look
+    //       for derives.
+    ctx.structs()
+        .filter_map(|i_strct| {
+            for attr in &i_strct.attrs {
+                if attr.tokens.to_string().contains(DERIVE_NAME) {
+                    let strct = accounts::parse(i_strct).expect("Code not parseable");
+                    return Some((strct.ident.to_string(), strct));
                 }
-                None
             }
-            // TODO: parse manual implementations. Currently we only look
-            //       for derives.
-            _ => None,
+            None
         })
         .collect()
 }
 
 // Parse all user defined types in the file.
-fn parse_ty_defs(f: &syn::File) -> Result<Vec<IdlTypeDefinition>> {
-    f.items
-        .iter()
-        .filter_map(|i| match i {
-            syn::Item::Struct(item_strct) => {
-                for attr in &item_strct.attrs {
-                    if attr.tokens.to_string().contains(DERIVE_NAME) {
-                        return None;
-                    }
-                }
-                if let syn::Visibility::Public(_) = &item_strct.vis {
-                    let name = item_strct.ident.to_string();
-                    let fields = match &item_strct.fields {
-                        syn::Fields::Named(fields) => fields
-                            .named
-                            .iter()
-                            .map(|f: &syn::Field| {
-                                let mut tts = proc_macro2::TokenStream::new();
-                                f.ty.to_tokens(&mut tts);
-                                Ok(IdlField {
-                                    name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
-                                    ty: tts.to_string().parse()?,
-                                })
-                            })
-                            .collect::<Result<Vec<IdlField>>>(),
-                        _ => panic!("Only named structs are allowed."),
-                    };
+fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
+    ctx.structs()
+        .filter_map(|item_strct| {
+            // Only take serializable types
+            let serializable = item_strct.attrs.iter().any(|attr| {
+                let attr_string = attr.tokens.to_string();
+                let attr_name = attr.path.segments.last().unwrap().ident.to_string();
+                let attr_serializable = ["account", "associated", "event", "zero_copy"];
 
-                    return Some(fields.map(|fields| IdlTypeDefinition {
-                        name,
-                        ty: IdlTypeDefinitionTy::Struct { fields },
-                    }));
-                }
-                None
+                let derived_serializable = attr_name == "derive"
+                    && attr_string.contains("AnchorSerialize")
+                    && attr_string.contains("AnchorDeserialize");
+
+                attr_serializable.iter().any(|a| *a == attr_name) || derived_serializable
+            });
+
+            if !serializable {
+                return None;
             }
-            syn::Item::Enum(enm) => {
-                let name = enm.ident.to_string();
-                let variants = enm
-                    .variants
+
+            // Only take public types
+            match &item_strct.vis {
+                syn::Visibility::Public(_) => (),
+                _ => return None,
+            }
+
+            let name = item_strct.ident.to_string();
+            let fields = match &item_strct.fields {
+                syn::Fields::Named(fields) => fields
+                    .named
                     .iter()
-                    .map(|variant: &syn::Variant| {
-                        let name = variant.ident.to_string();
-                        let fields = match &variant.fields {
-                            syn::Fields::Unit => None,
-                            syn::Fields::Unnamed(fields) => {
-                                let fields: Vec<IdlType> =
-                                    fields.unnamed.iter().map(to_idl_type).collect();
-                                Some(EnumFields::Tuple(fields))
-                            }
-                            syn::Fields::Named(fields) => {
-                                let fields: Vec<IdlField> = fields
-                                    .named
-                                    .iter()
-                                    .map(|f: &syn::Field| {
-                                        let name = f.ident.as_ref().unwrap().to_string();
-                                        let ty = to_idl_type(f);
-                                        IdlField { name, ty }
-                                    })
-                                    .collect();
-                                Some(EnumFields::Named(fields))
-                            }
-                        };
-                        IdlEnumVariant { name, fields }
+                    .map(|f: &syn::Field| {
+                        let mut tts = proc_macro2::TokenStream::new();
+                        f.ty.to_tokens(&mut tts);
+                        Ok(IdlField {
+                            name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
+                            ty: tts.to_string().parse()?,
+                        })
                     })
-                    .collect::<Vec<IdlEnumVariant>>();
-                Some(Ok(IdlTypeDefinition {
-                    name,
-                    ty: IdlTypeDefinitionTy::Enum { variants },
-                }))
-            }
-            _ => None,
+                    .collect::<Result<Vec<IdlField>>>(),
+                _ => panic!("Only named structs are allowed."),
+            };
+
+            Some(fields.map(|fields| IdlTypeDefinition {
+                name,
+                ty: IdlTypeDefinitionTy::Struct { fields },
+            }))
         })
+        .chain(ctx.enums().map(|enm| {
+            let name = enm.ident.to_string();
+            let variants = enm
+                .variants
+                .iter()
+                .map(|variant: &syn::Variant| {
+                    let name = variant.ident.to_string();
+                    let fields = match &variant.fields {
+                        syn::Fields::Unit => None,
+                        syn::Fields::Unnamed(fields) => {
+                            let fields: Vec<IdlType> =
+                                fields.unnamed.iter().map(to_idl_type).collect();
+                            Some(EnumFields::Tuple(fields))
+                        }
+                        syn::Fields::Named(fields) => {
+                            let fields: Vec<IdlField> = fields
+                                .named
+                                .iter()
+                                .map(|f: &syn::Field| {
+                                    let name = f.ident.as_ref().unwrap().to_string();
+                                    let ty = to_idl_type(f);
+                                    IdlField { name, ty }
+                                })
+                                .collect();
+                            Some(EnumFields::Named(fields))
+                        }
+                    };
+                    IdlEnumVariant { name, fields }
+                })
+                .collect::<Vec<IdlEnumVariant>>();
+            Ok(IdlTypeDefinition {
+                name,
+                ty: IdlTypeDefinitionTy::Enum { variants },
+            })
+        }))
         .collect()
 }
 
