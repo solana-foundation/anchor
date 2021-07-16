@@ -57,7 +57,7 @@ mod counter {
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
 
-        counter += 1;
+        counter.count += 1;
 
         Ok(())
     }
