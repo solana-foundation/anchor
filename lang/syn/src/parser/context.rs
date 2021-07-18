@@ -97,7 +97,7 @@ impl ParsedModule {
                 item: item.clone(),
                 file: module.file.clone(),
                 path: module.path.clone(),
-                name: name.clone(),
+                name: item.ident.to_string(),
             }));
             modules.insert(name.clone(), module);
         }
@@ -112,12 +112,15 @@ impl ParsedModule {
         parent_path: &str,
         item: syn::ItemMod,
     ) -> ParseResult<Self> {
-        let path = format!("{}::{}", parent_path, item.ident);
-
         Ok(match item.content {
             Some((_, items)) => {
                 // The module content is within the parent file being parsed
-                Self::new(path, parent_file.to_owned(), item.ident.to_string(), items)
+                Self::new(
+                    parent_path.to_owned(),
+                    parent_file.to_owned(),
+                    item.ident.to_string(),
+                    items,
+                )
             }
             None => {
                 // The module is referencing some other file, so we need to load that
@@ -141,7 +144,12 @@ impl ParsedModule {
                     .map_err(|_| ParseError::new_spanned(&item, "could not read file"))?;
                 let mod_file = syn::parse_file(&mod_file_content)?;
 
-                Self::new(path, mod_file_path, item.ident.to_string(), mod_file.items)
+                Self::new(
+                    parent_path.to_owned(),
+                    mod_file_path,
+                    item.ident.to_string(),
+                    mod_file.items,
+                )
             }
         })
     }
