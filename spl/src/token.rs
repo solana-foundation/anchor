@@ -131,14 +131,14 @@ pub fn initialize_mint<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, InitializeMint<'info>>,
     decimals: u8,
     authority: &Pubkey,
-    freeze_authority: Option<&Pubkey>
+    freeze_authority: Option<&Pubkey>,
 ) -> ProgramResult {
     let ix = spl_token::instruction::initialize_mint(
         &spl_token::ID,
         ctx.accounts.mint.key,
         &authority,
         freeze_authority,
-        decimals
+        decimals,
     )?;
     solana_program::program::invoke_signed(
         &ix,
