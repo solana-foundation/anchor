@@ -51,7 +51,7 @@ export class EventCoder {
     // This will throw if log length is not a multiple of 4.
     try {
       logArr = Buffer.from(base64.toByteArray(log));
-    } catch (e){
+    } catch (e) {
       return null;
     }
     const disc = base64.fromByteArray(logArr.slice(0, 8));

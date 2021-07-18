@@ -44,7 +44,9 @@ jobs:
         - cargo fmt -- --check
         - cargo clippy --all-targets -- -D warnings
         - cargo test
-        - pushd ts && yarn && yarn test && popd
+        - pushd ts && yarn && popd
+        - pushd ts && yarn test && popd
+        - pushd ts && yarn lint && popd
     - <<: *examples
       name: Runs the examples 1
       script:

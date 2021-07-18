@@ -58,7 +58,10 @@ export class EventParser {
     log: string
   ): [Event | null, string | null, boolean] {
     // Executing program is this program.
-    if (execution.stack.length > 0 && execution.program() === this.programId.toString()) {
+    if (
+      execution.stack.length > 0 &&
+      execution.program() === this.programId.toString()
+    ) {
       return this.handleProgramLog(log);
     }
     // Executing program is not this program.
@@ -89,11 +92,9 @@ export class EventParser {
     const logStart = log.split(":")[0];
 
     // Did the program finish executing?
-    if (
-      logStart.match(/^Program (.*) success/g) !== null
-    ) {
+    if (logStart.match(/^Program (.*) success/g) !== null) {
       return [null, true];
-    // Recursive call.
+      // Recursive call.
     } else if (
       logStart.startsWith(`Program ${this.programId.toString()} invoke`)
     ) {

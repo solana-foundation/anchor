@@ -15,7 +15,8 @@
   "scripts": {
     "build": "rm -rf dist/ && yarn build:node",
     "build:node": "tsc && tsc -p tsconfig.cjs.json",
-    "lint:fix": "prettier src/** -w",
+    "lint:fix": "prettier src/** tests/** -w",
+    "lint": "prettier src/** tests/** --check",
     "watch": "tsc -p tsconfig.cjs.json --watch",
     "prepublishOnly": "yarn build",
     "docs": "typedoc --excludePrivate --includeVersion --out ../docs/src/.vuepress/dist/ts/ --readme none src/index.ts",

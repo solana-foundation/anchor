@@ -250,8 +250,14 @@ export class Program {
     this._coder = new Coder(idl);
 
     // Dynamic namespaces.
-    const [rpc, instruction, transaction, account, simulate, state] =
-      NamespaceFactory.build(idl, this._coder, programId, this._provider);
+    const [
+      rpc,
+      instruction,
+      transaction,
+      account,
+      simulate,
+      state,
+    ] = NamespaceFactory.build(idl, this._coder, programId, this._provider);
     this.rpc = rpc;
     this.instruction = instruction;
     this.transaction = transaction;

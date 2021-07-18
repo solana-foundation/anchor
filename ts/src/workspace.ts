@@ -42,16 +42,18 @@ const workspace = new Proxy({} as any, {
 
       const idlFolder = `${projectRoot}/target/idl`;
       if (!fs.existsSync(idlFolder)) {
-        throw new Error(`${idlFolder} doesn't exist. Did you use "anchor build"?`);
+        throw new Error(
+          `${idlFolder} doesn't exist. Did you use "anchor build"?`
+        );
       }
 
       const idlMap = new Map<string, Idl>();
-      fs.readdirSync(idlFolder).forEach(file => {
+      fs.readdirSync(idlFolder).forEach((file) => {
         const filePath = `${idlFolder}/${file}`;
         const idlStr = fs.readFileSync(filePath);
         const idl = JSON.parse(idlStr);
         idlMap.set(idl.name, idl);
-        const name = camelCase(idl.name, {pascalCase: true});
+        const name = camelCase(idl.name, { pascalCase: true });
         if (idl.metadata && idl.metadata.address) {
           workspaceCache[name] = new Program(
             idl,
