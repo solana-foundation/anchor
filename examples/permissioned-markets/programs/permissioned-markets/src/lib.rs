@@ -3,79 +3,112 @@
 use anchor_lang::prelude::*;
 use anchor_spl::dex;
 use serum_dex::instruction::MarketInstruction;
+use serum_dex::matching::Side;
 use serum_dex::state::OpenOrders;
 use solana_program::instruction::Instruction;
 use solana_program::program;
 use solana_program::system_program;
+use solana_program::sysvar::rent;
 use std::mem::size_of;
 
-/// This demonstrates how to create "permissioned markets" on Serum. A
-/// permissioned market is a regular Serum market with an additional
-/// open orders authority, which must sign every transaction to create or
-/// close an open orders account.
+/// A low level example of permissioned markets.
 ///
-/// In practice, what this means is that one can create a program that acts
-/// as this authority *and* that marks its own PDAs as the *owner* of all
-/// created open orders accounts, making the program the sole arbiter over
-/// who can trade on a given market.
+/// It's recommended to instead study `programs/permissioned-markets-middleware`
+/// in this workspace, which achieves the same functionality in a simpler, more
+/// extendable fashion via a middleware abstraction. This program achieves
+/// mostly the same proxy + middleware functionality, but in a much uglier way.
 ///
-/// For example, this example forces all trades that execute on this market
-/// to set the referral to a hardcoded address, i.e., `fee_owner::ID`.
+/// This example is provided as a (very) rough guide for how to might implement
+/// a permissioned market in a raw program, which may be useful in the
+/// unexpected case that the middleware abstraction does not fit ones use case.
+///
+/// Note that a fallback function is used here as the entrypoint instead of
+/// higher level Anchor instruction handers. This is done to keep the example
+/// consistent with `programs/permissioned-markets-middleware`. A program
+/// with explicit instruction handlers would work, though then one would lose
+/// the middleware abstraction, which may or may not be acceptibl depending on
+/// your use case.
 #[program]
 pub mod permissioned_markets {
     use super::*;
 
-    /// Creates an open orders account controlled by this program on behalf of
-    /// the user.
-    ///
-    /// Note that although the owner of the open orders account is the dex
-    /// program, This instruction must be executed within this program, rather
-    /// than a relay, because it initializes a PDA.
-    pub fn init_account(ctx: Context<InitAccount>, bump: u8, bump_init: u8) -> Result<()> {
-        let cpi_ctx = CpiContext::from(&*ctx.accounts);
-        let seeds = open_orders_authority! {
-            program = ctx.program_id,
-            market = ctx.accounts.market.key,
-            authority = ctx.accounts.authority.key,
-            bump = bump
-        };
-        let seeds_init = open_orders_init_authority! {
-            program = ctx.program_id,
-            market = ctx.accounts.market.key,
-            bump = bump_init
-        };
-        dex::init_open_orders(cpi_ctx.with_signer(&[seeds, seeds_init]))?;
-        Ok(())
-    }
-
-    /// Fallback function to relay calls to the serum DEX.
-    ///
-    /// For instructions requiring an open orders authority, checks for
-    /// a user signature and then swaps the account info for one controlled
-    /// by the program.
-    ///
-    /// Note: the "authority" of each open orders account is the account
-    ///       itself, since it's a PDA.
     #[access_control(is_serum(accounts))]
     pub fn dex_instruction(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        data: &[u8],
+        mut data: &[u8],
     ) -> ProgramResult {
-        require!(accounts.len() >= 1, NotEnoughAccounts);
+        require!(!accounts.is_empty(), NotEnoughAccounts);
 
-        let dex_acc_info = &accounts[0];
-        let dex_accounts = &accounts[1..];
-        let mut acc_infos = dex_accounts.to_vec();
+        // Strip instruction data.
+        let bumps = {
+            // Strip the discriminator off the data, which is provided by the client
+            // for prepending extra instruction data.
+            let disc = data[0];
+            data = &data[1..];
+
+            // For the init open orders instruction, bump seeds are provided.
+            if disc == 0 {
+                let bump = data[0];
+                let bump_init = data[1];
+                data = &data[2..]; // Strip bumps off.
+                Some((bump, bump_init))
+            } else {
+                None
+            }
+        };
+
+        // Strip accounts.
+        let (dex, mut acc_infos) = {
+            // First account is the dex executable--used for CPI.
+            let dex = &accounts[0];
+
+            // Second account is the auth token.
+            let auth_token = &accounts[1];
+            if auth_token.key != &rent::ID {
+                // Rent sysvar as dummy example.
+                return Err(ErrorCode::InvalidAuthToken.into());
+            }
+
+            // Strip.
+            let acc_infos = (&accounts[2..]).to_vec();
+
+            (dex, acc_infos)
+        };
+
+        let mut pre_instruction: Option<CpiInstruction> = None;
+        let mut post_instruction: Option<CpiInstruction> = None;
 
         // Decode instruction.
-        let ix = MarketInstruction::unpack(data).ok_or_else(|| ErrorCode::CannotUnpack)?;
+        let ix = MarketInstruction::unpack(data).ok_or(ErrorCode::CannotUnpack)?;
 
         // Swap the user's account, which is in the open orders authority
         // position, for the program's PDA (the real authority).
         let (market, user) = match ix {
-            MarketInstruction::NewOrderV3(_) => {
-                require!(dex_accounts.len() >= 12, NotEnoughAccounts);
+            MarketInstruction::InitOpenOrders => {
+                let (market, user) = {
+                    let market = &acc_infos[4];
+                    let user = &acc_infos[3];
+
+                    let (bump, bump_init) = bumps.as_ref().unwrap();
+
+                    // Initialize PDA.
+                    let mut accounts = &acc_infos[..];
+                    InitAccount::try_accounts(program_id, &mut accounts, &[*bump, *bump_init])?;
+
+                    (*market.key, *user.key)
+                };
+                // Chop off the first two accounts used initializing the PDA.
+                acc_infos = (&acc_infos[2..]).to_vec();
+
+                // Set signers.
+                acc_infos[1] = prepare_pda(&acc_infos[0]);
+                acc_infos[4].is_signer = true;
+
+                (market, user)
+            }
+            MarketInstruction::NewOrderV3(ix) => {
+                require!(acc_infos.len() >= 12, NotEnoughAccounts);
 
                 let (market, user) = {
                     let market = &acc_infos[0];
@@ -88,12 +121,60 @@ pub mod permissioned_markets {
                     (*market.key, *user.key)
                 };
 
+                // Pre-instruction to approve delegate.
+                {
+                    let market = &acc_infos[0];
+                    let user = &acc_infos[7];
+                    let open_orders = &acc_infos[1];
+                    let token_account_payer = &acc_infos[6];
+                    let amount = match ix.side {
+                        Side::Bid => ix.max_native_pc_qty_including_fees.get(),
+                        Side::Ask => {
+                            // +5 for padding.
+                            let coin_lot_idx = 5 + 43 * 8;
+                            let data = market.try_borrow_data()?;
+                            let mut coin_lot_array = [0u8; 8];
+                            coin_lot_array.copy_from_slice(&data[coin_lot_idx..coin_lot_idx + 8]);
+                            let coin_lot_size = u64::from_le_bytes(coin_lot_array);
+                            ix.max_coin_qty.get().checked_mul(coin_lot_size).unwrap()
+                        }
+                    };
+                    let ix = spl_token::instruction::approve(
+                        &spl_token::ID,
+                        token_account_payer.key,
+                        open_orders.key,
+                        user.key,
+                        &[],
+                        amount,
+                    )?;
+                    let accounts = vec![
+                        token_account_payer.clone(),
+                        open_orders.clone(),
+                        user.clone(),
+                    ];
+                    pre_instruction = Some((ix, accounts, Vec::new()));
+                };
+
+                // Post-instruction to revoke delegate.
+                {
+                    let user = &acc_infos[7];
+                    let token_account_payer = &acc_infos[6];
+                    let ix = spl_token::instruction::revoke(
+                        &spl_token::ID,
+                        token_account_payer.key,
+                        user.key,
+                        &[],
+                    )?;
+                    let accounts = vec![token_account_payer.clone(), user.clone()];
+                    post_instruction = Some((ix, accounts, Vec::new()));
+                }
+
                 acc_infos[7] = prepare_pda(&acc_infos[1]);
 
                 (market, user)
             }
             MarketInstruction::CancelOrderV2(_) => {
-                require!(dex_accounts.len() >= 6, NotEnoughAccounts);
+                require!(acc_infos.len() >= 6, NotEnoughAccounts);
 
                 let (market, user) = {
                     let market = &acc_infos[0];
@@ -111,7 +192,7 @@ pub mod permissioned_markets {
                 (market, user)
             }
             MarketInstruction::CancelOrderByClientIdV2(_) => {
-                require!(dex_accounts.len() >= 6, NotEnoughAccounts);
+                require!(acc_infos.len() >= 6, NotEnoughAccounts);
 
                 let (market, user) = {
                     let market = &acc_infos[0];
@@ -129,12 +210,12 @@ pub mod permissioned_markets {
                 (market, user)
             }
             MarketInstruction::SettleFunds => {
-                require!(dex_accounts.len() >= 10, NotEnoughAccounts);
+                require!(acc_infos.len() >= 10, NotEnoughAccounts);
 
                 let (market, user) = {
                     let market = &acc_infos[0];
                     let user = &acc_infos[2];
-                    let referral = &dex_accounts[9];
+                    let referral = &acc_infos[9];
 
                     if !DISABLE_REFERRAL && referral.key != &referral::ID {
                         return Err(ErrorCode::InvalidReferral.into());
@@ -151,7 +232,7 @@ pub mod permissioned_markets {
                 (market, user)
             }
             MarketInstruction::CloseOpenOrders => {
-                require!(dex_accounts.len() >= 4, NotEnoughAccounts);
+                require!(acc_infos.len() >= 4, NotEnoughAccounts);
 
                 let (market, user) = {
                     let market = &acc_infos[3];
@@ -171,6 +252,19 @@ pub mod permissioned_markets {
             _ => return Err(ErrorCode::InvalidInstruction.into()),
         };
 
+        // Execute pre instruction.
+        if let Some((ix, accounts, seeds)) = pre_instruction {
+            let tmp_signers: Vec<Vec<&[u8]>> = seeds
+                .iter()
+                .map(|seeds| {
+                    let seeds: Vec<&[u8]> = seeds.iter().map(|seed| &seed[..]).collect();
+                    seeds
+                })
+                .collect();
+            let signers: Vec<&[&[u8]]> = tmp_signers.iter().map(|seeds| &seeds[..]).collect();
+            program::invoke_signed(&ix, &accounts, &signers)?;
+        }
+
         // CPI to the dex.
         let dex_accounts = acc_infos
             .iter()
@@ -180,7 +274,6 @@ pub mod permissioned_markets {
                 is_writable: acc.is_writable,
             })
             .collect();
-        acc_infos.push(dex_acc_info.clone());
         let ix = Instruction {
             data: data.to_vec(),
             accounts: dex_accounts,
@@ -188,10 +281,31 @@ pub mod permissioned_markets {
         };
         let seeds = open_orders_authority! {
             program = program_id,
+            dex_program = dex.key,
             market = market,
             authority = user
         };
-        program::invoke_signed(&ix, &acc_infos, &[seeds])
+        let seeds_init = open_orders_init_authority! {
+            program = program_id,
+            dex_program = dex.key,
+            market = market
+        };
+        program::invoke_signed(&ix, &acc_infos, &[seeds, seeds_init])?;
+
+        // Execute post instruction.
+        if let Some((ix, accounts, seeds)) = post_instruction {
+            let tmp_signers: Vec<Vec<&[u8]>> = seeds
+                .iter()
+                .map(|seeds| {
+                    let seeds: Vec<&[u8]> = seeds.iter().map(|seed| &seed[..]).collect();
+                    seeds
+                })
+                .collect();
+            let signers: Vec<&[&[u8]]> = tmp_signers.iter().map(|seeds| &seeds[..]).collect();
+            program::invoke_signed(&ix, &accounts, &signers)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -200,11 +314,13 @@ pub mod permissioned_markets {
 #[derive(Accounts)]
 #[instruction(bump: u8, bump_init: u8)]
 pub struct InitAccount<'info> {
-    #[account(seeds = [b"open-orders-init", market.key.as_ref(), &[bump_init]])]
-    pub open_orders_init_authority: AccountInfo<'info>,
+    #[account(address = dex::ID)]
+    pub dex_program: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
     #[account(
         init,
-        seeds = [b"open-orders", market.key.as_ref(), authority.key.as_ref()],
+        seeds = [b"open-orders", dex_program.key.as_ref(), market.key.as_ref(), authority.key.as_ref()],
         bump = bump,
         payer = authority,
         owner = dex::ID,
@@ -215,34 +331,16 @@ pub struct InitAccount<'info> {
     pub authority: AccountInfo<'info>,
     pub market: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
-    #[account(address = dex::ID)]
-    pub dex_program: AccountInfo<'info>,
-}
-
-// CpiContext transformations.
-
-impl<'info> From<&InitAccount<'info>>
-    for CpiContext<'_, '_, '_, 'info, dex::InitOpenOrders<'info>>
-{
-    fn from(accs: &InitAccount<'info>) -> Self {
-        // TODO: add the open orders init authority account here once the
-        //       dex is upgraded.
-        let accounts = dex::InitOpenOrders {
-            open_orders: accs.open_orders.clone(),
-            authority: accs.open_orders.clone(),
-            market: accs.market.clone(),
-            rent: accs.rent.to_account_info(),
-        };
-        let program = accs.dex_program.clone();
-        CpiContext::new(program, accounts)
-    }
+    #[account(
+        seeds = [b"open-orders-init", dex_program.key.as_ref(), market.key.as_ref()],
+        bump = bump_init,
+    )]
+    pub open_orders_init_authority: AccountInfo<'info>,
 }
 
 // Access control modifiers.
 
-fn is_serum<'info>(accounts: &[AccountInfo<'info>]) -> Result<()> {
+fn is_serum(accounts: &[AccountInfo]) -> Result<()> {
     let dex_acc_info = &accounts[0];
     if dex_acc_info.key != &dex::ID {
         return Err(ErrorCode::InvalidDexPid.into());
@@ -266,29 +364,53 @@ pub enum ErrorCode {
     UnauthorizedUser,
     #[msg("Not enough accounts were provided")]
     NotEnoughAccounts,
+    #[msg("Invalid auth token provided")]
+    InvalidAuthToken,
+}
+
+// Utils.
+
+fn prepare_pda<'info>(acc_info: &AccountInfo<'info>) -> AccountInfo<'info> {
+    let mut acc_info = acc_info.clone();
+    acc_info.is_signer = true;
+    acc_info
 }
 
 // Macros.
 
-/// Returns the seeds used for creating the open orders account PDA.
+/// Returns the seeds used for a user's open orders account PDA.
 #[macro_export]
 macro_rules! open_orders_authority {
-    (program = $program:expr, market = $market:expr, authority = $authority:expr, bump = $bump:expr) => {
+    (
+        program = $program:expr,
+        dex_program = $dex_program:expr,
+        market = $market:expr,
+        authority = $authority:expr,
+        bump = $bump:expr
+    ) => {
         &[
             b"open-orders".as_ref(),
+            $dex_program.as_ref(),
             $market.as_ref(),
             $authority.as_ref(),
             &[$bump],
         ]
     };
-    (program = $program:expr, market = $market:expr, authority = $authority:expr) => {
+    (
+        program = $program:expr,
+        dex_program = $dex_program:expr,
+        market = $market:expr,
+        authority = $authority:expr
+    ) => {
         &[
             b"open-orders".as_ref(),
+            $dex_program.as_ref(),
             $market.as_ref(),
             $authority.as_ref(),
             &[Pubkey::find_program_address(
                 &[
                     b"open-orders".as_ref(),
+                    $dex_program.as_ref(),
                     $market.as_ref(),
                     $authority.as_ref(),
                 ],
@@ -304,28 +426,36 @@ macro_rules! open_orders_authority {
 /// the DEX market.
 #[macro_export]
 macro_rules! open_orders_init_authority {
-    (program = $program:expr, market = $market:expr) => {
+    (
+        program = $program:expr,
+        dex_program = $dex_program:expr,
+        market = $market:expr,
+        bump = $bump:expr
+    ) => {
         &[
             b"open-orders-init".as_ref(),
+            $dex_program.as_ref().as_ref(),
+            $market.as_ref().as_ref(),
+            &[$bump],
+        ]
+    };
+
+    (program = $program:expr, dex_program = $dex_program:expr, market = $market:expr) => {
+        &[
+            b"open-orders-init".as_ref(),
+            $dex_program.as_ref(),
             $market.as_ref(),
             &[Pubkey::find_program_address(
-                &[b"open-orders-init".as_ref(), $market.as_ref()],
+                &[
+                    b"open-orders-init".as_ref(),
+                    $dex_program.as_ref(),
+                    $market.as_ref(),
+                ],
                 $program,
             )
             .1],
         ]
     };
-    (program = $program:expr, market = $market:expr, bump = $bump:expr) => {
-        &[b"open-orders-init".as_ref(), $market.as_ref(), &[$bump]]
-    };
-}
-
-// Utils.
-
-fn prepare_pda<'info>(acc_info: &AccountInfo<'info>) -> AccountInfo<'info> {
-    let mut acc_info = acc_info.clone();
-    acc_info.is_signer = true;
-    acc_info
 }
 
 // Constants.
@@ -343,3 +473,5 @@ const DISABLE_REFERRAL: bool = true;
 pub mod referral {
     solana_program::declare_id!("2k1bb16Hu7ocviT2KC3wcCgETtnC8tEUuvFBH4C5xStG");
 }
+
+type CpiInstruction<'info> = (Instruction, Vec<AccountInfo<'info>>, Vec<Vec<Vec<u8>>>);

@@ -292,4 +292,11 @@ pub mod accessor {
         mint_bytes.copy_from_slice(&bytes[..32]);
         Ok(Pubkey::new_from_array(mint_bytes))
     }
+
+    pub fn authority(account: &AccountInfo) -> Result<Pubkey, ProgramError> {
+        let bytes = account.try_borrow_data()?;
+        let mut owner_bytes = [0u8; 32];
+        owner_bytes.copy_from_slice(&bytes[32..64]);
+        Ok(Pubkey::new_from_array(owner_bytes))
+    }
 }

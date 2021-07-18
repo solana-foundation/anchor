@@ -2811,7 +2811,7 @@ dependencies = [
 [[package]]
 name = "serum_dex"
 version = "0.3.1"
-source = "git+https://github.com/project-serum/serum-dex?tag=v0.3.1#7d1d41538417aa8721aabea9503bf9d99eab7cc4"
+source = "git+https://github.com/project-serum/serum-dex?branch=armani/auth#2037a646f82e689f8e7a00c8a34b30e20253ba11"
 dependencies = [
  "arrayref",
  "bincode",

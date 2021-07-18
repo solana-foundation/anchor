@@ -5,8 +5,6 @@ use serum_dex::instruction::SelfTradeBehavior;
 use serum_dex::matching::{OrderType, Side};
 use std::num::NonZeroU64;
 
-pub use serum_dex;
-
 #[cfg(not(feature = "devnet"))]
 anchor_lang::solana_program::declare_id!("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
 
@@ -115,6 +113,7 @@ pub fn init_open_orders<'info>(
         ctx.accounts.open_orders.key,
         ctx.accounts.authority.key,
         ctx.accounts.market.key,
+        ctx.remaining_accounts.first().map(|acc| acc.key),
     )?;
     solana_program::program::invoke_signed(
         &ix,
@@ -205,6 +204,8 @@ pub struct SettleFunds<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
+/// To use an (optional) market authority, add it as the first account of the
+/// CpiContext's `remaining_accounts` Vec.
 #[derive(Accounts)]
 pub struct InitOpenOrders<'info> {
     pub open_orders: AccountInfo<'info>,
