@@ -142,7 +142,8 @@ pub mod lockup {
             ctx.remaining_accounts,
             instruction_data,
         )?;
-        let after_amount = ctx.accounts.transfer.vault.reload()?.amount;
+        ctx.accounts.transfer.vault.reload()?;
+        let after_amount = ctx.accounts.transfer.vault.amount;
 
         // CPI safety checks.
         let withdraw_amount = before_amount - after_amount;
@@ -167,7 +168,8 @@ pub mod lockup {
             ctx.remaining_accounts,
             instruction_data,
         )?;
-        let after_amount = ctx.accounts.transfer.vault.reload()?.amount;
+        ctx.accounts.transfer.vault.reload()?;
+        let after_amount = ctx.accounts.transfer.vault.amount;
 
         // CPI safety checks.
         let deposit_amount = after_amount - before_amount;

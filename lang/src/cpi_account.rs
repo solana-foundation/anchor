@@ -36,13 +36,10 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
-    pub fn reload(&self) -> Result<CpiAccount<'a, T>, ProgramError> {
-        let info = self.to_account_info();
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(CpiAccount::new(
-            info.clone(),
-            Box::new(T::try_deserialize(&mut data)?),
-        ))
+    pub fn reload(&mut self) -> ProgramResult {
+        let mut data: &[u8] = &self.info.try_borrow_data()?;
+        self.account = Box::new(T::try_deserialize(&mut data)?);
+        Ok(())
     }
 }
 
