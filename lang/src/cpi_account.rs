@@ -87,6 +87,12 @@ impl<'info, T: AccountDeserialize + Clone> ToAccountInfo<'info> for CpiAccount<'
     }
 }
 
+impl<'info, T: AccountDeserialize + Clone> AsRef<AccountInfo<'info>> for CpiAccount<'info, T> {
+    fn as_ref(&self) -> &AccountInfo<'info> {
+        &self.info
+    }
+}
+
 impl<'a, T: AccountDeserialize + Clone> Deref for CpiAccount<'a, T> {
     type Target = T;
 

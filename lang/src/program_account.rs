@@ -162,6 +162,14 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'inf
     }
 }
 
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
+    for ProgramAccount<'info, T>
+{
+    fn as_ref(&self) -> &AccountInfo<'info> {
+        &self.inner.info
+    }
+}
+
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAccount<'a, T> {
     type Target = T;
 
