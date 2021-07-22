@@ -192,6 +192,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "thiserror",
+ "zeroize",
 ]
 
 [[package]]
@@ -2811,7 +2812,7 @@ dependencies = [
 [[package]]
 name = "serum_dex"
 version = "0.3.1"
-source = "git+https://github.com/project-serum/serum-dex?branch=armani/auth#2037a646f82e689f8e7a00c8a34b30e20253ba11"
+source = "git+https://github.com/project-serum/serum-dex?branch=armani/auth#814c1fd05b00ae99d68d8f9617cc3868b7aceae1"
 dependencies = [
  "arrayref",
  "bincode",
@@ -4359,9 +4360,9 @@ checksum = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"
 
 [[package]]
 name = "zeroize"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a974bcdd357f0dca4d41677db03436324d45a4c9ed2d0b873a5a360ce41c36"
+checksum = "4756f7db3f7b5574938c3eb1c117038b8e07f95ee6718c0efad4ac21508f1efd"
 dependencies = [
  "zeroize_derive",
 ]

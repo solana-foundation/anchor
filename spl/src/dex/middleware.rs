@@ -75,6 +75,10 @@ pub trait MarketMiddleware {
         Ok(())
     }
 
+    fn prune(&self, _ctx: &mut Context) -> ProgramResult {
+        Ok(())
+    }
+
     /// Called when the instruction data doesn't match any DEX instruction.
     fn fallback(&self, _ctx: &mut Context) -> ProgramResult {
         Ok(())
@@ -344,6 +348,20 @@ impl MarketMiddleware for OpenOrdersPda {
 
         Ok(())
     }
+
+    /// Accounts:
+    ///
+    /// ..
+    ///
+    /// Data:
+    ///
+    /// 0.   Discriminant.
+    /// ..
+    fn prune(&self, ctx: &mut Context) -> ProgramResult {
+        // Set owner of open orders to be itself.
+        ctx.accounts[5] = ctx.accounts[4].clone();
+        Ok(())
+    }
 }
 
 /// Logs each request.
@@ -471,7 +489,7 @@ macro_rules! open_orders_init_authority {
 
 // Errors.
 
-#[error]
+#[error(offset = 500)]
 pub enum ErrorCode {
     #[msg("Program ID does not match the Serum DEX")]
     InvalidDexPid,
