@@ -109,9 +109,12 @@ export class InstructionCoder {
   /**
    * Dewcodes a program instruction.
    */
-  public decode(ix: Buffer | string): Instruction | null {
+  public decode(
+    ix: Buffer | string,
+    encoding: "hex" | "base58" = "hex"
+  ): Instruction | null {
     if (typeof ix === "string") {
-      ix = bs58.decode(ix);
+      ix = encoding === "hex" ? Buffer.from(ix, "hex") : bs58.decode(ix);
     }
     let sighash = bs58.encode(ix.slice(0, 8));
     let data = ix.slice(8);
