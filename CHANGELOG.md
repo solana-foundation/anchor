@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* cli: Add keys `members` / `exclude` in config `programs` section ([#546](https://github.com/project-serum/anchor/pull/546)).
+
 ### Breaking Changes
 
 * ts: Use `hex` by default for decoding Instruction ([#547](https://github.com/project-serum/anchor/pull/547)).

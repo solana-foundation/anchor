@@ -1,6 +1,6 @@
 //! CLI for workspace management of anchor programs.
 
-use crate::config::{read_all_programs, Config, Program, ProgramWorkspace, WalletPath};
+use crate::config::{Config, Program, ProgramWorkspace, WalletPath};
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
@@ -364,15 +364,16 @@ fn build(
     verifiable: bool,
     program_name: Option<String>,
 ) -> Result<()> {
+    let (cfg, path, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
+
     if let Some(program_name) = program_name {
-        for program in read_all_programs()? {
+        for program in cfg.read_all_programs()? {
             let p = program.path.file_name().unwrap().to_str().unwrap();
             if program_name.as_str() == p {
                 std::env::set_current_dir(&program.path)?;
             }
         }
     }
-    let (cfg, path, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
         None => {
@@ -395,7 +396,7 @@ fn build(
 }
 
 fn build_all(
-    _cfg: &Config,
+    cfg: &Config,
     cfg_path: PathBuf,
     idl_out: Option<PathBuf>,
     verifiable: bool,
@@ -404,9 +405,7 @@ fn build_all(
     let r = match cfg_path.parent() {
         None => Err(anyhow!("Invalid Anchor.toml at {}", cfg_path.display())),
         Some(parent) => {
-            let files = fs::read_dir(parent.join("programs"))?;
-            for f in files {
-                let p = f?.path();
+            for p in cfg.get_program_list(parent.join("programs"))? {
                 build_cwd(
                     cfg_path.as_path(),
                     p.join("Cargo.toml"),
@@ -1002,7 +1001,7 @@ fn test(
         }
 
         // Setup log reader.
-        let log_streams = stream_logs(cfg.provider.cluster.url());
+        let log_streams = stream_logs(cfg);
 
         // Run the tests.
         let test_result: Result<_> = {
@@ -1065,7 +1064,7 @@ fn test(
 // in the genesis block. This allows us to run tests without every deploying.
 fn genesis_flags(cfg: &Config) -> Result<Vec<String>> {
     let mut flags = Vec::new();
-    for mut program in read_all_programs()? {
+    for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
 
         let kp = Keypair::generate(&mut OsRng);
@@ -1094,14 +1093,14 @@ fn genesis_flags(cfg: &Config) -> Result<Vec<String>> {
     Ok(flags)
 }
 
-fn stream_logs(url: &str) -> Result<Vec<std::process::Child>> {
+fn stream_logs(config: &Config) -> Result<Vec<std::process::Child>> {
     let program_logs_dir = ".anchor/program-logs";
     if Path::new(program_logs_dir).exists() {
         std::fs::remove_dir_all(program_logs_dir)?;
     }
     fs::create_dir_all(program_logs_dir)?;
     let mut handles = vec![];
-    for program in read_all_programs()? {
+    for program in config.read_all_programs()? {
         let mut file = File::open(&format!("target/idl/{}.json", program.lib_name))?;
         let mut contents = vec![];
         file.read_to_end(&mut contents)?;
@@ -1120,7 +1119,7 @@ fn stream_logs(url: &str) -> Result<Vec<std::process::Child>> {
             .arg("logs")
             .arg(metadata.address)
             .arg("--url")
-            .arg(url)
+            .arg(config.provider.cluster.url())
             .stdout(stdio)
             .spawn()?;
         handles.push(child);
@@ -1197,7 +1196,7 @@ fn _deploy(
 
         let mut programs = Vec::new();
 
-        for mut program in read_all_programs()? {
+        for mut program in cfg.read_all_programs()? {
             if let Some(single_prog_str) = &program_str {
                 let program_name = program.path.file_name().unwrap().to_str().unwrap();
                 if single_prog_str.as_str() != program_name {
@@ -1320,8 +1319,13 @@ fn launch(
 
 // The Solana CLI doesn't redeploy a program if this file exists.
 // So remove it to make all commands explicit.
-fn clear_program_keys() -> Result<()> {
-    for program in read_all_programs()? {
+fn clear_program_keys(cfg_override: &ConfigOverride) -> Result<()> {
+    let config = Config::discover(cfg_override)
+        .unwrap_or_default()
+        .unwrap_or_default()
+        .0;
+
+    for program in config.read_all_programs()? {
         let anchor_keypair_path = program.anchor_keypair_path();
         if Path::exists(&anchor_keypair_path) {
             std::fs::remove_file(anchor_keypair_path).expect("Always remove");
@@ -1576,7 +1580,8 @@ fn cluster(_cmd: ClusterCommand) -> Result<()> {
 fn shell(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg, _path, _cargo| {
         let programs = {
-            let mut idls: HashMap<String, Idl> = read_all_programs()?
+            let mut idls: HashMap<String, Idl> = cfg
+                .read_all_programs()?
                 .iter()
                 .map(|program| (program.idl.name.clone(), program.idl.clone()))
                 .collect();
@@ -1664,7 +1669,7 @@ fn with_workspace<R>(
 ) -> R {
     set_workspace_dir_or_exit();
 
-    clear_program_keys().unwrap();
+    clear_program_keys(cfg_override).unwrap();
 
     let (cfg, cfg_path, cargo_toml) = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
@@ -1673,7 +1678,7 @@ fn with_workspace<R>(
     let r = f(&cfg, cfg_path, cargo_toml);
 
     set_workspace_dir_or_exit();
-    clear_program_keys().unwrap();
+    clear_program_keys(cfg_override).unwrap();
 
     r
 }

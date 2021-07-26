@@ -5,3 +5,6 @@ wallet = "~/.config/solana/id.json"
 [[test.genesis]]
 address = "FtMNMKp9DZHKWUyVAsj3Q5QV8ow4P3fUPP7ZrWEQJzKr"
 program = "./target/deploy/misc.so"
+
+[workspace]
+exclude = ["shared"]

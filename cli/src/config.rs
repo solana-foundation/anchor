@@ -19,6 +19,7 @@ pub struct Config {
     pub clusters: ClustersConfig,
     pub scripts: ScriptsConfig,
     pub test: Option<Test>,
+    pub workspace: WorkspaceConfig,
 }
 
 #[derive(Debug, Default)]
@@ -30,6 +31,14 @@ pub struct ProviderConfig {
 pub type ScriptsConfig = BTreeMap<String, String>;
 
 pub type ClustersConfig = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct WorkspaceConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub members: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exclude: Vec<String>,
+}
 
 impl Config {
     pub fn discover(
@@ -96,6 +105,51 @@ impl Config {
         solana_sdk::signature::read_keypair_file(&self.provider.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))
     }
+
+    pub fn get_program_list(&self, path: PathBuf) -> Result<Vec<PathBuf>> {
+        let mut programs = vec![];
+        for f in fs::read_dir(path)? {
+            let path = f?.path();
+            let program = path
+                .components()
+                .last()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .expect("failed to get program from path");
+
+            match (
+                self.workspace.members.is_empty(),
+                self.workspace.exclude.is_empty(),
+            ) {
+                (true, true) => programs.push(path),
+                (true, false) => {
+                    if !self.workspace.exclude.contains(&program) {
+                        programs.push(path);
+                    }
+                }
+                (false, _) => {
+                    if self.workspace.members.contains(&program) {
+                        programs.push(path);
+                    }
+                }
+            }
+        }
+        Ok(programs)
+    }
+
+    // TODO: this should read idl dir instead of parsing source.
+    pub fn read_all_programs(&self) -> Result<Vec<Program>> {
+        let mut r = vec![];
+        for path in self.get_program_list("programs".into())? {
+            let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
+            let lib_name = extract_lib_name(&path.join("Cargo.toml"))?;
+            r.push(Program {
+                lib_name,
+                path,
+                idl,
+            });
+        }
+        Ok(r)
+    }
 }
 
 // Pubkey serializes as a byte array so use this type a hack to serialize
@@ -106,6 +160,7 @@ struct _Config {
     test: Option<Test>,
     scripts: Option<ScriptsConfig>,
     clusters: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
+    workspace: Option<WorkspaceConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -135,6 +190,7 @@ impl ToString for Config {
                 false => Some(self.scripts.clone()),
             },
             clusters,
+            workspace: Some(self.workspace.clone()),
         };
 
         toml::to_string(&cfg).expect("Must be well formed")
@@ -155,6 +211,19 @@ impl FromStr for Config {
             scripts: cfg.scripts.unwrap_or_else(BTreeMap::new),
             test: cfg.test,
             clusters: cfg.clusters.map_or(Ok(BTreeMap::new()), deser_clusters)?,
+            workspace: cfg.workspace.map(|workspace| {
+                let (members, exclude) = match (workspace.members.is_empty(), workspace.exclude.is_empty()) {
+                    (true, true) => (vec![], vec![]),
+                    (true, false) => (vec![], workspace.exclude),
+                    (false, is_empty) => {
+                        if !is_empty {
+                            println!("Fields `members` and `exclude` in `[workspace]` section are not compatible, only `members` will be used.");
+                        }
+                        (workspace.members, vec![])
+                    }
+                };
+                WorkspaceConfig { members, exclude }
+            }).unwrap_or_default()
         })
     }
 }
@@ -222,23 +291,6 @@ pub struct GenesisEntry {
     pub address: String,
     // Filepath to the compiled program to embed into the genesis.
     pub program: String,
-}
-
-// TODO: this should read idl dir instead of parsing source.
-pub fn read_all_programs() -> Result<Vec<Program>> {
-    let files = fs::read_dir("programs")?;
-    let mut r = vec![];
-    for f in files {
-        let path = f?.path();
-        let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
-        let lib_name = extract_lib_name(&path.join("Cargo.toml"))?;
-        r.push(Program {
-            lib_name,
-            path,
-            idl,
-        });
-    }
-    Ok(r)
 }
 
 pub fn extract_lib_name(path: impl AsRef<Path>) -> Result<String> {
