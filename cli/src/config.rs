@@ -190,7 +190,8 @@ impl ToString for Config {
                 false => Some(self.scripts.clone()),
             },
             clusters,
-            workspace: Some(self.workspace.clone()),
+            workspace: (!self.workspace.members.is_empty() || !self.workspace.exclude.is_empty())
+                .then(|| self.workspace.clone()),
         };
 
         toml::to_string(&cfg).expect("Must be well formed")
