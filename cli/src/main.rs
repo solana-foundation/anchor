@@ -1063,12 +1063,19 @@ fn test(
 // Returns the solana-test-validator flags to embed the workspace programs
 // in the genesis block. This allows us to run tests without every deploying.
 fn genesis_flags(cfg: &Config) -> Result<Vec<String>> {
+    let clusters = cfg.clusters.get(&Cluster::Localnet);
+
     let mut flags = Vec::new();
     for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
 
-        let kp = Keypair::generate(&mut OsRng);
-        let address = kp.pubkey().to_string();
+        let address = clusters
+            .and_then(|m| m.get(&program.idl.name))
+            .map(|deployment| deployment.address.to_string())
+            .unwrap_or_else(|| {
+                let kp = Keypair::generate(&mut OsRng);
+                kp.pubkey().to_string()
+            });
 
         flags.push("--bpf-program".to_string());
         flags.push(address.clone());
