@@ -96,7 +96,8 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
-        file: Option<String>,
+        #[clap(multiple = true)]
+        args: Vec<String>,
     },
     /// Creates a new program.
     New { name: String },
@@ -255,13 +256,13 @@ fn main() -> Result<()> {
             skip_deploy,
             skip_local_validator,
             skip_build,
-            file,
+            args,
         } => test(
             &opts.cfg_override,
             skip_deploy,
             skip_local_validator,
             skip_build,
-            file,
+            args,
         ),
         #[cfg(feature = "dev")]
         Command::Airdrop => airdrop(cfg_override),
@@ -282,7 +283,16 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
     std::env::set_current_dir(&name)?;
     fs::create_dir("app")?;
 
-    let cfg = Config::default();
+    let mut cfg = Config::default();
+    cfg.scripts.insert(
+        "test".to_owned(),
+        if typescript {
+            "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+        } else {
+            "mocha -t 1000000 tests/"
+        }
+        .to_owned(),
+    );
     let toml = cfg.to_string();
     let mut file = File::create("Anchor.toml")?;
     file.write_all(toml.as_bytes())?;
@@ -972,7 +982,7 @@ fn test(
     skip_deploy: bool,
     skip_local_validator: bool,
     skip_build: bool,
-    file: Option<String>,
+    extra_args: Vec<String>,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg, _path, _cargo| {
         // Build if needed.
@@ -1005,26 +1015,18 @@ fn test(
 
         // Run the tests.
         let test_result: Result<_> = {
-            let ts_config_exist = Path::new("tsconfig.json").exists();
-            let cmd = if ts_config_exist { "ts-mocha" } else { "mocha" };
-            let mut args = if ts_config_exist {
-                vec![cmd, "-p", "./tsconfig.json"]
-            } else {
-                vec![cmd]
-            };
-            args.extend_from_slice(&[
-                "-t",
-                "1000000",
-                if let Some(ref file) = file {
-                    file
-                } else if ts_config_exist {
-                    "tests/**/*.ts"
-                } else {
-                    "tests/"
-                },
-            ]);
+            let cmd = cfg
+                .scripts
+                .get("test")
+                .expect("Not able to find command for `test`")
+                .clone();
+            let mut args: Vec<&str> = cmd
+                .split(' ')
+                .chain(extra_args.iter().map(|arg| arg.as_str()))
+                .collect();
+            let program = args.remove(0);
 
-            std::process::Command::new("npx")
+            std::process::Command::new(program)
                 .args(args)
                 .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
                 .stdout(Stdio::inherit())

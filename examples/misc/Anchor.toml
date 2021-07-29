@@ -8,3 +8,6 @@ program = "./target/deploy/misc.so"
 
 [workspace]
 exclude = ["shared"]
+
+[scripts]
+test = "mocha -t 1000000 tests/"

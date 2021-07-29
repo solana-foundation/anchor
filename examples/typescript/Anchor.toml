@@ -5,3 +5,6 @@ wallet = "~/.config/solana/id.json"
 [workspace]
 members = ["typescript"]
 exclude = ["typescript"]
+
+[scripts]
+test = "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

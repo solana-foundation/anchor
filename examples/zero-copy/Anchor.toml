@@ -4,3 +4,6 @@ wallet = "~/.config/solana/id.json"
 
 [workspace]
 members = ["zero-copy"]
+
+[scripts]
+test = "mocha -t 1000000 tests/"
