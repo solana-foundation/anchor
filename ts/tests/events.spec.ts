@@ -24,7 +24,7 @@ describe("Events", () => {
     };
     const coder = new Coder(idl);
     const programId = PublicKey.default;
-    const eventParser = new EventParser(coder, programId);
+    const eventParser = new EventParser(programId, coder);
 
     eventParser.parseLogs(logs, () => {
       throw new Error("Should never find logs");

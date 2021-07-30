@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import * as assert from "assert";
 import Coder from "../coder";
+import Provider from "../provider";
 
 const LOG_START_INDEX = "Program log: ".length;
 
@@ -10,11 +11,135 @@ export type Event = {
   data: Object;
 };
 
+type EventCallback = (event: any, slot: number) => void;
+
+export class EventManager {
+  /**
+   * Program ID for event subscriptions.
+   */
+  private _programId: PublicKey;
+
+  /**
+   * Network and wallet provider.
+   */
+  private _provider: Provider;
+
+  /**
+   * Event parser to handle onLogs callbacks.
+   */
+  private _eventParser: EventParser;
+
+  /**
+   * Maps event listener id to [event-name, callback].
+   */
+  private _eventCallbacks: Map<number, [string, EventCallback]>;
+
+  /**
+   * Maps event name to all listeners for the event.
+   */
+  private _eventListeners: Map<string, Array<number>>;
+
+  /**
+   * The next listener id to allocate.
+   */
+  private _listenerIdCount: number;
+
+  /**
+   * The subscription id from the connection onLogs subscription.
+   */
+  private _onLogsSubscriptionId: number | undefined;
+
+  constructor(programId: PublicKey, provider: Provider, coder: Coder) {
+    this._programId = programId;
+    this._provider = provider;
+    this._eventParser = new EventParser(programId, coder);
+    this._eventCallbacks = new Map();
+    this._eventListeners = new Map();
+    this._listenerIdCount = 0;
+  }
+
+  public addEventListener(
+    eventName: string,
+    callback: (event: any, slot: number) => void
+  ): number {
+    let listener = this._listenerIdCount;
+    this._listenerIdCount += 1;
+
+    // Store the listener into the event map.
+    if (!(eventName in this._eventCallbacks)) {
+      this._eventListeners.set(eventName, []);
+    }
+    this._eventListeners.set(
+      eventName,
+      this._eventListeners.get(eventName).concat(listener)
+    );
+
+    // Store the callback into the listener map.
+    this._eventCallbacks.set(listener, [eventName, callback]);
+
+    // Create the subscription singleton, if needed.
+    if (this._onLogsSubscriptionId !== undefined) {
+      return;
+    }
+    this._onLogsSubscriptionId = this._provider.connection.onLogs(
+      this._programId,
+      (logs, ctx) => {
+        if (logs.err) {
+          console.error(logs);
+          return;
+        }
+        this._eventParser.parseLogs(logs.logs, (event) => {
+          const allListeners = this._eventListeners.get(eventName);
+          if (allListeners) {
+            allListeners.forEach((listener) => {
+              const [, callback] = this._eventCallbacks.get(listener);
+              callback(event.data, ctx.slot);
+            });
+          }
+        });
+      }
+    );
+
+    return listener;
+  }
+
+  public async removeEventListener(listener: number): Promise<void> {
+    // Get the callback.
+    const callback = this._eventCallbacks.get(listener);
+    if (!callback) {
+      throw new Error(`Event listener ${listener} doesn't exist!`);
+    }
+    const [eventName] = callback;
+
+    // Get the listeners.
+    let listeners = this._eventListeners.get(eventName);
+    if (!listeners) {
+      throw new Error(`Event listeners dont' exist for ${eventName}!`);
+    }
+
+    // Update both maps.
+    this._eventCallbacks.delete(listener);
+    listeners = listeners.filter((l) => l !== listener);
+    if (listeners.length === 0) {
+      this._eventListeners.delete(eventName);
+    }
+
+    // Kill the websocket connection if all listeners have been removed.
+    if (this._eventCallbacks.size == 0) {
+      assert.ok(this._eventListeners.size === 0);
+      await this._provider.connection.removeOnLogsListener(
+        this._onLogsSubscriptionId
+      );
+      this._onLogsSubscriptionId = undefined;
+    }
+  }
+}
+
 export class EventParser {
   private coder: Coder;
   private programId: PublicKey;
 
-  constructor(coder: Coder, programId: PublicKey) {
+  constructor(programId: PublicKey, coder: Coder) {
     this.coder = coder;
     this.programId = programId;
   }

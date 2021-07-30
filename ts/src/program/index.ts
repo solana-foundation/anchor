@@ -13,7 +13,7 @@ import NamespaceFactory, {
 } from "./namespace";
 import { getProvider } from "../";
 import { utf8 } from "../utils/bytes";
-import { EventParser } from "./event";
+import { EventManager } from "./event";
 import { Address, translateAddress } from "./common";
 
 /**
@@ -235,6 +235,11 @@ export class Program {
   private _provider: Provider;
 
   /**
+   * Handles event subscriptions.
+   */
+  private _events: EventManager;
+
+  /**
    * @param idl       The interface definition.
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context to use. If not provided
@@ -248,6 +253,11 @@ export class Program {
     this._programId = programId;
     this._provider = provider ?? getProvider();
     this._coder = new Coder(idl);
+    this._events = new EventManager(
+      this._programId,
+      this._provider,
+      this._coder
+    );
 
     // Dynamic namespaces.
     const [
@@ -314,24 +324,13 @@ export class Program {
     eventName: string,
     callback: (event: any, slot: number) => void
   ): number {
-    const eventParser = new EventParser(this._coder, this._programId);
-    return this._provider.connection.onLogs(this._programId, (logs, ctx) => {
-      if (logs.err) {
-        console.error(logs);
-        return;
-      }
-      eventParser.parseLogs(logs.logs, (event) => {
-        if (event.name === eventName) {
-          callback(event.data, ctx.slot);
-        }
-      });
-    });
+    return this._events.addEventListener(eventName, callback);
   }
 
   /**
-   * Unsubscribes from the given event listener.
+   * Unsubscribes from the given eventName.
    */
   public async removeEventListener(listener: number): Promise<void> {
-    return this._provider.connection.removeOnLogsListener(listener);
+    return await this._events.removeEventListener(listener);
   }
 }
