@@ -136,7 +136,7 @@ pub fn initialize_mint<'a, 'b, 'c, 'info>(
     let ix = spl_token::instruction::initialize_mint(
         &spl_token::ID,
         ctx.accounts.mint.key,
-        &authority,
+        authority,
         freeze_authority,
         decimals,
     )?;
