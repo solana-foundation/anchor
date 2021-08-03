@@ -95,10 +95,10 @@ impl<'a> MarketProxy<'a> {
                     mw.close_open_orders(&mut ctx)?;
                 }
             }
-            Some(MarketInstruction::Prune) => {
+            Some(MarketInstruction::Prune(limit)) => {
                 require!(ctx.accounts.len() >= 7, ErrorCode::NotEnoughAccounts);
                 for mw in &self.middlewares {
-                    mw.prune(&mut ctx)?;
+                    mw.prune(&mut ctx, limit)?;
                 }
             }
             _ => {

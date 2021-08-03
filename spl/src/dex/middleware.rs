@@ -75,7 +75,7 @@ pub trait MarketMiddleware {
         Ok(())
     }
 
-    fn prune(&self, _ctx: &mut Context) -> ProgramResult {
+    fn prune(&self, _ctx: &mut Context, _limit: u16) -> ProgramResult {
         Ok(())
     }
 
@@ -357,7 +357,7 @@ impl MarketMiddleware for OpenOrdersPda {
     ///
     /// 0.   Discriminant.
     /// ..
-    fn prune(&self, ctx: &mut Context) -> ProgramResult {
+    fn prune(&self, ctx: &mut Context, _limit: u16) -> ProgramResult {
         // Set owner of open orders to be itself.
         ctx.accounts[5] = ctx.accounts[4].clone();
         Ok(())
@@ -394,6 +394,11 @@ impl MarketMiddleware for Logger {
 
     fn close_open_orders(&self, _ctx: &mut Context) -> ProgramResult {
         msg!("proxying close open orders");
+        Ok(())
+    }
+
+    fn prune(&self, _ctx: &mut Context, limit: u16) -> ProgramResult {
+        msg!("proxying prune {:?}", limit);
         Ok(())
     }
 }

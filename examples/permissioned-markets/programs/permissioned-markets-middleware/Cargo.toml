@@ -17,4 +17,4 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
-solana-program = "1.7.4"
+solana-program = "=1.7.8"
