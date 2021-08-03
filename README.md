@@ -97,7 +97,7 @@ directory.
 ## Contribution
 
 Thank you for your interest in contributing to Anchor! All contributions are welcome no
-matter how big or small. This includes includes (but is not limited to) filing issues,
+matter how big or small. This includes (but is not limited to) filing issues,
 adding documentation, fixing bugs, creating examples, and implementing features.
 
 If you'd like to contribute, please claim an issue by commenting, forking, and
