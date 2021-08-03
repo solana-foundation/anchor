@@ -88,7 +88,10 @@ export class InstructionCoder {
     const ixLayouts = stateMethods
       .map((m: IdlStateMethod) => {
         let fieldLayouts = m.args.map((arg: IdlField) => {
-          return IdlCoder.fieldLayout(arg, idl.types);
+          return IdlCoder.fieldLayout(
+            arg,
+            Array.from([...idl.accounts, ...idl.types])
+          );
         });
         const name = camelCase(m.name);
         return [name, borsh.struct(fieldLayouts, name)];
@@ -96,7 +99,10 @@ export class InstructionCoder {
       .concat(
         idl.instructions.map((ix) => {
           let fieldLayouts = ix.args.map((arg: IdlField) =>
-            IdlCoder.fieldLayout(arg, idl.types)
+            IdlCoder.fieldLayout(
+              arg,
+              Array.from([...idl.accounts, ...idl.types])
+            )
           );
           const name = camelCase(ix.name);
           return [name, borsh.struct(fieldLayouts, name)];
