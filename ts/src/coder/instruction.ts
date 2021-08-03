@@ -90,7 +90,7 @@ export class InstructionCoder {
         let fieldLayouts = m.args.map((arg: IdlField) => {
           return IdlCoder.fieldLayout(
             arg,
-            Array.from([...idl.accounts, ...(idl.types ?? [])])
+            Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
           );
         });
         const name = camelCase(m.name);
@@ -101,7 +101,7 @@ export class InstructionCoder {
           let fieldLayouts = ix.args.map((arg: IdlField) =>
             IdlCoder.fieldLayout(
               arg,
-              Array.from([...idl.accounts, ...(idl.types ?? [])])
+              Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
             )
           );
           const name = camelCase(ix.name);
