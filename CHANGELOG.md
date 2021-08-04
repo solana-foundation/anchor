@@ -11,17 +11,20 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.12.0] - 2021-08-03
+
 ### Features
 
 * cli: Add keys `members` / `exclude` in config `programs` section ([#546](https://github.com/project-serum/anchor/pull/546)).
-* cli: Allow to use custom command for test through scripts instead mocha runner ([#550](https://github.com/project-serum/anchor/pull/550)).
 * cli: Allow program address configuration for test command through `clusters.localnet` ([#554](https://github.com/project-serum/anchor/pull/554)).
 * lang: IDLs are now parsed from the entire crate ([#517](https://github.com/project-serum/anchor/pull/517)).
+* spl: Dex permissioned markets proxy ([#519](https://github.com/project-serum/anchor/pull/519), [#543](https://github.com/project-serum/anchor/pull/543)).
 
 ### Breaking Changes
 
 * ts: Use `hex` by default for decoding Instruction ([#547](https://github.com/project-serum/anchor/pull/547)).
 * lang: `CpiAccount::reload` mutates the existing struct instead of returning a new one ([#526](https://github.com/project-serum/anchor/pull/526)).
+* cli: Anchor.toml now requires an explicit `[scripts]` test command ([#550](https://github.com/project-serum/anchor/pull/550)).
 
 ## [0.11.1] - 2021-07-09
 
