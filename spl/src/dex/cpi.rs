@@ -159,6 +159,41 @@ pub fn sweep_fees<'info>(ctx: CpiContext<'_, '_, '_, 'info, SweepFees<'info>>) -
     Ok(())
 }
 
+pub fn initialize_market<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, InitializeMarket<'info>>,
+    coin_lot_size: u64,
+    pc_lot_size: u64,
+    vault_signer_nonce: u64,
+    pc_dust_threshold: u64,
+) -> ProgramResult {
+    let authority = ctx.remaining_accounts.get(0);
+    let prune_authority = ctx.remaining_accounts.get(1);
+    let ix = serum_dex::instruction::initialize_market(
+        ctx.accounts.market.key,
+        &ID,
+        ctx.accounts.coin_mint.key,
+        ctx.accounts.pc_mint.key,
+        ctx.accounts.coin_vault.key,
+        ctx.accounts.pc_vault.key,
+        authority.map(|r| r.key),
+        prune_authority.map(|r| r.key),
+        ctx.accounts.bids.key,
+        ctx.accounts.asks.key,
+        ctx.accounts.req_q.key,
+        ctx.accounts.event_q.key,
+        coin_lot_size,
+        pc_lot_size,
+        vault_signer_nonce,
+        pc_dust_threshold,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct NewOrderV3<'info> {
     pub market: AccountInfo<'info>,
@@ -230,4 +265,17 @@ pub struct SweepFees<'info> {
     pub sweep_receiver: AccountInfo<'info>,
     pub vault_signer: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeMarket<'info> {
+    pub market: AccountInfo<'info>,
+    pub coin_mint: AccountInfo<'info>,
+    pub pc_mint: AccountInfo<'info>,
+    pub coin_vault: AccountInfo<'info>,
+    pub pc_vault: AccountInfo<'info>,
+    pub bids: AccountInfo<'info>,
+    pub asks: AccountInfo<'info>,
+    pub req_q: AccountInfo<'info>,
+    pub event_q: AccountInfo<'info>,
 }
