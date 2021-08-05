@@ -198,7 +198,6 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "thiserror",
- "zeroize",
 ]
 
 [[package]]
@@ -2832,8 +2831,7 @@ dependencies = [
 [[package]]
 name = "serum_dex"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02705854bae4622e552346c8edd43ab90c7425da35d63d2c689f39238f8d8b25"
+source = "git+https://github.com/project-serum/serum-dex#9f776c45fa37ec80109ea1f46461a75125f3f334"
 dependencies = [
  "arrayref",
  "bincode",
