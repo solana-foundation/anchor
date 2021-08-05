@@ -56,7 +56,8 @@ allowing you to omit the `Rent` acccount), you can specify
 ::: details
 All accounts created with Anchor are laid out as follows: `8-byte-discriminator || borsh
 serialized data`. The 8-byte-discriminator is created from the first 8 bytes of the
-`Sha256` hash of the account's type--using the example above, `sha256("MyAccount")[..8]`.
+`Sha256` hash of the account's type--using the example above, `sha256("account:MyAccount")[..8]`.
+The `account:` is a fixed prefix.
 
 Importantly, this allows a program to know for certain an account is indeed of a given type.
 Without it, a program would be vulnerable to account injection attacks, where a malicious user
