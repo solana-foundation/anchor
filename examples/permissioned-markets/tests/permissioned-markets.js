@@ -39,7 +39,7 @@ describe("permissioned-markets", () => {
     // Token client.
     let usdcClient;
 
-    // Global DEX accounts and clients shared accross all tests.
+    // Global DEX accounts and clients shared across all tests.
     let marketProxy, tokenAccount, usdcAccount;
     let openOrders, openOrdersBump, openOrdersInitAuthority, openOrdersBumpinit;
     let usdcPosted;
@@ -237,7 +237,7 @@ describe("permissioned-markets", () => {
       const afterTokenAccount = await usdcClient.getAccountInfo(usdcAccount);
       assert.ok(
         afterTokenAccount.amount.sub(beforeTokenAccount.amount).toNumber() ===
-          usdcPosted.toNumber()
+        usdcPosted.toNumber()
       );
     });
 

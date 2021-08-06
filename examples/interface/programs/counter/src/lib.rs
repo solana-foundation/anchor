@@ -1,7 +1,7 @@
 //! counter is an example program that depends on an external interface
-//! that another program must implement. This allows our program to depend
-//! on another program, without knowing anything about it other than the fact
-//! that it implements the `Auth` trait.
+//! that another program (here counter-auth/src/lib.rs) must implement. This allows
+//! our program to depend on another program, without knowing anything about it
+//! other than that it implements the `Auth` trait.
 //!
 //! Here, we have a counter, where, in order to set the count, the `Auth`
 //! program must first approve the transaction.

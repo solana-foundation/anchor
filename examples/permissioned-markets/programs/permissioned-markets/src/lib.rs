@@ -20,13 +20,13 @@ use std::mem::size_of;
 ///
 /// This example is provided as a (very) rough guide for how to might implement
 /// a permissioned market in a raw program, which may be useful in the
-/// unexpected case that the middleware abstraction does not fit ones use case.
+/// unexpected case that the middleware abstraction does not fit one's use case.
 ///
 /// Note that a fallback function is used here as the entrypoint instead of
 /// higher level Anchor instruction handers. This is done to keep the example
 /// consistent with `programs/permissioned-markets-middleware`. A program
 /// with explicit instruction handlers would work, though then one would lose
-/// the middleware abstraction, which may or may not be acceptible depending on
+/// the middleware abstraction, which may or may not be acceptable depending on
 /// your use case.
 #[program]
 pub mod permissioned_markets {

@@ -15,7 +15,7 @@ describe("interface", () => {
     assert.ok(stateAccount.authProgram.equals(counterAuth.programId));
   });
 
-  it("Should fail to go from even to event", async () => {
+  it("Should fail to go from even to even", async () => {
     await assert.rejects(
       async () => {
         await counter.state.rpc.setCount(new anchor.BN(4), {

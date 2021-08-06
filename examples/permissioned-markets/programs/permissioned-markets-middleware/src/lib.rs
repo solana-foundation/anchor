@@ -50,7 +50,7 @@ use solana_program::sysvar::rent;
 ///
 /// Note that this middleware abstraction is not required to host a
 /// permissioned market. One could write a regular program that manages the PDAs
-/// and CPI invocations onesself, if desired.
+/// and CPI invocations oneself, if desired.
 #[program]
 pub mod permissioned_markets_middleware {
     use super::*;
