@@ -26,7 +26,7 @@ use std::mem::size_of;
 /// higher level Anchor instruction handers. This is done to keep the example
 /// consistent with `programs/permissioned-markets-middleware`. A program
 /// with explicit instruction handlers would work, though then one would lose
-/// the middleware abstraction, which may or may not be acceptibl depending on
+/// the middleware abstraction, which may or may not be acceptible depending on
 /// your use case.
 #[program]
 pub mod permissioned_markets {
