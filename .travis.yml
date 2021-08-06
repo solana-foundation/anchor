@@ -58,6 +58,7 @@ jobs:
         - pushd examples/multisig && anchor test && popd
         - pushd examples/interface && anchor test && popd
         - pushd examples/lockup && anchor test && popd
+        - pushd examples/permissioned-markets/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
     - <<: *examples
       name: Runs the examples 2
       script:
