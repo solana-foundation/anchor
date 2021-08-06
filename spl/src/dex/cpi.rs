@@ -278,4 +278,5 @@ pub struct InitializeMarket<'info> {
     pub asks: AccountInfo<'info>,
     pub req_q: AccountInfo<'info>,
     pub event_q: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
 }
