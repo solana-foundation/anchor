@@ -3,7 +3,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
-members = ["zero-copy"]
+members = ["programs/zero-copy"]
 
 [scripts]
 test = "mocha -t 1000000 tests/"

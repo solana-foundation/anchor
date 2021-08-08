@@ -11,6 +11,15 @@ members = [
 "#
 }
 
+pub fn credentials(token: &str) -> String {
+    format!(
+        r#"[registry]
+token = "{}"
+"#,
+        token
+    )
+}
+
 pub fn cargo_toml(name: &str) -> String {
     format!(
         r#"[package]

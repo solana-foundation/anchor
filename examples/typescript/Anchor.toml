@@ -3,8 +3,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
-members = ["typescript"]
-exclude = ["typescript"]
+members = ["programs/typescript"]
 
 [scripts]
 test = "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

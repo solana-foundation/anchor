@@ -67,10 +67,10 @@ const workspace = new Proxy({} as any, {
         fs.readFileSync(path.join(projectRoot, "Anchor.toml"), "utf-8")
       );
       const clusterId = anchorToml.provider.cluster;
-      if (anchorToml.clusters && anchorToml.clusters[clusterId]) {
+      if (anchorToml.programs && anchorToml.programs[clusterId]) {
         attachWorkspaceOverride(
           workspaceCache,
-          anchorToml.clusters[clusterId],
+          anchorToml.programs[clusterId],
           idlMap
         );
       }

@@ -2,7 +2,7 @@
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
-[clusters.localnet]
+[programs.localnet]
 registry = { address = "GrAkKfEpTKQuVHG2Y97Y2FF4i7y7Q5AHLK94JBy7Y5yv", idl = "./deps/stake/target/idl/registry.json" }
 lockup = { address = "6ebQNeTPZ1j7k3TtkCCtEPRvG7GQsucQrZ7sSEDQi9Ks", idl = "./deps/stake/target/idl/lockup.json" }
 
