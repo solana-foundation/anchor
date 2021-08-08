@@ -83,7 +83,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
                 // Space: account discriminator || authority pubkey || vec len || vec data
                 let space = 8 + 32 + 4 + data_len as usize;
-                let lamports = accounts.rent.minimum_balance(space);
+                let rent = Rent::get()?;
+                let lamports = rent.minimum_balance(space);
                 let seeds = &[&[nonce][..]];
                 let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
                     from,
@@ -202,7 +203,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             let owner = ctor_accounts.program.key;
                             let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
                             let space = 8 + std::mem::size_of::<#name>();
-                            let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
+                            let rent = Rent::get()?;
+                            let lamports = rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
                             let seeds = &[&[nonce][..]];
                             let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
                                 from,
@@ -282,7 +284,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             let owner = ctor_accounts.program.key;
                             let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
                             let space = anchor_lang::__private::AccountSize::size(&instance)?;
-                            let lamports = ctor_accounts.rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
+                            let rent = Rent::get()?;
+                            let lamports = rent.minimum_balance(std::convert::TryInto::try_into(space).unwrap());
                             let seeds = &[&[nonce][..]];
                             let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
                                 from,

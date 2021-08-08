@@ -21,7 +21,6 @@ mod basic_1 {
 pub struct Initialize<'info> {
     #[account(init)]
     pub my_account: ProgramAccount<'info, MyAccount>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

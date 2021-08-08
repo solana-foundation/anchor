@@ -5,7 +5,6 @@ use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::solana_program::system_program;
-use anchor_lang::solana_program::sysvar::rent;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
 use regex::Regex;
 use solana_client::client_error::ClientError as SolanaClientError;
@@ -428,7 +427,6 @@ impl<'a> RequestBuilder<'a> {
                         ),
                         AccountMeta::new_readonly(system_program::ID, false),
                         AccountMeta::new_readonly(self.program_id, false),
-                        AccountMeta::new_readonly(rent::ID, false),
                     ],
                 };
                 accounts.extend_from_slice(&self.accounts);

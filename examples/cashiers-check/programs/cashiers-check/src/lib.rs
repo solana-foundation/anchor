@@ -99,7 +99,6 @@ pub struct CreateCheck<'info> {
     // Owner of the `from` token account.
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
 }
 
 impl<'info> CreateCheck<'info> {

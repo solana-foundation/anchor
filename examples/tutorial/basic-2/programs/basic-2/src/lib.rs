@@ -26,7 +26,6 @@ mod basic_2 {
 pub struct Create<'info> {
     #[account(init)]
     pub counter: ProgramAccount<'info, Counter>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

@@ -42,7 +42,6 @@ pub struct TestPdaInit<'info> {
     pub my_pda: ProgramAccount<'info, DataU16>,
     pub my_payer: AccountInfo<'info>,
     pub foo: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
 
@@ -52,7 +51,6 @@ pub struct TestPdaInitZeroCopy<'info> {
     #[account(init, seeds = [b"my-seed".as_ref(), &[bump]], payer = my_payer)]
     pub my_pda: Loader<'info, DataZeroCopy>,
     pub my_payer: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
 
@@ -73,7 +71,6 @@ pub struct RemainingAccounts {}
 pub struct Initialize<'info> {
     #[account(init)]
     pub data: ProgramAccount<'info, Data>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -112,9 +109,8 @@ pub struct TestClose<'info> {
 // can *optionally* identify targets to be used as seeds for the program
 // derived address by using `with` (and it doesn't have to be a state account).
 // For example, the SPL token program uses a `Mint` account. Lastly,
-// `rent` and `system_program` are *required* by convention, since the
-// accounts are needed when creating the associated program address within
-// the program.
+// `system_program` are *required* by convention, since the account is needed
+// when creating the associated program address within the program.
 #[derive(Accounts)]
 pub struct TestInitAssociatedAccount<'info> {
     #[account(init, associated = authority, with = state, with = data, with = b"my-seed")]
@@ -123,7 +119,6 @@ pub struct TestInitAssociatedAccount<'info> {
     pub authority: AccountInfo<'info>,
     pub state: ProgramState<'info, MyState>,
     pub data: ProgramAccount<'info, Data>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
 
@@ -141,14 +136,12 @@ pub struct TestAssociatedAccount<'info> {
 pub struct TestU16<'info> {
     #[account(init)]
     pub my_account: ProgramAccount<'info, DataU16>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
 pub struct TestI16<'info> {
     #[account(init)]
     pub data: ProgramAccount<'info, DataI16>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -160,7 +153,6 @@ pub struct TestSimulateAssociatedAccount<'info> {
     pub my_account: ProgramAccount<'info, TestData>,
     #[account(mut, signer)]
     pub authority: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
 
@@ -168,5 +160,4 @@ pub struct TestSimulateAssociatedAccount<'info> {
 pub struct TestI8<'info> {
     #[account(init)]
     pub data: ProgramAccount<'info, DataI8>,
-    pub rent: Sysvar<'info, Rent>,
 }

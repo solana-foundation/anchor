@@ -70,16 +70,14 @@ This can be used, for example, to create multiple different associated accounts,
 which is associated *with* a new piece of metadata. In the token program, these pieces
 of metadata are mints, i.e., different token types.
 
-Lastly, notice the two accounts at the bottom of account context.
+Lastly, notice the `system_program` account at the bottom of account context.
 
 ```rust
-    rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
 ```
 
-In the same way that `rent` is required when using `init` in the previous tutorials,
-`rent` and additionally the `system-program` must be provided when creating an associated
-account. By convention, the names must be as given here.
+The `system-program` must be provided when creating an associated
+account. By convention, the name must be as given here.
 
 For more details on how to use `#[account(associated)]`, see [docs.rs](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
 

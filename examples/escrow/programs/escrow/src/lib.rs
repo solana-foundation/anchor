@@ -109,7 +109,6 @@ pub struct InitializeEscrow<'info> {
     #[account(init)]
     pub escrow_account: ProgramAccount<'info, EscrowAccount>,
     pub token_program: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

@@ -211,7 +211,6 @@ pub struct InitializePool<'info> {
     pub creator_watermelon: CpiAccount<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub clock: Sysvar<'info, Clock>,
 }
 

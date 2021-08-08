@@ -9,11 +9,21 @@ use quote::quote;
 use syn::Expr;
 
 pub fn generate(f: &Field) -> proc_macro2::TokenStream {
-    let checks: Vec<proc_macro2::TokenStream> = linearize(&f.constraints)
+    let constraints = linearize(&f.constraints);
+
+    let rent = constraints
+        .iter()
+        .any(|c| matches!(c, Constraint::RentExempt(ConstraintRentExempt::Enforce)))
+        .then(|| quote! { let __anchor_rent = Rent::get()?; })
+        .unwrap_or_else(|| quote! {});
+
+    let checks: Vec<proc_macro2::TokenStream> = constraints
         .iter()
         .map(|c| generate_constraint(f, c))
         .collect();
+
     quote! {
+        #rent
         #(#checks)*
     }
 }
@@ -240,7 +250,7 @@ pub fn generate_constraint_rent_exempt(
     match c {
         ConstraintRentExempt::Skip => quote! {},
         ConstraintRentExempt::Enforce => quote! {
-            if !rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
+            if !__anchor_rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
                 return Err(anchor_lang::__private::ErrorCode::ConstraintRentExempt.into());
             }
         },
@@ -520,7 +530,7 @@ pub fn generate_pda(
                 #seeds_constraint
 
                 // Fund the account for rent exemption.
-                let required_lamports = rent
+                let required_lamports = __anchor_rent
                     .minimum_balance(anchor_spl::token::TokenAccount::LEN)
                     .max(1)
                     .saturating_sub(#field.to_account_info().lamports());
@@ -598,7 +608,7 @@ pub fn generate_pda(
                     #payer
                     #seeds_constraint
 
-                    let lamports = rent.minimum_balance(space);
+                    let lamports = __anchor_rent.minimum_balance(space);
                     let ix = anchor_lang::solana_program::system_instruction::create_account(
                         payer.to_account_info().key,
                         #field.to_account_info().key,

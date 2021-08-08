@@ -219,7 +219,6 @@ pub struct CreateVesting<'info> {
     // Misc.
     #[account("token_program.key == &token::ID")]
     token_program: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
     clock: Sysvar<'info, Clock>,
 }
 

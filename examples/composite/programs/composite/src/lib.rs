@@ -31,7 +31,6 @@ pub struct Initialize<'info> {
     pub dummy_a: ProgramAccount<'info, DummyA>,
     #[account(init)]
     pub dummy_b: ProgramAccount<'info, DummyB>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

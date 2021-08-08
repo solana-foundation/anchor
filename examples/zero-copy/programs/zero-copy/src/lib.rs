@@ -113,7 +113,6 @@ pub struct CreateFoo<'info> {
     foo: Loader<'info, Foo>,
     #[account(signer)]
     authority: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -139,7 +138,6 @@ pub struct CreateBar<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
     foo: Loader<'info, Foo>,
-    rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
 }
 
@@ -156,7 +154,6 @@ pub struct UpdateBar<'info> {
 pub struct CreateLargeAccount<'info> {
     #[account(init)]
     event_q: Loader<'info, EventQ>,
-    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

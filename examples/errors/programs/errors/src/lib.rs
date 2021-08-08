@@ -46,7 +46,6 @@ pub struct HasOneError<'info> {
     #[account(init, has_one = owner)]
     my_account: ProgramAccount<'info, HasOneAccount>,
     owner: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

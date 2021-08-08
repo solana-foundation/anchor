@@ -1,11 +1,6 @@
 import EventEmitter from "eventemitter3";
 import camelCase from "camelcase";
-import {
-  PublicKey,
-  SystemProgram,
-  SYSVAR_RENT_PUBKEY,
-  Commitment,
-} from "@solana/web3.js";
+import { PublicKey, SystemProgram, Commitment } from "@solana/web3.js";
 import Provider from "../../provider";
 import { Idl, IdlStateMethod } from "../../idl";
 import Coder, { stateDiscriminator } from "../../coder";
@@ -246,11 +241,6 @@ function stateInstructionKeys(
       },
 
       { pubkey: programId, isWritable: false, isSigner: false },
-      {
-        pubkey: SYSVAR_RENT_PUBKEY,
-        isWritable: false,
-        isSigner: false,
-      },
     ];
   } else {
     validateAccounts(m.accounts, accounts);

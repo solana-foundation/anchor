@@ -29,7 +29,6 @@ pub mod basic_5 {
 pub struct CreateMint<'info> {
     #[account(init)]
     mint: ProgramAccount<'info, Mint>,
-    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -39,7 +38,6 @@ pub struct CreateToken<'info> {
     #[account(mut, signer)]
     authority: AccountInfo<'info>,
     mint: ProgramAccount<'info, Mint>,
-    rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
 }
 

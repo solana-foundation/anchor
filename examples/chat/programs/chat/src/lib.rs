@@ -40,7 +40,6 @@ pub struct CreateUser<'info> {
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
     system_program: AccountInfo<'info>,
 }
 
@@ -48,7 +47,6 @@ pub struct CreateUser<'info> {
 pub struct CreateChatRoom<'info> {
     #[account(init)]
     chat_room: Loader<'info, ChatRoom>,
-    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

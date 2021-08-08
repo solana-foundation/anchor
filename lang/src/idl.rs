@@ -60,7 +60,6 @@ pub struct IdlCreateBuffer<'info> {
     pub buffer: ProgramAccount<'info, IdlAccount>,
     #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
     pub authority: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 // Accounts for upgrading the canonical IdlAccount with the buffer.
