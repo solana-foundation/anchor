@@ -34,6 +34,7 @@ import {
   InstructionFn,
 } from "./program/namespace";
 import { Context, Accounts } from "./program/context";
+import { EventParser } from "./program/event";
 
 export {
   workspace,
@@ -69,4 +70,5 @@ export {
   utils,
   Wallet,
   Address,
+  EventParser,
 };
