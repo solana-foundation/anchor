@@ -663,6 +663,17 @@ fn docker_build(
         if !exit.status.success() {
             return Err(anyhow!("Failed to set solana version"));
         }
+
+        // Remove the installer.
+        let exit = std::process::Command::new("docker")
+            .args(&["exec", container_name, "rm", "-f", "solana_installer.sh"])
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow!("Failed to remove installer: {:?}", e))?;
+        if !exit.status.success() {
+            return Err(anyhow!("Failed to remove installer"));
+        }
     }
 
     let manifest_path = pathdiff::diff_paths(
