@@ -11,12 +11,15 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.13.0] - 2021-08-08
+
 ### Features
 
-* cli: Adds a [registry] section in the Anchor toml ([#570](https://github.com/project-serum/anchor/pull/570)).
-* cli: Adds the anchor login <api-token> command ([#570](https://github.com/project-serum/anchor/pull/570)).
-* cli: Adds the anchor publish <package> command ([#570](https://github.com/project-serum/anchor/pull/570)).
-* cli: Adds a root level anchor_version field to the Anchor.toml for specifying the cli version to build with for verifiable build ([#570](https://github.com/project-serum/anchor/pull/570)).
+* cli: Adds a `[registry]` section in the Anchor toml ([#570](https://github.com/project-serum/anchor/pull/570)).
+* cli: Adds the `anchor login <api-token>` command ([#570](https://github.com/project-serum/anchor/pull/570)).
+* cli: Adds the `anchor publish <package>` command ([#570](https://github.com/project-serum/anchor/pull/570)).
+* cli: Adds a root level `anchor_version` field to the Anchor.toml for specifying the anchor docker image to use for verifiable builds ([#570](https://github.com/project-serum/anchor/pull/570)).
+* cli: Adds a root level `solana_version` field to the Anchor.toml for specifying the solana toolchain to use for verifiable builds ([#570](https://github.com/project-serum/anchor/pull/570)).
 * lang: Dynamically fetch rent sysvar for when using `init` ([#587](https://github.com/project-serum/anchor/pull/587)).
 
 ### Breaking
