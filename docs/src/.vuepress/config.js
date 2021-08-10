@@ -74,6 +74,14 @@ module.exports = {
           "/cli/commands",
         ],
       },
+      {
+        collapsable: false,
+        title: "Source Verification",
+        children: [
+          "/getting-started/verification",
+          "/getting-started/publishing",
+        ],
+      },
     ],
 
     nav: [
