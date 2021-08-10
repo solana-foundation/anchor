@@ -1457,6 +1457,21 @@ fn stream_logs(config: &WithPath<Config>) -> Result<Vec<std::process::Child>> {
             .spawn()?;
         handles.push(child);
     }
+    if let Some(test) = config.test.as_ref() {
+        for entry in &test.genesis {
+            let log_file = File::create(format!("{}/{}.log", program_logs_dir, entry.address))?;
+            let stdio = std::process::Stdio::from(log_file);
+            let child = std::process::Command::new("solana")
+                .arg("logs")
+                .arg(entry.address.clone())
+                .arg("--url")
+                .arg(config.provider.cluster.url())
+                .stdout(stdio)
+                .spawn()?;
+            handles.push(child);
+        }
+    }
+
     Ok(handles)
 }
 
