@@ -39,7 +39,7 @@ Here's a counter program, where only the designated `authority`
 can increment the count.
 
 ```rust
-use anchor::prelude::*;
+use anchor_lang::prelude::*;
 
 #[program]
 mod counter {
