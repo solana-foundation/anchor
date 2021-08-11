@@ -11,6 +11,12 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.13.2] - 2021-08-11
+
+### Fixes
+
+* cli: Fix `anchor init` command "Workspace not found" regression ([#598](https://github.com/project-serum/anchor/pull/598)).
+
 ## [0.13.1] - 2021-08-10
 
 ### Features
