@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.13.1] - 2021-08-10
+
 ### Features
 
 * cli: Programs embedded into genesis during tests will produce program logs.
