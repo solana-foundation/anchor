@@ -299,8 +299,9 @@ pub fn entry(opts: Opts) -> Result<()> {
 }
 
 fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result<()> {
-    let _ =
-        Config::discover(cfg_override)?.ok_or_else(|| anyhow!("Workspace already initialized"))?;
+    if Config::discover(cfg_override)?.is_some() {
+        return Err(anyhow!("Workspace already initialized"));
+    }
 
     fs::create_dir(name.clone())?;
     std::env::set_current_dir(&name)?;
