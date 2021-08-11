@@ -159,6 +159,7 @@ dependencies = [
  "tar",
  "tokio 1.4.0",
  "toml",
+ "walkdir",
 ]
 
 [[package]]

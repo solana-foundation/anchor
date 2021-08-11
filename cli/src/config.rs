@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::{self, File};
 use std::io::prelude::*;
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -48,6 +49,68 @@ impl<T> std::convert::AsRef<T> for WithPath<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Manifest(cargo_toml::Manifest);
+
+impl Manifest {
+    pub fn from_path(p: impl AsRef<Path>) -> Result<Self> {
+        cargo_toml::Manifest::from_path(p)
+            .map(Manifest)
+            .map_err(Into::into)
+    }
+
+    pub fn lib_name(&self) -> Result<String> {
+        if self.lib.is_some() && self.lib.as_ref().unwrap().name.is_some() {
+            Ok(self
+                .lib
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                .to_string())
+        } else {
+            Ok(self
+                .package
+                .as_ref()
+                .ok_or_else(|| anyhow!("package section not provided"))?
+                .name
+                .to_string())
+        }
+    }
+
+    // Climbs each parent directory until we find a Cargo.toml.
+    pub fn discover() -> Result<Option<WithPath<Manifest>>> {
+        let _cwd = std::env::current_dir()?;
+        let mut cwd_opt = Some(_cwd.as_path());
+
+        while let Some(cwd) = cwd_opt {
+            for f in fs::read_dir(cwd)? {
+                let p = f?.path();
+                if let Some(filename) = p.file_name() {
+                    if filename.to_str() == Some("Cargo.toml") {
+                        let m = WithPath::new(Manifest::from_path(&p)?, p);
+                        return Ok(Some(m));
+                    }
+                }
+            }
+
+            // Not found. Go up a directory level.
+            cwd_opt = cwd.parent();
+        }
+
+        Ok(None)
+    }
+}
+
+impl Deref for Manifest {
+    type Target = cargo_toml::Manifest;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl WithPath<Config> {
     pub fn get_program_list(&self) -> Result<Vec<PathBuf>> {
         // Canonicalize the workspace filepaths to compare with relative paths.
@@ -82,7 +145,7 @@ impl WithPath<Config> {
         let mut r = vec![];
         for path in self.get_program_list()? {
             let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
-            let lib_name = extract_lib_name(&path.join("Cargo.toml"))?;
+            let lib_name = Manifest::from_path(&path.join("Cargo.toml"))?.lib_name()?;
             r.push(Program {
                 lib_name,
                 path,
@@ -97,15 +160,52 @@ impl WithPath<Config> {
             .workspace
             .members
             .iter()
-            .map(|m| PathBuf::from(m).canonicalize().unwrap())
+            .map(|m| {
+                self.path()
+                    .parent()
+                    .unwrap()
+                    .join(m)
+                    .canonicalize()
+                    .unwrap()
+            })
             .collect();
         let exclude = self
             .workspace
             .exclude
             .iter()
-            .map(|m| PathBuf::from(m).canonicalize().unwrap())
+            .map(|m| {
+                self.path()
+                    .parent()
+                    .unwrap()
+                    .join(m)
+                    .canonicalize()
+                    .unwrap()
+            })
             .collect();
         Ok((members, exclude))
+    }
+
+    pub fn get_program(&self, name: &str) -> Result<Option<WithPath<Program>>> {
+        for program in self.read_all_programs()? {
+            let cargo_toml = program.path.join("Cargo.toml");
+            if !cargo_toml.exists() {
+                return Err(anyhow!(
+                    "Did not find Cargo.toml at the path: {}",
+                    program.path.display()
+                ));
+            }
+            let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
+            if name == p_lib_name {
+                let path = self
+                    .path()
+                    .parent()
+                    .unwrap()
+                    .canonicalize()?
+                    .join(&program.path);
+                return Ok(Some(WithPath::new(program, path)));
+            }
+        }
+        Ok(None)
     }
 }
 
@@ -174,69 +274,49 @@ impl Config {
         format!("projectserum/build:v{}", ver)
     }
 
-    pub fn discover(
-        cfg_override: &ConfigOverride,
-    ) -> Result<Option<(WithPath<Config>, Option<PathBuf>)>> {
+    pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {
         Config::_discover().map(|opt| {
-            opt.map(|(mut cfg, cargo_toml)| {
+            opt.map(|mut cfg| {
                 if let Some(cluster) = cfg_override.cluster.clone() {
                     cfg.provider.cluster = cluster;
                 }
-
                 if let Some(wallet) = cfg_override.wallet.clone() {
                     cfg.provider.wallet = wallet;
                 }
-                (cfg, cargo_toml)
+                cfg
             })
         })
     }
 
-    // Searches all parent directories for an Anchor.toml file.
-    fn _discover() -> Result<Option<(WithPath<Config>, Option<PathBuf>)>> {
-        // Set to true if we ever see a Cargo.toml file when traversing the
-        // parent directories.
-        let mut cargo_toml = None;
-
+    // Climbs each parent directory until we find an Anchor.toml.
+    fn _discover() -> Result<Option<WithPath<Config>>> {
         let _cwd = std::env::current_dir()?;
         let mut cwd_opt = Some(_cwd.as_path());
 
         while let Some(cwd) = cwd_opt {
-            let files = fs::read_dir(cwd)?;
-            // Cargo.toml file for this directory level.
-            let mut cargo_toml_level = None;
-            let mut anchor_toml = None;
-            for f in files {
+            for f in fs::read_dir(cwd)? {
                 let p = f?.path();
                 if let Some(filename) = p.file_name() {
-                    if filename.to_str() == Some("Cargo.toml") {
-                        cargo_toml_level = Some(p);
-                    } else if filename.to_str() == Some("Anchor.toml") {
-                        let mut cfg_file = File::open(&p)?;
-                        let mut cfg_contents = String::new();
-                        cfg_file.read_to_string(&mut cfg_contents)?;
-                        let cfg = cfg_contents.parse()?;
-                        anchor_toml = Some((cfg, p));
+                    if filename.to_str() == Some("Anchor.toml") {
+                        let cfg = Config::from_path(&p)?;
+                        return Ok(Some(WithPath::new(cfg, p)));
                     }
                 }
-            }
-
-            // Set the Cargo.toml if it's for a single package, i.e., not the
-            // root workspace Cargo.toml.
-            if cargo_toml.is_none() && cargo_toml_level.is_some() {
-                let toml = cargo_toml::Manifest::from_path(cargo_toml_level.as_ref().unwrap())?;
-                if toml.workspace.is_none() {
-                    cargo_toml = cargo_toml_level;
-                }
-            }
-
-            if let Some((cfg, parent)) = anchor_toml {
-                return Ok(Some((WithPath::new(cfg, parent), cargo_toml)));
             }
 
             cwd_opt = cwd.parent();
         }
 
         Ok(None)
+    }
+
+    fn from_path(p: impl AsRef<Path>) -> Result<Self> {
+        let mut cfg_file = File::open(&p)?;
+        let mut cfg_contents = String::new();
+        cfg_file.read_to_string(&mut cfg_contents)?;
+        let cfg = cfg_contents.parse()?;
+
+        Ok(cfg)
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
@@ -382,21 +462,10 @@ pub struct GenesisEntry {
     pub program: String,
 }
 
-pub fn extract_lib_name(cargo_toml: impl AsRef<Path>) -> Result<String> {
-    let cargo_toml = cargo_toml::Manifest::from_path(cargo_toml)?;
-    if cargo_toml.lib.is_some() && cargo_toml.lib.as_ref().unwrap().name.is_some() {
-        Ok(cargo_toml.lib.unwrap().name.unwrap())
-    } else {
-        Ok(cargo_toml
-            .package
-            .ok_or_else(|| anyhow!("Package section not provided"))?
-            .name)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Program {
     pub lib_name: String,
+    // Canonicalized path to the program directory.
     pub path: PathBuf,
     pub idl: Option<Idl>,
 }
@@ -463,7 +532,6 @@ pub struct ProgramWorkspace {
 pub struct AnchorPackage {
     pub name: String,
     pub address: String,
-    pub path: String,
     pub idl: Option<String>,
 }
 
@@ -479,19 +547,9 @@ impl AnchorPackage {
             .ok_or_else(|| anyhow!("Program not provided in Anchor.toml"))?
             .get(&name)
             .ok_or_else(|| anyhow!("Program not provided in Anchor.toml"))?;
-        let path = program_details
-            .path
-            .clone()
-            // TODO: use a default path if one isn't provided?
-            .ok_or_else(|| anyhow!("Path to program binary not provided"))?;
         let idl = program_details.idl.clone();
         let address = program_details.address.to_string();
-        Ok(Self {
-            name,
-            path,
-            address,
-            idl,
-        })
+        Ok(Self { name, address, idl })
     }
 }
 

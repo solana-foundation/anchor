@@ -15,6 +15,10 @@ incremented for features.
 
 * cli: Programs embedded into genesis during tests will produce program logs.
 
+### Fixes
+
+* cli: Allows Cargo.lock to exist in workspace subdirectories when publishing ([#593](https://github.com/project-serum/anchor/pull/593)).
+
 ## [0.13.0] - 2021-08-08
 
 ### Features

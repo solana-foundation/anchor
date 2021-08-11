@@ -1,4 +1,6 @@
-use crate::config::{AnchorPackage, Config, ConfigOverride, Program, ProgramWorkspace, WithPath};
+use crate::config::{
+    AnchorPackage, Config, ConfigOverride, Manifest, Program, ProgramWorkspace, WithPath,
+};
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
@@ -297,11 +299,8 @@ pub fn entry(opts: Opts) -> Result<()> {
 }
 
 fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result<()> {
-    let cfg = Config::discover(cfg_override)?;
-
-    if cfg.is_some() {
-        println!("Anchor workspace already initialized");
-    }
+    let _ =
+        Config::discover(cfg_override)?.ok_or_else(|| anyhow!("Workspace already initialized"))?;
 
     fs::create_dir(name.clone())?;
     std::env::set_current_dir(&name)?;
@@ -364,7 +363,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
 
 // Creates a new program crate in the `programs/<name>` directory.
 fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         match cfg.path().parent() {
             None => {
                 println!("Unable to make new program");
@@ -401,41 +400,14 @@ pub fn build(
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
 ) -> Result<()> {
-    // Change directories to the given `program_name`, if given.
-    let (cfg, _cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
-
-    let mut did_find_program = false;
+    // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
-        for program in cfg.read_all_programs()? {
-            let cargo_toml = program.path.join("Cargo.toml");
-            if !cargo_toml.exists() {
-                return Err(anyhow!(
-                    "Did not find Cargo.toml at the path: {}",
-                    program.path.display()
-                ));
-            }
-            let p_lib_name = config::extract_lib_name(&cargo_toml)?;
-            if program_name.as_str() == p_lib_name {
-                let program_path = cfg
-                    .path()
-                    .parent()
-                    .unwrap()
-                    .canonicalize()?
-                    .join(program.path);
-                std::env::set_current_dir(&program_path)?;
-                did_find_program = true;
-                break;
-            }
-        }
-    }
-    if !did_find_program && program_name.is_some() {
-        return Err(anyhow!(
-            "{} is not part of the workspace",
-            program_name.as_ref().unwrap()
-        ));
+        cd_member(cfg_override, program_name)?;
     }
 
-    let (cfg, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cargo = Manifest::discover()?;
+
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
         None => {
@@ -454,17 +426,37 @@ pub fn build(
     };
 
     match cargo {
-        None => build_all(&cfg, cfg.path(), idl_out, verifiable, solana_version)?,
-        Some(ct) => build_cwd(
+        // No Cargo.toml so build the entire workspace.
+        None => build_all(
             &cfg,
-            ct,
+            cfg.path(),
             idl_out,
             verifiable,
             solana_version,
             stdout,
             stderr,
         )?,
-    };
+        // If the Cargo.toml is at the root, build the entire workspace.
+        Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
+            &cfg,
+            cfg.path(),
+            idl_out,
+            verifiable,
+            solana_version,
+            stdout,
+            stderr,
+        )?,
+        // Cargo.toml represents a single package. Build it.
+        Some(cargo) => build_cwd(
+            &cfg,
+            cargo.path().to_path_buf(),
+            idl_out,
+            verifiable,
+            solana_version,
+            stdout,
+            stderr,
+        )?,
+    }
 
     set_workspace_dir_or_exit();
 
@@ -477,6 +469,8 @@ fn build_all(
     idl_out: Option<PathBuf>,
     verifiable: bool,
     solana_version: Option<String>,
+    stdout: Option<File>, // Used for the package registry server.
+    stderr: Option<File>, // Used for the package registry server.
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -489,8 +483,8 @@ fn build_all(
                     idl_out.clone(),
                     verifiable,
                     solana_version.clone(),
-                    None,
-                    None,
+                    stdout.as_ref().map(|f| f.try_clone()).transpose()?,
+                    stderr.as_ref().map(|f| f.try_clone()).transpose()?,
                 )?;
             }
             Ok(())
@@ -531,7 +525,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    fs::create_dir_all(workspace_dir.join("target/deploy"))?;
+    fs::create_dir_all(workspace_dir.join("target/verifiable"))?;
     fs::create_dir_all(workspace_dir.join("target/idl"))?;
 
     let container_name = "anchor-program";
@@ -595,7 +589,7 @@ fn docker_build(
     stdout: Option<File>,
     stderr: Option<File>,
 ) -> Result<()> {
-    let binary_name = config::extract_lib_name(&cargo_toml)?;
+    let binary_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
 
     // Docker vars.
     let image_name = cfg.docker();
@@ -718,7 +712,7 @@ fn docker_build(
         .parent()
         .unwrap()
         .canonicalize()?
-        .join(format!("target/deploy/{}.so", binary_name))
+        .join(format!("target/verifiable/{}.so", binary_name))
         .display()
         .to_string();
 
@@ -774,45 +768,14 @@ fn verify(
     program_name: Option<String>,
     solana_version: Option<String>,
 ) -> Result<()> {
-    // Change directories to the given `program_name`, if given.
-    let (cfg, _cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let mut did_find_program = false;
+    // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
-        for program in cfg.read_all_programs()? {
-            let cargo_toml = program.path.join("Cargo.toml");
-            if !cargo_toml.exists() {
-                return Err(anyhow!(
-                    "Did not find Cargo.toml at the path: {}",
-                    program.path.display()
-                ));
-            }
-            let p_lib_name = config::extract_lib_name(&cargo_toml)?;
-            if program_name.as_str() == p_lib_name {
-                let program_path = cfg
-                    .path()
-                    .parent()
-                    .unwrap()
-                    .canonicalize()?
-                    .join(program.path);
-                std::env::set_current_dir(&program_path)?;
-                did_find_program = true;
-                break;
-            }
-        }
-    }
-    if !did_find_program && program_name.is_some() {
-        return Err(anyhow!(
-            "{} is not part of the workspace",
-            program_name.as_ref().unwrap()
-        ));
+        cd_member(cfg_override, program_name)?;
     }
 
     // Proceed with the command.
-    let (cfg, cargo) = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let cargo = cargo.ok_or_else(|| {
-        anyhow!("Must be inside program subdirectory if no program name is given.")
-    })?;
-    let program_dir = cargo.parent().unwrap();
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cargo = Manifest::discover()?.ok_or_else(|| anyhow!("Cargo.toml not found"))?;
 
     // Build the program we want to verify.
     let cur_dir = std::env::current_dir()?;
@@ -831,23 +794,12 @@ fn verify(
     std::env::set_current_dir(&cur_dir)?;
 
     // Verify binary.
-    let binary_name = {
-        let cargo_toml = cargo_toml::Manifest::from_path(&cargo)?;
-        match cargo_toml.lib {
-            None => {
-                cargo_toml
-                    .package
-                    .ok_or_else(|| anyhow!("Package section not provided"))?
-                    .name
-            }
-            Some(lib) => lib.name.ok_or_else(|| anyhow!("Name not provided"))?,
-        }
-    };
+    let binary_name = cargo.lib_name()?;
     let bin_path = cfg
         .path()
         .parent()
         .ok_or_else(|| anyhow!("Unable to find workspace root"))?
-        .join("target/deploy/")
+        .join("target/verifiable/")
         .join(format!("{}.so", binary_name));
 
     let bin_ver = verify_bin(program_id, &bin_path, cfg.provider.cluster.url())?;
@@ -859,7 +811,6 @@ fn verify(
     // Verify IDL (only if it's not a buffer account).
     if let Some(local_idl) = extract_idl("src/lib.rs")? {
         if bin_ver.state != BinVerificationState::Buffer {
-            std::env::set_current_dir(program_dir)?;
             let deployed_idl = fetch_idl(cfg_override, program_id)?;
             if local_idl != deployed_idl {
                 println!("Error: IDLs don't match");
@@ -871,6 +822,27 @@ fn verify(
     println!("{} is verified.", program_id);
 
     Ok(())
+}
+
+fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
+    // Change directories to the given `program_name`, if given.
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+
+    for program in cfg.read_all_programs()? {
+        let cargo_toml = program.path.join("Cargo.toml");
+        if !cargo_toml.exists() {
+            return Err(anyhow!(
+                "Did not find Cargo.toml at the path: {}",
+                program.path.display()
+            ));
+        }
+        let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
+        if program_name == p_lib_name {
+            std::env::set_current_dir(&program.path)?;
+            return Ok(());
+        }
+    }
+    return Err(anyhow!("{} is not part of the workspace", program_name,));
 }
 
 pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<BinVerification> {
@@ -954,9 +926,7 @@ pub enum BinVerificationState {
 
 // Fetches an IDL for the given program_id.
 fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
-    let cfg = Config::discover(cfg_override)?
-        .expect("Inside a workspace")
-        .0;
+    let cfg = Config::discover(cfg_override)?.expect("Inside a workspace");
     let client = RpcClient::new(cfg.provider.cluster.url().to_string());
 
     let mut account = client
@@ -1017,7 +987,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
 }
 
 fn idl_init(cfg_override: &ConfigOverride, program_id: Pubkey, idl_filepath: String) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
         let bytes = std::fs::read(idl_filepath)?;
@@ -1035,7 +1005,7 @@ fn idl_write_buffer(
     program_id: Pubkey,
     idl_filepath: String,
 ) -> Result<Pubkey> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
         let bytes = std::fs::read(idl_filepath)?;
@@ -1051,7 +1021,7 @@ fn idl_write_buffer(
 }
 
 fn idl_set_buffer(cfg_override: &ConfigOverride, program_id: Pubkey, buffer: Pubkey) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
             .map_err(|_| anyhow!("Unable to read keypair file"))?;
         let client = RpcClient::new(cfg.provider.cluster.url().to_string());
@@ -1105,7 +1075,7 @@ fn idl_upgrade(
 }
 
 fn idl_authority(cfg_override: &ConfigOverride, program_id: Pubkey) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let client = RpcClient::new(cfg.provider.cluster.url().to_string());
         let idl_address = {
             let account = client
@@ -1135,7 +1105,7 @@ fn idl_set_authority(
     address: Option<Pubkey>,
     new_authority: Pubkey,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         // Misc.
         let idl_address = match address {
             None => IdlAccount::address(&program_id),
@@ -1306,7 +1276,7 @@ fn test(
     skip_build: bool,
     extra_args: Vec<String>,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         // Build if needed.
         if !skip_build {
             build(cfg_override, None, false, None, None, None, None)?;
@@ -1534,7 +1504,7 @@ fn _deploy(
     cfg_override: &ConfigOverride,
     program_str: Option<String>,
 ) -> Result<Vec<(Pubkey, Program)>> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let url = cfg.provider.cluster.url().to_string();
         let keypair = cfg.provider.wallet.to_string();
 
@@ -1615,7 +1585,7 @@ fn upgrade(
     let path: PathBuf = program_filepath.parse().unwrap();
     let program_filepath = path.canonicalize()?.display().to_string();
 
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let exit = std::process::Command::new("solana")
             .arg("program")
             .arg("deploy")
@@ -1655,7 +1625,7 @@ fn launch(
     )?;
     let programs = _deploy(cfg_override, program_name)?;
 
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
         // Add metadata to all IDLs.
@@ -1680,10 +1650,7 @@ fn launch(
 // The Solana CLI doesn't redeploy a program if this file exists.
 // So remove it to make all commands explicit.
 fn clear_program_keys(cfg_override: &ConfigOverride) -> Result<()> {
-    let config = Config::discover(cfg_override)
-        .unwrap_or_default()
-        .unwrap()
-        .0;
+    let config = Config::discover(cfg_override).unwrap_or_default().unwrap();
 
     for program in config.read_all_programs()? {
         let anchor_keypair_path = program.anchor_keypair_path();
@@ -1827,7 +1794,7 @@ fn serialize_idl_ix(ix_inner: anchor_lang::idl::IdlInstruction) -> Result<Vec<u8
 }
 
 fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         println!("Running migration deploy script");
 
         let url = cfg.provider.cluster.url().to_string();
@@ -1874,10 +1841,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
 }
 
 fn set_workspace_dir_or_exit() {
-    let d = match Config::discover(&ConfigOverride {
-        cluster: None,
-        wallet: None,
-    }) {
+    let d = match Config::discover(&ConfigOverride::default()) {
         Err(_) => {
             println!("Not in anchor workspace.");
             std::process::exit(1);
@@ -1889,7 +1853,7 @@ fn set_workspace_dir_or_exit() {
             println!("Not in anchor workspace.");
             std::process::exit(1);
         }
-        Some((cfg, _inside_cargo)) => {
+        Some(cfg) => {
             match cfg.path().parent() {
                 None => {
                     println!("Unable to make new program");
@@ -1938,7 +1902,7 @@ fn cluster(_cmd: ClusterCommand) -> Result<()> {
 }
 
 fn shell(cfg_override: &ConfigOverride) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let programs = {
             // Create idl map from all workspace programs.
             let mut idls: HashMap<String, Idl> = cfg
@@ -2005,7 +1969,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
 }
 
 fn run(cfg_override: &ConfigOverride, script: String) -> Result<()> {
-    with_workspace(cfg_override, |cfg, _cargo| {
+    with_workspace(cfg_override, |cfg| {
         let script = cfg
             .scripts
             .get(&script)
@@ -2040,9 +2004,21 @@ fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
 
 fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
     // Discover the various workspace configs.
-    let (cfg, _cargo_path) = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
-    if !Path::new("Cargo.lock").exists() {
+    let program = cfg
+        .get_program(&program_name)?
+        .ok_or_else(|| anyhow!("Workspace member not found"))?;
+
+    let program_cargo_lock = pathdiff::diff_paths(
+        program.path().join("Cargo.lock"),
+        cfg.path().parent().unwrap(),
+    )
+    .ok_or_else(|| anyhow!("Unable to diff Cargo.lock path"))?;
+    let cargo_lock = Path::new("Cargo.lock");
+
+    // There must be a Cargo.lock
+    if !program_cargo_lock.exists() && !cargo_lock.exists() {
         return Err(anyhow!("Cargo.lock must exist for a verifiable build"));
     }
 
@@ -2081,29 +2057,59 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
     let mut tar = tar::Builder::new(enc);
 
     // Files that will always be included if they exist.
+    println!("PACKING: Anchor.toml");
     tar.append_path("Anchor.toml")?;
-    tar.append_path("Cargo.lock")?;
+    if cargo_lock.exists() {
+        println!("PACKING: Cargo.lock");
+        tar.append_path(cargo_lock)?;
+    }
     if Path::new("Cargo.toml").exists() {
+        println!("PACKING: Cargo.toml");
         tar.append_path("Cargo.toml")?;
     }
     if Path::new("LICENSE").exists() {
+        println!("PACKING: LICENSE");
         tar.append_path("LICENSE")?;
     }
     if Path::new("README.md").exists() {
+        println!("PACKING: README.md");
         tar.append_path("README.md")?;
     }
 
     // All workspace programs.
     for path in cfg.get_program_list()? {
-        let mut relative_path = pathdiff::diff_paths(path, cfg.path().parent().unwrap())
-            .ok_or_else(|| anyhow!("Unable to diff paths"))?;
+        let mut dirs = walkdir::WalkDir::new(&path)
+            .into_iter()
+            .filter_entry(|e| !is_hidden(e));
 
-        // HACK for workspaces wtih single programs. Change this.
-        if relative_path.display().to_string() == *"" {
-            relative_path = "src".into();
+        // Skip the parent dir.
+        let _ = dirs.next().unwrap()?;
+
+        for entry in dirs {
+            let e = entry.map_err(|e| anyhow!("{:?}", e))?;
+
+            let e = pathdiff::diff_paths(e.path(), cfg.path().parent().unwrap())
+                .ok_or_else(|| anyhow!("Unable to diff paths"))?;
+
+            let path_str = e.display().to_string();
+
+            // Skip target dir.
+            if !path_str.contains("target/") && !path_str.contains("/target") {
+                // Only add the file if it's not empty.
+                let metadata = std::fs::File::open(&e)?.metadata()?;
+                if metadata.len() > 0 {
+                    println!("PACKING: {}", e.display().to_string());
+                    if e.is_dir() {
+                        tar.append_dir_all(&e, &e)?;
+                    } else {
+                        tar.append_path(&e)?;
+                    }
+                }
+            }
         }
-        tar.append_dir_all(relative_path.clone(), relative_path)?;
     }
+
+    // Tar pack complete.
     tar.into_inner()?;
 
     // Upload the tarball to the server.
@@ -2158,22 +2164,27 @@ fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
-fn with_workspace<R>(
-    cfg_override: &ConfigOverride,
-    f: impl FnOnce(&WithPath<Config>, Option<PathBuf>) -> R,
-) -> R {
+fn with_workspace<R>(cfg_override: &ConfigOverride, f: impl FnOnce(&WithPath<Config>) -> R) -> R {
     set_workspace_dir_or_exit();
 
     clear_program_keys(cfg_override).unwrap();
 
-    let (cfg, cargo_toml) = Config::discover(cfg_override)
+    let cfg = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
         .expect("Anchor.toml must always exist");
 
-    let r = f(&cfg, cargo_toml);
+    let r = f(&cfg);
 
     set_workspace_dir_or_exit();
     clear_program_keys(cfg_override).unwrap();
 
     r
+}
+
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s == "." || s.starts_with('.') || s == "target")
+        .unwrap_or(false)
 }

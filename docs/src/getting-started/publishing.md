@@ -40,7 +40,7 @@ cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
-multisig = { address = "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u", path = "./target/deploy/multisig.so", idl = "./target/idl/multisig.json" }
+multisig = "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u"
 ```
 
 Here there are four sections.
@@ -53,8 +53,8 @@ Here there are four sections.
    standard Anchor workflow, this can be ommitted.  For programs not written in Anchor
    but still want to publish, this should be added.
 3. `[provider]` - configures the wallet and cluster settings. Here, `mainnet` is used because the registry only supports `mainnet` binary verification at the moment.
-3. `[programs.mainnet]` - configures each program in the workpace. Here the
-   `address` of the program to verify and the `path` to it's binary build artifact. For Anchor programs with an **IDL**, an `idl = "<path>"` field should also be provided.
+3. `[programs.mainnet]` - configures each program in the workpace, providing
+   the `address` of the program to verify.
 
 ::: tip
 When defining program in `[programs.mainnet]`, make sure the name provided
