@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: Ignore `Unnamed` structs instead of panic ([#605](https://github.com/project-serum/anchor/pull/605)).
+
 ## [0.13.2] - 2021-08-11
 
 ### Fixes

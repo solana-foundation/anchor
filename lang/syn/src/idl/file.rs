@@ -384,7 +384,8 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
                         })
                     })
                     .collect::<Result<Vec<IdlField>>>(),
-                _ => panic!("Only named structs are allowed."),
+                syn::Fields::Unnamed(_) => return None,
+                _ => panic!("Empty structs are allowed."),
             };
 
             Some(fields.map(|fields| IdlTypeDefinition {
