@@ -458,22 +458,18 @@ describe("misc", () => {
   });
 
   it("Can create a token account from seeds pda", async () => {
-    const mint = await Token.createMint(
-      program.provider.connection,
-      program.provider.wallet.payer,
-      program.provider.wallet.publicKey,
-      null,
-      0,
-      TOKEN_PROGRAM_ID
+    const [mint, mint_bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(anchor.utils.bytes.utf8.encode("my-mint-seed"))],
+      program.programId
     );
-    const [myPda, bump] = await PublicKey.findProgramAddress(
+    const [myPda, token_bump] = await PublicKey.findProgramAddress(
       [Buffer.from(anchor.utils.bytes.utf8.encode("my-token-seed"))],
       program.programId
     );
-    await program.rpc.testTokenSeedsInit(bump, {
+    await program.rpc.testTokenSeedsInit(token_bump, mint_bump, {
       accounts: {
         myPda,
-        mint: mint.publicKey,
+        mint,
         authority: program.provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -481,12 +477,18 @@ describe("misc", () => {
       },
     });
 
-    const account = await mint.getAccountInfo(myPda);
+    const mintAccount = new Token(
+      program.provider.connection,
+      mint,
+      TOKEN_PROGRAM_ID,
+      program.provider.wallet.payer
+    );
+    const account = await mintAccount.getAccountInfo(myPda);
     assert.ok(account.state === 1);
     assert.ok(account.amount.toNumber() === 0);
     assert.ok(account.isInitialized);
     assert.ok(account.owner.equals(program.provider.wallet.publicKey));
-    assert.ok(account.mint.equals(mint.publicKey));
+    assert.ok(account.mint.equals(mint));
   });
 
   it("Can execute a fallback function", async () => {

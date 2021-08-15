@@ -464,27 +464,6 @@ pub fn generate_pda(
     let field = &f.ident;
     let (account_ty, account_wrapper_ty, is_zero_copy) = parse_ty(f);
 
-    let space = match space {
-        // If no explicit space param was given, serialize the type to bytes
-        // and take the length (with +8 for the discriminator.)
-        None => match is_zero_copy {
-            false => {
-                quote! {
-                    let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
-                }
-            }
-            true => {
-                quote! {
-                    let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
-                }
-            }
-        },
-        // Explicit account size given. Use it.
-        Some(s) => quote! {
-            let space = #s;
-        },
-    };
-
     let nonce_assignment = match assign_nonce {
         false => quote! {},
         true => match &f.ty {
@@ -525,7 +504,6 @@ pub fn generate_pda(
     match kind {
         PdaKind::Token { owner, mint } => quote! {
             let #field: #combined_account_ty = {
-                #space
                 #payer
                 #seeds_constraint
 
@@ -534,44 +512,20 @@ pub fn generate_pda(
                     .minimum_balance(anchor_spl::token::TokenAccount::LEN)
                     .max(1)
                     .saturating_sub(#field.to_account_info().lamports());
-                if required_lamports > 0 {
-                    anchor_lang::solana_program::program::invoke(
-                        &anchor_lang::solana_program::system_instruction::transfer(
-                            payer.to_account_info().key,
-                            #field.to_account_info().key,
-                            required_lamports,
-                        ),
-                        &[
-                            payer.to_account_info(),
-                            #field.to_account_info(),
-                            system_program.to_account_info().clone(),
-                        ],
-                    )?;
-                }
 
-                // Allocate space.
+                // Create the token account with right amount of lamports and space, and the correct owner.
                 anchor_lang::solana_program::program::invoke_signed(
-                    &anchor_lang::solana_program::system_instruction::allocate(
+                    &anchor_lang::solana_program::system_instruction::create_account(
+                        payer.to_account_info().key,
                         #field.to_account_info().key,
+                        required_lamports,
                         anchor_spl::token::TokenAccount::LEN as u64,
+                        token_program.to_account_info().key,
                     ),
                     &[
+                        payer.to_account_info(),
                         #field.to_account_info(),
-                        system_program.clone(),
-                    ],
-                    &[&#seeds_with_nonce[..]],
-                )?;
-
-                // Assign to the spl token program.
-                let __ix = anchor_lang::solana_program::system_instruction::assign(
-                    #field.to_account_info().key,
-                    token_program.to_account_info().key,
-                );
-                anchor_lang::solana_program::program::invoke_signed(
-                    &__ix,
-                    &[
-                        #field.to_account_info(),
-                        system_program.to_account_info(),
+                        system_program.to_account_info().clone(),
                     ],
                     &[&#seeds_with_nonce[..]],
                 )?;
@@ -591,7 +545,69 @@ pub fn generate_pda(
                 )?
             };
         },
+        PdaKind::Mint { owner, decimals } => quote! {
+            let #field: #combined_account_ty = {
+                #payer
+                #seeds_constraint
+
+                // Fund the account for rent exemption.
+                let required_lamports = rent
+                    .minimum_balance(anchor_spl::token::Mint::LEN)
+                    .max(1)
+                    .saturating_sub(#field.to_account_info().lamports());
+
+                // Create the token account with right amount of lamports and space, and the correct owner.
+                anchor_lang::solana_program::program::invoke_signed(
+                    &anchor_lang::solana_program::system_instruction::create_account(
+                        payer.to_account_info().key,
+                        #field.to_account_info().key,
+                        required_lamports,
+                        anchor_spl::token::Mint::LEN as u64,
+                        token_program.to_account_info().key,
+                    ),
+                    &[
+                        payer.to_account_info(),
+                        #field.to_account_info(),
+                        system_program.to_account_info().clone(),
+                    ],
+                    &[&#seeds_with_nonce[..]],
+                )?;
+
+                // Initialize the mint account.
+                let cpi_program = token_program.to_account_info();
+                let accounts = anchor_spl::token::InitializeMint {
+                    mint: #field.to_account_info(),
+                    rent: rent.to_account_info(),
+                };
+                let cpi_ctx = CpiContext::new(cpi_program, accounts);
+                anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
+                anchor_lang::CpiAccount::try_from_init(
+                    &#field.to_account_info(),
+                )?
+            };
+        },
         PdaKind::Program { owner } => {
+            let space = match space {
+                // If no explicit space param was given, serialize the type to bytes
+                // and take the length (with +8 for the discriminator.)
+                None => match is_zero_copy {
+                    false => {
+                        quote! {
+                                let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+                        }
+                    }
+                    true => {
+                        quote! {
+                                let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
+                        }
+                    }
+                },
+                // Explicit account size given. Use it.
+                Some(s) => quote! {
+                        let space = #s;
+                },
+            };
+
             // Owner of the account being created. If not specified,
             // default to the currently executing program.
             let owner = match owner {

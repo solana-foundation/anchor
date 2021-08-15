@@ -341,6 +341,8 @@ pub enum ConstraintToken {
     Address(Context<ConstraintAddress>),
     TokenMint(Context<ConstraintTokenMint>),
     TokenAuthority(Context<ConstraintTokenAuthority>),
+    MintAuthority(Context<ConstraintMintAuthority>),
+    MintDecimals(Context<ConstraintMintDecimals>),
     Bump(Context<ConstraintTokenBump>),
 }
 
@@ -448,6 +450,7 @@ pub struct ConstraintAssociatedSpace {
 pub enum PdaKind {
     Program { owner: Option<Expr> },
     Token { owner: Expr, mint: Expr },
+    Mint { owner: Expr, decimals: Expr },
 }
 
 #[derive(Debug, Clone)]
@@ -463,6 +466,16 @@ pub struct ConstraintTokenMint {
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenAuthority {
     auth: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintAuthority {
+    mint_auth: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintDecimals {
+    decimals: Expr,
 }
 
 #[derive(Debug, Clone)]

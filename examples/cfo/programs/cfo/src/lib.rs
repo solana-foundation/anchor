@@ -292,15 +292,14 @@ pub struct CreateOfficer<'info> {
     officer: ProgramAccount<'info, Officer>,
     #[account(
         init,
-        token = mint,
+        token::mint = mint,
         associated = officer, with = b"vault",
-        space = TokenAccount::LEN,
         payer = authority,
     )]
     srm_vault: CpiAccount<'info, TokenAccount>,
     #[account(
         init,
-        token = mint,
+        token::mint = mint,
         associated = officer, with = b"stake",
         space = TokenAccount::LEN,
         payer = authority,
@@ -308,9 +307,8 @@ pub struct CreateOfficer<'info> {
     stake: CpiAccount<'info, TokenAccount>,
     #[account(
         init,
-        token = mint,
+        token::mint = mint,
         associated = officer, with = b"treasury",
-        space = TokenAccount::LEN,
         payer = authority,
     )]
     treasury: CpiAccount<'info, TokenAccount>,
@@ -337,7 +335,7 @@ pub struct CreateOfficerToken<'info> {
     officer: ProgramAccount<'info, Officer>,
     #[account(
         init,
-        token = mint,
+        token::mint = mint,
         associated = officer, with = mint,
         space = TokenAccount::LEN,
         payer = payer,

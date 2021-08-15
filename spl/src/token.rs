@@ -256,6 +256,10 @@ impl Deref for TokenAccount {
 #[derive(Clone)]
 pub struct Mint(spl_token::state::Mint);
 
+impl Mint {
+    pub const LEN: usize = spl_token::state::Mint::LEN;
+}
+
 impl anchor_lang::AccountDeserialize for Mint {
     fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
         Mint::try_deserialize_unchecked(buf)
