@@ -97,39 +97,55 @@ describe("cfo", () => {
       stake: 20,
       treasury: 0,
     };
-    officer = await program.account.officer.associatedAddress(DEX_PID);
-    const srmVault = await anchor.utils.publicKey.associated(
-      program.programId,
-      officer,
-      anchor.utils.bytes.utf8.encode("vault"),
+    const [_officer, officerBump] = await PublicKey.findProgramAddress(
+      [DEX_PID.toBuffer()],
+      program.programId
     );
-    const stake = await anchor.utils.publicKey.associated(
-      program.programId,
-      officer,
-      anchor.utils.bytes.utf8.encode("stake"),
+    officer = _officer;
+    const [srmVault, srmBump] = await PublicKey.findProgramAddress(
+      [anchor.utils.bytes.utf8.encode("vault"), officer.toBuffer()],
+      program.programId
     );
-    const treasury = await anchor.utils.publicKey.associated(
-      program.programId,
-      officer,
-      Buffer.from(anchor.utils.bytes.utf8.encode("treasury")),
+    const [stake, stakeBump] = await PublicKey.findProgramAddress(
+      [anchor.utils.bytes.utf8.encode("stake"), officer.toBuffer()],
+      program.programId
     );
-    await program.rpc.createOfficer(distribution, registrar, msrmRegistrar, {
-      accounts: {
-        officer,
-        srmVault,
-        stake,
-        treasury,
-        mint: ORDERBOOK_ENV.mintA,
-        authority: program.provider.wallet.publicKey,
-        dexProgram: DEX_PID,
-        swapProgram: SWAP_PID,
-        tokenProgram: TOKEN_PID,
-        systemProgram: SystemProgram.programId,
-        rent: SYSVAR_RENT_PUBKEY,
-      },
-    });
+    const [treasury, treasuryBump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(anchor.utils.bytes.utf8.encode("treasury")),
+        officer.toBuffer(),
+      ],
+      program.programId
+    );
+    const bumps = {
+      bump: officerBump,
+      srm: srmBump,
+      stake: stakeBump,
+      treasury: treasuryBump,
+    };
+    await program.rpc.createOfficer(
+      bumps,
+      distribution,
+      registrar,
+      msrmRegistrar,
+      {
+        accounts: {
+          officer,
+          srmVault,
+          stake,
+          treasury,
+          mint: ORDERBOOK_ENV.mintA,
+          authority: program.provider.wallet.publicKey,
+          dexProgram: DEX_PID,
+          swapProgram: SWAP_PID,
+          tokenProgram: TOKEN_PID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        },
+      }
+    );
 
-    officerAccount = await program.account.officer.associated(DEX_PID);
+    officerAccount = await program.account.officer.fetch(officer);
     assert.ok(
       officerAccount.authority.equals(program.provider.wallet.publicKey)
     );
@@ -140,12 +156,11 @@ describe("cfo", () => {
   });
 
   it("Creates a token account for the officer associated with the market", async () => {
-    const token = await anchor.utils.publicKey.associated(
-      program.programId,
-      officer,
-      ORDERBOOK_ENV.usdc
+    const [token, bump] = await PublicKey.findProgramAddress(
+      [officer.toBuffer(), ORDERBOOK_ENV.usdc.toBuffer()],
+      program.programId
     );
-    await program.rpc.createOfficerToken({
+    await program.rpc.createOfficerToken(bump, {
       accounts: {
         officer,
         token,
@@ -162,10 +177,9 @@ describe("cfo", () => {
   });
 
   it("Sweeps fees", async () => {
-    const sweepVault = await anchor.utils.publicKey.associated(
-      program.programId,
-      officer,
-      ORDERBOOK_ENV.usdc
+    const [sweepVault, bump] = await PublicKey.findProgramAddress(
+      [officer.toBuffer(), ORDERBOOK_ENV.usdc.toBuffer()],
+      program.programId
     );
     const beforeTokenAccount = await serumCmn.getTokenAccount(
       program.provider,

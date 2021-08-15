@@ -1,5 +1,6 @@
 const anchor = require("@project-serum/anchor");
 const assert = require("assert");
+const { PublicKey } = anchor.web3;
 
 describe("chat", () => {
   // Configure the client to use the local cluster.
@@ -12,8 +13,6 @@ describe("chat", () => {
   const chatRoom = anchor.web3.Keypair.generate();
 
   it("Creates a chat room", async () => {
-    // Add your test here.
-
     await program.rpc.createChatRoom("Test Chat", {
       accounts: {
         chatRoom: chatRoom.publicKey,
@@ -35,22 +34,30 @@ describe("chat", () => {
 
   it("Creates a user", async () => {
     const authority = program.provider.wallet.publicKey;
-    await program.rpc.createUser("My User", {
+    const [user, bump] = await PublicKey.findProgramAddress(
+      [authority.toBuffer()],
+      program.programId
+    );
+    await program.rpc.createUser("My User", bump, {
       accounts: {
-        user: await program.account.user.associatedAddress(authority),
+        user,
         authority,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
-    const account = await program.account.user.associated(authority);
+    const account = await program.account.user.fetch(user);
     assert.ok(account.name === "My User");
     assert.ok(account.authority.equals(authority));
   });
 
   it("Sends messages", async () => {
     const authority = program.provider.wallet.publicKey;
-    const user = await program.account.user.associatedAddress(authority);
+    const user = (
+      await PublicKey.findProgramAddress(
+        [authority.toBuffer()],
+        program.programId
+      )
+    )[0];
 
     // Only send a couple messages so the test doesn't take an eternity.
     const numMessages = 10;

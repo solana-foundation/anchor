@@ -21,7 +21,7 @@ pub struct Account<const N: usize> {
     pub data: WrappedU8Array<N>,
 }
 
-#[associated]
+#[account]
 #[derive(Default)]
 pub struct Associated<T>
 where

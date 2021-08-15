@@ -1,9 +1,0 @@
-# ignore Mac OS noise
-.DS_Store
-
-# ignore the build directory for Rust/Anchor
-target
-
-# Ignore backup files creates by cargo fmt.
-**/*.rs.bk
-    

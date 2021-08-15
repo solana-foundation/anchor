@@ -19,6 +19,7 @@ incremented for features.
 ### Breaking Changes
 
 * lang: Change `#[account(init, seeds = [...], token = <expr>, authority = <expr>)]` to `#[account(init, token::mint = <expr> token::authority = <expr>)]` ([#](https://github.com/project-serum/anchor/pull/562)).
+* lang: `#[associated]` and `#[account(associated = <target>, with = <target>)]` are both removed.
 
 ## [0.13.2] - 2021-08-11
 

@@ -57,22 +57,6 @@ pub mod misc {
         misc2::cpi::state::set_data(ctx, data)
     }
 
-    pub fn test_init_associated_account(
-        ctx: Context<TestInitAssociatedAccount>,
-        data: u64,
-    ) -> ProgramResult {
-        ctx.accounts.my_account.data = data;
-        Ok(())
-    }
-
-    pub fn test_associated_account(
-        ctx: Context<TestAssociatedAccount>,
-        data: u64,
-    ) -> ProgramResult {
-        ctx.accounts.my_account.data = data;
-        Ok(())
-    }
-
     pub fn test_u16(ctx: Context<TestU16>, data: u16) -> ProgramResult {
         ctx.accounts.my_account.data = data;
         Ok(())
@@ -82,20 +66,6 @@ pub mod misc {
         emit!(E1 { data });
         emit!(E2 { data: 1234 });
         emit!(E3 { data: 9 });
-        Ok(())
-    }
-
-    pub fn test_simulate_associated_account(
-        ctx: Context<TestSimulateAssociatedAccount>,
-        data: u32,
-    ) -> ProgramResult {
-        let associated_account = *ctx.accounts.my_account.to_account_info().key;
-        emit!(E1 { data });
-        emit!(E2 { data: 1234 });
-        emit!(E3 { data: 9 });
-        emit!(E4 {
-            data: associated_account
-        });
         Ok(())
     }
 

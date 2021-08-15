@@ -241,25 +241,6 @@ export class AccountClient {
       programId: this._programId,
     });
   }
-
-  /**
-   * Function returning the associated account. Args are keys to associate.
-   * Order matters.
-   */
-  async associated(...args: Array<PublicKey | Buffer>): Promise<any> {
-    const addr = await this.associatedAddress(...args);
-    return await this.fetch(addr);
-  }
-
-  /**
-   * Function returning the associated address. Args are keys to associate.
-   * Order matters.
-   */
-  async associatedAddress(
-    ...args: Array<PublicKey | Buffer>
-  ): Promise<PublicKey> {
-    return await pubkeyUtil.associated(this._programId, ...args);
-  }
 }
 
 /**

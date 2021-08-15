@@ -30,9 +30,6 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     }
                 }
                 AccountField::Field(f) => {
-                    // Associated fields are *first* deserialized into
-                    // AccountInfos, and then later deserialized into
-                    // ProgramAccounts in the "constraint check" phase.
                     if is_pda_init(af) {
                         let name = &f.ident;
                         quote!{
@@ -114,22 +111,15 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     }
 }
 
-// Returns true if the given AccountField has an associated init constraint.
 fn is_pda_init(af: &AccountField) -> bool {
     match af {
         AccountField::CompositeField(_s) => false,
-        AccountField::Field(f) => {
-            f.constraints
-                .associated
-                .as_ref()
-                .map(|f| f.is_init)
-                .unwrap_or(false)
-                || f.constraints
-                    .seeds
-                    .as_ref()
-                    .map(|f| f.is_init)
-                    .unwrap_or(false)
-        }
+        AccountField::Field(f) => f
+            .constraints
+            .seeds
+            .as_ref()
+            .map(|f| f.is_init)
+            .unwrap_or(false),
     }
 }
 
@@ -193,13 +183,12 @@ fn typed_ident(field: &Field) -> TokenStream {
 }
 
 pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
-    // All fields without an `#[account(associated)]` attribute.
-    let non_associated_fields: Vec<&AccountField> =
+    let non_pda_fields: Vec<&AccountField> =
         accs.fields.iter().filter(|af| !is_pda_init(af)).collect();
 
-    // Deserialization for each *associated* field. This must be after
+    // Deserialization for each pda init field. This must be after
     // the inital extraction from the accounts slice and before access_checks.
-    let init_associated_fields: Vec<proc_macro2::TokenStream> = accs
+    let init_pda_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
         .filter_map(|af| match af {
@@ -213,7 +202,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
 
     // Constraint checks for each account fields.
-    let access_checks: Vec<proc_macro2::TokenStream> = non_associated_fields
+    let access_checks: Vec<proc_macro2::TokenStream> = non_pda_fields
         .iter()
         .map(|af: &&AccountField| match af {
             AccountField::Field(f) => constraints::generate(f),
@@ -222,7 +211,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        #(#init_associated_fields)*
+        #(#init_pda_fields)*
         #(#access_checks)*
     }
 }

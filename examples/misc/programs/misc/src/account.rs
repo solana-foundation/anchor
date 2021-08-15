@@ -1,11 +1,5 @@
 use anchor_lang::prelude::*;
 
-#[associated]
-#[derive(Default)]
-pub struct TestData {
-    pub data: u64,
-}
-
 #[account]
 pub struct Data {
     pub udata: u128,

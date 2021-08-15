@@ -6,9 +6,10 @@ use anchor_lang::prelude::*;
 pub mod chat {
     use super::*;
 
-    pub fn create_user(ctx: Context<CreateUser>, name: String) -> Result<()> {
+    pub fn create_user(ctx: Context<CreateUser>, name: String, bump: u8) -> Result<()> {
         ctx.accounts.user.name = name;
         ctx.accounts.user.authority = *ctx.accounts.authority.key;
+        ctx.accounts.user.bump = bump;
         Ok(())
     }
     pub fn create_chat_room(ctx: Context<CreateChatRoom>, name: String) -> Result<()> {
@@ -35,8 +36,15 @@ pub mod chat {
 }
 
 #[derive(Accounts)]
+#[instruction(name: String, bump: u8)]
 pub struct CreateUser<'info> {
-    #[account(init, associated = authority, space = 312)]
+    #[account(
+        init,
+        seeds = [authority.key().as_ref()],
+        bump = bump,
+        payer = authority,
+        space = 320,
+    )]
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -51,7 +59,10 @@ pub struct CreateChatRoom<'info> {
 
 #[derive(Accounts)]
 pub struct SendMessage<'info> {
-    #[account(associated = authority, has_one = authority)]
+    #[account(
+        seeds = [authority.key().as_ref(), &[user.bump]],
+        has_one = authority,
+    )]
     user: ProgramAccount<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -59,10 +70,11 @@ pub struct SendMessage<'info> {
     chat_room: Loader<'info, ChatRoom>,
 }
 
-#[associated]
+#[account]
 pub struct User {
     name: String,
     authority: Pubkey,
+    bump: u8,
 }
 
 #[account(zero_copy)]

@@ -1,9 +1,8 @@
 // WIP. This program has been checkpointed and is not production ready.
 
-use anchor_lang::associated_seeds;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::sysvar::instructions as tx_instructions;
-use anchor_lang::solana_program::{system_instruction, system_program};
 use anchor_spl::token::{self, Mint, TokenAccount};
 use anchor_spl::{dex, mint};
 use registry::{Registrar, RewardVendorKind};
@@ -20,6 +19,7 @@ pub mod cfo {
     #[access_control(is_distribution_valid(&d))]
     pub fn create_officer(
         ctx: Context<CreateOfficer>,
+        bumps: OfficerBumps,
         d: Distribution,
         registrar: Pubkey,
         msrm_registrar: Pubkey,
@@ -34,6 +34,7 @@ pub mod cfo {
         officer.stake = *ctx.accounts.stake.to_account_info().key;
         officer.treasury = *ctx.accounts.treasury.to_account_info().key;
         officer.srm_vault = *ctx.accounts.srm_vault.to_account_info().key;
+        officer.bumps = bumps;
         emit!(OfficerDidCreate {
             pubkey: *officer.to_account_info().key,
         });
@@ -43,7 +44,7 @@ pub mod cfo {
     /// Creates a deterministic token account owned by the CFO.
     /// This should be used when a new mint is used for collecting fees.
     /// Can only be called once per token CFO and token mint.
-    pub fn create_officer_token(_ctx: Context<CreateOfficerToken>) -> Result<()> {
+    pub fn create_officer_token(_ctx: Context<CreateOfficerToken>, _bump: u8) -> Result<()> {
         Ok(())
     }
 
@@ -57,12 +58,12 @@ pub mod cfo {
 
     /// Transfers fees from the dex to the CFO.
     pub fn sweep_fees<'info>(ctx: Context<'_, '_, '_, 'info, SweepFees<'info>>) -> Result<()> {
-        let seeds = associated_seeds! {
-            account = ctx.accounts.officer,
-            associated = ctx.accounts.dex.dex_program
-        };
-        let cpi_ctx: CpiContext<'_, '_, '_, 'info, dex::SweepFees<'info>> = (&*ctx.accounts).into();
-        dex::sweep_fees(cpi_ctx.with_signer(&[seeds]))?;
+        let seeds = [
+            ctx.accounts.dex.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts);
+        dex::sweep_fees(cpi_ctx.with_signer(&[&seeds[..]]))?;
         Ok(())
     }
 
@@ -73,13 +74,13 @@ pub mod cfo {
         ctx: Context<'_, '_, '_, 'info, SwapToUsdc<'info>>,
         min_exchange_rate: ExchangeRate,
     ) -> Result<()> {
-        let seeds = associated_seeds! {
-            account = ctx.accounts.officer,
-            associated = ctx.accounts.dex_program
-        };
-        let cpi_ctx: CpiContext<'_, '_, '_, 'info, swap::Swap<'info>> = (&*ctx.accounts).into();
+        let seeds = [
+            ctx.accounts.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts);
         swap::cpi::swap(
-            cpi_ctx.with_signer(&[seeds]),
+            cpi_ctx.with_signer(&[&seeds[..]]),
             swap::Side::Bid,
             token::accessor::amount(&ctx.accounts.from_vault)?,
             min_exchange_rate.into(),
@@ -94,13 +95,13 @@ pub mod cfo {
         ctx: Context<'_, '_, '_, 'info, SwapToSrm<'info>>,
         min_exchange_rate: ExchangeRate,
     ) -> Result<()> {
-        let seeds = associated_seeds! {
-            account = ctx.accounts.officer,
-            associated = ctx.accounts.dex_program
-        };
+        let seeds = [
+            ctx.accounts.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
         let cpi_ctx: CpiContext<'_, '_, '_, 'info, swap::Swap<'info>> = (&*ctx.accounts).into();
         swap::cpi::swap(
-            cpi_ctx.with_signer(&[seeds]),
+            cpi_ctx.with_signer(&[&seeds[..]]),
             swap::Side::Bid,
             token::accessor::amount(&ctx.accounts.from_vault)?,
             min_exchange_rate.into(),
@@ -113,10 +114,10 @@ pub mod cfo {
     #[access_control(is_distribution_ready(&ctx.accounts))]
     pub fn distribute<'info>(ctx: Context<'_, '_, '_, 'info, Distribute<'info>>) -> Result<()> {
         let total_fees = ctx.accounts.srm_vault.amount;
-        let seeds = associated_seeds! {
-            account = ctx.accounts.officer,
-            associated = ctx.accounts.dex_program
-        };
+        let seeds = [
+            ctx.accounts.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
 
         // Burn.
         let burn_amount: u64 = u128::from(total_fees)
@@ -126,7 +127,10 @@ pub mod cfo {
             .unwrap()
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
-        token::burn(ctx.accounts.into_burn().with_signer(&[seeds]), burn_amount)?;
+        token::burn(
+            ctx.accounts.into_burn().with_signer(&[&seeds[..]]),
+            burn_amount,
+        )?;
 
         // Stake.
         let stake_amount: u64 = u128::from(total_fees)
@@ -137,7 +141,9 @@ pub mod cfo {
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
         token::transfer(
-            ctx.accounts.into_stake_transfer().with_signer(&[seeds]),
+            ctx.accounts
+                .into_stake_transfer()
+                .with_signer(&[&seeds[..]]),
             stake_amount,
         )?;
 
@@ -150,7 +156,9 @@ pub mod cfo {
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
         token::transfer(
-            ctx.accounts.into_treasury_transfer().with_signer(&[seeds]),
+            ctx.accounts
+                .into_treasury_transfer()
+                .with_signer(&[&seeds[..]]),
             treasury_amount,
         )?;
 
@@ -174,10 +182,10 @@ pub mod cfo {
                 period_count,
             }
         };
-        let seeds = associated_seeds! {
-            account = ctx.accounts.officer,
-            associated = ctx.accounts.dex_program
-        };
+        let seeds = [
+            ctx.accounts.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
 
         // Total amount staked denominated in SRM (i.e. MSRM is converted to
         // SRM)
@@ -231,7 +239,7 @@ pub mod cfo {
                 ctx.accounts.token_program.key,
             );
             registry::cpi::drop_reward(
-                ctx.accounts.into_srm_reward().with_signer(&[seeds]),
+                ctx.accounts.into_srm_reward().with_signer(&[&seeds[..]]),
                 locked_kind.clone(),
                 srm_amount.try_into().unwrap(),
                 expiry_ts,
@@ -241,7 +249,7 @@ pub mod cfo {
 
             // Drop unlocked reward.
             registry::cpi::drop_reward(
-                ctx.accounts.into_srm_reward().with_signer(&[seeds]),
+                ctx.accounts.into_srm_reward().with_signer(&[&seeds[..]]),
                 RewardVendorKind::Unlocked,
                 srm_amount,
                 expiry_ts,
@@ -261,7 +269,7 @@ pub mod cfo {
                 ctx.accounts.token_program.key,
             );
             registry::cpi::drop_reward(
-                ctx.accounts.into_msrm_reward().with_signer(&[seeds]),
+                ctx.accounts.into_msrm_reward().with_signer(&[&seeds[..]]),
                 locked_kind,
                 msrm_amount,
                 expiry_ts,
@@ -271,7 +279,7 @@ pub mod cfo {
 
             // Drop unlocked reward.
             registry::cpi::drop_reward(
-                ctx.accounts.into_msrm_reward().with_signer(&[seeds]),
+                ctx.accounts.into_msrm_reward().with_signer(&[&seeds[..]]),
                 RewardVendorKind::Unlocked,
                 msrm_amount,
                 expiry_ts,
@@ -287,32 +295,40 @@ pub mod cfo {
 // Context accounts.
 
 #[derive(Accounts)]
+#[instruction(bumps: OfficerBumps)]
 pub struct CreateOfficer<'info> {
-    #[account(init, associated = dex_program, payer = authority)]
+    #[account(
+        init,
+        seeds = [dex_program.key.as_ref()],
+        bump = bumps.bump,
+        payer = authority,
+    )]
     officer: ProgramAccount<'info, Officer>,
     #[account(
         init,
+        seeds = [b"vault", officer.key().as_ref()],
+        bump = bumps.srm,
+        payer = authority,
         token::mint = mint,
         token::authority = officer,
-        associated = officer, with = b"vault",
-        payer = authority,
     )]
     srm_vault: CpiAccount<'info, TokenAccount>,
     #[account(
         init,
+        seeds = [b"stake", officer.key().as_ref()],
+        bump = bumps.stake,
+        payer = authority,
         token::mint = mint,
         token::authority = officer,
-        associated = officer, with = b"stake",
-        space = TokenAccount::LEN,
-        payer = authority,
     )]
     stake: CpiAccount<'info, TokenAccount>,
     #[account(
         init,
+        seeds = [b"treasury", officer.key().as_ref()],
+        bump = bumps.treasury,
+        payer = authority,
         token::mint = mint,
         token::authority = officer,
-        associated = officer, with = b"treasury",
-        payer = authority,
     )]
     treasury: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -334,14 +350,15 @@ pub struct CreateOfficer<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(bump: u8)]
 pub struct CreateOfficerToken<'info> {
     officer: ProgramAccount<'info, Officer>,
     #[account(
         init,
+        seeds = [officer.key().as_ref(), mint.key().as_ref()],
+        bump = bump,
         token::mint = mint,
         token::authority = officer,
-        associated = officer, with = mint,
-        space = TokenAccount::LEN,
         payer = payer,
     )]
     token: CpiAccount<'info, TokenAccount>,
@@ -366,14 +383,15 @@ pub struct SetDistribution<'info> {
 
 #[derive(Accounts)]
 pub struct SweepFees<'info> {
-    #[account(associated = dex.dex_program)]
+    #[account(seeds = [dex.dex_program.key.as_ref(), &[officer.bumps.bump]])]
     officer: ProgramAccount<'info, Officer>,
     #[account(
         mut,
         owner = dex.token_program,
-        associated = officer, with = mint,
+        seeds = [officer.key().as_ref(), mint.key().as_ref()],
+        bump,
     )]
-    sweep_vault: AccountInfo<'info>,
+    sweep_vault: CpiAccount<'info, TokenAccount>,
     mint: AccountInfo<'info>,
     dex: Dex<'info>,
 }
@@ -393,7 +411,7 @@ pub struct Dex<'info> {
 
 #[derive(Accounts)]
 pub struct SwapToUsdc<'info> {
-    #[account(associated = dex_program)]
+    #[account(seeds = [dex_program.key().as_ref(), &[officer.bumps.bump]])]
     officer: ProgramAccount<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
@@ -404,7 +422,7 @@ pub struct SwapToUsdc<'info> {
     from_vault: AccountInfo<'info>,
     #[account(owner = token_program)]
     quote_vault: AccountInfo<'info>,
-    #[account(associated = officer, with = mint::USDC)]
+    #[account(seeds = [officer.key().as_ref(), mint::USDC.as_ref()], bump)]
     usdc_vault: AccountInfo<'info>,
     #[account(address = swap::ID)]
     swap_program: AccountInfo<'info>,
@@ -412,14 +430,14 @@ pub struct SwapToUsdc<'info> {
     dex_program: AccountInfo<'info>,
     #[account(address = token::ID)]
     token_program: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
     #[account(address = tx_instructions::ID)]
     instructions: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
 pub struct SwapToSrm<'info> {
-    #[account(associated = dex_program)]
+    #[account(seeds = [dex_program.key().as_ref(), &[officer.bumps.bump]])]
     officer: ProgramAccount<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
@@ -431,8 +449,8 @@ pub struct SwapToSrm<'info> {
     #[account(owner = token_program)]
     quote_vault: AccountInfo<'info>,
     #[account(
-        associated = officer,
-        with = mint::SRM,
+        seeds = [officer.key().as_ref(), mint::SRM.as_ref()],
+        bump,
         constraint = &officer.treasury != from_vault.key,
         constraint = &officer.stake != from_vault.key,
     )]
@@ -443,9 +461,9 @@ pub struct SwapToSrm<'info> {
     dex_program: AccountInfo<'info>,
     #[account(address = token::ID)]
     token_program: AccountInfo<'info>,
-    rent: Sysvar<'info, Rent>,
     #[account(address = tx_instructions::ID)]
     instructions: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -510,7 +528,9 @@ pub struct DropStakeReward<'info> {
         constraint = msrm.registrar.key == &officer.msrm_registrar,
     )]
     officer: ProgramAccount<'info, Officer>,
-    #[account(associated = officer, with = b"stake", with = mint)]
+    #[account(
+        seeds = [b"stake", officer.key().as_ref(), &[officer.bumps.stake]]
+    )]
     stake: CpiAccount<'info, TokenAccount>,
     #[cfg_attr(
         not(feature = "test"),
@@ -546,7 +566,7 @@ pub struct DropStakeRewardPool<'info> {
 
 // Accounts.
 
-#[associated]
+#[account]
 #[derive(Default)]
 pub struct Officer {
     // Priviledged account.
@@ -567,6 +587,16 @@ pub struct Officer {
     pub registrar: Pubkey,
     // MSRM stake pool address.
     pub msrm_registrar: Pubkey,
+    // Bump seeds for pdas.
+    pub bumps: OfficerBumps,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct OfficerBumps {
+    pub bump: u8,
+    pub srm: u8,
+    pub stake: u8,
+    pub treasury: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Clone)]

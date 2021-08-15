@@ -125,7 +125,10 @@ pub struct UpdateFoo<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateFooSecond<'info> {
-    #[account(mut, "&foo.load()?.get_second_authority() == second_authority.key")]
+    #[account(
+        mut,
+        constraint = &foo.load()?.get_second_authority() == second_authority.key,
+    )]
     foo: Loader<'info, Foo>,
     #[account(signer)]
     second_authority: AccountInfo<'info>,
@@ -133,7 +136,12 @@ pub struct UpdateFooSecond<'info> {
 
 #[derive(Accounts)]
 pub struct CreateBar<'info> {
-    #[account(init, associated = authority, with = foo)]
+    #[account(
+        init,
+        seeds = [authority.key().as_ref(), foo.key().as_ref()],
+        bump,
+        payer = authority,
+    )]
     bar: Loader<'info, Bar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -143,7 +151,12 @@ pub struct CreateBar<'info> {
 
 #[derive(Accounts)]
 pub struct UpdateBar<'info> {
-    #[account(mut, associated = authority, with = foo, has_one = authority)]
+    #[account(
+        mut,
+        has_one = authority,
+        seeds = [authority.key().as_ref(), foo.key().as_ref()],
+        bump,
+    )]
     bar: Loader<'info, Bar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -173,7 +186,7 @@ pub struct Foo {
     pub second_authority: [u8; 32],
 }
 
-#[associated(zero_copy)]
+#[account(zero_copy)]
 #[derive(Default)]
 pub struct Bar {
     pub authority: Pubkey,
