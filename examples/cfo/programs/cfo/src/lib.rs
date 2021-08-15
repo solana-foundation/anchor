@@ -293,6 +293,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         token::mint = mint,
+        token::authority = officer,
         associated = officer, with = b"vault",
         payer = authority,
     )]
@@ -300,6 +301,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         token::mint = mint,
+        token::authority = officer,
         associated = officer, with = b"stake",
         space = TokenAccount::LEN,
         payer = authority,
@@ -308,6 +310,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         token::mint = mint,
+        token::authority = officer,
         associated = officer, with = b"treasury",
         payer = authority,
     )]
@@ -336,6 +339,7 @@ pub struct CreateOfficerToken<'info> {
     #[account(
         init,
         token::mint = mint,
+        token::authority = officer,
         associated = officer, with = mint,
         space = TokenAccount::LEN,
         payer = payer,
