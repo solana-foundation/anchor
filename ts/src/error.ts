@@ -121,7 +121,7 @@ const LangErrorMessage = new Map([
   [LangErrorCode.ConstraintMut, "A mut constraint was violated"],
   [LangErrorCode.ConstraintHasOne, "A has_one constraint was violated"],
   [LangErrorCode.ConstraintSigner, "A signer constraint was violated"],
-  [LangErrorCode.ConstraintRaw, "A raw constraint as violated"],
+  [LangErrorCode.ConstraintRaw, "A raw constraint was violated"],
   [LangErrorCode.ConstraintOwner, "An owner constraint was violated"],
   [LangErrorCode.ConstraintRentExempt, "A rent exempt constraint was violated"],
   [LangErrorCode.ConstraintSeeds, "A seeds constraint was violated"],
