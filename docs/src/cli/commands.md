@@ -95,6 +95,8 @@ the test.
 
 ::: tip Note
 Be sure to shutdown any other local validators, otherwise `anchor test` will fail to run.
+
+If you'd prefer to run the program against your local validator use `anchor test --skip-local-validator`.
 :::
 
 When running tests we stream program logs to `.anchor/program-logs/<address>.<program-name>.log`
