@@ -344,17 +344,39 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
         let mut ts_config = File::create("tsconfig.json")?;
         ts_config.write_all(template::ts_config().as_bytes())?;
 
+        let mut ts_package_json = File::create("package.json")?;
+        ts_package_json.write_all(template::ts_package_json().as_bytes())?;
+
         let mut deploy = File::create("migrations/deploy.ts")?;
         deploy.write_all(template::ts_deploy_script().as_bytes())?;
 
         let mut mocha = File::create(&format!("tests/{}.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
     } else {
+        let mut package_json = File::create("package.json")?;
+        package_json.write_all(template::package_json().as_bytes())?;
+
         let mut mocha = File::create(&format!("tests/{}.js", name))?;
         mocha.write_all(template::mocha(&name).as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.js")?;
         deploy.write_all(template::deploy_script().as_bytes())?;
+    }
+
+    // Install node modules.
+    let yarn_result = std::process::Command::new("yarn")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("yarn install failed: {}", e.to_string()))?;
+    if !yarn_result.status.success() {
+        println!("Failed yarn install will attempt to npm install");
+        std::process::Command::new("npm")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow::format_err!("npm install failed: {}", e.to_string()))?;
+        println!("Failed to install node dependencies")
     }
 
     println!("{} initialized", name);
