@@ -243,6 +243,8 @@ export class AccountClient {
   }
 
   /**
+   * @deprecated since version 14.0.
+   *
    * Function returning the associated account. Args are keys to associate.
    * Order matters.
    */
@@ -252,6 +254,8 @@ export class AccountClient {
   }
 
   /**
+   * @deprecated since version 14.0.
+   *
    * Function returning the associated address. Args are keys to associate.
    * Order matters.
    */
