@@ -52,6 +52,20 @@ npm install -g @project-serum/anchor
 Make sure your `NODE_PATH` is set properly so that globally installed modules
 can be resolved.
 
+Now verify the CLI is installed properly.
+
+```bash
+anchor --version
+```
+
+## Start a Project
+
+To initialize a new project, simply run:
+
+```bash
+anchor init <new-project-name>
+```
+
 ## Minimum version requirements
 
 | Build tool  | Version        |
