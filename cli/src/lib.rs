@@ -116,14 +116,6 @@ pub enum Command {
     /// Runs the deploy migration script.
     Migrate,
     /// Deploys, initializes an IDL, and migrates all in one command.
-    Launch {
-        /// True if the build should be verifiable. If deploying to mainnet,
-        /// this should almost always be set.
-        #[clap(short, long)]
-        verifiable: bool,
-        #[clap(short, long)]
-        program_name: Option<String>,
-    },
     /// Upgrades a single program. The configured wallet must be the upgrade
     /// authority.
     Upgrade {
@@ -272,10 +264,6 @@ pub fn entry(opts: Opts) -> Result<()> {
         } => upgrade(&opts.cfg_override, program_id, program_filepath),
         Command::Idl { subcmd } => idl(&opts.cfg_override, subcmd),
         Command::Migrate => migrate(&opts.cfg_override),
-        Command::Launch {
-            verifiable,
-            program_name,
-        } => launch(&opts.cfg_override, verifiable, program_name),
         Command::Test {
             skip_deploy,
             skip_local_validator,
@@ -1627,45 +1615,6 @@ fn upgrade(
             println!("There was a problem deploying: {:?}.", exit);
             std::process::exit(exit.status.code().unwrap_or(1));
         }
-        Ok(())
-    })
-}
-
-fn launch(
-    cfg_override: &ConfigOverride,
-    verifiable: bool,
-    program_name: Option<String>,
-) -> Result<()> {
-    // Build and deploy.
-    build(
-        cfg_override,
-        None,
-        verifiable,
-        program_name.clone(),
-        None,
-        None,
-        None,
-    )?;
-    let programs = _deploy(cfg_override, program_name)?;
-
-    with_workspace(cfg_override, |cfg| {
-        let keypair = cfg.provider.wallet.to_string();
-
-        // Add metadata to all IDLs.
-        for (address, program) in programs {
-            if let Some(idl) = program.idl.as_ref() {
-                // Store the IDL on chain.
-                let idl_address = create_idl_account(cfg, &keypair, &address, idl)?;
-                println!("IDL account created: {}", idl_address.to_string());
-            }
-        }
-
-        // Run migration script.
-        if Path::new("migrations/deploy.js").exists() || Path::new("migrations/deploy.ts").exists()
-        {
-            migrate(cfg_override)?;
-        }
-
         Ok(())
     })
 }
