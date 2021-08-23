@@ -79,8 +79,9 @@ export class EventManager {
 
     // Create the subscription singleton, if needed.
     if (this._onLogsSubscriptionId !== undefined) {
-      return;
+      return listener;
     }
+
     this._onLogsSubscriptionId = this._provider.connection.onLogs(
       this._programId,
       (logs, ctx) => {
@@ -89,7 +90,7 @@ export class EventManager {
           return;
         }
         this._eventParser.parseLogs(logs.logs, (event) => {
-          const allListeners = this._eventListeners.get(eventName);
+          const allListeners = this._eventListeners.get(event.name);
           if (allListeners) {
             allListeners.forEach((listener) => {
               const [, callback] = this._eventCallbacks.get(listener);
@@ -114,7 +115,7 @@ export class EventManager {
     // Get the listeners.
     let listeners = this._eventListeners.get(eventName);
     if (!listeners) {
-      throw new Error(`Event listeners dont' exist for ${eventName}!`);
+      throw new Error(`Event listeners don't exist for ${eventName}!`);
     }
 
     // Update both maps.
