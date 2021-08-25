@@ -6,7 +6,6 @@ const {
   getTokenAccount,
   createMint,
   createTokenAccount,
-  mintToAccount,
 } = require("./utils");
 
 describe("ido-pool", () => {
@@ -22,14 +21,18 @@ describe("ido-pool", () => {
 
   // These are all of the variables we assume exist in the world already and
   // are available to the client.
+  let usdcMintToken = null;
   let usdcMint = null;
+  let watermelonMintToken = null;
   let watermelonMint = null;
   let creatorUsdc = null;
   let creatorWatermelon = null;
 
   it("Initializes the state-of-the-world", async () => {
-    usdcMint = await createMint(provider);
-    watermelonMint = await createMint(provider);
+    usdcMintToken = await createMint(provider);
+    watermelonMintToken = await createMint(provider);
+    usdcMint = usdcMintToken.publicKey;
+    watermelonMint = watermelonMintToken.publicKey;
     creatorUsdc = await createTokenAccount(
       provider,
       usdcMint,
@@ -41,12 +44,11 @@ describe("ido-pool", () => {
       provider.wallet.publicKey
     );
     // Mint Watermelon tokens the will be distributed from the IDO pool.
-    await mintToAccount(
-      provider,
-      watermelonMint,
+    await watermelonMintToken.mintTo(
       creatorWatermelon,
-      watermelonIdoAmount,
-      provider.wallet.publicKey
+      provider.wallet.publicKey,
+      [],
+      watermelonIdoAmount.toString(),
     );
     creator_watermelon_account = await getTokenAccount(
       provider,
@@ -58,6 +60,7 @@ describe("ido-pool", () => {
   // These are all variables the client will have to create to initialize the
   // IDO pool
   let poolSigner = null;
+  let redeemableMintToken = null;
   let redeemableMint = null;
   let poolWatermelon = null;
   let poolUsdc = null;
@@ -77,7 +80,8 @@ describe("ido-pool", () => {
 
     // Pool doesn't need a Redeemable SPL token account because it only
     // burns and mints redeemable tokens, it never stores them.
-    redeemableMint = await createMint(provider, poolSigner);
+    redeemableMintToken = await createMint(provider, poolSigner);
+    redeemableMint = redeemableMintToken.publicKey;
     poolWatermelon = await createTokenAccount(
       provider,
       watermelonMint,
@@ -145,12 +149,11 @@ describe("ido-pool", () => {
       usdcMint,
       provider.wallet.publicKey
     );
-    await mintToAccount(
-      provider,
-      usdcMint,
+    await usdcMintToken.mintTo(
       userUsdc,
-      firstDeposit,
-      provider.wallet.publicKey
+      provider.wallet.publicKey,
+      [],
+      firstDeposit.toString(),
     );
     userRedeemable = await createTokenAccount(
       provider,
@@ -191,12 +194,11 @@ describe("ido-pool", () => {
       usdcMint,
       provider.wallet.publicKey
     );
-    await mintToAccount(
-      provider,
-      usdcMint,
+    await usdcMintToken.mintTo(
       secondUserUsdc,
-      secondDeposit,
-      provider.wallet.publicKey
+      provider.wallet.publicKey,
+      [],
+      secondDeposit.toString(),
     );
     secondUserRedeemable = await createTokenAccount(
       provider,

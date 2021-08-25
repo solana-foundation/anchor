@@ -1,5 +1,4 @@
-// TODO: use the `@solana/spl-token` package instead of utils here.
-
+const spl = require("@solana/spl-token");
 const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
@@ -23,117 +22,32 @@ async function createMint(provider, authority) {
   if (authority === undefined) {
     authority = provider.wallet.publicKey;
   }
-  const mint = anchor.web3.Keypair.generate();
-  const instructions = await createMintInstructions(
-    provider,
+  const mint = await spl.Token.createMint(
+    provider.connection,
+    provider.wallet.payer,
     authority,
-    mint.publicKey
+    null,
+    6,
+    TOKEN_PROGRAM_ID
   );
-
-  const tx = new anchor.web3.Transaction();
-  tx.add(...instructions);
-
-  await provider.send(tx, [mint]);
-
-  return mint.publicKey;
-}
-
-async function createMintInstructions(provider, authority, mint) {
-  let instructions = [
-    anchor.web3.SystemProgram.createAccount({
-      fromPubkey: provider.wallet.publicKey,
-      newAccountPubkey: mint,
-      space: 82,
-      lamports: await provider.connection.getMinimumBalanceForRentExemption(82),
-      programId: TOKEN_PROGRAM_ID,
-    }),
-    TokenInstructions.initializeMint({
-      mint,
-      decimals: 6,
-      mintAuthority: authority,
-    }),
-  ];
-  return instructions;
+  return mint;
 }
 
 async function createTokenAccount(provider, mint, owner) {
-  const vault = anchor.web3.Keypair.generate();
-  const tx = new anchor.web3.Transaction();
-  tx.add(
-    ...(await createTokenAccountInstrs(provider, vault.publicKey, mint, owner))
+  const token = new spl.Token(
+    provider.connection,
+    mint,
+    TOKEN_PROGRAM_ID,
+    provider.wallet.payer
   );
-  await provider.send(tx, [vault]);
-  return vault.publicKey;
-}
-
-async function createTokenAccountInstrs(
-  provider,
-  newAccountPubkey,
-  mint,
-  owner,
-  lamports
-) {
-  if (lamports === undefined) {
-    lamports = await provider.connection.getMinimumBalanceForRentExemption(165);
-  }
-  return [
-    anchor.web3.SystemProgram.createAccount({
-      fromPubkey: provider.wallet.publicKey,
-      newAccountPubkey,
-      space: 165,
-      lamports,
-      programId: TOKEN_PROGRAM_ID,
-    }),
-    TokenInstructions.initializeAccount({
-      account: newAccountPubkey,
-      mint,
-      owner,
-    }),
-  ];
-}
-
-async function mintToAccount(
-  provider,
-  mint,
-  destination,
-  amount,
-  mintAuthority
-) {
-  // mint authority is the provider
-  const tx = new anchor.web3.Transaction();
-  tx.add(
-    ...(await createMintToAccountInstrs(
-      mint,
-      destination,
-      amount,
-      mintAuthority
-    ))
-  );
-  await provider.send(tx, []);
-  return;
-}
-
-async function createMintToAccountInstrs(
-  mint,
-  destination,
-  amount,
-  mintAuthority
-) {
-  return [
-    TokenInstructions.mintTo({
-      mint,
-      destination: destination,
-      amount: amount,
-      mintAuthority: mintAuthority,
-    }),
-  ];
+  let vault = await token.createAccount(owner);
+  return vault;
 }
 
 module.exports = {
   TOKEN_PROGRAM_ID,
   sleep,
   getTokenAccount,
-  createMint,
   createTokenAccount,
-  mintToAccount,
+  createMint,
 };
