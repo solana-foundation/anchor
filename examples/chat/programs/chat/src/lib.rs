@@ -53,7 +53,7 @@ pub struct CreateUser<'info> {
 
 #[derive(Accounts)]
 pub struct CreateChatRoom<'info> {
-    #[account(init)]
+    #[account(zero)]
     chat_room: Loader<'info, ChatRoom>,
 }
 

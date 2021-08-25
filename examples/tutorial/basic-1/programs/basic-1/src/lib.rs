@@ -19,7 +19,7 @@ mod basic_1 {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub my_account: ProgramAccount<'info, MyAccount>,
 }
 

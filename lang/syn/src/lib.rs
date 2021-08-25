@@ -263,6 +263,7 @@ pub struct ErrorCode {
 #[derive(Debug, Default, Clone)]
 pub struct ConstraintGroup {
     init: Option<ConstraintInit>,
+    zeroed: Option<ConstraintZeroed>,
     mutable: Option<ConstraintMut>,
     signer: Option<ConstraintSigner>,
     owner: Option<ConstraintOwner>,
@@ -280,6 +281,10 @@ pub struct ConstraintGroup {
 impl ConstraintGroup {
     pub fn is_init(&self) -> bool {
         self.init.is_some()
+    }
+
+    pub fn is_zeroed(&self) -> bool {
+        self.zeroed.is_some()
     }
 
     pub fn is_mutable(&self) -> bool {
@@ -302,6 +307,7 @@ impl ConstraintGroup {
 #[derive(Debug)]
 pub enum Constraint {
     Init(ConstraintInit),
+    Zeroed(ConstraintZeroed),
     Mut(ConstraintMut),
     Signer(ConstraintSigner),
     HasOne(ConstraintHasOne),
@@ -321,6 +327,7 @@ pub enum Constraint {
 #[derive(Debug)]
 pub enum ConstraintToken {
     Init(Context<ConstraintInit>),
+    Zeroed(Context<ConstraintZeroed>),
     Mut(Context<ConstraintMut>),
     Signer(Context<ConstraintSigner>),
     HasOne(Context<ConstraintHasOne>),
@@ -350,6 +357,9 @@ impl Parse for ConstraintToken {
 
 #[derive(Debug, Clone)]
 pub struct ConstraintInit {}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintZeroed {}
 
 #[derive(Debug, Clone)]
 pub struct ConstraintMut {}

@@ -75,7 +75,7 @@ pub struct RemainingAccounts {}
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub data: ProgramAccount<'info, Data>,
 }
 
@@ -111,13 +111,13 @@ pub struct TestClose<'info> {
 
 #[derive(Accounts)]
 pub struct TestU16<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub my_account: ProgramAccount<'info, DataU16>,
 }
 
 #[derive(Accounts)]
 pub struct TestI16<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub data: ProgramAccount<'info, DataI16>,
 }
 

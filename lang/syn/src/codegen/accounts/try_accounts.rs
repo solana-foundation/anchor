@@ -38,7 +38,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         }
                     } else {
                         let name = typed_ident(f);
-                        match f.constraints.is_init() {
+                        match f.constraints.is_init() || f.constraints.is_zeroed() {
                             false => quote! {
                                 #[cfg(feature = "anchor-debug")]
                                 ::solana_program::log::sol_log(stringify!(#name));

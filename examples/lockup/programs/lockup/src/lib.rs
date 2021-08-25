@@ -207,7 +207,7 @@ pub struct Auth<'info> {
 #[derive(Accounts)]
 pub struct CreateVesting<'info> {
     // Vesting.
-    #[account(init)]
+    #[account(zero)]
     vesting: ProgramAccount<'info, Vesting>,
     #[account(mut)]
     vault: CpiAccount<'info, TokenAccount>,

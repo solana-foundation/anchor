@@ -27,9 +27,9 @@ mod composite {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub dummy_a: ProgramAccount<'info, DummyA>,
-    #[account(init)]
+    #[account(zero)]
     pub dummy_b: ProgramAccount<'info, DummyB>,
 }
 

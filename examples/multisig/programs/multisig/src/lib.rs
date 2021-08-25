@@ -164,14 +164,14 @@ pub mod multisig {
 
 #[derive(Accounts)]
 pub struct CreateMultisig<'info> {
-    #[account(init)]
+    #[account(zero)]
     multisig: ProgramAccount<'info, Multisig>,
 }
 
 #[derive(Accounts)]
 pub struct CreateTransaction<'info> {
     multisig: ProgramAccount<'info, Multisig>,
-    #[account(init)]
+    #[account(zero)]
     transaction: ProgramAccount<'info, Transaction>,
     // One of the owners. Checked in the handler.
     #[account(signer)]

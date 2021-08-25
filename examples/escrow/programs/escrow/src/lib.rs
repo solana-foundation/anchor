@@ -106,7 +106,7 @@ pub struct InitializeEscrow<'info> {
     )]
     pub initializer_deposit_token_account: CpiAccount<'info, TokenAccount>,
     pub initializer_receive_token_account: CpiAccount<'info, TokenAccount>,
-    #[account(init)]
+    #[account(zero)]
     pub escrow_account: ProgramAccount<'info, EscrowAccount>,
     pub token_program: AccountInfo<'info>,
 }

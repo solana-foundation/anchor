@@ -556,9 +556,9 @@ mod registry {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(zero)]
     registrar: ProgramAccount<'info, Registrar>,
-    #[account(init)]
+    #[account(zero)]
     reward_event_q: ProgramAccount<'info, RewardQueue>,
     #[account("pool_mint.decimals == 0")]
     pool_mint: CpiAccount<'info, Mint>,
@@ -595,7 +595,7 @@ pub struct CreateMember<'info> {
     // Stake instance.
     registrar: ProgramAccount<'info, Registrar>,
     // Member.
-    #[account(init)]
+    #[account(zero)]
     member: ProgramAccount<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
@@ -790,7 +790,7 @@ pub struct StartUnstake<'info> {
     pool_mint: AccountInfo<'info>,
 
     // Member.
-    #[account(init)]
+    #[account(zero)]
     pending_withdrawal: ProgramAccount<'info, PendingWithdrawal>,
     #[account(has_one = beneficiary, has_one = registrar)]
     member: ProgramAccount<'info, Member>,
@@ -924,7 +924,7 @@ pub struct DropReward<'info> {
     reward_event_q: ProgramAccount<'info, RewardQueue>,
     pool_mint: CpiAccount<'info, Mint>,
     // Vendor.
-    #[account(init)]
+    #[account(zero)]
     vendor: ProgramAccount<'info, RewardVendor>,
     #[account(mut)]
     vendor_vault: CpiAccount<'info, TokenAccount>,

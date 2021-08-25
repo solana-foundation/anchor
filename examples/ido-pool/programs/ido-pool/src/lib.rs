@@ -191,7 +191,7 @@ pub mod ido_pool {
 
 #[derive(Accounts)]
 pub struct InitializePool<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
     pub pool_signer: AccountInfo<'info>,
     #[account(

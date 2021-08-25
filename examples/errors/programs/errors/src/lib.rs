@@ -43,7 +43,7 @@ pub struct MutError<'info> {
 
 #[derive(Accounts)]
 pub struct HasOneError<'info> {
-    #[account(init, has_one = owner)]
+    #[account(zero, has_one = owner)]
     my_account: ProgramAccount<'info, HasOneAccount>,
     owner: AccountInfo<'info>,
 }

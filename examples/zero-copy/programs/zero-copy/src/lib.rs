@@ -109,7 +109,7 @@ pub struct SetEvent<'info> {
 
 #[derive(Accounts)]
 pub struct CreateFoo<'info> {
-    #[account(init)]
+    #[account(zero)]
     foo: Loader<'info, Foo>,
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -165,7 +165,7 @@ pub struct UpdateBar<'info> {
 
 #[derive(Accounts)]
 pub struct CreateLargeAccount<'info> {
-    #[account(init)]
+    #[account(zero)]
     event_q: Loader<'info, EventQ>,
 }
 

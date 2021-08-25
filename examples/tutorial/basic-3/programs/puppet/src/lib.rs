@@ -16,7 +16,7 @@ pub mod puppet {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub puppet: ProgramAccount<'info, Puppet>,
 }
 

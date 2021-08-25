@@ -83,7 +83,7 @@ pub mod cashiers_check {
 #[derive(Accounts)]
 pub struct CreateCheck<'info> {
     // Check being created.
-    #[account(init)]
+    #[account(zero)]
     check: ProgramAccount<'info, Check>,
     // Check's token vault.
     #[account(mut, "&vault.owner == check_signer.key")]

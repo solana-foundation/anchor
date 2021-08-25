@@ -1,9 +1,4 @@
-use crate::{
-    CompositeField, Constraint, ConstraintAddress, ConstraintClose, ConstraintExecutable,
-    ConstraintGroup, ConstraintHasOne, ConstraintInit, ConstraintLiteral, ConstraintMut,
-    ConstraintOwner, ConstraintRaw, ConstraintRentExempt, ConstraintSeedsGroup, ConstraintSigner,
-    ConstraintState, Field, PdaKind, Ty,
-};
+use crate::*;
 use proc_macro2_diagnostics::SpanDiagnosticExt;
 use quote::quote;
 use syn::Expr;
@@ -48,6 +43,7 @@ pub fn generate_composite(f: &CompositeField) -> proc_macro2::TokenStream {
 pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     let ConstraintGroup {
         init,
+        zeroed,
         mutable,
         signer,
         has_one,
@@ -69,6 +65,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     }
     if let Some(c) = init {
         constraints.push(Constraint::Init(c));
+    }
+    if let Some(c) = zeroed {
+        constraints.push(Constraint::Zeroed(c));
     }
     if let Some(c) = mutable {
         constraints.push(Constraint::Mut(c));
@@ -103,6 +102,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
 fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Init(c) => generate_constraint_init(f, c),
+        Constraint::Zeroed(c) => generate_constraint_zeroed(f, c),
         Constraint::Mut(c) => generate_constraint_mut(f, c),
         Constraint::HasOne(c) => generate_constraint_has_one(f, c),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
@@ -137,6 +137,12 @@ fn generate_constraint_address(f: &Field, c: &ConstraintAddress) -> proc_macro2:
 }
 
 pub fn generate_constraint_init(_f: &Field, _c: &ConstraintInit) -> proc_macro2::TokenStream {
+    quote! {}
+}
+
+pub fn generate_constraint_zeroed(_f: &Field, _c: &ConstraintZeroed) -> proc_macro2::TokenStream {
+    // No constraint. The zero discriminator is checked in `try_accounts_init`
+    // currently.
     quote! {}
 }
 

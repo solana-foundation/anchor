@@ -62,6 +62,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
 
     let c = match kw.as_str() {
         "init" => ConstraintToken::Init(Context::new(ident.span(), ConstraintInit {})),
+        "zero" => ConstraintToken::Zeroed(Context::new(ident.span(), ConstraintZeroed {})),
         "mut" => ConstraintToken::Mut(Context::new(ident.span(), ConstraintMut {})),
         "signer" => ConstraintToken::Signer(Context::new(ident.span(), ConstraintSigner {})),
         "executable" => {
@@ -229,6 +230,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
 pub struct ConstraintGroupBuilder<'ty> {
     pub f_ty: Option<&'ty Ty>,
     pub init: Option<Context<ConstraintInit>>,
+    pub zeroed: Option<Context<ConstraintZeroed>>,
     pub mutable: Option<Context<ConstraintMut>>,
     pub signer: Option<Context<ConstraintSigner>>,
     pub has_one: Vec<Context<ConstraintHasOne>>,
@@ -255,6 +257,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Self {
             f_ty,
             init: None,
+            zeroed: None,
             mutable: None,
             signer: None,
             has_one: Vec::new(),
@@ -290,6 +293,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .mutable
                     .replace(Context::new(i.span(), ConstraintMut {})),
             };
+            // Rent exempt if not explicitly skipped.
             if self.rent_exempt.is_none() {
                 self.rent_exempt
                     .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
@@ -297,6 +301,25 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         }
 
         // Seeds.
+        if let Some(z) = &self.zeroed {
+            match self.mutable {
+                Some(m) => {
+                    return Err(ParseError::new(
+                        m.span(),
+                        "mut cannot be provided with zeroed",
+                    ))
+                }
+                None => self
+                    .mutable
+                    .replace(Context::new(z.span(), ConstraintMut {})),
+            };
+            // Rent exempt if not explicitly skipped.
+            if self.rent_exempt.is_none() {
+                self.rent_exempt
+                    .replace(Context::new(z.span(), ConstraintRentExempt::Enforce));
+            }
+        }
+
         if let Some(i) = &self.seeds {
             if self.init.is_some() && self.payer.is_none() {
                 return Err(ParseError::new(
@@ -365,6 +388,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         let ConstraintGroupBuilder {
             f_ty: _,
             init,
+            zeroed,
             mutable,
             signer,
             has_one,
@@ -413,6 +437,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         let is_init = init.is_some();
         Ok(ConstraintGroup {
             init: into_inner!(init),
+            zeroed: into_inner!(zeroed),
             mutable: into_inner!(mutable),
             signer: into_inner!(signer),
             has_one: into_inner_vec!(has_one),
@@ -469,6 +494,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     pub fn add(&mut self, c: ConstraintToken) -> ParseResult<()> {
         match c {
             ConstraintToken::Init(c) => self.add_init(c),
+            ConstraintToken::Zeroed(c) => self.add_zeroed(c),
             ConstraintToken::Mut(c) => self.add_mut(c),
             ConstraintToken::Signer(c) => self.add_signer(c),
             ConstraintToken::HasOne(c) => self.add_has_one(c),
@@ -495,7 +521,21 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.init.is_some() {
             return Err(ParseError::new(c.span(), "init already provided"));
         }
+        if self.zeroed.is_some() {
+            return Err(ParseError::new(c.span(), "zeroed already provided"));
+        }
         self.init.replace(c);
+        Ok(())
+    }
+
+    fn add_zeroed(&mut self, c: Context<ConstraintZeroed>) -> ParseResult<()> {
+        if self.zeroed.is_some() {
+            return Err(ParseError::new(c.span(), "zeroed already provided"));
+        }
+        if self.init.is_some() {
+            return Err(ParseError::new(c.span(), "init already provided"));
+        }
+        self.zeroed.replace(c);
         Ok(())
     }
 
@@ -700,7 +740,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.seeds.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "associated or seeds must be provided before space",
+                "init must be provided before space",
             ));
         }
         if self.space.is_some() {
