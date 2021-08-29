@@ -46,6 +46,8 @@ pub enum ErrorCode {
     ConstraintClose,
     #[msg("An address constraint was violated")]
     ConstraintAddress,
+    #[msg("Expected zero account discriminant")]
+    ConstraintZero,
 
     // Accounts.
     #[msg("The account discriminator was already set on this account")]

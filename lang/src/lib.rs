@@ -105,17 +105,6 @@ pub trait AccountsClose<'info>: ToAccountInfos<'info> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult;
 }
 
-/// A data structure of accounts providing a one time deserialization upon
-/// account initialization, i.e., when the data array for a given account is
-/// zeroed. Any subsequent call to `try_accounts_init` should fail. For all
-/// subsequent deserializations, it's expected that [`Accounts`] is used.
-pub trait AccountsInit<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
-    fn try_accounts_init(
-        program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
-    ) -> Result<Self, ProgramError>;
-}
-
 /// Transformation to
 /// [`AccountMeta`](../solana_program/instruction/struct.AccountMeta.html)
 /// structs.
@@ -234,10 +223,9 @@ impl Key for Pubkey {
 pub mod prelude {
     pub use super::{
         access_control, account, emit, error, event, interface, program, require, state, zero_copy,
-        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AccountsInit,
-        AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext, CpiState,
-        CpiStateContext, Key, Loader, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AnchorDeserialize,
+        AnchorSerialize, Context, CpiAccount, CpiContext, CpiState, CpiStateContext, Key, Loader,
+        ProgramAccount, ProgramState, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
 
     pub use borsh;

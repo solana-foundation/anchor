@@ -60,14 +60,14 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
 
     let mut constraints = Vec::new();
 
-    if let Some(c) = seeds {
-        constraints.push(Constraint::Seeds(c));
+    if let Some(c) = zeroed {
+        constraints.push(Constraint::Zeroed(c));
     }
     if let Some(c) = init {
         constraints.push(Constraint::Init(c));
     }
-    if let Some(c) = zeroed {
-        constraints.push(Constraint::Zeroed(c));
+    if let Some(c) = seeds {
+        constraints.push(Constraint::Seeds(c));
     }
     if let Some(c) = mutable {
         constraints.push(Constraint::Mut(c));
@@ -136,14 +136,27 @@ fn generate_constraint_address(f: &Field, c: &ConstraintAddress) -> proc_macro2:
     }
 }
 
-pub fn generate_constraint_init(_f: &Field, _c: &ConstraintInit) -> proc_macro2::TokenStream {
-    quote! {}
+pub fn generate_constraint_init(f: &Field, c: &ConstraintInitGroup) -> proc_macro2::TokenStream {
+    generate_constraint_init_group(f, c)
 }
 
-pub fn generate_constraint_zeroed(_f: &Field, _c: &ConstraintZeroed) -> proc_macro2::TokenStream {
-    // No constraint. The zero discriminator is checked in `try_accounts_init`
-    // currently.
-    quote! {}
+pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macro2::TokenStream {
+    let field = &f.ident;
+    let (account_ty, account_wrapper_ty, _) = parse_ty(f);
+    quote! {
+        let #field: #account_wrapper_ty<#account_ty> = {
+            let mut __data: &[u8] = &#field.try_borrow_data()?;
+            let mut __disc_bytes = [0u8; 8];
+            __disc_bytes.copy_from_slice(&__data[..8]);
+            let __discriminator = u64::from_le_bytes(__disc_bytes);
+            if __discriminator != 0 {
+                return Err(anchor_lang::__private::ErrorCode::ConstraintZero.into());
+            }
+            #account_wrapper_ty::try_from_unchecked(
+                &#field,
+            )?
+        };
+    }
 }
 
 pub fn generate_constraint_close(f: &Field, c: &ConstraintClose) -> proc_macro2::TokenStream {
@@ -184,6 +197,8 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
+        Ty::Loader(_) => quote! { #ident.to_account_info() },
+        Ty::CpiAccount(_) => quote! { #ident.to_account_info() },
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     quote! {
@@ -255,31 +270,19 @@ pub fn generate_constraint_rent_exempt(
     }
 }
 
-pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
-    if c.is_init {
-        generate_constraint_seeds_init(f, c)
-    } else {
-        generate_constraint_seeds_address(f, c)
-    }
-}
-
-fn generate_constraint_seeds_init(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
+fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_macro2::TokenStream {
     let payer = {
         let p = &c.payer;
         quote! {
             let payer = #p.to_account_info();
         }
     };
-    let seeds_constraint = generate_constraint_seeds_address(f, c);
-    let seeds_with_nonce = {
-        let s = &c.seeds;
-        match c.bump.as_ref() {
-            // Bump keyword not given. Just use the seeds.
-            None => quote! {
-                [#s]
-            },
-            // Bump keyword given.
-            Some(bump) => match bump {
+
+    let seeds_with_nonce = match &c.seeds {
+        None => quote! {},
+        Some(c) => {
+            let s = &c.seeds;
+            let inner = match c.bump.as_ref() {
                 // Bump target not given. Use the canonical bump.
                 None => {
                     quote! {
@@ -298,30 +301,23 @@ fn generate_constraint_seeds_init(f: &Field, c: &ConstraintSeedsGroup) -> proc_m
                 Some(b) => quote! {
                     [#s, &[#b]]
                 },
-            },
+            };
+            quote! {
+                &#inner[..]
+            }
         }
     };
-    generate_pda(
-        f,
-        seeds_constraint,
-        seeds_with_nonce,
-        payer,
-        &c.space,
-        &c.kind,
-    )
+    generate_pda(f, seeds_with_nonce, payer, &c.space, &c.kind)
 }
 
-fn generate_constraint_seeds_address(
-    f: &Field,
-    c: &ConstraintSeedsGroup,
-) -> proc_macro2::TokenStream {
+fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
     let name = &f.ident;
     let s = &c.seeds;
 
-    // If the bump is provided on *initialization*, then force it to be the
-    // canonical nonce.
-    if c.is_init && c.bump.is_some() && c.bump.as_ref().unwrap().is_some() {
-        let b = c.bump.as_ref().unwrap().as_ref().unwrap();
+    // If the bump is provided with init *and target*, then force it to be the
+    // canonical bump.
+    if c.is_init && c.bump.is_some() {
+        let b = c.bump.as_ref().unwrap();
         quote! {
             let (__program_signer, __bump) = anchor_lang::solana_program::pubkey::Pubkey::find_program_address(
                 &[#s],
@@ -336,35 +332,26 @@ fn generate_constraint_seeds_address(
         }
     } else {
         let seeds = match c.bump.as_ref() {
-            // Bump keyword not given, so just use the seeds.
+            // Bump target not given. Find it.
             None => {
                 quote! {
-                    [#s]
+                    [
+                        #s,
+                        &[
+                            Pubkey::find_program_address(
+                                &[#s],
+                                program_id,
+                            ).1
+                        ]
+                    ]
                 }
             }
-            // Bump keyword given.
-            Some(bump) => match bump {
-                // Bump target not given. Find it.
-                None => {
-                    quote! {
-                        [
-                            #s,
-                            &[
-                                Pubkey::find_program_address(
-                                    &[#s],
-                                    program_id,
-                                ).1
-                            ]
-                        ]
-                    }
+            // Bump target given. Use it.
+            Some(b) => {
+                quote! {
+                    [#s, &[#b]]
                 }
-                // Bump target given. Use it.
-                Some(b) => {
-                    quote! {
-                        [#s, &[#b]]
-                    }
-                }
-            },
+            }
         };
         quote! {
             let __program_signer = Pubkey::create_program_address(
@@ -429,11 +416,10 @@ fn parse_ty(f: &Field) -> (proc_macro2::TokenStream, proc_macro2::TokenStream, b
 
 pub fn generate_pda(
     f: &Field,
-    seeds_constraint: proc_macro2::TokenStream,
     seeds_with_nonce: proc_macro2::TokenStream,
     payer: proc_macro2::TokenStream,
     space: &Option<Expr>,
-    kind: &PdaKind,
+    kind: &InitKind,
 ) -> proc_macro2::TokenStream {
     let field = &f.ident;
     let (account_ty, account_wrapper_ty, is_zero_copy) = parse_ty(f);
@@ -452,7 +438,7 @@ pub fn generate_pda(
                 #account_wrapper_ty<#account_ty>
             },
             quote! {
-                #account_wrapper_ty::try_from_init(
+                #account_wrapper_ty::try_from_unchecked(
                     &#field.to_account_info(),
                 )?
             },
@@ -460,10 +446,9 @@ pub fn generate_pda(
     };
 
     match kind {
-        PdaKind::Token { owner, mint } => quote! {
+        InitKind::Token { owner, mint } => quote! {
             let #field: #combined_account_ty = {
                 #payer
-                #seeds_constraint
 
                 // Fund the account for rent exemption.
                 let required_lamports = __anchor_rent
@@ -485,7 +470,7 @@ pub fn generate_pda(
                         #field.to_account_info(),
                         system_program.to_account_info().clone(),
                     ],
-                    &[&#seeds_with_nonce[..]],
+                    &[#seeds_with_nonce],
                 )?;
 
                 // Initialize the token account.
@@ -498,15 +483,14 @@ pub fn generate_pda(
                 };
                 let cpi_ctx = CpiContext::new(cpi_program, accounts);
                 anchor_spl::token::initialize_account(cpi_ctx)?;
-                anchor_lang::CpiAccount::try_from_init(
+                anchor_lang::CpiAccount::try_from_unchecked(
                     &#field.to_account_info(),
                 )?
             };
         },
-        PdaKind::Mint { owner, decimals } => quote! {
+        InitKind::Mint { owner, decimals } => quote! {
             let #field: #combined_account_ty = {
                 #payer
-                #seeds_constraint
 
                 // Fund the account for rent exemption.
                 let required_lamports = rent
@@ -528,7 +512,7 @@ pub fn generate_pda(
                         #field.to_account_info(),
                         system_program.to_account_info().clone(),
                     ],
-                    &[&#seeds_with_nonce[..]],
+                    &[#seeds_with_nonce],
                 )?;
 
                 // Initialize the mint account.
@@ -539,30 +523,30 @@ pub fn generate_pda(
                 };
                 let cpi_ctx = CpiContext::new(cpi_program, accounts);
                 anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
-                anchor_lang::CpiAccount::try_from_init(
+                anchor_lang::CpiAccount::try_from_unchecked(
                     &#field.to_account_info(),
                 )?
             };
         },
-        PdaKind::Program { owner } => {
+        InitKind::Program { owner } => {
             let space = match space {
                 // If no explicit space param was given, serialize the type to bytes
                 // and take the length (with +8 for the discriminator.)
                 None => match is_zero_copy {
                     false => {
                         quote! {
-                                let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+                            let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
                         }
                     }
                     true => {
                         quote! {
-                                let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
+                            let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
                         }
                     }
                 },
                 // Explicit account size given. Use it.
                 Some(s) => quote! {
-                        let space = #s;
+                    let space = #s;
                 },
             };
 
@@ -580,7 +564,6 @@ pub fn generate_pda(
                 let #field = {
                     #space
                     #payer
-                    #seeds_constraint
 
                     let lamports = __anchor_rent.minimum_balance(space);
                     let ix = anchor_lang::solana_program::system_instruction::create_account(
@@ -599,7 +582,7 @@ pub fn generate_pda(
                             payer.to_account_info(),
                             system_program.to_account_info(),
                         ],
-                        &[&#seeds_with_nonce[..]]
+                        &[#seeds_with_nonce],
                     ).map_err(|e| {
                         anchor_lang::solana_program::msg!("Unable to create associated account");
                         e

@@ -1,15 +1,16 @@
 use crate::account::*;
-use crate::misc::MyState;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 use misc2::misc2::MyState as Misc2State;
+use std::mem::size_of;
 
 #[derive(Accounts)]
 #[instruction(token_bump: u8, mint_bump: u8)]
 pub struct TestTokenSeedsInit<'info> {
     #[account(
         init,
-        seeds = [b"my-mint-seed".as_ref(), &[mint_bump]],
+        seeds = [b"my-mint-seed".as_ref()],
+        bump = mint_bump,
         payer = authority,
         mint::decimals = 6,
         mint::authority = authority,
@@ -17,7 +18,8 @@ pub struct TestTokenSeedsInit<'info> {
     pub mint: CpiAccount<'info, Mint>,
     #[account(
         init,
-        seeds = [b"my-token-seed".as_ref(), &[token_bump]],
+        seeds = [b"my-token-seed".as_ref()],
+        bump = token_bump,
         payer = authority,
         token::mint = mint,
         token::authority = authority,
@@ -32,7 +34,10 @@ pub struct TestTokenSeedsInit<'info> {
 #[derive(Accounts)]
 #[instruction(nonce: u8)]
 pub struct TestInstructionConstraint<'info> {
-    #[account(seeds = [b"my-seed", my_account.key.as_ref(), &[nonce]])]
+    #[account(
+        seeds = [b"my-seed", my_account.key.as_ref()],
+        bump = nonce,
+    )]
     pub my_pda: AccountInfo<'info>,
     pub my_account: AccountInfo<'info>,
 }
@@ -42,7 +47,8 @@ pub struct TestInstructionConstraint<'info> {
 pub struct TestPdaInit<'info> {
     #[account(
         init,
-        seeds = [b"my-seed", domain.as_bytes(), foo.key.as_ref(), &seed, &[bump]],
+        seeds = [b"my-seed", domain.as_bytes(), foo.key.as_ref(), &seed],
+        bump = bump,
         payer = my_payer,
     )]
     pub my_pda: ProgramAccount<'info, DataU16>,
@@ -54,7 +60,12 @@ pub struct TestPdaInit<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct TestPdaInitZeroCopy<'info> {
-    #[account(init, seeds = [b"my-seed".as_ref(), &[bump]], payer = my_payer)]
+    #[account(
+        init,
+        seeds = [b"my-seed".as_ref()],
+        bump = bump,
+        payer = my_payer,
+    )]
     pub my_pda: Loader<'info, DataZeroCopy>,
     pub my_payer: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
@@ -62,7 +73,11 @@ pub struct TestPdaInitZeroCopy<'info> {
 
 #[derive(Accounts)]
 pub struct TestPdaMutZeroCopy<'info> {
-    #[account(mut, seeds = [b"my-seed".as_ref(), &[my_pda.load()?.bump]])]
+    #[account(
+        mut,
+        seeds = [b"my-seed".as_ref()],
+        bump = my_pda.load()?.bump,
+    )]
     pub my_pda: Loader<'info, DataZeroCopy>,
     pub my_payer: AccountInfo<'info>,
 }
@@ -126,6 +141,47 @@ pub struct TestSimulate {}
 
 #[derive(Accounts)]
 pub struct TestI8<'info> {
-    #[account(init)]
+    #[account(zero)]
     pub data: ProgramAccount<'info, DataI8>,
+}
+
+#[derive(Accounts)]
+pub struct TestInit<'info> {
+    #[account(init, payer = payer)]
+    pub data: ProgramAccount<'info, DataI8>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitZeroCopy<'info> {
+    #[account(init, payer = payer, space = 8 + size_of::<DataZeroCopy>())]
+    pub data: Loader<'info, DataZeroCopy>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitMint<'info> {
+    #[account(init, mint::decimals = 6, mint::authority = payer, payer = payer)]
+    pub mint: CpiAccount<'info, Mint>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitToken<'info> {
+    #[account(init, token::mint = mint, token::authority = payer, payer = payer)]
+    pub token: CpiAccount<'info, TokenAccount>,
+    pub mint: CpiAccount<'info, Mint>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
 }

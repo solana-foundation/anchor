@@ -232,7 +232,10 @@ impl<'info> InitializePool<'info> {
 pub struct ExchangeUsdcForRedeemable<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_usdc)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
-    #[account(seeds = [pool_account.watermelon_mint.as_ref(), &[pool_account.nonce]])]
+    #[account(
+        seeds = [pool_account.watermelon_mint.as_ref()],
+        bump = pool_account.nonce,
+    )]
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
@@ -256,7 +259,10 @@ pub struct ExchangeUsdcForRedeemable<'info> {
 pub struct ExchangeRedeemableForUsdc<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_usdc)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
-    #[account(seeds = [pool_account.watermelon_mint.as_ref(), &[pool_account.nonce]])]
+    #[account(
+        seeds = [pool_account.watermelon_mint.as_ref()],
+        bump = pool_account.nonce,
+    )]
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
@@ -280,7 +286,10 @@ pub struct ExchangeRedeemableForUsdc<'info> {
 pub struct ExchangeRedeemableForWatermelon<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_watermelon)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
-    #[account(seeds = [pool_account.watermelon_mint.as_ref(), &[pool_account.nonce]])]
+    #[account(
+        seeds = [pool_account.watermelon_mint.as_ref()],
+        bump = pool_account.nonce,
+    )]
     pool_signer: AccountInfo<'info>,
     #[account(
         mut,
@@ -304,7 +313,10 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
 pub struct WithdrawPoolUsdc<'info> {
     #[account(has_one = pool_usdc, has_one = distribution_authority)]
     pub pool_account: ProgramAccount<'info, PoolAccount>,
-    #[account(seeds = [pool_account.watermelon_mint.as_ref(), &[pool_account.nonce]])]
+    #[account(
+        seeds = [pool_account.watermelon_mint.as_ref()],
+        bump = pool_account.nonce,
+    )]
     pub pool_signer: AccountInfo<'info>,
     #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
     pub pool_usdc: CpiAccount<'info, TokenAccount>,

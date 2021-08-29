@@ -370,4 +370,88 @@ describe("misc", () => {
       }
     );
   });
+
+  it("Can init a random account", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.testInit({
+      accounts: {
+        data: data.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers: [data],
+    });
+
+    const account = await program.account.dataI8.fetch(data.publicKey);
+    assert.ok(account.data === 3);
+  });
+
+  it("Can init a random zero copy account", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.testInitZeroCopy({
+      accounts: {
+        data: data.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers: [data],
+    });
+    const account = await program.account.dataZeroCopy.fetch(data.publicKey);
+    assert.ok(account.data === 10);
+    assert.ok(account.bump === 2);
+  });
+
+  let mint = undefined;
+
+  it("Can create a random mint account", async () => {
+    mint = anchor.web3.Keypair.generate();
+    await program.rpc.testInitMint({
+      accounts: {
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [mint],
+    });
+    const client = new Token(
+      program.provider.connection,
+      mint.publicKey,
+      TOKEN_PROGRAM_ID,
+      program.provider.wallet.payer
+    );
+    const mintAccount = await client.getMintInfo();
+    assert.ok(mintAccount.decimals === 6);
+    assert.ok(
+      mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+    );
+  });
+
+  it("Can create a random token account", async () => {
+    const token = anchor.web3.Keypair.generate();
+    await program.rpc.testInitToken({
+      accounts: {
+        token: token.publicKey,
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [token],
+    });
+    const client = new Token(
+      program.provider.connection,
+      mint.publicKey,
+      TOKEN_PROGRAM_ID,
+      program.provider.wallet.payer
+    );
+    const account = await client.getAccountInfo(token.publicKey);
+    assert.ok(account.state === 1);
+    assert.ok(account.amount.toNumber() === 0);
+    assert.ok(account.isInitialized);
+    assert.ok(account.owner.equals(program.provider.wallet.publicKey));
+    assert.ok(account.mint.equals(mint.publicKey));
+  });
 });

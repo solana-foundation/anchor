@@ -128,4 +128,26 @@ pub mod misc {
     ) -> ProgramResult {
         Err(ProgramError::Custom(1234))
     }
+
+    pub fn test_init(ctx: Context<TestInit>) -> ProgramResult {
+        ctx.accounts.data.data = 3;
+        Ok(())
+    }
+
+    pub fn test_init_zero_copy(ctx: Context<TestInitZeroCopy>) -> ProgramResult {
+        let mut data = ctx.accounts.data.load_init()?;
+        data.data = 10;
+        data.bump = 2;
+        Ok(())
+    }
+
+    pub fn test_init_mint(ctx: Context<TestInitMint>) -> ProgramResult {
+        assert!(ctx.accounts.mint.decimals == 6);
+        Ok(())
+    }
+
+    pub fn test_init_token(ctx: Context<TestInitToken>) -> ProgramResult {
+        assert!(ctx.accounts.token.mint == ctx.accounts.mint.key());
+        Ok(())
+    }
 }

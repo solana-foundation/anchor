@@ -60,7 +60,8 @@ pub struct CreateChatRoom<'info> {
 #[derive(Accounts)]
 pub struct SendMessage<'info> {
     #[account(
-        seeds = [authority.key().as_ref(), &[user.bump]],
+        seeds = [authority.key().as_ref()],
+        bump = user.bump,
         has_one = authority,
     )]
     user: ProgramAccount<'info, User>,

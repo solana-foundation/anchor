@@ -192,20 +192,21 @@ pub struct Approve<'info> {
 pub struct Auth<'info> {
     #[account(mut)]
     multisig: ProgramAccount<'info, Multisig>,
-    #[account(signer, seeds = [
-        multisig.to_account_info().key.as_ref(),
-        &[multisig.nonce],
-    ])]
+    #[account(
+        signer,
+        seeds = [multisig.to_account_info().key.as_ref()],
+        bump = multisig.nonce,
+    )]
     multisig_signer: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ExecuteTransaction<'info> {
     multisig: ProgramAccount<'info, Multisig>,
-    #[account(seeds = [
-        multisig.to_account_info().key.as_ref(),
-        &[multisig.nonce],
-    ])]
+    #[account(
+        seeds = [multisig.to_account_info().key.as_ref()],
+        bump = multisig.nonce,
+    )]
     multisig_signer: AccountInfo<'info>,
     #[account(mut, has_one = multisig)]
     transaction: ProgramAccount<'info, Transaction>,

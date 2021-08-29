@@ -262,7 +262,7 @@ pub struct ErrorCode {
 // All well formed constraints on a single `Accounts` field.
 #[derive(Debug, Default, Clone)]
 pub struct ConstraintGroup {
-    init: Option<ConstraintInit>,
+    init: Option<ConstraintInitGroup>,
     zeroed: Option<ConstraintZeroed>,
     mutable: Option<ConstraintMut>,
     signer: Option<ConstraintSigner>,
@@ -279,10 +279,6 @@ pub struct ConstraintGroup {
 }
 
 impl ConstraintGroup {
-    pub fn is_init(&self) -> bool {
-        self.init.is_some()
-    }
-
     pub fn is_zeroed(&self) -> bool {
         self.zeroed.is_some()
     }
@@ -306,7 +302,7 @@ impl ConstraintGroup {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Constraint {
-    Init(ConstraintInit),
+    Init(ConstraintInitGroup),
     Zeroed(ConstraintZeroed),
     Mut(ConstraintMut),
     Signer(ConstraintSigner),
@@ -399,14 +395,18 @@ pub enum ConstraintRentExempt {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintInitGroup {
+    pub seeds: Option<ConstraintSeedsGroup>,
+    pub payer: Option<Ident>,
+    pub space: Option<Expr>,
+    pub kind: InitKind,
+}
+
+#[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
     pub seeds: Punctuated<Expr, Token![,]>,
-    pub payer: Option<Ident>,
-    pub space: Option<Expr>,
-    pub kind: PdaKind,
-    // Some(None) => bump was given without a target.
-    pub bump: Option<Option<Expr>>,
+    pub bump: Option<Expr>, // None => bump was given without a target.
 }
 
 #[derive(Debug, Clone)]
@@ -434,7 +434,7 @@ pub struct ConstraintSpace {
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
-pub enum PdaKind {
+pub enum InitKind {
     Program { owner: Option<Expr> },
     Token { owner: Expr, mint: Expr },
     Mint { owner: Expr, decimals: Expr },

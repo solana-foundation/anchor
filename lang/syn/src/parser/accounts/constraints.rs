@@ -279,8 +279,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             bump: None,
         }
     }
+
     pub fn build(mut self) -> ParseResult<ConstraintGroup> {
-        // Init implies mutable and rent exempt.
+        // Init.
         if let Some(i) = &self.init {
             match self.mutable {
                 Some(m) => {
@@ -298,9 +299,22 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 self.rent_exempt
                     .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
             }
+            if self.payer.is_none() {
+                return Err(ParseError::new(
+                    i.span(),
+                    "payer must be provided when initializing an account",
+                ));
+            }
+            // When initializing a non-PDA account, the account being
+            // initialized must sign to invoke the system program's create
+            // account instruction.
+            if self.signer.is_none() && self.seeds.is_none() {
+                self.signer
+                    .replace(Context::new(i.span(), ConstraintSigner {}));
+            }
         }
 
-        // Seeds.
+        // Zero.
         if let Some(z) = &self.zeroed {
             match self.mutable {
                 Some(m) => {
@@ -320,11 +334,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
         }
 
+        // Seeds.
         if let Some(i) = &self.seeds {
             if self.init.is_some() && self.payer.is_none() {
                 return Err(ParseError::new(
                     i.span(),
                     "payer must be provided when creating a program derived address",
+                ));
+            }
+            if self.bump.is_none() {
+                return Err(ParseError::new(
+                    i.span(),
+                    "bump must be provided with seeds",
                 ));
             }
         }
@@ -338,7 +359,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 ));
             }
 
-            if self.init.is_none() || self.seeds.is_none() {
+            if self.init.is_none() {
                 return Err(ParseError::new(
                     token_mint.span(),
                     "init is required for a pda token",
@@ -434,9 +455,46 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
         };
 
-        let is_init = init.is_some();
+        let seeds = seeds.map(|c| ConstraintSeedsGroup {
+            is_init: init.is_some(),
+            seeds: c.seeds.clone(),
+            bump: into_inner!(bump)
+                .map(|b| b.bump)
+                .expect("bump must be provided with seeds"),
+        });
         Ok(ConstraintGroup {
-            init: into_inner!(init),
+            init: init.as_ref().map(|_| Ok(ConstraintInitGroup {
+                seeds: seeds.clone(),
+                payer: into_inner!(payer.clone()).map(|a| a.target),
+                space: space.clone().map(|s| s.space.clone()),
+                kind: if let Some(tm) = &token_mint {
+                    InitKind::Token {
+                        mint: tm.clone().into_inner().mint,
+                        owner: match &token_authority {
+                            Some(a) => a.clone().into_inner().auth,
+                            None => return Err(ParseError::new(
+                                tm.span(),
+                                "authority must be provided to initialize a token program derived address"
+                            )),
+                        },
+                    }
+                } else if let Some(d) = &mint_decimals {
+                    InitKind::Mint {
+                        decimals: d.clone().into_inner().decimals,
+                        owner: match &mint_authority {
+                            Some(a) => a.clone().into_inner().mint_auth,
+                            None => return Err(ParseError::new(
+                                d.span(),
+                                "authority must be provided to initialize a mint program derived address"
+                            ))
+                        }
+                    }
+                } else {
+                    InitKind::Program {
+                        owner: pda_owner.clone(),
+                    }
+                },
+            })).transpose()?,
             zeroed: into_inner!(zeroed),
             mutable: into_inner!(mutable),
             signer: into_inner!(signer),
@@ -449,45 +507,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             state: into_inner!(state),
             close: into_inner!(close),
             address: into_inner!(address),
-            seeds: seeds
-                .map(|c| {
-                    Ok(ConstraintSeedsGroup {
-                        is_init,
-                        seeds: c.into_inner().seeds,
-                        payer: into_inner!(payer.clone()).map(|a| a.target),
-                        space: space.clone().map(|s| s.space.clone()),
-                        kind: if let Some(tm) = &token_mint {
-                                PdaKind::Token {
-                                    mint: tm.clone().into_inner().mint,
-                                    owner: match &token_authority {
-                                        Some(a) => a.clone().into_inner().auth,
-                                        None => return Err(ParseError::new(
-                                            tm.span(),
-                                            "authority must be provided to initialize a token program derived address"
-                                            )),
-                                        },
-                                    }
-                                } else if let Some(d) = &mint_decimals {
-                                    PdaKind::Mint {
-                                        decimals: d.clone().into_inner().decimals,
-                                        owner: match &mint_authority {
-                                            Some(a) => a.clone().into_inner().mint_auth,
-                                            None => return Err(ParseError::new(
-                                                d.span(),
-                                                "authority must be provided to initialize a mint program derived address"
-                                            ))
-
-                                        }
-                                    }
-                                } else {
-                                    PdaKind::Program {
-                                        owner: pda_owner.clone(),
-                                    }
-                                },
-                        bump: into_inner!(bump).map(|b| b.bump),
-                    })
-                })
-                .transpose()?,
+            seeds,
         })
     }
 
@@ -723,10 +743,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     }
 
     fn add_payer(&mut self, c: Context<ConstraintPayer>) -> ParseResult<()> {
-        if self.seeds.is_none() {
+        if self.init.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "seeds must be provided before payer",
+                "init must be provided before payer",
             ));
         }
         if self.payer.is_some() {
@@ -737,7 +757,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     }
 
     fn add_space(&mut self, c: Context<ConstraintSpace>) -> ParseResult<()> {
-        if self.seeds.is_none() {
+        if self.init.is_none() {
             return Err(ParseError::new(
                 c.span(),
                 "init must be provided before space",

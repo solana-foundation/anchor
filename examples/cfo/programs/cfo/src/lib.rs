@@ -383,7 +383,10 @@ pub struct SetDistribution<'info> {
 
 #[derive(Accounts)]
 pub struct SweepFees<'info> {
-    #[account(seeds = [dex.dex_program.key.as_ref(), &[officer.bumps.bump]])]
+    #[account(
+        seeds = [dex.dex_program.key.as_ref()],
+        bump = officer.bumps.bump,
+    )]
     officer: ProgramAccount<'info, Officer>,
     #[account(
         mut,
@@ -411,7 +414,10 @@ pub struct Dex<'info> {
 
 #[derive(Accounts)]
 pub struct SwapToUsdc<'info> {
-    #[account(seeds = [dex_program.key().as_ref(), &[officer.bumps.bump]])]
+    #[account(
+        seeds = [dex_program.key().as_ref()],
+        bump = officer.bumps.bump,
+    )]
     officer: ProgramAccount<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
@@ -437,7 +443,10 @@ pub struct SwapToUsdc<'info> {
 
 #[derive(Accounts)]
 pub struct SwapToSrm<'info> {
-    #[account(seeds = [dex_program.key().as_ref(), &[officer.bumps.bump]])]
+    #[account(
+        seeds = [dex_program.key().as_ref()],
+        bump = officer.bumps.bump,
+    )]
     officer: ProgramAccount<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
@@ -529,7 +538,8 @@ pub struct DropStakeReward<'info> {
     )]
     officer: ProgramAccount<'info, Officer>,
     #[account(
-        seeds = [b"stake", officer.key().as_ref(), &[officer.bumps.stake]]
+        seeds = [b"stake", officer.key().as_ref()],
+        bump = officer.bumps.stake,
     )]
     stake: CpiAccount<'info, TokenAccount>,
     #[cfg_attr(

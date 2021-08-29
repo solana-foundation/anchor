@@ -13,6 +13,7 @@ pub struct DataU16 {
 }
 
 #[account]
+#[derive(Default)]
 pub struct DataI8 {
     pub data: i8,
 }

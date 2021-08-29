@@ -30,7 +30,7 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
         ))
     }
 
-    pub fn try_from_init(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>, ProgramError> {
+    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>, ProgramError> {
         Self::try_from(info)
     }
 

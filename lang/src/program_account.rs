@@ -1,7 +1,7 @@
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, AccountsInit,
-    CpiAccount, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CpiAccount,
+    ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -45,17 +45,10 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
     /// initialization (since the entire account data array is zeroed and thus
     /// no account type is set).
     #[inline(never)]
-    pub fn try_from_init(info: &AccountInfo<'a>) -> Result<ProgramAccount<'a, T>, ProgramError> {
+    pub fn try_from_unchecked(
+        info: &AccountInfo<'a>,
+    ) -> Result<ProgramAccount<'a, T>, ProgramError> {
         let mut data: &[u8] = &info.try_borrow_data()?;
-
-        // The discriminator should be zero, since we're initializing.
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        let discriminator = u64::from_le_bytes(disc_bytes);
-        if discriminator != 0 {
-            return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
-        }
-
         Ok(ProgramAccount::new(
             info.clone(),
             T::try_deserialize_unchecked(&mut data)?,
@@ -83,28 +76,6 @@ where
         let account = &accounts[0];
         *accounts = &accounts[1..];
         let pa = ProgramAccount::try_from(account)?;
-        if pa.inner.info.owner != program_id {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
-        }
-        Ok(pa)
-    }
-}
-
-impl<'info, T> AccountsInit<'info> for ProgramAccount<'info, T>
-where
-    T: AccountSerialize + AccountDeserialize + Clone,
-{
-    #[inline(never)]
-    fn try_accounts_init(
-        program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
-    ) -> Result<Self, ProgramError> {
-        if accounts.is_empty() {
-            return Err(ErrorCode::AccountNotEnoughKeys.into());
-        }
-        let account = &accounts[0];
-        *accounts = &accounts[1..];
-        let pa = ProgramAccount::try_from_init(account)?;
         if pa.inner.info.owner != program_id {
             return Err(ErrorCode::AccountNotProgramOwned.into());
         }

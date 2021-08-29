@@ -86,7 +86,7 @@ pub struct CreateCheck<'info> {
     #[account(zero)]
     check: ProgramAccount<'info, Check>,
     // Check's token vault.
-    #[account(mut, "&vault.owner == check_signer.key")]
+    #[account(mut, constraint = &vault.owner == check_signer.key)]
     vault: CpiAccount<'info, TokenAccount>,
     // Program derived address for the check.
     check_signer: AccountInfo<'info>,
@@ -94,7 +94,7 @@ pub struct CreateCheck<'info> {
     #[account(mut, has_one = owner)]
     from: CpiAccount<'info, TokenAccount>,
     // Token account the check is made to.
-    #[account("from.mint == to.mint")]
+    #[account(constraint = from.mint == to.mint)]
     to: CpiAccount<'info, TokenAccount>,
     // Owner of the `from` token account.
     owner: AccountInfo<'info>,
@@ -121,10 +121,10 @@ pub struct CashCheck<'info> {
     check: ProgramAccount<'info, Check>,
     #[account(mut)]
     vault: AccountInfo<'info>,
-    #[account(seeds = [
-        check.to_account_info().key.as_ref(),
-        &[check.nonce],
-    ])]
+    #[account(
+        seeds = [check.to_account_info().key.as_ref()],
+        bump = check.nonce,
+    )]
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     to: CpiAccount<'info, TokenAccount>,
@@ -139,10 +139,10 @@ pub struct CancelCheck<'info> {
     check: ProgramAccount<'info, Check>,
     #[account(mut)]
     vault: AccountInfo<'info>,
-    #[account(seeds = [
-        check.to_account_info().key.as_ref(),
-        &[check.nonce],
-    ])]
+    #[account(
+        seeds = [check.to_account_info().key.as_ref()],
+        bump = check.nonce,
+    )]
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     from: CpiAccount<'info, TokenAccount>,

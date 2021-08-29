@@ -1,7 +1,6 @@
 use crate::error::ErrorCode;
 use crate::{
-    Accounts, AccountsClose, AccountsExit, AccountsInit, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas, ZeroCopy,
+    Accounts, AccountsClose, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas, ZeroCopy,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -54,17 +53,9 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
 
     /// Constructs a new `Loader` from an uninitialized account.
     #[inline(never)]
-    pub fn try_from_init(acc_info: &AccountInfo<'info>) -> Result<Loader<'info, T>, ProgramError> {
-        let data = acc_info.try_borrow_data()?;
-
-        // The discriminator should be zero, since we're initializing.
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        let discriminator = u64::from_le_bytes(disc_bytes);
-        if discriminator != 0 {
-            return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
-        }
-
+    pub fn try_from_unchecked(
+        acc_info: &AccountInfo<'info>,
+    ) -> Result<Loader<'info, T>, ProgramError> {
         Ok(Loader::new(acc_info.clone()))
     }
 
@@ -140,25 +131,6 @@ impl<'info, T: ZeroCopy> Accounts<'info> for Loader<'info, T> {
         let account = &accounts[0];
         *accounts = &accounts[1..];
         let l = Loader::try_from(account)?;
-        if l.acc_info.owner != program_id {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
-        }
-        Ok(l)
-    }
-}
-
-impl<'info, T: ZeroCopy> AccountsInit<'info> for Loader<'info, T> {
-    #[inline(never)]
-    fn try_accounts_init(
-        program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
-    ) -> Result<Self, ProgramError> {
-        if accounts.is_empty() {
-            return Err(ErrorCode::AccountNotEnoughKeys.into());
-        }
-        let account = &accounts[0];
-        *accounts = &accounts[1..];
-        let l = Loader::try_from_init(account)?;
         if l.acc_info.owner != program_id {
             return Err(ErrorCode::AccountNotProgramOwned.into());
         }
