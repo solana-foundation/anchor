@@ -446,88 +446,66 @@ pub fn generate_pda(
     };
 
     match kind {
-        InitKind::Token { owner, mint } => quote! {
-            let #field: #combined_account_ty = {
-                #payer
+        InitKind::Token { owner, mint } => {
+            let create_account = generate_create_account(
+                field,
+                quote! {anchor_spl::token::TokenAccount::LEN},
+                quote! {token_program.to_account_info().key},
+                seeds_with_nonce,
+            );
+            quote! {
+                let #field: #combined_account_ty = {
+                    // Define payer variable.
+                    #payer
 
-                // Fund the account for rent exemption.
-                let required_lamports = __anchor_rent
-                    .minimum_balance(anchor_spl::token::TokenAccount::LEN)
-                    .max(1)
-                    .saturating_sub(#field.to_account_info().lamports());
+                    // Create the account with the system program.
+                    #create_account
 
-                // Create the token account with right amount of lamports and space, and the correct owner.
-                anchor_lang::solana_program::program::invoke_signed(
-                    &anchor_lang::solana_program::system_instruction::create_account(
-                        payer.to_account_info().key,
-                        #field.to_account_info().key,
-                        required_lamports,
-                        anchor_spl::token::TokenAccount::LEN as u64,
-                        token_program.to_account_info().key,
-                    ),
-                    &[
-                        payer.to_account_info(),
-                        #field.to_account_info(),
-                        system_program.to_account_info().clone(),
-                    ],
-                    &[#seeds_with_nonce],
-                )?;
-
-                // Initialize the token account.
-                let cpi_program = token_program.to_account_info();
-                let accounts = anchor_spl::token::InitializeAccount {
-                    account: #field.to_account_info(),
-                    mint: #mint.to_account_info(),
-                    authority: #owner.to_account_info(),
-                    rent: rent.to_account_info(),
+                    // Initialize the token account.
+                    let cpi_program = token_program.to_account_info();
+                    let accounts = anchor_spl::token::InitializeAccount {
+                        account: #field.to_account_info(),
+                        mint: #mint.to_account_info(),
+                        authority: #owner.to_account_info(),
+                        rent: rent.to_account_info(),
+                    };
+                    let cpi_ctx = CpiContext::new(cpi_program, accounts);
+                    anchor_spl::token::initialize_account(cpi_ctx)?;
+                    anchor_lang::CpiAccount::try_from_unchecked(
+                        &#field.to_account_info(),
+                    )?
                 };
-                let cpi_ctx = CpiContext::new(cpi_program, accounts);
-                anchor_spl::token::initialize_account(cpi_ctx)?;
-                anchor_lang::CpiAccount::try_from_unchecked(
-                    &#field.to_account_info(),
-                )?
-            };
-        },
-        InitKind::Mint { owner, decimals } => quote! {
-            let #field: #combined_account_ty = {
-                #payer
+            }
+        }
+        InitKind::Mint { owner, decimals } => {
+            let create_account = generate_create_account(
+                field,
+                quote! {anchor_spl::token::Mint::LEN},
+                quote! {token_program.to_account_info().key},
+                seeds_with_nonce,
+            );
+            quote! {
+                let #field: #combined_account_ty = {
+                    // Define payer variable.
+                    #payer
 
-                // Fund the account for rent exemption.
-                let required_lamports = rent
-                    .minimum_balance(anchor_spl::token::Mint::LEN)
-                    .max(1)
-                    .saturating_sub(#field.to_account_info().lamports());
+                    // Create the account with the system program.
+                    #create_account
 
-                // Create the token account with right amount of lamports and space, and the correct owner.
-                anchor_lang::solana_program::program::invoke_signed(
-                    &anchor_lang::solana_program::system_instruction::create_account(
-                        payer.to_account_info().key,
-                        #field.to_account_info().key,
-                        required_lamports,
-                        anchor_spl::token::Mint::LEN as u64,
-                        token_program.to_account_info().key,
-                    ),
-                    &[
-                        payer.to_account_info(),
-                        #field.to_account_info(),
-                        system_program.to_account_info().clone(),
-                    ],
-                    &[#seeds_with_nonce],
-                )?;
-
-                // Initialize the mint account.
-                let cpi_program = token_program.to_account_info();
-                let accounts = anchor_spl::token::InitializeMint {
-                    mint: #field.to_account_info(),
-                    rent: rent.to_account_info(),
+                    // Initialize the mint account.
+                    let cpi_program = token_program.to_account_info();
+                    let accounts = anchor_spl::token::InitializeMint {
+                        mint: #field.to_account_info(),
+                        rent: rent.to_account_info(),
+                    };
+                    let cpi_ctx = CpiContext::new(cpi_program, accounts);
+                    anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
+                    anchor_lang::CpiAccount::try_from_unchecked(
+                        &#field.to_account_info(),
+                    )?
                 };
-                let cpi_ctx = CpiContext::new(cpi_program, accounts);
-                anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
-                anchor_lang::CpiAccount::try_from_unchecked(
-                    &#field.to_account_info(),
-                )?
-            };
-        },
+            }
+        }
         InitKind::Program { owner } => {
             let space = match space {
                 // If no explicit space param was given, serialize the type to bytes
@@ -560,38 +538,100 @@ pub fn generate_pda(
                     &#o
                 },
             };
+            let create_account =
+                generate_create_account(field, quote! {space}, owner, seeds_with_nonce);
             quote! {
                 let #field = {
                     #space
                     #payer
-
-                    let lamports = __anchor_rent.minimum_balance(space);
-                    let ix = anchor_lang::solana_program::system_instruction::create_account(
-                        payer.to_account_info().key,
-                        #field.to_account_info().key,
-                        lamports,
-                        space as u64,
-                        #owner,
-                    );
-
-                    anchor_lang::solana_program::program::invoke_signed(
-                        &ix,
-                        &[
-
-                            #field.to_account_info(),
-                            payer.to_account_info(),
-                            system_program.to_account_info(),
-                        ],
-                        &[#seeds_with_nonce],
-                    ).map_err(|e| {
-                        anchor_lang::solana_program::msg!("Unable to create associated account");
-                        e
-                    })?;
-
+                    #create_account
                     let mut pa: #combined_account_ty = #try_from;
                     pa
                 };
             }
+        }
+    }
+}
+
+// Generated code to create an account with with system program with the
+// given `space` amount of data, owned by `owner`.
+//
+// `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
+// empty stream.
+pub fn generate_create_account(
+    field: &Ident,
+    space: proc_macro2::TokenStream,
+    owner: proc_macro2::TokenStream,
+    seeds_with_nonce: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    quote! {
+        // If the account being initialized already has lamports, then
+        // return them all back to the payer so that the account has
+        // zero lamports when the system program's create instruction
+        // is eventually called.
+        let __current_lamports = #field.to_account_info().lamports();
+        if __current_lamports == 0 {
+            // Create the token account with right amount of lamports and space, and the correct owner.
+            let lamports = __anchor_rent.minimum_balance(#space);
+            anchor_lang::solana_program::program::invoke_signed(
+                &anchor_lang::solana_program::system_instruction::create_account(
+                    payer.to_account_info().key,
+                    #field.to_account_info().key,
+                    lamports,
+                    #space as u64,
+                    #owner,
+                ),
+                &[
+                    payer.to_account_info(),
+                    #field.to_account_info(),
+                    system_program.to_account_info().clone(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
+        } else {
+            // Fund the account for rent exemption.
+            let required_lamports = __anchor_rent
+                .minimum_balance(#space)
+                .max(1)
+                .saturating_sub(__current_lamports);
+            if required_lamports > 0 {
+                anchor_lang::solana_program::program::invoke(
+                    &anchor_lang::solana_program::system_instruction::transfer(
+                        payer.to_account_info().key,
+                        #field.to_account_info().key,
+                        required_lamports,
+                    ),
+                    &[
+                        payer.to_account_info(),
+                        #field.to_account_info(),
+                        system_program.to_account_info().clone(),
+                    ],
+                )?;
+            }
+            // Allocate space.
+            anchor_lang::solana_program::program::invoke_signed(
+                &anchor_lang::solana_program::system_instruction::allocate(
+                    #field.to_account_info().key,
+                    #space as u64,
+                ),
+                &[
+                    #field.to_account_info(),
+                    system_program.clone(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
+            // Assign to the spl token program.
+            anchor_lang::solana_program::program::invoke_signed(
+                &anchor_lang::solana_program::system_instruction::assign(
+                    #field.to_account_info().key,
+                    #owner,
+                ),
+                &[
+                    #field.to_account_info(),
+                    system_program.to_account_info(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
         }
     }
 }
