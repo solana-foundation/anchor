@@ -203,15 +203,6 @@ pub trait Key {
     fn key(&self) -> Pubkey;
 }
 
-impl<'info, T> Key for T
-where
-    T: ToAccountInfo<'info>,
-{
-    fn key(&self) -> Pubkey {
-        *self.to_account_info().key
-    }
-}
-
 impl Key for Pubkey {
     fn key(&self) -> Pubkey {
         *self

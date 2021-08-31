@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CpiAccount,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CpiAccount, Key,
     ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -161,5 +161,11 @@ where
 {
     fn from(a: CpiAccount<'info, T>) -> Self {
         Self::new(a.to_account_info(), Deref::deref(&a).clone())
+    }
+}
+
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramAccount<'info, T> {
+    fn key(&self) -> Pubkey {
+        *self.inner.info.key
     }
 }

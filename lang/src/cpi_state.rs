@@ -1,7 +1,7 @@
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiStateContext, ProgramState,
-    ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiStateContext, Key,
+    ProgramState, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -110,6 +110,14 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'inf
     }
 }
 
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
+    for CpiState<'info, T>
+{
+    fn as_ref(&self) -> &AccountInfo<'info> {
+        &self.inner.info
+    }
+}
+
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Deref for CpiState<'info, T> {
     type Target = T;
 
@@ -130,5 +138,11 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
     fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
         // no-op
         Ok(())
+    }
+}
+
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for CpiState<'info, T> {
+    fn key(&self) -> Pubkey {
+        *self.inner.info.key
     }
 }

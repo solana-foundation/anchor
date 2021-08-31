@@ -1,5 +1,5 @@
 use crate::error::ErrorCode;
-use crate::{Accounts, AccountsExit, ToAccountInfo, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, Key, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
@@ -48,5 +48,11 @@ impl<'info> AccountsExit<'info> for AccountInfo<'info> {
     fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
         // no-op
         Ok(())
+    }
+}
+
+impl<'info> Key for AccountInfo<'info> {
+    fn key(&self) -> Pubkey {
+        *self.key
     }
 }
