@@ -98,7 +98,7 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
-        #[clap(multiple = true)]
+        #[clap(multiple_values = true)]
         args: Vec<String>,
     },
     /// Creates a new program.
