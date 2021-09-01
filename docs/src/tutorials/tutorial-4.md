@@ -1,84 +1,61 @@
-# State structs
+# Errors
 
-Up until now, we've treated programs on Solana as stateless, using accounts to persist
-state between instruction invocations. In this tutorial, we'll give Solana programs the
-illusion of state by introducing state structs, which define program account
-singletons that can be operated over like any other account.
-
-## Clone the Repo
-
-To get started, clone the repo.
-
-```bash
-git clone https://github.com/project-serum/anchor
-```
-
-And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-4).
-
-```bash
-cd anchor/examples/tutorial/basic-4
-```
+If you've ever programmed on a blockchain, you've probably been frustrated by
+either non existant or opaque error codes. Anchor attempts to address this by
+providing the `#[error]` attribute, which can be used to create typed Errors with
+descriptive messages that automatically propagate to the client.
 
 ## Defining a Program
 
-<<< @/../examples/tutorial/basic-4/programs/basic-4/src/lib.rs#code
+For example,
 
-Unlike the previous examples, all the instructions here not only take in an `Accounts`
-struct, but they also operate over a mutable, global account marked by the `#[state]`
-attribute. Every instruction defined in the corresponding `impl` block will have access
-to this account, making it a great place to store global program state.
+```rust
+use anchor_lang::prelude::*;
 
-### How it works
+#[program]
+mod errors {
+    use super::*;
+    pub fn hello(_ctx: Context<Hello>) -> Result<()> {
+        Err(ErrorCode::Hello.into())
+    }
+}
 
-We are able to give a program the illusion of state by adopting conventions in the framework.  When invoking the `new` constructor, Anchor will automatically create a
-program-owned account inside the program itself, invoking the system program's [create_account_with_seed](https://docs.rs/solana-program/1.5.5/solana_program/system_instruction/fn.create_account_with_seed.html) instruction, using `Pubkey::find_program_address(&[], program_id)` as the **base** and a deterministic string as the **seed** (the string doesn't
-matter, as long as the framework is consistent).
+#[derive(Accounts)]
+pub struct Hello {}
 
-This all has the effect of
-giving the `#[state]` account a deterministic address, and so as long as all clients
-and programs adopt this convention, programs can have the illusion of state in addition
-to the full power of the lower level Solana accounts API. Of course, Anchor will handle this all for you, so you never have to worry about these details.
+#[error]
+pub enum ErrorCode {
+    #[msg("This is an error message clients will automatically display")]
+    Hello,
+}
+```
 
-## Using the client
+Observe the [#[error]](https://docs.rs/anchor-lang/latest/anchor_lang/attr.error.html) attribute on the `ErrorCode` enum. This macro generates two types: an `Error` and a `Result`, both of which can be used when returning from your program.
 
-### Invoke the constructor
+To use the `Error`, you can simply use the user defined `ErrorCode` with Rust's [From](https://doc.rust-lang.org/std/convert/trait.From.html) trait. If you're unfamiliar with `From`, no worries. Just know that you need to either call
+`.into()` when using your `ErrorCode`. Or use Rust's `?` operator, when returning an error.
+Both of these will automatically convert *into* the correct `Error`.
 
-To access the `#[state]` account and associated instructions, you can use the
-`anchor.state` namespace on the client. For example, to invoke the constructor,
+::: details
+What's the deal with this From stuff? Well, because the Solana runtime expects a [ProgramError](https://docs.rs/solana-program/1.5.5/solana_program/program_error/enum.ProgramError.html) in the return value. The framework needs to wrap the user defined error code into a
+`ProgramError::Code` variant, before returning. The alternative would be to use the
+`ProgramError` directly.
+:::
 
-<<< @/../examples/tutorial/basic-4/tests/basic-4.js#ctor
+## Using the Client
 
-Note that the constructor can only be invoked once per program. All subsequent calls
-to it will fail, since, as explained above, an account at a deterministic address
-will be created.
+When using the client, we get the error message.
 
-### Fetch the state
+```javascript
+try {
+  const tx = await program.rpc.hello();
+  assert.ok(false);
+} catch (err) {
+  const errMsg = "This is an error message clients will automatically display";
+  assert.equal(err.toString(), errMsg);
+}
+```
 
-To fetch the state account,
+It's that easy. :)
 
-<<< @/../examples/tutorial/basic-4/tests/basic-4.js#accessor
-
-### Invoke an instruction
-
-To invoke an instruction,
-
-<<< @/../examples/tutorial/basic-4/tests/basic-4.js#instruction
-
-## CPI
-
-Performing CPI from one Anchor program to another's state methods is very similar to performing CPI to normal Anchor instructions, except for two differences:
-
-1. All the generated instructions are located under the `<my_program>::cpi::state` module.
-2. You must use a [CpiStateContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiStateContext.html), instead of a `[CpiContext](https://docs.rs/anchor-lang/latest/anchor_lang/struct.CpiContext.html).
-
-For a full example, see the `test_state_cpi` instruction, [here](https://github.com/project-serum/anchor/blob/master/examples/misc/programs/misc/src/lib.rs#L39).
-
-## Conclusion
-
-Using state structs is intuitive. However, due to the fact that accounts
-on Solana have a fixed size, applications often need to use accounts
-directly in addition to `#[state]` stucts.
-
-## Next Steps
-
-Next we'll discuss errors.
+To run the full example, go [here](https://github.com/project-serum/anchor/tree/master/examples/errors).

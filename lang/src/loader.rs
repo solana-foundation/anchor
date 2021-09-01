@@ -39,9 +39,14 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
 
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
-    pub fn try_from(acc_info: &AccountInfo<'info>) -> Result<Loader<'info, T>, ProgramError> {
+    pub fn try_from(
+        program_id: &Pubkey,
+        acc_info: &AccountInfo<'info>,
+    ) -> Result<Loader<'info, T>, ProgramError> {
+        if acc_info.owner != program_id {
+            return Err(ErrorCode::AccountNotProgramOwned.into());
+        }
         let data: &[u8] = &acc_info.try_borrow_data()?;
-
         // Discriminator must match.
         let mut disc_bytes = [0u8; 8];
         disc_bytes.copy_from_slice(&data[..8]);
@@ -55,8 +60,12 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     /// Constructs a new `Loader` from an uninitialized account.
     #[inline(never)]
     pub fn try_from_unchecked(
+        program_id: &Pubkey,
         acc_info: &AccountInfo<'info>,
     ) -> Result<Loader<'info, T>, ProgramError> {
+        if acc_info.owner != program_id {
+            return Err(ErrorCode::AccountNotProgramOwned.into());
+        }
         Ok(Loader::new(acc_info.clone()))
     }
 
@@ -131,10 +140,7 @@ impl<'info, T: ZeroCopy> Accounts<'info> for Loader<'info, T> {
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
-        let l = Loader::try_from(account)?;
-        if l.acc_info.owner != program_id {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
-        }
+        let l = Loader::try_from(program_id, account)?;
         Ok(l)
     }
 }

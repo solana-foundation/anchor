@@ -17,7 +17,7 @@ pub struct CpiAccount<'a, T: AccountDeserialize + Clone> {
 }
 
 impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
-    pub fn new(info: AccountInfo<'a>, account: Box<T>) -> CpiAccount<'a, T> {
+    fn new(info: AccountInfo<'a>, account: Box<T>) -> CpiAccount<'a, T> {
         Self { info, account }
     }
 

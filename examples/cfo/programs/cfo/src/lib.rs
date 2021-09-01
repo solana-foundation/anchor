@@ -703,10 +703,10 @@ impl<'info> DropStakeReward<'info> {
     fn into_srm_reward(&self) -> CpiContext<'_, '_, '_, 'info, registry::DropReward<'info>> {
         let program = self.registry_program.clone();
         let accounts = registry::DropReward {
-            registrar: ProgramAccount::try_from(&self.srm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(&self.srm.reward_event_q).unwrap(),
+            registrar: ProgramAccount::try_from(program.key, &self.srm.registrar).unwrap(),
+            reward_event_q: ProgramAccount::try_from(program.key, &self.srm.reward_event_q).unwrap(),
             pool_mint: self.srm.pool_mint.clone(),
-            vendor: ProgramAccount::try_from(&self.srm.vendor).unwrap(),
+            vendor: ProgramAccount::try_from(program.key, &self.srm.vendor).unwrap(),
             vendor_vault: CpiAccount::try_from(&self.srm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),
@@ -720,10 +720,10 @@ impl<'info> DropStakeReward<'info> {
     fn into_msrm_reward(&self) -> CpiContext<'_, '_, '_, 'info, registry::DropReward<'info>> {
         let program = self.registry_program.clone();
         let accounts = registry::DropReward {
-            registrar: ProgramAccount::try_from(&self.msrm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(&self.msrm.reward_event_q).unwrap(),
+            registrar: ProgramAccount::try_from(program.key, &self.msrm.registrar).unwrap(),
+            reward_event_q: ProgramAccount::try_from(program.key, &self.msrm.reward_event_q).unwrap(),
             pool_mint: self.msrm.pool_mint.clone(),
-            vendor: ProgramAccount::try_from(&self.msrm.vendor).unwrap(),
+            vendor: ProgramAccount::try_from(program.key, &self.msrm.vendor).unwrap(),
             vendor_vault: CpiAccount::try_from(&self.msrm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),

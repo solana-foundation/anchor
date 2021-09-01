@@ -227,7 +227,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             )?;
 
                             // Zero copy deserialize.
-                            let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from_unchecked(&ctor_accounts.to)?;
+                            let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from_unchecked(program_id, &ctor_accounts.to)?;
 
                             // Invoke the ctor in a new lexical scope so that
                             // the zero-copy RefMut gets dropped. Required
@@ -367,7 +367,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                         return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                     }
                                     let state_account = &remaining_accounts[0];
-                                    let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from(&state_account)?;
+                                    let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from(program_id, &state_account)?;
                                     remaining_accounts = &remaining_accounts[1..];
 
                                     // Deserialize accounts.

@@ -153,6 +153,7 @@ pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macr
                 return Err(anchor_lang::__private::ErrorCode::ConstraintZero.into());
             }
             #account_wrapper_ty::try_from_unchecked(
+                program_id,
                 &#field,
             )?
         };
@@ -439,6 +440,7 @@ pub fn generate_pda(
             },
             quote! {
                 #account_wrapper_ty::try_from_unchecked(
+                    program_id,
                     &#field.to_account_info(),
                 )?
             },
