@@ -159,7 +159,12 @@ impl std::str::FromStr for IdlType {
                             let inner = &inner[..inner.len() - 1];
                             let mut parts = inner.split(';');
                             let ty = IdlType::from_str(parts.next().unwrap()).unwrap();
-                            let len = parts.next().unwrap().parse::<usize>().unwrap();
+                            let len = parts
+                                .next()
+                                .unwrap()
+                                .replace("_", "")
+                                .parse::<usize>()
+                                .unwrap();
                             assert!(parts.next().is_none());
                             IdlType::Array(Box::new(ty), len)
                         }
