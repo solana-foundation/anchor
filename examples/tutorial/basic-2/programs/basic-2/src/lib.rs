@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 
 // Define the program's instruction handlers.
 
@@ -24,8 +25,12 @@ mod basic_2 {
 
 #[derive(Accounts)]
 pub struct Create<'info> {
-    #[account(zero)]
+    #[account(init, payer = user, space = 8 + 40)]
     pub counter: ProgramAccount<'info, Counter>,
+    #[account(signer)]
+    pub user: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

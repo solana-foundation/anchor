@@ -1,5 +1,6 @@
 const assert = require("assert");
 const anchor = require("@project-serum/anchor");
+const { SystemProgram } = anchor.web3;
 
 describe("basic-3", () => {
   const provider = anchor.Provider.local();
@@ -16,18 +17,18 @@ describe("basic-3", () => {
     const tx = await puppet.rpc.initialize({
       accounts: {
         puppet: newPuppetAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        user: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
       },
       signers: [newPuppetAccount],
-      instructions: [await puppet.account.puppet.createInstruction(newPuppetAccount)],
     });
 
     // Invoke the puppet master to perform a CPI to the puppet.
     await puppetMaster.rpc.pullStrings(new anchor.BN(111), {
-        accounts: {
-            puppet: newPuppetAccount.publicKey,
-            puppetProgram: puppet.programId,
-        },
+       accounts: {
+          puppet: newPuppetAccount.publicKey,
+          puppetProgram: puppet.programId,
+       },
     });
 
     // Check the state updated.

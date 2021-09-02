@@ -1,5 +1,6 @@
 const assert = require("assert");
 const anchor = require("@project-serum/anchor");
+const { SystemProgram } = anchor.web3;
 
 describe("basic-1", () => {
   // Use a local provider.
@@ -8,102 +9,23 @@ describe("basic-1", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
 
-  it("Creates and initializes an account in two different transactions", async () => {
-    // The program owning the account to create.
-    const program = anchor.workspace.Basic1;
-
-    // The Account to create.
-    const myAccount = anchor.web3.Keypair.generate();
-
-    // Create account transaction.
-    const tx = new anchor.web3.Transaction();
-    tx.add(
-      anchor.web3.SystemProgram.createAccount({
-        fromPubkey: provider.wallet.publicKey,
-        newAccountPubkey: myAccount.publicKey,
-        space: 8 + 8,
-        lamports: await provider.connection.getMinimumBalanceForRentExemption(
-          8 + 8
-        ),
-        programId: program.programId,
-      })
-    );
-
-    // Execute the transaction against the cluster.
-    await provider.send(tx, [myAccount]);
-
-    // Execute the RPC.
-    // #region code-separated
-    await program.rpc.initialize(new anchor.BN(1234), {
-      accounts: {
-        myAccount: myAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-    });
-    // #endregion code-separated
-
-    // Fetch the newly created account from the cluster.
-    const account = await program.account.myAccount.fetch(myAccount.publicKey);
-
-    // Check it's state was initialized.
-    assert.ok(account.data.eq(new anchor.BN(1234)));
-  });
-
-  // Reference to an account to use between multiple tests.
-  let _myAccount = undefined;
-
-  it("Creates and initializes an account in a single atomic transaction", async () => {
-    // The program to execute.
-    const program = anchor.workspace.Basic1;
-
-    // #region code
-    // The Account to create.
-    const myAccount = anchor.web3.Keypair.generate();
-
-    // Atomically create the new account and initialize it with the program.
-    await program.rpc.initialize(new anchor.BN(1234), {
-      accounts: {
-        myAccount: myAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [myAccount],
-      instructions: [
-        anchor.web3.SystemProgram.createAccount({
-          fromPubkey: provider.wallet.publicKey,
-          newAccountPubkey: myAccount.publicKey,
-          space: 8 + 8, // Add 8 for the account discriminator.
-          lamports: await provider.connection.getMinimumBalanceForRentExemption(
-            8 + 8
-          ),
-          programId: program.programId,
-        }),
-      ],
-    });
-
-    // Fetch the newly created account from the cluster.
-    const account = await program.account.myAccount.fetch(myAccount.publicKey);
-
-    // Check it's state was initialized.
-    assert.ok(account.data.eq(new anchor.BN(1234)));
-    // #endregion code
-  });
-
   it("Creates and initializes an account in a single atomic transaction (simplified)", async () => {
+    // #region code-simplified
     // The program to execute.
     const program = anchor.workspace.Basic1;
 
     // The Account to create.
     const myAccount = anchor.web3.Keypair.generate();
 
-    // Atomically create the new account and initialize it with the program.
+    // Create the new account and initialize it with the program.
     // #region code-simplified
     await program.rpc.initialize(new anchor.BN(1234), {
       accounts: {
         myAccount: myAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        user: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
       },
       signers: [myAccount],
-      instructions: [await program.account.myAccount.createInstruction(myAccount)],
     });
     // #endregion code-simplified
 

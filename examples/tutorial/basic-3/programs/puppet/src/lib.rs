@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 
 #[program]
 pub mod puppet {
@@ -16,8 +17,12 @@ pub mod puppet {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(zero)]
+    #[account(init, payer = user, space = 8 + 8)]
     pub puppet: ProgramAccount<'info, Puppet>,
+    #[account(signer)]
+    pub user: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

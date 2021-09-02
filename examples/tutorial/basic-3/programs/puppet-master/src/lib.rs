@@ -17,7 +17,7 @@ mod puppet_master {
 
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
-    #[account(mut)]
+    #[account(mut, owner = puppet_program)]
     pub puppet: CpiAccount<'info, Puppet>,
     pub puppet_program: AccountInfo<'info>,
 }

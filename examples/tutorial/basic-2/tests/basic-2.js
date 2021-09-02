@@ -1,5 +1,6 @@
 const assert = require('assert');
 const anchor = require('@project-serum/anchor');
+const { SystemProgram } = anchor.web3;
 
 describe('basic-2', () => {
   const provider = anchor.Provider.local()
@@ -17,10 +18,10 @@ describe('basic-2', () => {
     await program.rpc.create(provider.wallet.publicKey, {
       accounts: {
         counter: counter.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        user: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
       },
       signers: [counter],
-      instructions: [await program.account.counter.createInstruction(counter)],
     })
 
     let counterAccount = await program.account.counter.fetch(counter.publicKey)

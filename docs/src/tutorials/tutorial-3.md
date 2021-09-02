@@ -71,9 +71,8 @@ retrieve the return value. In future work, Anchor should do this transparently.
 
 ## Conclusion
 
-Now that you can have your programs call other programs, you should be able to access all the work being done by other developers in your own applications! 
+Now that you can have your programs call other programs, you should be able to access all the work being done by other developers in your own applications!
 
 ## Next Steps
 
 Up until now, we've treated programs on Solana as stateless. In the next tutorial we will learn how to add a global state to our program.
-
