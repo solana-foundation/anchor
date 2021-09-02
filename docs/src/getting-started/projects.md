@@ -7,7 +7,7 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [SolFarm](https://solfarm.io/)
 * [Zeta Markets](https://zeta.markets/)
 * [Saber](https://saber.so)
-* [Mello](https://github.com/mello-markets/Mello)
+* [01](https://01protocol.com/)
 * [Parrot Finance](https://parrot.fi/)
 * [Marinade Finance](https://marinade.finance/)
 * [Cryptocurrencies.Ai](https://dex.cryptocurrencies.ai/)
