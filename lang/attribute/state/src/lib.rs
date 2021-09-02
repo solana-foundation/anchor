@@ -25,7 +25,7 @@ use syn::parse_macro_input;
 /// For more, see the [`account`](./attr.account.html) attribute.
 #[deprecated(
     since = "0.14.0",
-    note = "#[state] will be removed in a future version. Use a PDA with static seeds instead",
+    note = "#[state] will be removed in a future version. Use a PDA with static seeds instead"
 )]
 #[proc_macro_attribute]
 pub fn state(

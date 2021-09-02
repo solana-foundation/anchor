@@ -366,9 +366,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     if remaining_accounts.is_empty() {
                                         return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                     }
-                                    let state_account = &remaining_accounts[0];
-                                    let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_from(program_id, &state_account)?;
-                                    remaining_accounts = &remaining_accounts[1..];
+                                    let loader: anchor_lang::Loader<#mod_name::#name> = anchor_lang::Loader::try_accounts(program_id, &mut remaining_accounts, &[])?;
 
                                     // Deserialize accounts.
                                     let mut accounts = #anchor_ident::try_accounts(
@@ -411,13 +409,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     if remaining_accounts.is_empty() {
                                         return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                     }
-                                    let state_account = &remaining_accounts[0];
-                                    let mut state: #state_ty = {
-                                        let data = state_account.try_borrow_data()?;
-                                        let mut sliced: &[u8] = &data;
-                                        anchor_lang::AccountDeserialize::try_deserialize(&mut sliced)?
-                                    };
-                                    remaining_accounts = &remaining_accounts[1..];
+                                    let mut state: anchor_lang::ProgramState<#state_ty> = anchor_lang::ProgramState::try_accounts(program_id, &mut remaining_accounts, &[])?;
 
                                     // Deserialize accounts.
                                     let mut accounts = #anchor_ident::try_accounts(
@@ -435,7 +427,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                                     // Serialize the state and save it to storage.
                                     accounts.exit(program_id)?;
-                                    let mut data = state_account.try_borrow_mut_data()?;
+                                    let acc_info = state.to_account_info();
+                                    let mut data = acc_info.try_borrow_mut_data()?;
                                     let dst: &mut [u8] = &mut data;
                                     let mut cursor = std::io::Cursor::new(dst);
                                     state.try_serialize(&mut cursor)?;
@@ -526,13 +519,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             if remaining_accounts.is_empty() {
                                                 return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
                                             }
-                                            let state_account = &remaining_accounts[0];
-                                            let mut state: #state_ty = {
-                                                let data = state_account.try_borrow_data()?;
-                                                let mut sliced: &[u8] = &data;
-                                                anchor_lang::AccountDeserialize::try_deserialize(&mut sliced)?
-                                            };
-                                            remaining_accounts = &remaining_accounts[1..];
+                                            let mut state: anchor_lang::ProgramState<#state_ty> = anchor_lang::ProgramState::try_accounts(program_id, &mut remaining_accounts, &[])?;
 
                                             // Deserialize accounts.
                                             let mut accounts = #anchor_ident::try_accounts(
@@ -550,7 +537,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                                             // Exit procedures.
                                             accounts.exit(program_id)?;
-                                            let mut data = state_account.try_borrow_mut_data()?;
+                                            let acc_info = state.to_account_info();
+                                            let mut data = acc_info.try_borrow_mut_data()?;
                                             let dst: &mut [u8] = &mut data;
                                             let mut cursor = std::io::Cursor::new(dst);
                                             state.try_serialize(&mut cursor)?;
