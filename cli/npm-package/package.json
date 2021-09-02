@@ -1,6 +1,6 @@
 {
   "name": "@project-serum/anchor-cli",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "description": "Anchor CLI tool",
   "homepage": "https://github.com/project-serum/anchor#readme",
   "bugs": {

@@ -32,10 +32,10 @@ If the program has an IDL, it will also check the IDL deployed on chain matches.
 
 ## Images
 
-A docker image for each version of Anchor is published on [Docker Hub](https://hub.docker.com/r/projectserum/build). They are tagged in the form `projectserum/build:<version>`. For example, to get the image for Anchor `v0.13.2` one can run
+A docker image for each version of Anchor is published on [Docker Hub](https://hub.docker.com/r/projectserum/build). They are tagged in the form `projectserum/build:<version>`. For example, to get the image for Anchor `v0.14.0` one can run
 
 ```
-docker pull projectserum/build:v0.13.2
+docker pull projectserum/build:v0.14.0
 ```
 
 ## Removing an Image
