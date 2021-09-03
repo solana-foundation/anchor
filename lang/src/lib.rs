@@ -221,6 +221,7 @@ pub mod prelude {
 
     pub use borsh;
     pub use solana_program::account_info::{next_account_info, AccountInfo};
+    pub use solana_program::declare_id;
     pub use solana_program::entrypoint::ProgramResult;
     pub use solana_program::instruction::AccountMeta;
     pub use solana_program::msg;
