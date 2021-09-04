@@ -28,7 +28,7 @@ main() {
     #
     # Deploy programs.
     #
-    pushd ../../examples/composite/
+    pushd ../../tests/composite/
     anchor build
     anchor deploy
     local composite_pid=$(cat target/idl/composite.json | jq -r .metadata.address)
@@ -43,7 +43,7 @@ main() {
     anchor deploy
     local basic_4_pid=$(cat target/idl/basic_4.json | jq -r .metadata.address)
     popd
-    pushd ../../examples/events
+    pushd ../../tests/events
     anchor build
     anchor deploy
     local events_pid=$(cat target/idl/events.json | jq -r .metadata.address)

@@ -1,15 +1,15 @@
 [submodule "examples/swap/deps/serum-dex"]
-	path = examples/swap/deps/serum-dex
+	path = tests/swap/deps/serum-dex
 	url = https://github.com/project-serum/serum-dex
 [submodule "examples/cfo/deps/serum-dex"]
-	path = examples/cfo/deps/serum-dex
+	path = tests/cfo/deps/serum-dex
 	url = https://github.com/project-serum/serum-dex
 [submodule "examples/cfo/deps/swap"]
-	path = examples/cfo/deps/swap
+	path = tests/cfo/deps/swap
 	url = https://github.com/project-serum/swap.git
 [submodule "examples/cfo/deps/stake"]
-	path = examples/cfo/deps/stake
+	path = tests/cfo/deps/stake
 	url = https://github.com/project-serum/stake.git
 [submodule "examples/permissioned-markets/deps/serum-dex"]
-	path = examples/permissioned-markets/deps/serum-dex
+	path = tests/permissioned-markets/deps/serum-dex
 	url = https://github.com/project-serum/serum-dex

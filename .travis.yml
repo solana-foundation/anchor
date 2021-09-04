@@ -16,7 +16,7 @@ _defaults: &defaults
   - nvm install $NODE_VERSION
   - sudo apt-get install -y pkg-config build-essential libudev-dev
 
-_examples: &examples
+_tests: &tests
   before_install:
   - nvm install $NODE_VERSION
   - npm install -g mocha
@@ -47,35 +47,35 @@ jobs:
         - pushd ts && yarn && popd
         - pushd ts && yarn test && popd
         - pushd ts && yarn lint && popd
-    - <<: *examples
-      name: Runs the examples 1
+    - <<: *tests
+      name: Runs the e2e tests 1
       script:
         - pushd client/example && ./run-test.sh && popd
-        - pushd examples/sysvars && anchor test && popd
-        - pushd examples/composite && anchor test && popd
-        - pushd examples/errors && anchor test && popd
-        - pushd examples/spl/token-proxy && anchor test && popd
-        - pushd examples/multisig && anchor test && popd
-        - pushd examples/interface && anchor test && popd
-        - pushd examples/lockup && anchor test && popd
-        - pushd examples/permissioned-markets/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
-    - <<: *examples
-      name: Runs the examples 2
+        - pushd tests/sysvars && anchor test && popd
+        - pushd tests/composite && anchor test && popd
+        - pushd tests/errors && anchor test && popd
+        - pushd tests/spl/token-proxy && anchor test && popd
+        - pushd tests/multisig && anchor test && popd
+        - pushd tests/interface && anchor test && popd
+        - pushd tests/lockup && anchor test && popd
+        - pushd tests/permissioned-markets/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
+    - <<: *tests
+      name: Runs the e2e tests 2
       script:
-        - pushd examples/misc && anchor test && popd
-        - pushd examples/events && anchor test && popd
-        - pushd examples/cashiers-check && anchor test && popd
-        - pushd examples/typescript && yarn && anchor test && popd
-        - pushd examples/zero-copy && yarn && anchor test && popd
-        - pushd examples/chat && yarn && anchor test && popd
-        - pushd examples/ido-pool && yarn && anchor test && popd
-        - pushd examples/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
-        - pushd examples/cfo && anchor run test-with-build && popd
-    - <<: *examples
-      name: Runs the examples 3
+        - pushd tests/misc && anchor test && popd
+        - pushd tests/events && anchor test && popd
+        - pushd tests/cashiers-check && anchor test && popd
+        - pushd tests/typescript && yarn && anchor test && popd
+        - pushd tests/zero-copy && yarn && anchor test && popd
+        - pushd tests/chat && yarn && anchor test && popd
+        - pushd tests/ido-pool && yarn && anchor test && popd
+        - pushd tests/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
+        - pushd tests/cfo && anchor run test-with-build && popd
+    - <<: *tests
+      name: Runs the e2e tests 3
       script:
-        - pushd examples/escrow && yarn && anchor test && popd
-        - pushd examples/pyth && yarn && anchor test && popd
+        - pushd tests/escrow && yarn && anchor test && popd
+        - pushd tests/pyth && yarn && anchor test && popd
         - pushd examples/tutorial/basic-0 && anchor test && popd
         - pushd examples/tutorial/basic-1 && anchor test && popd
         - pushd examples/tutorial/basic-2 && anchor test && popd

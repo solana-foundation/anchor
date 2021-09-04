@@ -10,6 +10,8 @@ target/
 test-ledger
 examples/*/Cargo.lock
 examples/**/Cargo.lock
+tests/*/Cargo.lock
+tests/**/Cargo.lock
 .DS_Store
 docs/yarn.lock
 ts/docs/

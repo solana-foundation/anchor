@@ -15,7 +15,7 @@ members = [
     "spl",
 ]
 exclude = [
-    "examples/swap/deps/serum-dex",
-    "examples/cfo/deps/serum-dex",
-    "examples/permissioned-markets/deps/serum-dex",
+    "tests/swap/deps/serum-dex",
+    "tests/cfo/deps/serum-dex",
+    "tests/permissioned-markets/deps/serum-dex",
 ]
