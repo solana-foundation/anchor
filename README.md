@@ -45,29 +45,28 @@ use anchor_lang::prelude::*;
 mod counter {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, authority: Pubkey) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, start: u64) -> ProgramResult {
         let counter = &mut ctx.accounts.counter;
-
-        counter.authority = authority;
-        counter.count = 0;
-
+        counter.authority = *ctx.accounts.authority.key;
+        counter.count = start;
         Ok(())
     }
 
-    pub fn increment(ctx: Context<Increment>) -> Result<()> {
+    pub fn increment(ctx: Context<Increment>) -> ProgramResult {
         let counter = &mut ctx.accounts.counter;
-
         counter.count += 1;
-
         Ok(())
     }
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init)]
+    #[account(init, payer = authority, space = 48)]
     pub counter: ProgramAccount<'info, Counter>,
-    pub rent: Sysvar<'info, Rent>,
+    #[account(signer)]
+    pub authority: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -82,12 +81,6 @@ pub struct Increment<'info> {
 pub struct Counter {
     pub authority: Pubkey,
     pub count: u64,
-}
-
-#[error]
-pub enum ErrorCode {
-    #[msg("You are not authorized to perform this action.")]
-    Unauthorized,
 }
 ```
 
