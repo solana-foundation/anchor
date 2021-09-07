@@ -8,6 +8,8 @@ use anchor_spl::{dex, mint};
 use registry::{Registrar, RewardVendorKind};
 use std::convert::TryInto;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 /// CFO is the program representing the Serum chief financial officer. It is
 /// the program responsible for collecting and distributing fees from the Serum
 /// DEX.
@@ -303,7 +305,7 @@ pub struct CreateOfficer<'info> {
         bump = bumps.bump,
         payer = authority,
     )]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Box<Account<'info, Officer>>,
     #[account(
         init,
         seeds = [b"vault", officer.key().as_ref()],
@@ -312,7 +314,7 @@ pub struct CreateOfficer<'info> {
         token::mint = mint,
         token::authority = officer,
     )]
-    srm_vault: CpiAccount<'info, TokenAccount>,
+    srm_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         seeds = [b"stake", officer.key().as_ref()],
@@ -321,7 +323,7 @@ pub struct CreateOfficer<'info> {
         token::mint = mint,
         token::authority = officer,
     )]
-    stake: CpiAccount<'info, TokenAccount>,
+    stake: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
         seeds = [b"treasury", officer.key().as_ref()],
@@ -330,7 +332,7 @@ pub struct CreateOfficer<'info> {
         token::mint = mint,
         token::authority = officer,
     )]
-    treasury: CpiAccount<'info, TokenAccount>,
+    treasury: Box<Account<'info, TokenAccount>>,
     #[account(signer)]
     authority: AccountInfo<'info>,
     #[cfg_attr(
@@ -352,7 +354,7 @@ pub struct CreateOfficer<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateOfficerToken<'info> {
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     #[account(
         init,
         seeds = [officer.key().as_ref(), mint.key().as_ref()],
@@ -361,7 +363,7 @@ pub struct CreateOfficerToken<'info> {
         token::authority = officer,
         payer = payer,
     )]
-    token: CpiAccount<'info, TokenAccount>,
+    token: Account<'info, TokenAccount>,
     #[account(owner = token_program)]
     mint: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -376,7 +378,7 @@ pub struct CreateOfficerToken<'info> {
 #[derive(Accounts)]
 pub struct SetDistribution<'info> {
     #[account(has_one = authority)]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -387,14 +389,14 @@ pub struct SweepFees<'info> {
         seeds = [dex.dex_program.key.as_ref()],
         bump = officer.bumps.bump,
     )]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     #[account(
         mut,
         owner = dex.token_program,
         seeds = [officer.key().as_ref(), mint.key().as_ref()],
         bump,
     )]
-    sweep_vault: CpiAccount<'info, TokenAccount>,
+    sweep_vault: Account<'info, TokenAccount>,
     mint: AccountInfo<'info>,
     dex: Dex<'info>,
 }
@@ -418,7 +420,7 @@ pub struct SwapToUsdc<'info> {
         seeds = [dex_program.key().as_ref()],
         bump = officer.bumps.bump,
     )]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
         owner = token_program,
@@ -447,7 +449,7 @@ pub struct SwapToSrm<'info> {
         seeds = [dex_program.key().as_ref()],
         bump = officer.bumps.bump,
     )]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
         owner = token_program,
@@ -513,14 +515,14 @@ pub struct DexMarketAccounts<'info> {
 #[derive(Accounts)]
 pub struct Distribute<'info> {
     #[account(has_one = treasury, has_one = stake)]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Account<'info, Officer>,
     treasury: AccountInfo<'info>,
     stake: AccountInfo<'info>,
     #[account(
         owner = token_program,
         constraint = srm_vault.mint == mint::SRM,
     )]
-    srm_vault: CpiAccount<'info, TokenAccount>,
+    srm_vault: Account<'info, TokenAccount>,
     #[account(address = mint::SRM)]
     mint: AccountInfo<'info>,
     #[account(address = spl_token::ID)]
@@ -536,12 +538,12 @@ pub struct DropStakeReward<'info> {
         constraint = srm.registrar.key == &officer.registrar,
         constraint = msrm.registrar.key == &officer.msrm_registrar,
     )]
-    officer: ProgramAccount<'info, Officer>,
+    officer: Box<Account<'info, Officer>>,
     #[account(
         seeds = [b"stake", officer.key().as_ref()],
         bump = officer.bumps.stake,
     )]
-    stake: CpiAccount<'info, TokenAccount>,
+    stake: Box<Account<'info, TokenAccount>>,
     #[cfg_attr(
         not(feature = "test"),
         account(address = mint::SRM),
@@ -550,7 +552,7 @@ pub struct DropStakeReward<'info> {
     srm: DropStakeRewardPool<'info>,
     msrm: DropStakeRewardPool<'info>,
     #[account(owner = registry_program)]
-    msrm_registrar: CpiAccount<'info, Registrar>,
+    msrm_registrar: Box<Account<'info, Registrar>>,
     #[account(address = token::ID)]
     token_program: AccountInfo<'info>,
     #[account(address = registry::ID)]
@@ -569,7 +571,7 @@ pub struct DropStakeReward<'info> {
 pub struct DropStakeRewardPool<'info> {
     registrar: AccountInfo<'info>,
     reward_event_q: AccountInfo<'info>,
-    pool_mint: CpiAccount<'info, Mint>,
+    pool_mint: Account<'info, Mint>,
     vendor: AccountInfo<'info>,
     vendor_vault: AccountInfo<'info>,
 }
@@ -704,8 +706,9 @@ impl<'info> DropStakeReward<'info> {
         let program = self.registry_program.clone();
         let accounts = registry::DropReward {
             registrar: ProgramAccount::try_from(program.key, &self.srm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(program.key, &self.srm.reward_event_q).unwrap(),
-            pool_mint: self.srm.pool_mint.clone(),
+            reward_event_q: ProgramAccount::try_from(program.key, &self.srm.reward_event_q)
+                .unwrap(),
+            pool_mint: self.srm.pool_mint.clone().into(),
             vendor: ProgramAccount::try_from(program.key, &self.srm.vendor).unwrap(),
             vendor_vault: CpiAccount::try_from(&self.srm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),
@@ -721,8 +724,9 @@ impl<'info> DropStakeReward<'info> {
         let program = self.registry_program.clone();
         let accounts = registry::DropReward {
             registrar: ProgramAccount::try_from(program.key, &self.msrm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(program.key, &self.msrm.reward_event_q).unwrap(),
-            pool_mint: self.msrm.pool_mint.clone(),
+            reward_event_q: ProgramAccount::try_from(program.key, &self.msrm.reward_event_q)
+                .unwrap(),
+            pool_mint: self.msrm.pool_mint.clone().into(),
             vendor: ProgramAccount::try_from(program.key, &self.msrm.vendor).unwrap(),
             vendor_vault: CpiAccount::try_from(&self.msrm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),

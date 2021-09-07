@@ -36,7 +36,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                         let data = anchor_lang::InstructionData::data(&ix);
                                         let accounts = ctx.to_account_metas(None);
                                         anchor_lang::solana_program::instruction::Instruction {
-                                            program_id: *ctx.program().key,
+                                            program_id: crate::ID,
                                             accounts,
                                             data,
                                         }
@@ -82,13 +82,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             data.append(&mut ix_data);
                             let accounts = ctx.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
-                                program_id: *ctx.program.key,
+                                program_id: crate::ID,
                                 accounts,
                                 data,
                             }
                         };
                         let mut acc_infos = ctx.to_account_infos();
-                        acc_infos.push(ctx.program.clone());
                         anchor_lang::solana_program::program::invoke_signed(
                             &ix,
                             &acc_infos,

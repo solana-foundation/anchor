@@ -5,6 +5,7 @@ use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::program_pack::Pack;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{Accounts, CpiContext};
+use std::io::Write;
 use std::ops::Deref;
 
 pub use spl_token::ID;
@@ -245,6 +246,19 @@ impl anchor_lang::AccountDeserialize for TokenAccount {
     }
 }
 
+impl anchor_lang::AccountSerialize for TokenAccount {
+    fn try_serialize<W: Write>(&self, _writer: &mut W) -> Result<(), ProgramError> {
+        // no-op
+        Ok(())
+    }
+}
+
+impl anchor_lang::Owner for TokenAccount {
+    fn owner() -> Pubkey {
+        ID
+    }
+}
+
 impl Deref for TokenAccount {
     type Target = spl_token::state::Account;
 
@@ -267,6 +281,19 @@ impl anchor_lang::AccountDeserialize for Mint {
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError> {
         spl_token::state::Mint::unpack(buf).map(Mint)
+    }
+}
+
+impl anchor_lang::AccountSerialize for Mint {
+    fn try_serialize<W: Write>(&self, _writer: &mut W) -> Result<(), ProgramError> {
+        // no-op
+        Ok(())
+    }
+}
+
+impl anchor_lang::Owner for Mint {
+    fn owner() -> Pubkey {
+        ID
     }
 }
 

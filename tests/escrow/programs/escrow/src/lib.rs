@@ -19,6 +19,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, SetAuthority, TokenAccount, Transfer};
 use spl_token::instruction::AuthorityType;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod escrow {
     use super::*;
@@ -104,10 +106,10 @@ pub struct InitializeEscrow<'info> {
         mut,
         constraint = initializer_deposit_token_account.amount >= initializer_amount
     )]
-    pub initializer_deposit_token_account: CpiAccount<'info, TokenAccount>,
-    pub initializer_receive_token_account: CpiAccount<'info, TokenAccount>,
+    pub initializer_deposit_token_account: Account<'info, TokenAccount>,
+    pub initializer_receive_token_account: Account<'info, TokenAccount>,
     #[account(zero)]
-    pub escrow_account: ProgramAccount<'info, EscrowAccount>,
+    pub escrow_account: Account<'info, EscrowAccount>,
     pub token_program: AccountInfo<'info>,
 }
 
@@ -116,13 +118,13 @@ pub struct Exchange<'info> {
     #[account(signer)]
     pub taker: AccountInfo<'info>,
     #[account(mut)]
-    pub taker_deposit_token_account: CpiAccount<'info, TokenAccount>,
+    pub taker_deposit_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub taker_receive_token_account: CpiAccount<'info, TokenAccount>,
+    pub taker_receive_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub pda_deposit_token_account: CpiAccount<'info, TokenAccount>,
+    pub pda_deposit_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub initializer_receive_token_account: CpiAccount<'info, TokenAccount>,
+    pub initializer_receive_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub initializer_main_account: AccountInfo<'info>,
     #[account(
@@ -133,7 +135,7 @@ pub struct Exchange<'info> {
         constraint = escrow_account.initializer_key == *initializer_main_account.key,
         close = initializer_main_account
     )]
-    pub escrow_account: ProgramAccount<'info, EscrowAccount>,
+    pub escrow_account: Account<'info, EscrowAccount>,
     pub pda_account: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
 }
@@ -142,7 +144,7 @@ pub struct Exchange<'info> {
 pub struct CancelEscrow<'info> {
     pub initializer: AccountInfo<'info>,
     #[account(mut)]
-    pub pda_deposit_token_account: CpiAccount<'info, TokenAccount>,
+    pub pda_deposit_token_account: Account<'info, TokenAccount>,
     pub pda_account: AccountInfo<'info>,
     #[account(
         mut,
@@ -150,7 +152,7 @@ pub struct CancelEscrow<'info> {
         constraint = escrow_account.initializer_deposit_token_account == *pda_deposit_token_account.to_account_info().key,
         close = initializer
     )]
-    pub escrow_account: ProgramAccount<'info, EscrowAccount>,
+    pub escrow_account: Account<'info, EscrowAccount>,
     pub token_program: AccountInfo<'info>,
 }
 

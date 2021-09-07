@@ -1,6 +1,5 @@
 use crate::codegen::accounts::{constraints, generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct, Field, SysvarTy, Ty};
-use proc_macro2::TokenStream;
+use crate::{AccountField, AccountsStruct};
 use quote::quote;
 use syn::Expr;
 
@@ -40,7 +39,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             *accounts = &accounts[1..];
                         }
                     } else {
-                        let name = typed_ident(f);
+                        let name = f.typed_ident();
                         quote! {
                             #[cfg(feature = "anchor-debug")]
                             ::solana_program::log::sol_log(stringify!(#name));
@@ -104,65 +103,6 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 Ok(#accounts_instance)
             }
         }
-    }
-}
-
-fn typed_ident(field: &Field) -> TokenStream {
-    let name = &field.ident;
-
-    let ty = match &field.ty {
-        Ty::AccountInfo => quote! { AccountInfo },
-        Ty::ProgramState(ty) => {
-            let account = &ty.account_type_path;
-            quote! {
-                ProgramState<#account>
-            }
-        }
-        Ty::CpiState(ty) => {
-            let account = &ty.account_type_path;
-            quote! {
-                CpiState<#account>
-            }
-        }
-        Ty::ProgramAccount(ty) => {
-            let account = &ty.account_type_path;
-            quote! {
-                ProgramAccount<#account>
-            }
-        }
-        Ty::Loader(ty) => {
-            let account = &ty.account_type_path;
-            quote! {
-                Loader<#account>
-            }
-        }
-        Ty::CpiAccount(ty) => {
-            let account = &ty.account_type_path;
-            quote! {
-                CpiAccount<#account>
-            }
-        }
-        Ty::Sysvar(ty) => {
-            let account = match ty {
-                SysvarTy::Clock => quote! {Clock},
-                SysvarTy::Rent => quote! {Rent},
-                SysvarTy::EpochSchedule => quote! {EpochSchedule},
-                SysvarTy::Fees => quote! {Fees},
-                SysvarTy::RecentBlockhashes => quote! {RecentBlockhashes},
-                SysvarTy::SlotHashes => quote! {SlotHashes},
-                SysvarTy::SlotHistory => quote! {SlotHistory},
-                SysvarTy::StakeHistory => quote! {StakeHistory},
-                SysvarTy::Instructions => quote! {Instructions},
-                SysvarTy::Rewards => quote! {Rewards},
-            };
-            quote! {
-                Sysvar<#account>
-            }
-        }
-    };
-
-    quote! {
-        #name: #ty
     }
 }
 

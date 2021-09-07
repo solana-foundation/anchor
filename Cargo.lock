@@ -72,8 +72,10 @@ version = "0.14.0"
 dependencies = [
  "anchor-syn",
  "anyhow",
+ "bs58 0.4.0",
  "proc-macro2 1.0.29",
  "quote 1.0.9",
+ "rustversion",
  "syn 1.0.75",
 ]
 
@@ -222,7 +224,7 @@ name = "anchor-syn"
 version = "0.14.0"
 dependencies = [
  "anyhow",
- "bs58",
+ "bs58 0.3.1",
  "heck",
  "proc-macro2 1.0.29",
  "proc-macro2-diagnostics",
@@ -476,6 +478,12 @@ name = "bs58"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "476e9cd489f9e121e02ffa6014a8ef220ecb15c05ed23fc34cca13925dc283fb"
+
+[[package]]
+name = "bs58"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
 
 [[package]]
 name = "bumpalo"
@@ -2725,7 +2733,7 @@ dependencies = [
  "anyhow",
  "arrayref",
  "bincode",
- "bs58",
+ "bs58 0.3.1",
  "rand 0.7.3",
  "serde",
  "serde_json",
@@ -2861,7 +2869,7 @@ dependencies = [
  "Inflector",
  "base64 0.12.3",
  "bincode",
- "bs58",
+ "bs58 0.3.1",
  "bv",
  "lazy_static",
  "serde",
@@ -2914,7 +2922,7 @@ checksum = "779f90ee9f77c831426af58c9732902051314bb8f2607473ffd6089a3b008133"
 dependencies = [
  "base64 0.13.0",
  "bincode",
- "bs58",
+ "bs58 0.3.1",
  "clap 2.33.3",
  "indicatif",
  "jsonrpc-core",
@@ -3008,7 +3016,7 @@ version = "1.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21ddfc2b65a555c0e0156c043bce092d473bc4f00daa7ca3c223d97d92d2e807"
 dependencies = [
- "bs58",
+ "bs58 0.3.1",
  "bv",
  "generic-array 0.14.4",
  "log",
@@ -3102,7 +3110,7 @@ dependencies = [
  "blake3",
  "borsh",
  "borsh-derive 0.9.1",
- "bs58",
+ "bs58 0.3.1",
  "bv",
  "curve25519-dalek 2.1.3",
  "hex",
@@ -3217,7 +3225,7 @@ checksum = "95179bc7d87c5b61c86f3bbbac4e52a5d909432473593d33546e4f20dc582052"
 dependencies = [
  "assert_matches",
  "bincode",
- "bs58",
+ "bs58 0.3.1",
  "bv",
  "byteorder",
  "chrono",
@@ -3264,7 +3272,7 @@ version = "1.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b453dca160617b1676c47e3cfd4361f455dc5bb1c93659ec84b0c5d566b5c039"
 dependencies = [
- "bs58",
+ "bs58 0.3.1",
  "proc-macro2 1.0.29",
  "quote 1.0.9",
  "rustversion",
@@ -3311,7 +3319,7 @@ dependencies = [
  "Inflector",
  "base64 0.12.3",
  "bincode",
- "bs58",
+ "bs58 0.3.1",
  "lazy_static",
  "serde",
  "serde_derive",

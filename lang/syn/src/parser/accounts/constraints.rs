@@ -561,11 +561,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_close(&mut self, c: Context<ConstraintClose>) -> ParseResult<()> {
         if !matches!(self.f_ty, Some(Ty::ProgramAccount(_)))
+            && !matches!(self.f_ty, Some(Ty::Account(_)))
             && !matches!(self.f_ty, Some(Ty::Loader(_)))
         {
             return Err(ParseError::new(
                 c.span(),
-                "close must be on a ProgramAccount",
+                "close must be on an Account, ProgramAccount, or Loader",
             ));
         }
         if self.mutable.is_none() {

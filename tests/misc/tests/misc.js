@@ -155,17 +155,19 @@ describe("misc", () => {
     assert.ok(resp.events[2].data.data === 9);
   });
 
+	let dataI8;
+
   it("Can use i8 in the idl", async () => {
-    const data = anchor.web3.Keypair.generate();
+    dataI8 = anchor.web3.Keypair.generate();
     await program.rpc.testI8(-3, {
       accounts: {
-        data: data.publicKey,
+        data: dataI8.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
-      instructions: [await program.account.dataI8.createInstruction(data)],
-      signers: [data],
+      instructions: [await program.account.dataI8.createInstruction(dataI8)],
+      signers: [dataI8],
     });
-    const dataAccount = await program.account.dataI8.fetch(data.publicKey);
+    const dataAccount = await program.account.dataI8.fetch(dataI8.publicKey);
     assert.ok(dataAccount.data === -3);
   });
 

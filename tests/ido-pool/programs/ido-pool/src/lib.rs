@@ -5,6 +5,8 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Burn, Mint, MintTo, TokenAccount, Transfer};
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod ido_pool {
     use super::*;
@@ -192,23 +194,23 @@ pub mod ido_pool {
 #[derive(Accounts)]
 pub struct InitializePool<'info> {
     #[account(zero)]
-    pub pool_account: ProgramAccount<'info, PoolAccount>,
+    pub pool_account: Box<Account<'info, PoolAccount>>,
     pub pool_signer: AccountInfo<'info>,
     #[account(
         constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key),
         constraint = redeemable_mint.supply == 0
     )]
-    pub redeemable_mint: CpiAccount<'info, Mint>,
+    pub redeemable_mint: Account<'info, Mint>,
     #[account(constraint = usdc_mint.decimals == redeemable_mint.decimals)]
-    pub usdc_mint: CpiAccount<'info, Mint>,
+    pub usdc_mint: Account<'info, Mint>,
     #[account(mut, constraint = pool_watermelon.owner == *pool_signer.key)]
-    pub pool_watermelon: CpiAccount<'info, TokenAccount>,
+    pub pool_watermelon: Account<'info, TokenAccount>,
     #[account(constraint = pool_usdc.owner == *pool_signer.key)]
-    pub pool_usdc: CpiAccount<'info, TokenAccount>,
+    pub pool_usdc: Account<'info, TokenAccount>,
     #[account(signer)]
     pub distribution_authority: AccountInfo<'info>,
     #[account(mut, constraint = creator_watermelon.owner == *distribution_authority.key)]
-    pub creator_watermelon: CpiAccount<'info, TokenAccount>,
+    pub creator_watermelon: Account<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
@@ -231,7 +233,7 @@ impl<'info> InitializePool<'info> {
 #[derive(Accounts)]
 pub struct ExchangeUsdcForRedeemable<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_usdc)]
-    pub pool_account: ProgramAccount<'info, PoolAccount>,
+    pub pool_account: Account<'info, PoolAccount>,
     #[account(
         seeds = [pool_account.watermelon_mint.as_ref()],
         bump = pool_account.nonce,
@@ -241,15 +243,15 @@ pub struct ExchangeUsdcForRedeemable<'info> {
         mut,
         constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
-    pub redeemable_mint: CpiAccount<'info, Mint>,
+    pub redeemable_mint: Account<'info, Mint>,
     #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
-    pub pool_usdc: CpiAccount<'info, TokenAccount>,
+    pub pool_usdc: Account<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
     #[account(mut, constraint = user_usdc.owner == *user_authority.key)]
-    pub user_usdc: CpiAccount<'info, TokenAccount>,
+    pub user_usdc: Account<'info, TokenAccount>,
     #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
-    pub user_redeemable: CpiAccount<'info, TokenAccount>,
+    pub user_redeemable: Account<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
@@ -258,7 +260,7 @@ pub struct ExchangeUsdcForRedeemable<'info> {
 #[derive(Accounts)]
 pub struct ExchangeRedeemableForUsdc<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_usdc)]
-    pub pool_account: ProgramAccount<'info, PoolAccount>,
+    pub pool_account: Account<'info, PoolAccount>,
     #[account(
         seeds = [pool_account.watermelon_mint.as_ref()],
         bump = pool_account.nonce,
@@ -268,15 +270,15 @@ pub struct ExchangeRedeemableForUsdc<'info> {
         mut,
         constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
-    pub redeemable_mint: CpiAccount<'info, Mint>,
+    pub redeemable_mint: Account<'info, Mint>,
     #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
-    pub pool_usdc: CpiAccount<'info, TokenAccount>,
+    pub pool_usdc: Account<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
     #[account(mut, constraint = user_usdc.owner == *user_authority.key)]
-    pub user_usdc: CpiAccount<'info, TokenAccount>,
+    pub user_usdc: Account<'info, TokenAccount>,
     #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
-    pub user_redeemable: CpiAccount<'info, TokenAccount>,
+    pub user_redeemable: Account<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
@@ -285,7 +287,7 @@ pub struct ExchangeRedeemableForUsdc<'info> {
 #[derive(Accounts)]
 pub struct ExchangeRedeemableForWatermelon<'info> {
     #[account(has_one = redeemable_mint, has_one = pool_watermelon)]
-    pub pool_account: ProgramAccount<'info, PoolAccount>,
+    pub pool_account: Account<'info, PoolAccount>,
     #[account(
         seeds = [pool_account.watermelon_mint.as_ref()],
         bump = pool_account.nonce,
@@ -295,15 +297,15 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
         mut,
         constraint = redeemable_mint.mint_authority == COption::Some(*pool_signer.key)
     )]
-    pub redeemable_mint: CpiAccount<'info, Mint>,
+    pub redeemable_mint: Account<'info, Mint>,
     #[account(mut, constraint = pool_watermelon.owner == *pool_signer.key)]
-    pub pool_watermelon: CpiAccount<'info, TokenAccount>,
+    pub pool_watermelon: Account<'info, TokenAccount>,
     #[account(signer)]
     pub user_authority: AccountInfo<'info>,
     #[account(mut, constraint = user_watermelon.owner == *user_authority.key)]
-    pub user_watermelon: CpiAccount<'info, TokenAccount>,
+    pub user_watermelon: Account<'info, TokenAccount>,
     #[account(mut, constraint = user_redeemable.owner == *user_authority.key)]
-    pub user_redeemable: CpiAccount<'info, TokenAccount>,
+    pub user_redeemable: Account<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
@@ -312,18 +314,18 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
 #[derive(Accounts)]
 pub struct WithdrawPoolUsdc<'info> {
     #[account(has_one = pool_usdc, has_one = distribution_authority)]
-    pub pool_account: ProgramAccount<'info, PoolAccount>,
+    pub pool_account: Account<'info, PoolAccount>,
     #[account(
         seeds = [pool_account.watermelon_mint.as_ref()],
         bump = pool_account.nonce,
     )]
     pub pool_signer: AccountInfo<'info>,
     #[account(mut, constraint = pool_usdc.owner == *pool_signer.key)]
-    pub pool_usdc: CpiAccount<'info, TokenAccount>,
+    pub pool_usdc: Account<'info, TokenAccount>,
     #[account(signer)]
     pub distribution_authority: AccountInfo<'info>,
     #[account(mut, constraint = creator_usdc.owner == *distribution_authority.key)]
-    pub creator_usdc: CpiAccount<'info, TokenAccount>,
+    pub creator_usdc: Account<'info, TokenAccount>,
     #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
@@ -399,7 +401,7 @@ fn withdraw_only_phase(ctx: &Context<ExchangeRedeemableForUsdc>) -> Result<()> {
 
 // Asserts the IDO sale period has ended, based on the current timestamp.
 fn ido_over<'info>(
-    pool_account: &ProgramAccount<'info, PoolAccount>,
+    pool_account: &Account<'info, PoolAccount>,
     clock: &Sysvar<'info, Clock>,
 ) -> Result<()> {
     if !(pool_account.end_ido_ts < clock.unix_timestamp) {

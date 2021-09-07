@@ -4,6 +4,9 @@ use anchor_lang::prelude::borsh::maybestd::io::Write;
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
+// Needed to declare accounts.
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[derive(Accounts)]
 pub struct GenericsTest<'info, T, U, const N: usize>
 where

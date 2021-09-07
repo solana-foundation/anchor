@@ -20,34 +20,35 @@ set -euox pipefail
 
 main() {
     #
-    # Bootup validator.
-    #
-    solana-test-validator > test-validator.log &
-    sleep 5
-
-    #
-    # Deploy programs.
+    # Build programs.
     #
     pushd ../../tests/composite/
     anchor build
-    anchor deploy
-    local composite_pid=$(cat target/idl/composite.json | jq -r .metadata.address)
+    local composite_pid="EHthziFziNoac9LBGxEaVN47Y3uUiRoXvqAiR6oes4iU"
     popd
     pushd ../../examples/tutorial/basic-2/
     anchor build
-    anchor deploy
-    local basic_2_pid=$(cat target/idl/basic_2.json | jq -r .metadata.address)
+    local basic_2_pid="Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
     popd
     pushd ../../examples/tutorial/basic-4/
     anchor build
-    anchor deploy
-    local basic_4_pid=$(cat target/idl/basic_4.json | jq -r .metadata.address)
+    local basic_4_pid="CwrqeMj2U8tFr1Rhkgwc84tpAsqbt9pTt2a4taoTADPr"
     popd
     pushd ../../tests/events
     anchor build
-    anchor deploy
-    local events_pid=$(cat target/idl/events.json | jq -r .metadata.address)
+    local events_pid="2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
     popd
+
+    #
+    # Bootup validator.
+    #
+    solana-test-validator \
+				--bpf-program $composite_pid ../../tests/composite/target/deploy/composite.so \
+				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
+				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
+				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
+				> test-validator.log &
+    sleep 5
 
     #
     # Run Test.

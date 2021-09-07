@@ -142,9 +142,10 @@ pub fn generate_constraint_init(f: &Field, c: &ConstraintInitGroup) -> proc_macr
 
 pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macro2::TokenStream {
     let field = &f.ident;
-    let (account_ty, account_wrapper_ty, _) = parse_ty(f);
+    let ty_decl = f.ty_decl();
+    let from_account_info = f.from_account_info(None);
     quote! {
-        let #field: #account_wrapper_ty<#account_ty> = {
+        let #field: #ty_decl = {
             let mut __data: &[u8] = &#field.try_borrow_data()?;
             let mut __disc_bytes = [0u8; 8];
             __disc_bytes.copy_from_slice(&__data[..8]);
@@ -152,10 +153,7 @@ pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macr
             if __discriminator != 0 {
                 return Err(anchor_lang::__private::ErrorCode::ConstraintZero.into());
             }
-            #account_wrapper_ty::try_from_unchecked(
-                program_id,
-                &#field,
-            )?
+            #from_account_info
         };
     }
 }
@@ -198,6 +196,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
+        Ty::Account(_) => quote! { #ident.to_account_info() },
         Ty::Loader(_) => quote! { #ident.to_account_info() },
         Ty::CpiAccount(_) => quote! { #ident.to_account_info() },
         _ => panic!("Invalid syntax: signer cannot be specified."),
@@ -308,7 +307,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
             }
         }
     };
-    generate_pda(f, seeds_with_nonce, payer, &c.space, &c.kind)
+    generate_init(f, seeds_with_nonce, payer, &c.space, &c.kind)
 }
 
 fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
@@ -366,56 +365,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
     }
 }
 
-fn parse_ty(f: &Field) -> (proc_macro2::TokenStream, proc_macro2::TokenStream, bool) {
-    match &f.ty {
-        Ty::ProgramAccount(ty) => {
-            let ident = &ty.account_type_path;
-            (
-                quote! {
-                    #ident
-                },
-                quote! {
-                    anchor_lang::ProgramAccount
-                },
-                false,
-            )
-        }
-        Ty::Loader(ty) => {
-            let ident = &ty.account_type_path;
-            (
-                quote! {
-                    #ident
-                },
-                quote! {
-                    anchor_lang::Loader
-                },
-                true,
-            )
-        }
-        Ty::CpiAccount(ty) => {
-            let ident = &ty.account_type_path;
-            (
-                quote! {
-                    #ident
-                },
-                quote! {
-                    anchor_lang::CpiAccount
-                },
-                false,
-            )
-        }
-        Ty::AccountInfo => (
-            quote! {
-                AccountInfo
-            },
-            quote! {},
-            false,
-        ),
-        _ => panic!("Invalid type for initializing a program derived address"),
-    }
-}
-
-pub fn generate_pda(
+pub fn generate_init(
     f: &Field,
     seeds_with_nonce: proc_macro2::TokenStream,
     payer: proc_macro2::TokenStream,
@@ -423,30 +373,8 @@ pub fn generate_pda(
     kind: &InitKind,
 ) -> proc_macro2::TokenStream {
     let field = &f.ident;
-    let (account_ty, account_wrapper_ty, is_zero_copy) = parse_ty(f);
-
-    let (combined_account_ty, try_from) = match f.ty {
-        Ty::AccountInfo => (
-            quote! {
-                AccountInfo
-            },
-            quote! {
-                #field.to_account_info()
-            },
-        ),
-        _ => (
-            quote! {
-                #account_wrapper_ty<#account_ty>
-            },
-            quote! {
-                #account_wrapper_ty::try_from_unchecked(
-                    program_id,
-                    &#field.to_account_info(),
-                )?
-            },
-        ),
-    };
-
+    let ty_decl = f.ty_decl();
+    let from_account_info = f.from_account_info(Some(kind));
     match kind {
         InitKind::Token { owner, mint } => {
             let create_account = generate_create_account(
@@ -456,7 +384,7 @@ pub fn generate_pda(
                 seeds_with_nonce,
             );
             quote! {
-                let #field: #combined_account_ty = {
+                let #field: #ty_decl = {
                     // Define payer variable.
                     #payer
 
@@ -473,9 +401,8 @@ pub fn generate_pda(
                     };
                     let cpi_ctx = CpiContext::new(cpi_program, accounts);
                     anchor_spl::token::initialize_account(cpi_ctx)?;
-                    anchor_lang::CpiAccount::try_from_unchecked(
-                        &#field.to_account_info(),
-                    )?
+                    let mut pa: #ty_decl = #from_account_info;
+                    pa
                 };
             }
         }
@@ -487,7 +414,7 @@ pub fn generate_pda(
                 seeds_with_nonce,
             );
             quote! {
-                let #field: #combined_account_ty = {
+                let #field: #ty_decl = {
                     // Define payer variable.
                     #payer
 
@@ -502,9 +429,8 @@ pub fn generate_pda(
                     };
                     let cpi_ctx = CpiContext::new(cpi_program, accounts);
                     anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
-                    anchor_lang::CpiAccount::try_from_unchecked(
-                        &#field.to_account_info(),
-                    )?
+                    let mut pa: #ty_decl = #from_account_info;
+                    pa
                 };
             }
         }
@@ -512,18 +438,21 @@ pub fn generate_pda(
             let space = match space {
                 // If no explicit space param was given, serialize the type to bytes
                 // and take the length (with +8 for the discriminator.)
-                None => match is_zero_copy {
-                    false => {
-                        quote! {
-                            let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+                None => {
+                    let account_ty = f.account_ty();
+                    match matches!(f.ty, Ty::Loader(_)) {
+                        false => {
+                            quote! {
+                                let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
+                            }
+                        }
+                        true => {
+                            quote! {
+                                let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
+                            }
                         }
                     }
-                    true => {
-                        quote! {
-                            let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
-                        }
-                    }
-                },
+                }
                 // Explicit account size given. Use it.
                 Some(s) => quote! {
                     let space = #s;
@@ -547,7 +476,7 @@ pub fn generate_pda(
                     #space
                     #payer
                     #create_account
-                    let mut pa: #combined_account_ty = #try_from;
+                    let mut pa: #ty_decl = #from_account_info;
                     pa
                 };
             }

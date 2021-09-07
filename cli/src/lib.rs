@@ -1,6 +1,4 @@
-use crate::config::{
-    AnchorPackage, Config, ConfigOverride, Manifest, Program, ProgramWorkspace, WithPath,
-};
+use crate::config::{AnchorPackage, Config, ConfigOverride, Manifest, ProgramWorkspace, WithPath};
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
@@ -154,6 +152,16 @@ pub enum Command {
         /// The name of the program to publish.
         program: String,
     },
+    /// Keypair commands.
+    Keys {
+        #[clap(subcommand)]
+        subcmd: KeysCommand,
+    },
+}
+
+#[derive(Debug, Clap)]
+pub enum KeysCommand {
+    List,
 }
 
 #[derive(Debug, Clap)]
@@ -283,6 +291,7 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::Run { script } => run(&opts.cfg_override, script),
         Command::Login { token } => login(&opts.cfg_override, token),
         Command::Publish { program } => publish(&opts.cfg_override, program),
+        Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
     }
 }
 
@@ -1374,13 +1383,12 @@ fn genesis_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
     for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
 
+        // Use the [programs.cluster] override and fallback to the keypair
+        // files if no override is given.
         let address = programs
             .and_then(|m| m.get(&program.lib_name))
-            .map(|deployment| deployment.address.to_string())
-            .unwrap_or_else(|| {
-                let kp = Keypair::generate(&mut OsRng);
-                kp.pubkey().to_string()
-            });
+            .map(|deployment| Ok(deployment.address.to_string()))
+            .unwrap_or_else(|| program.pubkey().map(|p| p.to_string()))?;
 
         flags.push("--bpf-program".to_string());
         flags.push(address.clone());
@@ -1507,14 +1515,7 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
     Ok(validator_handle)
 }
 
-fn deploy(cfg_override: &ConfigOverride, program_name: Option<String>) -> Result<()> {
-    _deploy(cfg_override, program_name).map(|_| ())
-}
-
-fn _deploy(
-    cfg_override: &ConfigOverride,
-    program_str: Option<String>,
-) -> Result<Vec<(Pubkey, Program)>> {
+fn deploy(cfg_override: &ConfigOverride, program_str: Option<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         let url = cfg.provider.cluster.url().to_string();
         let keypair = cfg.provider.wallet.to_string();
@@ -1522,8 +1523,6 @@ fn _deploy(
         // Deploy the programs.
         println!("Deploying workspace: {}", url);
         println!("Upgrade authority: {}", keypair);
-
-        let mut programs = Vec::new();
 
         for mut program in cfg.read_all_programs()? {
             if let Some(single_prog_str) = &program_str {
@@ -1540,11 +1539,7 @@ fn _deploy(
             );
             println!("Program path: {}...", binary_path);
 
-            // Write the program's keypair filepath. This forces a new deploy
-            // address.
-            let program_kp = Keypair::generate(&mut OsRng);
-            let mut file = File::create(program.anchor_keypair_path())?;
-            file.write_all(format!("{:?}", &program_kp.to_bytes()).as_bytes())?;
+            let file = program.keypair_file()?;
 
             // Send deploy transactions.
             let exit = std::process::Command::new("solana")
@@ -1555,7 +1550,7 @@ fn _deploy(
                 .arg("--keypair")
                 .arg(&keypair)
                 .arg("--program-id")
-                .arg(program.anchor_keypair_path().display().to_string())
+                .arg(file.path().display().to_string())
                 .arg(&binary_path)
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
@@ -1566,10 +1561,11 @@ fn _deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
+            let program_pubkey = program.pubkey()?;
             if let Some(mut idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
-                    address: program_kp.pubkey().to_string(),
+                    address: program_pubkey.to_string(),
                 })?);
 
                 // Persist it.
@@ -1578,13 +1574,11 @@ fn _deploy(
                     .with_extension("json");
                 write_idl(idl, OutFile::File(idl_out))?;
             }
-
-            programs.push((program_kp.pubkey(), program))
         }
 
         println!("Deploy success");
 
-        Ok(programs)
+        Ok(())
     })
 }
 
@@ -1617,20 +1611,6 @@ fn upgrade(
         }
         Ok(())
     })
-}
-
-// The Solana CLI doesn't redeploy a program if this file exists.
-// So remove it to make all commands explicit.
-fn clear_program_keys(cfg_override: &ConfigOverride) -> Result<()> {
-    let config = Config::discover(cfg_override).unwrap_or_default().unwrap();
-
-    for program in config.read_all_programs()? {
-        let anchor_keypair_path = program.anchor_keypair_path();
-        if Path::exists(&anchor_keypair_path) {
-            std::fs::remove_file(anchor_keypair_path).expect("Always remove");
-        }
-    }
-    Ok(())
 }
 
 fn create_idl_account(
@@ -1902,6 +1882,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
                     })
                     .collect::<Vec<_>>();
             }
+
             // Finalize program list with all programs with IDLs.
             match cfg.programs.get(&cfg.provider.cluster) {
                 None => Vec::new(),
@@ -2130,6 +2111,21 @@ fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
     Ok(credentials_toml.registry.token)
 }
 
+fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
+    match cmd {
+        KeysCommand::List => keys_list(cfg_override),
+    }
+}
+
+fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    for program in cfg.read_all_programs()? {
+        let pubkey = program.pubkey()?;
+        println!("{}: {}", program.lib_name, pubkey.to_string());
+    }
+    Ok(())
+}
+
 // with_workspace ensures the current working directory is always the top level
 // workspace directory, i.e., where the `Anchor.toml` file is located, before
 // and after the closure invocation.
@@ -2139,8 +2135,6 @@ fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
 fn with_workspace<R>(cfg_override: &ConfigOverride, f: impl FnOnce(&WithPath<Config>) -> R) -> R {
     set_workspace_dir_or_exit();
 
-    clear_program_keys(cfg_override).unwrap();
-
     let cfg = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
         .expect("Anchor.toml must always exist");
@@ -2148,7 +2142,6 @@ fn with_workspace<R>(cfg_override: &ConfigOverride, f: impl FnOnce(&WithPath<Con
     let r = f(&cfg);
 
     set_workspace_dir_or_exit();
-    clear_program_keys(cfg_override).unwrap();
 
     r
 }

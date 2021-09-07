@@ -4,7 +4,7 @@ use anyhow::{anyhow, Error, Result};
 use clap::Clap;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Keypair;
+use solana_sdk::signature::{Keypair, Signer};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::{self, File};
@@ -471,13 +471,29 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn anchor_keypair_path(&self) -> PathBuf {
-        std::env::current_dir()
+    pub fn pubkey(&self) -> Result<Pubkey> {
+        self.keypair().map(|kp| kp.pubkey())
+    }
+
+    pub fn keypair(&self) -> Result<Keypair> {
+        let file = self.keypair_file()?;
+        solana_sdk::signature::read_keypair_file(file.path())
+            .map_err(|_| anyhow!("failed to read keypair for program: {}", self.lib_name))
+    }
+
+    // Lazily initializes the keypair file with a new key if it doesn't exist.
+    pub fn keypair_file(&self) -> Result<WithPath<File>> {
+        fs::create_dir_all("target/deploy/")?;
+        let path = std::env::current_dir()
             .expect("Must have current dir")
-            .join(format!(
-                "target/deploy/anchor-{}-keypair.json",
-                self.lib_name
-            ))
+            .join(format!("target/deploy/{}-keypair.json", self.lib_name));
+        if path.exists() {
+            return Ok(WithPath::new(File::open(&path)?, path));
+        }
+        let program_kp = Keypair::generate(&mut rand::rngs::OsRng);
+        let mut file = File::create(&path)?;
+        file.write_all(format!("{:?}", &program_kp.to_bytes()).as_bytes())?;
+        Ok(WithPath::new(file, path))
     }
 
     pub fn binary_path(&self) -> PathBuf {

@@ -3,6 +3,8 @@ extern crate proc_macro;
 use quote::quote;
 use syn::parse_macro_input;
 
+mod id;
+
 /// A data structure representing a Solana account, implementing various traits:
 ///
 /// - [`AccountSerialize`](./trait.AccountSerialize.html)
@@ -98,6 +100,21 @@ pub fn account(
         format!("{:?}", discriminator).parse().unwrap()
     };
 
+    let owner_impl = {
+        if namespace.is_empty() {
+            quote! {
+                #[automatically_derived]
+                impl #impl_gen anchor_lang::Owner for #account_name #type_gen #where_clause {
+                    fn owner() -> Pubkey {
+                        crate::ID
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        }
+    };
+
     proc_macro::TokenStream::from({
         if is_zero_copy {
             quote! {
@@ -142,6 +159,8 @@ pub fn account(
                         Ok(*account)
                     }
                 }
+
+                #owner_impl
             }
         } else {
             quote! {
@@ -187,6 +206,8 @@ pub fn account(
                         #discriminator
                     }
                 }
+
+                #owner_impl
             }
         }
     })
@@ -269,4 +290,12 @@ pub fn zero_copy(
         #[repr(packed)]
         #account_strct
     })
+}
+
+/// Defines the program's ID. This should be used at the root of all Anchor
+/// based programs.
+#[proc_macro]
+pub fn declare_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let id = parse_macro_input!(input as id::Id);
+    proc_macro::TokenStream::from(quote! {#id})
 }

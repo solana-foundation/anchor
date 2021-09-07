@@ -3,6 +3,7 @@ use codegen::program as program_codegen;
 use parser::accounts as accounts_parser;
 use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
+use quote::quote;
 use quote::ToTokens;
 use std::ops::Deref;
 use syn::ext::IdentExt;
@@ -161,6 +162,177 @@ pub struct Field {
     pub ty: Ty,
 }
 
+impl Field {
+    pub fn typed_ident(&self) -> proc_macro2::TokenStream {
+        let name = &self.ident;
+        let ty_decl = self.ty_decl();
+        quote! {
+            #name: #ty_decl
+        }
+    }
+
+    pub fn ty_decl(&self) -> proc_macro2::TokenStream {
+        let account_ty = self.account_ty();
+        let container_ty = self.container_ty();
+        match &self.ty {
+            Ty::AccountInfo => quote! {
+                AccountInfo
+            },
+            Ty::Account(AccountTy { boxed, .. }) => {
+                if *boxed {
+                    quote! {
+                        Box<#container_ty<#account_ty>>
+                    }
+                } else {
+                    quote! {
+                        #container_ty<#account_ty>
+                    }
+                }
+            }
+            Ty::Sysvar(ty) => {
+                let account = match ty {
+                    SysvarTy::Clock => quote! {Clock},
+                    SysvarTy::Rent => quote! {Rent},
+                    SysvarTy::EpochSchedule => quote! {EpochSchedule},
+                    SysvarTy::Fees => quote! {Fees},
+                    SysvarTy::RecentBlockhashes => quote! {RecentBlockhashes},
+                    SysvarTy::SlotHashes => quote! {SlotHashes},
+                    SysvarTy::SlotHistory => quote! {SlotHistory},
+                    SysvarTy::StakeHistory => quote! {StakeHistory},
+                    SysvarTy::Instructions => quote! {Instructions},
+                    SysvarTy::Rewards => quote! {Rewards},
+                };
+                quote! {
+                    Sysvar<#account>
+                }
+            }
+            _ => quote! {
+                #container_ty<#account_ty>
+            },
+        }
+    }
+
+    // TODO: remove the option once `CpiAccount` is completely removed (not
+    //       just deprecated).
+    pub fn from_account_info(&self, kind: Option<&InitKind>) -> proc_macro2::TokenStream {
+        let field = &self.ident;
+        let container_ty = self.container_ty();
+        match &self.ty {
+            Ty::AccountInfo => quote! { #field.to_account_info() },
+            Ty::Account(AccountTy { boxed, .. }) => {
+                if *boxed {
+                    quote! {
+                        Box::new(#container_ty::try_from_unchecked(
+                            &#field,
+                        )?)
+                    }
+                } else {
+                    quote! {
+                        #container_ty::try_from_unchecked(
+                            &#field,
+                        )?
+                    }
+                }
+            }
+            _ => {
+                let owner_addr = match &kind {
+                    None => quote! { program_id },
+                    Some(InitKind::Program { .. }) => quote! {
+                        program_id
+                    },
+                    _ => quote! {
+                        &anchor_spl::token::ID
+                    },
+                };
+                quote! {
+                    #container_ty::try_from_unchecked(
+                        #owner_addr,
+                        &#field,
+                    )?
+                }
+            }
+        }
+    }
+
+    pub fn container_ty(&self) -> proc_macro2::TokenStream {
+        match &self.ty {
+            Ty::ProgramAccount(_) => quote! {
+                anchor_lang::ProgramAccount
+            },
+            Ty::Account(_) => quote! {
+                anchor_lang::Account
+            },
+            Ty::Loader(_) => quote! {
+                anchor_lang::Loader
+            },
+            Ty::CpiAccount(_) => quote! {
+                anchor_lang::CpiAccount
+            },
+            Ty::Sysvar(_) => quote! { anchor_lang::Sysvar },
+            Ty::CpiState(_) => quote! { anchor_lang::CpiState },
+            Ty::ProgramState(_) => quote! { anchor_lang::ProgramState },
+            Ty::AccountInfo => quote! {},
+        }
+    }
+
+    // Returns the inner account struct type.
+    pub fn account_ty(&self) -> proc_macro2::TokenStream {
+        match &self.ty {
+            Ty::AccountInfo => quote! {
+                AccountInfo
+            },
+            Ty::ProgramAccount(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::Account(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::Loader(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::CpiAccount(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::ProgramState(ty) => {
+                let account = &ty.account_type_path;
+                quote! {
+                    #account
+                }
+            }
+            Ty::CpiState(ty) => {
+                let account = &ty.account_type_path;
+                quote! {
+                    #account
+                }
+            }
+            Ty::Sysvar(ty) => match ty {
+                SysvarTy::Clock => quote! {Clock},
+                SysvarTy::Rent => quote! {Rent},
+                SysvarTy::EpochSchedule => quote! {EpochSchedule},
+                SysvarTy::Fees => quote! {Fees},
+                SysvarTy::RecentBlockhashes => quote! {RecentBlockhashes},
+                SysvarTy::SlotHashes => quote! {SlotHashes},
+                SysvarTy::SlotHistory => quote! {SlotHistory},
+                SysvarTy::StakeHistory => quote! {StakeHistory},
+                SysvarTy::Instructions => quote! {Instructions},
+                SysvarTy::Rewards => quote! {Rewards},
+            },
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CompositeField {
     pub ident: Ident,
@@ -180,6 +352,7 @@ pub enum Ty {
     Loader(LoaderTy),
     CpiAccount(CpiAccountTy),
     Sysvar(SysvarTy),
+    Account(AccountTy),
 }
 
 #[derive(Debug, PartialEq)]
@@ -222,6 +395,14 @@ pub struct CpiAccountTy {
 pub struct LoaderTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AccountTy {
+    // The struct type of the account.
+    pub account_type_path: TypePath,
+    // True if the account has been boxed via `Box<T>`.
+    pub boxed: bool,
 }
 
 #[derive(Debug)]

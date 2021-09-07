@@ -8,6 +8,8 @@ use anchor_spl::token::{self, TokenAccount, Transfer};
 
 mod calculator;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod lockup {
     use super::*;
@@ -208,9 +210,9 @@ pub struct Auth<'info> {
 pub struct CreateVesting<'info> {
     // Vesting.
     #[account(zero)]
-    vesting: ProgramAccount<'info, Vesting>,
+    vesting: Account<'info, Vesting>,
     #[account(mut)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
     depositor: AccountInfo<'info>,
@@ -246,11 +248,11 @@ impl<'info> CreateVesting<'info> {
 pub struct Withdraw<'info> {
     // Vesting.
     #[account(mut, has_one = beneficiary, has_one = vault)]
-    vesting: ProgramAccount<'info, Vesting>,
+    vesting: Account<'info, Vesting>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(mut)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     #[account(
         seeds = [vesting.to_account_info().key.as_ref()],
         bump = vesting.nonce,
@@ -258,7 +260,7 @@ pub struct Withdraw<'info> {
     vesting_signer: AccountInfo<'info>,
     // Withdraw receiving target..
     #[account(mut)]
-    token: CpiAccount<'info, TokenAccount>,
+    token: Account<'info, TokenAccount>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
     token_program: AccountInfo<'info>,
@@ -284,9 +286,9 @@ pub struct WhitelistTransfer<'info> {
 
     // Whitelist interface.
     #[account(mut, has_one = beneficiary, has_one = vault)]
-    vesting: ProgramAccount<'info, Vesting>,
+    vesting: Account<'info, Vesting>,
     #[account(mut, constraint = &vault.owner == vesting_signer.key)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     #[account(
         seeds = [vesting.to_account_info().key.as_ref()],
         bump = vesting.nonce,
@@ -301,7 +303,7 @@ pub struct WhitelistTransfer<'info> {
 
 #[derive(Accounts)]
 pub struct AvailableForWithdrawal<'info> {
-    vesting: ProgramAccount<'info, Vesting>,
+    vesting: Account<'info, Vesting>,
     clock: Sysvar<'info, Clock>,
 }
 

@@ -3,6 +3,8 @@
 
 use anchor_lang::prelude::*;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 mod errors {
     use super::*;
@@ -44,7 +46,7 @@ pub struct MutError<'info> {
 #[derive(Accounts)]
 pub struct HasOneError<'info> {
     #[account(zero, has_one = owner)]
-    my_account: ProgramAccount<'info, HasOneAccount>,
+    my_account: Account<'info, HasOneAccount>,
     owner: AccountInfo<'info>,
 }
 

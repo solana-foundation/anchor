@@ -7,6 +7,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 use std::convert::Into;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod cashiers_check {
     use super::*;
@@ -84,18 +86,18 @@ pub mod cashiers_check {
 pub struct CreateCheck<'info> {
     // Check being created.
     #[account(zero)]
-    check: ProgramAccount<'info, Check>,
+    check: Account<'info, Check>,
     // Check's token vault.
     #[account(mut, constraint = &vault.owner == check_signer.key)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     // Program derived address for the check.
     check_signer: AccountInfo<'info>,
     // Token account the check is made from.
     #[account(mut, has_one = owner)]
-    from: CpiAccount<'info, TokenAccount>,
+    from: Account<'info, TokenAccount>,
     // Token account the check is made to.
     #[account(constraint = from.mint == to.mint)]
-    to: CpiAccount<'info, TokenAccount>,
+    to: Account<'info, TokenAccount>,
     // Owner of the `from` token account.
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
@@ -118,7 +120,7 @@ impl<'info> CreateCheck<'info> {
 #[derive(Accounts)]
 pub struct CashCheck<'info> {
     #[account(mut, has_one = vault, has_one = to)]
-    check: ProgramAccount<'info, Check>,
+    check: Account<'info, Check>,
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
@@ -127,7 +129,7 @@ pub struct CashCheck<'info> {
     )]
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
-    to: CpiAccount<'info, TokenAccount>,
+    to: Account<'info, TokenAccount>,
     #[account(signer)]
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
@@ -136,7 +138,7 @@ pub struct CashCheck<'info> {
 #[derive(Accounts)]
 pub struct CancelCheck<'info> {
     #[account(mut, has_one = vault, has_one = from)]
-    check: ProgramAccount<'info, Check>,
+    check: Account<'info, Check>,
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
@@ -145,7 +147,7 @@ pub struct CancelCheck<'info> {
     )]
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
-    from: CpiAccount<'info, TokenAccount>,
+    from: Account<'info, TokenAccount>,
     #[account(signer)]
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,

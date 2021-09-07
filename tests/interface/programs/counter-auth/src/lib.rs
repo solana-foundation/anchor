@@ -6,6 +6,8 @@
 use anchor_lang::prelude::*;
 use counter::Auth;
 
+declare_id!("Aws2XRVHjNqCUbMmaU245ojT2DBJFYX58KVo2YySEeeP");
+
 #[program]
 pub mod counter_auth {
     use super::*;

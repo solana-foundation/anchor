@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
-use std::str::FromStr;
 
 const BOARD_ITEM_FREE: u8 = 0; // Free slot
 const BOARD_ITEM_X: u8 = 1; // Player X
 const BOARD_ITEM_O: u8 = 2; // Player O
+
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 /// Game State
 /// 0 - Waiting
@@ -55,14 +56,14 @@ pub mod tictactoe {
 
 #[derive(Accounts)]
 pub struct Status<'info> {
-    dashboard: ProgramAccount<'info, Dashboard>,
-    game: ProgramAccount<'info, Game>,
+    dashboard: Account<'info, Dashboard>,
+    game: Account<'info, Game>,
 }
 
 #[derive(Accounts)]
 pub struct Initializedashboard<'info> {
-    #[account(init)]
-    dashboard: ProgramAccount<'info, Dashboard>,
+    #[account(zero)]
+    dashboard: Account<'info, Dashboard>,
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -72,9 +73,9 @@ pub struct Initialize<'info> {
     #[account(signer)]
     player_x: AccountInfo<'info>,
     #[account(mut)]
-    dashboard: ProgramAccount<'info, Dashboard>,
-    #[account(init)]
-    game: ProgramAccount<'info, Game>,
+    dashboard: Account<'info, Dashboard>,
+    #[account(zero)]
+    game: Account<'info, Game>,
 }
 
 #[derive(Accounts)]
@@ -82,7 +83,7 @@ pub struct Playerjoin<'info> {
     #[account(signer)]
     player_o: AccountInfo<'info>,
     #[account(mut, constraint = game.game_state != 0 && game.player_x != Pubkey::default())]
-    game: ProgramAccount<'info, Game>,
+    game: Account<'info, Game>,
 }
 
 #[derive(Accounts)]
@@ -90,7 +91,7 @@ pub struct Playermove<'info> {
     #[account(signer)]
     player: AccountInfo<'info>,
     #[account(mut)]
-    game: ProgramAccount<'info, Game>,
+    game: Account<'info, Game>,
 }
 
 impl<'info> Playermove<'info> {

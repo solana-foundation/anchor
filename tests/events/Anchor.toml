@@ -2,5 +2,8 @@
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
+[programs.localnet]
+events = "2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
+
 [scripts]
 test = "mocha -t 1000000 tests/"

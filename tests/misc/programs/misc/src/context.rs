@@ -15,7 +15,7 @@ pub struct TestTokenSeedsInit<'info> {
         mint::decimals = 6,
         mint::authority = authority,
     )]
-    pub mint: CpiAccount<'info, Mint>,
+    pub mint: Account<'info, Mint>,
     #[account(
         init,
         seeds = [b"my-token-seed".as_ref()],
@@ -24,7 +24,7 @@ pub struct TestTokenSeedsInit<'info> {
         token::mint = mint,
         token::authority = authority,
     )]
-    pub my_pda: CpiAccount<'info, TokenAccount>,
+    pub my_pda: Account<'info, TokenAccount>,
     pub authority: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -51,7 +51,7 @@ pub struct TestPdaInit<'info> {
         bump = bump,
         payer = my_payer,
     )]
-    pub my_pda: ProgramAccount<'info, DataU16>,
+    pub my_pda: Account<'info, DataU16>,
     pub my_payer: AccountInfo<'info>,
     pub foo: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
@@ -91,7 +91,7 @@ pub struct RemainingAccounts {}
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(zero)]
-    pub data: ProgramAccount<'info, Data>,
+    pub data: Account<'info, Data>,
 }
 
 #[derive(Accounts)]
@@ -120,20 +120,20 @@ pub struct TestStateCpi<'info> {
 #[derive(Accounts)]
 pub struct TestClose<'info> {
     #[account(mut, close = sol_dest)]
-    pub data: ProgramAccount<'info, Data>,
+    pub data: Account<'info, Data>,
     sol_dest: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct TestU16<'info> {
     #[account(zero)]
-    pub my_account: ProgramAccount<'info, DataU16>,
+    pub my_account: Account<'info, DataU16>,
 }
 
 #[derive(Accounts)]
 pub struct TestI16<'info> {
     #[account(zero)]
-    pub data: ProgramAccount<'info, DataI16>,
+    pub data: Account<'info, DataI16>,
 }
 
 #[derive(Accounts)]
@@ -142,13 +142,13 @@ pub struct TestSimulate {}
 #[derive(Accounts)]
 pub struct TestI8<'info> {
     #[account(zero)]
-    pub data: ProgramAccount<'info, DataI8>,
+    pub data: Account<'info, DataI8>,
 }
 
 #[derive(Accounts)]
 pub struct TestInit<'info> {
     #[account(init, payer = payer)]
-    pub data: ProgramAccount<'info, DataI8>,
+    pub data: Account<'info, DataI8>,
     #[account(signer)]
     pub payer: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
@@ -166,7 +166,7 @@ pub struct TestInitZeroCopy<'info> {
 #[derive(Accounts)]
 pub struct TestInitMint<'info> {
     #[account(init, mint::decimals = 6, mint::authority = payer, payer = payer)]
-    pub mint: CpiAccount<'info, Mint>,
+    pub mint: Account<'info, Mint>,
     #[account(signer)]
     pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -177,8 +177,8 @@ pub struct TestInitMint<'info> {
 #[derive(Accounts)]
 pub struct TestInitToken<'info> {
     #[account(init, token::mint = mint, token::authority = payer, payer = payer)]
-    pub token: CpiAccount<'info, TokenAccount>,
-    pub mint: CpiAccount<'info, Mint>,
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
     #[account(signer)]
     pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,

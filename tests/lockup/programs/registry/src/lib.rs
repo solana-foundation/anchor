@@ -7,6 +7,8 @@ use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;
 
+declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
+
 #[program]
 mod registry {
     use super::*;
@@ -557,11 +559,11 @@ mod registry {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(zero)]
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     #[account(zero)]
-    reward_event_q: ProgramAccount<'info, RewardQueue>,
+    reward_event_q: Account<'info, RewardQueue>,
     #[account("pool_mint.decimals == 0")]
-    pool_mint: CpiAccount<'info, Mint>,
+    pool_mint: Account<'info, Mint>,
 }
 
 impl<'info> Initialize<'info> {
@@ -585,7 +587,7 @@ impl<'info> Initialize<'info> {
 #[derive(Accounts)]
 pub struct UpdateRegistrar<'info> {
     #[account(mut, has_one = authority)]
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -593,10 +595,10 @@ pub struct UpdateRegistrar<'info> {
 #[derive(Accounts)]
 pub struct CreateMember<'info> {
     // Stake instance.
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Box<Account<'info, Registrar>>,
     // Member.
     #[account(zero)]
-    member: ProgramAccount<'info, Member>,
+    member: Box<Account<'info, Member>>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(
@@ -642,17 +644,17 @@ impl<'info> CreateMember<'info> {
 #[derive(Accounts, Clone)]
 pub struct BalanceSandboxAccounts<'info> {
     #[account(mut)]
-    spt: CpiAccount<'info, TokenAccount>,
+    spt: Box<Account<'info, TokenAccount>>,
     #[account(mut, constraint = vault.owner == spt.owner)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
         constraint = vault_stake.owner == spt.owner,
         constraint = vault_stake.mint == vault.mint
     )]
-    vault_stake: CpiAccount<'info, TokenAccount>,
+    vault_stake: Box<Account<'info, TokenAccount>>,
     #[account(mut, constraint = vault_pw.owner == spt.owner, constraint = vault_pw.mint == vault.mint)]
-    vault_pw: CpiAccount<'info, TokenAccount>,
+    vault_pw: Box<Account<'info, TokenAccount>>,
 }
 
 #[derive(Accounts)]
@@ -672,15 +674,15 @@ pub struct IsRealized<'info> {
         constraint = &member.balances.spt == member_spt.to_account_info().key,
         constraint = &member.balances_locked.spt == member_spt_locked.to_account_info().key
     )]
-    member: ProgramAccount<'info, Member>,
-    member_spt: CpiAccount<'info, TokenAccount>,
-    member_spt_locked: CpiAccount<'info, TokenAccount>,
+    member: Account<'info, Member>,
+    member_spt: Account<'info, TokenAccount>,
+    member_spt_locked: Account<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateMember<'info> {
     #[account(mut, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
 }
@@ -689,11 +691,11 @@ pub struct UpdateMember<'info> {
 pub struct Deposit<'info> {
     // Member.
     #[account(has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
     depositor: AccountInfo<'info>,
@@ -711,7 +713,7 @@ pub struct DepositLocked<'info> {
         constraint = vesting.to_account_info().owner == &registry.lockup_program,
         constraint = vesting.beneficiary == member.beneficiary
     )]
-    vesting: CpiAccount<'info, Vesting>,
+    vesting: Box<Account<'info, Vesting>>,
     #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
     vesting_vault: AccountInfo<'info>,
     // Note: no need to verify the depositor_authority since the SPL program
@@ -724,7 +726,7 @@ pub struct DepositLocked<'info> {
         mut,
         constraint = member_vault.to_account_info().key == &member.balances_locked.vault
     )]
-    member_vault: CpiAccount<'info, TokenAccount>,
+    member_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
@@ -733,9 +735,9 @@ pub struct DepositLocked<'info> {
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Box<Account<'info, Registrar>>,
     #[account(has_one = registrar, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Box<Account<'info, Member>>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
 }
@@ -744,14 +746,14 @@ pub struct DepositLocked<'info> {
 pub struct Stake<'info> {
     // Global accounts for the staking instance.
     #[account(has_one = pool_mint, has_one = reward_event_q)]
-    registrar: ProgramAccount<'info, Registrar>,
-    reward_event_q: ProgramAccount<'info, RewardQueue>,
+    registrar: Account<'info, Registrar>,
+    reward_event_q: Account<'info, RewardQueue>,
     #[account(mut)]
-    pool_mint: CpiAccount<'info, Mint>,
+    pool_mint: Account<'info, Mint>,
 
     // Member.
     #[account(mut, has_one = beneficiary, has_one = registrar)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
@@ -781,16 +783,16 @@ pub struct Stake<'info> {
 pub struct StartUnstake<'info> {
     // Stake instance globals.
     #[account(has_one = reward_event_q)]
-    registrar: ProgramAccount<'info, Registrar>,
-    reward_event_q: ProgramAccount<'info, RewardQueue>,
+    registrar: Account<'info, Registrar>,
+    reward_event_q: Account<'info, RewardQueue>,
     #[account(mut)]
     pool_mint: AccountInfo<'info>,
 
     // Member.
     #[account(zero)]
-    pending_withdrawal: ProgramAccount<'info, PendingWithdrawal>,
+    pending_withdrawal: Account<'info, PendingWithdrawal>,
     #[account(has_one = beneficiary, has_one = registrar)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
@@ -813,14 +815,14 @@ pub struct StartUnstake<'info> {
 
 #[derive(Accounts)]
 pub struct EndUnstake<'info> {
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
 
     #[account(has_one = registrar, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(mut, has_one = registrar, has_one = member, constraint = !pending_withdrawal.burned)]
-    pending_withdrawal: ProgramAccount<'info, PendingWithdrawal>,
+    pending_withdrawal: Account<'info, PendingWithdrawal>,
 
     // If we had ordered maps implementing Accounts we could do a constraint like
     // balances.get(pending_withdrawal.balance_id).vault == vault.key.
@@ -845,14 +847,14 @@ pub struct EndUnstake<'info> {
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     // Stake instance.
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     // Member.
     #[account(has_one = registrar, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
@@ -873,7 +875,7 @@ pub struct WithdrawLocked<'info> {
         constraint = vesting.to_account_info().owner == &registry.lockup_program,
         constraint = vesting.beneficiary == member.beneficiary,
     )]
-    vesting: CpiAccount<'info, Vesting>,
+    vesting: Box<Account<'info, Vesting>>,
     #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
     vesting_vault: AccountInfo<'info>,
     #[account(signer)]
@@ -884,7 +886,7 @@ pub struct WithdrawLocked<'info> {
         mut,
         constraint = member_vault.to_account_info().key == &member.balances_locked.vault
     )]
-    member_vault: CpiAccount<'info, TokenAccount>,
+    member_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
@@ -893,9 +895,9 @@ pub struct WithdrawLocked<'info> {
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Box<Account<'info, Registrar>>,
     #[account(has_one = registrar, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Box<Account<'info, Member>>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
 }
@@ -904,15 +906,15 @@ pub struct WithdrawLocked<'info> {
 pub struct DropReward<'info> {
     // Staking instance.
     #[account(has_one = reward_event_q, has_one = pool_mint)]
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     #[account(mut)]
-    reward_event_q: ProgramAccount<'info, RewardQueue>,
-    pool_mint: CpiAccount<'info, Mint>,
+    reward_event_q: Account<'info, RewardQueue>,
+    pool_mint: Account<'info, Mint>,
     // Vendor.
     #[account(zero)]
-    vendor: ProgramAccount<'info, RewardVendor>,
+    vendor: Account<'info, RewardVendor>,
     #[account(mut)]
-    vendor_vault: CpiAccount<'info, TokenAccount>,
+    vendor_vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
     depositor: AccountInfo<'info>,
@@ -963,10 +965,10 @@ pub struct ClaimRewardLocked<'info> {
 #[derive(Accounts)]
 pub struct ClaimRewardCommon<'info> {
     // Stake instance.
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     // Member.
     #[account(mut, has_one = registrar, has_one = beneficiary)]
-    member: ProgramAccount<'info, Member>,
+    member: Account<'info, Member>,
     #[account(signer)]
     beneficiary: AccountInfo<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
@@ -975,7 +977,7 @@ pub struct ClaimRewardCommon<'info> {
     balances_locked: BalanceSandboxAccounts<'info>,
     // Vendor.
     #[account(has_one = registrar, has_one = vault)]
-    vendor: ProgramAccount<'info, RewardVendor>,
+    vendor: Account<'info, RewardVendor>,
     #[account(mut)]
     vault: AccountInfo<'info>,
     #[account(
@@ -992,12 +994,12 @@ pub struct ClaimRewardCommon<'info> {
 #[derive(Accounts)]
 pub struct ExpireReward<'info> {
     // Staking instance globals.
-    registrar: ProgramAccount<'info, Registrar>,
+    registrar: Account<'info, Registrar>,
     // Vendor.
     #[account(mut, has_one = registrar, has_one = vault, has_one = expiry_receiver)]
-    vendor: ProgramAccount<'info, RewardVendor>,
+    vendor: Account<'info, RewardVendor>,
     #[account(mut)]
-    vault: CpiAccount<'info, TokenAccount>,
+    vault: Account<'info, TokenAccount>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), vendor.to_account_info().key.as_ref()],
         bump = vendor.nonce
@@ -1303,8 +1305,8 @@ fn reward_eligible(cmn: &ClaimRewardCommon) -> Result<()> {
 // Asserts the user calling the `Stake` instruction has no rewards available
 // in the reward queue.
 pub fn no_available_rewards<'info>(
-    reward_q: &ProgramAccount<'info, RewardQueue>,
-    member: &ProgramAccount<'info, Member>,
+    reward_q: &Account<'info, RewardQueue>,
+    member: &Account<'info, Member>,
     balances: &BalanceSandboxAccounts<'info>,
     balances_locked: &BalanceSandboxAccounts<'info>,
 ) -> Result<()> {

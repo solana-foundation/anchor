@@ -2,6 +2,8 @@
 
 use anchor_lang::prelude::*;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod chat {
     use super::*;
@@ -45,7 +47,7 @@ pub struct CreateUser<'info> {
         payer = authority,
         space = 320,
     )]
-    user: ProgramAccount<'info, User>,
+    user: Account<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
@@ -64,7 +66,7 @@ pub struct SendMessage<'info> {
         bump = user.bump,
         has_one = authority,
     )]
-    user: ProgramAccount<'info, User>,
+    user: Account<'info, User>,
     #[account(signer)]
     authority: AccountInfo<'info>,
     #[account(mut)]

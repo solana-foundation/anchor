@@ -19,3 +19,5 @@ quote = "1.0"
 syn = { version = "1.0.60", features = ["full"] }
 anyhow = "1.0.32"
 anchor-syn = { path = "../../syn", version = "0.14.0", features = ["hash"] }
+rustversion = "1.0.3"
+bs58 = "0.4.0"

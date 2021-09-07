@@ -3,6 +3,8 @@
 
 use anchor_lang::prelude::*;
 
+declare_id!("EHthziFziNoac9LBGxEaVN47Y3uUiRoXvqAiR6oes4iU");
+
 #[program]
 mod composite {
     use super::*;
@@ -28,9 +30,9 @@ mod composite {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(zero)]
-    pub dummy_a: ProgramAccount<'info, DummyA>,
+    pub dummy_a: Account<'info, DummyA>,
     #[account(zero)]
-    pub dummy_b: ProgramAccount<'info, DummyB>,
+    pub dummy_b: Account<'info, DummyB>,
 }
 
 #[derive(Accounts)]
@@ -42,13 +44,13 @@ pub struct CompositeUpdate<'info> {
 #[derive(Accounts)]
 pub struct Foo<'info> {
     #[account(mut)]
-    pub dummy_a: ProgramAccount<'info, DummyA>,
+    pub dummy_a: Account<'info, DummyA>,
 }
 
 #[derive(Accounts)]
 pub struct Bar<'info> {
     #[account(mut)]
-    pub dummy_b: ProgramAccount<'info, DummyB>,
+    pub dummy_b: Account<'info, DummyB>,
 }
 
 #[account]
