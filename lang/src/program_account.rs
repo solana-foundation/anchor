@@ -156,6 +156,12 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAcco
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramAccount<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        #[cfg(feature = "anchor-debug")]
+        if !self.inner.info.is_writable {
+            solana_program::msg!("The given ProgramAccount is not mutable");
+            panic!();
+        }
+
         &mut DerefMut::deref_mut(&mut self.inner).account
     }
 }
