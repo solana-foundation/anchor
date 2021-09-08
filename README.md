@@ -87,7 +87,7 @@ pub struct Counter {
 ```
 
 For more, see the [examples](https://github.com/project-serum/anchor/tree/master/examples)
-and [tests]((https://github.com/project-serum/anchor/tree/master/tests)) directories.
+and [tests](https://github.com/project-serum/anchor/tree/master/tests) directories.
 
 ## Contribution
 
