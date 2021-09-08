@@ -5,14 +5,14 @@
 [![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/739225212658122886)
 [![License](https://img.shields.io/github/license/project-serum/anchor?color=ff69b4)](https://opensource.org/licenses/Apache-2.0)
 
-Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools.
+Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools for writing smart contracts.
 
 - Rust eDSL for writing Solana programs
 - [IDL](https://en.wikipedia.org/wiki/Interface_description_language) specification
 - TypeScript package for generating clients from IDL
 - CLI and workspace management for developing complete applications
 
-If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js) or Parity's [Ink!](https://github.com/paritytech/ink), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
+If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
 
 ## Getting Started
 
@@ -41,6 +41,8 @@ can increment the count.
 ```rust
 use anchor_lang::prelude::*;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 mod counter {
     use super::*;
@@ -62,7 +64,7 @@ mod counter {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init, payer = authority, space = 48)]
-    pub counter: ProgramAccount<'info, Counter>,
+    pub counter: Account<'info, Counter>,
     #[account(signer)]
     pub authority: AccountInfo<'info>,
     #[account(address = system_program::ID)]
@@ -72,7 +74,7 @@ pub struct Initialize<'info> {
 #[derive(Accounts)]
 pub struct Increment<'info> {
     #[account(mut, has_one = authority)]
-    pub counter: ProgramAccount<'info, Counter>,
+    pub counter: Account<'info, Counter>,
     #[account(signer)]
     pub authority: AccountInfo<'info>,
 }
@@ -85,7 +87,7 @@ pub struct Counter {
 ```
 
 For more, see the [examples](https://github.com/project-serum/anchor/tree/master/examples)
-directory.
+and [tests]((https://github.com/project-serum/anchor/tree/master/tests)) directories.
 
 ## Contribution
 
@@ -102,14 +104,6 @@ For simple documentation changes, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue
 and engage with the maintainers in [Discord](https://discord.com/channels/739225212658122886).
-
-When contributing, please make sure your code adheres to some basic coding guidlines:
-
-* Code must be formatted with the configured formatters (e.g. rustfmt and prettier).
-* Comment lines should be no longer than 80 characters and written with proper grammar and punctuation.
-* Commit messages should be prefixed with the package(s) they modify. Changes affecting multiple
-  packages should list all packages. In rare cases, changes may omit the package name prefix.
-* All notable changes should be documented in the [Change Log](https://github.com/project-serum/anchor/blob/master/CHANGELOG.md).
 
 ## License
 
