@@ -1,4 +1,6 @@
-use crate::config::{AnchorPackage, Config, ConfigOverride, Manifest, ProgramWorkspace, WithPath};
+use crate::config::{
+    AnchorPackage, Config, ConfigOverride, Manifest, ProgramDeployment, ProgramWorkspace, WithPath,
+};
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
@@ -23,6 +25,7 @@ use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -314,6 +317,16 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
         }
         .to_owned(),
     );
+    let mut localnet = BTreeMap::new();
+    localnet.insert(
+        name.to_string(),
+        ProgramDeployment {
+            address: template::default_program_id(),
+            path: None,
+            idl: None,
+        },
+    );
+    cfg.programs.insert(Cluster::Localnet, localnet);
     let toml = cfg.to_string();
     let mut file = File::create("Anchor.toml")?;
     file.write_all(toml.as_bytes())?;

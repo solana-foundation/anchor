@@ -329,12 +329,12 @@ impl Config {
 struct _Config {
     anchor_version: Option<String>,
     solana_version: Option<String>,
+    programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
     registry: Option<RegistryConfig>,
     provider: Provider,
-    test: Option<Test>,
-    scripts: Option<ScriptsConfig>,
-    programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
     workspace: Option<WorkspaceConfig>,
+    scripts: Option<ScriptsConfig>,
+    test: Option<Test>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -409,7 +409,7 @@ fn ser_programs(
                 .map(|(name, deployment)| {
                     (
                         name.clone(),
-                        serde_json::to_value(&_ProgramDeployment::from(deployment)).unwrap(),
+                        to_value(&_ProgramDeployment::from(deployment)),
                     )
                 })
                 .collect::<BTreeMap<String, serde_json::Value>>();
@@ -417,6 +417,14 @@ fn ser_programs(
         })
         .collect::<BTreeMap<String, BTreeMap<String, serde_json::Value>>>()
 }
+
+fn to_value(dep: &_ProgramDeployment) -> serde_json::Value {
+    if dep.path.is_none() && dep.idl.is_none() {
+        return serde_json::Value::String(dep.address.to_string());
+    }
+    serde_json::to_value(dep).unwrap()
+}
+
 fn deser_programs(
     programs: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
 ) -> Result<BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>> {

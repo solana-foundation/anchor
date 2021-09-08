@@ -2,6 +2,13 @@ use crate::config::ProgramWorkspace;
 use crate::VERSION;
 use anyhow::Result;
 use heck::{CamelCase, SnakeCase};
+use solana_sdk::pubkey::Pubkey;
+
+pub fn default_program_id() -> Pubkey {
+    "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+        .parse()
+        .unwrap()
+}
 
 pub fn virtual_manifest() -> &'static str {
     r#"[workspace]
@@ -77,8 +84,7 @@ main();
 
 pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
-        r#"
-import * as anchor from '@project-serum/anchor';
+        r#"import * as anchor from '@project-serum/anchor';
 
 // Deploy script defined by the user.
 const userScript = require("{0}");
@@ -104,8 +110,7 @@ main();
 }
 
 pub fn deploy_script() -> &'static str {
-    r#"
-// Migrations are an early feature. Currently, they're nothing more than this
+    r#"// Migrations are an early feature. Currently, they're nothing more than this
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
@@ -121,8 +126,7 @@ module.exports = async function (provider) {
 }
 
 pub fn ts_deploy_script() -> &'static str {
-    r#"
-// Migrations are an early feature. Currently, they're nothing more than this
+    r#"// Migrations are an early feature. Currently, they're nothing more than this
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
@@ -147,6 +151,8 @@ pub fn lib_rs(name: &str) -> String {
     format!(
         r#"use anchor_lang::prelude::*;
 
+declare_id!("{}");
+
 #[program]
 pub mod {} {{
     use super::*;
@@ -158,6 +164,7 @@ pub mod {} {{
 #[derive(Accounts)]
 pub struct Initialize {{}}
 "#,
+        default_program_id(),
         name.to_snake_case(),
     )
 }
@@ -194,7 +201,7 @@ pub fn package_json() -> String {
         "chai": "^4.3.4",
         "mocha": "^9.0.3"
     }}
-}}      
+}}
 "#,
         VERSION
     )
@@ -213,7 +220,7 @@ pub fn ts_package_json() -> String {
         "@types/mocha": "^9.0.0",
         "typescript": "^4.3.5"
     }}
-}}     
+}}
 "#,
         VERSION
     )
@@ -261,6 +268,7 @@ pub fn git_ignore() -> &'static str {
 .DS_Store
 target
 **/*.rs.bk
+node_modules
 "#
 }
 
