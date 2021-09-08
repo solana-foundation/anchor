@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.15.0] - 2021-09-07
+
 ### Features
 
 * lang: Add new `Account` type to replace `ProgramAccount` and `CpiAccount`, both of which are deprecated ([#686](https://github.com/project-serum/anchor/pull/686)).

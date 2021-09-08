@@ -30,7 +30,7 @@ have an `Anchor.toml` to define the build.
 An example `Anchor.toml` config looks as follows,
 
 ```toml
-anchor_version = "0.14.0"
+anchor_version = "0.15.0"
 
 [workspace]
 members = ["programs/multisig"]
@@ -40,6 +40,9 @@ cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
+multisig = "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u"
+
+[programs.localnet]
 multisig = "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u"
 ```
 
