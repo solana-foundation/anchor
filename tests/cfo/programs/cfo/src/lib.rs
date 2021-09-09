@@ -364,7 +364,7 @@ pub struct CreateOfficerToken<'info> {
         payer = payer,
     )]
     token: Account<'info, TokenAccount>,
-    #[account(owner = token_program)]
+    #[account(owner = spl_token::ID)]
     mint: AccountInfo<'info>,
     #[account(mut, signer)]
     payer: AccountInfo<'info>,
@@ -392,7 +392,7 @@ pub struct SweepFees<'info> {
     officer: Account<'info, Officer>,
     #[account(
         mut,
-        owner = dex.token_program,
+        owner = spl_token::ID,
         seeds = [officer.key().as_ref(), mint.key().as_ref()],
         bump,
     )]
@@ -423,12 +423,12 @@ pub struct SwapToUsdc<'info> {
     officer: Account<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
-        owner = token_program,
+        owner = spl_token::ID,
         constraint = &officer.treasury != from_vault.key,
         constraint = &officer.stake != from_vault.key,
     )]
     from_vault: AccountInfo<'info>,
-    #[account(owner = token_program)]
+    #[account(owner = spl_token::ID)]
     quote_vault: AccountInfo<'info>,
     #[account(seeds = [officer.key().as_ref(), mint::USDC.as_ref()], bump)]
     usdc_vault: AccountInfo<'info>,
@@ -452,12 +452,12 @@ pub struct SwapToSrm<'info> {
     officer: Account<'info, Officer>,
     market: DexMarketAccounts<'info>,
     #[account(
-        owner = token_program,
+        owner = spl_token::ID,
         constraint = &officer.treasury != from_vault.key,
         constraint = &officer.stake != from_vault.key,
     )]
     from_vault: AccountInfo<'info>,
-    #[account(owner = token_program)]
+    #[account(owner = spl_token::ID)]
     quote_vault: AccountInfo<'info>,
     #[account(
         seeds = [officer.key().as_ref(), mint::SRM.as_ref()],
@@ -518,10 +518,7 @@ pub struct Distribute<'info> {
     officer: Account<'info, Officer>,
     treasury: AccountInfo<'info>,
     stake: AccountInfo<'info>,
-    #[account(
-        owner = token_program,
-        constraint = srm_vault.mint == mint::SRM,
-    )]
+    #[account(constraint = srm_vault.mint == mint::SRM)]
     srm_vault: Account<'info, TokenAccount>,
     #[account(address = mint::SRM)]
     mint: AccountInfo<'info>,
@@ -551,7 +548,7 @@ pub struct DropStakeReward<'info> {
     mint: AccountInfo<'info>,
     srm: DropStakeRewardPool<'info>,
     msrm: DropStakeRewardPool<'info>,
-    #[account(owner = registry_program)]
+    #[account(owner = *registry_program.key)]
     msrm_registrar: Box<Account<'info, Registrar>>,
     #[account(address = token::ID)]
     token_program: AccountInfo<'info>,

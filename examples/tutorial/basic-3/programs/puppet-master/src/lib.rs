@@ -1,6 +1,6 @@
 // #region core
 use anchor_lang::prelude::*;
-use puppet::{Puppet, SetData};
+use puppet::{self, Puppet, SetData};
 
 declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 
@@ -19,8 +19,9 @@ mod puppet_master {
 
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
-    #[account(mut, owner = puppet_program)]
+    #[account(mut)]
     pub puppet: Account<'info, Puppet>,
+    #[account(address = puppet::ID)]
     pub puppet_program: AccountInfo<'info>,
 }
 // #endregion core

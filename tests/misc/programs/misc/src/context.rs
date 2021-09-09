@@ -96,7 +96,7 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct TestOwner<'info> {
-    #[account(owner = misc)]
+    #[account(owner = *misc.key)]
     pub data: AccountInfo<'info>,
     pub misc: AccountInfo<'info>,
 }

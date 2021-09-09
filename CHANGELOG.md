@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+* lang: `#[account(owner = <pubkey>)]` now requires a `Pubkey` instead of an account ([#691](https://github.com/project-serum/anchor/pull/691)).
+
 ## [0.15.0] - 2021-09-07
 
 ### Features
