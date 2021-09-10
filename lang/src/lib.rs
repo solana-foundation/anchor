@@ -50,11 +50,22 @@ mod sysvar;
 mod vec;
 
 pub use crate::account::Account;
-pub use crate::context::{Context, CpiContext, CpiStateContext};
+#[doc(hidden)]
+#[allow(deprecated)]
+pub use crate::context::CpiStateContext;
+pub use crate::context::{Context, CpiContext};
+#[doc(hidden)]
+#[allow(deprecated)]
 pub use crate::cpi_account::CpiAccount;
+#[doc(hidden)]
+#[allow(deprecated)]
 pub use crate::cpi_state::CpiState;
 pub use crate::loader::Loader;
+#[doc(hidden)]
+#[allow(deprecated)]
 pub use crate::program_account::ProgramAccount;
+#[doc(hidden)]
+#[allow(deprecated)]
 pub use crate::state::ProgramState;
 pub use crate::sysvar::Sysvar;
 pub use anchor_attribute_access_control::access_control;
@@ -223,10 +234,12 @@ pub mod prelude {
     pub use super::{
         access_control, account, declare_id, emit, error, event, interface, program, require,
         state, zero_copy, Account, AccountDeserialize, AccountSerialize, Accounts, AccountsExit,
-        AnchorDeserialize, AnchorSerialize, Context, CpiAccount, CpiContext, CpiState,
-        CpiStateContext, Key, Loader, ProgramAccount, ProgramState, Sysvar, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        AnchorDeserialize, AnchorSerialize, Context, CpiContext, Key, Loader, Owner,
+        ProgramAccount, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
+
+    #[allow(deprecated)]
+    pub use super::{CpiAccount, CpiState, CpiStateContext, ProgramState};
 
     pub use borsh;
     pub use solana_program::account_info::{next_account_info, AccountInfo};

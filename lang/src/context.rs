@@ -104,11 +104,13 @@ impl<'info, T: Accounts<'info>> ToAccountMetas for CpiContext<'_, '_, '_, 'info,
 
 /// Context specifying non-argument inputs for cross-program-invocations
 /// targeted at program state instructions.
+#[deprecated]
 pub struct CpiStateContext<'a, 'b, 'c, 'info, T: Accounts<'info>> {
     state: AccountInfo<'info>,
     cpi_ctx: CpiContext<'a, 'b, 'c, 'info, T>,
 }
 
+#[allow(deprecated)]
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiStateContext<'a, 'b, 'c, 'info, T> {
     pub fn new(program: AccountInfo<'info>, state: AccountInfo<'info>, accounts: T) -> Self {
         Self {
@@ -153,6 +155,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> CpiStateContext<'a, 'b, 'c, 'info, T
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountMetas
     for CpiStateContext<'a, 'b, 'c, 'info, T>
 {
@@ -167,6 +170,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountMetas
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> ToAccountInfos<'info>
     for CpiStateContext<'a, 'b, 'c, 'info, T>
 {

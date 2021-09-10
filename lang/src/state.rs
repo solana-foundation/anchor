@@ -1,6 +1,8 @@
 use crate::error::ErrorCode;
+#[allow(deprecated)]
+use crate::CpiAccount;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, CpiAccount, Key, ToAccountInfo,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, ToAccountInfo,
     ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -14,6 +16,7 @@ pub const PROGRAM_STATE_SEED: &str = "unversioned";
 
 /// Boxed container for the program state singleton.
 #[derive(Clone)]
+#[deprecated]
 pub struct ProgramState<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     inner: Box<Inner<'info, T>>,
 }
@@ -23,6 +26,8 @@ struct Inner<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     info: AccountInfo<'info>,
     account: T,
 }
+
+#[allow(deprecated)]
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
     fn new(info: AccountInfo<'a>, account: T) -> ProgramState<'a, T> {
@@ -60,6 +65,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> Accounts<'info> for ProgramState<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Clone,
@@ -79,6 +85,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas
     for ProgramState<'info, T>
 {
@@ -92,6 +99,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
     for ProgramState<'info, T>
 {
@@ -100,6 +108,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'in
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'info>
     for ProgramState<'info, T>
 {
@@ -108,6 +117,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'inf
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
     for ProgramState<'info, T>
 {
@@ -116,6 +126,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramState<'a, T> {
     type Target = T;
 
@@ -124,12 +135,14 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramStat
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramState<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut DerefMut::deref_mut(&mut self.inner).account
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> From<CpiAccount<'info, T>> for ProgramState<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Clone,
@@ -139,6 +152,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info>
     for ProgramState<'info, T>
 {
@@ -159,6 +173,7 @@ pub fn address(program_id: &Pubkey) -> Pubkey {
     Pubkey::create_with_seed(&base, seed, owner).unwrap()
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramState<'info, T> {
     fn key(&self) -> Pubkey {
         *self.inner.info.key

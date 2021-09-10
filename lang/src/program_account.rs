@@ -1,6 +1,8 @@
 use crate::error::ErrorCode;
+#[allow(deprecated)]
+use crate::CpiAccount;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CpiAccount, Key,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key,
     ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -166,6 +168,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramA
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> From<CpiAccount<'info, T>> for ProgramAccount<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Clone,

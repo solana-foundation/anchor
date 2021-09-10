@@ -9,11 +9,13 @@ use std::ops::{Deref, DerefMut};
 
 /// Container for any account *not* owned by the current program.
 #[derive(Clone)]
+#[deprecated(note = "Please use Account instead")]
 pub struct CpiAccount<'a, T: AccountDeserialize + Clone> {
     info: AccountInfo<'a>,
     account: Box<T>,
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
     fn new(info: AccountInfo<'a>, account: Box<T>) -> CpiAccount<'a, T> {
         Self { info, account }
@@ -41,6 +43,7 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> Accounts<'info> for CpiAccount<'info, T>
 where
     T: AccountDeserialize + Clone,
@@ -62,6 +65,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> ToAccountMetas for CpiAccount<'info, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
@@ -73,24 +77,28 @@ impl<'info, T: AccountDeserialize + Clone> ToAccountMetas for CpiAccount<'info, 
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> ToAccountInfos<'info> for CpiAccount<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.info.clone()]
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> ToAccountInfo<'info> for CpiAccount<'info, T> {
     fn to_account_info(&self) -> AccountInfo<'info> {
         self.info.clone()
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> AsRef<AccountInfo<'info>> for CpiAccount<'info, T> {
     fn as_ref(&self) -> &AccountInfo<'info> {
         &self.info
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountDeserialize + Clone> Deref for CpiAccount<'a, T> {
     type Target = T;
 
@@ -99,12 +107,14 @@ impl<'a, T: AccountDeserialize + Clone> Deref for CpiAccount<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountDeserialize + Clone> DerefMut for CpiAccount<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> AccountsExit<'info> for CpiAccount<'info, T> {
     fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
         // no-op
@@ -112,12 +122,14 @@ impl<'info, T: AccountDeserialize + Clone> AccountsExit<'info> for CpiAccount<'i
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountDeserialize + Clone> Key for CpiAccount<'info, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> From<Account<'info, T>> for CpiAccount<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
