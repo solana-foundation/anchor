@@ -10,6 +10,7 @@ use clap::Clap;
 use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
+use heck::SnakeCase;
 use rand::rngs::OsRng;
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
@@ -319,7 +320,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
     );
     let mut localnet = BTreeMap::new();
     localnet.insert(
-        name.to_string(),
+        name.to_string().to_snake_case(),
         ProgramDeployment {
             address: template::default_program_id(),
             path: None,
