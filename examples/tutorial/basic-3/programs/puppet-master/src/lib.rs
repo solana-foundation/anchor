@@ -1,6 +1,7 @@
 // #region core
 use anchor_lang::prelude::*;
-use puppet::{self, Puppet, SetData};
+use puppet::program::Puppet;
+use puppet::{self, Data, SetData};
 
 declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 
@@ -8,7 +9,7 @@ declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 mod puppet_master {
     use super::*;
     pub fn pull_strings(ctx: Context<PullStrings>, data: u64) -> ProgramResult {
-        let cpi_program = ctx.accounts.puppet_program.clone();
+        let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let cpi_accounts = SetData {
             puppet: ctx.accounts.puppet.clone(),
         };
@@ -20,8 +21,7 @@ mod puppet_master {
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
     #[account(mut)]
-    pub puppet: Account<'info, Puppet>,
-    #[account(address = puppet::ID)]
-    pub puppet_program: AccountInfo<'info>,
+    pub puppet: Account<'info, Data>,
+    pub puppet_program: Program<'info, Puppet>,
 }
 // #endregion core

@@ -178,6 +178,9 @@ impl Field {
             Ty::AccountInfo => quote! {
                 AccountInfo
             },
+            Ty::Signer => quote! {
+                Signer
+            },
             Ty::Account(AccountTy { boxed, .. }) => {
                 if *boxed {
                     quote! {
@@ -271,7 +274,9 @@ impl Field {
             Ty::Sysvar(_) => quote! { anchor_lang::Sysvar },
             Ty::CpiState(_) => quote! { anchor_lang::CpiState },
             Ty::ProgramState(_) => quote! { anchor_lang::ProgramState },
+            Ty::Program(_) => quote! { anchor_lang::Program },
             Ty::AccountInfo => quote! {},
+            Ty::Signer => quote! {},
         }
     }
 
@@ -280,6 +285,9 @@ impl Field {
         match &self.ty {
             Ty::AccountInfo => quote! {
                 AccountInfo
+            },
+            Ty::Signer => quote! {
+                Signer
             },
             Ty::ProgramAccount(ty) => {
                 let ident = &ty.account_type_path;
@@ -329,6 +337,12 @@ impl Field {
                 SysvarTy::Instructions => quote! {Instructions},
                 SysvarTy::Rewards => quote! {Rewards},
             },
+            Ty::Program(ty) => {
+                let program = &ty.account_type_path;
+                quote! {
+                    #program
+                }
+            }
         }
     }
 }
@@ -353,6 +367,8 @@ pub enum Ty {
     CpiAccount(CpiAccountTy),
     Sysvar(SysvarTy),
     Account(AccountTy),
+    Program(ProgramTy),
+    Signer,
 }
 
 #[derive(Debug, PartialEq)]
@@ -403,6 +419,12 @@ pub struct AccountTy {
     pub account_type_path: TypePath,
     // True if the account has been boxed via `Box<T>`.
     pub boxed: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ProgramTy {
+    // The struct type of the account.
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug)]

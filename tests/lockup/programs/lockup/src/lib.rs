@@ -2,8 +2,8 @@
 //! it's suggested to start with the other examples.
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program;
 use anchor_lang::solana_program::instruction::Instruction;
-use anchor_lang::solana_program::program;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
 mod calculator;
@@ -477,7 +477,8 @@ pub fn whitelist_relay_cpi<'info>(
     let signer = &[&seeds[..]];
     let mut accounts = transfer.to_account_infos();
     accounts.extend_from_slice(&remaining_accounts);
-    program::invoke_signed(&relay_instruction, &accounts, signer).map_err(Into::into)
+    solana_program::program::invoke_signed(&relay_instruction, &accounts, signer)
+        .map_err(Into::into)
 }
 
 pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<()> {

@@ -1,8 +1,10 @@
 use crate::program_codegen::dispatch;
 use crate::Program;
+use heck::CamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     let fallback_maybe = dispatch::gen_fallback(program).unwrap_or(quote! {
         Err(anchor_lang::__private::ErrorCode::InstructionMissing.into());
     });
@@ -64,6 +66,30 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::msg!(&e.to_string());
                     e
                 })
+        }
+
+        pub mod program {
+            use super::*;
+
+            /// Type representing the program.
+            #[derive(Clone)]
+            pub struct #name;
+
+            impl anchor_lang::AccountDeserialize for #name {
+                fn try_deserialize(buf: &mut &[u8]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
+                    #name::try_deserialize_unchecked(buf)
+                }
+
+                fn try_deserialize_unchecked(_buf: &mut &[u8]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
+                    Ok(#name)
+                }
+            }
+
+            impl anchor_lang::Id for #name {
+                fn id() -> Pubkey {
+                    ID
+                }
+            }
         }
     }
 }

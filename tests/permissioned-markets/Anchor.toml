@@ -2,6 +2,10 @@
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
+[programs.localnet]
+permissioned_markets = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+permissioned_markets_middleware = "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
+
 [[test.genesis]]
 address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
 program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"

@@ -33,8 +33,7 @@ pub mod basic_4 {
 
 #[derive(Accounts)]
 pub struct Auth<'info> {
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 // #endregion code
 

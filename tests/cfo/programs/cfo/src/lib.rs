@@ -1,12 +1,15 @@
 // WIP. This program has been checkpointed and is not production ready.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::sysvar::instructions as tx_instructions;
-use anchor_spl::token::{self, Mint, TokenAccount};
-use anchor_spl::{dex, mint};
+use anchor_spl::dex::{self, Dex};
+use anchor_spl::mint;
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use lockup::program::Lockup;
+use registry::program::Registry;
 use registry::{Registrar, RewardVendorKind};
 use std::convert::TryInto;
+use swap::program::Swap;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -29,7 +32,7 @@ pub mod cfo {
         let officer = &mut ctx.accounts.officer;
         officer.authority = *ctx.accounts.authority.key;
         officer.swap_program = *ctx.accounts.swap_program.key;
-        officer.dex_program = *ctx.accounts.dex_program.key;
+        officer.dex_program = ctx.accounts.dex_program.key();
         officer.distribution = d;
         officer.registrar = registrar;
         officer.msrm_registrar = msrm_registrar;
@@ -333,21 +336,16 @@ pub struct CreateOfficer<'info> {
         token::authority = officer,
     )]
     treasury: Box<Account<'info, TokenAccount>>,
-    #[account(signer)]
     authority: AccountInfo<'info>,
     #[cfg_attr(
         not(feature = "test"),
         account(address = mint::SRM),
     )]
-    mint: AccountInfo<'info>,
-    #[account(executable)]
-    dex_program: AccountInfo<'info>,
-    #[account(executable)]
-    swap_program: AccountInfo<'info>,
-    #[account(address = system_program::ID)]
-    system_program: AccountInfo<'info>,
-    #[account(address = spl_token::ID)]
-    token_program: AccountInfo<'info>,
+    mint: Box<Account<'info, Mint>>,
+    dex_program: Program<'info, Dex>,
+    swap_program: Program<'info, Swap>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
 
@@ -366,12 +364,10 @@ pub struct CreateOfficerToken<'info> {
     token: Account<'info, TokenAccount>,
     #[account(owner = spl_token::ID)]
     mint: AccountInfo<'info>,
-    #[account(mut, signer)]
-    payer: AccountInfo<'info>,
-    #[account(address = system_program::ID)]
-    system_program: AccountInfo<'info>,
-    #[account(address = spl_token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(mut)]
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
 
@@ -379,8 +375,7 @@ pub struct CreateOfficerToken<'info> {
 pub struct SetDistribution<'info> {
     #[account(has_one = authority)]
     officer: Account<'info, Officer>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -398,26 +393,25 @@ pub struct SweepFees<'info> {
     )]
     sweep_vault: Account<'info, TokenAccount>,
     mint: AccountInfo<'info>,
-    dex: Dex<'info>,
+    dex: DexAccounts<'info>,
 }
 
 #[derive(Accounts)]
-pub struct Dex<'info> {
+pub struct DexAccounts<'info> {
     #[account(mut)]
     market: AccountInfo<'info>,
     #[account(mut)]
     pc_vault: AccountInfo<'info>,
     sweep_authority: AccountInfo<'info>,
     vault_signer: AccountInfo<'info>,
-    dex_program: AccountInfo<'info>,
-    #[account(address = spl_token::ID)]
-    token_program: AccountInfo<'info>,
+    dex_program: Program<'info, Dex>,
+    token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
 pub struct SwapToUsdc<'info> {
     #[account(
-        seeds = [dex_program.key().as_ref()],
+        seeds = [dex_program.key.as_ref()],
         bump = officer.bumps.bump,
     )]
     officer: Account<'info, Officer>,
@@ -432,12 +426,9 @@ pub struct SwapToUsdc<'info> {
     quote_vault: AccountInfo<'info>,
     #[account(seeds = [officer.key().as_ref(), mint::USDC.as_ref()], bump)]
     usdc_vault: AccountInfo<'info>,
-    #[account(address = swap::ID)]
-    swap_program: AccountInfo<'info>,
-    #[account(address = dex::ID)]
-    dex_program: AccountInfo<'info>,
-    #[account(address = token::ID)]
-    token_program: AccountInfo<'info>,
+    swap_program: Program<'info, Swap>,
+    dex_program: Program<'info, Dex>,
+    token_program: Program<'info, Token>,
     #[account(address = tx_instructions::ID)]
     instructions: AccountInfo<'info>,
     rent: Sysvar<'info, Rent>,
@@ -446,7 +437,7 @@ pub struct SwapToUsdc<'info> {
 #[derive(Accounts)]
 pub struct SwapToSrm<'info> {
     #[account(
-        seeds = [dex_program.key().as_ref()],
+        seeds = [dex_program.key.as_ref()],
         bump = officer.bumps.bump,
     )]
     officer: Account<'info, Officer>,
@@ -466,12 +457,9 @@ pub struct SwapToSrm<'info> {
         constraint = &officer.stake != from_vault.key,
     )]
     srm_vault: AccountInfo<'info>,
-    #[account(address = swap::ID)]
-    swap_program: AccountInfo<'info>,
-    #[account(address = dex::ID)]
-    dex_program: AccountInfo<'info>,
-    #[account(address = token::ID)]
-    token_program: AccountInfo<'info>,
+    swap_program: Program<'info, Swap>,
+    dex_program: Program<'info, Dex>,
+    token_program: Program<'info, Token>,
     #[account(address = tx_instructions::ID)]
     instructions: AccountInfo<'info>,
     rent: Sysvar<'info, Rent>,
@@ -522,10 +510,8 @@ pub struct Distribute<'info> {
     srm_vault: Account<'info, TokenAccount>,
     #[account(address = mint::SRM)]
     mint: AccountInfo<'info>,
-    #[account(address = spl_token::ID)]
-    token_program: AccountInfo<'info>,
-    #[account(address = dex::ID)]
-    dex_program: AccountInfo<'info>,
+    token_program: Program<'info, Token>,
+    dex_program: Program<'info, Dex>,
 }
 
 #[derive(Accounts)]
@@ -548,16 +534,11 @@ pub struct DropStakeReward<'info> {
     mint: AccountInfo<'info>,
     srm: DropStakeRewardPool<'info>,
     msrm: DropStakeRewardPool<'info>,
-    #[account(owner = *registry_program.key)]
     msrm_registrar: Box<Account<'info, Registrar>>,
-    #[account(address = token::ID)]
-    token_program: AccountInfo<'info>,
-    #[account(address = registry::ID)]
-    registry_program: AccountInfo<'info>,
-    #[account(address = lockup::ID)]
-    lockup_program: AccountInfo<'info>,
-    #[account(address = dex::ID)]
-    dex_program: AccountInfo<'info>,
+    token_program: Program<'info, Token>,
+    registry_program: Program<'info, Registry>,
+    lockup_program: Program<'info, Lockup>,
+    dex_program: Program<'info, Dex>,
     clock: Sysvar<'info, Clock>,
     rent: Sysvar<'info, Rent>,
 }
@@ -628,7 +609,7 @@ impl<'info> From<&SweepFees<'info>> for CpiContext<'_, '_, '_, 'info, dex::Sweep
             vault_signer: sweep.dex.vault_signer.to_account_info(),
             token_program: sweep.dex.token_program.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 
@@ -655,7 +636,7 @@ impl<'info> From<&SwapToSrm<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swap
             token_program: accs.token_program.to_account_info(),
             rent: accs.rent.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 
@@ -682,7 +663,7 @@ impl<'info> From<&SwapToUsdc<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swa
             token_program: accs.token_program.to_account_info(),
             rent: accs.rent.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 
@@ -694,7 +675,7 @@ impl<'info> From<&Distribute<'info>> for CpiContext<'_, '_, '_, 'info, token::Bu
             to: accs.srm_vault.to_account_info(),
             authority: accs.officer.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 
@@ -710,11 +691,11 @@ impl<'info> DropStakeReward<'info> {
             vendor_vault: CpiAccount::try_from(&self.srm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),
-            token_program: self.token_program.clone(),
+            token_program: self.token_program.to_account_info(),
             clock: self.clock.clone(),
             rent: self.rent.clone(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 
     fn into_msrm_reward(&self) -> CpiContext<'_, '_, '_, 'info, registry::DropReward<'info>> {
@@ -728,43 +709,43 @@ impl<'info> DropStakeReward<'info> {
             vendor_vault: CpiAccount::try_from(&self.msrm.vendor_vault).unwrap(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),
-            token_program: self.token_program.clone(),
+            token_program: self.token_program.to_account_info(),
             clock: self.clock.clone(),
             rent: self.rent.clone(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 
 impl<'info> Distribute<'info> {
     fn into_burn(&self) -> CpiContext<'_, '_, '_, 'info, token::Burn<'info>> {
-        let program = self.token_program.clone();
+        let program = self.token_program.to_account_info();
         let accounts = token::Burn {
             mint: self.mint.clone(),
             to: self.srm_vault.to_account_info(),
             authority: self.officer.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 
     fn into_stake_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
-        let program = self.token_program.clone();
+        let program = self.token_program.to_account_info();
         let accounts = token::Transfer {
             from: self.srm_vault.to_account_info(),
             to: self.stake.to_account_info(),
             authority: self.officer.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 
     fn into_treasury_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
-        let program = self.token_program.clone();
+        let program = self.token_program.to_account_info();
         let accounts = token::Transfer {
             from: self.srm_vault.to_account_info(),
             to: self.treasury.to_account_info(),
             authority: self.officer.to_account_info(),
         };
-        CpiContext::new(program, accounts)
+        CpiContext::new(program.to_account_info(), accounts)
     }
 }
 

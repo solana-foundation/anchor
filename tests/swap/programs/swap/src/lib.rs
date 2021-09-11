@@ -14,6 +14,8 @@ use anchor_spl::dex::serum_dex::state::MarketState;
 use anchor_spl::token;
 use std::num::NonZeroU64;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
 #[program]
 pub mod swap {
     use super::*;

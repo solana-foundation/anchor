@@ -6,10 +6,11 @@ use serum_dex::instruction::MarketInstruction;
 use serum_dex::matching::Side;
 use serum_dex::state::OpenOrders;
 use solana_program::instruction::Instruction;
-use solana_program::program;
 use solana_program::system_program;
 use solana_program::sysvar::rent;
 use std::mem::size_of;
+
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 /// A low level example of permissioned markets.
 ///
@@ -262,7 +263,7 @@ pub mod permissioned_markets {
                 })
                 .collect();
             let signers: Vec<&[&[u8]]> = tmp_signers.iter().map(|seeds| &seeds[..]).collect();
-            program::invoke_signed(&ix, &accounts, &signers)?;
+            solana_program::program::invoke_signed(&ix, &accounts, &signers)?;
         }
 
         // CPI to the dex.
@@ -290,7 +291,7 @@ pub mod permissioned_markets {
             dex_program = dex.key,
             market = market
         };
-        program::invoke_signed(&ix, &acc_infos, &[seeds, seeds_init])?;
+        solana_program::program::invoke_signed(&ix, &acc_infos, &[seeds, seeds_init])?;
 
         // Execute post instruction.
         if let Some((ix, accounts, seeds)) = post_instruction {
@@ -302,7 +303,7 @@ pub mod permissioned_markets {
                 })
                 .collect();
             let signers: Vec<&[&[u8]]> = tmp_signers.iter().map(|seeds| &seeds[..]).collect();
-            program::invoke_signed(&ix, &accounts, &signers)?;
+            solana_program::program::invoke_signed(&ix, &accounts, &signers)?;
         }
 
         Ok(())

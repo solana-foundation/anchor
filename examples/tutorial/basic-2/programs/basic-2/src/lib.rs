@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::system_program;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -25,18 +24,16 @@ mod basic_2 {
 pub struct Create<'info> {
     #[account(init, payer = user, space = 8 + 40)]
     pub counter: Account<'info, Counter>,
-    #[account(signer)]
-    pub user: AccountInfo<'info>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct Increment<'info> {
     #[account(mut, has_one = authority)]
     pub counter: Account<'info, Counter>,
-    #[account(signer)]
-    pub authority: AccountInfo<'info>,
+    pub authority: Signer<'info>,
 }
 
 #[account]

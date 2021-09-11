@@ -305,6 +305,25 @@ impl Deref for Mint {
     }
 }
 
+#[derive(Clone)]
+pub struct Token;
+
+impl anchor_lang::AccountDeserialize for Token {
+    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        Token::try_deserialize_unchecked(buf)
+    }
+
+    fn try_deserialize_unchecked(_buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        Ok(Token)
+    }
+}
+
+impl anchor_lang::Id for Token {
+    fn id() -> Pubkey {
+        ID
+    }
+}
+
 // Field parsers to save compute. All account validation is assumed to be done
 // outside of these methods.
 pub mod accessor {

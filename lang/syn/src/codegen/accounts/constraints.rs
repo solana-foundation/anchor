@@ -515,7 +515,7 @@ pub fn generate_create_account(
                 &[
                     payer.to_account_info(),
                     #field.to_account_info(),
-                    system_program.to_account_info().clone(),
+                    system_program.to_account_info(),
                 ],
                 &[#seeds_with_nonce],
             )?;
@@ -535,7 +535,7 @@ pub fn generate_create_account(
                     &[
                         payer.to_account_info(),
                         #field.to_account_info(),
-                        system_program.to_account_info().clone(),
+                        system_program.to_account_info(),
                     ],
                 )?;
             }
@@ -547,7 +547,7 @@ pub fn generate_create_account(
                 ),
                 &[
                     #field.to_account_info(),
-                    system_program.clone(),
+                    system_program.to_account_info(),
                 ],
                 &[#seeds_with_nonce],
             )?;

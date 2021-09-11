@@ -10,6 +10,8 @@ use solana_program::entrypoint::ProgramResult;
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::rent;
 
+declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
+
 /// # Permissioned Markets
 ///
 /// This demonstrates how to create "permissioned markets" on Serum via a proxy.

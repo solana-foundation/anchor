@@ -11,6 +11,11 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: `Program` type introduced for executable accounts ([#705](https://github.com/project-serum/anchor/pull/705)).
+* lang: `Signer` type introduced for signing accounts where data is not used ([#705](https://github.com/project-serum/anchor/pull/705)).
+
 ### Breaking Changes
 
 * lang: `#[account(owner = <pubkey>)]` now requires a `Pubkey` instead of an account ([#691](https://github.com/project-serum/anchor/pull/691)).
