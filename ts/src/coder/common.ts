@@ -35,7 +35,7 @@ export function accountSize(
   }
   return idlAccount.type.fields
     .map((f) => typeSize(idl, f.type))
-    .reduce((a, b) => a + b);
+    .reduce((a, b) => a + b, 0);
 }
 
 // Returns the size of the type in bytes. For variable length types, just return
