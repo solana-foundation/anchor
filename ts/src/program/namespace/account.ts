@@ -206,14 +206,14 @@ export class AccountClient {
   /**
    * Unsubscribes from the account at the given address.
    */
-  unsubscribe(address: Address) {
+  async unsubscribe(address: Address) {
     let sub = subscriptions.get(address.toString());
     if (!sub) {
       console.warn("Address is not subscribed");
       return;
     }
     if (subscriptions) {
-      this._provider.connection
+      await this._provider.connection
         .removeAccountChangeListener(sub.listener)
         .then(() => {
           subscriptions.delete(address.toString());
