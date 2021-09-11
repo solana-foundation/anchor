@@ -320,7 +320,7 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
     );
     let mut localnet = BTreeMap::new();
     localnet.insert(
-        name.to_string().to_snake_case(),
+        name.to_snake_case(),
         ProgramDeployment {
             address: template::default_program_id(),
             path: None,
