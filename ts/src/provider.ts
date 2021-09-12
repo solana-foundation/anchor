@@ -230,11 +230,12 @@ export class NodeWallet implements Wallet {
   constructor(readonly payer: Keypair) {}
 
   static local(): NodeWallet {
+    const process = require("process");
     const payer = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
           require("fs").readFileSync(
-            require("os").homedir() + "/.config/solana/id.json",
+            process.env.ANCHOR_WALLET,
             {
               encoding: "utf-8",
             }

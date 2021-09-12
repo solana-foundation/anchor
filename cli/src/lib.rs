@@ -1355,6 +1355,7 @@ fn test(
             std::process::Command::new(program)
                 .args(args)
                 .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
+                .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()
