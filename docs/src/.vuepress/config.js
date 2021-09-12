@@ -97,5 +97,6 @@ module.exports = {
     "dehydrate",
     "@vuepress/plugin-back-to-top",
     "@vuepress/plugin-medium-zoom",
+    "@xiaopanda/vuepress-plugin-code-copy",
   ],
 };

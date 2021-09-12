@@ -15,6 +15,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@xiaopanda/vuepress-plugin-code-copy": "^1.0.3",
     "gh-pages": "^3.1.0",
     "vuepress": "^1.5.3",
     "vuepress-plugin-dehydrate": "^1.1.5",
