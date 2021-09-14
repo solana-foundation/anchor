@@ -12,6 +12,8 @@ import Coder, {
   TypesCoder,
   AccountsCoder,
 } from "./coder";
+
+import { ProgramError } from "./error";
 import { Instruction } from "./coder/instruction";
 import { Idl } from "./idl";
 import workspace from "./workspace";
@@ -71,4 +73,5 @@ export {
   Wallet,
   Address,
   EventParser,
+  ProgramError,
 };
