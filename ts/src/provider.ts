@@ -234,12 +234,9 @@ export class NodeWallet implements Wallet {
     const payer = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
-          require("fs").readFileSync(
-            process.env.ANCHOR_WALLET,
-            {
-              encoding: "utf-8",
-            }
-          )
+          require("fs").readFileSync(process.env.ANCHOR_WALLET, {
+            encoding: "utf-8",
+          })
         )
       )
     );
