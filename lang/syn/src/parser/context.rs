@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use syn::parse::{Error as ParseError, Result as ParseResult};
@@ -7,7 +7,7 @@ use syn::parse::{Error as ParseError, Result as ParseResult};
 ///
 /// Keeps track of modules defined within a crate.
 pub struct CrateContext {
-    modules: HashMap<String, ParsedModule>,
+    modules: BTreeMap<String, ParsedModule>,
 }
 
 impl CrateContext {
@@ -59,8 +59,8 @@ struct ParsedModule {
 }
 
 impl ParsedModule {
-    fn parse_recursive(root: &Path) -> Result<HashMap<String, ParsedModule>, anyhow::Error> {
-        let mut modules = HashMap::new();
+    fn parse_recursive(root: &Path) -> Result<BTreeMap<String, ParsedModule>, anyhow::Error> {
+        let mut modules = BTreeMap::new();
 
         let root_content = std::fs::read_to_string(root)?;
         let root_file = syn::parse_file(&root_content)?;
