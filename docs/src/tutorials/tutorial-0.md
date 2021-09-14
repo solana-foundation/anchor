@@ -11,6 +11,12 @@ To get started, clone the repo.
 git clone https://github.com/project-serum/anchor
 ```
 
+Next, checkout the tagged branch of the same version of the anchor cli you have installed.
+
+```bash
+git checkout tags/<version>
+```
+
 And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-0).
 
 ```bash
