@@ -388,7 +388,7 @@ impl MarketMiddleware for Logger {
     }
 
     fn settle_funds(&self, _ctx: &mut Context) -> ProgramResult {
-        msg!("proxying cancel order by client id v2");
+        msg!("proxying settle funds");
         Ok(())
     }
 
