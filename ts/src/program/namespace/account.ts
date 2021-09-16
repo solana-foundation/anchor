@@ -28,7 +28,7 @@ export default class AccountFactory {
   ): AccountNamespace {
     const accountFns: AccountNamespace = {};
 
-    idl.accounts.forEach((idlAccount) => {
+    idl.accounts?.forEach((idlAccount) => {
       const name = camelCase(idlAccount.name);
       accountFns[name] = new AccountClient(
         idl,
@@ -113,7 +113,8 @@ export class AccountClient {
     this._programId = programId;
     this._provider = provider ?? getProvider();
     this._coder = coder ?? new Coder(idl);
-    this._size = ACCOUNT_DISCRIMINATOR_SIZE + accountSize(idl, idlAccount);
+    this._size =
+      ACCOUNT_DISCRIMINATOR_SIZE + (accountSize(idl, idlAccount) ?? 0);
   }
 
   /**
@@ -177,8 +178,9 @@ export class AccountClient {
    * changes.
    */
   subscribe(address: Address, commitment?: Commitment): EventEmitter {
-    if (subscriptions.get(address.toString())) {
-      return subscriptions.get(address.toString()).ee;
+    const sub = subscriptions.get(address.toString());
+    if (sub) {
+      return sub.ee;
     }
 
     const ee = new EventEmitter();

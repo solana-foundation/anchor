@@ -1,11 +1,13 @@
-import BN from "bn.js";
-import * as web3 from "@solana/web3.js";
-import Provider, {
+export { default as BN } from "bn.js";
+export * as web3 from "@solana/web3.js";
+export {
+  default as Provider,
   getProvider,
   setProvider,
   NodeWallet as Wallet,
 } from "./provider";
-import Coder, {
+export {
+  default as Coder,
   InstructionCoder,
   EventCoder,
   StateCoder,
@@ -13,15 +15,15 @@ import Coder, {
   AccountsCoder,
 } from "./coder";
 
-import { ProgramError } from "./error";
-import { Instruction } from "./coder/instruction";
-import { Idl } from "./idl";
-import workspace from "./workspace";
-import * as utils from "./utils";
-import { Program } from "./program";
-import { Address } from "./program/common";
-import { Event } from "./program/event";
-import {
+export * from "./error";
+export { Instruction } from "./coder/instruction";
+export { Idl } from "./idl";
+export { default as workspace } from "./workspace";
+export * as utils from "./utils";
+export { Program } from "./program";
+export { Address } from "./program/common";
+export { Event } from "./program/event";
+export {
   ProgramAccount,
   AccountNamespace,
   AccountClient,
@@ -35,43 +37,5 @@ import {
   InstructionNamespace,
   InstructionFn,
 } from "./program/namespace";
-import { Context, Accounts } from "./program/context";
-import { EventParser } from "./program/event";
-
-export {
-  workspace,
-  Program,
-  AccountNamespace,
-  AccountClient,
-  StateClient,
-  RpcNamespace,
-  RpcFn,
-  SimulateNamespace,
-  SimulateFn,
-  TransactionNamespace,
-  TransactionFn,
-  InstructionNamespace,
-  InstructionFn,
-  ProgramAccount,
-  Context,
-  Accounts,
-  Coder,
-  InstructionCoder,
-  EventCoder,
-  StateCoder,
-  TypesCoder,
-  AccountsCoder,
-  Event,
-  Instruction,
-  setProvider,
-  getProvider,
-  Provider,
-  BN,
-  web3,
-  Idl,
-  utils,
-  Wallet,
-  Address,
-  EventParser,
-  ProgramError,
-};
+export { Context, Accounts } from "./program/context";
+export { EventParser } from "./program/event";

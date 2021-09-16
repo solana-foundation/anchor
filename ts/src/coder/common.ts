@@ -3,29 +3,21 @@ import { sha256 } from "js-sha256";
 import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl";
 import { IdlError } from "../error";
 
-export function accountSize(
-  idl: Idl,
-  idlAccount: IdlTypeDef
-): number | undefined {
+export function accountSize(idl: Idl, idlAccount: IdlTypeDef): number {
   if (idlAccount.type.kind === "enum") {
     let variantSizes = idlAccount.type.variants.map(
       (variant: IdlEnumVariant) => {
         if (variant.fields === undefined) {
           return 0;
         }
-        return (
-          variant.fields
-            // @ts-ignore
-            .map((f: IdlField | IdlType) => {
-              // @ts-ignore
-              if (f.name === undefined) {
-                throw new Error("Tuple enum variants not yet implemented.");
-              }
-              // @ts-ignore
-              return typeSize(idl, f.type);
-            })
-            .reduce((a: number, b: number) => a + b)
-        );
+        return variant.fields
+          .map((f: IdlField | IdlType) => {
+            if (!(typeof f === "object" && "name" in f)) {
+              throw new Error("Tuple enum variants not yet implemented.");
+            }
+            return typeSize(idl, f.type);
+          })
+          .reduce((a: number, b: number) => a + b);
       }
     );
     return Math.max(...variantSizes) + 1;
@@ -71,19 +63,14 @@ function typeSize(idl: Idl, ty: IdlType): number {
     case "publicKey":
       return 32;
     default:
-      // @ts-ignore
-      if (ty.vec !== undefined) {
+      if ("vec" in ty) {
         return 1;
       }
-      // @ts-ignore
-      if (ty.option !== undefined) {
-        // @ts-ignore
+      if ("option" in ty) {
         return 1 + typeSize(idl, ty.option);
       }
-      // @ts-ignore
-      if (ty.defined !== undefined) {
-        // @ts-ignore
-        const filtered = idl.types.filter((t) => t.name === ty.defined);
+      if ("defined" in ty) {
+        const filtered = idl.types?.filter((t) => t.name === ty.defined) ?? [];
         if (filtered.length !== 1) {
           throw new IdlError(`Type not found: ${JSON.stringify(ty)}`);
         }
@@ -91,13 +78,9 @@ function typeSize(idl: Idl, ty: IdlType): number {
 
         return accountSize(idl, typeDef);
       }
-      // @ts-ignore
-      if (ty.array !== undefined) {
-        // @ts-ignore
+      if ("array" in ty) {
         let arrayTy = ty.array[0];
-        // @ts-ignore
         let arraySize = ty.array[1];
-        // @ts-ignore
         return typeSize(idl, arrayTy) * arraySize;
       }
       throw new Error(`Invalid type ${JSON.stringify(ty)}`);

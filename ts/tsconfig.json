@@ -7,7 +7,6 @@
 
     "outDir": "dist/esm/",
     "rootDir": "./src",
-    "declarationDir": "dist",
 
     "sourceMap": true,
     "declaration": true,
@@ -16,6 +15,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noImplicitAny": false,
+    "strictNullChecks": true,
 
     "esModuleInterop": true,
     "resolveJsonModule": true,
@@ -23,7 +23,7 @@
     "baseUrl": ".",
     "typeRoots": ["types/", "node_modules/@types"],
     "paths": {
-      "@solana/web3.js":  ["./node_modules/@solana/web3.js/lib"]
+      "@solana/web3.js": ["./node_modules/@solana/web3.js/lib"]
     }
   }
 }

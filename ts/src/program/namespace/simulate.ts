@@ -1,4 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
+import {
+  PublicKey,
+  RpcResponseAndContext,
+  SimulatedTransactionResponse,
+} from "@solana/web3.js";
 import Provider from "../../provider";
 import { IdlInstruction } from "../../idl";
 import { splitArgsAndCtx } from "../context";
@@ -21,7 +25,9 @@ export default class SimulateFactory {
     const simulate = async (...args: any[]): Promise<SimulateResponse> => {
       const tx = txFn(...args);
       const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
-      let resp = undefined;
+      let resp:
+        | RpcResponseAndContext<SimulatedTransactionResponse>
+        | undefined = undefined;
       try {
         resp = await provider.simulate(tx, ctx.signers, ctx.options);
       } catch (err) {
@@ -43,7 +49,7 @@ export default class SimulateFactory {
         throw new Error("Simulated logs not found");
       }
 
-      const events = [];
+      const events: Event[] = [];
       if (idl.events) {
         let parser = new EventParser(programId, coder);
         parser.parseLogs(logs, (event) => {

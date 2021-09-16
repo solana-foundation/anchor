@@ -5,7 +5,10 @@ import { IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl";
 import { IdlError } from "../error";
 
 export class IdlCoder {
-  public static fieldLayout(field: IdlField, types?: IdlTypeDef[]): Layout {
+  public static fieldLayout(
+    field: { name?: string } & Pick<IdlField, "type">,
+    types?: IdlTypeDef[]
+  ): Layout {
     const fieldName =
       field.name !== undefined ? camelCase(field.name) : undefined;
     switch (field.type) {
@@ -52,8 +55,7 @@ export class IdlCoder {
         return borsh.publicKey(fieldName);
       }
       default: {
-        // @ts-ignore
-        if (field.type.vec) {
+        if ("vec" in field.type) {
           return borsh.vec(
             IdlCoder.fieldLayout(
               {
@@ -65,36 +67,30 @@ export class IdlCoder {
             ),
             fieldName
           );
-          // @ts-ignore
-        } else if (field.type.option) {
+        } else if ("option" in field.type) {
           return borsh.option(
             IdlCoder.fieldLayout(
               {
                 name: undefined,
-                // @ts-ignore
                 type: field.type.option,
               },
               types
             ),
             fieldName
           );
-          // @ts-ignore
-        } else if (field.type.defined) {
+        } else if ("defined" in field.type) {
+          const defined = field.type.defined;
           // User defined type.
           if (types === undefined) {
             throw new IdlError("User defined types not provided");
           }
-          // @ts-ignore
-          const filtered = types.filter((t) => t.name === field.type.defined);
+          const filtered = types.filter((t) => t.name === defined);
           if (filtered.length !== 1) {
             throw new IdlError(`Type not found: ${JSON.stringify(field)}`);
           }
           return IdlCoder.typeDefLayout(filtered[0], types, fieldName);
-          // @ts-ignore
-        } else if (field.type.array) {
-          // @ts-ignore
+        } else if ("array" in field.type) {
           let arrayTy = field.type.array[0];
-          // @ts-ignore
           let arrayLen = field.type.array[1];
           let innerLayout = IdlCoder.fieldLayout(
             {
@@ -113,7 +109,7 @@ export class IdlCoder {
 
   public static typeDefLayout(
     typeDef: IdlTypeDef,
-    types: IdlTypeDef[],
+    types: IdlTypeDef[] = [],
     name?: string
   ): Layout {
     if (typeDef.type.kind === "struct") {

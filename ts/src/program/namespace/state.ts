@@ -56,37 +56,25 @@ export class StateClient {
   }
   private _programId: PublicKey;
 
-  /**
-   * Returns the client's wallet and network provider.
-   */
-  get provider(): Provider {
-    return this._provider;
-  }
-  private _provider: Provider;
-
-  /**
-   * Returns the coder.
-   */
-  get coder(): Coder {
-    return this._coder;
-  }
-
   private _address: PublicKey;
-  private _coder: Coder;
   private _idl: Idl;
   private _sub: Subscription | null;
 
   constructor(
     idl: Idl,
     programId: PublicKey,
-    provider?: Provider,
-    coder?: Coder
+    /**
+     * Returns the client's wallet and network provider.
+     */
+    public readonly provider: Provider = getProvider(),
+    /**
+     * Returns the coder.
+     */
+    public readonly coder: Coder = new Coder(idl)
   ) {
     this._idl = idl;
     this._programId = programId;
     this._address = programStateAddress(programId);
-    this._provider = provider ?? getProvider();
-    this._coder = coder ?? new Coder(idl);
     this._sub = null;
 
     // Build namespaces.
@@ -99,7 +87,7 @@ export class StateClient {
       let transaction: TransactionNamespace = {};
       let rpc: RpcNamespace = {};
 
-      idl.state.methods.forEach((m: IdlStateMethod) => {
+      idl.state?.methods.forEach((m: IdlStateMethod) => {
         // Build instruction method.
         const ixItem = InstructionNamespaceFactory.build(
           m,
@@ -147,9 +135,11 @@ export class StateClient {
       throw new Error(`Account does not exist ${addr.toString()}`);
     }
     // Assert the account discriminator is correct.
-    const expectedDiscriminator = await stateDiscriminator(
-      this._idl.state.struct.name
-    );
+    const state = this._idl.state;
+    if (!state) {
+      throw new Error("State is not specified in IDL.");
+    }
+    const expectedDiscriminator = await stateDiscriminator(state.struct.name);
     if (expectedDiscriminator.compare(accountInfo.data.slice(0, 8))) {
       throw new Error("Invalid account discriminator");
     }

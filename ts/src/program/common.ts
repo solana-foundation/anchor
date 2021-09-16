@@ -40,13 +40,11 @@ export function toInstruction(
 // Throws error if any account required for the `ix` is not given.
 export function validateAccounts(
   ixAccounts: IdlAccountItem[],
-  accounts: Accounts
+  accounts: Accounts = {}
 ) {
   ixAccounts.forEach((acc) => {
-    // @ts-ignore
-    if (acc.accounts !== undefined) {
-      // @ts-ignore
-      validateAccounts(acc.accounts, accounts[acc.name]);
+    if ("accounts" in acc) {
+      validateAccounts(acc.accounts, accounts[acc.name] as Accounts);
     } else {
       if (accounts[acc.name] === undefined) {
         throw new Error(`Invalid arguments: ${acc.name} not provided.`);

@@ -1,7 +1,7 @@
 import { TransactionSignature } from "@solana/web3.js";
 import Provider from "../../provider";
 import { IdlInstruction } from "../../idl";
-import { splitArgsAndCtx } from "../context";
+import { Context, splitArgsAndCtx } from "../context";
 import { TransactionFn } from "./transaction";
 import { ProgramError } from "../../error";
 

@@ -97,6 +97,9 @@ function attachWorkspaceOverride(
     if (typeof entry !== "string" && entry.idl) {
       idl = JSON.parse(require("fs").readFileSync(entry.idl, "utf-8"));
     }
+    if (!idl) {
+      throw new Error(`Error loading workspace IDL for ${programName}`);
+    }
     workspaceCache[wsProgramName] = new Program(idl, overrideAddress);
   });
 }

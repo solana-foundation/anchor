@@ -46,7 +46,7 @@ export class EventCoder {
     );
   }
 
-  public decode(log: string): Event | null {
+  public decode<T = Record<string, unknown>>(log: string): Event<T> | null {
     let logArr: Buffer;
     // This will throw if log length is not a multiple of 4.
     try {
@@ -63,7 +63,10 @@ export class EventCoder {
     }
 
     const layout = this.layouts.get(eventName);
-    const data = layout.decode(logArr.slice(8));
+    if (!layout) {
+      throw new Error(`Unknown event: ${eventName}`);
+    }
+    const data = layout.decode(logArr.slice(8)) as T;
     return { data, name: eventName };
   }
 }

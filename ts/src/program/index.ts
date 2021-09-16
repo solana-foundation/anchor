@@ -200,7 +200,7 @@ export class Program {
    * one can use this to send transactions and read accounts for the state
    * abstraction.
    */
-  readonly state: StateClient;
+  readonly state?: StateClient;
 
   /**
    * Address of the program.
@@ -211,28 +211,12 @@ export class Program {
   private _programId: PublicKey;
 
   /**
-   * IDL defining the program's interface.
-   */
-  public get idl(): Idl {
-    return this._idl;
-  }
-  private _idl: Idl;
-
-  /**
    * Coder for serializing requests.
    */
   public get coder(): Coder {
     return this._coder;
   }
   private _coder: Coder;
-
-  /**
-   * Wallet and network provider.
-   */
-  public get provider(): Provider {
-    return this._provider;
-  }
-  private _provider: Provider;
 
   /**
    * Handles event subscriptions.
@@ -245,19 +229,23 @@ export class Program {
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    */
-  public constructor(idl: Idl, programId: Address, provider?: Provider) {
+  public constructor(
+    /**
+     * IDL defining the program's interface.
+     */
+    public readonly idl: Idl,
+    programId: Address,
+    /**
+     * Wallet and network provider.
+     */
+    public readonly provider: Provider = getProvider()
+  ) {
     programId = translateAddress(programId);
 
     // Fields.
-    this._idl = idl;
     this._programId = programId;
-    this._provider = provider ?? getProvider();
     this._coder = new Coder(idl);
-    this._events = new EventManager(
-      this._programId,
-      this._provider,
-      this._coder
-    );
+    this._events = new EventManager(this._programId, provider, this._coder);
 
     // Dynamic namespaces.
     const [
@@ -267,7 +255,7 @@ export class Program {
       account,
       simulate,
       state,
-    ] = NamespaceFactory.build(idl, this._coder, programId, this._provider);
+    ] = NamespaceFactory.build(idl, this._coder, programId, provider);
     this.rpc = rpc;
     this.instruction = instruction;
     this.transaction = transaction;
@@ -285,10 +273,16 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async at(address: Address, provider?: Provider) {
+  public static async at(
+    address: Address,
+    provider?: Provider
+  ): Promise<Program> {
     const programId = translateAddress(address);
 
     const idl = await Program.fetchIdl(programId, provider);
+    if (!idl) {
+      throw new Error(`IDL not found for program: ${address.toString()}`);
+    }
     return new Program(idl, programId, provider);
   }
 
@@ -301,12 +295,18 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async fetchIdl(address: Address, provider?: Provider) {
+  public static async fetchIdl(
+    address: Address,
+    provider?: Provider
+  ): Promise<Idl | null> {
     provider = provider ?? getProvider();
     const programId = translateAddress(address);
 
     const idlAddr = await idlAddress(programId);
     const accountInfo = await provider.connection.getAccountInfo(idlAddr);
+    if (!accountInfo) {
+      return null;
+    }
     // Chop off account discriminator.
     let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
     const inflatedIdl = inflate(idlAccount.data);

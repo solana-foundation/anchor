@@ -1,4 +1,8 @@
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import {
+  AccountMeta,
+  PublicKey,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import { IdlAccount, IdlInstruction, IdlAccountItem } from "../../idl";
 import { IdlError } from "../../error";
 import {
@@ -41,19 +45,22 @@ export default class InstructionNamespaceFactory {
     };
 
     // Utility fn for ordering the accounts for this instruction.
-    ix["accounts"] = (accs: Accounts) => {
+    ix["accounts"] = (accs: Accounts = {}) => {
       return InstructionNamespaceFactory.accountsArray(accs, idlIx.accounts);
     };
 
     return ix;
   }
 
-  public static accountsArray(ctx: Accounts, accounts: IdlAccountItem[]): any {
+  public static accountsArray(
+    ctx: Accounts,
+    accounts: IdlAccountItem[]
+  ): AccountMeta[] {
     return accounts
       .map((acc: IdlAccountItem) => {
         // Nested accounts.
-        // @ts-ignore
-        const nestedAccounts: IdlAccountItem[] | undefined = acc.accounts;
+        const nestedAccounts: IdlAccountItem[] | undefined =
+          "accounts" in acc ? acc.accounts : undefined;
         if (nestedAccounts !== undefined) {
           const rpcAccs = ctx[acc.name] as Accounts;
           return InstructionNamespaceFactory.accountsArray(
@@ -113,7 +120,7 @@ export interface InstructionNamespace {
  */
 export type InstructionFn = IxProps & ((...args: any[]) => any);
 type IxProps = {
-  accounts: (ctx: Accounts) => any;
+  accounts: (ctx: Accounts) => AccountMeta[];
 };
 
 export type InstructionEncodeFn = (ixName: string, ix: any) => Buffer;

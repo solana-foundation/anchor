@@ -1,4 +1,9 @@
-export class IdlError extends Error {}
+export class IdlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IdlError";
+  }
+}
 
 // An error from a user defined program.
 export class ProgramError extends Error {

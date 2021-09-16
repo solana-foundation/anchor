@@ -16,8 +16,9 @@ export class TypesCoder {
       this.layouts = new Map();
       return;
     }
-    const layouts = idl.types.map((acc) => {
-      return [acc.name, IdlCoder.typeDefLayout(acc, idl.types)];
+    const types = idl.types;
+    const layouts = types.map((acc) => {
+      return [acc.name, IdlCoder.typeDefLayout(acc, types)];
     });
 
     // @ts-ignore
@@ -27,12 +28,18 @@ export class TypesCoder {
   public encode<T = any>(accountName: string, account: T): Buffer {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const layout = this.layouts.get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account type: ${accountName}`);
+    }
     const len = layout.encode(account, buffer);
     return buffer.slice(0, len);
   }
 
   public decode<T = any>(accountName: string, ix: Buffer): T {
     const layout = this.layouts.get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account type: ${accountName}`);
+    }
     return layout.decode(ix);
   }
 }

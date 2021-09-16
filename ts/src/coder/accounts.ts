@@ -35,6 +35,9 @@ export class AccountsCoder {
   ): Promise<Buffer> {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const layout = this.accountLayouts.get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account: ${accountName}`);
+    }
     const len = layout.encode(account, buffer);
     let accountData = buffer.slice(0, len);
     let discriminator = await accountDiscriminator(accountName);
@@ -45,6 +48,9 @@ export class AccountsCoder {
     // Chop off the discriminator before decoding.
     const data = ix.slice(8);
     const layout = this.accountLayouts.get(accountName);
+    if (!layout) {
+      throw new Error(`Unknown account: ${accountName}`);
+    }
     return layout.decode(data);
   }
 }

@@ -5,7 +5,7 @@
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "license": "(MIT OR Apache-2.0)",
-  "types": "dist/index.d.ts",
+  "types": "dist/cjs/index.d.ts",
   "publishConfig": {
     "access": "public"
   },
@@ -58,6 +58,6 @@
     "ts-jest": "^26.4.3",
     "ts-node": "^9.0.0",
     "typedoc": "^0.20.36",
-    "typescript": "^4.0.5"
+    "typescript": "^4.4.3"
   }
 }

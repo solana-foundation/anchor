@@ -6,9 +6,9 @@ import Provider from "../provider";
 const LOG_START_INDEX = "Program log: ".length;
 
 // Deserialized event.
-export type Event = {
+export type Event<T = Record<string, unknown>> = {
   name: string;
-  data: Object;
+  data: T;
 };
 
 type EventCallback = (event: any, slot: number) => void;
@@ -71,7 +71,7 @@ export class EventManager {
     }
     this._eventListeners.set(
       eventName,
-      this._eventListeners.get(eventName).concat(listener)
+      (this._eventListeners.get(eventName) ?? []).concat(listener)
     );
 
     // Store the callback into the listener map.
@@ -93,8 +93,11 @@ export class EventManager {
           const allListeners = this._eventListeners.get(event.name);
           if (allListeners) {
             allListeners.forEach((listener) => {
-              const [, callback] = this._eventCallbacks.get(listener);
-              callback(event.data, ctx.slot);
+              const listenerCb = this._eventCallbacks.get(listener);
+              if (listenerCb) {
+                const [, callback] = listenerCb;
+                callback(event.data, ctx.slot);
+              }
             });
           }
         });
@@ -128,10 +131,12 @@ export class EventManager {
     // Kill the websocket connection if all listeners have been removed.
     if (this._eventCallbacks.size == 0) {
       assert.ok(this._eventListeners.size === 0);
-      await this._provider.connection.removeOnLogsListener(
-        this._onLogsSubscriptionId
-      );
-      this._onLogsSubscriptionId = undefined;
+      if (this._onLogsSubscriptionId !== undefined) {
+        await this._provider.connection.removeOnLogsListener(
+          this._onLogsSubscriptionId
+        );
+        this._onLogsSubscriptionId = undefined;
+      }
     }
   }
 }
@@ -243,7 +248,10 @@ class ExecutionContext {
   constructor(log: string) {
     // Assumes the first log in every transaction is an `invoke` log from the
     // runtime.
-    const program = /^Program (.*) invoke.*$/g.exec(log)[1];
+    const program = /^Program (.*) invoke.*$/g.exec(log)?.[1];
+    if (!program) {
+      throw new Error(`Could not find program invocation log line`);
+    }
     this.stack = [program];
   }
 
