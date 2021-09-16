@@ -18,7 +18,6 @@ pub fn parse(
         }
     }
     let account_constraints = constraints.build()?;
-
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
     for attr in f.attrs.iter().filter(is_instruction) {
         if !has_instruction_api {

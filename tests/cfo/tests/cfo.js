@@ -3,7 +3,8 @@ const { Token } = require("@solana/spl-token");
 const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const { Market } = require("@project-serum/serum");
-const { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } = anchor.web3;
+const utf8 = anchor.utils.bytes.utf8;
+const { PublicKey, SystemProgram, Keypair, SYSVAR_RENT_PUBKEY } = anchor.web3;
 const utils = require("./utils");
 const { setupStakePool } = require("./utils/stake");
 
@@ -16,16 +17,26 @@ const REGISTRY_PID = new PublicKey(
 const LOCKUP_PID = new PublicKey(
   "6ebQNeTPZ1j7k3TtkCCtEPRvG7GQsucQrZ7sSEDQi9Ks"
 );
+const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey(
+  "Sysvar1nstructions1111111111111111111111111"
+);
 const FEES = "6160355581";
 
 describe("cfo", () => {
   anchor.setProvider(anchor.Provider.env());
 
   const program = anchor.workspace.Cfo;
-  let officer;
-  let TOKEN_CLIENT;
-  let officerAccount;
   const sweepAuthority = program.provider.wallet.publicKey;
+  let officer, srmVault, usdcVault, bVault, stake, treasury;
+  let officerBump, srmBump, usdcBump, bBump, stakeBump, treasuryBump;
+  let openOrders, openOrdersBump;
+  let openOrdersB, openOrdersBumpB;
+  let USDC_TOKEN_CLIENT, A_TOKEN_CLIENT, B_TOKEN_CLIENT;
+  let officerAccount;
+  let marketAClient, marketBClient;
+  let marketAuth, marketAuthBump;
+  let marketAuthB, marketAuthBumpB;
+  let distribution;
 
   // Accounts used to setup the orderbook.
   let ORDERBOOK_ENV,
@@ -49,14 +60,26 @@ describe("cfo", () => {
       "Token USDC: ",
       ORDERBOOK_ENV.marketA.quoteMintAddress.toString()
     );
-    TOKEN_CLIENT = new Token(
+    USDC_TOKEN_CLIENT = new Token(
       program.provider.connection,
       ORDERBOOK_ENV.usdc,
       TOKEN_PID,
       program.provider.wallet.payer
     );
+    SRM_TOKEN_CLIENT = new Token(
+      program.provider.connection,
+      ORDERBOOK_ENV.mintA,
+      TOKEN_PID,
+      program.provider.wallet.payer
+    );
+    B_TOKEN_CLIENT = new Token(
+      program.provider.connection,
+      ORDERBOOK_ENV.mintB,
+      TOKEN_PID,
+      program.provider.wallet.payer
+    );
 
-    await TOKEN_CLIENT.transfer(
+    await USDC_TOKEN_CLIENT.transfer(
       ORDERBOOK_ENV.godUsdc,
       ORDERBOOK_ENV.marketA._decoded.quoteVault,
       program.provider.wallet.payer,
@@ -64,7 +87,7 @@ describe("cfo", () => {
       10000000000000
     );
 
-    const tokenAccount = await TOKEN_CLIENT.getAccountInfo(
+    const tokenAccount = await USDC_TOKEN_CLIENT.getAccountInfo(
       ORDERBOOK_ENV.marketA._decoded.quoteVault
     );
     assert.ok(tokenAccount.amount.toString() === "10000902263700");
@@ -76,13 +99,19 @@ describe("cfo", () => {
       program.provider,
       1
     );
-    let marketClient = await Market.load(
+    marketAClient = await Market.load(
       program.provider.connection,
-      ORDERBOOK_ENV.marketA._decoded.ownAddress,
+      ORDERBOOK_ENV.marketA.address,
       { commitment: "recent" },
       DEX_PID
     );
-    assert.ok(marketClient._decoded.quoteFeesAccrued.toString() === FEES);
+    marketBClient = await Market.load(
+      program.provider.connection,
+      ORDERBOOK_ENV.marketB.address,
+      { commitment: "recent" },
+      DEX_PID
+    );
+    assert.ok(marketAClient._decoded.quoteFeesAccrued.toString() === FEES);
   });
 
   it("BOILERPLATE: Sets up the staking pools", async () => {
@@ -91,35 +120,108 @@ describe("cfo", () => {
     msrmRegistrar = registrar;
   });
 
+  it("BOILERPLATE: Finds PDA addresses", async () => {
+    const [_officer, _officerBump] = await PublicKey.findProgramAddress(
+      [DEX_PID.toBuffer()],
+      program.programId
+    );
+    const [_openOrders, _openOrdersBump] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("open-orders"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.marketA.address.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_openOrdersB, _openOrdersBumpB] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("open-orders"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.marketB.address.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_srmVault, _srmBump] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("token"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.mintA.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_bVault, _bBump] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("token"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.mintB.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_usdcVault, _usdcBump] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("token"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.usdc.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_stake, _stakeBump] = await PublicKey.findProgramAddress(
+      [utf8.encode("stake"), _officer.toBuffer()],
+      program.programId
+    );
+    const [_treasury, _treasuryBump] = await PublicKey.findProgramAddress(
+      [utf8.encode("treasury"), _officer.toBuffer()],
+      program.programId
+    );
+    const [_marketAuth, _marketAuthBump] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("market-auth"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.marketA.address.toBuffer(),
+      ],
+      program.programId
+    );
+    const [_marketAuthB, _marketAuthBumpB] = await PublicKey.findProgramAddress(
+      [
+        utf8.encode("market-auth"),
+        _officer.toBuffer(),
+        ORDERBOOK_ENV.marketB.address.toBuffer(),
+      ],
+      program.programId
+    );
+
+    officer = _officer;
+    officerBump = _officerBump;
+    openOrders = _openOrders;
+    openOrdersBump = _openOrdersBump;
+    openOrdersB = _openOrdersB;
+    openOrdersBumpB = _openOrdersBumpB;
+    srmVault = _srmVault;
+    srmBump = _srmBump;
+    usdcVault = _usdcVault;
+    usdcBump = _usdcBump;
+    bVault = _bVault;
+    bBump = _bBump;
+    stake = _stake;
+    stakeBump = _stakeBump;
+    treasury = _treasury;
+    treasuryBump = _treasuryBump;
+    marketAuth = _marketAuth;
+    marketAuthBump = _marketAuthBump;
+    marketAuthB = _marketAuthB;
+    marketAuthBumpB = _marketAuthBumpB;
+  });
+
   it("Creates a CFO!", async () => {
-    let distribution = {
+    distribution = {
       burn: 80,
       stake: 20,
       treasury: 0,
     };
-    const [_officer, officerBump] = await PublicKey.findProgramAddress(
-      [DEX_PID.toBuffer()],
-      program.programId
-    );
-    officer = _officer;
-    const [srmVault, srmBump] = await PublicKey.findProgramAddress(
-      [anchor.utils.bytes.utf8.encode("vault"), officer.toBuffer()],
-      program.programId
-    );
-    const [stake, stakeBump] = await PublicKey.findProgramAddress(
-      [anchor.utils.bytes.utf8.encode("stake"), officer.toBuffer()],
-      program.programId
-    );
-    const [treasury, treasuryBump] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(anchor.utils.bytes.utf8.encode("treasury")),
-        officer.toBuffer(),
-      ],
-      program.programId
-    );
     const bumps = {
       bump: officerBump,
       srm: srmBump,
+      usdc: usdcBump,
       stake: stakeBump,
       treasury: treasuryBump,
     };
@@ -132,9 +234,11 @@ describe("cfo", () => {
         accounts: {
           officer,
           srmVault,
+          usdcVault,
           stake,
           treasury,
-          mint: ORDERBOOK_ENV.mintA,
+          srmMint: ORDERBOOK_ENV.mintA,
+          usdcMint: ORDERBOOK_ENV.usdc,
           authority: program.provider.wallet.publicKey,
           dexProgram: DEX_PID,
           swapProgram: SWAP_PID,
@@ -156,29 +260,50 @@ describe("cfo", () => {
   });
 
   it("Creates a token account for the officer associated with the market", async () => {
-    const [token, bump] = await PublicKey.findProgramAddress(
-      [officer.toBuffer(), ORDERBOOK_ENV.usdc.toBuffer()],
-      program.programId
-    );
-    await program.rpc.createOfficerToken(bump, {
+    await program.rpc.createOfficerToken(bBump, {
       accounts: {
         officer,
-        token,
-        mint: ORDERBOOK_ENV.usdc,
+        token: bVault,
+        mint: ORDERBOOK_ENV.mintB,
         payer: program.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PID,
         rent: SYSVAR_RENT_PUBKEY,
       },
     });
-    const tokenAccount = await TOKEN_CLIENT.getAccountInfo(token);
+    const tokenAccount = await B_TOKEN_CLIENT.getAccountInfo(bVault);
     assert.ok(tokenAccount.state === 1);
     assert.ok(tokenAccount.isInitialized);
   });
 
+  it("Creates an open orders account for the officer", async () => {
+    await program.rpc.createOfficerOpenOrders(openOrdersBump, {
+      accounts: {
+        officer,
+        openOrders,
+        payer: program.provider.wallet.publicKey,
+        dexProgram: DEX_PID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+        market: ORDERBOOK_ENV.marketA.address,
+      },
+    });
+    await program.rpc.createOfficerOpenOrders(openOrdersBumpB, {
+      accounts: {
+        officer,
+        openOrders: openOrdersB,
+        payer: program.provider.wallet.publicKey,
+        dexProgram: DEX_PID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+        market: ORDERBOOK_ENV.marketB.address,
+      },
+    });
+  });
+
   it("Sweeps fees", async () => {
     const [sweepVault, bump] = await PublicKey.findProgramAddress(
-      [officer.toBuffer(), ORDERBOOK_ENV.usdc.toBuffer()],
+      [utf8.encode("token"), officer.toBuffer(), ORDERBOOK_ENV.usdc.toBuffer()],
       program.programId
     );
     const beforeTokenAccount = await serumCmn.getTokenAccount(
@@ -194,7 +319,7 @@ describe("cfo", () => {
           market: ORDERBOOK_ENV.marketA._decoded.ownAddress,
           pcVault: ORDERBOOK_ENV.marketA._decoded.quoteVault,
           sweepAuthority,
-          vaultSigner: ORDERBOOK_ENV.vaultSigner,
+          vaultSigner: ORDERBOOK_ENV.marketAVaultSigner,
           dexProgram: DEX_PID,
           tokenProgram: TOKEN_PID,
         },
@@ -210,7 +335,171 @@ describe("cfo", () => {
     );
   });
 
-  it("TODO", async () => {
-    // todo
+  it("Creates a market auth token", async () => {
+    await program.rpc.authorizeMarket(marketAuthBump, {
+      accounts: {
+        officer,
+        authority: program.provider.wallet.publicKey,
+        marketAuth,
+        payer: program.provider.wallet.publicKey,
+        market: ORDERBOOK_ENV.marketA.address,
+        systemProgram: SystemProgram.programId,
+      },
+    });
+    await program.rpc.authorizeMarket(marketAuthBumpB, {
+      accounts: {
+        officer,
+        authority: program.provider.wallet.publicKey,
+        marketAuth: marketAuthB,
+        payer: program.provider.wallet.publicKey,
+        market: ORDERBOOK_ENV.marketB.address,
+        systemProgram: SystemProgram.programId,
+      },
+    });
+  });
+
+  it("Transfers into the mintB vault", async () => {
+    await B_TOKEN_CLIENT.transfer(
+      ORDERBOOK_ENV.godB,
+      bVault,
+      program.provider.wallet.payer,
+      [],
+      616035558100
+    );
+  });
+
+  it("Swaps from B token to USDC", async () => {
+    const bVaultBefore = await B_TOKEN_CLIENT.getAccountInfo(bVault);
+    const usdcVaultBefore = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
+
+    const minExchangeRate = {
+      rate: new anchor.BN(0),
+      fromDecimals: 6,
+      quoteDecimals: 6,
+      strict: false,
+    };
+    await program.rpc.swapToUsdc(minExchangeRate, {
+      accounts: {
+        officer,
+        market: {
+          market: marketBClient.address,
+          openOrders: openOrdersB,
+          requestQueue: marketBClient.decoded.requestQueue,
+          eventQueue: marketBClient.decoded.eventQueue,
+          bids: marketBClient.decoded.bids,
+          asks: marketBClient.decoded.asks,
+          orderPayerTokenAccount: bVault,
+          coinVault: marketBClient.decoded.baseVault,
+          pcVault: marketBClient.decoded.quoteVault,
+          vaultSigner: ORDERBOOK_ENV.marketBVaultSigner,
+        },
+        marketAuth: marketAuthB,
+        usdcVault,
+        fromVault: bVault,
+        usdcMint: ORDERBOOK_ENV.usdc,
+        swapProgram: SWAP_PID,
+        dexProgram: DEX_PID,
+        tokenProgram: TOKEN_PID,
+        instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+        rent: SYSVAR_RENT_PUBKEY,
+      },
+    });
+
+    const bVaultAfter = await B_TOKEN_CLIENT.getAccountInfo(bVault);
+    const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
+
+    assert.ok(bVaultBefore.amount.toNumber() === 616035558100);
+    assert.ok(usdcVaultBefore.amount.toNumber() === 6160355581);
+    assert.ok(bVaultAfter.amount.toNumber() === 615884458100);
+    assert.ok(usdcVaultAfter.amount.toNumber() === 7060634298);
+  });
+
+  it("Swaps to SRM", async () => {
+    const srmVaultBefore = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
+    const usdcVaultBefore = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
+
+    const minExchangeRate = {
+      rate: new anchor.BN(0),
+      fromDecimals: 6,
+      quoteDecimals: 6,
+      strict: false,
+    };
+    await program.rpc.swapToSrm(minExchangeRate, {
+      accounts: {
+        officer,
+        market: {
+          market: marketAClient.address,
+          openOrders,
+          requestQueue: marketAClient.decoded.requestQueue,
+          eventQueue: marketAClient.decoded.eventQueue,
+          bids: marketAClient.decoded.bids,
+          asks: marketAClient.decoded.asks,
+          orderPayerTokenAccount: usdcVault,
+          coinVault: marketAClient.decoded.baseVault,
+          pcVault: marketAClient.decoded.quoteVault,
+          vaultSigner: ORDERBOOK_ENV.marketAVaultSigner,
+        },
+        marketAuth,
+        usdcVault,
+        srmVault,
+        usdcMint: ORDERBOOK_ENV.usdc,
+        srmMint: ORDERBOOK_ENV.mintA,
+        swapProgram: SWAP_PID,
+        dexProgram: DEX_PID,
+        tokenProgram: TOKEN_PID,
+        instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+        rent: SYSVAR_RENT_PUBKEY,
+      },
+    });
+
+    const srmVaultAfter = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
+    const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
+
+    assert.ok(srmVaultBefore.amount.toNumber() === 0);
+    assert.ok(srmVaultAfter.amount.toNumber() === 1152000000);
+    assert.ok(usdcVaultBefore.amount.toNumber() === 7060634298);
+    assert.ok(usdcVaultAfter.amount.toNumber() === 530863);
+  });
+
+  it("Distributes the tokens to categories", async () => {
+    const srmVaultBefore = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
+    const treasuryBefore = await SRM_TOKEN_CLIENT.getAccountInfo(treasury);
+    const stakeBefore = await SRM_TOKEN_CLIENT.getAccountInfo(stake);
+    const mintInfoBefore = await SRM_TOKEN_CLIENT.getMintInfo();
+
+    await program.rpc.distribute({
+      accounts: {
+        officer,
+        treasury,
+        stake,
+        srmVault,
+        srmMint: ORDERBOOK_ENV.mintA,
+        tokenProgram: TOKEN_PID,
+        dexProgram: DEX_PID,
+      },
+    });
+
+    const srmVaultAfter = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
+    const treasuryAfter = await SRM_TOKEN_CLIENT.getAccountInfo(treasury);
+    const stakeAfter = await SRM_TOKEN_CLIENT.getAccountInfo(stake);
+    const mintInfoAfter = await SRM_TOKEN_CLIENT.getMintInfo();
+
+    const beforeAmount = 1152000000;
+    assert.ok(srmVaultBefore.amount.toNumber() === beforeAmount);
+    assert.ok(srmVaultAfter.amount.toNumber() === 0); // Fully distributed.
+    assert.ok(
+      stakeAfter.amount.toNumber() ===
+        beforeAmount * (distribution.stake / 100.0)
+    );
+    assert.ok(
+      treasuryAfter.amount.toNumber() ===
+        beforeAmount * (distribution.treasury / 100.0)
+    );
+    // Check burn amount.
+    assert.ok(mintInfoBefore.supply.toString() === "1000000000000000000");
+    assert.ok(
+      mintInfoBefore.supply.sub(mintInfoAfter.supply).toNumber() ===
+        beforeAmount * (distribution.burn / 100.0)
+    );
   });
 });

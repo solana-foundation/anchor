@@ -3,12 +3,13 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::sysvar::instructions as tx_instructions;
 use anchor_spl::dex::{self, Dex};
-use anchor_spl::mint;
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use lockup::program::Lockup;
 use registry::program::Registry;
 use registry::{Registrar, RewardVendorKind};
+use serum_dex::state::OpenOrders;
 use std::convert::TryInto;
+use std::mem::size_of;
 use swap::program::Swap;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -46,11 +47,35 @@ pub mod cfo {
         Ok(())
     }
 
+    /// Creates a market authorization token.
+    pub fn authorize_market(ctx: Context<AuthorizeMarket>, bump: u8) -> Result<()> {
+        ctx.accounts.market_auth.bump = bump;
+        Ok(())
+    }
+
+    /// Revokes a market authorization token.
+    pub fn revoke_market(_ctx: Context<RevokeMarket>) -> Result<()> {
+        Ok(())
+    }
+
     /// Creates a deterministic token account owned by the CFO.
     /// This should be used when a new mint is used for collecting fees.
     /// Can only be called once per token CFO and token mint.
     pub fn create_officer_token(_ctx: Context<CreateOfficerToken>, _bump: u8) -> Result<()> {
         Ok(())
+    }
+
+    /// Creates an open orders account for the given market.
+    pub fn create_officer_open_orders(
+        ctx: Context<CreateOfficerOpenOrders>,
+        _bump: u8,
+    ) -> Result<()> {
+        let seeds = [
+            ctx.accounts.dex_program.key.as_ref(),
+            &[ctx.accounts.officer.bumps.bump],
+        ];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts);
+        dex::init_open_orders(cpi_ctx.with_signer(&[&seeds])).map_err(Into::into)
     }
 
     /// Updates the cfo's fee distribution.
@@ -63,13 +88,12 @@ pub mod cfo {
 
     /// Transfers fees from the dex to the CFO.
     pub fn sweep_fees<'info>(ctx: Context<'_, '_, '_, 'info, SweepFees<'info>>) -> Result<()> {
+        let cpi_ctx = CpiContext::from(&*ctx.accounts);
         let seeds = [
             ctx.accounts.dex.dex_program.key.as_ref(),
             &[ctx.accounts.officer.bumps.bump],
         ];
-        let cpi_ctx = CpiContext::from(&*ctx.accounts);
-        dex::sweep_fees(cpi_ctx.with_signer(&[&seeds[..]]))?;
-        Ok(())
+        dex::sweep_fees(cpi_ctx.with_signer(&[&seeds])).map_err(Into::into)
     }
 
     /// Convert the CFO's entire non-SRM token balance into USDC.
@@ -85,12 +109,12 @@ pub mod cfo {
         ];
         let cpi_ctx = CpiContext::from(&*ctx.accounts);
         swap::cpi::swap(
-            cpi_ctx.with_signer(&[&seeds[..]]),
-            swap::Side::Bid,
-            token::accessor::amount(&ctx.accounts.from_vault)?,
+            cpi_ctx.with_signer(&[&seeds]),
+            swap::Side::Ask,
+            ctx.accounts.from_vault.amount,
             min_exchange_rate.into(),
-        )?;
-        Ok(())
+        )
+        .map_err(Into::into)
     }
 
     /// Convert the CFO's entire token balance into SRM.
@@ -104,14 +128,14 @@ pub mod cfo {
             ctx.accounts.dex_program.key.as_ref(),
             &[ctx.accounts.officer.bumps.bump],
         ];
-        let cpi_ctx: CpiContext<'_, '_, '_, 'info, swap::Swap<'info>> = (&*ctx.accounts).into();
+        let cpi_ctx = CpiContext::from(&*ctx.accounts);
         swap::cpi::swap(
-            cpi_ctx.with_signer(&[&seeds[..]]),
+            cpi_ctx.with_signer(&[&seeds]),
             swap::Side::Bid,
-            token::accessor::amount(&ctx.accounts.from_vault)?,
+            ctx.accounts.usdc_vault.amount,
             min_exchange_rate.into(),
-        )?;
-        Ok(())
+        )
+        .map_err(Into::into)
     }
 
     /// Distributes srm tokens to the various categories. Before calling this,
@@ -132,10 +156,7 @@ pub mod cfo {
             .unwrap()
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
-        token::burn(
-            ctx.accounts.into_burn().with_signer(&[&seeds[..]]),
-            burn_amount,
-        )?;
+        token::burn(ctx.accounts.into_burn().with_signer(&[&seeds]), burn_amount)?;
 
         // Stake.
         let stake_amount: u64 = u128::from(total_fees)
@@ -146,9 +167,7 @@ pub mod cfo {
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
         token::transfer(
-            ctx.accounts
-                .into_stake_transfer()
-                .with_signer(&[&seeds[..]]),
+            ctx.accounts.into_stake_transfer().with_signer(&[&seeds]),
             stake_amount,
         )?;
 
@@ -161,9 +180,7 @@ pub mod cfo {
             .try_into()
             .map_err(|_| ErrorCode::U128CannotConvert)?;
         token::transfer(
-            ctx.accounts
-                .into_treasury_transfer()
-                .with_signer(&[&seeds[..]]),
+            ctx.accounts.into_treasury_transfer().with_signer(&[&seeds]),
             treasury_amount,
         )?;
 
@@ -311,19 +328,28 @@ pub struct CreateOfficer<'info> {
     officer: Box<Account<'info, Officer>>,
     #[account(
         init,
-        seeds = [b"vault", officer.key().as_ref()],
+        seeds = [b"token", officer.key().as_ref(), srm_mint.key().as_ref()],
         bump = bumps.srm,
         payer = authority,
-        token::mint = mint,
+        token::mint = srm_mint,
         token::authority = officer,
     )]
     srm_vault: Box<Account<'info, TokenAccount>>,
     #[account(
         init,
+        seeds = [b"token", officer.key().as_ref(), usdc_mint.key().as_ref()],
+        bump = bumps.usdc,
+        payer = authority,
+        token::mint = usdc_mint,
+        token::authority = officer,
+    )]
+    usdc_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init,
         seeds = [b"stake", officer.key().as_ref()],
         bump = bumps.stake,
         payer = authority,
-        token::mint = mint,
+        token::mint = srm_mint,
         token::authority = officer,
     )]
     stake: Box<Account<'info, TokenAccount>>,
@@ -332,16 +358,21 @@ pub struct CreateOfficer<'info> {
         seeds = [b"treasury", officer.key().as_ref()],
         bump = bumps.treasury,
         payer = authority,
-        token::mint = mint,
+        token::mint = srm_mint,
         token::authority = officer,
     )]
     treasury: Box<Account<'info, TokenAccount>>,
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
     #[cfg_attr(
         not(feature = "test"),
         account(address = mint::SRM),
     )]
-    mint: Box<Account<'info, Mint>>,
+    srm_mint: Box<Account<'info, Mint>>,
+    #[cfg_attr(
+        not(feature = "test"),
+        account(address = mint::USDC),
+    )]
+    usdc_mint: Box<Account<'info, Mint>>,
     dex_program: Program<'info, Dex>,
     swap_program: Program<'info, Swap>,
     system_program: Program<'info, System>,
@@ -351,24 +382,74 @@ pub struct CreateOfficer<'info> {
 
 #[derive(Accounts)]
 #[instruction(bump: u8)]
+pub struct AuthorizeMarket<'info> {
+    #[account(has_one = authority)]
+    officer: Account<'info, Officer>,
+    authority: Signer<'info>,
+    #[account(
+        init,
+        payer = payer,
+        seeds = [b"market-auth", officer.key().as_ref(), market.key.as_ref()],
+        bump = bump,
+    )]
+    market_auth: Account<'info, MarketAuth>,
+    payer: Signer<'info>,
+    // Not read or written to so not validated.
+    market: UncheckedAccount<'info>,
+    system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevokeMarket<'info> {
+    #[account(has_one = authority)]
+    pub officer: Account<'info, Officer>,
+    pub authority: Signer<'info>,
+    #[account(mut, close = payer)]
+    pub auth: Account<'info, MarketAuth>,
+    pub payer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
 pub struct CreateOfficerToken<'info> {
     officer: Account<'info, Officer>,
     #[account(
         init,
-        seeds = [officer.key().as_ref(), mint.key().as_ref()],
+        seeds = [b"token", officer.key().as_ref(), mint.key().as_ref()],
         bump = bump,
         token::mint = mint,
         token::authority = officer,
         payer = payer,
     )]
     token: Account<'info, TokenAccount>,
-    #[account(owner = spl_token::ID)]
-    mint: AccountInfo<'info>,
+    mint: Account<'info, Mint>,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct CreateOfficerOpenOrders<'info> {
+    officer: Account<'info, Officer>,
+    #[account(
+        init,
+        seeds = [b"open-orders", officer.key().as_ref(), market.key.as_ref()],
+        bump = bump,
+        space = 12 + size_of::<OpenOrders>(),
+        payer = payer,
+        owner = dex::ID,
+    )]
+    open_orders: UncheckedAccount<'info>,
+    #[account(mut)]
+    payer: Signer<'info>,
+    dex_program: Program<'info, Dex>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+    // Used for CPI. Not read or written so not validated.
+    market: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -387,23 +468,24 @@ pub struct SweepFees<'info> {
     officer: Account<'info, Officer>,
     #[account(
         mut,
-        owner = spl_token::ID,
-        seeds = [officer.key().as_ref(), mint.key().as_ref()],
+        seeds = [b"token", officer.key().as_ref(), mint.key().as_ref()],
         bump,
     )]
     sweep_vault: Account<'info, TokenAccount>,
-    mint: AccountInfo<'info>,
+    mint: Account<'info, Mint>,
     dex: DexAccounts<'info>,
 }
 
+// DexAccounts are safe because they are used for CPI only.
+// They are not read or written and so are not validated.
 #[derive(Accounts)]
 pub struct DexAccounts<'info> {
     #[account(mut)]
-    market: AccountInfo<'info>,
+    market: UncheckedAccount<'info>,
     #[account(mut)]
-    pc_vault: AccountInfo<'info>,
-    sweep_authority: AccountInfo<'info>,
-    vault_signer: AccountInfo<'info>,
+    pc_vault: UncheckedAccount<'info>,
+    sweep_authority: UncheckedAccount<'info>,
+    vault_signer: UncheckedAccount<'info>,
     dex_program: Program<'info, Dex>,
     token_program: Program<'info, Token>,
 }
@@ -414,102 +496,123 @@ pub struct SwapToUsdc<'info> {
         seeds = [dex_program.key.as_ref()],
         bump = officer.bumps.bump,
     )]
-    officer: Account<'info, Officer>,
+    officer: Box<Account<'info, Officer>>,
     market: DexMarketAccounts<'info>,
     #[account(
-        owner = spl_token::ID,
-        constraint = &officer.treasury != from_vault.key,
-        constraint = &officer.stake != from_vault.key,
+        seeds = [b"market-auth", officer.key().as_ref(), market.market.key.as_ref()],
+        bump = market_auth.bump,
     )]
-    from_vault: AccountInfo<'info>,
-    #[account(owner = spl_token::ID)]
-    quote_vault: AccountInfo<'info>,
-    #[account(seeds = [officer.key().as_ref(), mint::USDC.as_ref()], bump)]
-    usdc_vault: AccountInfo<'info>,
+    market_auth: Account<'info, MarketAuth>,
+    #[account(
+        mut,
+        constraint = &officer.treasury != &from_vault.key(),
+        constraint = &officer.stake != &from_vault.key(),
+    )]
+    from_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
+        seeds = [b"token", officer.key().as_ref(), usdc_mint.key().as_ref()],
+        bump,
+    )]
+    usdc_vault: Box<Account<'info, TokenAccount>>,
+    #[cfg_attr(not(feature = "test"), account(address = mint::USDC))]
+    usdc_mint: Box<Account<'info, Mint>>,
     swap_program: Program<'info, Swap>,
     dex_program: Program<'info, Dex>,
     token_program: Program<'info, Token>,
     #[account(address = tx_instructions::ID)]
-    instructions: AccountInfo<'info>,
+    instructions: UncheckedAccount<'info>,
     rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
+#[instruction(bump: u8)]
 pub struct SwapToSrm<'info> {
     #[account(
         seeds = [dex_program.key.as_ref()],
         bump = officer.bumps.bump,
     )]
-    officer: Account<'info, Officer>,
+    officer: Box<Account<'info, Officer>>,
     market: DexMarketAccounts<'info>,
     #[account(
-        owner = spl_token::ID,
-        constraint = &officer.treasury != from_vault.key,
-        constraint = &officer.stake != from_vault.key,
+        seeds = [b"market-auth", officer.key().as_ref(), market.market.key.as_ref()],
+        bump = market_auth.bump,
     )]
-    from_vault: AccountInfo<'info>,
-    #[account(owner = spl_token::ID)]
-    quote_vault: AccountInfo<'info>,
+    market_auth: Account<'info, MarketAuth>,
     #[account(
-        seeds = [officer.key().as_ref(), mint::SRM.as_ref()],
+        mut,
+        seeds = [b"token", officer.key().as_ref(), usdc_mint.key().as_ref()],
         bump,
-        constraint = &officer.treasury != from_vault.key,
-        constraint = &officer.stake != from_vault.key,
     )]
-    srm_vault: AccountInfo<'info>,
+    usdc_vault: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
+        seeds = [b"token", officer.key().as_ref(), srm_mint.key().as_ref()],
+        bump,
+    )]
+    srm_vault: Box<Account<'info, TokenAccount>>,
+    #[cfg_attr(not(feature = "test"), account(address = mint::SRM))]
+    srm_mint: Box<Account<'info, Mint>>,
+    #[cfg_attr(not(feature = "test"), account(address = mint::USDC))]
+    usdc_mint: Box<Account<'info, Mint>>,
     swap_program: Program<'info, Swap>,
     dex_program: Program<'info, Dex>,
     token_program: Program<'info, Token>,
     #[account(address = tx_instructions::ID)]
-    instructions: AccountInfo<'info>,
+    instructions: UncheckedAccount<'info>,
     rent: Sysvar<'info, Rent>,
 }
 
+// Dex accounts are used for CPI only.
+// They are not read or written and so are not validated.
 #[derive(Accounts)]
 pub struct DexMarketAccounts<'info> {
     #[account(mut)]
-    market: AccountInfo<'info>,
+    market: UncheckedAccount<'info>,
     #[account(mut)]
-    open_orders: AccountInfo<'info>,
+    open_orders: UncheckedAccount<'info>,
     #[account(mut)]
-    request_queue: AccountInfo<'info>,
+    request_queue: UncheckedAccount<'info>,
     #[account(mut)]
-    event_queue: AccountInfo<'info>,
+    event_queue: UncheckedAccount<'info>,
     #[account(mut)]
-    bids: AccountInfo<'info>,
+    bids: UncheckedAccount<'info>,
     #[account(mut)]
-    asks: AccountInfo<'info>,
+    asks: UncheckedAccount<'info>,
     // The `spl_token::Account` that funds will be taken from, i.e., transferred
     // from the user into the market's vault.
     //
     // For bids, this is the base currency. For asks, the quote.
     #[account(mut)]
-    order_payer_token_account: AccountInfo<'info>,
+    order_payer_token_account: UncheckedAccount<'info>,
     // Also known as the "base" currency. For a given A/B market,
     // this is the vault for the A mint.
     #[account(mut)]
-    coin_vault: AccountInfo<'info>,
+    coin_vault: UncheckedAccount<'info>,
     // Also known as the "quote" currency. For a given A/B market,
     // this is the vault for the B mint.
     #[account(mut)]
-    pc_vault: AccountInfo<'info>,
+    pc_vault: UncheckedAccount<'info>,
     // PDA owner of the DEX's token accounts for base + quote currencies.
-    vault_signer: AccountInfo<'info>,
-    // User wallets.
-    #[account(mut)]
-    coin_wallet: AccountInfo<'info>,
+    vault_signer: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Distribute<'info> {
-    #[account(has_one = treasury, has_one = stake)]
+    #[account(
+        has_one = srm_vault,
+        has_one = treasury,
+        has_one = stake,
+    )]
     officer: Account<'info, Officer>,
-    treasury: AccountInfo<'info>,
-    stake: AccountInfo<'info>,
-    #[account(constraint = srm_vault.mint == mint::SRM)]
+    #[account(mut)]
+    treasury: Account<'info, TokenAccount>,
+    #[account(mut)]
+    stake: Account<'info, TokenAccount>,
+    #[account(mut)]
     srm_vault: Account<'info, TokenAccount>,
-    #[account(address = mint::SRM)]
-    mint: AccountInfo<'info>,
+    #[account(mut)]
+    srm_mint: Account<'info, Mint>,
     token_program: Program<'info, Token>,
     dex_program: Program<'info, Dex>,
 }
@@ -531,7 +634,7 @@ pub struct DropStakeReward<'info> {
         not(feature = "test"),
         account(address = mint::SRM),
     )]
-    mint: AccountInfo<'info>,
+    mint: UncheckedAccount<'info>,
     srm: DropStakeRewardPool<'info>,
     msrm: DropStakeRewardPool<'info>,
     msrm_registrar: Box<Account<'info, Registrar>>,
@@ -547,15 +650,19 @@ pub struct DropStakeReward<'info> {
 // program to handle it.
 #[derive(Accounts)]
 pub struct DropStakeRewardPool<'info> {
-    registrar: AccountInfo<'info>,
-    reward_event_q: AccountInfo<'info>,
+    registrar: UncheckedAccount<'info>,
+    reward_event_q: UncheckedAccount<'info>,
     pool_mint: Account<'info, Mint>,
-    vendor: AccountInfo<'info>,
-    vendor_vault: AccountInfo<'info>,
+    vendor: UncheckedAccount<'info>,
+    vendor_vault: UncheckedAccount<'info>,
 }
 
 // Accounts.
 
+/// Officer represents a deployed instance of the CFO mechanism. It is tied
+/// to a single deployment of the dex program.
+///
+/// PDA - [dex_program_id].
 #[account]
 #[derive(Default)]
 pub struct Officer {
@@ -581,10 +688,29 @@ pub struct Officer {
     pub bumps: OfficerBumps,
 }
 
+/// MarketAuth represents an authorization token created by the Officer
+/// authority. This is used as an authorization token which allows one to
+/// permissionlessly invoke the swap instructions on the market. Without this
+/// one would be able to create their own market with prices unfavorable
+/// to the smart contract (and subsequently swap on it).
+///
+/// Because a PDA is used here, the account existing (without a tombstone) is
+/// proof of the validity of a given market, which means that anyone can use
+/// the vault here to swap.
+///
+/// PDA - [b"market-auth", officer, market_address]
+#[account]
+#[derive(Default)]
+pub struct MarketAuth {
+    // Bump seed for this account's PDA.
+    pub bump: u8,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct OfficerBumps {
     pub bump: u8,
     pub srm: u8,
+    pub usdc: u8,
     pub stake: u8,
     pub treasury: u8,
 }
@@ -597,6 +723,21 @@ pub struct Distribution {
 }
 
 // CpiContext transformations.
+
+impl<'info> From<&CreateOfficerOpenOrders<'info>>
+    for CpiContext<'_, '_, '_, 'info, dex::InitOpenOrders<'info>>
+{
+    fn from(accs: &CreateOfficerOpenOrders<'info>) -> Self {
+        let program = accs.dex_program.to_account_info();
+        let accounts = dex::InitOpenOrders {
+            open_orders: accs.open_orders.to_account_info(),
+            authority: accs.officer.to_account_info(),
+            market: accs.market.to_account_info(),
+            rent: accs.rent.to_account_info(),
+        };
+        CpiContext::new(program, accounts)
+    }
+}
 
 impl<'info> From<&SweepFees<'info>> for CpiContext<'_, '_, '_, 'info, dex::SweepFees<'info>> {
     fn from(sweep: &SweepFees<'info>) -> Self {
@@ -618,20 +759,20 @@ impl<'info> From<&SwapToSrm<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swap
         let program = accs.swap_program.to_account_info();
         let accounts = swap::Swap {
             market: swap::MarketAccounts {
-                market: accs.market.market.clone(),
-                open_orders: accs.market.open_orders.clone(),
-                request_queue: accs.market.request_queue.clone(),
-                event_queue: accs.market.event_queue.clone(),
-                bids: accs.market.bids.clone(),
-                asks: accs.market.asks.clone(),
-                order_payer_token_account: accs.market.order_payer_token_account.clone(),
-                coin_vault: accs.market.coin_vault.clone(),
-                pc_vault: accs.market.pc_vault.clone(),
-                vault_signer: accs.market.vault_signer.clone(),
-                coin_wallet: accs.srm_vault.clone(),
+                market: accs.market.market.to_account_info(),
+                open_orders: accs.market.open_orders.to_account_info(),
+                request_queue: accs.market.request_queue.to_account_info(),
+                event_queue: accs.market.event_queue.to_account_info(),
+                bids: accs.market.bids.to_account_info(),
+                asks: accs.market.asks.to_account_info(),
+                order_payer_token_account: accs.market.order_payer_token_account.to_account_info(),
+                coin_vault: accs.market.coin_vault.to_account_info(),
+                pc_vault: accs.market.pc_vault.to_account_info(),
+                vault_signer: accs.market.vault_signer.to_account_info(),
+                coin_wallet: accs.srm_vault.to_account_info(),
             },
             authority: accs.officer.to_account_info(),
-            pc_wallet: accs.from_vault.to_account_info(),
+            pc_wallet: accs.usdc_vault.to_account_info(),
             dex_program: accs.dex_program.to_account_info(),
             token_program: accs.token_program.to_account_info(),
             rent: accs.rent.to_account_info(),
@@ -645,20 +786,20 @@ impl<'info> From<&SwapToUsdc<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swa
         let program = accs.swap_program.to_account_info();
         let accounts = swap::Swap {
             market: swap::MarketAccounts {
-                market: accs.market.market.clone(),
-                open_orders: accs.market.open_orders.clone(),
-                request_queue: accs.market.request_queue.clone(),
-                event_queue: accs.market.event_queue.clone(),
-                bids: accs.market.bids.clone(),
-                asks: accs.market.asks.clone(),
-                order_payer_token_account: accs.market.order_payer_token_account.clone(),
-                coin_vault: accs.market.coin_vault.clone(),
-                pc_vault: accs.market.pc_vault.clone(),
-                vault_signer: accs.market.vault_signer.clone(),
+                market: accs.market.market.to_account_info(),
+                open_orders: accs.market.open_orders.to_account_info(),
+                request_queue: accs.market.request_queue.to_account_info(),
+                event_queue: accs.market.event_queue.to_account_info(),
+                bids: accs.market.bids.to_account_info(),
+                asks: accs.market.asks.to_account_info(),
+                order_payer_token_account: accs.market.order_payer_token_account.to_account_info(),
+                coin_vault: accs.market.coin_vault.to_account_info(),
+                pc_vault: accs.market.pc_vault.to_account_info(),
+                vault_signer: accs.market.vault_signer.to_account_info(),
                 coin_wallet: accs.from_vault.to_account_info(),
             },
             authority: accs.officer.to_account_info(),
-            pc_wallet: accs.usdc_vault.clone(),
+            pc_wallet: accs.usdc_vault.to_account_info(),
             dex_program: accs.dex_program.to_account_info(),
             token_program: accs.token_program.to_account_info(),
             rent: accs.rent.to_account_info(),
@@ -667,15 +808,35 @@ impl<'info> From<&SwapToUsdc<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swa
     }
 }
 
-impl<'info> From<&Distribute<'info>> for CpiContext<'_, '_, '_, 'info, token::Burn<'info>> {
-    fn from(accs: &Distribute<'info>) -> Self {
-        let program = accs.token_program.to_account_info();
+impl<'info> Distribute<'info> {
+    fn into_burn(&self) -> CpiContext<'_, '_, '_, 'info, token::Burn<'info>> {
+        let program = self.token_program.to_account_info();
         let accounts = token::Burn {
-            mint: accs.mint.to_account_info(),
-            to: accs.srm_vault.to_account_info(),
-            authority: accs.officer.to_account_info(),
+            mint: self.srm_mint.to_account_info(),
+            to: self.srm_vault.to_account_info(),
+            authority: self.officer.to_account_info(),
         };
-        CpiContext::new(program.to_account_info(), accounts)
+        CpiContext::new(program, accounts)
+    }
+
+    fn into_stake_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
+        let program = self.token_program.to_account_info();
+        let accounts = token::Transfer {
+            from: self.srm_vault.to_account_info(),
+            to: self.stake.to_account_info(),
+            authority: self.officer.to_account_info(),
+        };
+        CpiContext::new(program, accounts)
+    }
+
+    fn into_treasury_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
+        let program = self.token_program.to_account_info();
+        let accounts = token::Transfer {
+            from: self.srm_vault.to_account_info(),
+            to: self.treasury.to_account_info(),
+            authority: self.officer.to_account_info(),
+        };
+        CpiContext::new(program, accounts)
     }
 }
 
@@ -712,38 +873,6 @@ impl<'info> DropStakeReward<'info> {
             token_program: self.token_program.to_account_info(),
             clock: self.clock.clone(),
             rent: self.rent.clone(),
-        };
-        CpiContext::new(program.to_account_info(), accounts)
-    }
-}
-
-impl<'info> Distribute<'info> {
-    fn into_burn(&self) -> CpiContext<'_, '_, '_, 'info, token::Burn<'info>> {
-        let program = self.token_program.to_account_info();
-        let accounts = token::Burn {
-            mint: self.mint.clone(),
-            to: self.srm_vault.to_account_info(),
-            authority: self.officer.to_account_info(),
-        };
-        CpiContext::new(program.to_account_info(), accounts)
-    }
-
-    fn into_stake_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
-        let program = self.token_program.to_account_info();
-        let accounts = token::Transfer {
-            from: self.srm_vault.to_account_info(),
-            to: self.stake.to_account_info(),
-            authority: self.officer.to_account_info(),
-        };
-        CpiContext::new(program.to_account_info(), accounts)
-    }
-
-    fn into_treasury_transfer(&self) -> CpiContext<'_, '_, '_, 'info, token::Transfer<'info>> {
-        let program = self.token_program.to_account_info();
-        let accounts = token::Transfer {
-            from: self.srm_vault.to_account_info(),
-            to: self.treasury.to_account_info(),
-            authority: self.officer.to_account_info(),
         };
         CpiContext::new(program.to_account_info(), accounts)
     }
@@ -794,7 +923,7 @@ fn is_distribution_ready(accounts: &Distribute) -> Result<()> {
 }
 
 // `ixs` must be the Instructions sysvar.
-fn is_not_trading(ixs: &AccountInfo) -> Result<()> {
+fn is_not_trading(ixs: &UncheckedAccount) -> Result<()> {
     let data = ixs.try_borrow_data()?;
     match tx_instructions::load_instruction_at(1, &data) {
         Ok(_) => Err(ErrorCode::TooManyInstructions.into()),

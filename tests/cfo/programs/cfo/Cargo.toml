@@ -18,7 +18,8 @@ test = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
-spl-token = { version ="3.1.1", features = ["no-entrypoint"] }
+spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
 swap = { path = "../../deps/swap/programs/swap", features = ["cpi"] }
+serum_dex = { path = "../../deps/serum-dex/dex", features = ["no-entrypoint"] }
 registry = { path = "../../deps/stake/programs/registry", features = ["cpi"] }
 lockup = { path = "../../deps/stake/programs/lockup", features = ["cpi"] }

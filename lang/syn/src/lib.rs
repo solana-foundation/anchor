@@ -178,6 +178,9 @@ impl Field {
             Ty::AccountInfo => quote! {
                 AccountInfo
             },
+            Ty::UncheckedAccount => quote! {
+                UncheckedAccount
+            },
             Ty::Signer => quote! {
                 Signer
             },
@@ -217,11 +220,14 @@ impl Field {
 
     // TODO: remove the option once `CpiAccount` is completely removed (not
     //       just deprecated).
-    pub fn from_account_info(&self, kind: Option<&InitKind>) -> proc_macro2::TokenStream {
+    pub fn from_account_info_unchecked(&self, kind: Option<&InitKind>) -> proc_macro2::TokenStream {
         let field = &self.ident;
         let container_ty = self.container_ty();
         match &self.ty {
             Ty::AccountInfo => quote! { #field.to_account_info() },
+            Ty::UncheckedAccount => {
+                quote! { UncheckedAccount::try_from(#field.to_account_info()) }
+            }
             Ty::Account(AccountTy { boxed, .. }) => {
                 if *boxed {
                     quote! {
@@ -276,6 +282,7 @@ impl Field {
             Ty::ProgramState(_) => quote! { anchor_lang::ProgramState },
             Ty::Program(_) => quote! { anchor_lang::Program },
             Ty::AccountInfo => quote! {},
+            Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},
         }
     }
@@ -285,6 +292,9 @@ impl Field {
         match &self.ty {
             Ty::AccountInfo => quote! {
                 AccountInfo
+            },
+            Ty::UncheckedAccount => quote! {
+                UncheckedAccount
             },
             Ty::Signer => quote! {
                 Signer
@@ -360,6 +370,7 @@ pub struct CompositeField {
 #[derive(Debug, PartialEq)]
 pub enum Ty {
     AccountInfo,
+    UncheckedAccount,
     ProgramState(ProgramStateTy),
     CpiState(CpiStateTy),
     ProgramAccount(ProgramAccountTy),

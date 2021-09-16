@@ -33,6 +33,12 @@ async function initMarket({ provider }) {
     undefined,
     decimals
   );
+  const [MINT_B, GOD_B] = await serumCmn.createMintAndVault(
+    provider,
+    new BN("1000000000000000000"),
+    undefined,
+    decimals
+  );
   const [USDC, GOD_USDC] = await serumCmn.createMintAndVault(
     provider,
     new BN("1000000000000000000"),
@@ -46,6 +52,7 @@ async function initMarket({ provider }) {
     provider,
     mints: [
       { god: GOD_A, mint: MINT_A, amount, decimals },
+      { god: GOD_B, mint: MINT_B, amount, decimals },
       { god: GOD_USDC, mint: USDC, amount, decimals },
     ],
   });
@@ -71,12 +78,24 @@ async function initMarket({ provider }) {
     [5.961, 25.4],
   ];
 
-  [MARKET_A_USDC, vaultSigner] = await setupMarket({
+  [MARKET_A_USDC, marketAVaultSigner] = await setupMarket({
     baseMint: MINT_A,
     quoteMint: USDC,
     marketMaker: {
       account: marketMaker.account,
       baseToken: marketMaker.tokens[MINT_A.toString()],
+      quoteToken: marketMaker.tokens[USDC.toString()],
+    },
+    bids,
+    asks,
+    provider,
+  });
+  [MARKET_B_USDC, marketBVaultSigner] = await setupMarket({
+    baseMint: MINT_B,
+    quoteMint: USDC,
+    marketMaker: {
+      account: marketMaker.account,
+      baseToken: marketMaker.tokens[MINT_B.toString()],
       quoteToken: marketMaker.tokens[USDC.toString()],
     },
     bids,
@@ -86,89 +105,16 @@ async function initMarket({ provider }) {
 
   return {
     marketA: MARKET_A_USDC,
-    vaultSigner,
+    marketAVaultSigner,
+    marketB: MARKET_B_USDC,
+    marketBVaultSigner,
     marketMaker,
     mintA: MINT_A,
+    mintB: MINT_B,
     usdc: USDC,
     godA: GOD_A,
+    godB: GOD_B,
     godUsdc: GOD_USDC,
-  };
-}
-
-// Creates everything needed for an orderbook to be running
-//
-// * Mints for both the base and quote currencies.
-// * Lists the market.
-// * Provides resting orders on the market.
-//
-// Returns a client that can be used to interact with the market
-// (and some other data, e.g., the mints and market maker account).
-async function initOrderbook({ provider, bids, asks }) {
-  if (!bids || !asks) {
-    asks = [
-      [6.041, 7.8],
-      [6.051, 72.3],
-      [6.055, 5.4],
-      [6.067, 15.7],
-      [6.077, 390.0],
-      [6.09, 24.0],
-      [6.11, 36.3],
-      [6.133, 300.0],
-      [6.167, 687.8],
-    ];
-    bids = [
-      [6.004, 8.5],
-      [5.995, 12.9],
-      [5.987, 6.2],
-      [5.978, 15.3],
-      [5.965, 82.8],
-      [5.961, 25.4],
-    ];
-  }
-  // Create base and quote currency mints.
-  const decimals = 6;
-  const [MINT_A, GOD_A] = await serumCmn.createMintAndVault(
-    provider,
-    new BN(1000000000000000),
-    undefined,
-    decimals
-  );
-  const [USDC, GOD_USDC] = await serumCmn.createMintAndVault(
-    provider,
-    new BN(1000000000000000),
-    undefined,
-    decimals
-  );
-
-  // Create a funded account to act as market maker.
-  const amount = 100000 * 10 ** decimals;
-  const marketMaker = await fundAccount({
-    provider,
-    mints: [
-      { god: GOD_A, mint: MINT_A, amount, decimals },
-      { god: GOD_USDC, mint: USDC, amount, decimals },
-    ],
-  });
-
-  [marketClient, vaultSigner] = await setupMarket({
-    baseMint: MINT_A,
-    quoteMint: USDC,
-    marketMaker: {
-      account: marketMaker.account,
-      baseToken: marketMaker.tokens[MINT_A.toString()],
-      quoteToken: marketMaker.tokens[USDC.toString()],
-    },
-    bids,
-    asks,
-    provider,
-  });
-
-  return {
-    marketClient,
-    baseMint: MINT_A,
-    quoteMint: USDC,
-    marketMaker,
-    vaultSigner,
   };
 }
 
@@ -647,7 +593,6 @@ function sleep(ms) {
 module.exports = {
   fundAccount,
   initMarket,
-  initOrderbook,
   setupMarket,
   DEX_PID,
   getVaultOwnerAndNonce,
