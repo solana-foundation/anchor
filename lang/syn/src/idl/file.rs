@@ -1,6 +1,7 @@
 use crate::idl::*;
 use crate::parser::context::CrateContext;
 use crate::parser::{self, accounts, error, program};
+use crate::Ty;
 use crate::{AccountField, AccountsStruct, StateIx};
 use anyhow::Result;
 use heck::MixedCase;
@@ -458,7 +459,10 @@ fn idl_accounts(
             AccountField::Field(acc) => IdlAccountItem::IdlAccount(IdlAccount {
                 name: acc.ident.to_string().to_mixed_case(),
                 is_mut: acc.constraints.is_mutable(),
-                is_signer: acc.constraints.is_signer(),
+                is_signer: match acc.ty {
+                    Ty::Signer => true,
+                    _ => acc.constraints.is_signer(),
+                },
             }),
         })
         .collect::<Vec<_>>()
