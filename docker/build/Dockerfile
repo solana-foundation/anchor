@@ -14,7 +14,7 @@ ARG ANCHOR_CLI
 ENV HOME="/root"
 ENV PATH="${HOME}/.cargo/bin:${PATH}"
 ENV PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
-ENV PATH="${HOME}/.nvm/versions/node/v16.9.0/bin:${PATH}"
+ENV PATH="${HOME}/.nvm/versions/node/v16.9.1/bin:${PATH}"
 
 # Install base utilities.
 RUN mkdir -p /workdir && mkdir -p /tmp && \
