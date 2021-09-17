@@ -11,6 +11,12 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.16.1] - 2021-09-17
+
+### Fixes
+
+* lang: `Signer` type now sets isSigner to true in the IDL ([#750](https://github.com/project-serum/anchor/pull/750)).
+
 ## [0.16.0] - 2021-09-16
 
 ### Features
