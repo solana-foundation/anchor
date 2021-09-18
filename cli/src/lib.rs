@@ -1945,6 +1945,8 @@ fn run(cfg_override: &ConfigOverride, script: String) -> Result<()> {
         let exit = std::process::Command::new("bash")
             .arg("-c")
             .arg(&script)
+            .env("ANCHOR_PROVIDER_URL", cfg.provider.cluster.url())
+            .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
