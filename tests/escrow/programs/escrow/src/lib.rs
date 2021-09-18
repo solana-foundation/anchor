@@ -16,7 +16,7 @@
 //! - Initializer will get back ownership of their token X account
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, SetAuthority, TokenAccount, Transfer};
+use anchor_spl::token::{self, SetAuthority, Token, TokenAccount, Transfer};
 use spl_token::instruction::AuthorityType;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -24,6 +24,8 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[program]
 pub mod escrow {
     use super::*;
+
+    const ESCROW_PDA_SEED: &[u8] = b"escrow";
 
     pub fn initialize_escrow(
         ctx: Context<InitializeEscrow>,
@@ -48,14 +50,14 @@ pub mod escrow {
         ctx.accounts.escrow_account.initializer_amount = initializer_amount;
         ctx.accounts.escrow_account.taker_amount = taker_amount;
 
-        let (pda, _bump_seed) = Pubkey::find_program_address(&[b"escrow"], ctx.program_id);
+        let (pda, _bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
         token::set_authority(ctx.accounts.into(), AuthorityType::AccountOwner, Some(pda))?;
         Ok(())
     }
 
     pub fn cancel_escrow(ctx: Context<CancelEscrow>) -> ProgramResult {
-        let (_pda, bump_seed) = Pubkey::find_program_address(&[b"escrow"], ctx.program_id);
-        let seeds = &[&b"escrow"[..], &[bump_seed]];
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
+        let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
 
         token::set_authority(
             ctx.accounts
@@ -70,8 +72,8 @@ pub mod escrow {
 
     pub fn exchange(ctx: Context<Exchange>) -> ProgramResult {
         // Transferring from initializer to taker
-        let (_pda, bump_seed) = Pubkey::find_program_address(&[b"escrow"], ctx.program_id);
-        let seeds = &[&b"escrow"[..], &[bump_seed]];
+        let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
+        let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
 
         token::transfer(
             ctx.accounts
@@ -108,9 +110,10 @@ pub struct InitializeEscrow<'info> {
     )]
     pub initializer_deposit_token_account: Account<'info, TokenAccount>,
     pub initializer_receive_token_account: Account<'info, TokenAccount>,
-    #[account(zero)]
+    #[account(init, payer = initializer, space = 8 + EscrowAccount::LEN)]
     pub escrow_account: Account<'info, EscrowAccount>,
-    pub token_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -137,7 +140,7 @@ pub struct Exchange<'info> {
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
     pub pda_account: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -153,7 +156,7 @@ pub struct CancelEscrow<'info> {
         close = initializer
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
-    pub token_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[account]
@@ -163,6 +166,10 @@ pub struct EscrowAccount {
     pub initializer_receive_token_account: Pubkey,
     pub initializer_amount: u64,
     pub taker_amount: u64,
+}
+
+impl EscrowAccount {
+    pub const LEN: usize = 32 + 32 + 32 + 8 + 8;
 }
 
 impl<'info> From<&mut InitializeEscrow<'info>>
@@ -176,7 +183,7 @@ impl<'info> From<&mut InitializeEscrow<'info>>
                 .clone(),
             current_authority: accounts.initializer.clone(),
         };
-        let cpi_program = accounts.token_program.clone();
+        let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
@@ -187,7 +194,8 @@ impl<'info> CancelEscrow<'info> {
             account_or_mint: self.pda_deposit_token_account.to_account_info().clone(),
             current_authority: self.pda_account.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
     }
 }
 
@@ -197,7 +205,8 @@ impl<'info> Exchange<'info> {
             account_or_mint: self.pda_deposit_token_account.to_account_info().clone(),
             current_authority: self.pda_account.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
     }
 }
 
@@ -208,7 +217,8 @@ impl<'info> Exchange<'info> {
             to: self.taker_receive_token_account.to_account_info().clone(),
             authority: self.pda_account.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
     }
 }
 
@@ -224,6 +234,7 @@ impl<'info> Exchange<'info> {
                 .clone(),
             authority: self.taker.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
     }
 }
