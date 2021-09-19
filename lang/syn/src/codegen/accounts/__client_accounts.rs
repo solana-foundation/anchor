@@ -1,4 +1,4 @@
-use crate::{AccountField, AccountsStruct};
+use crate::{AccountField, AccountsStruct, Ty};
 use heck::SnakeCase;
 use quote::quote;
 
@@ -51,7 +51,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 }
             }
             AccountField::Field(f) => {
-                let is_signer = match f.constraints.is_signer() {
+                let is_signer = match f.ty {
+                    Ty::Signer => true,
+                    _ => f.constraints.is_signer(),
+                };
+                let is_signer = match is_signer {
                     false => quote! {false},
                     true => quote! {true},
                 };
