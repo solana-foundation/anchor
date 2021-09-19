@@ -20,7 +20,7 @@ export { StateCoder, stateDiscriminator } from "./state";
 /**
  * Coder provides a facade for encoding and decoding all IDL related objects.
  */
-export default class Coder {
+export default class Coder<A extends string = string> {
   /**
    * Instruction coder.
    */
@@ -29,7 +29,7 @@ export default class Coder {
   /**
    * Account coder.
    */
-  readonly accounts: AccountsCoder;
+  readonly accounts: AccountsCoder<A>;
 
   /**
    * Types coder.
