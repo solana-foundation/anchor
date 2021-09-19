@@ -35,8 +35,7 @@ Additionally,
 notice how we take a mutable reference to `my_account` and assign the `data` to it. This leads us to
 the `Initialize` struct, deriving `Accounts`. There are two things to notice about `Initialize`.
 
-1. The `my_account` field is of type `ProgramAccount<'info, MyAccount>`, telling the program it *must*
-be **owned** by the currently executing program, and the deserialized data structure is `MyAccount`.
+1. The `my_account` field is of type `Account<'info, MyAccount>` and the deserialized data structure is `MyAccount`.
 2. The `my_account` field is marked with the `init` attribute. This will create a new
 account owned by the current program, zero initialized. When using `init`, one must also provide
 `payer`, which will fund the account creation, `space`, which defines how large the account should be,
