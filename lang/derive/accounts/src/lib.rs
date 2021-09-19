@@ -50,6 +50,7 @@ use syn::parse_macro_input;
 /// | `#[account(executable)]` | On `AccountInfo` structs | Checks the given account is an executable program. |
 /// | `#[account(state = <target>)]` | On `CpiState` structs | Checks the given state is the canonical state account for the target program. |
 /// | `#[account(owner = <target>)]` | On `CpiState`, `CpiAccount`, and `AccountInfo` | Checks the account owner matches the target. |
+/// | `#[account(address = <pubkey>)]` | On `AccountInfo` and `Account` | Checks the account key matches the pubkey. |
 // TODO: How do we make the markdown render correctly without putting everything
 //       on absurdly long lines?
 #[proc_macro_derive(Accounts, attributes(account, instruction))]
