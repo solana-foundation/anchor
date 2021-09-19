@@ -20,22 +20,4 @@ export { Instruction } from "./coder/instruction";
 export { Idl } from "./idl";
 export { default as workspace } from "./workspace";
 export * as utils from "./utils";
-export { Program } from "./program";
-export { Address } from "./program/common";
-export { Event } from "./program/event";
-export {
-  ProgramAccount,
-  AccountNamespace,
-  AccountClient,
-  StateClient,
-  RpcNamespace,
-  RpcFn,
-  SimulateNamespace,
-  SimulateFn,
-  TransactionNamespace,
-  TransactionFn,
-  InstructionNamespace,
-  InstructionFn,
-} from "./program/namespace";
-export { Context, Accounts } from "./program/context";
-export { EventParser } from "./program/event";
+export * from "./program";

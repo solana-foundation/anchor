@@ -16,6 +16,11 @@ import { utf8 } from "../utils/bytes";
 import { EventManager } from "./event";
 import { Address, translateAddress } from "./common";
 
+export * from "./common";
+export * from "./context";
+export * from "./event";
+export * from "./namespace";
+
 /**
  * ## Program
  *

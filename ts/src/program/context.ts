@@ -10,11 +10,11 @@ import { IdlInstruction } from "../idl";
 /**
  * Context provides all non-argument inputs for generating Anchor transactions.
  */
-export type Context = {
+export type Context<A extends Accounts = Accounts> = {
   /**
    * Accounts used in the instruction context.
    */
-  accounts?: Accounts;
+  accounts?: A;
 
   /**
    * All accounts to pass into an instruction *after* the main `accounts`.
