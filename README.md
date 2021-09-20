@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/project-serum/anchor.svg?branch=master)](https://travis-ci.com/project-serum/anchor)
 [![Docs](https://img.shields.io/badge/docs-tutorials-orange)](https://project-serum.github.io/anchor/)
-[![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/739225212658122886)
+[![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/889577356681945098)
 [![License](https://img.shields.io/github/license/project-serum/anchor?color=ff69b4)](https://opensource.org/licenses/Apache-2.0)
 
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools for writing smart contracts.
@@ -100,7 +100,7 @@ or issues where [help is wanted](https://github.com/project-serum/anchor/issues?
 For simple documentation changes, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue
-and engage with the maintainers in [Discord](https://discord.com/channels/739225212658122886).
+and engage with the maintainers in [Discord](https://discord.com/channels/889577356681945098).
 
 ## License
 
