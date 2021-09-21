@@ -18,6 +18,7 @@ import Coder, {
 import { Subscription, Address, translateAddress } from "../common";
 import { getProvider } from "../../";
 import * as pubkeyUtil from "../../utils/pubkey";
+import * as rpcUtil from "../../utils/rpc";
 
 export default class AccountFactory {
   public static build(
@@ -150,6 +151,34 @@ export class AccountClient<T = any> {
       throw new Error(`Account does not exist ${address.toString()}`);
     }
     return data;
+  }
+
+  /**
+   * Returns multiple deserialized accounts.
+   * Accounts not found or with wrong discriminator are returned as null.
+   *
+   * @param addresses The addresses of the accounts to fetch.
+   */
+  async fetchMultiple(addresses: Address[]): Promise<(Object | null)[]> {
+    const accounts = await rpcUtil.getMultipleAccounts(
+      this._provider.connection,
+      addresses.map((address) => translateAddress(address))
+    );
+
+    const discriminator = await accountDiscriminator(this._idlAccount.name);
+    // Decode accounts where discriminator is correct, null otherwise
+    return accounts.map((account) => {
+      if (account == null) {
+        return null;
+      }
+      if (discriminator.compare(account?.account.data.slice(0, 8))) {
+        return null;
+      }
+      return this._coder.accounts.decode(
+        this._idlAccount.name,
+        account?.account.data
+      );
+    });
   }
 
   /**
