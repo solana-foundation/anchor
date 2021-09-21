@@ -1,9 +1,19 @@
-# Anchor ⚓
+<div align="center">
+  <img height="170x" src="https://media.discordapp.net/attachments/889596381235392522/889979895860568114/anchor-radius.png?width=746&height=746" />
 
-[![Build Status](https://travis-ci.com/project-serum/anchor.svg?branch=master)](https://travis-ci.com/project-serum/anchor)
-[![Docs](https://img.shields.io/badge/docs-tutorials-orange)](https://project-serum.github.io/anchor/)
-[![Chat](https://img.shields.io/discord/739225212658122886?color=blueviolet)](https://discord.com/channels/889577356681945098)
-[![License](https://img.shields.io/github/license/project-serum/anchor?color=ff69b4)](https://opensource.org/licenses/Apache-2.0)
+  <h1>Anchor</h1>
+
+  <p>
+    <strong>Solana Sealevel Framework</strong>
+  </p>
+
+  <p>
+    <a href="https://travis-ci.com/project-serum/anchor"><img alt="Build Status" src="https://travis-ci.com/project-serum/anchor.svg?branch=master&color=blueviolet" /></a>
+    <a href="https://project-serum.github.io/anchor/"><img alt="Tutorials" src="https://img.shields.io/badge/docs-tutorials-blueviolet" /></a>
+    <a href="https://discord.com/channels/889577356681945098"><img alt="Discord Chat" src="https://img.shields.io/discord/889577356681945098?color=blueviolet" /></a>
+    <a href="https://opensource.org/licenses/Apache-2.0"><img alt="License" src="https://img.shields.io/github/license/project-serum/anchor?color=blueviolet" /></a>
+  </p>
+</div>
 
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools for writing smart contracts.
 
