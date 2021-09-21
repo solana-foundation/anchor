@@ -152,4 +152,11 @@ pub mod misc {
         assert!(ctx.accounts.token.mint == ctx.accounts.mint.key());
         Ok(())
     }
+
+    pub fn test_composite_payer(ctx: Context<TestCompositePayer>) -> ProgramResult {
+        ctx.accounts.composite.data.data = 1;
+        ctx.accounts.data.udata = 2;
+        ctx.accounts.data.idata = 3;
+        Ok(())
+    }
 }

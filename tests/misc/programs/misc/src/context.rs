@@ -185,3 +185,11 @@ pub struct TestInitToken<'info> {
     pub system_program: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct TestCompositePayer<'info> {
+    pub composite: TestInit<'info>,
+    #[account(init, payer = composite.payer, space = 8 + size_of::<Data>())]
+    pub data: Account<'info, Data>,
+    pub system_program: Program<'info, System>,
+}

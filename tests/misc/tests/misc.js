@@ -578,4 +578,29 @@ describe("misc", () => {
     assert.ok(account.owner.equals(program.provider.wallet.publicKey));
     assert.ok(account.mint.equals(mint.publicKey));
   });
+
+  it("Can initialize multiple accounts via a composite payer", async () => {
+    const data1 = anchor.web3.Keypair.generate();
+    const data2 = anchor.web3.Keypair.generate();
+
+    const tx = await program.rpc.testCompositePayer({
+      accounts: {
+        composite: {
+          data: data1.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        data: data2.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers: [data1, data2]
+    });
+
+    const account1 = await program.account.dataI8.fetch(data1.publicKey);
+    assert.equal(account1.data, 1);
+
+    const account2 = await program.account.data.fetch(data2.publicKey);
+    assert.equal(account2.udata, 2);
+    assert.equal(account2.idata, 3);
+  });
 });
