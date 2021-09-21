@@ -8,6 +8,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
+import { chunks } from "../utils/common";
 import { Address, translateAddress } from "../program/common";
 import Provider, { getProvider } from "../provider";
 
@@ -38,7 +39,26 @@ export async function invoke(
   return await provider.send(tx);
 }
 
+const GET_MULTIPLE_ACCOUNTS_LIMIT: number = 99;
+
 export async function getMultipleAccounts(
+  connection: Connection,
+  publicKeys: PublicKey[]
+): Promise<
+  Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
+> {
+  if (publicKeys.length <= GET_MULTIPLE_ACCOUNTS_LIMIT) {
+    return await getMultipleAccountsCore(connection, publicKeys);
+  } else {
+    const batches = chunks(publicKeys, GET_MULTIPLE_ACCOUNTS_LIMIT);
+    const results = await Promise.all<
+      Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
+    >(batches.map((batch) => getMultipleAccountsCore(connection, batch)));
+    return results.flat();
+  }
+}
+
+async function getMultipleAccountsCore(
   connection: Connection,
   publicKeys: PublicKey[]
 ): Promise<
