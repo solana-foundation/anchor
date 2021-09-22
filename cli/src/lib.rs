@@ -100,6 +100,10 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
+        /// Flag to keep the local validator running after tests
+        /// to be able to check the transactions.
+        #[clap(long)]
+        detach: bool,
         #[clap(multiple_values = true)]
         args: Vec<String>,
     },
@@ -280,12 +284,14 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_deploy,
             skip_local_validator,
             skip_build,
+            detach,
             args,
         } => test(
             &opts.cfg_override,
             skip_deploy,
             skip_local_validator,
             skip_build,
+            detach,
             args,
         ),
         #[cfg(feature = "dev")]
@@ -1308,6 +1314,7 @@ fn test(
     skip_deploy: bool,
     skip_local_validator: bool,
     skip_build: bool,
+    detach: bool,
     extra_args: Vec<String>,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
@@ -1363,6 +1370,20 @@ fn test(
                 .context(cmd)
         };
 
+        match test_result {
+            Ok(exit) => {
+                if detach {
+                    println!("Local validator still running. Press Ctrl + C quit.");
+                    std::io::stdin().lock().lines().next().unwrap().unwrap();
+                } else if !exit.status.success() && !detach {
+                    std::process::exit(exit.status.code().unwrap());
+                }
+            }
+            Err(err) => {
+                println!("Failed to run test: {:#}", err)
+            }
+        }
+
         // Check all errors and shut down.
         if let Some(mut child) = validator_handle {
             if let Err(err) = child.kill() {
@@ -1372,16 +1393,6 @@ fn test(
         for mut child in log_streams? {
             if let Err(err) = child.kill() {
                 println!("Failed to kill subprocess {}: {}", child.id(), err);
-            }
-        }
-        match test_result {
-            Ok(exit) => {
-                if !exit.status.success() {
-                    std::process::exit(exit.status.code().unwrap());
-                }
-            }
-            Err(err) => {
-                println!("Failed to run test: {:#}", err)
             }
         }
 

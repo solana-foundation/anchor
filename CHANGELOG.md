@@ -13,6 +13,10 @@ incremented for features.
 
 ## [0.16.1] - 2021-09-17
 
+### Features
+
+* lang: Add `--detach` flag to `anchor test` ([#770](https://github.com/project-serum/anchor/pull/770)).
+
 ### Fixes
 
 * lang: `Signer` type now sets isSigner to true in the IDL ([#750](https://github.com/project-serum/anchor/pull/750)).
