@@ -282,15 +282,18 @@ pub fn node_shell(
 const anchor = require('@project-serum/anchor');
 const web3 = anchor.web3;
 const PublicKey = anchor.web3.PublicKey;
+const Keypair = anchor.web3.Keypair;
 
 const __wallet = new anchor.Wallet(
-  Buffer.from(
-    JSON.parse(
-      require('fs').readFileSync(
-        "{}",
-        {{
-          encoding: "utf-8",
-        }},
+  Keypair.fromSecretKey(
+    Buffer.from(
+      JSON.parse(
+        require('fs').readFileSync(
+          "{}",
+          {{
+            encoding: "utf-8",
+          }},
+        ),
       ),
     ),
   ),
