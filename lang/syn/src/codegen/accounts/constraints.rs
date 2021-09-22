@@ -281,7 +281,12 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
     let seeds_with_nonce = match &c.seeds {
         None => quote! {},
         Some(c) => {
-            let s = &c.seeds;
+            let s = &mut c.seeds.clone();
+            // If the seeds came with a trailing comma, we need to chop it off
+            // before we interpolate them below.
+            if let Some(pair) = s.pop() {
+                s.push_value(pair.into_value());
+            }
             let inner = match c.bump.as_ref() {
                 // Bump target not given. Use the canonical bump.
                 None => {

@@ -18,7 +18,7 @@ pub struct TestTokenSeedsInit<'info> {
     pub mint: Account<'info, Mint>,
     #[account(
         init,
-        seeds = [b"my-token-seed".as_ref()],
+        seeds = [b"my-token-seed".as_ref(),],
         bump = token_bump,
         payer = authority,
         token::mint = mint,
