@@ -37,7 +37,7 @@ export class AccountsCoder<A extends string = string> {
     }
     const len = layout.encode(account, buffer);
     let accountData = buffer.slice(0, len);
-    let discriminator = await accountDiscriminator(accountName);
+    let discriminator = AccountsCoder.accountDiscriminator(accountName);
     return Buffer.concat([discriminator, accountData]);
   }
 
@@ -50,9 +50,13 @@ export class AccountsCoder<A extends string = string> {
     }
     return layout.decode(data);
   }
-}
 
-// Calculates unique 8 byte discriminator prepended to all anchor accounts.
-export async function accountDiscriminator(name: string): Promise<Buffer> {
-  return Buffer.from(sha256.digest(`account:${name}`)).slice(0, 8);
+  /**
+   * Calculates and returns a unique 8 byte discriminator prepended to all anchor accounts.
+   *
+   * @param name The name of the account to calculate the discriminator.
+   */
+  public static accountDiscriminator(name: string): Buffer {
+    return Buffer.from(sha256.digest(`account:${name}`)).slice(0, 8);
+  }
 }

@@ -12,8 +12,8 @@ import Provider from "../../provider";
 import { Idl, IdlTypeDef } from "../../idl";
 import Coder, {
   ACCOUNT_DISCRIMINATOR_SIZE,
-  accountDiscriminator,
   accountSize,
+  AccountsCoder,
 } from "../../coder";
 import { Subscription, Address, translateAddress } from "../common";
 import { getProvider } from "../../";
@@ -132,7 +132,9 @@ export class AccountClient<T = any> {
     }
 
     // Assert the account discriminator is correct.
-    const discriminator = await accountDiscriminator(this._idlAccount.name);
+    const discriminator = AccountsCoder.accountDiscriminator(
+      this._idlAccount.name
+    );
     if (discriminator.compare(accountInfo.data.slice(0, 8))) {
       throw new Error("Invalid account discriminator");
     }
@@ -165,7 +167,9 @@ export class AccountClient<T = any> {
       addresses.map((address) => translateAddress(address))
     );
 
-    const discriminator = await accountDiscriminator(this._idlAccount.name);
+    const discriminator = AccountsCoder.accountDiscriminator(
+      this._idlAccount.name
+    );
     // Decode accounts where discriminator is correct, null otherwise
     return accounts.map((account) => {
       if (account == null) {
@@ -185,7 +189,7 @@ export class AccountClient<T = any> {
    * Returns all instances of this account type for the program.
    */
   async all(filter?: Buffer): Promise<ProgramAccount<T>[]> {
-    let bytes = await accountDiscriminator(this._idlAccount.name);
+    let bytes = AccountsCoder.accountDiscriminator(this._idlAccount.name);
     if (filter !== undefined) {
       bytes = Buffer.concat([bytes, filter]);
     }

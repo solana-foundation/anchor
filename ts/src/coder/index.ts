@@ -9,11 +9,7 @@ import { sighash } from "./common";
 export { accountSize } from "./common";
 export { TypesCoder } from "./types";
 export { InstructionCoder } from "./instruction";
-export {
-  AccountsCoder,
-  accountDiscriminator,
-  ACCOUNT_DISCRIMINATOR_SIZE,
-} from "./accounts";
+export { AccountsCoder, ACCOUNT_DISCRIMINATOR_SIZE } from "./accounts";
 export { EventCoder, eventDiscriminator } from "./event";
 export { StateCoder, stateDiscriminator } from "./state";
 
