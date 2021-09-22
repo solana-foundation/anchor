@@ -1792,6 +1792,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
             std::fs::write("deploy.js", deploy_script_host_str)?;
             std::process::Command::new("node")
                 .arg("deploy.js")
+                .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()?
