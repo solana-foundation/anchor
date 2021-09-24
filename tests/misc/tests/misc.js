@@ -1,7 +1,11 @@
 const anchor = require("@project-serum/anchor");
 const PublicKey = anchor.web3.PublicKey;
 const assert = require("assert");
-const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
+const {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  Token,
+} = require("@solana/spl-token");
 
 describe("misc", () => {
   // Configure the client to use the local cluster.
@@ -155,7 +159,7 @@ describe("misc", () => {
     assert.ok(resp.events[2].data.data === 9);
   });
 
-	let dataI8;
+  let dataI8;
 
   it("Can use i8 in the idl", async () => {
     dataI8 = anchor.web3.Keypair.generate();
@@ -593,7 +597,7 @@ describe("misc", () => {
         data: data2.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
-      signers: [data1, data2]
+      signers: [data1, data2],
     });
 
     const account1 = await program.account.dataI8.fetch(data1.publicKey);
@@ -602,5 +606,38 @@ describe("misc", () => {
     const account2 = await program.account.data.fetch(data2.publicKey);
     assert.equal(account2.udata, 2);
     assert.equal(account2.idata, 3);
+  });
+
+  it("Can create an associated token account", async () => {
+    const token = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      mint.publicKey,
+      program.provider.wallet.publicKey
+    );
+
+    await program.rpc.testInitAssociatedToken({
+      accounts: {
+        token,
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      },
+    });
+    const client = new Token(
+      program.provider.connection,
+      mint.publicKey,
+      TOKEN_PROGRAM_ID,
+      program.provider.wallet.payer
+    );
+    const account = await client.getAccountInfo(token);
+    assert.ok(account.state === 1);
+    assert.ok(account.amount.toNumber() === 0);
+    assert.ok(account.isInitialized);
+    assert.ok(account.owner.equals(program.provider.wallet.publicKey));
+    assert.ok(account.mint.equals(mint.publicKey));
   });
 });

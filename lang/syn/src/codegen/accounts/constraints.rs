@@ -411,6 +411,28 @@ pub fn generate_init(
                 };
             }
         }
+        InitKind::AssociatedToken { owner, mint } => {
+            quote! {
+                let #field: #ty_decl = {
+                    #payer
+
+                    let cpi_program = associated_token_program.to_account_info();
+                    let cpi_accounts = anchor_spl::associated_token::Create {
+                        payer: payer.to_account_info(),
+                        associated_token: #field.to_account_info(),
+                        authority: #owner.to_account_info(),
+                        mint: #mint.to_account_info(),
+                        system_program: system_program.to_account_info(),
+                        token_program: token_program.to_account_info(),
+                        rent: rent.to_account_info(),
+                    };
+                    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+                    anchor_spl::associated_token::create(cpi_ctx)?;
+                    let pa: #ty_decl = #from_account_info;
+                    pa
+                };
+            }
+        }
         InitKind::Mint { owner, decimals } => {
             let create_account = generate_create_account(
                 field,

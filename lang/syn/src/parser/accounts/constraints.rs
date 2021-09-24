@@ -121,6 +121,33 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
+        "associated_token" => {
+            stream.parse::<Token![:]>()?;
+            stream.parse::<Token![:]>()?;
+            let kw = stream.call(Ident::parse_any)?.to_string();
+            stream.parse::<Token![=]>()?;
+
+            let span = ident
+                .span()
+                .join(stream.span())
+                .unwrap_or_else(|| ident.span());
+
+            match kw.as_str() {
+                "mint" => ConstraintToken::AssociatedTokenMint(Context::new(
+                    span,
+                    ConstraintTokenMint {
+                        mint: stream.parse()?,
+                    },
+                )),
+                "authority" => ConstraintToken::AssociatedTokenAuthority(Context::new(
+                    span,
+                    ConstraintTokenAuthority {
+                        auth: stream.parse()?,
+                    },
+                )),
+                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+            }
+        }
         "bump" => {
             let bump = {
                 if stream.peek(Token![=]) {
@@ -246,6 +273,8 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub address: Option<Context<ConstraintAddress>>,
     pub token_mint: Option<Context<ConstraintTokenMint>>,
     pub token_authority: Option<Context<ConstraintTokenAuthority>>,
+    pub associated_token_mint: Option<Context<ConstraintTokenMint>>,
+    pub associated_token_authority: Option<Context<ConstraintTokenAuthority>>,
     pub mint_authority: Option<Context<ConstraintMintAuthority>>,
     pub mint_decimals: Option<Context<ConstraintMintDecimals>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
@@ -273,6 +302,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             address: None,
             token_mint: None,
             token_authority: None,
+            associated_token_mint: None,
+            associated_token_authority: None,
             mint_authority: None,
             mint_decimals: None,
             bump: None,
@@ -307,7 +338,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             // When initializing a non-PDA account, the account being
             // initialized must sign to invoke the system program's create
             // account instruction.
-            if self.signer.is_none() && self.seeds.is_none() {
+            if self.signer.is_none() && self.seeds.is_none() && self.associated_token_mint.is_none()
+            {
                 self.signer
                     .replace(Context::new(i.span(), ConstraintSigner {}));
             }
@@ -425,6 +457,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             address,
             token_mint,
             token_authority,
+            associated_token_mint,
+            associated_token_authority,
             mint_authority,
             mint_decimals,
             bump,
@@ -462,6 +496,17 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     InitKind::Token {
                         mint: tm.clone().into_inner().mint,
                         owner: match &token_authority {
+                            Some(a) => a.clone().into_inner().auth,
+                            None => return Err(ParseError::new(
+                                tm.span(),
+                                "authority must be provided to initialize a token program derived address"
+                            )),
+                        },
+                    }
+                } else if let Some(tm) = &associated_token_mint {
+                    InitKind::AssociatedToken {
+                        mint: tm.clone().into_inner().mint,
+                        owner: match &associated_token_authority {
                             Some(a) => a.clone().into_inner().auth,
                             None => return Err(ParseError::new(
                                 tm.span(),
@@ -522,6 +567,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::Address(c) => self.add_address(c),
             ConstraintToken::TokenAuthority(c) => self.add_token_authority(c),
             ConstraintToken::TokenMint(c) => self.add_token_mint(c),
+            ConstraintToken::AssociatedTokenAuthority(c) => self.add_associated_token_authority(c),
+            ConstraintToken::AssociatedTokenMint(c) => self.add_associated_token_mint(c),
             ConstraintToken::MintAuthority(c) => self.add_mint_authority(c),
             ConstraintToken::MintDecimals(c) => self.add_mint_decimals(c),
             ConstraintToken::Bump(c) => self.add_bump(c),
@@ -585,6 +632,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.token_mint.is_some() {
             return Err(ParseError::new(c.span(), "token mint already provided"));
         }
+        if self.associated_token_mint.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "associated token mint already provided",
+            ));
+        }
         if self.init.is_none() {
             return Err(ParseError::new(
                 c.span(),
@@ -592,6 +645,26 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.token_mint.replace(c);
+        Ok(())
+    }
+
+    fn add_associated_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
+        if self.associated_token_mint.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "associated token mint already provided",
+            ));
+        }
+        if self.token_mint.is_some() {
+            return Err(ParseError::new(c.span(), "token mint already provided"));
+        }
+        if self.init.is_none() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before token",
+            ));
+        }
+        self.associated_token_mint.replace(c);
         Ok(())
     }
 
@@ -623,6 +696,32 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.token_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_associated_token_authority(
+        &mut self,
+        c: Context<ConstraintTokenAuthority>,
+    ) -> ParseResult<()> {
+        if self.associated_token_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "associated token authority already provided",
+            ));
+        }
+        if self.token_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "token authority already provided",
+            ));
+        }
+        if self.init.is_none() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before token authority",
+            ));
+        }
+        self.associated_token_authority.replace(c);
         Ok(())
     }
 

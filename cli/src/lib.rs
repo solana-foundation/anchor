@@ -1370,18 +1370,10 @@ fn test(
                 .context(cmd)
         };
 
-        match test_result {
-            Ok(exit) => {
-                if detach {
-                    println!("Local validator still running. Press Ctrl + C quit.");
-                    std::io::stdin().lock().lines().next().unwrap().unwrap();
-                } else if !exit.status.success() && !detach {
-                    std::process::exit(exit.status.code().unwrap());
-                }
-            }
-            Err(err) => {
-                println!("Failed to run test: {:#}", err)
-            }
+        // Keep validator running if needed.
+        if test_result.is_ok() && detach {
+            println!("Local validator still running. Press Ctrl + C quit.");
+            std::io::stdin().lock().lines().next().unwrap().unwrap();
         }
 
         // Check all errors and shut down.
@@ -1393,6 +1385,18 @@ fn test(
         for mut child in log_streams? {
             if let Err(err) = child.kill() {
                 println!("Failed to kill subprocess {}: {}", child.id(), err);
+            }
+        }
+
+        // Must exist *after* shutting down the validator and log streams.
+        match test_result {
+            Ok(exit) => {
+                if !exit.status.success() {
+                    std::process::exit(exit.status.code().unwrap());
+                }
+            }
+            Err(err) => {
+                println!("Failed to run test: {:#}", err)
             }
         }
 
