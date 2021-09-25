@@ -7,6 +7,7 @@ use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Result};
 use clap::Clap;
+use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
@@ -33,6 +34,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::string::ToString;
+use tar::Archive;
 
 pub mod config;
 pub mod template;
@@ -2019,17 +2021,6 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
     let anchor_package = AnchorPackage::from(program_name.clone(), &cfg)?;
     let anchor_package_bytes = serde_json::to_vec(&anchor_package)?;
 
-    // Build the program before sending it to the server.
-    build(
-        cfg_override,
-        None,
-        true,
-        Some(program_name.clone()),
-        cfg.solana_version.clone(),
-        None,
-        None,
-    )?;
-
     // Set directory to top of the workspace.
     let workspace_dir = cfg.path().parent().unwrap();
     std::env::set_current_dir(workspace_dir)?;
@@ -2098,6 +2089,31 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
     // Tar pack complete.
     tar.into_inner()?;
 
+    // Create tmp directory for workspace.
+    let ws_dir = dot_anchor.join("workspace");
+    if Path::exists(&ws_dir) {
+        fs::remove_dir_all(&ws_dir)?;
+    }
+    fs::create_dir_all(&ws_dir)?;
+
+    // Unpack the archive into the new workspace directory.
+    std::env::set_current_dir(&ws_dir)?;
+    unpack_archive(&tarball_filename)?;
+
+    // Build the program before sending it to the server.
+    build(
+        cfg_override,
+        None,
+        true,
+        Some(program_name),
+        cfg.solana_version.clone(),
+        None,
+        None,
+    )?;
+
+    // Success. Now we can finally upload to the server without worrying
+    // about a build failure.
+
     // Upload the tarball to the server.
     let token = registry_api_token(cfg_override)?;
     let form = Form::new()
@@ -2121,6 +2137,16 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
             resp.text().unwrap_or_else(|_| "Server error".to_string())
         );
     }
+
+    Ok(())
+}
+
+// Unpacks the tarball into the current directory.
+fn unpack_archive(tar_path: impl AsRef<Path>) -> Result<()> {
+    let tar = GzDecoder::new(std::fs::File::open(tar_path)?);
+    let mut archive = Archive::new(tar);
+    archive.unpack(".")?;
+    archive.into_inner();
 
     Ok(())
 }
