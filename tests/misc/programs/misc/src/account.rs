@@ -29,3 +29,10 @@ pub struct DataZeroCopy {
     pub data: u16,
     pub bump: u8,
 }
+
+#[account]
+#[derive(Default)]
+pub struct DataWithFilter {
+    pub authority: Pubkey,
+    pub filterable: Pubkey,
+}

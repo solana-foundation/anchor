@@ -211,3 +211,11 @@ pub struct TestCompositePayer<'info> {
     pub data: Account<'info, Data>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct TestFetchAll<'info> {
+    #[account(init, payer = authority)]
+    pub data: Account<'info, DataWithFilter>,
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}

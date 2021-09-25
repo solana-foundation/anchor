@@ -164,4 +164,10 @@ pub mod misc {
         assert!(ctx.accounts.token.mint == ctx.accounts.mint.key());
         Ok(())
     }
+
+    pub fn test_fetch_all(ctx: Context<TestFetchAll>, filterable: Pubkey) -> ProgramResult {
+        ctx.accounts.data.authority = ctx.accounts.authority.key();
+        ctx.accounts.data.filterable = filterable;
+        Ok(())
+    }
 }
