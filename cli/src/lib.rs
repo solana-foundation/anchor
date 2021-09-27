@@ -74,13 +74,14 @@ pub enum Command {
         /// only.
         #[clap(short, long)]
         solana_version: Option<String>,
+        /// Arguments to pass to the underlying `cargo build-bpf` command
         #[clap(
             required = false,
             takes_value = true,
             multiple_values = true,
             last = true
         )]
-        slop: Vec<String>,
+        cargo_args: Vec<String>,
     },
     /// Verifies the on-chain bytecode matches the locally compiled artifact.
     /// Run this command inside a program subdirectory, i.e., in the dir
@@ -94,6 +95,14 @@ pub enum Command {
         /// only.
         #[clap(short, long)]
         solana_version: Option<String>,
+        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        cargo_args: Vec<String>,
     },
     /// Runs integration tests against a localnetwork.
     Test {
@@ -115,6 +124,14 @@ pub enum Command {
         detach: bool,
         #[clap(multiple_values = true)]
         args: Vec<String>,
+        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        cargo_args: Vec<String>,
     },
     /// Creates a new program.
     New { name: String },
@@ -168,6 +185,14 @@ pub enum Command {
     Publish {
         /// The name of the program to publish.
         program: String,
+        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        cargo_args: Vec<String>,
     },
     /// Keypair commands.
     Keys {
@@ -268,7 +293,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             verifiable,
             program_name,
             solana_version,
-            slop,
+            cargo_args,
         } => build(
             &opts.cfg_override,
             idl,
@@ -277,13 +302,20 @@ pub fn entry(opts: Opts) -> Result<()> {
             solana_version,
             None,
             None,
-            Some(slop),
+            cargo_args,
         ),
         Command::Verify {
             program_id,
             program_name,
             solana_version,
-        } => verify(&opts.cfg_override, program_id, program_name, solana_version),
+            cargo_args,
+        } => verify(
+            &opts.cfg_override,
+            program_id,
+            program_name,
+            solana_version,
+            cargo_args,
+        ),
         Command::Deploy { program_name } => deploy(&opts.cfg_override, program_name),
         Command::Upgrade {
             program_id,
@@ -297,6 +329,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_build,
             detach,
             args,
+            cargo_args,
         } => test(
             &opts.cfg_override,
             skip_deploy,
@@ -304,6 +337,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_build,
             detach,
             args,
+            cargo_args,
         ),
         #[cfg(feature = "dev")]
         Command::Airdrop => airdrop(cfg_override),
@@ -311,7 +345,10 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::Shell => shell(&opts.cfg_override),
         Command::Run { script } => run(&opts.cfg_override, script),
         Command::Login { token } => login(&opts.cfg_override, token),
-        Command::Publish { program } => publish(&opts.cfg_override, program),
+        Command::Publish {
+            program,
+            cargo_args,
+        } => publish(&opts.cfg_override, program, cargo_args),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
     }
 }
@@ -451,7 +488,7 @@ pub fn build(
     solana_version: Option<String>,
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
-    slop: Option<Vec<String>>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -488,7 +525,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
-            slop,
+            cargo_args,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -499,7 +536,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
-            slop,
+            cargo_args,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_cwd(
@@ -510,7 +547,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
-            slop,
+            cargo_args,
         )?,
     }
 
@@ -528,7 +565,7 @@ fn build_all(
     solana_version: Option<String>,
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
-    slop: Option<Vec<String>>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -543,7 +580,7 @@ fn build_all(
                     solana_version.clone(),
                     stdout.as_ref().map(|f| f.try_clone()).transpose()?,
                     stderr.as_ref().map(|f| f.try_clone()).transpose()?,
-                    slop.clone(),
+                    cargo_args.clone(),
                 )?;
             }
             Ok(())
@@ -563,14 +600,14 @@ fn build_cwd(
     solana_version: Option<String>,
     stdout: Option<File>,
     stderr: Option<File>,
-    slop: Option<Vec<String>>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(&p)?,
     };
     match verifiable {
-        false => _build_cwd(idl_out, slop),
+        false => _build_cwd(idl_out, cargo_args),
         true => build_cwd_verifiable(cfg, cargo_toml, solana_version, stdout, stderr),
     }
 }
@@ -799,10 +836,10 @@ fn docker_build(
     Ok(())
 }
 
-fn _build_cwd(idl_out: Option<PathBuf>, slop: Option<Vec<String>>) -> Result<()> {
+fn _build_cwd(idl_out: Option<PathBuf>, cargo_args: Vec<String>) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg("build-bpf")
-        .args(slop.unwrap_or_default())
+        .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -829,6 +866,7 @@ fn verify(
     program_id: Pubkey,
     program_name: Option<String>,
     solana_version: Option<String>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -852,7 +890,7 @@ fn verify(
         },
         None,
         None,
-        None,
+        cargo_args,
     )?;
     std::env::set_current_dir(&cur_dir)?;
 
@@ -1339,11 +1377,21 @@ fn test(
     skip_build: bool,
     detach: bool,
     extra_args: Vec<String>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         // Build if needed.
         if !skip_build {
-            build(cfg_override, None, false, None, None, None, None, None)?;
+            build(
+                cfg_override,
+                None,
+                false,
+                None,
+                None,
+                None,
+                None,
+                cargo_args,
+            )?;
         }
 
         // Run the deploy against the cluster in two cases:
@@ -2012,7 +2060,11 @@ fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
     Ok(())
 }
 
-fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
+fn publish(
+    cfg_override: &ConfigOverride,
+    program_name: String,
+    cargo_args: Vec<String>,
+) -> Result<()> {
     // Discover the various workspace configs.
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
@@ -2131,7 +2183,7 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
         cfg.solana_version.clone(),
         None,
         None,
-        None,
+        cargo_args,
     )?;
 
     // Success. Now we can finally upload to the server without worrying
