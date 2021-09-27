@@ -11,11 +11,18 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.16.2] - 2021-09-27
+
 ### Features
 
 * lang: Add `--detach` flag to `anchor test` ([#770](https://github.com/project-serum/anchor/pull/770)).
 * lang: Add `associated_token` keyword for initializing associated token accounts within `#[derive(Accounts)]` ([#790](https://github.com/project-serum/anchor/pull/790)).
 * cli: Allow passing through cargo flags for build command ([#719](https://github.com/project-serum/anchor/pull/719)).
+* cli: Allow passing through cargo flags for test, verify, and publish commands ([#804](https://github.com/project-serum/anchor/pull/804)).
+
+### Fixes
+
+* lang: Generated `AccountMeta`s for Rust clients now properly set the `isSigner` field ([#762](https://github.com/project-serum/anchor/pull/762)).
 
 ## [0.16.1] - 2021-09-17
 
