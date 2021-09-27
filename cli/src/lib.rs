@@ -74,6 +74,13 @@ pub enum Command {
         /// only.
         #[clap(short, long)]
         solana_version: Option<String>,
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        slop: Vec<String>,
     },
     /// Verifies the on-chain bytecode matches the locally compiled artifact.
     /// Run this command inside a program subdirectory, i.e., in the dir
@@ -261,6 +268,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             verifiable,
             program_name,
             solana_version,
+            slop,
         } => build(
             &opts.cfg_override,
             idl,
@@ -269,6 +277,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             solana_version,
             None,
             None,
+            Some(slop),
         ),
         Command::Verify {
             program_id,
@@ -441,6 +450,7 @@ pub fn build(
     solana_version: Option<String>,
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
+    slop: Option<Vec<String>>,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -477,6 +487,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
+            slop,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -487,6 +498,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
+            slop,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_cwd(
@@ -497,6 +509,7 @@ pub fn build(
             solana_version,
             stdout,
             stderr,
+            slop,
         )?,
     }
 
@@ -513,6 +526,7 @@ fn build_all(
     solana_version: Option<String>,
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
+    slop: Option<Vec<String>>,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -527,6 +541,7 @@ fn build_all(
                     solana_version.clone(),
                     stdout.as_ref().map(|f| f.try_clone()).transpose()?,
                     stderr.as_ref().map(|f| f.try_clone()).transpose()?,
+                    slop.clone(),
                 )?;
             }
             Ok(())
@@ -545,13 +560,14 @@ fn build_cwd(
     solana_version: Option<String>,
     stdout: Option<File>,
     stderr: Option<File>,
+    slop: Option<Vec<String>>,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(&p)?,
     };
     match verifiable {
-        false => _build_cwd(idl_out),
+        false => _build_cwd(idl_out, slop),
         true => build_cwd_verifiable(cfg, cargo_toml, solana_version, stdout, stderr),
     }
 }
@@ -780,9 +796,10 @@ fn docker_build(
     Ok(())
 }
 
-fn _build_cwd(idl_out: Option<PathBuf>) -> Result<()> {
+fn _build_cwd(idl_out: Option<PathBuf>, slop: Option<Vec<String>>) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg("build-bpf")
+        .args(slop.unwrap_or(vec![]))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -830,6 +847,7 @@ fn verify(
             true => solana_version,
             false => cfg.solana_version.clone(),
         },
+        None,
         None,
         None,
     )?;
@@ -1322,7 +1340,7 @@ fn test(
     with_workspace(cfg_override, |cfg| {
         // Build if needed.
         if !skip_build {
-            build(cfg_override, None, false, None, None, None, None)?;
+            build(cfg_override, None, false, None, None, None, None, None)?;
         }
 
         // Run the deploy against the cluster in two cases:
@@ -2108,6 +2126,7 @@ fn publish(cfg_override: &ConfigOverride, program_name: String) -> Result<()> {
         true,
         Some(program_name),
         cfg.solana_version.clone(),
+        None,
         None,
         None,
     )?;
