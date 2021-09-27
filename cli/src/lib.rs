@@ -442,6 +442,7 @@ fn new_program(name: &str) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build(
     cfg_override: &ConfigOverride,
     idl: Option<String>,
@@ -518,6 +519,7 @@ pub fn build(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_all(
     cfg: &WithPath<Config>,
     cfg_path: &Path,
@@ -552,6 +554,7 @@ fn build_all(
 }
 
 // Runs the build command outside of a workspace.
+#[allow(clippy::too_many_arguments)]
 fn build_cwd(
     cfg: &WithPath<Config>,
     cargo_toml: PathBuf,
@@ -799,7 +802,7 @@ fn docker_build(
 fn _build_cwd(idl_out: Option<PathBuf>, slop: Option<Vec<String>>) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg("build-bpf")
-        .args(slop.unwrap_or(vec![]))
+        .args(slop.unwrap_or_default())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
