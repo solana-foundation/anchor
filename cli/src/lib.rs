@@ -1585,7 +1585,7 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
     // Start a validator for testing.
     let test_validator_stdout = File::create(test_ledger_log_filename)?;
     let test_validator_stderr = test_validator_stdout.try_clone()?;
-    let validator_handle = std::process::Command::new("solana-test-validator")
+    let mut validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_filename)
         .arg("--mint")
@@ -1608,8 +1608,9 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
         std::thread::sleep(std::time::Duration::from_millis(1));
         count += 1;
     }
-    if count == 5000 {
-        println!("Unable to start test validator.");
+    if count == ms_wait {
+        eprintln!("Unable to start test validator.");
+        validator_handle.kill();
         std::process::exit(1);
     }
 
