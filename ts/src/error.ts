@@ -32,13 +32,13 @@ export class ProgramError extends Error {
     // Parse user error.
     let errorMsg = idlErrors.get(errorCode);
     if (errorMsg !== undefined) {
-      return new ProgramError(errorCode, errorMsg, errorCode + ': ' + errorMsg);
+      return new ProgramError(errorCode, errorMsg, errorCode + ": " + errorMsg);
     }
 
     // Parse framework internal error.
     errorMsg = LangErrorMessage.get(errorCode);
     if (errorMsg !== undefined) {
-      return new ProgramError(errorCode, errorMsg, errorCode + ': ' + errorMsg);
+      return new ProgramError(errorCode, errorMsg, errorCode + ": " + errorMsg);
     }
 
     // Unable to parse the error. Just return the untranslated error.
