@@ -199,6 +199,25 @@ pub enum Command {
         #[clap(subcommand)]
         subcmd: KeysCommand,
     },
+    /// Localnet commands.
+    Localnet {
+        /// Flag to skip building the program in the workspace,
+        /// use this to save time when running test and the program code is not altered.
+        #[clap(long)]
+        skip_build: bool,
+        /// Use this flag if you want to run tests against previously deployed
+        /// programs.
+        #[clap(long)]
+        skip_deploy: bool,
+        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        cargo_args: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clap)]
@@ -350,6 +369,11 @@ pub fn entry(opts: Opts) -> Result<()> {
             cargo_args,
         } => publish(&opts.cfg_override, program, cargo_args),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
+        Command::Localnet {
+            skip_build,
+            skip_deploy,
+            cargo_args,
+        } => localnet(&opts.cfg_override, skip_build, skip_deploy, cargo_args),
     }
 }
 
@@ -1411,7 +1435,7 @@ fn test(
                 true => None,
                 false => Some(genesis_flags(cfg)?),
             };
-            validator_handle = Some(start_test_validator(cfg, flags)?);
+            validator_handle = Some(start_test_validator(cfg, flags, true)?);
         }
 
         // Setup log reader.
@@ -1570,7 +1594,11 @@ pub struct IdlTestMetadata {
     address: String,
 }
 
-fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Child> {
+fn start_test_validator(
+    cfg: &Config,
+    flags: Option<Vec<String>>,
+    test_log_stdout: bool,
+) -> Result<Child> {
     fs::create_dir_all(".anchor")?;
     let test_ledger_filename = ".anchor/test-ledger";
     let test_ledger_log_filename = ".anchor/test-ledger-log.txt";
@@ -1583,16 +1611,25 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
     }
 
     // Start a validator for testing.
-    let test_validator_stdout = File::create(test_ledger_log_filename)?;
-    let test_validator_stderr = test_validator_stdout.try_clone()?;
+    let (test_validator_stdout, test_validator_stderr) = match test_log_stdout {
+        true => {
+            let test_validator_stdout_file = File::create(test_ledger_log_filename)?;
+            let test_validator_sterr_file = test_validator_stdout_file.try_clone()?;
+            (
+                Stdio::from(test_validator_stdout_file),
+                Stdio::from(test_validator_sterr_file),
+            )
+        }
+        false => (Stdio::inherit(), Stdio::inherit()),
+    };
     let mut validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_filename)
         .arg("--mint")
         .arg(cfg.wallet_kp()?.pubkey().to_string())
         .args(flags.unwrap_or_default())
-        .stdout(Stdio::from(test_validator_stdout))
-        .stderr(Stdio::from(test_validator_stderr))
+        .stdout(test_validator_stdout)
+        .stderr(test_validator_stderr)
         .spawn()
         .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
 
@@ -2262,6 +2299,57 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
         println!("{}: {}", program.lib_name, pubkey.to_string());
     }
     Ok(())
+}
+
+fn localnet(
+    cfg_override: &ConfigOverride,
+    skip_build: bool,
+    skip_deploy: bool,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    with_workspace(cfg_override, |cfg| {
+        // Build if needed.
+        if !skip_build {
+            build(
+                cfg_override,
+                None,
+                false,
+                None,
+                None,
+                None,
+                None,
+                cargo_args,
+            )?;
+        }
+
+        // Setup log reader.
+        let log_streams = stream_logs(cfg);
+
+        let flags = match skip_deploy {
+            true => None,
+            false => Some(genesis_flags(cfg)?),
+        };
+        let validator_handle = &mut start_test_validator(cfg, flags, false)?;
+
+        std::io::stdin().lock().lines().next().unwrap().unwrap();
+
+        // Check all errors and shut down.
+        if let Err(err) = validator_handle.kill() {
+            println!(
+                "Failed to kill subprocess {}: {}",
+                validator_handle.id(),
+                err
+            );
+        }
+
+        for mut child in log_streams? {
+            if let Err(err) = child.kill() {
+                println!("Failed to kill subprocess {}: {}", child.id(), err);
+            }
+        }
+
+        Ok(())
+    })
 }
 
 // with_workspace ensures the current working directory is always the top level
