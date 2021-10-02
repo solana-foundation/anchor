@@ -1609,7 +1609,10 @@ fn start_test_validator(cfg: &Config, flags: Option<Vec<String>>) -> Result<Chil
         count += 1;
     }
     if count == ms_wait {
-        eprintln!("Unable to start test validator.");
+        eprintln!(
+            "Unable to start test validator. Check {} for errors.",
+            test_ledger_log_filename
+        );
         validator_handle.kill()?;
         std::process::exit(1);
     }
