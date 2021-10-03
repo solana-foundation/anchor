@@ -11,6 +11,12 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.17.0] - 2021-10-03
+
+### Features
+
+* cli: Add `localnet` command for starting a local `solana-test-validator` with the workspace deployed ([#820](https://github.com/project-serum/anchor/pull/820)).
+
 ### Breaking
 
 * `CpiContext` accounts must now be used with the accounts struct generated in the `crate::cpi::accounts::*` module. These structs correspond to the accounts context for each instruction, except that each field is of type `AccountInfo` ([#824](https://github.com/project-serum/anchor/pull/824)).
