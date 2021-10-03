@@ -6,6 +6,7 @@ use syn::{ConstParam, LifetimeDef, Token, TypeParam};
 use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
 
 mod __client_accounts;
+mod __cpi_client_accounts;
 mod constraints;
 mod exit;
 mod to_account_infos;
@@ -19,6 +20,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_exit = exit::generate(accs);
 
     let __client_accounts_mod = __client_accounts::generate(accs);
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs);
 
     quote! {
         #impl_try_accounts
@@ -27,6 +29,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         #impl_exit
 
         #__client_accounts_mod
+        #__cpi_client_accounts_mod
     }
 }
 

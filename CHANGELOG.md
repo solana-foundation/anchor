@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Breaking
+
+* `CpiContext` accounts must now be used with the accounts struct generated in the `crate::cpi::accounts::*` module. These structs correspond to the accounts context for each instruction, except that each field is of type `AccountInfo` ([#824](https://github.com/project-serum/anchor/pull/824)).
+
 ## [0.16.2] - 2021-09-27
 
 ### Features

@@ -1,7 +1,8 @@
 // #region core
 use anchor_lang::prelude::*;
+use puppet::cpi::accounts::SetData;
 use puppet::program::Puppet;
-use puppet::{self, Data, SetData};
+use puppet::{self, Data};
 
 declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 
@@ -11,7 +12,7 @@ mod puppet_master {
     pub fn pull_strings(ctx: Context<PullStrings>, data: u64) -> ProgramResult {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let cpi_accounts = SetData {
-            puppet: ctx.accounts.puppet.clone(),
+            puppet: ctx.accounts.puppet.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         puppet::cpi::set_data(cpi_ctx, data)

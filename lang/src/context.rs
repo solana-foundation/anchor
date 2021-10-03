@@ -76,7 +76,9 @@ where
     }
 }
 
-impl<'info, T: Accounts<'info>> ToAccountInfos<'info> for CpiContext<'_, '_, '_, 'info, T> {
+impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountInfos<'info>
+    for CpiContext<'_, '_, '_, 'info, T>
+{
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
@@ -85,7 +87,9 @@ impl<'info, T: Accounts<'info>> ToAccountInfos<'info> for CpiContext<'_, '_, '_,
     }
 }
 
-impl<'info, T: Accounts<'info>> ToAccountMetas for CpiContext<'_, '_, '_, 'info, T> {
+impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountMetas
+    for CpiContext<'_, '_, '_, 'info, T>
+{
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(

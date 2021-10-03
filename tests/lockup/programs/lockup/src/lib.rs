@@ -210,18 +210,18 @@ pub struct Auth<'info> {
 pub struct CreateVesting<'info> {
     // Vesting.
     #[account(zero)]
-    vesting: Account<'info, Vesting>,
+    pub vesting: Account<'info, Vesting>,
     #[account(mut)]
-    vault: Account<'info, TokenAccount>,
+    pub vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    pub depositor: AccountInfo<'info>,
     #[account(signer)]
-    depositor_authority: AccountInfo<'info>,
+    pub depositor_authority: AccountInfo<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
-    clock: Sysvar<'info, Clock>,
+    pub token_program: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
 }
 
 impl<'info> CreateVesting<'info> {

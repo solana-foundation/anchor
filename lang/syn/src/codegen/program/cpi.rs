@@ -1,6 +1,7 @@
 use crate::codegen::program::common::{generate_ix_variant, sighash, SIGHASH_GLOBAL_NAMESPACE};
 use crate::Program;
 use crate::StateIx;
+use heck::SnakeCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -60,7 +61,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
-            let accounts_ident = &ix.anchor_ident;
+            let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
             let cpi_method = {
                 let ix_variant = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
                 let method_name = &ix.ident;
@@ -100,6 +101,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             cpi_method
         })
         .collect();
+
+    let accounts = generate_accounts(program);
+
     quote! {
         #[cfg(feature = "cpi")]
         pub mod cpi {
@@ -112,6 +116,67 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
 
             #(#global_cpi_methods)*
+
+            #accounts
+        }
+    }
+}
+
+pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
+    let mut accounts = std::collections::HashSet::new();
+
+    // Go through state accounts.
+    if let Some(state) = &program.state {
+        // Ctor.
+        if let Some((_ctor, ctor_accounts)) = &state.ctor_and_anchor {
+            let macro_name = format!(
+                "__cpi_client_accounts_{}",
+                ctor_accounts.to_string().to_snake_case()
+            );
+            accounts.insert(macro_name);
+        }
+        // Methods.
+        if let Some((_impl_block, methods)) = &state.impl_block_and_methods {
+            for ix in methods {
+                let anchor_ident = &ix.anchor_ident;
+                // TODO: move to fn and share with accounts.rs.
+                let macro_name = format!(
+                    "__cpi_client_accounts_{}",
+                    anchor_ident.to_string().to_snake_case()
+                );
+                accounts.insert(macro_name);
+            }
+        }
+    }
+
+    // Go through instruction accounts.
+    for ix in &program.ixs {
+        let anchor_ident = &ix.anchor_ident;
+        // TODO: move to fn and share with accounts.rs.
+        let macro_name = format!(
+            "__cpi_client_accounts_{}",
+            anchor_ident.to_string().to_snake_case()
+        );
+        accounts.insert(macro_name);
+    }
+
+    // Build the tokens from all accounts
+    let account_structs: Vec<proc_macro2::TokenStream> = accounts
+        .iter()
+        .map(|macro_name: &String| {
+            let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
+            quote! {
+                pub use crate::#macro_name::*;
+            }
+        })
+        .collect();
+
+    quote! {
+        /// An Anchor generated module, providing a set of structs
+        /// mirroring the structs deriving `Accounts`, where each field is
+        /// an `AccountInfo`. This is useful for CPI.
+        pub mod accounts {
+            #(#account_structs)*
         }
     }
 }

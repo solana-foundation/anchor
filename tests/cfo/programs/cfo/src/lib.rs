@@ -754,11 +754,13 @@ impl<'info> From<&SweepFees<'info>> for CpiContext<'_, '_, '_, 'info, dex::Sweep
     }
 }
 
-impl<'info> From<&SwapToSrm<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swap<'info>> {
+impl<'info> From<&SwapToSrm<'info>>
+    for CpiContext<'_, '_, '_, 'info, swap::cpi::accounts::Swap<'info>>
+{
     fn from(accs: &SwapToSrm<'info>) -> Self {
         let program = accs.swap_program.to_account_info();
-        let accounts = swap::Swap {
-            market: swap::MarketAccounts {
+        let accounts = swap::cpi::accounts::Swap {
+            market: swap::cpi::accounts::MarketAccounts {
                 market: accs.market.market.to_account_info(),
                 open_orders: accs.market.open_orders.to_account_info(),
                 request_queue: accs.market.request_queue.to_account_info(),
@@ -781,11 +783,13 @@ impl<'info> From<&SwapToSrm<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swap
     }
 }
 
-impl<'info> From<&SwapToUsdc<'info>> for CpiContext<'_, '_, '_, 'info, swap::Swap<'info>> {
+impl<'info> From<&SwapToUsdc<'info>>
+    for CpiContext<'_, '_, '_, 'info, swap::cpi::accounts::Swap<'info>>
+{
     fn from(accs: &SwapToUsdc<'info>) -> Self {
         let program = accs.swap_program.to_account_info();
-        let accounts = swap::Swap {
-            market: swap::MarketAccounts {
+        let accounts = swap::cpi::accounts::Swap {
+            market: swap::cpi::accounts::MarketAccounts {
                 market: accs.market.market.to_account_info(),
                 open_orders: accs.market.open_orders.to_account_info(),
                 request_queue: accs.market.request_queue.to_account_info(),
@@ -841,38 +845,40 @@ impl<'info> Distribute<'info> {
 }
 
 impl<'info> DropStakeReward<'info> {
-    fn into_srm_reward(&self) -> CpiContext<'_, '_, '_, 'info, registry::DropReward<'info>> {
+    fn into_srm_reward(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, registry::cpi::accounts::DropReward<'info>> {
         let program = self.registry_program.clone();
-        let accounts = registry::DropReward {
-            registrar: ProgramAccount::try_from(program.key, &self.srm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(program.key, &self.srm.reward_event_q)
-                .unwrap(),
-            pool_mint: self.srm.pool_mint.clone().into(),
-            vendor: ProgramAccount::try_from(program.key, &self.srm.vendor).unwrap(),
-            vendor_vault: CpiAccount::try_from(&self.srm.vendor_vault).unwrap(),
+        let accounts = registry::cpi::accounts::DropReward {
+            registrar: self.srm.registrar.to_account_info(),
+            reward_event_q: self.srm.reward_event_q.to_account_info(),
+            pool_mint: self.srm.pool_mint.to_account_info(),
+            vendor: self.srm.vendor.to_account_info(),
+            vendor_vault: self.srm.vendor_vault.to_account_info(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),
             token_program: self.token_program.to_account_info(),
-            clock: self.clock.clone(),
-            rent: self.rent.clone(),
+            clock: self.clock.to_account_info(),
+            rent: self.rent.to_account_info(),
         };
         CpiContext::new(program.to_account_info(), accounts)
     }
 
-    fn into_msrm_reward(&self) -> CpiContext<'_, '_, '_, 'info, registry::DropReward<'info>> {
+    fn into_msrm_reward(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, registry::cpi::accounts::DropReward<'info>> {
         let program = self.registry_program.clone();
-        let accounts = registry::DropReward {
-            registrar: ProgramAccount::try_from(program.key, &self.msrm.registrar).unwrap(),
-            reward_event_q: ProgramAccount::try_from(program.key, &self.msrm.reward_event_q)
-                .unwrap(),
-            pool_mint: self.msrm.pool_mint.clone().into(),
-            vendor: ProgramAccount::try_from(program.key, &self.msrm.vendor).unwrap(),
-            vendor_vault: CpiAccount::try_from(&self.msrm.vendor_vault).unwrap(),
+        let accounts = registry::cpi::accounts::DropReward {
+            registrar: self.msrm.registrar.to_account_info(),
+            reward_event_q: self.msrm.reward_event_q.to_account_info(),
+            pool_mint: self.msrm.pool_mint.to_account_info(),
+            vendor: self.msrm.vendor.to_account_info(),
+            vendor_vault: self.msrm.vendor_vault.to_account_info(),
             depositor: self.stake.to_account_info(),
             depositor_authority: self.officer.to_account_info(),
             token_program: self.token_program.to_account_info(),
-            clock: self.clock.clone(),
-            rent: self.rent.clone(),
+            clock: self.clock.to_account_info(),
+            rent: self.rent.to_account_info(),
         };
         CpiContext::new(program.to_account_info(), accounts)
     }

@@ -501,11 +501,21 @@ mod registry {
         let signer = &[&seeds[..]];
         let mut remaining_accounts: &[AccountInfo] = ctx.remaining_accounts;
         let cpi_program = ctx.accounts.lockup_program.clone();
-        let cpi_accounts = CreateVesting::try_accounts(
-            ctx.accounts.lockup_program.key,
-            &mut remaining_accounts,
-            &[],
-        )?;
+        let cpi_accounts = {
+            let accs = CreateVesting::try_accounts(
+                ctx.accounts.lockup_program.key,
+                &mut remaining_accounts,
+                &[],
+            )?;
+            lockup::cpi::accounts::CreateVesting {
+                vesting: accs.vesting.to_account_info(),
+                vault: accs.vault.to_account_info(),
+                depositor: accs.depositor.to_account_info(),
+                depositor_authority: accs.depositor_authority.to_account_info(),
+                token_program: accs.token_program.to_account_info(),
+                clock: accs.clock.to_account_info(),
+            }
+        };
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
         lockup::cpi::create_vesting(
             cpi_ctx,
