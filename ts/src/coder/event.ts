@@ -1,8 +1,8 @@
 import * as base64 from "base64-js";
 import { Layout } from "buffer-layout";
 import { sha256 } from "js-sha256";
-import { Idl, IdlTypeDef } from "../idl";
-import { Event } from "../program/event";
+import { Idl, IdlEvent, IdlTypeDef } from "../idl";
+import { Event, EventData } from "../program/event";
 import { IdlCoder } from "./idl";
 
 export class EventCoder {
@@ -46,7 +46,9 @@ export class EventCoder {
     );
   }
 
-  public decode<T = Record<string, unknown>>(log: string): Event<T> | null {
+  public decode<E extends IdlEvent = IdlEvent, T = Record<string, never>>(
+    log: string
+  ): Event<E, T> | null {
     let logArr: Buffer;
     // This will throw if log length is not a multiple of 4.
     try {
@@ -66,7 +68,10 @@ export class EventCoder {
     if (!layout) {
       throw new Error(`Unknown event: ${eventName}`);
     }
-    const data = layout.decode(logArr.slice(8)) as T;
+    const data = layout.decode(logArr.slice(8)) as EventData<
+      E["fields"][number],
+      T
+    >;
     return { data, name: eventName };
   }
 }

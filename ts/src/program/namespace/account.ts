@@ -18,21 +18,22 @@ import Coder, {
 } from "../../coder";
 import { Subscription, Address, translateAddress } from "../common";
 import { getProvider } from "../../";
+import { AllAccountsMap, IdlTypes, TypeDef } from "./types";
 import * as pubkeyUtil from "../../utils/pubkey";
 import * as rpcUtil from "../../utils/rpc";
 
 export default class AccountFactory {
-  public static build(
-    idl: Idl,
+  public static build<IDL extends Idl>(
+    idl: IDL,
     coder: Coder,
     programId: PublicKey,
-    provider: Provider
-  ): AccountNamespace {
+    provider?: Provider
+  ): AccountNamespace<IDL> {
     const accountFns: AccountNamespace = {};
 
     idl.accounts?.forEach((idlAccount) => {
       const name = camelCase(idlAccount.name);
-      accountFns[name] = new AccountClient(
+      accountFns[name] = new AccountClient<IDL>(
         idl,
         idlAccount,
         programId,
@@ -41,9 +42,13 @@ export default class AccountFactory {
       );
     });
 
-    return accountFns;
+    return accountFns as AccountNamespace<IDL>;
   }
 }
+
+type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
+  ? IdlTypeDef
+  : NonNullable<IDL["accounts"]>[number];
 
 /**
  * The namespace provides handles to an [[AccountClient]] object for each
@@ -65,11 +70,17 @@ export default class AccountFactory {
  *
  * For the full API, see the [[AccountClient]] reference.
  */
-export interface AccountNamespace {
-  [key: string]: AccountClient;
-}
+export type AccountNamespace<IDL extends Idl = Idl> = {
+  [M in keyof AllAccountsMap<IDL>]: AccountClient<IDL>;
+};
 
-export class AccountClient<T = any> {
+export class AccountClient<
+  IDL extends Idl = Idl,
+  A extends NullableIdlAccount<IDL> = IDL["accounts"] extends undefined
+    ? IdlTypeDef
+    : NonNullable<IDL["accounts"]>[number],
+  T = TypeDef<A, IdlTypes<IDL>>
+> {
   /**
    * Returns the number of bytes in this account.
    */
@@ -102,11 +113,11 @@ export class AccountClient<T = any> {
   }
   private _coder: Coder;
 
-  private _idlAccount: IdlTypeDef;
+  private _idlAccount: A;
 
   constructor(
-    idl: Idl,
-    idlAccount: IdlTypeDef,
+    idl: IDL,
+    idlAccount: A,
     programId: PublicKey,
     provider?: Provider,
     coder?: Coder
@@ -140,7 +151,10 @@ export class AccountClient<T = any> {
       throw new Error("Invalid account discriminator");
     }
 
-    return this._coder.accounts.decode(this._idlAccount.name, accountInfo.data);
+    return this._coder.accounts.decode<T>(
+      this._idlAccount.name,
+      accountInfo.data
+    );
   }
 
   /**

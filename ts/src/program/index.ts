@@ -47,7 +47,7 @@ export * from "./namespace";
  * below will refer to the two counter examples found
  * [here](https://github.com/project-serum/anchor#examples).
  */
-export class Program {
+export class Program<IDL extends Idl = Idl> {
   /**
    * Async methods to send signed transactions to *non*-state methods on the
    * program, returning a [[TransactionSignature]].
@@ -78,7 +78,7 @@ export class Program {
    * });
    * ```
    */
-  readonly rpc: RpcNamespace;
+  readonly rpc: RpcNamespace<IDL>;
 
   /**
    * The namespace provides handles to an [[AccountClient]] object for each
@@ -100,7 +100,7 @@ export class Program {
    *
    * For the full API, see the [[AccountClient]] reference.
    */
-  readonly account: AccountNamespace;
+  readonly account: AccountNamespace<IDL>;
 
   /**
    * The namespace provides functions to build [[TransactionInstruction]]
@@ -131,7 +131,7 @@ export class Program {
    * });
    * ```
    */
-  readonly instruction: InstructionNamespace;
+  readonly instruction: InstructionNamespace<IDL>;
 
   /**
    * The namespace provides functions to build [[Transaction]] objects for each
@@ -162,7 +162,7 @@ export class Program {
    * });
    * ```
    */
-  readonly transaction: TransactionNamespace;
+  readonly transaction: TransactionNamespace<IDL>;
 
   /**
    * The namespace provides functions to simulate transactions for each method
@@ -198,14 +198,14 @@ export class Program {
    * });
    * ```
    */
-  readonly simulate: SimulateNamespace;
+  readonly simulate: SimulateNamespace<IDL>;
 
   /**
    * A client for the program state. Similar to the base [[Program]] client,
    * one can use this to send transactions and read accounts for the state
    * abstraction.
    */
-  readonly state?: StateClient;
+  readonly state?: StateClient<IDL>;
 
   /**
    * Address of the program.
@@ -216,12 +216,28 @@ export class Program {
   private _programId: PublicKey;
 
   /**
+   * IDL defining the program's interface.
+   */
+  public get idl(): IDL {
+    return this._idl;
+  }
+  private _idl: IDL;
+
+  /**
    * Coder for serializing requests.
    */
   public get coder(): Coder {
     return this._coder;
   }
   private _coder: Coder;
+
+  /**
+   * Wallet and network provider.
+   */
+  public get provider(): Provider {
+    return this._provider;
+  }
+  private _provider: Provider;
 
   /**
    * Handles event subscriptions.
@@ -234,20 +250,16 @@ export class Program {
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    */
-  public constructor(
-    /**
-     * IDL defining the program's interface.
-     */
-    public readonly idl: Idl,
-    programId: Address,
-    /**
-     * Wallet and network provider.
-     */
-    public readonly provider: Provider = getProvider()
-  ) {
+  public constructor(idl: IDL, programId: Address, provider?: Provider) {
     programId = translateAddress(programId);
 
+    if (!provider) {
+      provider = getProvider();
+    }
+
     // Fields.
+    this._idl = idl;
+    this._provider = provider;
     this._programId = programId;
     this._coder = new Coder(idl);
     this._events = new EventManager(this._programId, provider, this._coder);
@@ -278,16 +290,17 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async at(
+  public static async at<IDL extends Idl = Idl>(
     address: Address,
     provider?: Provider
-  ): Promise<Program> {
+  ): Promise<Program<IDL>> {
     const programId = translateAddress(address);
 
-    const idl = await Program.fetchIdl(programId, provider);
+    const idl = await Program.fetchIdl<IDL>(programId, provider);
     if (!idl) {
       throw new Error(`IDL not found for program: ${address.toString()}`);
     }
+
     return new Program(idl, programId, provider);
   }
 
@@ -300,10 +313,10 @@ export class Program {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context.
    */
-  public static async fetchIdl(
+  public static async fetchIdl<IDL extends Idl = Idl>(
     address: Address,
     provider?: Provider
-  ): Promise<Idl | null> {
+  ): Promise<IDL | null> {
     provider = provider ?? getProvider();
     const programId = translateAddress(address);
 

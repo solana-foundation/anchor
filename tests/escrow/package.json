@@ -1,11 +1,13 @@
 {
   "dependencies": {
-    "@project-serum/anchor": "^0.9.0",
-    "@project-serum/serum": "0.13.38",
-    "@solana/web3.js": "^1.18.0",
-    "@solana/spl-token": "^0.1.6"
-  },
-  "devDependencies": {
-    "ts-mocha": "^8.0.0"
+    "@project-serum/anchor": "../../ts",
+    "@project-serum/serum": "latest",
+    "@solana/spl-token": "latest",
+    "@solana/web3.js": "latest",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^14.14.37",
+    "bn.js": "^5.2.0",
+    "camelcase": "^6.2.0",
+    "chai": "^4.3.4"
   }
 }

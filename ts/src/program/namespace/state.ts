@@ -1,8 +1,19 @@
 import EventEmitter from "eventemitter3";
 import camelCase from "camelcase";
-import { PublicKey, SystemProgram, Commitment } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  Commitment,
+  AccountMeta,
+} from "@solana/web3.js";
 import Provider from "../../provider";
-import { Idl, IdlStateMethod } from "../../idl";
+import {
+  Idl,
+  IdlAccountItem,
+  IdlInstruction,
+  IdlStateMethod,
+  IdlTypeDef,
+} from "../../idl";
 import Coder, { stateDiscriminator } from "../../coder";
 import { RpcNamespace, InstructionNamespace, TransactionNamespace } from "./";
 import { getProvider } from "../../";
@@ -12,14 +23,15 @@ import { Accounts } from "../context";
 import InstructionNamespaceFactory from "./instruction";
 import RpcNamespaceFactory from "./rpc";
 import TransactionNamespaceFactory from "./transaction";
+import { IdlTypes, TypeDef } from "./types";
 
 export default class StateFactory {
-  public static build(
-    idl: Idl,
+  public static build<IDL extends Idl>(
+    idl: IDL,
     coder: Coder,
     programId: PublicKey,
-    provider: Provider
-  ): StateClient | undefined {
+    provider?: Provider
+  ): StateClient<IDL> | undefined {
     if (idl.state === undefined) {
       return undefined;
     }
@@ -27,26 +39,30 @@ export default class StateFactory {
   }
 }
 
+type NullableMethods<IDL extends Idl> = IDL["state"] extends undefined
+  ? IdlInstruction[]
+  : NonNullable<IDL["state"]>["methods"];
+
 /**
  * A client for the program state. Similar to the base [[Program]] client,
  * one can use this to send transactions and read accounts for the state
  * abstraction.
  */
-export class StateClient {
+export class StateClient<IDL extends Idl> {
   /**
    * [[RpcNamespace]] for all state methods.
    */
-  readonly rpc: RpcNamespace;
+  readonly rpc: RpcNamespace<IDL, NullableMethods<IDL>[number]>;
 
   /**
    * [[InstructionNamespace]] for all state methods.
    */
-  readonly instruction: InstructionNamespace;
+  readonly instruction: InstructionNamespace<IDL, NullableMethods<IDL>[number]>;
 
   /**
    * [[TransactionNamespace]] for all state methods.
    */
-  readonly transaction: TransactionNamespace;
+  readonly transaction: TransactionNamespace<IDL, NullableMethods<IDL>[number]>;
 
   /**
    * Returns the program ID owning the state.
@@ -57,11 +73,12 @@ export class StateClient {
   private _programId: PublicKey;
 
   private _address: PublicKey;
-  private _idl: Idl;
+  private _coder: Coder;
+  private _idl: IDL;
   private _sub: Subscription | null;
 
   constructor(
-    idl: Idl,
+    idl: IDL,
     programId: PublicKey,
     /**
      * Returns the client's wallet and network provider.
@@ -79,46 +96,51 @@ export class StateClient {
 
     // Build namespaces.
     const [instruction, transaction, rpc] = ((): [
-      InstructionNamespace,
-      TransactionNamespace,
-      RpcNamespace
+      InstructionNamespace<IDL, NullableMethods<IDL>[number]>,
+      TransactionNamespace<IDL, NullableMethods<IDL>[number]>,
+      RpcNamespace<IDL, NullableMethods<IDL>[number]>
     ] => {
       let instruction: InstructionNamespace = {};
       let transaction: TransactionNamespace = {};
       let rpc: RpcNamespace = {};
 
-      idl.state?.methods.forEach((m: IdlStateMethod) => {
-        // Build instruction method.
-        const ixItem = InstructionNamespaceFactory.build(
-          m,
-          (ixName: string, ix: any) =>
-            coder.instruction.encodeState(ixName, ix),
-          programId
-        );
-        ixItem["accounts"] = (accounts: Accounts) => {
-          const keys = stateInstructionKeys(programId, provider, m, accounts);
-          return keys.concat(
-            InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
+      idl.state?.methods.forEach(
+        <I extends NullableMethods<IDL>[number]>(m: I) => {
+          // Build instruction method.
+          const ixItem = InstructionNamespaceFactory.build<IDL, I>(
+            m,
+            (ixName, ix) => coder.instruction.encodeState(ixName, ix),
+            programId
           );
-        };
-        // Build transaction method.
-        const txItem = TransactionNamespaceFactory.build(m, ixItem);
-        // Build RPC method.
-        const rpcItem = RpcNamespaceFactory.build(
-          m,
-          txItem,
-          parseIdlErrors(idl),
-          provider
-        );
+          ixItem["accounts"] = (accounts) => {
+            const keys = stateInstructionKeys(programId, provider, m, accounts);
+            return keys.concat(
+              InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
+            );
+          };
+          // Build transaction method.
+          const txItem = TransactionNamespaceFactory.build(m, ixItem);
+          // Build RPC method.
+          const rpcItem = RpcNamespaceFactory.build(
+            m,
+            txItem,
+            parseIdlErrors(idl),
+            provider
+          );
 
-        // Attach them all to their respective namespaces.
-        const name = camelCase(m.name);
-        instruction[name] = ixItem;
-        transaction[name] = txItem;
-        rpc[name] = rpcItem;
-      });
+          // Attach them all to their respective namespaces.
+          const name = camelCase(m.name);
+          instruction[name] = ixItem;
+          transaction[name] = txItem;
+          rpc[name] = rpcItem;
+        }
+      );
 
-      return [instruction, transaction, rpc];
+      return [
+        instruction as InstructionNamespace<IDL, NullableMethods<IDL>[number]>,
+        transaction as TransactionNamespace<IDL, NullableMethods<IDL>[number]>,
+        rpc as RpcNamespace<IDL, NullableMethods<IDL>[number]>,
+      ];
     })();
     this.instruction = instruction;
     this.transaction = transaction;
@@ -128,7 +150,14 @@ export class StateClient {
   /**
    * Returns the deserialized state account.
    */
-  async fetch(): Promise<Object> {
+  async fetch(): Promise<
+    TypeDef<
+      IDL["state"] extends undefined
+        ? IdlTypeDef
+        : NonNullable<IDL["state"]>["struct"],
+      IdlTypes<IDL>
+    >
+  > {
     const addr = this.address();
     const accountInfo = await this.provider.connection.getAccountInfo(addr);
     if (accountInfo === null) {
@@ -203,12 +232,12 @@ function programStateAddress(programId: PublicKey): PublicKey {
 
 // Returns the common keys that are prepended to all instructions targeting
 // the "state" of a program.
-function stateInstructionKeys(
+function stateInstructionKeys<M extends IdlStateMethod>(
   programId: PublicKey,
   provider: Provider,
-  m: IdlStateMethod,
-  accounts: Accounts
-) {
+  m: M,
+  accounts: Accounts<M["accounts"][number]>
+): AccountMeta[] {
   if (m.name === "new") {
     // Ctor `new` method.
     const [programSigner] = findProgramAddressSync([], programId);

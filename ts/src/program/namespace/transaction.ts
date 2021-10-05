@@ -1,14 +1,19 @@
 import { Transaction } from "@solana/web3.js";
-import { IdlInstruction } from "../../idl";
+import { Idl, IdlInstruction } from "../../idl";
 import { splitArgsAndCtx } from "../context";
 import { InstructionFn } from "./instruction";
+import {
+  AllInstructions,
+  InstructionContextFn,
+  MakeInstructionsNamespace,
+} from "./types";
 
 export default class TransactionFactory {
-  public static build(
-    idlIx: IdlInstruction,
-    ixFn: InstructionFn
-  ): TransactionFn {
-    const txFn = (...args: any[]): Transaction => {
+  public static build<IDL extends Idl, I extends AllInstructions<IDL>>(
+    idlIx: I,
+    ixFn: InstructionFn<IDL, I>
+  ): TransactionFn<IDL, I> {
+    const txFn: TransactionFn<IDL, I> = (...args): Transaction => {
       const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
       const tx = new Transaction();
       if (ctx.instructions !== undefined) {
@@ -51,11 +56,15 @@ export default class TransactionFactory {
  * });
  * ```
  */
-export interface TransactionNamespace {
-  [key: string]: TransactionFn;
-}
+export type TransactionNamespace<
+  IDL extends Idl = Idl,
+  I extends AllInstructions<IDL> = AllInstructions<IDL>
+> = MakeInstructionsNamespace<IDL, I, Transaction>;
 
 /**
  * Tx is a function to create a `Transaction` for a given program instruction.
  */
-export type TransactionFn = (...args: any[]) => Transaction;
+export type TransactionFn<
+  IDL extends Idl = Idl,
+  I extends AllInstructions<IDL> = AllInstructions<IDL>
+> = InstructionContextFn<IDL, I, Transaction>;

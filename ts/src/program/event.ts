@@ -1,14 +1,23 @@
 import { PublicKey } from "@solana/web3.js";
 import * as assert from "assert";
+import { IdlEvent, IdlEventField } from "src/idl";
 import Coder from "../coder";
+import { DecodeType } from "./namespace/types";
 import Provider from "../provider";
 
 const LOG_START_INDEX = "Program log: ".length;
 
 // Deserialized event.
-export type Event<T = Record<string, unknown>> = {
-  name: string;
-  data: T;
+export type Event<
+  E extends IdlEvent = IdlEvent,
+  Defined = Record<string, never>
+> = {
+  name: E["name"];
+  data: EventData<E["fields"][number], Defined>;
+};
+
+export type EventData<T extends IdlEventField, Defined> = {
+  [N in T["name"]]: DecodeType<(T & { name: N })["type"], Defined>;
 };
 
 type EventCallback = (event: any, slot: number) => void;
@@ -82,7 +91,7 @@ export class EventManager {
       return listener;
     }
 
-    this._onLogsSubscriptionId = this._provider.connection.onLogs(
+    this._onLogsSubscriptionId = this._provider!.connection.onLogs(
       this._programId,
       (logs, ctx) => {
         if (logs.err) {
@@ -132,7 +141,7 @@ export class EventManager {
     if (this._eventCallbacks.size == 0) {
       assert.ok(this._eventListeners.size === 0);
       if (this._onLogsSubscriptionId !== undefined) {
-        await this._provider.connection.removeOnLogsListener(
+        await this._provider!.connection.removeOnLogsListener(
           this._onLogsSubscriptionId
         );
         this._onLogsSubscriptionId = undefined;
