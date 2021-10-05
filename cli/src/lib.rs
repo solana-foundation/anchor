@@ -654,6 +654,7 @@ fn build_cwd_verifiable(
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
     fs::create_dir_all(workspace_dir.join("target/verifiable"))?;
     fs::create_dir_all(workspace_dir.join("target/idl"))?;
+    fs::create_dir_all(workspace_dir.join("target/types"))?;
 
     let container_name = "anchor-program";
 
@@ -699,17 +700,19 @@ fn build_cwd_verifiable(
     }
 
     // Build the idl.
+    println!("Extracting the IDL");
     if let Ok(Some(idl)) = extract_idl("src/lib.rs") {
-        println!("Extracting the IDL");
-
         // Write out the JSON file.
+        println!("Writing the IDL file");
         let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.name));
         write_idl(&idl, OutFile::File(out_file))?;
 
         // Write out the TypeScript type.
-        let ts_file = format!("target/types/{}.ts", idl.name);
+        println!("Writing the .ts file");
+        let ts_file = workspace_dir.join(format!("target/types/{}.ts", idl.name));
         fs::write(&ts_file, template::idl_ts(&idl)?)?;
     }
+    println!("Build success");
 
     result
 }
