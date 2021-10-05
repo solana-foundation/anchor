@@ -455,6 +455,9 @@ describe("misc", () => {
     assert.ok(
       mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
     );
+    assert.ok(
+      mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+    );
   });
 
   it("Can create a random mint account prefunded", async () => {

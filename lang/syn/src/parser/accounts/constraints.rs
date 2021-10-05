@@ -85,6 +85,12 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         mint_auth: stream.parse()?,
                     },
                 )),
+                "freeze_authority" => ConstraintToken::MintFreezeAuthority(Context::new(
+                    span,
+                    ConstraintMintFreezeAuthority {
+                        mint_freeze_auth: stream.parse()?,
+                    },
+                )),
                 "decimals" => ConstraintToken::MintDecimals(Context::new(
                     span,
                     ConstraintMintDecimals {
@@ -276,6 +282,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub associated_token_mint: Option<Context<ConstraintTokenMint>>,
     pub associated_token_authority: Option<Context<ConstraintTokenAuthority>>,
     pub mint_authority: Option<Context<ConstraintMintAuthority>>,
+    pub mint_freeze_authority: Option<Context<ConstraintMintFreezeAuthority>>,
     pub mint_decimals: Option<Context<ConstraintMintDecimals>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
 }
@@ -305,6 +312,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             associated_token_mint: None,
             associated_token_authority: None,
             mint_authority: None,
+            mint_freeze_authority: None,
             mint_decimals: None,
             bump: None,
         }
@@ -460,6 +468,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             associated_token_mint,
             associated_token_authority,
             mint_authority,
+            mint_freeze_authority,
             mint_decimals,
             bump,
         } = self;
@@ -523,7 +532,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                 d.span(),
                                 "authority must be provided to initialize a mint program derived address"
                             ))
-                        }
+                        },
+                        freeze_authority: mint_freeze_authority.map(|fa| fa.into_inner().mint_freeze_auth)
                     }
                 } else {
                     InitKind::Program {
@@ -570,6 +580,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::AssociatedTokenAuthority(c) => self.add_associated_token_authority(c),
             ConstraintToken::AssociatedTokenMint(c) => self.add_associated_token_mint(c),
             ConstraintToken::MintAuthority(c) => self.add_mint_authority(c),
+            ConstraintToken::MintFreezeAuthority(c) => self.add_mint_freeze_authority(c),
             ConstraintToken::MintDecimals(c) => self.add_mint_decimals(c),
             ConstraintToken::Bump(c) => self.add_bump(c),
         }
@@ -736,6 +747,26 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.mint_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_mint_freeze_authority(
+        &mut self,
+        c: Context<ConstraintMintFreezeAuthority>,
+    ) -> ParseResult<()> {
+        if self.mint_freeze_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "mint freeze_authority already provided",
+            ));
+        }
+        if self.init.is_none() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before mint freeze_authority",
+            ));
+        }
+        self.mint_freeze_authority.replace(c);
         Ok(())
     }
 

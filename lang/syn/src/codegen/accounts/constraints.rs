@@ -433,13 +433,21 @@ pub fn generate_init(
                 };
             }
         }
-        InitKind::Mint { owner, decimals } => {
+        InitKind::Mint {
+            owner,
+            decimals,
+            freeze_authority,
+        } => {
             let create_account = generate_create_account(
                 field,
                 quote! {anchor_spl::token::Mint::LEN},
                 quote! {token_program.to_account_info().key},
                 seeds_with_nonce,
             );
+            let freeze_authority = match freeze_authority {
+                Some(fa) => quote! { Some(&#fa.key()) },
+                None => quote! { None },
+            };
             quote! {
                 let #field: #ty_decl = {
                     // Define payer variable.
@@ -455,7 +463,7 @@ pub fn generate_init(
                         rent: rent.to_account_info(),
                     };
                     let cpi_ctx = CpiContext::new(cpi_program, accounts);
-                    anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, None)?;
+                    anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, #freeze_authority)?;
                     let pa: #ty_decl = #from_account_info;
                     pa
                 };

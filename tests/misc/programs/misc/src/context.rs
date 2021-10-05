@@ -183,7 +183,7 @@ pub struct TestInitZeroCopy<'info> {
 
 #[derive(Accounts)]
 pub struct TestInitMint<'info> {
-    #[account(init, mint::decimals = 6, mint::authority = payer, payer = payer)]
+    #[account(init, mint::decimals = 6, mint::authority = payer, mint::freeze_authority = payer, payer = payer)]
     pub mint: Account<'info, Mint>,
     #[account(signer)]
     pub payer: AccountInfo<'info>,

@@ -564,6 +564,7 @@ pub enum ConstraintToken {
     AssociatedTokenMint(Context<ConstraintTokenMint>),
     AssociatedTokenAuthority(Context<ConstraintTokenAuthority>),
     MintAuthority(Context<ConstraintMintAuthority>),
+    MintFreezeAuthority(Context<ConstraintMintFreezeAuthority>),
     MintDecimals(Context<ConstraintMintDecimals>),
     Bump(Context<ConstraintTokenBump>),
 }
@@ -658,12 +659,24 @@ pub struct ConstraintSpace {
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
-    Program { owner: Option<Expr> },
+    Program {
+        owner: Option<Expr>,
+    },
     // Owner for token and mint represents the authority. Not to be confused
     // with the owner of the AccountInfo.
-    Token { owner: Expr, mint: Expr },
-    AssociatedToken { owner: Expr, mint: Expr },
-    Mint { owner: Expr, decimals: Expr },
+    Token {
+        owner: Expr,
+        mint: Expr,
+    },
+    AssociatedToken {
+        owner: Expr,
+        mint: Expr,
+    },
+    Mint {
+        owner: Expr,
+        freeze_authority: Option<Expr>,
+        decimals: Expr,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -684,6 +697,11 @@ pub struct ConstraintTokenAuthority {
 #[derive(Debug, Clone)]
 pub struct ConstraintMintAuthority {
     mint_auth: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintFreezeAuthority {
+    mint_freeze_auth: Expr,
 }
 
 #[derive(Debug, Clone)]
