@@ -459,7 +459,9 @@ fn deser_programs(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Test {
-    pub genesis: Vec<GenesisEntry>,
+    pub genesis: Option<Vec<GenesisEntry>>,
+    pub clone: Option<Vec<CloneEntry>>,
+    pub validator: Option<Validator>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -468,6 +470,64 @@ pub struct GenesisEntry {
     pub address: String,
     // Filepath to the compiled program to embed into the genesis.
     pub program: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloneEntry {
+    // Base58 pubkey string.
+    pub address: String,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct Validator {
+    // IP address to bind the validator ports. [default: 0.0.0.0]
+    #[serde(default = "default_bind_address")]
+    pub bind_address: String,
+    // Range to use for dynamically assigned ports. [default: 1024-65535]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dynamic_port_range: Option<String>,
+    // Enable the faucet on this port [deafult: 9900].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub faucet_port: Option<u16>,
+    // Give the faucet address this much SOL in genesis. [default: 1000000]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub faucet_sol: Option<String>,
+    // Gossip DNS name or IP address for the validator to advertise in gossip. [default: 127.0.0.1]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gossip_host: Option<String>,
+    // Gossip port number for the validator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gossip_port: Option<u16>,
+    // URL for Solana's JSON RPC or moniker.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    // Use DIR as ledger location
+    #[serde(default = "default_ledger_path")]
+    pub ledger: String,
+    // Keep this amount of shreds in root slots. [default: 10000]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_ledger_size: Option<String>,
+    // Enable JSON RPC on this port, and the next port for the RPC websocket. [default: 8899]
+    #[serde(default = "default_rpc_port")]
+    pub rpc_port: u16,
+    // Override the number of slots in an epoch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slots_per_epoch: Option<String>,
+    // Warp the ledger to WARP_SLOT after starting the validator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warp_slot: Option<String>,
+}
+
+fn default_ledger_path() -> String {
+    ".anchor/test-ledger".to_string()
+}
+
+fn default_bind_address() -> String {
+    "0.0.0.0".to_string()
+}
+
+fn default_rpc_port() -> u16 {
+    8899
 }
 
 #[derive(Debug, Clone)]
