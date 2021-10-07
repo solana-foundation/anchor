@@ -202,15 +202,8 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     quote! {
-        // Don't enforce on CPI, since usually a program is signing and so
-        // the `try_accounts` deserializatoin will fail *if* the one
-        // tries to manually invoke it.
-        //
-        // This check will be performed on the other end of the invocation.
-        if cfg!(not(feature = "cpi")) {
-            if !#info.to_account_info().is_signer {
-                return Err(anchor_lang::__private::ErrorCode::ConstraintSigner.into());
-            }
+        if !#info.to_account_info().is_signer {
+            return Err(anchor_lang::__private::ErrorCode::ConstraintSigner.into());
         }
     }
 }

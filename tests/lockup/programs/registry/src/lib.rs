@@ -2,6 +2,7 @@
 //! it's suggested to start with the other examples.
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::account_info::next_account_info;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
@@ -499,21 +500,17 @@ mod registry {
             &[ctx.accounts.cmn.vendor.nonce],
         ];
         let signer = &[&seeds[..]];
-        let mut remaining_accounts: &[AccountInfo] = ctx.remaining_accounts;
+        let remaining_accounts: &[AccountInfo] = ctx.remaining_accounts;
         let cpi_program = ctx.accounts.lockup_program.clone();
         let cpi_accounts = {
-            let accs = CreateVesting::try_accounts(
-                ctx.accounts.lockup_program.key,
-                &mut remaining_accounts,
-                &[],
-            )?;
+            let accs = &mut remaining_accounts.iter();
             lockup::cpi::accounts::CreateVesting {
-                vesting: accs.vesting.to_account_info(),
-                vault: accs.vault.to_account_info(),
-                depositor: accs.depositor.to_account_info(),
-                depositor_authority: accs.depositor_authority.to_account_info(),
-                token_program: accs.token_program.to_account_info(),
-                clock: accs.clock.to_account_info(),
+                vesting: next_account_info(accs)?.to_account_info(),
+                vault: next_account_info(accs)?.to_account_info(),
+                depositor: next_account_info(accs)?.to_account_info(),
+                depositor_authority: next_account_info(accs)?.to_account_info(),
+                token_program: next_account_info(accs)?.to_account_info(),
+                clock: next_account_info(accs)?.to_account_info(),
             }
         };
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);

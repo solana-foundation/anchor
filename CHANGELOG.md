@@ -18,6 +18,10 @@ incremented for features.
 * ts: `Program<T>` can now be typed with an IDL type ([#795](https://github.com/project-serum/anchor/pull/795)).
 * lang: Add `mint::freeze_authority` keyword for mint initialization within `#[derive(Accounts)]` ([#835](https://github.com/project-serum/anchor/pull/835)).
 
+### Breaking
+
+* lang: Accounts marked with the `#[account(signer)]` constraint now enforce signer when the `"cpi"` feature is enabled ([#849](https://github.com/project-serum/anchor/pull/849)).
+
 ## [0.17.0] - 2021-10-03
 
 ### Features
