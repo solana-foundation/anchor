@@ -4,7 +4,7 @@ use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{Accounts, CpiContext};
 
-pub use spl_associated_token_account::ID;
+pub use spl_associated_token_account::{get_associated_token_address, ID};
 
 pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> ProgramResult {
     let ix = spl_associated_token_account::create_associated_token_account(

@@ -50,6 +50,17 @@ pub struct TestInitAssociatedToken<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TestValidateAssociatedToken<'info> {
+    #[account(
+        associated_token::mint = mint,
+        associated_token::authority = wallet,
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub wallet: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 #[instruction(nonce: u8)]
 pub struct TestInstructionConstraint<'info> {
     #[account(

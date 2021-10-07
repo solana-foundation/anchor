@@ -165,6 +165,12 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_validate_associated_token(
+        _ctx: Context<TestValidateAssociatedToken>,
+    ) -> ProgramResult {
+        Ok(())
+    }
+
     pub fn test_fetch_all(ctx: Context<TestFetchAll>, filterable: Pubkey) -> ProgramResult {
         ctx.accounts.data.authority = ctx.accounts.authority.key();
         ctx.accounts.data.filterable = filterable;

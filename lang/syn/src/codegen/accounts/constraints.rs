@@ -56,6 +56,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         state,
         close,
         address,
+        associated_token,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -68,6 +69,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     }
     if let Some(c) = seeds {
         constraints.push(Constraint::Seeds(c));
+    }
+    if let Some(c) = associated_token {
+        constraints.push(Constraint::AssociatedToken(c));
     }
     if let Some(c) = mutable {
         constraints.push(Constraint::Mut(c));
@@ -115,6 +119,7 @@ fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
         Constraint::State(c) => generate_constraint_state(f, c),
         Constraint::Close(c) => generate_constraint_close(f, c),
         Constraint::Address(c) => generate_constraint_address(f, c),
+        Constraint::AssociatedToken(c) => generate_constraint_associated_token(f, c),
     }
 }
 
@@ -359,6 +364,21 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             if #name.to_account_info().key != &__program_signer {
                 return Err(anchor_lang::__private::ErrorCode::ConstraintSeeds.into());
             }
+        }
+    }
+}
+
+fn generate_constraint_associated_token(
+    f: &Field,
+    c: &ConstraintAssociatedToken,
+) -> proc_macro2::TokenStream {
+    let name = &f.ident;
+    let wallet_address = &c.wallet;
+    let spl_token_mint_address = &c.mint;
+    quote! {
+        let __associated_token_address = anchor_spl::associated_token::get_associated_token_address(&#wallet_address.key(), &#spl_token_mint_address.key());
+        if #name.to_account_info().key != &__associated_token_address {
+            return Err(anchor_lang::__private::ErrorCode::ConstraintAssociated.into());
         }
     }
 }

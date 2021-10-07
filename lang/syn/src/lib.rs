@@ -497,6 +497,7 @@ pub struct ConstraintGroup {
     raw: Vec<ConstraintRaw>,
     close: Option<ConstraintClose>,
     address: Option<ConstraintAddress>,
+    associated_token: Option<ConstraintAssociatedToken>,
 }
 
 impl ConstraintGroup {
@@ -533,6 +534,7 @@ pub enum Constraint {
     Owner(ConstraintOwner),
     RentExempt(ConstraintRentExempt),
     Seeds(ConstraintSeedsGroup),
+    AssociatedToken(ConstraintAssociatedToken),
     Executable(ConstraintExecutable),
     State(ConstraintState),
     Close(ConstraintClose),
@@ -712,6 +714,12 @@ pub struct ConstraintMintDecimals {
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenBump {
     bump: Option<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintAssociatedToken {
+    pub wallet: Expr,
+    pub mint: Expr,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

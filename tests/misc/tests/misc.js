@@ -612,8 +612,10 @@ describe("misc", () => {
     assert.equal(account2.idata, 3);
   });
 
+  let associatedToken = null;
+
   it("Can create an associated token account", async () => {
-    const token = await Token.getAssociatedTokenAddress(
+    associatedToken = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       mint.publicKey,
@@ -622,7 +624,7 @@ describe("misc", () => {
 
     await program.rpc.testInitAssociatedToken({
       accounts: {
-        token,
+        token: associatedToken,
         mint: mint.publicKey,
         payer: program.provider.wallet.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -637,12 +639,38 @@ describe("misc", () => {
       TOKEN_PROGRAM_ID,
       program.provider.wallet.payer
     );
-    const account = await client.getAccountInfo(token);
+    const account = await client.getAccountInfo(associatedToken);
     assert.ok(account.state === 1);
     assert.ok(account.amount.toNumber() === 0);
     assert.ok(account.isInitialized);
     assert.ok(account.owner.equals(program.provider.wallet.publicKey));
     assert.ok(account.mint.equals(mint.publicKey));
+  });
+
+  it("Can validate associated_token constraints", async () => {
+    await program.rpc.testValidateAssociatedToken({
+      accounts: {
+        token: associatedToken,
+        mint: mint.publicKey,
+        wallet: program.provider.wallet.publicKey
+      }
+    });
+
+    await assert.rejects(
+      async () => {
+        await program.rpc.testValidateAssociatedToken({
+          accounts: {
+            token: associatedToken,
+            mint: mint.publicKey,
+            wallet: anchor.web3.Keypair.generate().publicKey
+          }
+        });
+      },
+      (err) => {
+        assert.equal(err.code, 149);
+        return true;
+      }
+    );
   });
 
   it("Can fetch all accounts of a given type", async () => {
