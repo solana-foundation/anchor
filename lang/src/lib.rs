@@ -44,6 +44,7 @@ mod error;
 #[doc(hidden)]
 pub mod idl;
 mod loader;
+mod loader_account;
 mod program;
 mod program_account;
 mod signer;
@@ -65,6 +66,7 @@ pub use crate::cpi_account::CpiAccount;
 #[allow(deprecated)]
 pub use crate::cpi_state::CpiState;
 pub use crate::loader::Loader;
+pub use crate::loader_account::AccountLoader;
 pub use crate::program::Program;
 #[doc(hidden)]
 #[allow(deprecated)]
@@ -246,10 +248,10 @@ impl Key for Pubkey {
 pub mod prelude {
     pub use super::{
         access_control, account, declare_id, emit, error, event, interface, program, require,
-        state, zero_copy, Account, AccountDeserialize, AccountSerialize, Accounts, AccountsExit,
-        AnchorDeserialize, AnchorSerialize, Context, CpiContext, Id, Key, Loader, Owner, Program,
-        ProgramAccount, Signer, System, Sysvar, ToAccountInfo, ToAccountInfos, ToAccountMetas,
-        UncheckedAccount,
+        state, zero_copy, Account, AccountDeserialize, AccountLoader, AccountSerialize, Accounts,
+        AccountsExit, AnchorDeserialize, AnchorSerialize, Context, CpiContext, Id, Key, Loader,
+        Owner, Program, ProgramAccount, Signer, System, Sysvar, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas, UncheckedAccount,
     };
 
     #[allow(deprecated)]

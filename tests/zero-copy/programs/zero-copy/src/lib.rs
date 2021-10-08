@@ -11,42 +11,9 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod zero_copy {
+    use std::str::FromStr;
+
     use super::*;
-
-    #[state(zero_copy)]
-    pub struct Globals {
-        pub authority: Pubkey,
-        // The solana runtime currently restricts how much one can resize an
-        // account on CPI to ~10240 bytes. State accounts are program derived
-        // addresses, which means its max size is limited by this restriction
-        // (i.e., this is not an Anchor specific issue).
-        //
-        // As a result, we only use 250 events here.
-        //
-        // For larger zero-copy data structures, one must use non-state anchor
-        // accounts, as is demonstrated below.
-        pub events: [Event; 250],
-    }
-
-    impl Globals {
-        // Note that the `new` constructor is different from non-zero-copy
-        // state accounts. Namely, it takes in a `&mut self` parameter.
-        pub fn new(&mut self, ctx: Context<New>) -> ProgramResult {
-            self.authority = *ctx.accounts.authority.key;
-            Ok(())
-        }
-
-        #[access_control(auth(&self, &ctx))]
-        pub fn set_event(
-            &mut self,
-            ctx: Context<SetEvent>,
-            idx: u32,
-            event: RpcEvent,
-        ) -> ProgramResult {
-            self.events[idx as usize] = event.into();
-            Ok(())
-        }
-    }
 
     pub fn create_foo(ctx: Context<CreateFoo>) -> ProgramResult {
         let foo = &mut ctx.accounts.foo.load_init()?;
@@ -98,12 +65,6 @@ pub mod zero_copy {
 }
 
 #[derive(Accounts)]
-pub struct New<'info> {
-    #[account(signer)]
-    authority: AccountInfo<'info>,
-}
-
-#[derive(Accounts)]
 pub struct SetEvent<'info> {
     #[account(signer)]
     authority: AccountInfo<'info>,
@@ -112,7 +73,7 @@ pub struct SetEvent<'info> {
 #[derive(Accounts)]
 pub struct CreateFoo<'info> {
     #[account(zero)]
-    foo: Loader<'info, Foo>,
+    foo: AccountLoader<'info, Foo>,
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -120,7 +81,7 @@ pub struct CreateFoo<'info> {
 #[derive(Accounts)]
 pub struct UpdateFoo<'info> {
     #[account(mut, has_one = authority)]
-    foo: Loader<'info, Foo>,
+    foo: AccountLoader<'info, Foo>,
     #[account(signer)]
     authority: AccountInfo<'info>,
 }
@@ -131,7 +92,7 @@ pub struct UpdateFooSecond<'info> {
         mut,
         constraint = &foo.load()?.get_second_authority() == second_authority.key,
     )]
-    foo: Loader<'info, Foo>,
+    foo: AccountLoader<'info, Foo>,
     #[account(signer)]
     second_authority: AccountInfo<'info>,
 }
@@ -142,15 +103,14 @@ pub struct CreateBar<'info> {
         init,
         seeds = [authority.key().as_ref(), foo.key().as_ref()],
         bump,
-        payer = authority,
+        payer = authority, owner = *program_id
     )]
-    bar: Loader<'info, Bar>,
+    bar: AccountLoader<'info, Bar>,
     #[account(signer)]
     authority: AccountInfo<'info>,
-    foo: Loader<'info, Foo>,
+    foo: AccountLoader<'info, Foo>,
     system_program: AccountInfo<'info>,
 }
-
 #[derive(Accounts)]
 pub struct UpdateBar<'info> {
     #[account(
@@ -159,22 +119,22 @@ pub struct UpdateBar<'info> {
         seeds = [authority.key().as_ref(), foo.key().as_ref()],
         bump,
     )]
-    bar: Loader<'info, Bar>,
+    pub bar: AccountLoader<'info, Bar>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
-    foo: Loader<'info, Foo>,
+    pub authority: AccountInfo<'info>,
+    pub foo: AccountLoader<'info, Foo>,
 }
 
 #[derive(Accounts)]
 pub struct CreateLargeAccount<'info> {
     #[account(zero)]
-    event_q: Loader<'info, EventQ>,
+    event_q: AccountLoader<'info, EventQ>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateLargeAccount<'info> {
     #[account(mut)]
-    event_q: Loader<'info, EventQ>,
+    event_q: AccountLoader<'info, EventQ>,
     #[account(signer)]
     from: AccountInfo<'info>,
 }
@@ -230,11 +190,4 @@ impl From<RpcEvent> for Event {
             data: e.data,
         }
     }
-}
-
-fn auth(globals: &Globals, ctx: &Context<SetEvent>) -> ProgramResult {
-    if &globals.authority != ctx.accounts.authority.key {
-        return Err(ProgramError::Custom(1)); // Arbitrary error.
-    }
-    Ok(())
 }
