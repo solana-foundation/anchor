@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { Idl } from "src";
+import { Idl } from "../../";
 import {
   IdlField,
   IdlInstruction,
