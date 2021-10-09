@@ -230,3 +230,17 @@ pub struct TestFetchAll<'info> {
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct TestInitWithEmptySeeds<'info> {
+    #[account(init, seeds = [], bump, payer = authority, space = 8 + size_of::<Data>())]
+    pub pda: Account<'info, Data>,
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TestEmptySeedsConstraint<'info> {
+    #[account(seeds = [], bump)]
+    pub pda: AccountInfo<'info>,
+}

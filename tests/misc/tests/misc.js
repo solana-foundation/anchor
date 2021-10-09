@@ -770,4 +770,34 @@ describe("misc", () => {
     // results in 1 account.
     assert.equal(allAccountsFilteredByProgramFilters2.length, 1);
   });
+
+  it("Can use pdas with empty seeds", async () => {
+    const [pda, bump] = await PublicKey.findProgramAddress([], program.programId);
+
+    await program.rpc.testInitWithEmptySeeds({
+      accounts: {
+        pda: pda,
+        authority: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId
+      }
+    });
+    await program.rpc.testEmptySeedsConstraint({
+      accounts: {
+        pda: pda
+      }
+    });
+
+    const [pda2, bump2] = await PublicKey.findProgramAddress(["non-empty"], program.programId);
+    await assert.rejects(
+      program.rpc.testEmptySeedsConstraint({
+        accounts: {
+          pda: pda2
+        }
+      }),
+      (err) => {
+        assert.equal(err.code, 146);
+        return true;
+      }
+    );
+  });
 });

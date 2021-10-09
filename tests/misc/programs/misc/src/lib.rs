@@ -176,4 +176,12 @@ pub mod misc {
         ctx.accounts.data.filterable = filterable;
         Ok(())
     }
+
+    pub fn test_init_with_empty_seeds(ctx: Context<TestInitWithEmptySeeds>) -> ProgramResult {
+        Ok(())
+    }
+
+    pub fn test_empty_seeds_constraint(ctx: Context<TestEmptySeedsConstraint>) -> ProgramResult {
+        Ok(())
+    }
 }

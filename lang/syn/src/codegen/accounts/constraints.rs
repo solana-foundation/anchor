@@ -287,24 +287,27 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
             if let Some(pair) = s.pop() {
                 s.push_value(pair.into_value());
             }
+            let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
+                quote! { #s, }
+            });
             let inner = match c.bump.as_ref() {
                 // Bump target not given. Use the canonical bump.
                 None => {
                     quote! {
                         [
-                            #s,
+                            #maybe_seeds_plus_comma
                             &[
                                 Pubkey::find_program_address(
                                     &[#s],
                                     program_id,
                                 ).1
-                            ]
+                            ][..]
                         ]
                     }
                 }
                 // Bump target given. Use it.
                 Some(b) => quote! {
-                    [#s, &[#b]]
+                    [#maybe_seeds_plus_comma &[#b][..]]
                 },
             };
             quote! {
@@ -317,7 +320,12 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
 
 fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
     let name = &f.ident;
-    let s = &c.seeds;
+    let s = &mut c.seeds.clone();
+    // If the seeds came with a trailing comma, we need to chop it off
+    // before we interpolate them below.
+    if let Some(pair) = s.pop() {
+        s.push_value(pair.into_value());
+    }
 
     // If the bump is provided with init *and target*, then force it to be the
     // canonical bump.
@@ -336,25 +344,28 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             }
         }
     } else {
+        let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
+            quote! { #s, }
+        });
         let seeds = match c.bump.as_ref() {
             // Bump target not given. Find it.
             None => {
                 quote! {
                     [
-                        #s,
+                        #maybe_seeds_plus_comma
                         &[
                             Pubkey::find_program_address(
                                 &[#s],
                                 program_id,
                             ).1
-                        ]
+                        ][..]
                     ]
                 }
             }
             // Bump target given. Use it.
             Some(b) => {
                 quote! {
-                    [#s, &[#b]]
+                    [#maybe_seeds_plus_comma &[#b][..]]
                 }
             }
         };
