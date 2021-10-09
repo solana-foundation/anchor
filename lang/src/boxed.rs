@@ -1,4 +1,4 @@
-use crate::{Accounts, AccountsExit, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsClose, AccountsExit, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
@@ -31,5 +31,11 @@ impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Box<T> {
 impl<T: ToAccountMetas> ToAccountMetas for Box<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         T::to_account_metas(self, is_signer)
+    }
+}
+
+impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Box<T> {
+    fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
+        T::close(self, sol_destination)
     }
 }
