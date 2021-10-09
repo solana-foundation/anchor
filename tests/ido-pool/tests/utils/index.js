@@ -11,6 +11,7 @@ const TOKEN_PROGRAM_ID = new anchor.web3.PublicKey(
 
 // Our own sleep function.
 function sleep(ms) {
+  console.log("Sleeping for", ms / 1000, "seconds");
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
