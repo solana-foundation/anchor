@@ -93,8 +93,10 @@ export type DecodeType<T extends IdlType, Defined> = T extends keyof TypeMap
   ? Defined[T["defined"]]
   : T extends { option: { defined: keyof Defined } }
   ? Defined[T["option"]["defined"]] | null
-  : T extends { vec: { defined: keyof Defined } }
-  ? Defined[T["vec"]["defined"]][]
+  : T extends { vec: keyof TypeMap }
+  ? TypeMap[T["vec"]][]
+  : T extends { array: [defined: keyof TypeMap, size: number] }
+  ? TypeMap[T["array"][0]][]
   : unknown;
 
 /**
