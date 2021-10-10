@@ -149,6 +149,27 @@ pub fn close_account<'a, 'b, 'c, 'info>(
     )
 }
 
+pub fn freeze_account<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, FreezeAccount<'info>>,
+) -> ProgramResult {
+    let ix = spl_token::instruction::freeze_account(
+        &spl_token::ID,
+        ctx.accounts.account.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.authority.key,
+        &[], // TODO: Support multisig signers.
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.account.clone(),
+            ctx.accounts.mint.clone(),
+            ctx.accounts.authority.clone(),
+        ],
+        ctx.signer_seeds,
+    )
+}
+
 pub fn initialize_mint<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, InitializeMint<'info>>,
     decimals: u8,
@@ -242,6 +263,13 @@ pub struct InitializeAccount<'info> {
 pub struct CloseAccount<'info> {
     pub account: AccountInfo<'info>,
     pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct FreezeAccount<'info> {
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
 }
 
