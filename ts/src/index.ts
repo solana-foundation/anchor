@@ -11,7 +11,6 @@ export {
   InstructionCoder,
   EventCoder,
   StateCoder,
-  TypesCoder,
   AccountsCoder,
 } from "./coder";
 
