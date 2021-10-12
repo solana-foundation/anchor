@@ -43,9 +43,9 @@ Things to notice
 * We create a `CpiContext` object with the target instruction's accounts and program,
   here `SetData` and `puppet_program`.
 * To invoke an instruction on another program, just use the `cpi` module on the crate, here, `puppet::cpi::set_data`.
-* Our `Accounts` struct has a new type, `CpiAccount`, containing the target program's `Puppet`
-  account. Think of `CpiAccount` exactly like `ProgramAccount`, except used for accounts *not*
-  owned by the current program.
+* Our `Accounts` struct contains the puppet account we are calling into via CPI. Accounts used for CPI are not specifically denoted
+  as such with the `CpiAccount` label since v0.15. Accounts used for CPI are not fundamentally different from `Program` or `Signer` 
+  accounts except for their role and ownership in the specific context in which they are used. 
 
 ::: tip
 When using another Anchor program for CPI, make sure to specify the `cpi` feature in your `Cargo.toml`.
