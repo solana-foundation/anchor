@@ -17,3 +17,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [SpringBoard](https://springboard.finance/)
 * [Unk](https://unk.finance/)
 * [Fabric](https://stake.fsynth.io/)
+* [Jet Protocol](https://jetprotocol.io/)
