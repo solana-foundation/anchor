@@ -33,7 +33,7 @@ npm install -g mocha
 
 ### Install using pre-build binary on x86_64 Linux
 
-Anchor binaries are avalable via an NPM package [`@project-serum/anchor-cli`](https://www.npmjs.com/package/@project-serum/anchor-cli). Only x86_64 Linux is supported currently, you must build from source for other OS'.
+Anchor binaries are available via an NPM package [`@project-serum/anchor-cli`](https://www.npmjs.com/package/@project-serum/anchor-cli). Only x86_64 Linux is supported currently, you must build from source for other OS'.
 
 ```bash
 npm i -g @project-serum/anchor-cli
