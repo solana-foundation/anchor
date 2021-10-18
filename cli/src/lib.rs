@@ -433,10 +433,10 @@ fn init(cfg_override: &ConfigOverride, name: String, javascript: bool) -> Result
         // Build javascript config
         let mut package_json = File::create("package.json")?;
         package_json.write_all(template::package_json().as_bytes())?;
-    
+
         let mut mocha = File::create(&format!("tests/{}.js", name))?;
         mocha.write_all(template::mocha(&name).as_bytes())?;
-    
+
         let mut deploy = File::create("migrations/deploy.js")?;
         deploy.write_all(template::deploy_script().as_bytes())?;
     } else {
