@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const fs = require("fs");
 const { spawn, spawnSync } = require("child_process");
 const path = require("path");
 const { arch, platform } = require("os");
@@ -60,13 +61,20 @@ function tryPackageAnchor() {
 function trySystemAnchor() {
   console.error("Trying globally installed anchor.");
 
-  const added = path.dirname(process.argv[1]);
-  const directories = process.env.PATH.split(":").filter(
-    (dir) => dir !== added
-  );
-  process.env.PATH = directories.join(":");
+  const absolutePath = process.env.PATH.split(":")
+    .filter((dir) => dir !== path.dirname(process.argv[1]))
+    .find((dir) => {
+      try {
+        fs.accessSync(`${dir}/anchor`, fs.constants.X_OK);
+      } catch {
+        return false;
+      }
+      return true;
+    });
 
-  const [error, binaryVersion] = getBinaryVersion("anchor");
+  const absoluteBinaryPath = `${absolutePath}/anchor`;
+
+  const [error, binaryVersion] = getBinaryVersion(absoluteBinaryPath);
   if (error !== null) {
     console.error(`Failed to get version of global binary: ${error}`);
     return;
@@ -78,7 +86,7 @@ function trySystemAnchor() {
     return;
   }
 
-  runAnchor("anchor");
+  runAnchor(absoluteBinaryPath);
 }
 
 tryPackageAnchor() || trySystemAnchor();
