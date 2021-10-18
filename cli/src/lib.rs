@@ -59,7 +59,7 @@ pub enum Command {
     Init {
         name: String,
         #[clap(short, long)]
-        typescript: bool,
+        javascript: bool,
     },
     /// Builds the workspace.
     Build {
@@ -306,7 +306,7 @@ pub enum ClusterCommand {
 
 pub fn entry(opts: Opts) -> Result<()> {
     match opts.command {
-        Command::Init { name, typescript } => init(&opts.cfg_override, name, typescript),
+        Command::Init { name, javascript } => init(&opts.cfg_override, name, javascript),
         Command::New { name } => new(&opts.cfg_override, name),
         Command::Build {
             idl,
@@ -378,7 +378,7 @@ pub fn entry(opts: Opts) -> Result<()> {
     }
 }
 
-fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result<()> {
+fn init(cfg_override: &ConfigOverride, name: String, javascript: bool) -> Result<()> {
     if Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
@@ -390,10 +390,10 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
     let mut cfg = Config::default();
     cfg.scripts.insert(
         "test".to_owned(),
-        if typescript {
-            "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-        } else {
+        if javascript {
             "mocha -t 1000000 tests/"
+        } else {
+            "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
         }
         .to_owned(),
     );
@@ -429,7 +429,17 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
     // Build the migrations directory.
     fs::create_dir("migrations")?;
 
-    if typescript {
+    if javascript {
+        // Build javascript config
+        let mut package_json = File::create("package.json")?;
+        package_json.write_all(template::package_json().as_bytes())?;
+    
+        let mut mocha = File::create(&format!("tests/{}.js", name))?;
+        mocha.write_all(template::mocha(&name).as_bytes())?;
+    
+        let mut deploy = File::create("migrations/deploy.js")?;
+        deploy.write_all(template::deploy_script().as_bytes())?;
+    } else {
         // Build typescript config
         let mut ts_config = File::create("tsconfig.json")?;
         ts_config.write_all(template::ts_config().as_bytes())?;
@@ -442,15 +452,6 @@ fn init(cfg_override: &ConfigOverride, name: String, typescript: bool) -> Result
 
         let mut mocha = File::create(&format!("tests/{}.ts", name))?;
         mocha.write_all(template::ts_mocha(&name).as_bytes())?;
-    } else {
-        let mut package_json = File::create("package.json")?;
-        package_json.write_all(template::package_json().as_bytes())?;
-
-        let mut mocha = File::create(&format!("tests/{}.js", name))?;
-        mocha.write_all(template::mocha(&name).as_bytes())?;
-
-        let mut deploy = File::create("migrations/deploy.js")?;
-        deploy.write_all(template::deploy_script().as_bytes())?;
     }
 
     // Install node modules.
