@@ -72,7 +72,11 @@ export function splitArgsAndCtx(
   const inputLen = idlIx.args ? idlIx.args.length : 0;
   if (args.length > inputLen) {
     if (args.length !== inputLen + 1) {
-      throw new Error("provided too many arguments ${args}");
+      throw new Error(
+        `provided too many arguments ${args} to instruction ${
+          idlIx?.name
+        } expecting: ${idlIx.args?.map((a) => a.name) ?? []}`
+      );
     }
     options = args.pop();
   }
