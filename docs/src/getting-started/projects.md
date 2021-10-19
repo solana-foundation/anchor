@@ -19,3 +19,4 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Fabric](https://stake.fsynth.io/)
 * [Jet Protocol](https://jetprotocol.io/)
 * [Quarry](https://quarry.so/)
+* [PsyOptions](https://psyoptions.io/)
