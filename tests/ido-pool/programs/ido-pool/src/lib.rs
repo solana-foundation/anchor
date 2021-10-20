@@ -475,7 +475,7 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
     pub redeemable_mint: Box<Account<'info, Mint>>,
     #[account(mut,
         seeds = [ido_account.ido_name.as_ref().trim_ascii_whitespace(), b"pool_watermelon"],
-        bump = ido_account.bumps.pool_usdc)]
+        bump = ido_account.bumps.pool_watermelon)]
     pub pool_watermelon: Box<Account<'info, TokenAccount>>,
     // Programs and Sysvars
     pub token_program: Program<'info, Token>,
