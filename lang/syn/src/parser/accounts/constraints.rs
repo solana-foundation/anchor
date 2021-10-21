@@ -172,13 +172,6 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 .join(stream.span())
                 .unwrap_or_else(|| ident.span());
             match kw.as_str() {
-                // Deprecated since 0.11
-                "belongs_to" => {
-                    return Err(ParseError::new(
-                        ident.span(),
-                        "belongs_to is deprecated, please use has_one",
-                    ))
-                }
                 "has_one" => ConstraintToken::HasOne(Context::new(
                     span,
                     ConstraintHasOne {
