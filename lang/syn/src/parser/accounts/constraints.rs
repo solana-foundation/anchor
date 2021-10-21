@@ -60,7 +60,14 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
     let kw = ident.to_string();
 
     let c = match kw.as_str() {
-        "init" => ConstraintToken::Init(Context::new(ident.span(), ConstraintInit {})),
+        "init" => ConstraintToken::Init(Context::new(
+            ident.span(),
+            ConstraintInit { if_needed: false },
+        )),
+        "init_if_needed" => ConstraintToken::Init(Context::new(
+            ident.span(),
+            ConstraintInit { if_needed: true },
+        )),
         "zero" => ConstraintToken::Zeroed(Context::new(ident.span(), ConstraintZeroed {})),
         "mut" => ConstraintToken::Mut(Context::new(ident.span(), ConstraintMut {})),
         "signer" => ConstraintToken::Signer(Context::new(ident.span(), ConstraintSigner {})),
@@ -518,7 +525,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             _ => None,
         };
         Ok(ConstraintGroup {
-            init: init.as_ref().map(|_| Ok(ConstraintInitGroup {
+            init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
+            if_needed: i.if_needed,
                 seeds: seeds.clone(),
                 payer: into_inner!(payer.clone()).map(|a| a.target),
                 space: space.clone().map(|s| s.space.clone()),

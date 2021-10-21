@@ -244,3 +244,11 @@ pub struct TestEmptySeedsConstraint<'info> {
     #[account(seeds = [], bump)]
     pub pda: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct TestInitIfNeeded<'info> {
+    #[account(init_if_needed, payer = payer)]
+    pub data: Account<'info, DataU16>,
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
