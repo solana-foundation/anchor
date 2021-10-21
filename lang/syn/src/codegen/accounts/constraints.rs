@@ -235,9 +235,10 @@ pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenS
 
 pub fn generate_constraint_raw(c: &ConstraintRaw) -> proc_macro2::TokenStream {
     let raw = &c.raw;
+    let error = generate_custom_error(&c.error, quote! { ConstraintRaw });
     quote! {
         if !(#raw) {
-            return Err(anchor_lang::__private::ErrorCode::ConstraintRaw.into());
+            return Err(#error);
         }
     }
 }
@@ -656,5 +657,15 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
         if #ident.to_account_info().owner != #program_target.to_account_info().key {
             return Err(anchor_lang::__private::ErrorCode::ConstraintState.into());
         }
+    }
+}
+
+fn generate_custom_error(
+    custom_error: &Option<Expr>,
+    error: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    match custom_error {
+        Some(error) => quote! { #error.into() },
+        None => quote! { anchor_lang::__private::ErrorCode::#error.into() },
     }
 }

@@ -229,6 +229,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     span,
                     ConstraintRaw {
                         raw: stream.parse()?,
+                        error: parse_optional_custom_error(&stream)?,
                     },
                 )),
                 "close" => ConstraintToken::Close(Context::new(
@@ -249,6 +250,15 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
     };
 
     Ok(c)
+}
+
+fn parse_optional_custom_error(stream: &ParseStream) -> ParseResult<Option<Expr>> {
+    if stream.peek(Token![@]) {
+        stream.parse::<Token![@]>()?;
+        stream.parse().map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 #[derive(Default)]

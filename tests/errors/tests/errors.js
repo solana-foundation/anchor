@@ -112,4 +112,20 @@ describe("errors", () => {
       assert.equal(err.toString(), errMsg);
     }
   });
+
+  it("Emits a raw custom error", async () => {
+    try {
+      const tx = await program.rpc.rawCustomError({
+        accounts: {
+          myAccount: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+      });
+      assert.ok(false);
+    } catch (err) {
+      const errMsg = "HelloCustom";
+      assert.equal(err.toString(), errMsg);
+      assert.equal(err.msg, errMsg);
+      assert.equal(err.code, 300 + 125);
+    }
+  });
 });
