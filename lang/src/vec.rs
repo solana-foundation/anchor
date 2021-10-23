@@ -34,7 +34,6 @@ impl<'info, T: Accounts<'info>> Accounts<'info> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ToAccountInfo;
     use solana_program::clock::Epoch;
     use solana_program::pubkey::Pubkey;
 

@@ -209,7 +209,7 @@ pub fn generate_constraint_signer(f: &Field, _c: &ConstraintSigner) -> proc_macr
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     quote! {
-        if !#info.to_account_info().is_signer {
+        if !#info.is_signer {
             return Err(anchor_lang::__private::ErrorCode::ConstraintSigner.into());
         }
     }

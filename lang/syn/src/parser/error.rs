@@ -46,9 +46,7 @@ fn parse_error_attribute(variant: &syn::Variant) -> Option<String> {
         1 => {
             let attr = &attrs[0];
             let attr_str = attr.path.segments[0].ident.to_string();
-            if &attr_str != "msg" {
-                panic!("Use msg to specify error strings");
-            }
+            assert!(&attr_str == "msg", "Use msg to specify error strings");
 
             let mut tts = attr.tokens.clone().into_iter();
             let g_stream = match tts.next().expect("Must have a token group") {
