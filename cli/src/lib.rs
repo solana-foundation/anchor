@@ -1477,6 +1477,16 @@ fn test(
 
         let url = cluster_url(cfg);
 
+        let node_options = format!(
+            "{} --dns-result-order=ipv4first",
+            match std::env::var_os("NODE_OPTIONS") {
+                Some(value) => value
+                    .into_string()
+                    .map_err(std::env::VarError::NotUnicode)?,
+                None => "".to_owned(),
+            }
+        );
+
         // Setup log reader.
         let log_streams = stream_logs(cfg, &url);
 
@@ -1497,6 +1507,7 @@ fn test(
                 .args(args)
                 .env("ANCHOR_PROVIDER_URL", url)
                 .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
+                .env("NODE_OPTIONS", node_options)
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()

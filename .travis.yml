@@ -5,7 +5,7 @@ rust:
 cache: cargo
 env:
   global:
-    - NODE_VERSION="14.7.0"
+    - NODE_VERSION="17.0.1"
     - SOLANA_CLI_VERSION="1.7.11"
 git:
   submodules: true
