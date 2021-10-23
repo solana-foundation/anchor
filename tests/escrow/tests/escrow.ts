@@ -1,14 +1,15 @@
 import * as anchor from "../../../ts";
-import  { Program, BN } from "../../../ts";
+import  { Program, BN, IdlAccounts } from "../../../ts";
 import {
-	SYSVAR_RENT_PUBKEY,
 	PublicKey,
 	Keypair,
 	SystemProgram,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert } from "chai";
-import { Escrow } from '../target/types/escrow';
+import { Escrow } from "../target/types/escrow";
+
+type EscrowAccount = IdlAccounts<Escrow>["escrowAccount"];
 
 describe("escrow", () => {
   const provider = anchor.Provider.env();
@@ -101,7 +102,6 @@ describe("escrow", () => {
           escrowAccount: escrowAccount.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
         },
         signers: [escrowAccount],
       }
@@ -119,7 +119,7 @@ describe("escrow", () => {
       initializerTokenAccountA
     );
 
-    let _escrowAccount = await program.account.escrowAccount.fetch(
+    let _escrowAccount: EscrowAccount = await program.account.escrowAccount.fetch(
       escrowAccount.publicKey
     );
 
@@ -197,7 +197,6 @@ describe("escrow", () => {
           escrowAccount: newEscrow.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
         },
         signers: [newEscrow],
       }
