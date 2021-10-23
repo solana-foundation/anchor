@@ -52,11 +52,13 @@ pub struct Increment<'info> {
 }
 ```
 
-Here, several `#[account(..)]` attributes are used.
+Here, a couple `#[account(..)]` attributes are used.
 
 - `mut`: tells the program to persist all changes to the account.
 - `has_one`: enforces the constraint that `Increment.counter.authority == Increment.authority.key`.
-- `signer`: enforces the constraint that the `authority` account **signed** the transaction.
+
+Another new concept here is the `Signer` type. This enforces the constraint that the `authority`
+account **signed** the transaction. However, anchor doesn't fetch the data on that account.
 
 If any of these constraints do not hold, then the `increment` instruction will never be executed.
 This allows us to completely separate account validation from our program's business logic, allowing us
