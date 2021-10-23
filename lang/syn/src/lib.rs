@@ -605,14 +605,19 @@ pub struct ConstraintInitIfNeeded {}
 pub struct ConstraintZeroed {}
 
 #[derive(Debug, Clone)]
-pub struct ConstraintMut {}
+pub struct ConstraintMut {
+    pub error: Option<Expr>,
+}
 
 #[derive(Debug, Clone)]
-pub struct ConstraintSigner {}
+pub struct ConstraintSigner {
+    pub error: Option<Expr>,
+}
 
 #[derive(Debug, Clone)]
 pub struct ConstraintHasOne {
     pub join_target: Expr,
+    pub error: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -629,11 +634,13 @@ pub struct ConstraintRaw {
 #[derive(Debug, Clone)]
 pub struct ConstraintOwner {
     pub owner_address: Expr,
+    pub error: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintAddress {
     pub address: Expr,
+    pub error: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]

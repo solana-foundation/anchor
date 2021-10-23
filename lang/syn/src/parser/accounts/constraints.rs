@@ -69,8 +69,18 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
             ConstraintInit { if_needed: true },
         )),
         "zero" => ConstraintToken::Zeroed(Context::new(ident.span(), ConstraintZeroed {})),
-        "mut" => ConstraintToken::Mut(Context::new(ident.span(), ConstraintMut {})),
-        "signer" => ConstraintToken::Signer(Context::new(ident.span(), ConstraintSigner {})),
+        "mut" => ConstraintToken::Mut(Context::new(
+            ident.span(),
+            ConstraintMut {
+                error: parse_optional_custom_error(&stream)?,
+            },
+        )),
+        "signer" => ConstraintToken::Signer(Context::new(
+            ident.span(),
+            ConstraintSigner {
+                error: parse_optional_custom_error(&stream)?,
+            },
+        )),
         "executable" => {
             ConstraintToken::Executable(Context::new(ident.span(), ConstraintExecutable {}))
         }
@@ -183,12 +193,14 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     span,
                     ConstraintHasOne {
                         join_target: stream.parse()?,
+                        error: parse_optional_custom_error(&stream)?,
                     },
                 )),
                 "owner" => ConstraintToken::Owner(Context::new(
                     span,
                     ConstraintOwner {
                         owner_address: stream.parse()?,
+                        error: parse_optional_custom_error(&stream)?,
                     },
                 )),
                 "rent_exempt" => ConstraintToken::RentExempt(Context::new(
@@ -249,6 +261,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     span,
                     ConstraintAddress {
                         address: stream.parse()?,
+                        error: parse_optional_custom_error(&stream)?,
                     },
                 )),
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
@@ -340,7 +353,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 }
                 None => self
                     .mutable
-                    .replace(Context::new(i.span(), ConstraintMut {})),
+                    .replace(Context::new(i.span(), ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
             if self.rent_exempt.is_none() {
@@ -359,7 +372,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if self.signer.is_none() && self.seeds.is_none() && self.associated_token_mint.is_none()
             {
                 self.signer
-                    .replace(Context::new(i.span(), ConstraintSigner {}));
+                    .replace(Context::new(i.span(), ConstraintSigner { error: None }));
             }
         }
 
@@ -374,7 +387,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 }
                 None => self
                     .mutable
-                    .replace(Context::new(z.span(), ConstraintMut {})),
+                    .replace(Context::new(z.span(), ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
             if self.rent_exempt.is_none() {
