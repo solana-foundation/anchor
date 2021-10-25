@@ -16,6 +16,7 @@ use heck::SnakeCase;
 use rand::rngs::OsRng;
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
@@ -1478,13 +1479,14 @@ fn test(
         let url = cluster_url(cfg);
 
         let node_options = format!(
-            "{} --dns-result-order=ipv4first",
+            "{} {}",
             match std::env::var_os("NODE_OPTIONS") {
                 Some(value) => value
                     .into_string()
                     .map_err(std::env::VarError::NotUnicode)?,
                 None => "".to_owned(),
-            }
+            },
+            get_node_dns_option()?,
         );
 
         // Setup log reader.
@@ -2513,4 +2515,27 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         .to_str()
         .map(|s| s == "." || s.starts_with('.') || s == "target")
         .unwrap_or(false)
+}
+
+fn get_node_version() -> Result<Version> {
+    let node_version = std::process::Command::new("node")
+        .arg("--version")
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("node failed: {}", e.to_string()))?;
+    let output = std::str::from_utf8(&node_version.stdout)?
+        .strip_prefix('v')
+        .unwrap()
+        .trim();
+    Version::parse(output).map_err(Into::into)
+}
+
+fn get_node_dns_option() -> Result<&'static str> {
+    let version = get_node_version()?;
+    let req = VersionReq::parse(">=16.4.0").unwrap();
+    let option = match req.matches(&version) {
+        true => "--dns-result-order=ipv4first",
+        false => "",
+    };
+    Ok(option)
 }
