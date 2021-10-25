@@ -893,7 +893,7 @@ fn _build_cwd(
         std::process::exit(exit.status.code().unwrap_or(1));
     }
 
-    // Always assume idl is located ar src/lib.rs.
+    // Always assume idl is located at src/lib.rs.
     if let Some(idl) = extract_idl("src/lib.rs")? {
         // JSON out path.
         let out = match idl_out {
