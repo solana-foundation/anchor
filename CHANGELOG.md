@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.18.0] - 2021-10-24
+
 ### Features
 
 * cli: Add support for configuration options for `solana-test-validator` in Anchor.toml ([#834](https://github.com/project-serum/anchor/pull/834)).

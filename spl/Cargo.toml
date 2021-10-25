@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl"
-version = "0.17.0"
+version = "0.18.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -10,10 +10,9 @@ description = "CPI clients for SPL programs"
 devnet = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.17.0", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.18.0", features = ["derive"] }
 lazy_static = "1.4.0"
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"] }
 solana-program = "1.8.0"
 spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
-spl-governance = { git = "https://github.com/solana-labs/solana-program-library", features = ["no-entrypoint"] }
