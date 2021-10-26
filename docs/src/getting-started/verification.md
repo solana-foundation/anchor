@@ -6,7 +6,7 @@ on different machines may produce different executables. To get around this
 problem, one can build inside a docker image with pinned dependencies to produce
 a verifiable build.
 
-Anchor makes this easy by providing CLI commands to build take care of
+Anchor makes this easy by providing CLI commands to build and take care of
 docker for you. To get started, first make sure you
 [install](https://docs.docker.com/get-docker/) docker on your local machine.
 
