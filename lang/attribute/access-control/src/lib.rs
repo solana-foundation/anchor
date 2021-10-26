@@ -62,6 +62,7 @@ pub fn access_control(
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
 
+    let fn_attrs = item_fn.attrs;
     let fn_vis = item_fn.vis;
     let fn_sig = item_fn.sig;
     let fn_block = item_fn.block;
@@ -69,6 +70,7 @@ pub fn access_control(
     let fn_stmts = fn_block.stmts;
 
     proc_macro::TokenStream::from(quote! {
+        #(#fn_attrs)*
         #fn_vis #fn_sig {
 
             #(#access_control)*
