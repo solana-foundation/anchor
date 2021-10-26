@@ -36,7 +36,7 @@ SUBCOMMANDS:
 anchor init
 ```
 
-Initializes a project workspace wit the following structure.
+Initializes a project workspace with the following structure.
 
 * `Anchor.toml`: Anchor configuration file.
 * `Cargo.toml`: Rust workspace configuration file.
@@ -114,7 +114,7 @@ anchor migrate
 ```
 
 Runs the deploy script located at `migrations/deploy.js`, injecting a provider configured
-form the workspace's `Anchor.toml`. For example,
+from the workspace's `Anchor.toml`. For example,
 
 ```javascript
 // File: migrations/deploys.js
@@ -136,7 +136,7 @@ and only support this simple deploy script at the moment.
 The `idl` subcommand provides commands for interacting with interface definition files.
 It's recommended to use these commands to store an IDL on chain, at a deterministic
 address, as a function of nothing but the the program's ID. This
-allow us to generate clients for a program using nothing but the program ID.
+allows us to generate clients for a program using nothing but the program ID.
 
 ### Idl Init
 
