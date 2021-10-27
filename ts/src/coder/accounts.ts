@@ -2,6 +2,7 @@ import { Layout } from "buffer-layout";
 import { Idl } from "../idl";
 import { IdlCoder } from "./idl";
 import { sha256 } from "js-sha256";
+import camelcase from "camelcase";
 
 /**
  * Number of bytes of the account discriminator.
@@ -43,7 +44,7 @@ export class AccountsCoder<A extends string = string> {
 
   public decode<T = any>(accountName: A, ix: Buffer): T {
     // Chop off the discriminator before decoding.
-    const data = ix.slice(8);
+    const data = ix.slice(ACCOUNT_DISCRIMINATOR_SIZE);
     const layout = this.accountLayouts.get(accountName);
     if (!layout) {
       throw new Error(`Unknown account: ${accountName}`);
@@ -57,6 +58,8 @@ export class AccountsCoder<A extends string = string> {
    * @param name The name of the account to calculate the discriminator.
    */
   public static accountDiscriminator(name: string): Buffer {
-    return Buffer.from(sha256.digest(`account:${name}`)).slice(0, 8);
+    return Buffer.from(
+      sha256.digest(`account:${camelcase(name, { pascalCase: true })}`)
+    ).slice(0, ACCOUNT_DISCRIMINATOR_SIZE);
   }
 }
