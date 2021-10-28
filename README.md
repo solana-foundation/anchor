@@ -110,7 +110,7 @@ or issues where [help is wanted](https://github.com/project-serum/anchor/issues?
 For simple documentation changes, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue
-and engage with the maintainers in [Discord](https://discord.com/channels/889577356681945098).
+and engage with the maintainers in [Discord](https://discord.gg/sxy4zxBckh).
 
 ## License
 
