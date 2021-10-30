@@ -86,7 +86,9 @@ const LangErrorCode = {
   AccountNotMutable: 166,
   AccountNotProgramOwned: 167,
   InvalidProgramId: 168,
-  InvalidProgramIdExecutable: 169,
+  InvalidProgramExecutable: 169,
+  AccountNotSigner: 170,
+  AccountNotSystemOwned: 171,
 
   // State.
   StateInvalidAddress: 180,
@@ -167,9 +169,11 @@ const LangErrorMessage = new Map([
     "The given account is not owned by the executing program",
   ],
   [LangErrorCode.InvalidProgramId, "Program ID was not as expected"],
+  [LangErrorCode.InvalidProgramExecutable, "Program account is not executable"],
+  [LangErrorCode.AccountNotSigner, "The given account did not sign"],
   [
-    LangErrorCode.InvalidProgramIdExecutable,
-    "Program account is not executable",
+    LangErrorCode.AccountNotSystemOwned,
+    "The given account is not owned by the system program",
   ],
 
   // State.

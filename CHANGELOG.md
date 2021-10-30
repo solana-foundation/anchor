@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: Add `SystemAccount<'info>` account type for generic wallet addresses or accounts owned by the system program ([#954](https://github.com/project-serum/anchor/pull/954))
+
 ### Fixes
 
 * cli: fix dns in NODE_OPTIONS ([#928](https://github.com/project-serum/anchor/pull/928)).
