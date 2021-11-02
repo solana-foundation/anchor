@@ -835,4 +835,23 @@ describe("misc", () => {
     const account = await program.account.dataU16.fetch(ifNeededAcc.publicKey);
     assert.ok(account.data, 3);
   });
+
+  it("Can use multidimensional array", async () => {
+    const array2d = new Array(10).fill(new Array(10).fill(99));
+    const data = anchor.web3.Keypair.generate();
+    const tx = await program.rpc.testMultidimensionalArray(array2d, {
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [
+        await program.account.dataMultidimensionalArray.createInstruction(data),
+      ],
+    });
+    const dataAccount = await program.account.dataMultidimensionalArray.fetch(
+      data.publicKey
+    );
+    assert.deepStrictEqual(dataAccount.data, array2d);
+  });
 });

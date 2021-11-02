@@ -36,3 +36,8 @@ pub struct DataWithFilter {
     pub authority: Pubkey,
     pub filterable: Pubkey,
 }
+
+#[account]
+pub struct DataMultidimensionalArray {
+    pub data: [[u8; 10]; 10],
+}

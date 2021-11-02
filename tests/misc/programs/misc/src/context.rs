@@ -252,3 +252,9 @@ pub struct TestInitIfNeeded<'info> {
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct TestMultidimensionalArray<'info> {
+    #[account(zero)]
+    pub data: Account<'info, DataMultidimensionalArray>,
+}
