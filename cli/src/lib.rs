@@ -285,9 +285,12 @@ pub enum IdlCommand {
         /// Path to the program's interface definition.
         #[clap(short, long)]
         file: String,
-        /// Output file for the idl (stdout if not specified).
+        /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
+        /// Output file for the TypeScript IDL.
+        #[clap(short = 't', long)]
+        out_ts: Option<String>,
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
@@ -1139,7 +1142,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_set_authority(cfg_override, program_id, address, new_authority),
         IdlCommand::EraseAuthority { program_id } => idl_erase_authority(cfg_override, program_id),
         IdlCommand::Authority { program_id } => idl_authority(cfg_override, program_id),
-        IdlCommand::Parse { file, out } => idl_parse(file, out),
+        IdlCommand::Parse { file, out, out_ts } => idl_parse(file, out, out_ts),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
     }
 }
@@ -1398,13 +1401,20 @@ fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl, idl_address: Pubkey) 
     Ok(())
 }
 
-fn idl_parse(file: String, out: Option<String>) -> Result<()> {
+fn idl_parse(file: String, out: Option<String>, out_ts: Option<String>) -> Result<()> {
     let idl = extract_idl(&file)?.ok_or_else(|| anyhow!("IDL not parsed"))?;
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
     };
-    write_idl(&idl, out)
+    write_idl(&idl, out)?;
+
+    // Write out the TypeScript IDL.
+    if let Some(out) = out_ts {
+        fs::write(out, template::idl_ts(&idl)?)?;
+    }
+
+    Ok(())
 }
 
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {
