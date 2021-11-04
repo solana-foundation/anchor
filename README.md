@@ -37,6 +37,7 @@ To jump straight to examples, go [here](https://github.com/project-serum/anchor/
 | `anchor-spl` | CPI clients for SPL programs on Solana | ![crates](https://img.shields.io/crates/v/anchor-spl?color=blue) | [![Docs.rs](https://docs.rs/anchor-spl/badge.svg)](https://docs.rs/anchor-spl) |
 | `anchor-client` | Rust client for Anchor programs | ![crates](https://img.shields.io/crates/v/anchor-client?color=blue) | [![Docs.rs](https://docs.rs/anchor-client/badge.svg)](https://docs.rs/anchor-client) |
 | `@project-serum/anchor` | TypeScript client for Anchor programs | [![npm](https://img.shields.io/npm/v/@project-serum/anchor.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://project-serum.github.io/anchor/ts/index.html) |
+| `@project-serum/anchor-cli` | CLI to support building and managing an Anchor workspace | [![npm](https://img.shields.io/npm/v/@project-serum/anchor-cli.svg?color=blue)](https://www.npmjs.com/package/@project-serum/anchor-cli) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://project-serum.github.io/anchor/cli/commands.html) |
 
 ## Note
 
