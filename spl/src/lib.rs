@@ -1,6 +1,17 @@
+#[cfg(feature = "associated_token")]
 pub mod associated_token;
-pub mod dex;
-pub mod governance;
+
+#[cfg(feature = "mint")]
 pub mod mint;
-pub mod shmem;
+
+#[cfg(feature = "token")]
 pub mod token;
+
+#[cfg(feature = "serum_dex")]
+pub mod dex;
+
+#[cfg(feature = "governance")]
+pub mod governance;
+
+#[cfg(feature = "shmem")]
+pub mod shmem;
