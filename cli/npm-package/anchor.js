@@ -72,6 +72,11 @@ function trySystemAnchor() {
       return true;
     });
 
+  if (!absolutePath) {
+    console.error(`Could not find globally installed anchor, install with cargo.`);
+    process.exit();
+  }
+
   const absoluteBinaryPath = `${absolutePath}/anchor`;
 
   const [error, binaryVersion] = getBinaryVersion(absoluteBinaryPath);
