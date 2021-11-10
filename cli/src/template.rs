@@ -30,15 +30,9 @@ token = "{}"
 
 pub fn idl_ts(idl: &Idl) -> Result<String> {
     let mut idl = idl.clone();
-    idl.accounts = idl
-        .accounts
-        .into_iter()
-        .map(|acc| {
-            let mut acc = acc;
-            acc.name = acc.name.to_mixed_case();
-            acc
-        })
-        .collect();
+    for acc in idl.accounts.iter_mut() {
+        acc.name = acc.name.to_mixed_case();
+    }
     let idl_json = serde_json::to_string_pretty(&idl)?;
     Ok(format!(
         r#"export type {} = {};
