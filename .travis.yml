@@ -21,19 +21,12 @@ _defaults: &defaults
 _tests: &tests
   before_install:
   - nvm install $NODE_VERSION
-  - npm install -g mocha
-  - npm install -g ts-mocha
-  - npm install -g typescript
-  - npm install -g ts-node
-  - npm install -g buffer
-  - cd ts && yarn && yarn build && npm link && cd ../
-  - npm install -g @project-serum/serum
-  - npm install -g @project-serum/common
-  - npm install -g @solana/spl-token
+  - cd ts && yarn && yarn build && yarn link && cd ../
+  - cd examples/tutorial && yarn && yarn link @project-serum/anchor && cd ../../
+  - cd tests && yarn && yarn link @project-serum/anchor && cd ..
   - sudo apt-get install -y pkg-config build-essential libudev-dev
   - sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_CLI_VERSION}/install)"
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
-  - export NODE_PATH="/home/travis/.nvm/versions/node/v${NODE_VERSION}/lib/node_modules/:$NODE_PATH"
   - yes | solana-keygen new
   - cargo install --path $TRAVIS_BUILD_DIR/cli anchor-cli --locked
 
@@ -67,20 +60,16 @@ jobs:
         - pushd tests/misc && anchor test && popd
         - pushd tests/events && anchor test && popd
         - pushd tests/cashiers-check && anchor test && popd
-        - pushd tests/typescript && yarn && anchor test && popd
-        - pushd tests/zero-copy && yarn && anchor test && popd
-        - pushd tests/chat && yarn && anchor test && popd
-        - pushd tests/ido-pool && yarn && anchor test && popd
+        - pushd tests/typescript && anchor test && popd
+        - pushd tests/zero-copy && anchor test && popd
+        - pushd tests/chat && anchor test && popd
+        - pushd tests/ido-pool && anchor test && popd
         - pushd tests/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test && popd
         - pushd tests/cfo && anchor run test-with-build && popd
     - <<: *tests
       name: Runs the e2e tests 3
       script:
-        - pushd tests/escrow && yarn && anchor test && popd
-        - pushd tests/pyth && yarn && anchor test && popd
-        - pushd tests/system-accounts && yarn && anchor test && popd
-        - pushd examples/tutorial/basic-0 && anchor test && popd
-        - pushd examples/tutorial/basic-1 && anchor test && popd
-        - pushd examples/tutorial/basic-2 && anchor test && popd
-        - pushd examples/tutorial/basic-3 && anchor test && popd
-        - pushd examples/tutorial/basic-4 && anchor test && popd
+        - pushd tests/escrow && anchor test && popd
+        - pushd tests/pyth && anchor test && popd
+        - pushd tests/system-accounts && anchor test && popd
+        - pushd examples/tutorial && yarn workspaces run test

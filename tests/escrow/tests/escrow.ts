@@ -1,10 +1,6 @@
-import * as anchor from "../../../ts";
-import  { Program, BN, IdlAccounts } from "../../../ts";
-import {
-	PublicKey,
-	Keypair,
-	SystemProgram,
-} from '@solana/web3.js';
+import * as anchor from "@project-serum/anchor";
+import { Program, BN, IdlAccounts } from "@project-serum/anchor";
+import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert } from "chai";
 import { Escrow } from "../target/types/escrow";
@@ -119,9 +115,8 @@ describe("escrow", () => {
       initializerTokenAccountA
     );
 
-    let _escrowAccount: EscrowAccount = await program.account.escrowAccount.fetch(
-      escrowAccount.publicKey
-    );
+    let _escrowAccount: EscrowAccount =
+      await program.account.escrowAccount.fetch(escrowAccount.publicKey);
 
     // Check that the new owner is the PDA.
     assert.ok(_initializerTokenAccountA.owner.equals(pda));

@@ -40,6 +40,7 @@ Initializes a project workspace with the following structure.
 
 * `Anchor.toml`: Anchor configuration file.
 * `Cargo.toml`: Rust workspace configuration file.
+* `package.json`: JavaScript dependencies file.
 * `programs/`: Directory for Solana program crates.
 * `app/`: Directory for your application frontend.
 * `tests/`: Directory for JavaScript integration tests.
@@ -228,4 +229,3 @@ anchor verify <program-id>
 ```
 
 Verifies the on-chain bytecode matches the locally compiled artifact.
-

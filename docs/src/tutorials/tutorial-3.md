@@ -11,10 +11,16 @@ To get started, clone the repo.
 git clone https://github.com/project-serum/anchor
 ```
 
-And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-3).
+Change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-3).
 
 ```bash
 cd anchor/examples/tutorial/basic-3
+```
+
+And install any additional JavaScript dependencies:
+
+```bash
+yarn install
 ```
 
 ## Defining a Puppet Program
@@ -44,8 +50,8 @@ Things to notice
   here `SetData` and `puppet_program`.
 * To invoke an instruction on another program, just use the `cpi` module on the crate, here, `puppet::cpi::set_data`.
 * Our `Accounts` struct contains the puppet account we are calling into via CPI. Accounts used for CPI are not specifically denoted
-  as such with the `CpiAccount` label since v0.15. Accounts used for CPI are not fundamentally different from `Program` or `Signer` 
-  accounts except for their role and ownership in the specific context in which they are used. 
+  as such with the `CpiAccount` label since v0.15. Accounts used for CPI are not fundamentally different from `Program` or `Signer`
+  accounts except for their role and ownership in the specific context in which they are used.
 
 ::: tip
 When using another Anchor program for CPI, make sure to specify the `cpi` feature in your `Cargo.toml`.

@@ -7,4 +7,4 @@ puppet = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 puppet_master = "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
 
 [scripts]
-test = "mocha -t 1000000 tests/"
+test = "yarn run mocha -t 1000000 tests/"

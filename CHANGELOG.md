@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+* cli: Replace global JavaScript dependency installs with local.
+
 ### Features
 
 * lang: Add `SystemAccount<'info>` account type for generic wallet addresses or accounts owned by the system program ([#954](https://github.com/project-serum/anchor/pull/954))

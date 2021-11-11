@@ -12,10 +12,16 @@ To get started, clone the repo.
 git clone https://github.com/project-serum/anchor
 ```
 
-And change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-1).
+Change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-1).
 
 ```bash
 cd anchor/examples/tutorial/basic-1
+```
+
+And install any additional JavaScript dependencies:
+
+```bash
+yarn install
 ```
 
 ## Defining a Program

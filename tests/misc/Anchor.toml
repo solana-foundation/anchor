@@ -14,4 +14,4 @@ program = "./target/deploy/misc.so"
 exclude = ["programs/shared"]
 
 [scripts]
-test = "mocha -t 1000000 tests/"
+test = "yarn run mocha -t 1000000 tests/"

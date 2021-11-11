@@ -6,4 +6,4 @@ wallet = "~/.config/solana/id.json"
 basic_4 = "CwrqeMj2U8tFr1Rhkgwc84tpAsqbt9pTt2a4taoTADPr"
 
 [scripts]
-test = "mocha -t 1000000 tests/"
+test = "yarn run mocha -t 1000000 tests/"

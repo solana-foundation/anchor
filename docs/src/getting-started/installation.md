@@ -21,12 +21,12 @@ See the solana [docs](https://docs.solana.com/cli/install-solana-cli-tools) for 
 sh -c "$(curl -sSfL https://release.solana.com/v1.8.0/install)"
 ```
 
-## Install Mocha
+## Install Yarn
 
-Program integration tests are run using [Mocha](https://mochajs.org/).
+[Yarn](https://yarnpkg.com/) is recommended for JavaScript package management.
 
 ```bash
-npm install -g mocha
+npm install -g yarn
 ```
 
 ## Install Anchor
@@ -52,15 +52,6 @@ On Linux systems you may need to install additional dependencies if `cargo insta
 ```bash
 sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
 ```
-
-To install the JavaScript package.
-
-```bash
-npm install -g @project-serum/anchor
-```
-
-Make sure your `NODE_PATH` is set properly so that globally installed modules
-can be resolved.
 
 Now verify the CLI is installed properly.
 

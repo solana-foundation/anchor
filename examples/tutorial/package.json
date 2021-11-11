@@ -1,0 +1,17 @@
+{
+  "name": "anchor-examples",
+  "private": true,
+  "workspaces": [
+    "basic-0",
+    "basic-1",
+    "basic-2",
+    "basic-3",
+    "basic-4"
+  ],
+  "dependencies": {
+    "@project-serum/anchor": "^0.18.0"
+  },
+  "devDependencies": {
+    "mocha": "^9.1.3"
+  }
+}
