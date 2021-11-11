@@ -2,9 +2,9 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::dex;
-use serum_dex::instruction::MarketInstruction;
-use serum_dex::matching::Side;
-use serum_dex::state::OpenOrders;
+use anchor_spl::dex::serum_dex::instruction::MarketInstruction;
+use anchor_spl::dex::serum_dex::matching::Side;
+use anchor_spl::dex::serum_dex::state::OpenOrders;
 use solana_program::instruction::Instruction;
 use solana_program::system_program;
 use solana_program::sysvar::rent;

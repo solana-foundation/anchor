@@ -16,4 +16,4 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl" }
+anchor-spl = { path = "../../../../spl", features = ["dex"] }

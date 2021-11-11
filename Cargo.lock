@@ -214,7 +214,6 @@ name = "anchor-spl"
 version = "0.18.0"
 dependencies = [
  "anchor-lang",
- "lazy_static",
  "serum_dex",
  "solana-program",
  "spl-associated-token-account",

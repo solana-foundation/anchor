@@ -16,5 +16,5 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl" }
+anchor-spl = { path = "../../../../spl", features = ["dex"] }
 solana-program = "1.8.0"

@@ -7,7 +7,7 @@ pub mod mint;
 #[cfg(feature = "token")]
 pub mod token;
 
-#[cfg(feature = "serum_dex")]
+#[cfg(feature = "dex")]
 pub mod dex;
 
 #[cfg(feature = "governance")]
