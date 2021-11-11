@@ -155,7 +155,7 @@ deploying a program, copy and pasting the address, and explicitly reading
 an IDL is all a bit tedious, and can easily get out of hand the more tests and the more
 programs you have. For this reason, we introduce the concept of a workspace.
 
-Inspecting [tests/basic_0.js](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-0/tests/basic_0.js), we see the above example can be reduced to
+Inspecting [tests/basic-0.js](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-0/tests/basic-0.js), we see the above example can be reduced to
 
 <<< @/../examples/tutorial/basic-0/tests/basic-0.js#code
 
