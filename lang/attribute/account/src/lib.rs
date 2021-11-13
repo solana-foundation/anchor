@@ -61,10 +61,12 @@ pub fn account(
 ) -> proc_macro::TokenStream {
     let mut namespace = "".to_string();
     let mut is_zero_copy = false;
-    if args.to_string().split(',').count() > 2 {
+    let args_str = args.to_string();
+    let args: Vec<&str> = args_str.split(',').collect();
+    if args.len() > 2 {
         panic!("Only two args are allowed to the account attribute.")
     }
-    for arg in args.to_string().split(',') {
+    for arg in args {
         let ns = arg
             .to_string()
             .replace("\"", "")
