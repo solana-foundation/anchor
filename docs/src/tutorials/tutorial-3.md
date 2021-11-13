@@ -81,4 +81,4 @@ Now that you can have your programs call other programs, you should be able to a
 
 ## Next Steps
 
-Up until now, we've treated programs on Solana as stateless. In the next tutorial we will learn how to add a global state to our program.
+We just covered Cross Program Invocation and showed how anchor can handle talking to multiple different programs in the solana ecosystem. In the next step, we will teach you how to handle errors and in Anchor.
