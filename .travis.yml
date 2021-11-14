@@ -22,8 +22,8 @@ _tests: &tests
   before_install:
   - nvm install $NODE_VERSION
   - cd ts && yarn && yarn build && yarn link && cd ../
-  - cd examples/tutorial && yarn && yarn link @project-serum/anchor && cd ../../
-  - cd tests && yarn && yarn link @project-serum/anchor && cd ..
+  - cd examples/tutorial && yarn link @project-serum/anchor && yarn && cd ../../
+  - cd tests && yarn link @project-serum/anchor && yarn && cd ..
   - sudo apt-get install -y pkg-config build-essential libudev-dev
   - sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_CLI_VERSION}/install)"
   - export PATH="/home/travis/.local/share/solana/install/active_release/bin:$PATH"
