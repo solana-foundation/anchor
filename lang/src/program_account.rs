@@ -15,6 +15,7 @@ use std::ops::{Deref, DerefMut};
 /// Boxed container for a deserialized `account`. Use this to reference any
 /// account owned by the currently executing program.
 #[derive(Clone)]
+#[deprecated(since = "0.15.0", note = "Please use Account instead")]
 pub struct ProgramAccount<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     inner: Box<Inner<'info, T>>,
 }
@@ -25,6 +26,7 @@ struct Inner<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     account: T,
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T> {
     fn new(info: AccountInfo<'a>, account: T) -> ProgramAccount<'a, T> {
         Self {
@@ -71,6 +73,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T> Accounts<'info> for ProgramAccount<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Clone,
@@ -90,6 +93,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info>
     for ProgramAccount<'info, T>
 {
@@ -103,6 +107,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for ProgramAccount<'info, T>
 {
@@ -111,6 +116,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas
     for ProgramAccount<'info, T>
 {
@@ -124,6 +130,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
     for ProgramAccount<'info, T>
 {
@@ -132,6 +139,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'in
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'info>
     for ProgramAccount<'info, T>
 {
@@ -140,6 +148,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'inf
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
     for ProgramAccount<'info, T>
 {
@@ -148,6 +157,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAccount<'a, T> {
     type Target = T;
 
@@ -156,6 +166,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramAcco
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for ProgramAccount<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
@@ -178,6 +189,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramAccount<'info, T> {
     fn key(&self) -> Pubkey {
         *self.inner.info.key

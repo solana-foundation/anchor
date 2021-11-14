@@ -89,9 +89,9 @@ pub fn account(
         let discriminator_preimage = {
             // For now, zero copy accounts can't be namespaced.
             if namespace.is_empty() {
-                format!("account:{}", account_name.to_string())
+                format!("account:{}", account_name)
             } else {
-                format!("{}:{}", namespace, account_name.to_string())
+                format!("{}:{}", namespace, account_name)
             }
         };
 
@@ -247,9 +247,9 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                     let field_name = field.ident.as_ref().unwrap();
 
                     let get_field: proc_macro2::TokenStream =
-                        format!("get_{}", field_name.to_string()).parse().unwrap();
+                        format!("get_{}", field_name).parse().unwrap();
                     let set_field: proc_macro2::TokenStream =
-                        format!("set_{}", field_name.to_string()).parse().unwrap();
+                        format!("set_{}", field_name).parse().unwrap();
 
                     quote! {
                         pub fn #get_field(&self) -> #accessor_ty {

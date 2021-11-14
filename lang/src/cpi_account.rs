@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 /// Container for any account *not* owned by the current program.
 #[derive(Clone)]
-#[deprecated(note = "Please use Account instead")]
+#[deprecated(since = "0.15.0", note = "Please use Account instead")]
 pub struct CpiAccount<'a, T: AccountDeserialize + Clone> {
     info: AccountInfo<'a>,
     account: Box<T>,

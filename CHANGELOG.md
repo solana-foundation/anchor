@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+lang: Add `deprecated` attribute to `ProgramAccount` ([#1014](https://github.com/project-serum/anchor/pull/1014)).
+
 ## [0.18.2] - 2021-11-14
 
 * cli: Replace global JavaScript dependency installs with local.

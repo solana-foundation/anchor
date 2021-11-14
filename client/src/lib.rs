@@ -166,10 +166,7 @@ impl Program {
                                         if self_program_str == execution.program() {
                                             handle_program_log(&self_program_str, l).unwrap_or_else(
                                                 |e| {
-                                                    println!(
-                                                        "Unable to parse log: {}",
-                                                        e.to_string()
-                                                    );
+                                                    println!("Unable to parse log: {}", e);
                                                     std::process::exit(1);
                                                 },
                                             )

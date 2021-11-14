@@ -340,7 +340,7 @@ anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
 "#,
             program.name.to_camel_case(),
             serde_json::to_string(&program.idl)?,
-            program.program_id.to_string()
+            program.program_id
         ));
     }
 

@@ -2346,7 +2346,7 @@ fn publish(
                 // Only add the file if it's not empty.
                 let metadata = fs::File::open(&e)?.metadata()?;
                 if metadata.len() > 0 {
-                    println!("PACKING: {}", e.display().to_string());
+                    println!("PACKING: {}", e.display());
                     if e.is_dir() {
                         tar.append_dir_all(&e, &e)?;
                     } else {
@@ -2453,7 +2453,7 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
     for program in cfg.read_all_programs()? {
         let pubkey = program.pubkey()?;
-        println!("{}: {}", program.lib_name, pubkey.to_string());
+        println!("{}: {}", program.lib_name, pubkey);
     }
     Ok(())
 }
