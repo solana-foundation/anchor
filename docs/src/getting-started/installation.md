@@ -44,7 +44,7 @@ npm i -g @project-serum/anchor-cli
 For now, we can use Cargo to install the CLI.
 
 ```bash
-cargo install --git https://github.com/project-serum/anchor --tag v0.18.0 anchor-cli --locked
+cargo install --git https://github.com/project-serum/anchor --tag v0.18.2 anchor-cli --locked
 ```
 
 On Linux systems you may need to install additional dependencies if `cargo install` fails. On Ubuntu,

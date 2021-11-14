@@ -1,6 +1,6 @@
 [package]
 name = "anchor-cli"
-version = "0.18.0"
+version = "0.18.2"
 authors = ["armaniferrante <armaniferrante@gmail.com>"]
 edition = "2018"
 

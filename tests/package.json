@@ -25,7 +25,7 @@
     "zero-copy"
   ],
   "dependencies": {
-    "@project-serum/anchor": "^0.18.0",
+    "@project-serum/anchor": "^0.18.2",
     "@project-serum/common": "^0.0.1-beta.3",
     "@project-serum/serum": "^0.13.60",
     "@solana/spl-token": "^0.1.8"

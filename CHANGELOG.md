@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.18.2] - 2021-11-14
+
 * cli: Replace global JavaScript dependency installs with local.
 
 ### Features
