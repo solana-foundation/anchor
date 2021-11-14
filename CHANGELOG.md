@@ -18,6 +18,7 @@ incremented for features.
 ### Features
 
 * lang: Add `SystemAccount<'info>` account type for generic wallet addresses or accounts owned by the system program ([#954](https://github.com/project-serum/anchor/pull/954))
+* ts: Add inputs `postInstructions` and `preInstructions` as a replacement for (the now deprecated) `instructions`
 
 ### Fixes
 
