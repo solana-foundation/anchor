@@ -40,6 +40,7 @@ use syn::parse_macro_input;
 /// | `#[account(signer)]`<br><br>`#[account(signer @ <custom_error>)]` | On raw `AccountInfo` structs. | Checks the given account signed the transaction. Custom errors are supported via `@`. |
 /// | `#[account(mut)]`<br><br>`#[account(mut @ <custom_error>)]` | On `AccountInfo`, `ProgramAccount` or `CpiAccount` structs. | Marks the account as mutable and persists the state transition. Custom errors are supported via `@`. |
 /// | `#[account(init)]` | On `ProgramAccount` structs. | Marks the account as being initialized, creating the account via the system program. |
+/// | `#[account(init_if_needed)]` | On `ProgramAccount` structs. | Same as `init` but skip if already initialized. |
 /// | `#[account(zero)]` | On `ProgramAccount` structs. | Asserts the account discriminator is zero. |
 /// | `#[account(close = <target>)]` | On `ProgramAccount` and `Loader` structs. | Marks the account as being closed at the end of the instruction's execution, sending the rent exemption lamports to the specified <target>. |
 /// | `#[account(has_one = <target>)]`<br><br>`#[account(has_one = <target> @ <custom_error>)]` | On `ProgramAccount` or `CpiAccount` structs | Checks the `target` field on the account matches the `target` field in the struct deriving `Accounts`. Custom errors are supported via `@`. |
