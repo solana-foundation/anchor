@@ -50,13 +50,6 @@ export type Context<A extends Accounts = Accounts> = {
    * Commitment parameters to use for a transaction.
    */
   options?: ConfirmOptions;
-
-  /**
-   * @hidden
-   *
-   * Private namespace for development.
-   */
-  __private?: { logAccounts: boolean };
 };
 
 /**

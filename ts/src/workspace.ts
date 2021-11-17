@@ -17,8 +17,7 @@ let _populatedWorkspace = false;
 const workspace = new Proxy({} as any, {
   get(workspaceCache: { [key: string]: Program }, programName: string) {
     if (isBrowser) {
-      console.log("Workspaces aren't available in the browser");
-      return undefined;
+      throw new Error("Workspaces aren't available in the browser");
     }
 
     const fs = require("fs");

@@ -10,6 +10,7 @@ import { EventParser, Event } from "../event";
 import Coder from "../../coder";
 import { Idl, IdlEvent } from "../../idl";
 import { ProgramError } from "../../error";
+import * as features from "../../utils/features";
 import {
   AllInstructions,
   IdlTypes,
@@ -36,7 +37,10 @@ export default class SimulateFactory {
       try {
         resp = await provider!.simulate(tx, ctx.signers, ctx.options);
       } catch (err) {
-        console.log("Translating error", err);
+        if (features.isSet("debug-logs")) {
+          console.log("Translating error:", err);
+        }
+
         let translatedErr = ProgramError.parse(err, idlErrors);
         if (translatedErr === null) {
           throw err;

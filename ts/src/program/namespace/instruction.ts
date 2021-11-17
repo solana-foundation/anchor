@@ -18,6 +18,7 @@ import {
   Address,
 } from "../common";
 import { Accounts, splitArgsAndCtx } from "../context";
+import * as features from "../../utils/features";
 import {
   AllInstructions,
   AllInstructionsMap,
@@ -49,9 +50,10 @@ export default class InstructionNamespaceFactory {
         keys.push(...ctx.remainingAccounts);
       }
 
-      if (ctx.__private && ctx.__private.logAccounts) {
+      if (features.isSet("debug-logs")) {
         console.log("Outgoing account metas:", keys);
       }
+
       return new TransactionInstruction({
         keys,
         programId,
