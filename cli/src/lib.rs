@@ -677,7 +677,7 @@ fn build_cwd(
     };
     match verifiable {
         false => _build_cwd(cfg, idl_out, idl_ts_out, cargo_args),
-        true => build_cwd_verifiable(cfg, cargo_toml, solana_version, stdout, stderr),
+        true => build_cwd_verifiable(cfg, cargo_toml, solana_version, stdout, stderr, cargo_args),
     }
 }
 
@@ -689,6 +689,7 @@ fn build_cwd_verifiable(
     solana_version: Option<String>,
     stdout: Option<File>,
     stderr: Option<File>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -709,6 +710,7 @@ fn build_cwd_verifiable(
         solana_version,
         stdout,
         stderr,
+        cargo_args,
     );
 
     // Wipe the generated docker-target dir.
@@ -778,6 +780,7 @@ fn docker_build(
     solana_version: Option<String>,
     stdout: Option<File>,
     stderr: Option<File>,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     let binary_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
 
@@ -881,6 +884,7 @@ fn docker_build(
             "--manifest-path",
             &manifest_path.display().to_string(),
         ])
+        .args(cargo_args)
         .stdout(match stdout {
             None => Stdio::inherit(),
             Some(f) => f.into(),

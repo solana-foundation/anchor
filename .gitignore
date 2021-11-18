@@ -17,3 +17,4 @@ docs/yarn.lock
 ts/docs/
 cli/npm-package/anchor
 cli/npm-package/*.tgz
+docker-target
