@@ -36,6 +36,10 @@ mod errors {
     pub fn raw_custom_error(_ctx: Context<RawCustomError>) -> Result<()> {
         Ok(())
     }
+
+    pub fn account_not_initialized_error(_ctx: Context<AccountNotInitializedError>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -68,7 +72,15 @@ pub struct HasOneAccount {
 #[derive(Accounts)]
 pub struct RawCustomError<'info> {
     #[account(constraint = *my_account.key == ID @ MyError::HelloCustom)]
-    my_account: AccountInfo<'info>
+    my_account: AccountInfo<'info>,
+}
+
+#[account]
+pub struct AnyAccount {}
+
+#[derive(Accounts)]
+pub struct AccountNotInitializedError<'info> {
+    not_initialized_account: Account<'info, AnyAccount>,
 }
 
 #[error]

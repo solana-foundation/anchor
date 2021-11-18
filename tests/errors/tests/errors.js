@@ -128,4 +128,18 @@ describe("errors", () => {
       assert.equal(err.code, 300 + 125);
     }
   });
+
+  it("Emits a account not initialized error", async () => {
+    try {
+      const tx = await program.rpc.accountNotInitializedError({
+        accounts: {
+          notInitializedAccount: (new anchor.web3.Keypair()).publicKey
+        },
+      });
+      assert.fail("Unexpected success in creating a transaction that should have fail with `AccountNotInitialized` error");
+    } catch (err) {
+      const errMsg = "The program expected this account to be already initialized";
+      assert.equal(err.toString(), errMsg);
+    }
+  });
 });

@@ -22,6 +22,9 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
     pub fn try_from(info: &AccountInfo<'a>) -> Result<Account<'a, T>, ProgramError> {
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
         if info.owner != &T::owner() {
             return Err(ErrorCode::AccountNotProgramOwned.into());
         }
@@ -34,6 +37,9 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// possible.
     #[inline(never)]
     pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<Account<'a, T>, ProgramError> {
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
         if info.owner != &T::owner() {
             return Err(ErrorCode::AccountNotProgramOwned.into());
         }
