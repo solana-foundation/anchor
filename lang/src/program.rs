@@ -4,6 +4,7 @@ use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use std::fmt;
 use std::ops::Deref;
 
 /// Account container that checks ownership on deserialization.
@@ -11,6 +12,15 @@ use std::ops::Deref;
 pub struct Program<'info, T: Id + AccountDeserialize + Clone> {
     _account: T,
     info: AccountInfo<'info>,
+}
+
+impl<'info, T: Id + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Program<'info, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Program")
+            .field("account", &self._account)
+            .field("info", &self.info)
+            .finish()
+    }
 }
 
 impl<'a, T: Id + AccountDeserialize + Clone> Program<'a, T> {

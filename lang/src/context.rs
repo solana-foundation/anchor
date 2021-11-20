@@ -2,6 +2,7 @@ use crate::{Accounts, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
+use std::fmt;
 
 /// Provides non-argument inputs to the program.
 pub struct Context<'a, 'b, 'c, 'info, T> {
@@ -12,6 +13,16 @@ pub struct Context<'a, 'b, 'c, 'info, T> {
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
     pub remaining_accounts: &'c [AccountInfo<'info>],
+}
+
+impl<'a, 'b, 'c, 'info, T: fmt::Debug> fmt::Debug for Context<'a, 'b, 'c, 'info, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Context")
+            .field("program_id", &self.program_id)
+            .field("accounts", &self.accounts)
+            .field("remaining_accounts", &self.remaining_accounts)
+            .finish()
+    }
 }
 
 impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {

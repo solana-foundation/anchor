@@ -8,7 +8,7 @@ use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
 use std::ops::Deref;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SystemAccount<'info> {
     info: AccountInfo<'info>,
 }

@@ -5,12 +5,22 @@ use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 /// Container for sysvars.
 pub struct Sysvar<'info, T: solana_program::sysvar::Sysvar> {
     info: AccountInfo<'info>,
     account: T,
+}
+
+impl<'info, T: solana_program::sysvar::Sysvar + fmt::Debug> fmt::Debug for Sysvar<'info, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sysvar")
+            .field("info", &self.info)
+            .field("account", &self.account)
+            .finish()
+    }
 }
 
 impl<'info, T: solana_program::sysvar::Sysvar> Sysvar<'info, T> {

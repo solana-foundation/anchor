@@ -9,6 +9,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::cell::{Ref, RefMut};
+use std::fmt;
 use std::io::Write;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
@@ -28,6 +29,15 @@ use std::ops::DerefMut;
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
     acc_info: AccountInfo<'info>,
     phantom: PhantomData<&'info T>,
+}
+
+impl<'info, T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'info, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AccountLoader")
+            .field("acc_info", &self.acc_info)
+            .field("phantom", &self.phantom)
+            .finish()
+    }
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {

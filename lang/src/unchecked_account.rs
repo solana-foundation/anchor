@@ -8,7 +8,7 @@ use solana_program::pubkey::Pubkey;
 use std::ops::Deref;
 
 /// Explicit wrapper for AccountInfo types.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct UncheckedAccount<'info>(AccountInfo<'info>);
 
 impl<'info> UncheckedAccount<'info> {
