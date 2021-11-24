@@ -61,6 +61,7 @@ name = "{1}"
 [features]
 no-entrypoint = []
 no-idl = []
+no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
 

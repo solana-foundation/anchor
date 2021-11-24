@@ -18,6 +18,7 @@ incremented for features.
 ### Features
 
 * lang: Add `ErrorCode::AccountNotInitialized` error to separate the situation when the account has the wrong owner from when it does not exist (#[1024](https://github.com/project-serum/anchor/pull/1024))
+* lang: Called instructions now log their name by default. This can be turned off with the `no-log-ix-name` flag ([#1057](https://github.com/project-serum/anchor/pull/1057))
 
 ## [0.18.2] - 2021-11-14
 

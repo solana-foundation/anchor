@@ -72,6 +72,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 accounts: &mut anchor_lang::idl::IdlCreateAccounts,
                 data_len: u64,
             ) -> ProgramResult {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang::prelude::msg!("Instruction: IdlCreateAccount");
+
                 if program_id != accounts.program.key {
                     return Err(anchor_lang::__private::ErrorCode::IdlInstructionInvalidProgram.into());
                 }
@@ -132,6 +135,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 program_id: &Pubkey,
                 accounts: &mut anchor_lang::idl::IdlCreateBuffer,
             ) -> ProgramResult {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang::prelude::msg!("Instruction: IdlCreateBuffer");
+
                 let mut buffer = &mut accounts.buffer;
                 buffer.authority = *accounts.authority.key;
                 Ok(())
@@ -143,6 +149,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 accounts: &mut anchor_lang::idl::IdlAccounts,
                 idl_data: Vec<u8>,
             ) -> ProgramResult {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang::prelude::msg!("Instruction: IdlWrite");
+
                 let mut idl = &mut accounts.idl;
                 idl.data.extend(idl_data);
                 Ok(())
@@ -154,6 +163,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 accounts: &mut anchor_lang::idl::IdlAccounts,
                 new_authority: Pubkey,
             ) -> ProgramResult {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang::prelude::msg!("Instruction: IdlSetAuthority");
+
                 accounts.idl.authority = new_authority;
                 Ok(())
             }
@@ -163,6 +175,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 program_id: &Pubkey,
                 accounts: &mut anchor_lang::idl::IdlSetBuffer,
             ) -> ProgramResult {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang::prelude::msg!("Instruction: IdlSetBuffer");
+
                 accounts.idl.data = accounts.buffer.data.clone();
                 Ok(())
             }
@@ -180,12 +195,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let variant_arm = generate_ctor_variant(state);
                 let ix_name: proc_macro2::TokenStream =
                     generate_ctor_variant_name().parse().unwrap();
+                let ix_name_log = format!("Instruction: {}", ix_name);
                 if state.is_zero_copy {
                     quote! {
                         // One time state account initializer. Will faill on subsequent
                         // invocations.
                         #[inline(never)]
                         pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], ix_data: &[u8]) -> ProgramResult {
+                            #[cfg(not(feature = "no-log-ix-name"))]
+                            anchor_lang::prelude::msg!(#ix_name_log);
+
                             // Deserialize instruction data.
                             let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
                                 .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
@@ -257,6 +276,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         // invocations.
                         #[inline(never)]
                         pub fn __ctor(program_id: &Pubkey, accounts: &[AccountInfo], ix_data: &[u8]) -> ProgramResult {
+                            #[cfg(not(feature = "no-log-ix-name"))]
+                            anchor_lang::prelude::msg!(#ix_name_log);
+
                             // Deserialize instruction data.
                             let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
                                 .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
@@ -347,6 +369,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let variant_arm =
                             generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
                         let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
+                        let ix_name_log = format!("Instruction: {}", ix_name);
 
                         if state.is_zero_copy {
                             quote! {
@@ -356,6 +379,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     accounts: &[AccountInfo],
                                     ix_data: &[u8],
                                 ) -> ProgramResult {
+                                    #[cfg(not(feature = "no-log-ix-name"))]
+                                    anchor_lang::prelude::msg!(#ix_name_log);
+
                                     // Deserialize instruction.
                                     let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
                                         .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
@@ -399,6 +425,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     accounts: &[AccountInfo],
                                     ix_data: &[u8],
                                 ) -> ProgramResult {
+                                    #[cfg(not(feature = "no-log-ix-name"))]
+                                    anchor_lang::prelude::msg!(#ix_name_log);
+
                                     // Deserialize instruction.
                                     let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
                                         .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
@@ -472,6 +501,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 let ix_method_name = &ix.raw_method.sig.ident;
                                 let state_ty: proc_macro2::TokenStream = state.name.parse().unwrap();
                                 let anchor_ident = &ix.anchor_ident;
+                                let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
+                                let ix_name_log = format!("Instruction: {}", ix_name);
 
                                 let raw_args: Vec<&syn::PatType> = ix
                                     .args
@@ -511,6 +542,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             accounts: &[AccountInfo],
                                             ix_data: &[u8],
                                         ) -> ProgramResult {
+                                            #[cfg(not(feature = "no-log-ix-name"))]
+                                            anchor_lang::prelude::msg!(#ix_name_log);
+
                                             // Deserialize instruction.
                                             #deserialize_instruction
 
@@ -555,6 +589,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             accounts: &[AccountInfo],
                                             ix_data: &[u8],
                                         ) -> ProgramResult {
+                                            #[cfg(not(feature = "no-log-ix-name"))]
+                                            anchor_lang::prelude::msg!(#ix_name_log);
+
                                             // Deserialize instruction.
                                             #deserialize_instruction
 
@@ -593,7 +630,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_method_name = &ix.raw_method.sig.ident;
             let anchor = &ix.anchor_ident;
             let variant_arm = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
-
+            let ix_name_log = format!("Instruction: {}", ix_name);
             quote! {
                 #[inline(never)]
                 pub fn #ix_method_name(
@@ -601,6 +638,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     accounts: &[AccountInfo],
                     ix_data: &[u8],
                 ) -> ProgramResult {
+                    #[cfg(not(feature = "no-log-ix-name"))]
+                    anchor_lang::prelude::msg!(#ix_name_log);
+
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &ix_data[..])
                         .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
