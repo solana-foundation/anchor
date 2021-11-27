@@ -1,0 +1,21 @@
+name: "Setup ts"
+description: "Setup ts"
+runs:
+  using: "composite"
+  steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v2
+        name: Cache Typescript node_modules
+        id: cache-typescript
+        with:
+          path: |
+            ./ts/node_modules
+          key: solana-${{ runner.os }}-v0000-${{ env.NODE_VERSION }}-${{ hashFiles('**/yarn.lock') }}
+      - run: cd ts && yarn && yarn build && yarn link && cd ../
+        shell: bash
+      - run: cd examples/tutorial && yarn link @project-serum/anchor && yarn && cd ../../
+        shell: bash
+      - run: cd tests && yarn link @project-serum/anchor && yarn && cd ..
+        shell: bash

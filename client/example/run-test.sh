@@ -22,22 +22,10 @@ main() {
     #
     # Build programs.
     #
-    pushd ../../tests/composite/
-    anchor build
     local composite_pid="EHthziFziNoac9LBGxEaVN47Y3uUiRoXvqAiR6oes4iU"
-    popd
-    pushd ../../examples/tutorial/basic-2/
-    anchor build
     local basic_2_pid="Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-    popd
-    pushd ../../examples/tutorial/basic-4/
-    anchor build
     local basic_4_pid="CwrqeMj2U8tFr1Rhkgwc84tpAsqbt9pTt2a4taoTADPr"
-    popd
-    pushd ../../tests/events
-    anchor build
     local events_pid="2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
-    popd
 
     #
     # Bootup validator.

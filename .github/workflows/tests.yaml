@@ -1,0 +1,260 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+env: 
+  SOLANA_CLI_VERSION: 1.8.0
+  NODE_VERSION: 17.0.1
+
+jobs:
+  test-core:
+    name: Core Tests
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        id: cache-cargo-build
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./target/
+          key: cargo-${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo build
+      - run: cargo fmt -- --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: cd ts && yarn 
+      - run: cd ts && yarn test 
+      - run: cd ts && yarn lint 
+
+  setup-anchor-cli:
+    name: Setup Anchor cli
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        id: cache-anchor
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./target/
+          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo install --path cli anchor-cli --locked --force
+      - uses: actions/upload-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/anchor
+
+  test-examples:
+    needs: setup-anchor-cli
+    name: Examples Test
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+      - run: chmod +rwx ~/.cargo/bin/anchor
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-ts/
+      - uses: actions/cache@v2
+        name: basic-0 cache
+        id: cache-basic-0
+        with:
+          path: ./examples/tutorial/basic-0/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}
+      - uses: actions/cache@v2
+        name: basic-1 cache
+        id: cache-basic-1
+        with:
+          path: ./examples/tutorial/basic-1/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}
+      - uses: actions/cache@v2
+        name: basic-2 cache
+        id: cache-basic-2
+        with:
+          path: ./examples/tutorial/basic-2/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}
+      - uses: actions/cache@v2
+        name: basic-3 cache
+        id: cache-basic-3
+        with:
+          path: ./examples/tutorial/basic-3/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}
+      - uses: actions/cache@v2
+        name: basic-4 cache
+        id: cache-basic-4
+        with:
+          path: ./examples/tutorial/basic-4/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}
+      - run: cd examples/tutorial && yarn workspaces run test
+
+  setup-client-example:
+    needs: setup-anchor-cli
+    name: Setup Client Example Test
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        node:
+          - path: tests/events/
+            name: events.so
+          - path: examples/tutorial/basic-4/
+            name: basic_4.so
+          - path: examples/tutorial/basic-2/
+            name: basic_2.so
+          - path: tests/composite/
+            name: composite.so
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-solana/
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+      - run: chmod +rwx ~/.cargo/bin/anchor
+      - run: cd ${{ matrix.node.path }} && anchor build 
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.node.name }}
+          path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
+  
+  test-client-example:
+    needs: setup-client-example
+    name: Client Example Test
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-ts/
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+      - uses: actions/download-artifact@v2
+        with:
+          name: events.so
+          path: tests/events/target/deploy/
+      - uses: actions/download-artifact@v2
+        with:
+          name: basic_4.so
+          path: examples/tutorial/basic-4/target/deploy/
+      - uses: actions/download-artifact@v2
+        with:
+          name: basic_2.so
+          path: examples/tutorial/basic-2/target/deploy/
+      - uses: actions/download-artifact@v2
+        with:
+          name: composite.so
+          path: tests/composite/target/deploy/
+      - uses: actions/cache@v2
+        name: Cache client/example target
+        id: cache-test-target
+        with:
+          path: client/example/target
+          key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}
+      - uses: ./.github/actions/setup-solana/
+      - run: cd client/example && ./run-test.sh 
+
+  test-programs:
+    needs: setup-anchor-cli
+    name: Test ${{ matrix.node.path }}
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        node:
+          - cmd: cd tests/sysvars && anchor test 
+            path: tests/sysvars
+          - cmd: cd tests/composite && anchor test 
+            path: tests/composite
+          - cmd: cd tests/errors && anchor test 
+            path: tests/errors
+          - cmd: cd tests/spl/token-proxy && anchor test 
+            path: spl/token-proxy
+          - cmd: cd tests/multisig && anchor test 
+            path: tests/multisig
+          - cmd: cd tests/interface && anchor test 
+            path: tests/interface
+          - cmd: cd tests/lockup && anchor test 
+            path: tests/lockup
+          - cmd: cd tests/permissioned-markets/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test 
+            path: tests/permissioned-markets
+          - cmd: cd tests/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test 
+            path: tests/swap
+          - cmd: cd tests/escrow && anchor test 
+            path: tests/escrow
+          - cmd: cd tests/pyth && anchor test 
+            path: tests/pyth
+          - cmd: cd tests/system-accounts && anchor test 
+            path: tests/system-accounts
+          - cmd: cd tests/misc && anchor test 
+            path: tests/misc
+          - cmd: cd tests/events && anchor test 
+            path: tests/events
+          - cmd: cd tests/cashiers-check && anchor test 
+            path: tests/cashiers-check
+          - cmd: cd tests/typescript && anchor test 
+            path: tests/typescript
+          - cmd: cd tests/zero-copy && anchor test 
+            path: tests/zero-copy
+          - cmd: cd tests/chat && anchor test 
+            path: tests/chat
+          - cmd: cd tests/ido-pool && anchor test 
+            path: tests/ido-pool
+          - cmd: cd tests/cfo && anchor run test-with-build 
+            path: tests/cfo
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-ts/
+      - uses: ./.github/actions/setup-solana/
+
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        id: cache-anchor
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./target/
+          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+
+      - uses: actions/cache@v2
+        name: Cache ${{ matrix.node.path }} target
+        id: cache-test-target
+        with:
+          path: ${{ matrix.node.path }}/target
+          key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}
+      
+      - run: ${{ matrix.node.cmd }}
+        name: ${{ matrix.node.path }} program test
