@@ -79,10 +79,21 @@ impl Manifest {
         }
     }
 
-    // Climbs each parent directory until we find a Cargo.toml.
+    pub fn version(&self) -> String {
+        match &self.package {
+            Some(package) => package.version.to_string(),
+            _ => "0.0.0".to_string(),
+        }
+    }
+
+    // Climbs each parent directory from the current dir until we find a Cargo.toml
     pub fn discover() -> Result<Option<WithPath<Manifest>>> {
-        let _cwd = std::env::current_dir()?;
-        let mut cwd_opt = Some(_cwd.as_path());
+        Manifest::discover_from_path(std::env::current_dir()?)
+    }
+
+    // Climbs each parent directory from a given starting directory until we find a Cargo.toml.
+    pub fn discover_from_path(start_from: PathBuf) -> Result<Option<WithPath<Manifest>>> {
+        let mut cwd_opt = Some(start_from.as_path());
 
         while let Some(cwd) = cwd_opt {
             for f in fs::read_dir(cwd)? {
@@ -145,8 +156,10 @@ impl WithPath<Config> {
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
         let mut r = vec![];
         for path in self.get_program_list()? {
-            let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
-            let lib_name = Manifest::from_path(&path.join("Cargo.toml"))?.lib_name()?;
+            let cargo = Manifest::from_path(&path.join("Cargo.toml"))?;
+            let lib_name = cargo.lib_name()?;
+            let version = cargo.version();
+            let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"), version)?;
             r.push(Program {
                 lib_name,
                 path,

@@ -14,7 +14,7 @@ const DERIVE_NAME: &str = "Accounts";
 const ERROR_CODE_OFFSET: u32 = 300;
 
 // Parse an entire interface file.
-pub fn parse(filename: impl AsRef<Path>) -> Result<Option<Idl>> {
+pub fn parse(filename: impl AsRef<Path>, version: String) -> Result<Option<Idl>> {
     let ctx = CrateContext::parse(filename)?;
 
     let program_mod = match parse_program_mod(&ctx) {
@@ -224,7 +224,7 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Option<Idl>> {
     }
 
     Ok(Some(Idl {
-        version: "0.0.0".to_string(),
+        version,
         name: p.name.to_string(),
         state,
         instructions,
