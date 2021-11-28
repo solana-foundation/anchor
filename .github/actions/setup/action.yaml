@@ -7,5 +7,5 @@ runs:
         shell: bash
       - run: echo "ANCHOR_VERSION=$(cat ./VERSION)" >> $GITHUB_ENV
         shell: bash
-      - run: git submodule update --init --recursive
+      - run: git submodule update --init --recursive --depth 1
         shell: bash
