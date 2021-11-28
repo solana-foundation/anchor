@@ -1,7 +1,8 @@
+import { Buffer } from "buffer";
 import { snakeCase } from "snake-case";
 import { sha256 } from "js-sha256";
-import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl";
-import { IdlError } from "../error";
+import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl.js";
+import { IdlError } from "../error.js";
 
 export function accountSize(idl: Idl, idlAccount: IdlTypeDef): number {
   if (idlAccount.type.kind === "enum") {

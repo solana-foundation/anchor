@@ -9,23 +9,23 @@ import {
   IdlAccountItem,
   IdlAccounts,
   IdlInstruction,
-} from "../../idl";
-import { IdlError } from "../../error";
+} from "../../idl.js";
+import { IdlError } from "../../error.js";
 import {
   toInstruction,
   validateAccounts,
   translateAddress,
   Address,
-} from "../common";
-import { Accounts, splitArgsAndCtx } from "../context";
-import * as features from "../../utils/features";
+} from "../common.js";
+import { Accounts, splitArgsAndCtx } from "../context.js";
+import * as features from "../../utils/features.js";
 import {
   AllInstructions,
   AllInstructionsMap,
   InstructionContextFn,
   InstructionContextFnArgs,
   MakeInstructionsNamespace,
-} from "./types";
+} from "./types.js";
 
 export default class InstructionNamespaceFactory {
   public static build<IDL extends Idl, I extends AllInstructions<IDL>>(

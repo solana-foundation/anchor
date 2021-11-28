@@ -1,3 +1,5 @@
+import { Buffer } from "buffer";
+
 export function encode(data: Buffer): string {
   return data.reduce(
     (str, byte) => str + byte.toString(16).padStart(2, "0"),

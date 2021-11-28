@@ -2,7 +2,7 @@
   "include": ["./src/**/*"],
   "compilerOptions": {
     "moduleResolution": "node",
-    "module": "es6",
+    "module": "es2022",
     "target": "es2019",
 
     "outDir": "dist/esm/",

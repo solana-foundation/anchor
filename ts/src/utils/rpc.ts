@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import assert from "assert";
 import {
   AccountInfo,
@@ -8,9 +9,9 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { chunks } from "../utils/common";
-import { Address, translateAddress } from "../program/common";
-import Provider, { getProvider } from "../provider";
+import { chunks } from "../utils/common.js";
+import { Address, translateAddress } from "../program/common.js";
+import Provider, { getProvider } from "../provider.js";
 
 /**
  * Sends a transaction to a program with the given accounts and instruction

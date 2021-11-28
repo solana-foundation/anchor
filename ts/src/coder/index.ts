@@ -1,15 +1,15 @@
-import { Idl } from "../idl";
-import { InstructionCoder } from "./instruction";
-import { AccountsCoder } from "./accounts";
-import { EventCoder } from "./event";
-import { StateCoder } from "./state";
-import { sighash } from "./common";
+import { Idl } from "../idl.js";
+import { InstructionCoder } from "./instruction.js";
+import { AccountsCoder } from "./accounts.js";
+import { EventCoder } from "./event.js";
+import { StateCoder } from "./state.js";
+import { sighash } from "./common.js";
 
-export { accountSize } from "./common";
-export { InstructionCoder } from "./instruction";
-export { AccountsCoder, ACCOUNT_DISCRIMINATOR_SIZE } from "./accounts";
-export { EventCoder, eventDiscriminator } from "./event";
-export { StateCoder, stateDiscriminator } from "./state";
+export { accountSize } from "./common.js";
+export { InstructionCoder } from "./instruction.js";
+export { AccountsCoder, ACCOUNT_DISCRIMINATOR_SIZE } from "./accounts.js";
+export { EventCoder, eventDiscriminator } from "./event.js";
+export { StateCoder, stateDiscriminator } from "./state.js";
 
 /**
  * Coder provides a facade for encoding and decoding all IDL related objects.

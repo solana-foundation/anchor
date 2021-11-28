@@ -1,25 +1,25 @@
 import camelCase from "camelcase";
 import { PublicKey } from "@solana/web3.js";
-import Coder from "../../coder";
-import Provider from "../../provider";
-import { Idl, IdlInstruction } from "../../idl";
-import StateFactory, { StateClient } from "./state";
-import InstructionFactory, { InstructionNamespace } from "./instruction";
-import TransactionFactory, { TransactionNamespace } from "./transaction";
-import RpcFactory, { RpcNamespace } from "./rpc";
-import AccountFactory, { AccountNamespace } from "./account";
-import SimulateFactory, { SimulateNamespace } from "./simulate";
-import { parseIdlErrors } from "../common";
-import { AllInstructions } from "./types";
+import Coder from "../../coder/index.js";
+import Provider from "../../provider.js";
+import { Idl, IdlInstruction } from "../../idl.js";
+import StateFactory, { StateClient } from "./state.js";
+import InstructionFactory, { InstructionNamespace } from "./instruction.js";
+import TransactionFactory, { TransactionNamespace } from "./transaction.js";
+import RpcFactory, { RpcNamespace } from "./rpc.js";
+import AccountFactory, { AccountNamespace } from "./account.js";
+import SimulateFactory, { SimulateNamespace } from "./simulate.js";
+import { parseIdlErrors } from "../common.js";
+import { AllInstructions } from "./types.js";
 
 // Re-exports.
-export { StateClient } from "./state";
-export { InstructionNamespace, InstructionFn } from "./instruction";
-export { TransactionNamespace, TransactionFn } from "./transaction";
-export { RpcNamespace, RpcFn } from "./rpc";
-export { AccountNamespace, AccountClient, ProgramAccount } from "./account";
-export { SimulateNamespace, SimulateFn } from "./simulate";
-export { IdlAccounts, IdlTypes } from "./types";
+export { StateClient } from "./state.js";
+export { InstructionNamespace, InstructionFn } from "./instruction.js";
+export { TransactionNamespace, TransactionFn } from "./transaction.js";
+export { RpcNamespace, RpcFn } from "./rpc.js";
+export { AccountNamespace, AccountClient, ProgramAccount } from "./account.js";
+export { SimulateNamespace, SimulateFn } from "./simulate.js";
+export { IdlAccounts, IdlTypes } from "./types.js";
 
 export default class NamespaceFactory {
   /**

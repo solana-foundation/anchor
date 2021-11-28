@@ -1,8 +1,9 @@
+import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
 import { sha256 } from "js-sha256";
-import { Idl } from "../idl";
-import { IdlCoder } from "./idl";
-import * as features from "../utils/features";
+import { Idl } from "../idl.js";
+import { IdlCoder } from "./idl.js";
+import * as features from "../utils/features.js";
 
 export class StateCoder {
   private layout: Layout;

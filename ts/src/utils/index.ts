@@ -1,6 +1,6 @@
-export * as sha256 from "./sha256";
-export * as rpc from "./rpc";
-export * as publicKey from "./pubkey";
-export * as bytes from "./bytes";
-export * as token from "./token";
-export * as features from "./features";
+export * as sha256 from "./sha256.js";
+export * as rpc from "./rpc.js";
+export * as publicKey from "./pubkey.js";
+export * as bytes from "./bytes/index.js";
+export * as token from "./token.js";
+export * as features from "./features.js";

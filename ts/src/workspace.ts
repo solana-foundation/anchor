@@ -1,9 +1,9 @@
 import camelCase from "camelcase";
 import * as toml from "toml";
 import { PublicKey } from "@solana/web3.js";
-import { Program } from "./program";
-import { Idl } from "./idl";
-import { isBrowser } from "./utils/common";
+import { Program } from "./program/index.js";
+import { Idl } from "./idl.js";
+import { isBrowser } from "./utils/common.js";
 
 let _populatedWorkspace = false;
 

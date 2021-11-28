@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import * as base64 from "base64-js";
 
 export function encode(data: Buffer): string {

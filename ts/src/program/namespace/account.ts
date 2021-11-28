@@ -1,6 +1,7 @@
+import { Buffer } from "buffer";
 import camelCase from "camelcase";
 import EventEmitter from "eventemitter3";
-import * as bs58 from "bs58";
+import bs58 from "bs58";
 import {
   Signer,
   PublicKey,
@@ -9,18 +10,18 @@ import {
   Commitment,
   GetProgramAccountsFilter,
 } from "@solana/web3.js";
-import Provider from "../../provider";
-import { Idl, IdlTypeDef } from "../../idl";
+import Provider from "../../provider.js";
+import { Idl, IdlTypeDef } from "../../idl.js";
 import Coder, {
   ACCOUNT_DISCRIMINATOR_SIZE,
   accountSize,
   AccountsCoder,
-} from "../../coder";
-import { Subscription, Address, translateAddress } from "../common";
-import { getProvider } from "../../";
-import { AllAccountsMap, IdlTypes, TypeDef } from "./types";
-import * as pubkeyUtil from "../../utils/pubkey";
-import * as rpcUtil from "../../utils/rpc";
+} from "../../coder/index.js";
+import { Subscription, Address, translateAddress } from "../common.js";
+import { getProvider } from "../../index.js";
+import { AllAccountsMap, IdlTypes, TypeDef } from "./types.js";
+import * as pubkeyUtil from "../../utils/pubkey.js";
+import * as rpcUtil from "../../utils/rpc.js";
 
 export default class AccountFactory {
   public static build<IDL extends Idl>(

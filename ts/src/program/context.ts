@@ -4,8 +4,8 @@ import {
   ConfirmOptions,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { Address } from "./common";
-import { IdlAccountItem, IdlAccounts, IdlInstruction } from "../idl";
+import { Address } from "./common.js";
+import { IdlAccountItem, IdlAccounts, IdlInstruction } from "../idl.js";
 
 /**
  * Context provides all non-argument inputs for generating Anchor transactions.

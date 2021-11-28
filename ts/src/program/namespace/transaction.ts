@@ -1,12 +1,12 @@
 import { Transaction } from "@solana/web3.js";
-import { Idl, IdlInstruction } from "../../idl";
-import { splitArgsAndCtx } from "../context";
-import { InstructionFn } from "./instruction";
+import { Idl, IdlInstruction } from "../../idl.js";
+import { splitArgsAndCtx } from "../context.js";
+import { InstructionFn } from "./instruction.js";
 import {
   AllInstructions,
   InstructionContextFn,
   MakeInstructionsNamespace,
-} from "./types";
+} from "./types.js";
 
 export default class TransactionFactory {
   public static build<IDL extends Idl, I extends AllInstructions<IDL>>(

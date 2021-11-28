@@ -1,7 +1,8 @@
+import { Buffer } from "buffer";
 import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
 import * as borsh from "@project-serum/borsh";
-import * as bs58 from "bs58";
+import bs58 from "bs58";
 import {
   Idl,
   IdlField,
@@ -12,8 +13,8 @@ import {
   IdlAccountItem,
   IdlTypeDefTyStruct,
 } from "../idl";
-import { IdlCoder } from "./idl";
-import { sighash } from "./common";
+import { IdlCoder } from "./idl.js";
+import { sighash } from "./common.js";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
 
 /**

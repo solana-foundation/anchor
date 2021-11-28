@@ -1,15 +1,15 @@
 import { TransactionSignature } from "@solana/web3.js";
-import Provider from "../../provider";
-import { Idl } from "../../idl";
-import { splitArgsAndCtx } from "../context";
-import { TransactionFn } from "./transaction";
-import { ProgramError } from "../../error";
-import * as features from "../../utils/features";
+import Provider from "../../provider.js";
+import { Idl } from "../../idl.js";
+import { splitArgsAndCtx } from "../context.js";
+import { TransactionFn } from "./transaction.js";
+import { ProgramError } from "../../error.js";
+import * as features from "../../utils/features.js";
 import {
   AllInstructions,
   InstructionContextFn,
   MakeInstructionsNamespace,
-} from "./types";
+} from "./types.js";
 
 export default class RpcFactory {
   public static build<IDL extends Idl, I extends AllInstructions<IDL>>(

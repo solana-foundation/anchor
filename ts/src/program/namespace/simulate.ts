@@ -3,14 +3,14 @@ import {
   RpcResponseAndContext,
   SimulatedTransactionResponse,
 } from "@solana/web3.js";
-import Provider from "../../provider";
-import { splitArgsAndCtx } from "../context";
-import { TransactionFn } from "./transaction";
-import { EventParser, Event } from "../event";
-import Coder from "../../coder";
-import { Idl, IdlEvent } from "../../idl";
-import { ProgramError } from "../../error";
-import * as features from "../../utils/features";
+import Provider from "../../provider.js";
+import { splitArgsAndCtx } from "../context.js";
+import { TransactionFn } from "./transaction.js";
+import { EventParser, Event } from "../event.js";
+import Coder from "../../coder/index.js";
+import { Idl, IdlEvent } from "../../idl.js";
+import { ProgramError } from "../../error.js";
+import * as features from "../../utils/features.js";
 import {
   AllInstructions,
   IdlTypes,

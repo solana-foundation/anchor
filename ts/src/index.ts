@@ -5,18 +5,18 @@ export {
   getProvider,
   setProvider,
   NodeWallet as Wallet,
-} from "./provider";
+} from "./provider.js";
 export {
   default as Coder,
   InstructionCoder,
   EventCoder,
   StateCoder,
   AccountsCoder,
-} from "./coder";
+} from "./coder/index.js";
 
-export * from "./error";
-export { Instruction } from "./coder/instruction";
-export { Idl } from "./idl";
-export { default as workspace } from "./workspace";
-export * as utils from "./utils";
-export * from "./program";
+export * from "./error.js";
+export { Instruction } from "./coder/instruction.js";
+export { Idl } from "./idl.js";
+export { default as workspace } from "./workspace.js";
+export * as utils from "./utils/index.js";
+export * from "./program/index.js";

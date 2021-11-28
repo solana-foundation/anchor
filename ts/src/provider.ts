@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import {
   Connection,
   Keypair,
@@ -11,7 +12,7 @@ import {
   SimulatedTransactionResponse,
   Commitment,
 } from "@solana/web3.js";
-import { isBrowser } from "./utils/common";
+import { isBrowser } from "./utils/common.js";
 
 /**
  * The network and wallet context used to send transactions paid for and signed
