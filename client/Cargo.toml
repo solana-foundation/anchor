@@ -6,6 +6,9 @@ edition = "2018"
 license = "Apache-2.0"
 description = "Rust client for Anchor programs"
 
+[features]
+debug = []
+
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.18.2" }
 anyhow = "1.0.32"

@@ -7,7 +7,7 @@ edition = "2018"
 [workspace]
 
 [dependencies]
-anchor-client = { path = "../" }
+anchor-client = { path = "../", features = ["debug"] }
 basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
 basic-4 = { path = "../../examples/tutorial/basic-4/programs/basic-4", features = ["no-entrypoint"] }
 composite = { path = "../../tests/composite/programs/composite", features = ["no-entrypoint"] }
