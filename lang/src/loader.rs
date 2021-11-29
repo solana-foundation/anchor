@@ -25,11 +25,13 @@ use std::ops::DerefMut;
 /// induce a `RefCell` panic, especially when sharing accounts across CPI
 /// boundaries. When in doubt, one should make sure all refs resulting from a
 /// call to `load` are dropped before CPI.
+#[deprecated(since = "0.18.0", note = "Please use AccountLoader instead")]
 pub struct Loader<'info, T: ZeroCopy> {
     acc_info: AccountInfo<'info>,
     phantom: PhantomData<&'info T>,
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy + fmt::Debug> fmt::Debug for Loader<'info, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Loader")
@@ -39,6 +41,7 @@ impl<'info, T: ZeroCopy + fmt::Debug> fmt::Debug for Loader<'info, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> Loader<'info, T> {
     fn new(acc_info: AccountInfo<'info>) -> Loader<'info, T> {
         Self {
@@ -49,6 +52,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
 
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
+    #[allow(deprecated)]
     pub fn try_from(
         program_id: &Pubkey,
         acc_info: &AccountInfo<'info>,
@@ -68,6 +72,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     }
 
     /// Constructs a new `Loader` from an uninitialized account.
+    #[allow(deprecated)]
     #[inline(never)]
     pub fn try_from_unchecked(
         program_id: &Pubkey,
@@ -80,6 +85,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     }
 
     /// Returns a Ref to the account data structure for reading.
+    #[allow(deprecated)]
     pub fn load(&self) -> Result<Ref<T>, ProgramError> {
         let data = self.acc_info.try_borrow_data()?;
 
@@ -93,6 +99,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     }
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
+    #[allow(deprecated)]
     pub fn load_mut(&self) -> Result<RefMut<T>, ProgramError> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
@@ -115,6 +122,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
+    #[allow(deprecated)]
     pub fn load_init(&self) -> Result<RefMut<T>, ProgramError> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
@@ -138,6 +146,7 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> Accounts<'info> for Loader<'info, T> {
     #[inline(never)]
     fn try_accounts(
@@ -155,6 +164,7 @@ impl<'info, T: ZeroCopy> Accounts<'info> for Loader<'info, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> AccountsExit<'info> for Loader<'info, T> {
     // The account *cannot* be loaded when this is called.
     fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
@@ -166,12 +176,14 @@ impl<'info, T: ZeroCopy> AccountsExit<'info> for Loader<'info, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> AccountsClose<'info> for Loader<'info, T> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> ToAccountMetas for Loader<'info, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer);
@@ -183,24 +195,28 @@ impl<'info, T: ZeroCopy> ToAccountMetas for Loader<'info, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> AsRef<AccountInfo<'info>> for Loader<'info, T> {
     fn as_ref(&self) -> &AccountInfo<'info> {
         &self.acc_info
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> ToAccountInfos<'info> for Loader<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.acc_info.clone()]
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> ToAccountInfo<'info> for Loader<'info, T> {
     fn to_account_info(&self) -> AccountInfo<'info> {
         self.acc_info.clone()
     }
 }
 
+#[allow(deprecated)]
 impl<'info, T: ZeroCopy> Key for Loader<'info, T> {
     fn key(&self) -> Pubkey {
         *self.acc_info.key

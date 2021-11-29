@@ -66,6 +66,7 @@ pub use crate::cpi_account::CpiAccount;
 #[doc(hidden)]
 #[allow(deprecated)]
 pub use crate::cpi_state::CpiState;
+#[allow(deprecated)]
 pub use crate::loader::Loader;
 pub use crate::loader_account::AccountLoader;
 pub use crate::program::Program;
@@ -251,13 +252,13 @@ pub mod prelude {
     pub use super::{
         access_control, account, declare_id, emit, error, event, interface, program, require,
         state, zero_copy, Account, AccountDeserialize, AccountLoader, AccountSerialize, Accounts,
-        AccountsExit, AnchorDeserialize, AnchorSerialize, Context, CpiContext, Id, Key, Loader,
-        Owner, Program, Signer, System, SystemAccount, Sysvar, ToAccountInfo, ToAccountInfos,
+        AccountsExit, AnchorDeserialize, AnchorSerialize, Context, CpiContext, Id, Key, Owner,
+        Program, Signer, System, SystemAccount, Sysvar, ToAccountInfo, ToAccountInfos,
         ToAccountMetas, UncheckedAccount,
     };
 
     #[allow(deprecated)]
-    pub use super::{CpiAccount, CpiState, CpiStateContext, ProgramAccount, ProgramState};
+    pub use super::{CpiAccount, CpiState, CpiStateContext, Loader, ProgramAccount, ProgramState};
 
     pub use borsh;
     pub use solana_program::account_info::{next_account_info, AccountInfo};

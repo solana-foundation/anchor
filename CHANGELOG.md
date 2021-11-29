@@ -15,6 +15,7 @@ incremented for features.
 
 * lang: Add `deprecated` attribute to `ProgramAccount` ([#1014](https://github.com/project-serum/anchor/pull/1014)).
 * cli: Add version number from programs `Cargo.toml` into extracted IDL
+* lang: Add `deprecated` attribute to `Loader`([#1078](https://github.com/project-serum/anchor/pull/1078))
 
 ### Features
 
