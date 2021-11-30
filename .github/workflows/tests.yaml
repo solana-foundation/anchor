@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - master
-env: 
+env:
   SOLANA_CLI_VERSION: 1.8.0
   NODE_VERSION: 17.0.1
 
@@ -36,9 +36,9 @@ jobs:
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
-      - run: cd ts && yarn 
-      - run: cd ts && yarn test 
-      - run: cd ts && yarn lint 
+      - run: cd ts && yarn
+      - run: cd ts && yarn test
+      - run: cd ts && yarn lint
 
   setup-anchor-cli:
     name: Setup Anchor cli
@@ -135,12 +135,12 @@ jobs:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
-      - run: cd ${{ matrix.node.path }} && anchor build 
+      - run: cd ${{ matrix.node.path }} && anchor build
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.node.name }}
           path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
-  
+
   test-client-example:
     needs: setup-client-example
     name: Client Example Test
@@ -177,7 +177,7 @@ jobs:
           path: client/example/target
           key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}
       - uses: ./.github/actions/setup-solana/
-      - run: cd client/example && ./run-test.sh 
+      - run: cd client/example && ./run-test.sh
 
   test-programs:
     needs: setup-anchor-cli
@@ -186,45 +186,43 @@ jobs:
     strategy:
       matrix:
         node:
-          - cmd: cd tests/sysvars && anchor test 
+          - cmd: cd tests/sysvars && anchor test
             path: tests/sysvars
-          - cmd: cd tests/composite && anchor test 
+          - cmd: cd tests/composite && anchor test
             path: tests/composite
-          - cmd: cd tests/errors && anchor test 
+          - cmd: cd tests/errors && anchor test
             path: tests/errors
-          - cmd: cd tests/spl/token-proxy && anchor test 
+          - cmd: cd tests/spl/token-proxy && anchor test
             path: spl/token-proxy
-          - cmd: cd tests/multisig && anchor test 
+          - cmd: cd tests/multisig && anchor test
             path: tests/multisig
-          - cmd: cd tests/interface && anchor test 
+          - cmd: cd tests/interface && anchor test
             path: tests/interface
-          - cmd: cd tests/lockup && anchor test 
+          - cmd: cd tests/lockup && anchor test
             path: tests/lockup
-          - cmd: cd tests/permissioned-markets/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test 
-            path: tests/permissioned-markets
-          - cmd: cd tests/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test 
+          - cmd: cd tests/swap/deps/serum-dex/dex && cargo build-bpf && cd ../../../ && anchor test
             path: tests/swap
-          - cmd: cd tests/escrow && anchor test 
+          - cmd: cd tests/escrow && anchor test
             path: tests/escrow
-          - cmd: cd tests/pyth && anchor test 
+          - cmd: cd tests/pyth && anchor test
             path: tests/pyth
-          - cmd: cd tests/system-accounts && anchor test 
+          - cmd: cd tests/system-accounts && anchor test
             path: tests/system-accounts
-          - cmd: cd tests/misc && anchor test 
+          - cmd: cd tests/misc && anchor test
             path: tests/misc
-          - cmd: cd tests/events && anchor test 
+          - cmd: cd tests/events && anchor test
             path: tests/events
-          - cmd: cd tests/cashiers-check && anchor test 
+          - cmd: cd tests/cashiers-check && anchor test
             path: tests/cashiers-check
-          - cmd: cd tests/typescript && anchor test 
+          - cmd: cd tests/typescript && anchor test
             path: tests/typescript
-          - cmd: cd tests/zero-copy && anchor test 
+          - cmd: cd tests/zero-copy && anchor test
             path: tests/zero-copy
-          - cmd: cd tests/chat && anchor test 
+          - cmd: cd tests/chat && anchor test
             path: tests/chat
-          - cmd: cd tests/ido-pool && anchor test 
+          - cmd: cd tests/ido-pool && anchor test
             path: tests/ido-pool
-          - cmd: cd tests/cfo && anchor run test-with-build 
+          - cmd: cd tests/cfo && anchor run test-with-build
             path: tests/cfo
     steps:
       - uses: actions/checkout@v2
@@ -255,6 +253,6 @@ jobs:
         with:
           path: ${{ matrix.node.path }}/target
           key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}
-      
+
       - run: ${{ matrix.node.cmd }}
         name: ${{ matrix.node.path }} program test

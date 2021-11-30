@@ -38,6 +38,10 @@ incremented for features.
 * cli: Add fields `os` and `cpu` to npm package `@project-serum/anchor-cli` ([#976](https://github.com/project-serum/anchor/pull/976)).
 * cli: Allow specify output directory for TypeScript IDL ([#940](https://github.com/project-serum/anchor/pull/940)).
 
+### Breaking
+
+* spl: Move permissioned markets into dex repository ([#962](https://github.com/project-serum/anchor/pull/962)).
+
 ## [0.18.0] - 2021-10-24
 
 ### Features

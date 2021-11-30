@@ -8,10 +8,10 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::dex;
-use anchor_spl::dex::serum_dex::instruction::SelfTradeBehavior;
-use anchor_spl::dex::serum_dex::matching::{OrderType, Side as SerumSide};
-use anchor_spl::dex::serum_dex::state::MarketState;
 use anchor_spl::token;
+use serum_dex::instruction::SelfTradeBehavior;
+use serum_dex::matching::{OrderType, Side as SerumSide};
+use serum_dex::state::MarketState;
 use std::num::NonZeroU64;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

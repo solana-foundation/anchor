@@ -8,6 +8,8 @@ use serum_dex::matching::{OrderType, Side};
 use std::io::Write;
 use std::num::NonZeroU64;
 
+pub use serum_dex;
+
 #[cfg(not(feature = "devnet"))]
 anchor_lang::solana_program::declare_id!("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
 
