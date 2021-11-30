@@ -22,7 +22,9 @@ use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_sdk::account_utils::StateMut;
-use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
+use solana_sdk::bpf_loader;
+use solana_sdk::bpf_loader_deprecated;
+use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -1142,40 +1144,60 @@ pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<
             .get_account_with_commitment(&program_id, CommitmentConfig::default())?
             .value
             .map_or(Err(anyhow!("Account not found")), Ok)?;
-        match account.state()? {
-            UpgradeableLoaderState::Program {
-                programdata_address,
-            } => {
-                let account = client
-                    .get_account_with_commitment(&programdata_address, CommitmentConfig::default())?
-                    .value
-                    .map_or(Err(anyhow!("Account not found")), Ok)?;
-                let bin = account.data
-                    [UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
-                    .to_vec();
+        if account.owner == bpf_loader::id() || account.owner == bpf_loader_deprecated::id() {
+            let bin = account.data.to_vec();
+            let state = BinVerificationState::ProgramData {
+                slot: 0, // Need to look through the transaction history.
+                upgrade_authority_address: None,
+            };
+            (bin, state)
+        } else if account.owner == bpf_loader_upgradeable::id() {
+            match account.state()? {
+                UpgradeableLoaderState::Program {
+                    programdata_address,
+                } => {
+                    let account = client
+                        .get_account_with_commitment(
+                            &programdata_address,
+                            CommitmentConfig::default(),
+                        )?
+                        .value
+                        .map_or(Err(anyhow!("Account not found")), Ok)?;
+                    let bin = account.data
+                        [UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
+                        .to_vec();
 
-                if let UpgradeableLoaderState::ProgramData {
-                    slot,
-                    upgrade_authority_address,
-                } = account.state()?
-                {
-                    let state = BinVerificationState::ProgramData {
+                    if let UpgradeableLoaderState::ProgramData {
                         slot,
                         upgrade_authority_address,
-                    };
-                    (bin, state)
-                } else {
-                    return Err(anyhow!("Expected program data"));
+                    } = account.state()?
+                    {
+                        let state = BinVerificationState::ProgramData {
+                            slot,
+                            upgrade_authority_address,
+                        };
+                        (bin, state)
+                    } else {
+                        return Err(anyhow!("Expected program data"));
+                    }
+                }
+                UpgradeableLoaderState::Buffer { .. } => {
+                    let offset = UpgradeableLoaderState::buffer_data_offset().unwrap_or(0);
+                    (
+                        account.data[offset..].to_vec(),
+                        BinVerificationState::Buffer,
+                    )
+                }
+                _ => {
+                    return Err(anyhow!(
+                        "Invalid program id, not a buffer or program account"
+                    ))
                 }
             }
-            UpgradeableLoaderState::Buffer { .. } => {
-                let offset = UpgradeableLoaderState::buffer_data_offset().unwrap_or(0);
-                (
-                    account.data[offset..].to_vec(),
-                    BinVerificationState::Buffer,
-                )
-            }
-            _ => return Err(anyhow!("Invalid program id")),
+        } else {
+            return Err(anyhow!(
+                "Invalid program id, not owned by any loader program"
+            ));
         }
     };
     let mut local_bin = {
