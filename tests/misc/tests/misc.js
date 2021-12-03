@@ -836,6 +836,29 @@ describe("misc", () => {
     assert.ok(account.data, 3);
   });
 
+  it("Should include BASE const in IDL", async () => {
+    assert(
+      miscIdl.constants.find(
+        (c) => c.name === "BASE" && c.ty === "u128" && c.value === "1_000_000"
+      ) !== undefined
+    );
+  });
+
+  it("Should include DECIMALS const in IDL", async () => {
+    assert(
+      miscIdl.constants.find(
+        (c) => c.name === "DECIMALS" && c.ty === "u8" && c.value === "6"
+      ) !== undefined
+    );
+  });
+
+  it("Should not include NO_IDL const in IDL", async () => {
+    assert.equal(
+      miscIdl.constants.find((c) => c.name === "NO_IDL"),
+      undefined
+    );
+  });
+  
   it("Can use multidimensional array", async () => {
     const array2d = new Array(10).fill(new Array(10).fill(99));
     const data = anchor.web3.Keypair.generate();

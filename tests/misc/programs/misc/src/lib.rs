@@ -12,6 +12,12 @@ mod event;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
+#[constant]
+pub const BASE: u128 = 1_000_000;
+#[constant]
+pub const DECIMALS: u8 = 6;
+pub const NO_IDL: u16 = 55;
+
 #[program]
 pub mod misc {
     use super::*;

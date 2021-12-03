@@ -223,6 +223,15 @@ pub fn parse(filename: impl AsRef<Path>, version: String) -> Result<Option<Idl>>
         }
     }
 
+    let constants = parse_consts(&ctx)
+        .iter()
+        .map(|c: &&syn::ItemConst| IdlConst {
+            name: c.ident.to_string(),
+            ty: c.ty.to_token_stream().to_string().parse().unwrap(),
+            value: c.expr.to_token_stream().to_string().parse().unwrap(),
+        })
+        .collect::<Vec<IdlConst>>();
+
     Ok(Some(Idl {
         version,
         name: p.name.to_string(),
@@ -237,6 +246,7 @@ pub fn parse(filename: impl AsRef<Path>, version: String) -> Result<Option<Idl>>
         },
         errors: error_codes,
         metadata: None,
+        constants,
     }))
 }
 
@@ -340,6 +350,19 @@ fn parse_account_derives(ctx: &CrateContext) -> HashMap<String, AccountsStruct> 
                 }
             }
             None
+        })
+        .collect()
+}
+
+fn parse_consts(ctx: &CrateContext) -> Vec<&syn::ItemConst> {
+    ctx.consts()
+        .filter(|item_strct| {
+            for attr in &item_strct.attrs {
+                if attr.path.segments.last().unwrap().ident == "constant" {
+                    return true;
+                }
+            }
+            false
         })
         .collect()
 }

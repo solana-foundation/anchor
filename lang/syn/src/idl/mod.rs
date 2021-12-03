@@ -7,6 +7,8 @@ pub mod file;
 pub struct Idl {
     pub version: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub constants: Vec<IdlConst>,
     pub instructions: Vec<IdlInstruction>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub state: Option<IdlState>,
@@ -20,6 +22,13 @@ pub struct Idl {
     pub errors: Option<Vec<IdlErrorCode>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<JsonValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IdlConst {
+    pub name: String,
+    pub ty: IdlType,
+    pub value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
