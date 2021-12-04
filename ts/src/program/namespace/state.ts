@@ -116,7 +116,11 @@ export class StateClient<IDL extends Idl> {
           ixItem["accounts"] = (accounts) => {
             const keys = stateInstructionKeys(programId, provider, m, accounts);
             return keys.concat(
-              InstructionNamespaceFactory.accountsArray(accounts, m.accounts)
+              InstructionNamespaceFactory.accountsArray(
+                accounts,
+                m.accounts,
+                m.name
+              )
             );
           };
           // Build transaction method.

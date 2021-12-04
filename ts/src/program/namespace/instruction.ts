@@ -63,7 +63,11 @@ export default class InstructionNamespaceFactory {
 
     // Utility fn for ordering the accounts for this instruction.
     ix["accounts"] = (accs: Accounts<I["accounts"][number]> | undefined) => {
-      return InstructionNamespaceFactory.accountsArray(accs, idlIx.accounts);
+      return InstructionNamespaceFactory.accountsArray(
+        accs,
+        idlIx.accounts,
+        idlIx.name
+      );
     };
 
     return ix;
@@ -71,7 +75,8 @@ export default class InstructionNamespaceFactory {
 
   public static accountsArray(
     ctx: Accounts | undefined,
-    accounts: readonly IdlAccountItem[]
+    accounts: readonly IdlAccountItem[],
+    ixName?: string
   ): AccountMeta[] {
     if (!ctx) {
       return [];
@@ -86,12 +91,25 @@ export default class InstructionNamespaceFactory {
           const rpcAccs = ctx[acc.name] as Accounts;
           return InstructionNamespaceFactory.accountsArray(
             rpcAccs,
-            (acc as IdlAccounts).accounts
+            (acc as IdlAccounts).accounts,
+            ixName
           ).flat();
         } else {
           const account: IdlAccount = acc as IdlAccount;
+          let pubkey;
+          try {
+            pubkey = translateAddress(ctx[acc.name] as Address);
+          } catch (err) {
+            throw new Error(
+              `Wrong input type for account "${
+                acc.name
+              }" in the instruction accounts object${
+                ixName !== undefined ? ' for instruction "' + ixName + '"' : ""
+              }. Expected PublicKey or string.`
+            );
+          }
           return {
-            pubkey: translateAddress(ctx[acc.name] as Address),
+            pubkey,
             isWritable: account.isMut,
             isSigner: account.isSigner,
           };

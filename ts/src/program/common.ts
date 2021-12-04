@@ -58,8 +58,10 @@ export function translateAddress(address: Address): PublicKey {
   if (typeof address === "string") {
     const pk = new PublicKey(address);
     return pk;
-  } else {
+  } else if (address.constructor.prototype.constructor.name === "PublicKey") {
     return address;
+  } else {
+    throw new Error("Given address is not a PublicKey nor a string.");
   }
 }
 
