@@ -839,7 +839,7 @@ describe("misc", () => {
   it("Should include BASE const in IDL", async () => {
     assert(
       miscIdl.constants.find(
-        (c) => c.name === "BASE" && c.ty === "u128" && c.value === "1_000_000"
+        (c) => c.name === "BASE" && c.type === "u128" && c.value === "1_000_000"
       ) !== undefined
     );
   });
@@ -847,7 +847,7 @@ describe("misc", () => {
   it("Should include DECIMALS const in IDL", async () => {
     assert(
       miscIdl.constants.find(
-        (c) => c.name === "DECIMALS" && c.ty === "u8" && c.value === "6"
+        (c) => c.name === "DECIMALS" && c.type === "u8" && c.value === "6"
       ) !== undefined
     );
   });
@@ -858,7 +858,7 @@ describe("misc", () => {
       undefined
     );
   });
-  
+
   it("Can use multidimensional array", async () => {
     const array2d = new Array(10).fill(new Array(10).fill(99));
     const data = anchor.web3.Keypair.generate();

@@ -27,6 +27,7 @@ pub struct Idl {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlConst {
     pub name: String,
+    #[serde(rename = "type")]
     pub ty: IdlType,
     pub value: String,
 }
