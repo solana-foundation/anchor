@@ -76,6 +76,8 @@ pub enum ErrorCode {
     AccountNotSystemOwned,
     #[msg("The program expected this account to be already initialized")]
     AccountNotInitialized,
+    #[msg("The given account is not a program data account")]
+    AccountNotProgramData,
 
     // State.
     #[msg("The given state account does not have the correct address")]

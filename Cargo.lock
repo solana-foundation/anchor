@@ -81,11 +81,11 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-constant"
-version = "0.18.0"
+version = "0.18.2"
 dependencies = [
  "anchor-syn",
- "proc-macro2 1.0.29",
- "syn 1.0.75",
+ "proc-macro2 1.0.32",
+ "syn 1.0.81",
 ]
 
 [[package]]
@@ -213,6 +213,7 @@ dependencies = [
  "anchor-attribute-state",
  "anchor-derive-accounts",
  "base64 0.13.0",
+ "bincode",
  "borsh",
  "bytemuck",
  "solana-program",

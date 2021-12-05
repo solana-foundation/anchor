@@ -184,6 +184,9 @@ impl Field {
             Ty::Signer => quote! {
                 Signer
             },
+            Ty::ProgramData => quote! {
+                ProgramData
+            },
             Ty::SystemAccount => quote! {
                 SystemAccount
             },
@@ -298,6 +301,7 @@ impl Field {
             Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},
             Ty::SystemAccount => quote! {},
+            Ty::ProgramData => quote! {},
         }
     }
 
@@ -315,6 +319,9 @@ impl Field {
             },
             Ty::SystemAccount => quote! {
                 SystemAccount
+            },
+            Ty::ProgramData => quote! {
+                ProgramData
             },
             Ty::ProgramAccount(ty) => {
                 let ident = &ty.account_type_path;
@@ -405,6 +412,7 @@ pub enum Ty {
     Program(ProgramTy),
     Signer,
     SystemAccount,
+    ProgramData,
 }
 
 #[derive(Debug, PartialEq)]

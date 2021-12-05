@@ -79,6 +79,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "Program"
             | "Signer"
             | "SystemAccount"
+            | "ProgramData"
     );
     Ok(r)
 }
@@ -102,6 +103,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<Ty> {
         "Program" => Ty::Program(parse_program_ty(&path)?),
         "Signer" => Ty::Signer,
         "SystemAccount" => Ty::SystemAccount,
+        "ProgramData" => Ty::ProgramData,
         _ => return Err(ParseError::new(f.ty.span(), "invalid account type given")),
     };
 

@@ -179,6 +179,48 @@ jobs:
       - uses: ./.github/actions/setup-solana/
       - run: cd client/example && ./run-test.sh
 
+  test-bpf-upgradeable-state:
+    needs: setup-anchor-cli
+    name: Test tests/bpf-upgradeable-state
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-ts/
+      - uses: ./.github/actions/setup-solana/
+
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        id: cache-anchor
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./target/
+          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+
+      - uses: actions/cache@v2
+        name: Cache tests/bpf-upgradeable-state target
+        id: cache-test-target
+        with:
+          path: tests/bpf-upgradeable-state/target
+          key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}
+
+      - run: solana-test-validator -r --quiet &
+        name: start validator
+      - run: cd tests/bpf-upgradeable-state && yarn
+      - run: cd tests/bpf-upgradeable-state && yarn link @project-serum/anchor
+      - run: cd tests/bpf-upgradeable-state && anchor build
+      - run: cd tests/bpf-upgradeable-state && solana program deploy --program-id program_with_different_programdata.json target/deploy/bpf_upgradeable_state.so
+      - run: cd tests/bpf-upgradeable-state && cp bpf_upgradeable_state-keypair.json target/deploy/bpf_upgradeable_state-keypair.json && anchor deploy && anchor test --skip-deploy --skip-build
+
   test-programs:
     needs: setup-anchor-cli
     name: Test ${{ matrix.node.path }}

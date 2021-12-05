@@ -17,3 +17,5 @@ runs:
         shell: bash
       - run: solana-keygen new --no-bip39-passphrase
         shell: bash
+      - run: solana config set --url localhost
+        shell: bash
