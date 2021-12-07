@@ -25,9 +25,6 @@ macro_rules! vote_weight_record {
                 let vwr: spl_governance::addins::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
                         .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotDeserialize)?;
-                if vwr.account_type != spl_governance::addins::voter_weight::VoterWeightAccountType::Uninitialized {
-                    return Err(anchor_lang::__private::ErrorCode::AccountDidNotSerialize.into());
-                }
                 Ok(VoterWeightRecord(vwr))
             }
         }
