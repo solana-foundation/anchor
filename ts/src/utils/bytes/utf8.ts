@@ -1,15 +1,16 @@
+import { isBrowser } from "../common";
+
 export function decode(array: Uint8Array): string {
-  const decoder =
-    typeof TextDecoder === "undefined"
-      ? new (require("util").TextDecoder)("utf-8") // Node.
-      : new TextDecoder("utf-8"); // Browser.
+  const decoder = isBrowser
+    ? new TextDecoder("utf-8") // Browser https://caniuse.com/textencoder.
+    : new (require("util").TextDecoder)("utf-8"); // Node.
+
   return decoder.decode(array);
 }
 
 export function encode(input: string): Uint8Array {
-  const encoder =
-    typeof TextEncoder === "undefined"
-      ? new (require("util").TextEncoder)("utf-8") // Node.
-      : new TextEncoder(); // Browser.
+  const encoder = isBrowser
+    ? new TextEncoder() // Browser.
+    : new (require("util").TextEncoder)("utf-8"); // Node.
   return encoder.encode(input);
 }

@@ -10,7 +10,7 @@ import {
   Commitment,
   GetProgramAccountsFilter,
 } from "@solana/web3.js";
-import Provider from "../../provider.js";
+import Provider, { getProvider } from "../../provider.js";
 import { Idl, IdlTypeDef } from "../../idl.js";
 import Coder, {
   ACCOUNT_DISCRIMINATOR_SIZE,
@@ -18,7 +18,6 @@ import Coder, {
   AccountsCoder,
 } from "../../coder/index.js";
 import { Subscription, Address, translateAddress } from "../common.js";
-import { getProvider } from "../../index.js";
 import { AllAccountsMap, IdlTypes, TypeDef } from "./types.js";
 import * as pubkeyUtil from "../../utils/pubkey.js";
 import * as rpcUtil from "../../utils/rpc.js";

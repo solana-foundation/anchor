@@ -1,6 +1,6 @@
 import { inflate } from "pako";
 import { PublicKey } from "@solana/web3.js";
-import Provider from "../provider.js";
+import Provider, { getProvider } from "../provider.js";
 import { Idl, idlAddress, decodeIdlAccount } from "../idl.js";
 import Coder from "../coder/index.js";
 import NamespaceFactory, {
@@ -11,7 +11,6 @@ import NamespaceFactory, {
   StateClient,
   SimulateNamespace,
 } from "./namespace/index.js";
-import { getProvider } from "../index.js";
 import { utf8 } from "../utils/bytes/index.js";
 import { EventManager } from "./event.js";
 import { Address, translateAddress } from "./common.js";

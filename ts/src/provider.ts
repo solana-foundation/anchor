@@ -1,7 +1,5 @@
-import { Buffer } from "buffer";
 import {
   Connection,
-  Keypair,
   Signer,
   PublicKey,
   Transaction,
@@ -46,11 +44,15 @@ export default class Provider {
    * (This api is for Node only.)
    */
   static local(url?: string, opts?: ConfirmOptions): Provider {
+    if (isBrowser) {
+      throw new Error(`Provider local is not available on browser.`);
+    }
     opts = opts ?? Provider.defaultOptions();
     const connection = new Connection(
       url ?? "http://localhost:8899",
       opts.preflightCommitment
     );
+    const NodeWallet = require("./nodewallet.js").default;
     const wallet = NodeWallet.local();
     return new Provider(connection, wallet, opts);
   }
@@ -73,6 +75,7 @@ export default class Provider {
     }
     const options = Provider.defaultOptions();
     const connection = new Connection(url, options.commitment);
+    const NodeWallet = require("./nodewallet.js").default;
     const wallet = NodeWallet.local();
 
     return new Provider(connection, wallet, options);
@@ -221,43 +224,6 @@ export interface Wallet {
   signTransaction(tx: Transaction): Promise<Transaction>;
   signAllTransactions(txs: Transaction[]): Promise<Transaction[]>;
   publicKey: PublicKey;
-}
-
-/**
- * Node only wallet.
- */
-export class NodeWallet implements Wallet {
-  constructor(readonly payer: Keypair) {}
-
-  static local(): NodeWallet {
-    const process = require("process");
-    const payer = Keypair.fromSecretKey(
-      Buffer.from(
-        JSON.parse(
-          require("fs").readFileSync(process.env.ANCHOR_WALLET, {
-            encoding: "utf-8",
-          })
-        )
-      )
-    );
-    return new NodeWallet(payer);
-  }
-
-  async signTransaction(tx: Transaction): Promise<Transaction> {
-    tx.partialSign(this.payer);
-    return tx;
-  }
-
-  async signAllTransactions(txs: Transaction[]): Promise<Transaction[]> {
-    return txs.map((t) => {
-      t.partialSign(this.payer);
-      return t;
-    });
-  }
-
-  get publicKey(): PublicKey {
-    return this.payer.publicKey;
-  }
 }
 
 // Copy of Connection.simulateTransaction that takes a commitment parameter.
