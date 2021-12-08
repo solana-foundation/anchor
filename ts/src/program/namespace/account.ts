@@ -9,6 +9,7 @@ import {
   TransactionInstruction,
   Commitment,
   GetProgramAccountsFilter,
+  AccountInfo,
 } from "@solana/web3.js";
 import Provider, { getProvider } from "../../provider.js";
 import { Idl, IdlTypeDef } from "../../idl.js";
@@ -136,9 +137,7 @@ export class AccountClient<
    * @param address The address of the account to fetch.
    */
   async fetchNullable(address: Address): Promise<T | null> {
-    const accountInfo = await this._provider.connection.getAccountInfo(
-      translateAddress(address)
-    );
+    const accountInfo = await this.getAccountInfo(address);
     if (accountInfo === null) {
       return null;
     }
@@ -343,6 +342,16 @@ export class AccountClient<
     ...args: Array<PublicKey | Buffer>
   ): Promise<PublicKey> {
     return await pubkeyUtil.associated(this._programId, ...args);
+  }
+
+  async getAccountInfo(
+    address: Address,
+    commitment?: Commitment
+  ): Promise<AccountInfo<Buffer> | null> {
+    return await this._provider.connection.getAccountInfo(
+      translateAddress(address),
+      commitment
+    );
   }
 }
 
