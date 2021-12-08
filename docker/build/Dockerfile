@@ -11,10 +11,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG SOLANA_CLI
 ARG ANCHOR_CLI
 
+ENV NODE_VERSION="v17.0.1"
 ENV HOME="/root"
 ENV PATH="${HOME}/.cargo/bin:${PATH}"
 ENV PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
-ENV PATH="${HOME}/.nvm/versions/node/v17.0.1/bin:${PATH}"
+ENV PATH="${HOME}/.nvm/versions/node/${NODE_VERSION}/bin:${PATH}"
 
 # Install base utilities.
 RUN mkdir -p /workdir && mkdir -p /tmp && \
@@ -31,8 +32,8 @@ RUN curl "https://sh.rustup.rs" -sfo rustup.sh && \
 RUN curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
 ENV NVM_DIR="${HOME}/.nvm"
 RUN . $NVM_DIR/nvm.sh && \
-    nvm install node --latest-npm && \
-    nvm use node && \
+    nvm install ${NODE_VERSION} && \
+    nvm use ${NODE_VERSION} && \
     nvm alias default node && \
     npm install -g yarn
 
