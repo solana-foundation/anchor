@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.19.0] - 2021-12-08
+
 ### Fixes
 
 * lang: Add `deprecated` attribute to `ProgramAccount` ([#1014](https://github.com/project-serum/anchor/pull/1014)).

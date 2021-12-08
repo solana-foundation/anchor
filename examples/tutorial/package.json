@@ -9,7 +9,7 @@
     "basic-4"
   ],
   "dependencies": {
-    "@project-serum/anchor": "^0.18.2"
+    "@project-serum/anchor": "^0.19.0"
   },
   "devDependencies": {
     "mocha": "^9.1.3"
