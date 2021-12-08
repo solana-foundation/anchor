@@ -246,11 +246,83 @@ pub struct TestEmptySeedsConstraint<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestInitIfNeeded<'info> {
-    #[account(init_if_needed, payer = payer)]
+pub struct InitWithSpace<'info> {
+    #[account(init, payer = payer)]
     pub data: Account<'info, DataU16>,
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitIfNeeded<'info> {
+    #[account(init_if_needed, payer = payer, space = 500)]
+    pub data: Account<'info, DataU16>,
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitIfNeededChecksOwner<'info> {
+    #[account(init_if_needed, payer = payer, space = 100, owner = *owner.key, seeds = [b"hello"], bump)]
+    pub data: UncheckedAccount<'info>,
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub owner: AccountInfo<'info>
+}
+
+#[derive(Accounts)]
+#[instruction(seed_data: String)]
+pub struct TestInitIfNeededChecksSeeds<'info> {
+    #[account(init_if_needed, payer = payer, space = 100, seeds = [seed_data.as_bytes()], bump)]
+    pub data: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(decimals: u8)]
+pub struct TestInitMintIfNeeded<'info> {
+    #[account(init_if_needed, mint::decimals = decimals, mint::authority = mint_authority, mint::freeze_authority = freeze_authority, payer = payer)]
+    pub mint: Account<'info, Mint>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    pub mint_authority: AccountInfo<'info>,
+    pub freeze_authority: AccountInfo<'info>, 
+}
+
+#[derive(Accounts)]
+pub struct TestInitTokenIfNeeded<'info> {
+    #[account(init_if_needed, token::mint = mint, token::authority = authority, payer = payer)]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    #[account(signer)]
+    pub payer: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitAssociatedTokenIfNeeded<'info> {
+    #[account(
+        init_if_needed,
+        payer = payer,
+        associated_token::mint = mint,
+        associated_token::authority = authority,
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub payer: Signer<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub authority: AccountInfo<'info>
 }
 
 #[derive(Accounts)]

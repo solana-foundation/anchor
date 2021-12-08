@@ -53,7 +53,7 @@ describe('bpf_upgradeable_state', () => {
       });
       assert.ok(false);
     } catch (err) {
-      assert.equal(err.code, 143);
+      assert.equal(err.code, 2003);
       assert.equal(err.msg, "A raw constraint was violated");
     }
   });
@@ -73,7 +73,7 @@ describe('bpf_upgradeable_state', () => {
       });
       assert.ok(false);
     } catch (err) {
-      assert.equal(err.code, 173);
+      assert.equal(err.code, 3013);
       assert.equal(err.msg, "The given account is not a program data account");
     }
   });
@@ -93,7 +93,7 @@ describe('bpf_upgradeable_state', () => {
       });
       assert.ok(false);
     } catch (err) {
-      assert.equal(err.code, 167);
+      assert.equal(err.code, 3007);
       assert.equal(err.msg, "The given account is not owned by the executing program");
     }
   });
@@ -119,7 +119,7 @@ describe('bpf_upgradeable_state', () => {
       });
       assert.ok(false);
     } catch (err) {
-      assert.equal(err.code, 300);
+      assert.equal(err.code, 6000);
     }
   });
 });

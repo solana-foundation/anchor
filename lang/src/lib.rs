@@ -183,8 +183,8 @@ pub trait AccountDeserialize: Sized {
     /// uninitialized accounts, where the bytes are zeroed. Implementations
     /// should be unique to a particular account type so that one can never
     /// successfully deserialize the data of one account type into another.
-    /// For example, if the SPL token program where to implement this trait,
-    /// it should impossible to deserialize a `Mint` account into a token
+    /// For example, if the SPL token program were to implement this trait,
+    /// it should be impossible to deserialize a `Mint` account into a token
     /// `Account`.
     fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 
@@ -303,7 +303,7 @@ pub mod __private {
     }
 
     // The starting point for user defined error codes.
-    pub const ERROR_CODE_OFFSET: u32 = 300;
+    pub const ERROR_CODE_OFFSET: u32 = 6000;
 
     // Calculates the size of an account, which may be larger than the deserialized
     // data in it. This trait is currently only used for `#[state]` accounts.

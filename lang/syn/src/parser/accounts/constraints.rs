@@ -432,7 +432,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if self.token_mint.is_none() {
                 return Err(ParseError::new(
                     token_authority.span(),
-                    "token authority must be provided if token mint is",
+                    "token mint must be provided if token authority is",
                 ));
             }
         }

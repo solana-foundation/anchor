@@ -15,5 +15,5 @@ events = { path = "../../tests/events/programs/events", features = ["no-entrypoi
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
 rand = "0.7.3"
-clap = "3.0.0-beta.5"
+clap = { version = "3.0.0-rc.0", features = ["derive"] }
 solana-sdk = "1.7.11"

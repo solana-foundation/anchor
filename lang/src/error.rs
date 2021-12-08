@@ -15,13 +15,13 @@ pub enum ErrorCode {
 
     // IDL instructions.
     #[msg("The program was compiled without idl instructions")]
-    IdlInstructionStub = 120,
+    IdlInstructionStub = 1000,
     #[msg("Invalid program given to the IDL instruction")]
     IdlInstructionInvalidProgram,
 
     // Constraints.
     #[msg("A mut constraint was violated")]
-    ConstraintMut = 140,
+    ConstraintMut = 2000,
     #[msg("A has one constraint was violated")]
     ConstraintHasOne,
     #[msg("A signer constraint as violated")]
@@ -48,10 +48,23 @@ pub enum ErrorCode {
     ConstraintAddress,
     #[msg("Expected zero account discriminant")]
     ConstraintZero,
+    #[msg("A token mint constraint was violated")]
+    ConstraintTokenMint,
+    #[msg("A token owner constraint was violated")]
+    ConstraintTokenOwner,
+    // The mint mint is intentional -> a mint authority for the mint.
+    #[msg("A mint mint authority constraint was violated")]
+    ConstraintMintMintAuthority,
+    #[msg("A mint freeze authority constraint was violated")]
+    ConstraintMintFreezeAuthority,
+    #[msg("A mint decimals constraint was violated")]
+    ConstraintMintDecimals,
+    #[msg("A space constraint was violated")]
+    ConstraintSpace,
 
     // Accounts.
     #[msg("The account discriminator was already set on this account")]
-    AccountDiscriminatorAlreadySet = 160,
+    AccountDiscriminatorAlreadySet = 3000,
     #[msg("No 8 byte discriminator was found on the account")]
     AccountDiscriminatorNotFound,
     #[msg("8 byte discriminator did not match what was expected")]
@@ -81,9 +94,9 @@ pub enum ErrorCode {
 
     // State.
     #[msg("The given state account does not have the correct address")]
-    StateInvalidAddress = 180,
+    StateInvalidAddress = 4000,
 
     // Used for APIs that shouldn't be used anymore.
     #[msg("The API being used is deprecated and should no longer be used")]
-    Deprecated = 299,
+    Deprecated = 5000,
 }

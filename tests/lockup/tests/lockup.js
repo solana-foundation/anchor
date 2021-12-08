@@ -118,7 +118,7 @@ describe("Lockup and Registry", () => {
         await lockup.state.rpc.whitelistAdd(e, { accounts });
       },
       (err) => {
-        assert.equal(err.code, 308);
+        assert.equal(err.code, 6008);
         assert.equal(err.msg, "Whitelist is full");
         return true;
       }
@@ -218,7 +218,7 @@ describe("Lockup and Registry", () => {
         });
       },
       (err) => {
-        assert.equal(err.code, 307);
+        assert.equal(err.code, 6007);
         assert.equal(err.msg, "Insufficient withdrawal balance.");
         return true;
       }
@@ -783,7 +783,7 @@ describe("Lockup and Registry", () => {
       (err) => {
         // Solana doesn't propagate errors across CPI. So we receive the registry's error code,
         // not the lockup's.
-        const errorCode = "custom program error: 0x140";
+        const errorCode = "custom program error: 0x1784";
         assert.ok(err.toString().split(errorCode).length === 2);
         return true;
       }
@@ -865,7 +865,7 @@ describe("Lockup and Registry", () => {
         await tryEndUnstake();
       },
       (err) => {
-        assert.equal(err.code, 309);
+        assert.equal(err.code, 6009);
         assert.equal(err.msg, "The unstake timelock has not yet expired.");
         return true;
       }

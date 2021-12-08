@@ -11,7 +11,7 @@ use std::path::Path;
 
 const DERIVE_NAME: &str = "Accounts";
 // TODO: sharee this with `anchor_lang` crate.
-const ERROR_CODE_OFFSET: u32 = 300;
+const ERROR_CODE_OFFSET: u32 = 6000;
 
 // Parse an entire interface file.
 pub fn parse(filename: impl AsRef<Path>, version: String) -> Result<Option<Idl>> {

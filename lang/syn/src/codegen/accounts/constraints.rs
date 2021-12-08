@@ -449,6 +449,14 @@ pub fn generate_init(
                     }
 
                     let pa: #ty_decl = #from_account_info;
+                    if !(!#if_needed || #field.to_account_info().owner == &anchor_lang::solana_program::system_program::ID) {
+                        if pa.mint != #mint.key() {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintTokenMint.into());
+                        }
+                        if pa.owner != #owner.key() {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintTokenOwner.into());
+                        }
+                    }
                     pa
                 };
             }
@@ -473,6 +481,14 @@ pub fn generate_init(
                         anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info;
+                    if !(!#if_needed || #field.to_account_info().owner == &anchor_lang::solana_program::system_program::ID) {
+                        if pa.mint != #mint.key() {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintTokenMint.into());
+                        }
+                        if pa.owner != #owner.key() {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintTokenOwner.into());
+                        }
+                    }
                     pa
                 };
             }
@@ -489,8 +505,8 @@ pub fn generate_init(
                 seeds_with_nonce,
             );
             let freeze_authority = match freeze_authority {
-                Some(fa) => quote! { Some(&#fa.key()) },
-                None => quote! { None },
+                Some(fa) => quote! { Option::<&anchor_lang::prelude::Pubkey>::Some(&#fa.key()) },
+                None => quote! { Option::<&anchor_lang::prelude::Pubkey>::None },
             };
             quote! {
                 let #field: #ty_decl = {
@@ -508,9 +524,23 @@ pub fn generate_init(
                             rent: rent.to_account_info(),
                         };
                         let cpi_ctx = CpiContext::new(cpi_program, accounts);
-                        anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.to_account_info().key, #freeze_authority)?;
+                        anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
                     let pa: #ty_decl = #from_account_info;
+                    if !(!#if_needed || #field.to_account_info().owner == &anchor_lang::solana_program::system_program::ID) {
+                        if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintMintMintAuthority.into());
+                        }
+                        if pa.freeze_authority
+                            .as_ref()
+                            .map(|fa| #freeze_authority.as_ref().map(|expected_fa| fa != *expected_fa).unwrap_or(true))
+                            .unwrap_or(#freeze_authority.is_some()) {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintMintFreezeAuthority.into());
+                        }
+                        if pa.decimals != #decimals {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintMintDecimals.into());
+                        }
+                    }
                     pa
                 };
             }
@@ -550,16 +580,42 @@ pub fn generate_init(
                     &#o
                 },
             };
+            let pda_check = if !seeds_with_nonce.is_empty() {
+                quote! {
+                    let expected_key = anchor_lang::prelude::Pubkey::create_program_address(
+                        #seeds_with_nonce,
+                        #owner
+                    ).map_err(|_| anchor_lang::__private::ErrorCode::ConstraintSeeds)?;
+                    if expected_key != #field.key() {
+                        return Err(anchor_lang::__private::ErrorCode::ConstraintSeeds.into());
+                    }
+                }
+            } else {
+                quote! {}
+            };
             let create_account =
-                generate_create_account(field, quote! {space}, owner, seeds_with_nonce);
+                generate_create_account(field, quote! {space}, owner.clone(), seeds_with_nonce);
             quote! {
                 let #field = {
-                    if !#if_needed || #field.to_account_info().owner == &anchor_lang::solana_program::system_program::ID {
-                        #space
+                    let actual_field = #field.to_account_info();
+                    let actual_owner = actual_field.owner;
+                    #space
+                    if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
                         #payer
                         #create_account
                     }
                     let pa: #ty_decl = #from_account_info;
+                    if !(!#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID) {
+                        if space != actual_field.data_len() {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintSpace.into());
+                        }
+
+                        if actual_owner != #owner {
+                            return Err(anchor_lang::__private::ErrorCode::ConstraintOwner.into());
+                        }
+
+                        #pda_check
+                    }
                     pa
                 };
             }
