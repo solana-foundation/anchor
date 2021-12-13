@@ -29,8 +29,21 @@ describe('bpf_upgradeable_state', () => {
       signers: [settings]
     });
     assert.equal((await program.account.settings.fetch(settings.publicKey)).adminData, 500);
+  });
 
-    console.log("Your transaction signature", tx);
+  it('Reads ProgramData and sets field, uses program state', async () => {
+    const settings = anchor.web3.Keypair.generate();
+    const tx = await program.rpc.setAdminSettingsUseProgramState(new anchor.BN(500), {
+      accounts: {
+        authority: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        programData: programDataAddress,
+        program: program.programId,
+        settings: settings.publicKey
+      },
+      signers: [settings]
+    });
+    assert.equal((await program.account.settings.fetch(settings.publicKey)).adminData, 500);
   });
 
   it('Validates constraint on ProgramData', async () => {
@@ -120,6 +133,31 @@ describe('bpf_upgradeable_state', () => {
       assert.ok(false);
     } catch (err) {
       assert.equal(err.code, 6000);
+    }
+  });
+
+  it('Deserializes Program and validates that programData is the expected account', async () => {
+    const secondProgramAddress = new PublicKey("Fkv67TwmbakfZw2PoW57wYPbqNexAH6vuxpyT8vmrc3B");
+    const secondProgramProgramDataAddress = findProgramAddressSync(
+      [secondProgramAddress.toBytes()],
+      new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    )[0];
+
+    const settings = anchor.web3.Keypair.generate();
+    try {
+      await program.rpc.setAdminSettingsUseProgramState(new anchor.BN(500), {
+        accounts: {
+          authority: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          programData: secondProgramProgramDataAddress,
+          settings: settings.publicKey,
+          program: program.programId,
+        },
+        signers: [settings]
+      });
+      assert.ok(false);
+    } catch (err) {
+      assert.equal(err.code, 2003);
     }
   });
 });
