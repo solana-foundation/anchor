@@ -19,6 +19,6 @@ dex = ["serum_dex"]
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.19.0", features = ["derive"] }
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
-solana-program = "1.8.0"
+solana-program = "1.8.5"
 spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }

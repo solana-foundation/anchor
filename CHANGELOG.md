@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang,ts,ci,cli,docs: update solana toolchain([#1133](https://github.com/project-serum/anchor/pull/1133))
+
 ## [0.19.0] - 2021-12-08
 
 ### Fixes
