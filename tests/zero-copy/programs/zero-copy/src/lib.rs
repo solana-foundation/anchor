@@ -11,8 +11,6 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod zero_copy {
-    use std::str::FromStr;
-
     use super::*;
 
     pub fn create_foo(ctx: Context<CreateFoo>) -> ProgramResult {
@@ -140,6 +138,7 @@ pub struct UpdateLargeAccount<'info> {
 }
 
 #[account(zero_copy)]
+#[derive(Default)]
 pub struct Foo {
     pub authority: Pubkey,
     pub data: u64,

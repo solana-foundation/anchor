@@ -22,7 +22,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
     quote! {
         // TODO: remove once we allow segmented paths in `Accounts` structs.
-        use #mod_name::*;
+        use self::#mod_name::*;
 
         #entry
         #dispatch

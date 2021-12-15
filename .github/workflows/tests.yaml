@@ -258,7 +258,7 @@ jobs:
             path: tests/cashiers-check
           - cmd: cd tests/typescript && anchor test
             path: tests/typescript
-          - cmd: cd tests/zero-copy && anchor test
+          - cmd: cd tests/zero-copy && anchor test && cd programs/zero-copy && cargo test-bpf
             path: tests/zero-copy
           - cmd: cd tests/chat && anchor test
             path: tests/chat

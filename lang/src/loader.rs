@@ -3,6 +3,7 @@ use crate::{
     Accounts, AccountsClose, AccountsExit, Key, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     ZeroCopy,
 };
+use arrayref::array_ref;
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
@@ -62,9 +63,8 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
         }
         let data: &[u8] = &acc_info.try_borrow_data()?;
         // Discriminator must match.
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        if disc_bytes != T::discriminator() {
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &T::discriminator() {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
@@ -89,9 +89,8 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     pub fn load(&self) -> Result<Ref<T>, ProgramError> {
         let data = self.acc_info.try_borrow_data()?;
 
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        if disc_bytes != T::discriminator() {
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &T::discriminator() {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
@@ -109,9 +108,8 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
 
         let data = self.acc_info.try_borrow_mut_data()?;
 
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        if disc_bytes != T::discriminator() {
+        let disc_bytes = array_ref![data, 0, 8];
+        if disc_bytes != &T::discriminator() {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
