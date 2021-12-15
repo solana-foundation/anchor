@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+* ts: fix `translateAddress` which currently leads to failing browser code. Now uses `PublicKey` constructor instead of prototype chain constructor name checking which doesn't work in the presence of code minifying/mangling([1138](https://github.com/project-serum/anchor/pull/1138))
+
 ### Features
 
 * lang: Add `programdata_address: Option<Pubkey>` field to `Program` account. Will be populated if account is a program owned by the upgradable bpf loader ([#1125](https://github.com/project-serum/anchor/pull/1125))
