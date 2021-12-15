@@ -56,7 +56,7 @@ fn parse_error_attribute(variant: &syn::Variant) -> Option<String> {
 
             let msg = match g_stream.into_iter().next() {
                 None => panic!("Must specify a message string"),
-                Some(msg) => msg.to_string().replace("\"", ""),
+                Some(msg) => msg.to_string().replace('\"', ""),
             };
 
             Some(msg)

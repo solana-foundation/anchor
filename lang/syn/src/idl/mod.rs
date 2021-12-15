@@ -150,7 +150,7 @@ impl std::str::FromStr for IdlType {
                 None => {
                     let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
                     let ty = IdlType::from_str(raw_type).unwrap();
-                    let len = raw_length.replace("_", "").parse::<usize>().unwrap();
+                    let len = raw_length.replace('_', "").parse::<usize>().unwrap();
                     IdlType::Array(Box::new(ty), len)
                 }
                 Some(nested_inner) => array_from_str(&nested_inner[1..]),

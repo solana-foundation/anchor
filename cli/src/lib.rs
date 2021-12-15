@@ -1777,7 +1777,7 @@ fn validator_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
                 if key == "ledger" {
                     continue;
                 };
-                flags.push(format!("--{}", key.replace("_", "-")));
+                flags.push(format!("--{}", key.replace('_', "-")));
                 if let serde_json::Value::String(v) = value {
                     flags.push(v.to_string());
                 } else {

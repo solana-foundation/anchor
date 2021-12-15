@@ -222,7 +222,7 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
 pub fn generate_constraint_literal(c: &ConstraintLiteral) -> proc_macro2::TokenStream {
     let lit: proc_macro2::TokenStream = {
         let lit = &c.lit;
-        let constraint = lit.value().replace("\"", "");
+        let constraint = lit.value().replace('\"', "");
         let message = format!(
             "Deprecated. Should be used with constraint: #[account(constraint = {})]",
             constraint,

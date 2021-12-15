@@ -116,7 +116,7 @@ fn ident_string(f: &syn::Field) -> ParseResult<String> {
         _ => return Err(ParseError::new(f.ty.span(), "invalid type")),
     };
     if parser::tts_to_string(&path)
-        .replace(" ", "")
+        .replace(' ', "")
         .starts_with("Box<Account<")
     {
         return Ok("Account".to_string());
@@ -177,7 +177,7 @@ fn parse_program_loader_account(path: &syn::Path) -> ParseResult<LoaderAccountTy
 fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
     let account_type_path = parse_account(path)?;
     let boxed = parser::tts_to_string(&path)
-        .replace(" ", "")
+        .replace(' ', "")
         .starts_with("Box<Account<");
     Ok(AccountTy {
         account_type_path,
@@ -193,7 +193,7 @@ fn parse_program_ty(path: &syn::Path) -> ParseResult<ProgramTy> {
 // TODO: this whole method is a hack. Do something more idiomatic.
 fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
     if parser::tts_to_string(path)
-        .replace(" ", "")
+        .replace(' ', "")
         .starts_with("Box<Account<")
     {
         let segments = &path.segments[0];

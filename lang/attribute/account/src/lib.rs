@@ -69,7 +69,7 @@ pub fn account(
     for arg in args {
         let ns = arg
             .to_string()
-            .replace("\"", "")
+            .replace('\"', "")
             .chars()
             .filter(|c| !c.is_whitespace())
             .collect();
