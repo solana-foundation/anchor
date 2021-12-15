@@ -1,6 +1,6 @@
-use crate::error::ErrorCode;
 #[allow(deprecated)]
-use crate::CpiAccount;
+use crate::accounts::cpi_account::CpiAccount;
+use crate::error::ErrorCode;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key,
     ToAccountInfo, ToAccountInfos, ToAccountMetas,

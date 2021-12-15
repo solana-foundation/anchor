@@ -1,5 +1,5 @@
-use crate::error::ErrorCode;
 use crate::*;
+use crate::{error::ErrorCode, prelude::Account};
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
