@@ -69,6 +69,7 @@ impl Client {
 }
 
 // Internal configuration for a client.
+#[derive(Debug)]
 struct Config {
     cluster: Cluster,
     payer: Keypair,
@@ -76,6 +77,7 @@ struct Config {
 }
 
 /// Program is the primary client handle to be used to build and send requests.
+#[derive(Debug)]
 pub struct Program {
     program_id: Pubkey,
     cfg: Config,
