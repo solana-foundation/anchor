@@ -25,10 +25,10 @@ describe("basic-3", () => {
 
     // Invoke the puppet master to perform a CPI to the puppet.
     await puppetMaster.rpc.pullStrings(new anchor.BN(111), {
-       accounts: {
-          puppet: newPuppetAccount.publicKey,
-          puppetProgram: puppet.programId,
-       },
+      accounts: {
+        puppet: newPuppetAccount.publicKey,
+        puppetProgram: puppet.programId,
+      },
     });
 
     // Check the state updated.

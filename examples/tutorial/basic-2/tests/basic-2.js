@@ -1,20 +1,20 @@
-const assert = require('assert');
-const anchor = require('@project-serum/anchor');
+const assert = require("assert");
+const anchor = require("@project-serum/anchor");
 const { SystemProgram } = anchor.web3;
 
-describe('basic-2', () => {
-  const provider = anchor.Provider.local()
+describe("basic-2", () => {
+  const provider = anchor.Provider.local();
 
   // Configure the client to use the local cluster.
-  anchor.setProvider(provider)
+  anchor.setProvider(provider);
 
   // Counter for the tests.
-  const counter = anchor.web3.Keypair.generate()
+  const counter = anchor.web3.Keypair.generate();
 
   // Program for the tests.
-  const program = anchor.workspace.Basic2
+  const program = anchor.workspace.Basic2;
 
-  it('Creates a counter', async () => {
+  it("Creates a counter", async () => {
     await program.rpc.create(provider.wallet.publicKey, {
       accounts: {
         counter: counter.publicKey,
@@ -22,25 +22,27 @@ describe('basic-2', () => {
         systemProgram: SystemProgram.programId,
       },
       signers: [counter],
-    })
+    });
 
-    let counterAccount = await program.account.counter.fetch(counter.publicKey)
+    let counterAccount = await program.account.counter.fetch(counter.publicKey);
 
-    assert.ok(counterAccount.authority.equals(provider.wallet.publicKey))
-    assert.ok(counterAccount.count.toNumber() === 0)
-  })
+    assert.ok(counterAccount.authority.equals(provider.wallet.publicKey));
+    assert.ok(counterAccount.count.toNumber() === 0);
+  });
 
-  it('Updates a counter', async () => {
+  it("Updates a counter", async () => {
     await program.rpc.increment({
       accounts: {
         counter: counter.publicKey,
         authority: provider.wallet.publicKey,
       },
-    })
+    });
 
-    const counterAccount = await program.account.counter.fetch(counter.publicKey)
+    const counterAccount = await program.account.counter.fetch(
+      counter.publicKey
+    );
 
-    assert.ok(counterAccount.authority.equals(provider.wallet.publicKey))
-    assert.ok(counterAccount.count.toNumber() == 1)
-  })
-})
+    assert.ok(counterAccount.authority.equals(provider.wallet.publicKey));
+    assert.ok(counterAccount.count.toNumber() == 1);
+  });
+});

@@ -3,8 +3,6 @@ const serumCmn = require("@project-serum/common");
 const assert = require("assert");
 const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 
-
-
 describe("cashiers-check", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());

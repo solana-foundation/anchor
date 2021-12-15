@@ -41,6 +41,10 @@ jobs:
       - run: cd ts && yarn
       - run: cd ts && yarn test
       - run: cd ts && yarn lint
+      - run: cd examples/tutorial && yarn
+      - run: cd examples/tutorial && yarn lint
+      - run: cd tests && yarn
+      - run: cd tests && yarn lint
 
   setup-anchor-cli:
     name: Setup Anchor cli

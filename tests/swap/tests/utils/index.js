@@ -277,43 +277,39 @@ async function setupMarket({
   );
   for (let k = 0; k < asks.length; k += 1) {
     let ask = asks[k];
-    const {
-      transaction,
-      signers,
-    } = await MARKET_A_USDC.makePlaceOrderTransaction(provider.connection, {
-      owner: marketMaker.account,
-      payer: marketMaker.baseToken,
-      side: "sell",
-      price: ask[0],
-      size: ask[1],
-      orderType: "postOnly",
-      clientId: undefined,
-      openOrdersAddressKey: undefined,
-      openOrdersAccount: undefined,
-      feeDiscountPubkey: null,
-      selfTradeBehavior: "abortTransaction",
-    });
+    const { transaction, signers } =
+      await MARKET_A_USDC.makePlaceOrderTransaction(provider.connection, {
+        owner: marketMaker.account,
+        payer: marketMaker.baseToken,
+        side: "sell",
+        price: ask[0],
+        size: ask[1],
+        orderType: "postOnly",
+        clientId: undefined,
+        openOrdersAddressKey: undefined,
+        openOrdersAccount: undefined,
+        feeDiscountPubkey: null,
+        selfTradeBehavior: "abortTransaction",
+      });
     await provider.send(transaction, signers.concat(marketMaker.account));
   }
 
   for (let k = 0; k < bids.length; k += 1) {
     let bid = bids[k];
-    const {
-      transaction,
-      signers,
-    } = await MARKET_A_USDC.makePlaceOrderTransaction(provider.connection, {
-      owner: marketMaker.account,
-      payer: marketMaker.quoteToken,
-      side: "buy",
-      price: bid[0],
-      size: bid[1],
-      orderType: "postOnly",
-      clientId: undefined,
-      openOrdersAddressKey: undefined,
-      openOrdersAccount: undefined,
-      feeDiscountPubkey: null,
-      selfTradeBehavior: "abortTransaction",
-    });
+    const { transaction, signers } =
+      await MARKET_A_USDC.makePlaceOrderTransaction(provider.connection, {
+        owner: marketMaker.account,
+        payer: marketMaker.quoteToken,
+        side: "buy",
+        price: bid[0],
+        size: bid[1],
+        orderType: "postOnly",
+        clientId: undefined,
+        openOrdersAddressKey: undefined,
+        openOrdersAccount: undefined,
+        feeDiscountPubkey: null,
+        selfTradeBehavior: "abortTransaction",
+      });
     await provider.send(transaction, signers.concat(marketMaker.account));
   }
 

@@ -19,4 +19,4 @@ module.exports = async function (provider) {
   }
 
   await deployAsync("Typescript migration example complete.");
-}
+};

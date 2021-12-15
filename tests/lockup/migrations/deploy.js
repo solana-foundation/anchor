@@ -31,7 +31,7 @@ module.exports = async function (provider) {
   });
 
   // Delete the default whitelist entries.
-  const defaultEntry = { programId: new anchor.web3.PublicKey.default };
+  const defaultEntry = { programId: new anchor.web3.PublicKey.default() };
   await lockup.state.rpc.whitelistDelete(defaultEntry, {
     accounts: {
       authority: provider.wallet.publicKey,
@@ -143,13 +143,11 @@ async function registrarInit(
   const rewardQ = anchor.web3.Keypair.generate();
   const withdrawalTimelock = new anchor.BN(_withdrawalTimelock);
   const stakeRate = new anchor.BN(_stakeRate);
-  const [
-    registrarSigner,
-    nonce,
-  ] = await anchor.web3.PublicKey.findProgramAddress(
-    [registrar.publicKey.toBuffer()],
-    registry.programId
-  );
+  const [registrarSigner, nonce] =
+    await anchor.web3.PublicKey.findProgramAddress(
+      [registrar.publicKey.toBuffer()],
+      registry.programId
+    );
   const poolMint = await serumCmn.createMint(
     registry.provider,
     registrarSigner

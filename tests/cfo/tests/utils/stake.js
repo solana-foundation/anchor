@@ -32,13 +32,11 @@ const WHITELIST_SIZE = 10;
 
 async function setupStakePool(mint, god) {
   // Registry genesis.
-  const [
-    _registrarSigner,
-    _nonce,
-  ] = await anchor.web3.PublicKey.findProgramAddress(
-    [registrar.publicKey.toBuffer()],
-    registry.programId
-  );
+  const [_registrarSigner, _nonce] =
+    await anchor.web3.PublicKey.findProgramAddress(
+      [registrar.publicKey.toBuffer()],
+      registry.programId
+    );
   registrarSigner = _registrarSigner;
   nonce = _nonce;
   poolMint = await serumCmn.createMint(provider, registrarSigner);
@@ -96,13 +94,11 @@ async function setupStakePool(mint, god) {
     seed,
     registry.programId
   );
-  const [
-    _memberSigner,
-    nonce2,
-  ] = await anchor.web3.PublicKey.findProgramAddress(
-    [registrar.publicKey.toBuffer(), member.toBuffer()],
-    registry.programId
-  );
+  const [_memberSigner, nonce2] =
+    await anchor.web3.PublicKey.findProgramAddress(
+      [registrar.publicKey.toBuffer(), member.toBuffer()],
+      registry.programId
+    );
   memberSigner = _memberSigner;
   const [mainTx, _balances] = await utils.createBalanceSandbox(
     provider,
@@ -133,9 +129,10 @@ async function setupStakePool(mint, god) {
         newAccountPubkey: member,
         basePubkey: registry.provider.wallet.publicKey,
         seed,
-        lamports: await registry.provider.connection.getMinimumBalanceForRentExemption(
-          registry.account.member.size
-        ),
+        lamports:
+          await registry.provider.connection.getMinimumBalanceForRentExemption(
+            registry.account.member.size
+          ),
         space: registry.account.member.size,
         programId: registry.programId,
       }),
