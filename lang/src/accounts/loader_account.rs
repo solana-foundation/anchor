@@ -55,7 +55,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         acc_info: &AccountInfo<'info>,
     ) -> Result<AccountLoader<'info, T>, ProgramError> {
         if acc_info.owner != &T::owner() {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
+            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
         let data: &[u8] = &acc_info.try_borrow_data()?;
         // Discriminator must match.
@@ -74,7 +74,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         acc_info: &AccountInfo<'info>,
     ) -> Result<AccountLoader<'info, T>, ProgramError> {
         if acc_info.owner != &T::owner() {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
+            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
         Ok(AccountLoader::new(acc_info.clone()))
     }

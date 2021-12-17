@@ -43,7 +43,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
         info: &AccountInfo<'a>,
     ) -> Result<ProgramState<'a, T>, ProgramError> {
         if info.owner != program_id {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
+            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
         if info.key != &Self::address(program_id) {
             solana_program::msg!("Invalid state address");

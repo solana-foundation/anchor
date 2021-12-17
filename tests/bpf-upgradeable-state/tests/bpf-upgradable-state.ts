@@ -122,7 +122,7 @@ describe("bpf_upgradeable_state", () => {
       assert.equal(err.code, 3007);
       assert.equal(
         err.msg,
-        "The given account is not owned by the executing program"
+        "The given account is owned by a different program than expected"
       );
     }
   });

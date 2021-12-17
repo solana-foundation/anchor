@@ -38,7 +38,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
+            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Account::new(info.clone(), T::try_deserialize(&mut data)?))
@@ -53,7 +53,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
-            return Err(ErrorCode::AccountNotProgramOwned.into());
+            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Account::new(
