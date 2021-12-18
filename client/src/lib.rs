@@ -362,37 +362,44 @@ impl<'a> RequestBuilder<'a> {
         }
     }
 
+    #[must_use]
     pub fn payer(mut self, payer: Keypair) -> Self {
         self.payer = payer;
         self
     }
 
+    #[must_use]
     pub fn cluster(mut self, url: &str) -> Self {
         self.cluster = url.to_string();
         self
     }
 
+    #[must_use]
     pub fn instruction(mut self, ix: Instruction) -> Self {
         self.instructions.push(ix);
         self
     }
 
+    #[must_use]
     pub fn program(mut self, program_id: Pubkey) -> Self {
         self.program_id = program_id;
         self
     }
 
+    #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
         let mut metas = accounts.to_account_metas(None);
         self.accounts.append(&mut metas);
         self
     }
 
+    #[must_use]
     pub fn options(mut self, options: CommitmentConfig) -> Self {
         self.options = options;
         self
     }
 
+    #[must_use]
     pub fn args(mut self, args: impl InstructionData) -> Self {
         self.instruction_data = Some(args.data());
         self
@@ -400,6 +407,7 @@ impl<'a> RequestBuilder<'a> {
 
     /// Invokes the `#[state]`'s `new` constructor.
     #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn new(mut self, args: impl InstructionData) -> Self {
         assert!(self.namespace == RequestNamespace::State { new: false });
         self.namespace = RequestNamespace::State { new: true };
@@ -407,6 +415,7 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
+    #[must_use]
     pub fn signer(mut self, signer: &'a dyn Signer) -> Self {
         self.signers.push(signer);
         self

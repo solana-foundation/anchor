@@ -1265,8 +1265,7 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
 
 fn extract_idl(file: &str) -> Result<Option<Idl>> {
     let file = shellexpand::tilde(file);
-    let manifest_from_path =
-        std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap().to_path_buf());
+    let manifest_from_path = std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap());
     let cargo = Manifest::discover_from_path(manifest_from_path)?
         .ok_or_else(|| anyhow!("Cargo.toml not found"))?;
     anchor_syn::idl::file::parse(&*file, cargo.version())
