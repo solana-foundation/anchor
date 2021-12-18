@@ -28,7 +28,6 @@ pub fn transfer<'a, 'b, 'c, 'info>(
             ctx.accounts.from.clone(),
             ctx.accounts.to.clone(),
             ctx.accounts.authority.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
@@ -52,7 +51,6 @@ pub fn mint_to<'a, 'b, 'c, 'info>(
             ctx.accounts.to.clone(),
             ctx.accounts.mint.clone(),
             ctx.accounts.authority.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
@@ -76,7 +74,6 @@ pub fn burn<'a, 'b, 'c, 'info>(
             ctx.accounts.to.clone(),
             ctx.accounts.mint.clone(),
             ctx.accounts.authority.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
@@ -100,7 +97,6 @@ pub fn approve<'a, 'b, 'c, 'info>(
             ctx.accounts.to.clone(),
             ctx.accounts.delegate.clone(),
             ctx.accounts.authority.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
@@ -122,7 +118,6 @@ pub fn initialize_account<'a, 'b, 'c, 'info>(
             ctx.accounts.mint.clone(),
             ctx.accounts.authority.clone(),
             ctx.accounts.rent.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
@@ -206,11 +201,7 @@ pub fn initialize_mint<'a, 'b, 'c, 'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.mint.clone(),
-            ctx.accounts.rent.clone(),
-            ctx.program.clone(),
-        ],
+        &[ctx.accounts.mint.clone(), ctx.accounts.rent.clone()],
         ctx.signer_seeds,
     )
 }
@@ -238,7 +229,6 @@ pub fn set_authority<'a, 'b, 'c, 'info>(
         &[
             ctx.accounts.account_or_mint.clone(),
             ctx.accounts.current_authority.clone(),
-            ctx.program.clone(),
         ],
         ctx.signer_seeds,
     )
