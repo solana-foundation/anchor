@@ -87,7 +87,7 @@ Uses Solana's upgradeable BPF loader to upgrade the on chain program code.
 anchor test
 ```
 
-Run an integration test suit against the configured cluster, deploying new versions
+Run an integration test suite against the configured cluster, deploying new versions
 of all workspace programs before running them.
 
 If the configured network is a localnet, then automatically starts the localnetwork and runs
