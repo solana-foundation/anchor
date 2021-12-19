@@ -19,6 +19,7 @@ incremented for features.
 
 * lang: Add `programdata_address: Option<Pubkey>` field to `Program` account. Will be populated if account is a program owned by the upgradable bpf loader ([#1125](https://github.com/project-serum/anchor/pull/1125))
 * lang,ts,ci,cli,docs: update solana toolchain to version 1.8.5([#1133](https://github.com/project-serum/anchor/pull/1133))
+* ts: Add optional commitment argument to `fetch` and `fetchMultiple` ([#1171](https://github.com/project-serum/anchor/pull/1171))
 
 ### Breaking
 

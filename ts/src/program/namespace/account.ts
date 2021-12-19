@@ -136,8 +136,11 @@ export class AccountClient<
    *
    * @param address The address of the account to fetch.
    */
-  async fetchNullable(address: Address): Promise<T | null> {
-    const accountInfo = await this.getAccountInfo(address);
+  async fetchNullable(
+    address: Address,
+    commitment?: Commitment
+  ): Promise<T | null> {
+    const accountInfo = await this.getAccountInfo(address, commitment);
     if (accountInfo === null) {
       return null;
     }
@@ -161,8 +164,8 @@ export class AccountClient<
    *
    * @param address The address of the account to fetch.
    */
-  async fetch(address: Address): Promise<T> {
-    const data = await this.fetchNullable(address);
+  async fetch(address: Address, commitment?: Commitment): Promise<T> {
+    const data = await this.fetchNullable(address, commitment);
     if (data === null) {
       throw new Error(`Account does not exist ${address.toString()}`);
     }
@@ -175,10 +178,14 @@ export class AccountClient<
    *
    * @param addresses The addresses of the accounts to fetch.
    */
-  async fetchMultiple(addresses: Address[]): Promise<(Object | null)[]> {
+  async fetchMultiple(
+    addresses: Address[],
+    commitment?: Commitment
+  ): Promise<(Object | null)[]> {
     const accounts = await rpcUtil.getMultipleAccounts(
       this._provider.connection,
-      addresses.map((address) => translateAddress(address))
+      addresses.map((address) => translateAddress(address)),
+      commitment
     );
 
     const discriminator = AccountsCoder.accountDiscriminator(
