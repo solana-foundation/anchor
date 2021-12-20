@@ -24,6 +24,7 @@ incremented for features.
 
 ### Breaking
 
+* client: Client::new and Client::new_with_options now accept `Rc<dyn Signer>` instead of `Keypair` ([#975](https://github.com/project-serum/anchor/pull/975)).
 * lang, ts: Change error enum name and message for 'wrong program ownership' account validation ([#1154](https://github.com/project-serum/anchor/pull/1154)).
 
 ## [0.19.0] - 2021-12-08

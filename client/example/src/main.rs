@@ -22,6 +22,7 @@ use composite::accounts::{Bar, CompositeUpdate, Foo, Initialize};
 use composite::instruction as composite_instruction;
 use composite::{DummyA, DummyB};
 use rand::rngs::OsRng;
+use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
     );
 
     // Client.
-    let client = Client::new_with_options(url, payer, CommitmentConfig::processed());
+    let client = Client::new_with_options(url, Rc::new(payer), CommitmentConfig::processed());
 
     // Run tests.
     composite(&client, opts.composite_pid)?;

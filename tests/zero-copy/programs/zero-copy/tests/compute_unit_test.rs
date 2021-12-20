@@ -1,6 +1,7 @@
 #![cfg(feature = "test-bpf")]
 
 use {
+    std::rc::Rc,
     anchor_client::{
         anchor_lang::Discriminator,
         solana_sdk::{
@@ -42,7 +43,7 @@ async fn update_foo() {
 
     let client = Client::new_with_options(
         Cluster::Debug,
-        Keypair::new(),
+        Rc::new(Keypair::new()),
         CommitmentConfig::processed(),
     );
     let program = client.program(zero_copy::id());
