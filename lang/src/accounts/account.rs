@@ -73,6 +73,10 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     pub fn into_inner(self) -> T {
         self.account
     }
+
+    pub fn set_inner(&mut self, inner: T) {
+        self.account = inner;
+    }
 }
 
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info>
