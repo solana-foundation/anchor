@@ -30,8 +30,8 @@ export default class Provider {
 
   static defaultOptions(): ConfirmOptions {
     return {
-      preflightCommitment: "recent",
-      commitment: "recent",
+      preflightCommitment: "processed",
+      commitment: "processed",
     };
   }
 
@@ -207,7 +207,7 @@ export default class Provider {
     return await simulateTransaction(
       this.connection,
       tx,
-      opts.commitment ?? this.opts.commitment ?? "recent"
+      opts.commitment ?? this.opts.commitment ?? "processed"
     );
   }
 }

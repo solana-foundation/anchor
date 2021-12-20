@@ -102,13 +102,13 @@ describe("cfo", () => {
     marketAClient = await Market.load(
       program.provider.connection,
       ORDERBOOK_ENV.marketA.address,
-      { commitment: "recent" },
+      { commitment: "processed" },
       DEX_PID
     );
     marketBClient = await Market.load(
       program.provider.connection,
       ORDERBOOK_ENV.marketB.address,
-      { commitment: "recent" },
+      { commitment: "processed" },
       DEX_PID
     );
     assert.ok(marketAClient._decoded.quoteFeesAccrued.toString() === FEES);

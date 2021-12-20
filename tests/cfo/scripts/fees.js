@@ -19,7 +19,7 @@ async function main() {
     let marketClient = await Market.load(
       provider.connection,
       market,
-      { commitment: "recent" },
+      { commitment: "processed" },
       DEX_PID
     );
     console.log("Fees: ", marketClient._decoded.quoteFeesAccrued.toString());
