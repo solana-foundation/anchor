@@ -22,7 +22,7 @@ export class EventCoder {
       this.layouts = new Map();
       return;
     }
-    const layouts = idl.events.map((event) => {
+    const layouts: [string, Layout<any>][] = idl.events.map((event) => {
       let eventTypeDef: IdlTypeDef = {
         name: event.name,
         type: {
@@ -34,7 +34,6 @@ export class EventCoder {
       };
       return [event.name, IdlCoder.typeDefLayout(eventTypeDef, idl.types)];
     });
-    // @ts-ignore
     this.layouts = new Map(layouts);
 
     this.discriminators = new Map<string, string>(

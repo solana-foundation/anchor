@@ -82,7 +82,7 @@ async function getMultipleAccountsCore(
   if (commitment) {
     args.push({ commitment });
   }
-  // @ts-expect-error
+  // @ts-ignore
   const res = await connection._rpcRequest("getMultipleAccounts", args);
   if (res.error) {
     throw new Error(

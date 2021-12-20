@@ -12,6 +12,10 @@ import {
   IdlAccount,
   IdlAccountItem,
   IdlTypeDefTyStruct,
+  IdlTypeVec,
+  IdlTypeOption,
+  IdlTypeDefined,
+  IdlAccounts,
 } from "../idl";
 import { IdlCoder } from "./idl.js";
 import { sighash } from "./common.js";
@@ -92,7 +96,7 @@ export class InstructionCoder {
     const stateMethods = idl.state ? idl.state.methods : [];
 
     const ixLayouts = stateMethods
-      .map((m: IdlStateMethod) => {
+      .map((m: IdlStateMethod): [string, Layout<unknown>] => {
         let fieldLayouts = m.args.map((arg: IdlField) => {
           return IdlCoder.fieldLayout(
             arg,
@@ -114,7 +118,6 @@ export class InstructionCoder {
           return [name, borsh.struct(fieldLayouts, name)];
         })
       );
-    // @ts-ignore
     return new Map(ixLayouts);
   }
 
@@ -245,17 +248,13 @@ class InstructionFormatter {
     if (typeof idlField.type === "string") {
       return data.toString();
     }
-    // @ts-ignore
-    if (idlField.type.vec) {
-      // @ts-ignore
+    if (idlField.type.hasOwnProperty("vec")) {
       return (
         "[" +
-        data
-          // @ts-ignore
+        (<Array<IdlField>>data)
           .map((d: IdlField) =>
             this.formatIdlData(
-              // @ts-ignore
-              { name: "", type: idlField.type.vec },
+              { name: "", type: (<IdlTypeVec>idlField.type).vec },
               d
             )
           )
@@ -263,27 +262,25 @@ class InstructionFormatter {
         "]"
       );
     }
-    // @ts-ignore
-    if (idlField.type.option) {
-      // @ts-ignore
+    if (idlField.type.hasOwnProperty("option")) {
       return data === null
         ? "null"
         : this.formatIdlData(
-            // @ts-ignore
-            { name: "", type: idlField.type.option },
+            { name: "", type: (<IdlTypeOption>idlField.type).option },
             data
           );
     }
-    // @ts-ignore
-    if (idlField.type.defined) {
+    if (idlField.type.hasOwnProperty("defined")) {
       if (types === undefined) {
         throw new Error("User defined types not provided");
       }
-      // @ts-ignore
-      const filtered = types.filter((t) => t.name === idlField.type.defined);
+      const filtered = types.filter(
+        (t) => t.name === (<IdlTypeDefined>idlField.type).defined
+      );
       if (filtered.length !== 1) {
-        // @ts-ignore
-        throw new Error(`Type not found: ${idlField.type.defined}`);
+        throw new Error(
+          `Type not found: ${(<IdlTypeDefined>idlField.type).defined}`
+        );
       }
       return InstructionFormatter.formatIdlDataDefined(
         filtered[0],
@@ -358,22 +355,18 @@ class InstructionFormatter {
     accounts: IdlAccountItem[],
     prefix?: string
   ): IdlAccount[] {
-    // @ts-ignore
     return accounts
       .map((account) => {
         const accName = sentenceCase(account.name);
-        // @ts-ignore
-        if (account.accounts) {
+        if (account.hasOwnProperty("accounts")) {
           const newPrefix = prefix ? `${prefix} > ${accName}` : accName;
-          // @ts-ignore
           return InstructionFormatter.flattenIdlAccounts(
-            // @ts-ignore
-            account.accounts,
+            (<IdlAccounts>account).accounts,
             newPrefix
           );
         } else {
           return {
-            ...account,
+            ...(<IdlAccount>account),
             name: prefix ? `${prefix} > ${accName}` : accName,
           };
         }
