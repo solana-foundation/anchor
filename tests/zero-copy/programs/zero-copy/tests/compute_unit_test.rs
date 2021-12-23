@@ -1,7 +1,6 @@
 #![cfg(feature = "test-bpf")]
 
 use {
-    std::rc::Rc,
     anchor_client::{
         anchor_lang::Discriminator,
         solana_sdk::{
@@ -14,6 +13,7 @@ use {
         Client, Cluster,
     },
     solana_program_test::{tokio, ProgramTest},
+    std::rc::Rc,
 };
 
 #[tokio::test]
@@ -38,7 +38,7 @@ async fn update_foo() {
 
     let mut pt = ProgramTest::new("zero_copy", zero_copy::id(), None);
     pt.add_account(foo_pubkey, foo_account);
-    pt.set_bpf_compute_max_units(2077);
+    pt.set_bpf_compute_max_units(3077);
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
     let client = Client::new_with_options(
