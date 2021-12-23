@@ -87,6 +87,11 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_const_array_size(ctx: Context<TestConstArraySize>, data: u8) -> ProgramResult {
+        ctx.accounts.data.data[0] = data;
+        Ok(())
+    }
+
     pub fn test_close(_ctx: Context<TestClose>) -> ProgramResult {
         Ok(())
     }

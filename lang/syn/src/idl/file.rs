@@ -402,9 +402,14 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
                     .map(|f: &syn::Field| {
                         let mut tts = proc_macro2::TokenStream::new();
                         f.ty.to_tokens(&mut tts);
+                        // Handle array sizes that are constants
+                        let mut tts_string = tts.to_string();
+                        if tts_string.starts_with('[') {
+                            tts_string = resolve_variable_array_length(ctx, tts_string);
+                        }
                         Ok(IdlField {
                             name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
-                            ty: tts.to_string().parse()?,
+                            ty: tts_string.parse()?,
                         })
                     })
                     .collect::<Result<Vec<IdlField>>>(),
@@ -453,6 +458,33 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
             })
         }))
         .collect()
+}
+
+// Replace variable array lengths with values
+fn resolve_variable_array_length(ctx: &CrateContext, tts_string: String) -> String {
+    for constant in ctx.consts() {
+        if constant.ty.to_token_stream().to_string() == "usize"
+            && tts_string.contains(&constant.ident.to_string())
+        {
+            // Check for the existence of consts existing elsewhere in the
+            // crate which have the same name, are usize, and have a
+            // different value. We can't know which was intended for the
+            // array size from ctx.
+            if ctx.consts().any(|c| {
+                c != constant
+                    && c.ident == constant.ident
+                    && c.ty == constant.ty
+                    && c.expr != constant.expr
+            }) {
+                panic!("Crate wide unique name required for array size const.");
+            }
+            return tts_string.replace(
+                &constant.ident.to_string(),
+                &constant.expr.to_token_stream().to_string(),
+            );
+        }
+    }
+    tts_string
 }
 
 fn to_idl_type(f: &syn::Field) -> IdlType {

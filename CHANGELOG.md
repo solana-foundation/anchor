@@ -23,6 +23,7 @@ incremented for features.
 * lang,ts,ci,cli,docs: update solana toolchain to version 1.8.5([#1133](https://github.com/project-serum/anchor/pull/1133))
 * ts: Add optional commitment argument to `fetch` and `fetchMultiple` ([#1171](https://github.com/project-serum/anchor/pull/1171))
 * lang: Add `set_inner` method to `Account<'a, T>` to enable easy updates ([#1177](https://github.com/project-serum/anchor/pull/1177))
+* lang: Handle arrays with const as length ([#968](https://github.com/project-serum/anchor/pull/968)).
 
 ### Breaking
 

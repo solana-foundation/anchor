@@ -330,3 +330,9 @@ pub struct TestMultidimensionalArray<'info> {
     #[account(zero)]
     pub data: Account<'info, DataMultidimensionalArray>,
 }
+
+#[derive(Accounts)]
+pub struct TestConstArraySize<'info> {
+    #[account(zero)]
+    pub data: Account<'info, DataConstArraySize>,
+}

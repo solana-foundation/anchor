@@ -836,6 +836,24 @@ describe("misc", () => {
     assert.ok(account.data, 3);
   });
 
+  it("Can use const for array size", async () => {
+    const data = anchor.web3.Keypair.generate();
+    const tx = await program.rpc.testConstArraySize(99, {
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [
+        await program.account.dataConstArraySize.createInstruction(data),
+      ],
+    });
+    const dataAccount = await program.account.dataConstArraySize.fetch(
+      data.publicKey
+    );
+    assert.deepStrictEqual(dataAccount.data, [99, ...new Array(9).fill(0)]);
+  });
+
   it("Should include BASE const in IDL", async () => {
     assert(
       miscIdl.constants.find(
