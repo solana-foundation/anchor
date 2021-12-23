@@ -289,7 +289,7 @@ pub fn zero_copy(
 
     proc_macro::TokenStream::from(quote! {
         #[derive(anchor_lang::__private::ZeroCopyAccessor, Copy, Clone)]
-        #[repr(packed)]
+        #[repr(C)]
         #account_strct
     })
 }

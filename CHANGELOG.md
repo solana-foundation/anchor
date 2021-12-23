@@ -13,6 +13,7 @@ incremented for features.
 
 
 ### Fixes
+
 * ts: Change commitment message `recent` to `processed` and `max` to `finalized` ([#1128](https://github.com/project-serum/anchor/pull/1128))
 * ts: fix `translateAddress` which currently leads to failing browser code. Now uses `PublicKey` constructor instead of prototype chain constructor name checking which doesn't work in the presence of code minifying/mangling([1138](https://github.com/project-serum/anchor/pull/1138))
 
@@ -27,6 +28,7 @@ incremented for features.
 
 * client: Client::new and Client::new_with_options now accept `Rc<dyn Signer>` instead of `Keypair` ([#975](https://github.com/project-serum/anchor/pull/975)).
 * lang, ts: Change error enum name and message for 'wrong program ownership' account validation ([#1154](https://github.com/project-serum/anchor/pull/1154)).
+ lang: Change from `#[repr(packed)]` to `#[repr(C)]` for zero copy accounts ([#1106](https://github.com/project-serum/anchor/pull/1106)).
 
 ## [0.19.0] - 2021-12-08
 
