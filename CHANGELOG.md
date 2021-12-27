@@ -25,6 +25,7 @@ incremented for features.
 * lang: Add `set_inner` method to `Account<'a, T>` to enable easy updates ([#1177](https://github.com/project-serum/anchor/pull/1177)).
 * lang: Handle arrays with const as length ([#968](https://github.com/project-serum/anchor/pull/968)).
 * ts: Add optional commitment argument to `fetch` and `fetchMultiple` ([#1171](https://github.com/project-serum/anchor/pull/1171)).
+* lang: Implement `AsRef<T>` for `Account<'a, T>`([#1173](https://github.com/project-serum/anchor/pull/1173))
 
 ### Breaking
 
