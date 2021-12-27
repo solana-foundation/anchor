@@ -1,6 +1,5 @@
 use anchor_lang::solana_program::account_info::AccountInfo;
 use anchor_lang::solana_program::entrypoint::ProgramResult;
-use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{Accounts, CpiContext};
 
@@ -40,16 +39,6 @@ pub struct Create<'info> {
 
 #[derive(Clone)]
 pub struct AssociatedToken;
-
-impl anchor_lang::AccountDeserialize for AssociatedToken {
-    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
-        AssociatedToken::try_deserialize_unchecked(buf)
-    }
-
-    fn try_deserialize_unchecked(_buf: &mut &[u8]) -> Result<Self, ProgramError> {
-        Ok(AssociatedToken)
-    }
-}
 
 impl anchor_lang::Id for AssociatedToken {
     fn id() -> Pubkey {

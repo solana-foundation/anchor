@@ -75,16 +75,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #[derive(Clone)]
             pub struct #name;
 
-            impl anchor_lang::AccountDeserialize for #name {
-                fn try_deserialize(buf: &mut &[u8]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
-                    #name::try_deserialize_unchecked(buf)
-                }
-
-                fn try_deserialize_unchecked(_buf: &mut &[u8]) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
-                    Ok(#name)
-                }
-            }
-
             impl anchor_lang::Id for #name {
                 fn id() -> Pubkey {
                     ID

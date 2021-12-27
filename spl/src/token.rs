@@ -363,12 +363,6 @@ impl Deref for Mint {
 #[derive(Clone)]
 pub struct Token;
 
-impl anchor_lang::AccountDeserialize for Token {
-    fn try_deserialize_unchecked(_buf: &mut &[u8]) -> Result<Self, ProgramError> {
-        Ok(Token)
-    }
-}
-
 impl anchor_lang::Id for Token {
     fn id() -> Pubkey {
         ID

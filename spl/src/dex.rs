@@ -289,23 +289,6 @@ pub struct InitializeMarket<'info> {
 #[derive(Clone)]
 pub struct Dex;
 
-impl anchor_lang::AccountDeserialize for Dex {
-    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
-        Dex::try_deserialize_unchecked(buf)
-    }
-
-    fn try_deserialize_unchecked(_buf: &mut &[u8]) -> Result<Self, ProgramError> {
-        Ok(Dex)
-    }
-}
-
-impl anchor_lang::AccountSerialize for Dex {
-    fn try_serialize<W: Write>(&self, _writer: &mut W) -> Result<(), ProgramError> {
-        // no-op
-        Ok(())
-    }
-}
-
 impl anchor_lang::Id for Dex {
     fn id() -> Pubkey {
         ID

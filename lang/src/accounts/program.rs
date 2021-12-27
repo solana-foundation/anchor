@@ -6,36 +6,32 @@ use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 /// Account container that checks ownership on deserialization.
 #[derive(Clone)]
-pub struct Program<'info, T: Id + AccountDeserialize + Clone> {
-    _account: T,
+pub struct Program<'info, T: Id + Clone> {
     info: AccountInfo<'info>,
     programdata_address: Option<Pubkey>,
+    _phantom: PhantomData<T>,
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Program<'info, T> {
+impl<'info, T: Id + Clone + fmt::Debug> fmt::Debug for Program<'info, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Program")
-            .field("account", &self._account)
             .field("info", &self.info)
             .field("programdata_address", &self.programdata_address)
             .finish()
     }
 }
 
-impl<'a, T: Id + AccountDeserialize + Clone> Program<'a, T> {
-    fn new(
-        info: AccountInfo<'a>,
-        _account: T,
-        programdata_address: Option<Pubkey>,
-    ) -> Program<'a, T> {
+impl<'a, T: Id + Clone> Program<'a, T> {
+    fn new(info: AccountInfo<'a>, programdata_address: Option<Pubkey>) -> Program<'a, T> {
         Self {
             info,
-            _account,
             programdata_address,
+            _phantom: PhantomData,
         }
     }
 
@@ -75,13 +71,7 @@ impl<'a, T: Id + AccountDeserialize + Clone> Program<'a, T> {
             None
         };
 
-        // Programs have no data so use an empty slice.
-        let mut empty = &[][..];
-        Ok(Program::new(
-            info.clone(),
-            T::try_deserialize(&mut empty)?,
-            programdata_address,
-        ))
+        Ok(Program::new(info.clone(), programdata_address))
     }
 
     pub fn programdata_address(&self) -> Option<Pubkey> {
@@ -89,9 +79,9 @@ impl<'a, T: Id + AccountDeserialize + Clone> Program<'a, T> {
     }
 }
 
-impl<'info, T: Id + Clone> Accounts<'info> for Program<'info, T>
+impl<'info, T> Accounts<'info> for Program<'info, T>
 where
-    T: Id + AccountDeserialize,
+    T: Id + Clone,
 {
     #[inline(never)]
     fn try_accounts(
@@ -108,7 +98,7 @@ where
     }
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone> ToAccountMetas for Program<'info, T> {
+impl<'info, T: Id + Clone> ToAccountMetas for Program<'info, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
         let meta = match self.info.is_writable {
@@ -119,25 +109,25 @@ impl<'info, T: Id + AccountDeserialize + Clone> ToAccountMetas for Program<'info
     }
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone> ToAccountInfos<'info> for Program<'info, T> {
+impl<'info, T: Id + Clone> ToAccountInfos<'info> for Program<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.info.clone()]
     }
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone> ToAccountInfo<'info> for Program<'info, T> {
+impl<'info, T: Id + Clone> ToAccountInfo<'info> for Program<'info, T> {
     fn to_account_info(&self) -> AccountInfo<'info> {
         self.info.clone()
     }
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone> AsRef<AccountInfo<'info>> for Program<'info, T> {
+impl<'info, T: Id + Clone> AsRef<AccountInfo<'info>> for Program<'info, T> {
     fn as_ref(&self) -> &AccountInfo<'info> {
         &self.info
     }
 }
 
-impl<'info, T: Id + AccountDeserialize + Clone> Deref for Program<'info, T> {
+impl<'info, T: Id + Clone> Deref for Program<'info, T> {
     type Target = AccountInfo<'info>;
 
     fn deref(&self) -> &Self::Target {
@@ -145,7 +135,7 @@ impl<'info, T: Id + AccountDeserialize + Clone> Deref for Program<'info, T> {
     }
 }
 
-impl<'info, T: AccountDeserialize + Id + Clone> AccountsExit<'info> for Program<'info, T> {
+impl<'info, T: Id + Clone> AccountsExit<'info> for Program<'info, T> {
     fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
         // No-op.
         Ok(())
