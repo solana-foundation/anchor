@@ -11,7 +11,6 @@ incremented for features.
 
 ## [Unreleased]
 
-
 ### Fixes
 
 * ts: Change commitment message `recent` to `processed` and `max` to `finalized` ([#1128](https://github.com/project-serum/anchor/pull/1128))
@@ -26,6 +25,7 @@ incremented for features.
 * lang: Handle arrays with const as length ([#968](https://github.com/project-serum/anchor/pull/968)).
 * ts: Add optional commitment argument to `fetch` and `fetchMultiple` ([#1171](https://github.com/project-serum/anchor/pull/1171)).
 * lang: Implement `AsRef<T>` for `Account<'a, T>`([#1173](https://github.com/project-serum/anchor/pull/1173))
+* cli: Add `anchor expand` command which wraps around `cargo expand` ([#1160](https://github.com/project-serum/anchor/pull/1160))
 
 ### Breaking
 

@@ -152,6 +152,7 @@ dependencies = [
  "anchor-syn",
  "anyhow",
  "cargo_toml",
+ "chrono",
  "clap 3.0.0-beta.4",
  "dirs",
  "flate2",
