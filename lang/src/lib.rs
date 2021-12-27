@@ -158,7 +158,9 @@ pub trait ToAccountInfo<'info> {
 /// [`#[account]`](./attr.account.html) attribute.
 pub trait AccountSerialize {
     /// Serializes the account data into `writer`.
-    fn try_serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError>;
+    fn try_serialize<W: Write>(&self, _writer: &mut W) -> Result<(), ProgramError> {
+        Ok(())
+    }
 }
 
 /// A data structure that can be deserialized and stored into account storage,
@@ -173,7 +175,9 @@ pub trait AccountDeserialize: Sized {
     /// For example, if the SPL token program were to implement this trait,
     /// it should be impossible to deserialize a `Mint` account into a token
     /// `Account`.
-    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError>;
+    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        Self::try_deserialize_unchecked(buf)
+    }
 
     /// Deserializes account data without checking the account discriminator.
     /// This should only be used on account initialization, when the bytes of
