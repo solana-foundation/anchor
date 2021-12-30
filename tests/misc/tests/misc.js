@@ -7,6 +7,7 @@ const {
   Token,
 } = require("@solana/spl-token");
 const miscIdl = require("../target/idl/misc.json");
+const { SystemProgram } = require("@solana/web3.js");
 const utf8 = anchor.utils.bytes.utf8;
 
 describe("misc", () => {
@@ -1298,5 +1299,91 @@ describe("misc", () => {
       data.publicKey
     );
     assert.deepStrictEqual(dataAccount.data, array2d);
+  });
+
+  it("allows non-rent exempt accounts", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.initializeNoRentExempt({
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [
+        SystemProgram.createAccount({
+          programId: program.programId,
+          space: 8 + 16 + 16,
+          lamports:
+            await program.provider.connection.getMinimumBalanceForRentExemption(
+              39
+            ),
+          fromPubkey: anchor.getProvider().wallet.publicKey,
+          newAccountPubkey: data.publicKey,
+        }),
+      ],
+    });
+    await program.rpc.testNoRentExempt({
+      accounts: {
+        data: data.publicKey,
+      },
+    });
+  });
+
+  it("allows rent exemption to be skipped", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.initializeSkipRentExempt({
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [
+        SystemProgram.createAccount({
+          programId: program.programId,
+          space: 8 + 16 + 16,
+          lamports:
+            await program.provider.connection.getMinimumBalanceForRentExemption(
+              39
+            ),
+          fromPubkey: anchor.getProvider().wallet.publicKey,
+          newAccountPubkey: data.publicKey,
+        }),
+      ],
+    });
+  });
+
+  it("can use rent_exempt to enforce rent exemption", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.initializeSkipRentExempt({
+      accounts: {
+        data: data.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [data],
+      instructions: [
+        SystemProgram.createAccount({
+          programId: program.programId,
+          space: 8 + 16 + 16,
+          lamports:
+            await program.provider.connection.getMinimumBalanceForRentExemption(
+              39
+            ),
+          fromPubkey: anchor.getProvider().wallet.publicKey,
+          newAccountPubkey: data.publicKey,
+        }),
+      ],
+    });
+
+    try {
+      await program.rpc.testEnforceRentExempt({
+        accounts: {
+          data: data.publicKey,
+        },
+      });
+      assert.ok(false);
+    } catch (err) {
+      assert.equal(2005, err.code);
+      assert.equal("A rent exempt constraint was violated", err.msg);
+    }
   });
 });

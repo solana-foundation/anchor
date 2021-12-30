@@ -124,6 +124,17 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitializeSkipRentExempt<'info> {
+    #[account(zero, rent_exempt = skip)]
+    pub data: Account<'info, Data>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeNoRentExempt<'info> {
+    pub data: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct TestOwner<'info> {
     #[account(owner = *misc.key)]
     pub data: AccountInfo<'info>,
@@ -267,7 +278,7 @@ pub struct TestInitIfNeededChecksOwner<'info> {
     pub data: UncheckedAccount<'info>,
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-    pub owner: AccountInfo<'info>
+    pub owner: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -291,7 +302,7 @@ pub struct TestInitMintIfNeeded<'info> {
     pub system_program: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
     pub mint_authority: AccountInfo<'info>,
-    pub freeze_authority: AccountInfo<'info>, 
+    pub freeze_authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -322,7 +333,7 @@ pub struct TestInitAssociatedTokenIfNeeded<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub authority: AccountInfo<'info>
+    pub authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -335,4 +346,15 @@ pub struct TestMultidimensionalArray<'info> {
 pub struct TestConstArraySize<'info> {
     #[account(zero)]
     pub data: Account<'info, DataConstArraySize>,
+}
+
+#[derive(Accounts)]
+pub struct NoRentExempt<'info> {
+    pub data: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct EnforceRentExempt<'info> {
+    #[account(rent_exempt = enforce)]
+    pub data: AccountInfo<'info>,
 }
