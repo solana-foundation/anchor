@@ -47,19 +47,21 @@ const workspace = new Proxy({} as any, {
       }
 
       const idlMap = new Map<string, Idl>();
-      fs.readdirSync(idlFolder).forEach((file) => {
-        const filePath = `${idlFolder}/${file}`;
-        const idlStr = fs.readFileSync(filePath);
-        const idl = JSON.parse(idlStr);
-        idlMap.set(idl.name, idl);
-        const name = camelCase(idl.name, { pascalCase: true });
-        if (idl.metadata && idl.metadata.address) {
-          workspaceCache[name] = new Program(
-            idl,
-            new PublicKey(idl.metadata.address)
-          );
-        }
-      });
+      fs.readdirSync(idlFolder)
+        .filter((file) => file.endsWith(".json"))
+        .forEach((file) => {
+          const filePath = `${idlFolder}/${file}`;
+          const idlStr = fs.readFileSync(filePath);
+          const idl = JSON.parse(idlStr);
+          idlMap.set(idl.name, idl);
+          const name = camelCase(idl.name, { pascalCase: true });
+          if (idl.metadata && idl.metadata.address) {
+            workspaceCache[name] = new Program(
+              idl,
+              new PublicKey(idl.metadata.address)
+            );
+          }
+        });
 
       // Override the workspace programs if the user put them in the config.
       const anchorToml = toml.parse(
