@@ -280,23 +280,34 @@ pub mod prelude {
 }
 
 // Internal module used by macros and unstable apis.
-#[doc(hidden)]
 pub mod __private {
-    use solana_program::program_error::ProgramError;
-    use solana_program::pubkey::Pubkey;
+    // Modules with useful information for users
+    // don't use #[doc(hidden)] on these
+    pub use crate::error::ErrorCode;
 
+    #[doc(hidden)]
     pub use crate::ctor::Ctor;
-    pub use crate::error::{Error, ErrorCode};
+    #[doc(hidden)]
+    pub use crate::error::Error;
+    #[doc(hidden)]
     pub use anchor_attribute_account::ZeroCopyAccessor;
+    #[doc(hidden)]
     pub use anchor_attribute_event::EventIndex;
+    #[doc(hidden)]
     pub use base64;
+    #[doc(hidden)]
     pub use bytemuck;
-
+    #[doc(hidden)]
+    use solana_program::program_error::ProgramError;
+    #[doc(hidden)]
+    use solana_program::pubkey::Pubkey;
+    #[doc(hidden)]
+    #[doc(hidden)]
     pub mod state {
         pub use crate::accounts::state::*;
     }
 
-    // The starting point for user defined error codes.
+    /// The starting point for user defined error codes.
     pub const ERROR_CODE_OFFSET: u32 = 6000;
 
     // Calculates the size of an account, which may be larger than the deserialized
@@ -307,11 +318,13 @@ pub mod __private {
     }
 
     // Very experimental trait.
+    #[doc(hidden)]
     pub trait ZeroCopyAccessor<Ty> {
         fn get(&self) -> Ty;
         fn set(input: &Ty) -> Self;
     }
 
+    #[doc(hidden)]
     impl ZeroCopyAccessor<Pubkey> for [u8; 32] {
         fn get(&self) -> Pubkey {
             Pubkey::new(self)
@@ -321,7 +334,9 @@ pub mod __private {
         }
     }
 
+    #[doc(hidden)]
     pub use crate::accounts::state::PROGRAM_STATE_SEED;
+    #[doc(hidden)]
     pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255, 255, 255, 255, 255, 255, 255, 255];
 }
 

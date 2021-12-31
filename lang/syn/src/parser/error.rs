@@ -24,8 +24,13 @@ pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
             };
             last_discriminant = id + 1;
 
-            // Remove any attributes on the error variant.
-            variant.attrs = vec![];
+            // Remove any non-doc attributes on the error variant.
+            variant.attrs = variant
+                .attrs
+                .iter()
+                .filter(|attr| attr.path.segments[0].ident == "doc")
+                .cloned()
+                .collect();
 
             ErrorCode { id, ident, msg }
         })
@@ -40,7 +45,11 @@ pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
 }
 
 fn parse_error_attribute(variant: &syn::Variant) -> Option<String> {
-    let attrs = &variant.attrs;
+    let attrs = variant
+        .attrs
+        .iter()
+        .filter(|attr| attr.path.segments[0].ident != "doc")
+        .collect::<Vec<_>>();
     match attrs.len() {
         0 => None,
         1 => {
