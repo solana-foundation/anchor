@@ -422,7 +422,7 @@ impl FromStr for Config {
                 cluster: cfg.provider.cluster.parse()?,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
             },
-            scripts: cfg.scripts.unwrap_or_else(BTreeMap::new),
+            scripts: cfg.scripts.unwrap_or_default(),
             test: cfg.test,
             programs: cfg.programs.map_or(Ok(BTreeMap::new()), deser_programs)?,
             workspace: cfg.workspace.unwrap_or_default(),

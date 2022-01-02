@@ -98,6 +98,7 @@ const LangErrorCode = {
   AccountNotSystemOwned: 3011,
   AccountNotInitialized: 3012,
   AccountNotProgramData: 3013,
+  AccountNotAssociatedTokenAccount: 3014,
   // State.
   StateInvalidAddress: 4000,
 
@@ -206,6 +207,10 @@ const LangErrorMessage = new Map([
   [
     LangErrorCode.AccountNotProgramData,
     "The given account is not a program data account",
+  ],
+  [
+    LangErrorCode.AccountNotAssociatedTokenAccount,
+    "The given account is not the associated token account",
   ],
 
   // State.

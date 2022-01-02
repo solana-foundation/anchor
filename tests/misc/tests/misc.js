@@ -1282,6 +1282,70 @@ describe("misc", () => {
     }
   });
 
+  it("init_if_needed throws if token exists with correct owner and mint but is not the ATA", async () => {
+    const mint = anchor.web3.Keypair.generate();
+    await program.rpc.testInitMint({
+      accounts: {
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [mint],
+    });
+
+    const associatedToken = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      mint.publicKey,
+      program.provider.wallet.publicKey
+    );
+
+    await program.rpc.testInitAssociatedToken({
+      accounts: {
+        token: associatedToken,
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      },
+    });
+
+    const token = anchor.web3.Keypair.generate();
+    await program.rpc.testInitToken({
+      accounts: {
+        token: token.publicKey,
+        mint: mint.publicKey,
+        payer: program.provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [token],
+    });
+
+    try {
+      await program.rpc.testInitAssociatedTokenIfNeeded({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          authority: program.provider.wallet.publicKey,
+        },
+      });
+      assert.ok(false);
+    } catch (err) {
+      assert.equal(err.code, 3014);
+    }
+  });
+
   it("Can use multidimensional array", async () => {
     const array2d = new Array(10).fill(new Array(10).fill(99));
     const data = anchor.web3.Keypair.generate();

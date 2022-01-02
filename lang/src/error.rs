@@ -142,6 +142,9 @@ pub enum ErrorCode {
     /// 3013 - The given account is not a program data account
     #[msg("The given account is not a program data account")]
     AccountNotProgramData,
+    /// 3014 - The given account is not the associated token account
+    #[msg("The given account is not the associated token account")]
+    AccountNotAssociatedTokenAccount,
 
     // State.
     /// 4000 - The given state account does not have the correct address

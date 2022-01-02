@@ -488,6 +488,10 @@ pub fn generate_init(
                         if pa.owner != #owner.key() {
                             return Err(anchor_lang::__private::ErrorCode::ConstraintTokenOwner.into());
                         }
+
+                        if pa.key() != anchor_spl::associated_token::get_associated_token_address(&#owner.key(), &#mint.key()) {
+                            return Err(anchor_lang::__private::ErrorCode::AccountNotAssociatedTokenAccount.into());
+                        }
                     }
                     pa
                 };

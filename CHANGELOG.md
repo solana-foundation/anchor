@@ -14,7 +14,8 @@ incremented for features.
 ### Fixes
 
 * ts: Change commitment message `recent` to `processed` and `max` to `finalized` ([#1128](https://github.com/project-serum/anchor/pull/1128))
-* ts: fix `translateAddress` which currently leads to failing browser code. Now uses `PublicKey` constructor instead of prototype chain constructor name checking which doesn't work in the presence of code minifying/mangling([1138](https://github.com/project-serum/anchor/pull/1138))
+* ts: fix `translateAddress` which currently leads to failing browser code. Now uses `PublicKey` constructor instead of prototype chain constructor name checking which doesn't work in the presence of code minifying/mangling([#1138](https://github.com/project-serum/anchor/pull/1138))
+* lang: add missing check that verifies that account is ATA when using `init_if_needed` and init is not needed([#1221](https://github.com/project-serum/anchor/pull/1221))
 
 ### Features
 
