@@ -18,6 +18,9 @@ export { Idl } from "./idl.js";
 export * as utils from "./utils/index.js";
 export * from "./program/index.js";
 
+export declare const workspace: any;
+export declare const Wallet: import("./nodewallet").default;
+
 if (!isBrowser) {
   exports.workspace = require("./workspace.js").default;
   exports.Wallet = require("./nodewallet.js").default;
