@@ -395,6 +395,9 @@ fn generate_constraint_associated_token(
     let wallet_address = &c.wallet;
     let spl_token_mint_address = &c.mint;
     quote! {
+        if #name.owner != #wallet_address.key() {
+            return Err(anchor_lang::__private::ErrorCode::ConstraintTokenOwner.into());
+        }
         let __associated_token_address = anchor_spl::associated_token::get_associated_token_address(&#wallet_address.key(), &#spl_token_mint_address.key());
         if #name.key() != __associated_token_address {
             return Err(anchor_lang::__private::ErrorCode::ConstraintAssociated.into());

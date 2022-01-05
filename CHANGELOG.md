@@ -13,6 +13,7 @@ incremented for features.
 
 ### Fixes
 
+* lang: Add missing owner check when `associated_token::authority` is used ([#1240](https://github.com/project-serum/anchor/pull/1240)).
 * ts: Add type declarations for conditional `workspace` and `Wallet` exports ([#1137](https://github.com/project-serum/anchor/pull/1137)).
 * ts: Change commitment message `recent` to `processed` and `max` to `finalized` ([#1128](https://github.com/project-serum/anchor/pull/1128))
 * ts: fix `translateAddress` which currently leads to failing browser code. Now uses `PublicKey` constructor instead of prototype chain constructor name checking which doesn't work in the presence of code minifying/mangling([#1138](https://github.com/project-serum/anchor/pull/1138))
