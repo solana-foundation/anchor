@@ -621,6 +621,13 @@ pub fn generate_init(
                             return Err(anchor_lang::__private::ErrorCode::ConstraintOwner.into());
                         }
 
+                        {
+                            let required_lamports = __anchor_rent.minimum_balance(space);
+                            if pa.to_account_info().lamports() < required_lamports {
+                                return Err(anchor_lang::__private::ErrorCode::ConstraintRentExempt.into());
+                            }
+                        }
+
                         #pda_check
                     }
                     pa

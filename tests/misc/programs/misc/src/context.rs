@@ -360,3 +360,22 @@ pub struct EnforceRentExempt<'info> {
     #[account(rent_exempt = enforce)]
     pub data: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct InitDecreaseLamports<'info> {
+    #[account(init, payer = user, space = 1000)]
+    pub data: AccountInfo<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>
+}
+
+#[derive(Accounts)]
+pub struct InitIfNeededChecksRentExemption<'info> {
+    #[account(init_if_needed, payer = user, space = 1000)]
+    pub data: AccountInfo<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>
+}
+

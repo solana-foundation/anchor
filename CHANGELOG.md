@@ -13,6 +13,7 @@ incremented for features.
 
 ### Fixes
 
+* lang: `init_if_needed` now checks rent exemption when init is not needed ([#1250](https://github.com/project-serum/anchor/pull/1250)).
 * lang: Add missing owner check when `associated_token::authority` is used ([#1240](https://github.com/project-serum/anchor/pull/1240)).
 * ts: Add type declarations for conditional `workspace` and `Wallet` exports ([#1137](https://github.com/project-serum/anchor/pull/1137)).
 * ts: Change commitment message `recent` to `processed` and `max` to `finalized` ([#1128](https://github.com/project-serum/anchor/pull/1128))

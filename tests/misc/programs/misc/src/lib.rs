@@ -258,4 +258,14 @@ pub mod misc {
     pub fn test_enforce_rent_exempt(ctx: Context<EnforceRentExempt>) -> ProgramResult {
         Ok(())
     }
+
+    pub fn init_decrease_lamports(ctx: Context<InitDecreaseLamports>) -> ProgramResult {
+        **ctx.accounts.data.try_borrow_mut_lamports()? -= 1;
+        **ctx.accounts.user.try_borrow_mut_lamports()? += 1;
+        Ok(())
+    }
+    
+    pub fn init_if_needed_checks_rent_exemption(_ctx: Context<InitIfNeededChecksRentExemption>) -> ProgramResult {
+        Ok(())
+    }
 }

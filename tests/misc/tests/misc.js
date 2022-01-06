@@ -1398,6 +1398,32 @@ describe("misc", () => {
     }
   });
 
+  it("init_if_needed checks rent_exemption if init is not needed", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.rpc.initDecreaseLamports({
+      accounts: {
+        data: data.publicKey,
+        user: anchor.getProvider().wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      },
+      signers: [data],
+    });
+
+    try {
+      await program.rpc.initIfNeededChecksRentExemption({
+        accounts: {
+          data: data.publicKey,
+          user: anchor.getProvider().wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+        signers: [data],
+      });
+      assert.ok(false);
+    } catch (err) {
+      assert.equal(err.code, 2005);
+    }
+  });
+
   it("Can use multidimensional array", async () => {
     const array2d = new Array(10).fill(new Array(10).fill(99));
     const data = anchor.web3.Keypair.generate();
