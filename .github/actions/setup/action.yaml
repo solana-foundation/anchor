@@ -3,7 +3,7 @@ description: "Setup"
 runs:
   using: "composite"
   steps:
-      - run: sudo apt-get install -y pkg-config build-essential libudev-dev
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
         shell: bash
       - run: echo "ANCHOR_VERSION=$(cat ./VERSION)" >> $GITHUB_ENV
         shell: bash
