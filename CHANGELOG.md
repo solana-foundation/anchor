@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.20.0] - 2022-01-06
+
 ### Fixes
 
 * lang: `init_if_needed` now checks rent exemption when init is not needed ([#1250](https://github.com/project-serum/anchor/pull/1250)).
