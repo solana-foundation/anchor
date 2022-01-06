@@ -2,9 +2,6 @@ use anchor_lang::prelude::*;
 
 declare_id!("Cum9tTyj5HwcEiAmhgaS7Bbj4UczCwsucrCkxRECzM4e");
 
-// TODO: Once anchor can deserialize data of programs (=programdata_address) automatically, add another test to this file.
-// Instead of using UpgradeableLoaderState, it should use Program<'info, MY_PROGRAM>
-
 #[program]
 pub mod bpf_upgradeable_state {
     use super::*;
@@ -48,8 +45,10 @@ pub enum CustomError {
 }
 
 #[derive(Accounts)]
-#[instruction(admin_data: u64)]
 pub struct SetAdminSettings<'info> {
+    // In a real program, this should be a PDA,
+    // so the authority cannot create multiple settings accounts.
+    // Not done here for easier testing
     #[account(init, payer = authority)]
     pub settings: Account<'info, Settings>,
     #[account(mut)]
@@ -62,8 +61,10 @@ pub struct SetAdminSettings<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(admin_data: u64)]
 pub struct SetAdminSettingsUseProgramState<'info> {
+    // In a real program, this should be a PDA,
+    // so the authority cannot create multiple settings accounts.
+    // Not done here for easier testing
     #[account(init, payer = authority)]
     pub settings: Account<'info, Settings>,
     #[account(mut)]

@@ -1,3 +1,4 @@
+//! Type validating that the account signed the transaction
 use crate::error::ErrorCode;
 use crate::*;
 use solana_program::account_info::AccountInfo;
@@ -10,6 +11,30 @@ use std::ops::Deref;
 /// Type validating that the account signed the transaction. No other ownership
 /// or type checks are done. If this is used, one should not try to access the
 /// underlying account data.
+///
+/// Checks:
+///
+/// - `Signer.info.is_signer == true`
+///
+/// # Example
+/// ```ignore
+/// #[account]
+/// #[derive(Default)]
+/// pub struct MyData {
+///     pub data: u64
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example<'info> {
+///     #[account(init, payer = payer)]
+///     pub my_acc: Account<'info, MyData>,
+///     #[account(mut)]
+///     pub payer: Signer<'info>,
+///     pub system_program: Program<'info, System>
+/// }
+/// ```
+///
+/// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
 pub struct Signer<'info> {
     info: AccountInfo<'info>,

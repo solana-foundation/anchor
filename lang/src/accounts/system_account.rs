@@ -1,3 +1,5 @@
+//! Type validating that the account is owned by the system program
+
 use crate::error::ErrorCode;
 use crate::*;
 use solana_program::account_info::AccountInfo;
@@ -8,6 +10,11 @@ use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
 use std::ops::Deref;
 
+/// Type validating that the account is owned by the system program
+///
+/// Checks:
+///
+/// - `SystemAccount.info.owner == SystemProgram`
 #[derive(Debug, Clone)]
 pub struct SystemAccount<'info> {
     info: AccountInfo<'info>,

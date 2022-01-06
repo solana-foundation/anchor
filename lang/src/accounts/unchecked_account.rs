@@ -1,3 +1,6 @@
+//! Explicit wrapper for AccountInfo types to emphasize
+//! that no checks are performed
+
 use crate::error::ErrorCode;
 use crate::{Accounts, AccountsExit, Key, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
@@ -7,7 +10,8 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::ops::Deref;
 
-/// Explicit wrapper for AccountInfo types.
+/// Explicit wrapper for AccountInfo types to emphasize
+/// that no checks are performed
 #[derive(Debug, Clone)]
 pub struct UncheckedAccount<'info>(AccountInfo<'info>);
 

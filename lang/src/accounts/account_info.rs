@@ -1,3 +1,7 @@
+//! AccountInfo can be used as a type but
+//! [Unchecked Account](crate::accounts::unchecked_account::UncheckedAccount)
+//! should be used instead.
+
 use crate::error::ErrorCode;
 use crate::{Accounts, AccountsExit, Key, ToAccountInfo, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;

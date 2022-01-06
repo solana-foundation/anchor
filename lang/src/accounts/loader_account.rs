@@ -1,3 +1,5 @@
+//! Type facilitating on demand zero copy deserialization.
+
 use crate::error::ErrorCode;
 use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Owner, ToAccountInfo, ToAccountInfos,
@@ -15,17 +17,81 @@ use std::io::Write;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
 
-/// Account AccountLoader facilitating on demand zero copy deserialization.
+/// Type facilitating on demand zero copy deserialization.
+///
 /// Note that using accounts in this way is distinctly different from using,
 /// for example, the [`Account`](./struct.Account.html). Namely,
-/// one must call `load`, `load_mut`, or `load_init`, before reading or writing
-/// to the account. For more details on zero-copy-deserialization, see the
-/// [`account`](./attr.account.html) attribute.
+/// one must call
+/// - `load_init` after initializing an account (this will ignore the missing
+/// account discriminator that gets added only after the user's instruction code)
+/// - `load` when the account is not mutable
+/// - `load_mut` when the account is mutable
 ///
-/// When using it's important to be mindful of any calls to `load` so as not to
-/// induce a `RefCell` panic, especially when sharing accounts across CPI
-/// boundaries. When in doubt, one should make sure all refs resulting from a
-/// call to `load` are dropped before CPI.
+/// For more details on zero-copy-deserialization, see the
+/// [`account`](./attr.account.html) attribute.
+/// <p style=";padding:0.75em;border: 1px solid #ee6868">
+/// <strong>⚠️ </strong> When using this type it's important to be mindful
+/// of any calls to the <code>load</code> functions so as not to
+/// induce a <code>RefCell</code> panic, especially when sharing accounts across CPI
+/// boundaries. When in doubt, one should make sure all refs resulting from
+/// a call to a <code>load</code> function are dropped before CPI.
+/// This can be done explicitly by calling <code>drop(my_var)</code> or implicitly
+/// by wrapping the code using the <code>Ref</code> in braces <code>{..}</code> or
+/// moving it into its own function.
+/// </p>
+///
+/// # Example
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
+/// declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+///
+/// #[program]
+/// pub mod bar {
+///     use super::*;
+///
+///     pub fn create_bar(ctx: Context<CreateBar>, data: u64) -> ProgramResult {
+///         let bar = &mut ctx.accounts.bar.load_init()?;
+///         bar.authority = ctx.accounts.authority.key();
+///         bar.data = data;
+///         Ok(())
+///     }
+///
+///     pub fn update_bar(ctx: Context<UpdateBar>, data: u64) -> ProgramResult {
+///         (*ctx.accounts.bar.load_mut()?).data = data;
+///         Ok(())
+///     }
+/// }
+///
+/// #[account(zero_copy)]
+/// #[derive(Default)]
+/// pub struct Bar {
+///     authority: Pubkey,
+///     data: u64
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct CreateBar<'info> {
+///     #[account(
+///         init,
+///         payer = authority
+///     )]
+///     bar: AccountLoader<'info, Bar>,
+///     #[account(mut)]
+///     authority: Signer<'info>,
+///     system_program: AccountInfo<'info>,
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct UpdateBar<'info> {
+///     #[account(
+///         mut,
+///         has_one = authority,
+///     )]
+///     pub bar: AccountLoader<'info, Bar>,
+///     pub authority: Signer<'info>,
+/// }
+/// ```
 #[derive(Clone)]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
     acc_info: AccountInfo<'info>,
