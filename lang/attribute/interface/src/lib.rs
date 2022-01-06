@@ -198,7 +198,7 @@ pub fn interface(
                 format!("{:?}", sighash_arr).parse().unwrap();
             quote! {
                 pub fn #method_name<'a,'b, 'c, 'info, T: anchor_lang::Accounts<'info> + anchor_lang::ToAccountMetas + anchor_lang::ToAccountInfos<'info>>(
-                    ctx: anchor_lang::CpiContext<'a, 'b, 'c, 'info, T>,
+                    ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, T>,
                     #(#args),*
                 ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
                     #args_struct

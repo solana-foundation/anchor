@@ -1,6 +1,7 @@
 //! A simple chat program using a ring buffer to store messages.
 
 use anchor_lang::prelude::*;
+use anchor_lang::accounts::loader::Loader;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

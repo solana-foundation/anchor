@@ -17,7 +17,7 @@ use std::ops::DerefMut;
 
 /// Account AccountLoader facilitating on demand zero copy deserialization.
 /// Note that using accounts in this way is distinctly different from using,
-/// for example, the [`ProgramAccount`](./struct.ProgramAccount.html). Namely,
+/// for example, the [`Account`](./struct.Account.html). Namely,
 /// one must call `load`, `load_mut`, or `load_init`, before reading or writing
 /// to the account. For more details on zero-copy-deserialization, see the
 /// [`account`](./attr.account.html) attribute.

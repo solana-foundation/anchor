@@ -279,24 +279,24 @@ impl Field {
     pub fn container_ty(&self) -> proc_macro2::TokenStream {
         match &self.ty {
             Ty::ProgramAccount(_) => quote! {
-                anchor_lang::ProgramAccount
+                anchor_lang::accounts::program_account::ProgramAccount
             },
             Ty::Account(_) => quote! {
-                anchor_lang::Account
+                anchor_lang::accounts::account::Account
             },
             Ty::AccountLoader(_) => quote! {
-                anchor_lang::AccountLoader
+                anchor_lang::accounts::loader_account::AccountLoader
             },
             Ty::Loader(_) => quote! {
-                anchor_lang::Loader
+                anchor_lang::accounts::loader::Loader
             },
             Ty::CpiAccount(_) => quote! {
-                anchor_lang::CpiAccount
+                anchor_lang::accounts::cpi_account::CpiAccount
             },
-            Ty::Sysvar(_) => quote! { anchor_lang::Sysvar },
-            Ty::CpiState(_) => quote! { anchor_lang::CpiState },
-            Ty::ProgramState(_) => quote! { anchor_lang::ProgramState },
-            Ty::Program(_) => quote! { anchor_lang::Program },
+            Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
+            Ty::CpiState(_) => quote! { anchor_lang::accounts::cpi_state::CpiState },
+            Ty::ProgramState(_) => quote! { anchor_lang::accounts::state::ProgramState },
+            Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
             Ty::AccountInfo => quote! {},
             Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},

@@ -26,7 +26,7 @@ use syn::parse_macro_input;
 /// #[derive(Accounts)]
 /// pub struct Create {
 ///   #[account(init)]
-///   my_account: ProgramAccount<'info, MyAccount>,
+///   my_account: Account<'info, MyAccount>,
 /// }
 ///
 /// impl Create {

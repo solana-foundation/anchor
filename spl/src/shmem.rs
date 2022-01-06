@@ -2,7 +2,7 @@
 //! [program](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory).
 
 use anchor_lang::ToAccountInfo;
-use anchor_lang::{Accounts, CpiContext};
+use anchor_lang::{context::CpiContext, Accounts};
 use solana_program::account_info::AccountInfo;
 use solana_program::declare_id;
 use solana_program::entrypoint::ProgramResult;

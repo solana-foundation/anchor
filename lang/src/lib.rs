@@ -32,44 +32,19 @@ use solana_program::pubkey::Pubkey;
 use std::io::Write;
 
 mod account_meta;
-mod accounts;
+pub mod accounts;
 mod bpf_upgradeable_state;
 mod common;
-mod context;
+pub mod context;
 mod ctor;
 mod error;
 #[doc(hidden)]
 pub mod idl;
 mod system_program;
 
-pub use crate::accounts::account::Account;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use crate::accounts::cpi_account::CpiAccount;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use crate::accounts::cpi_state::CpiState;
-#[allow(deprecated)]
-pub use crate::accounts::loader::Loader;
-pub use crate::accounts::loader_account::AccountLoader;
-pub use crate::accounts::program::Program;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use crate::accounts::program_account::ProgramAccount;
-pub use crate::accounts::signer::Signer;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use crate::accounts::state::ProgramState;
-pub use crate::accounts::system_account::SystemAccount;
-pub use crate::accounts::sysvar::Sysvar;
-pub use crate::accounts::unchecked_account::UncheckedAccount;
 pub use crate::system_program::System;
 mod vec;
 pub use crate::bpf_upgradeable_state::*;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use crate::context::CpiStateContext;
-pub use crate::context::{Context, CpiContext};
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -244,18 +219,15 @@ impl Key for Pubkey {
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
     pub use super::{
-        access_control, account, constant, declare_id, emit, error, event, interface, program,
+        access_control, account, accounts::account::Account,
+        accounts::loader_account::AccountLoader, accounts::program::Program,
+        accounts::signer::Signer, accounts::system_account::SystemAccount,
+        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
+        context::Context, context::CpiContext, declare_id, emit, error, event, interface, program,
         require, solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, state, zero_copy,
-        Account, AccountDeserialize, AccountLoader, AccountSerialize, Accounts, AccountsExit,
-        AnchorDeserialize, AnchorSerialize, Context, CpiContext, Id, Key, Owner, Program,
-        ProgramData, Signer, System, SystemAccount, Sysvar, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas, UncheckedAccount,
-    };
-
-    #[allow(deprecated)]
-    pub use super::{
-        accounts::cpi_account::CpiAccount, accounts::cpi_state::CpiState, accounts::loader::Loader,
-        accounts::program_account::ProgramAccount, accounts::state::ProgramState, CpiStateContext,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AnchorDeserialize,
+        AnchorSerialize, Id, Key, Owner, ProgramData, System, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas,
     };
 
     pub use borsh;
@@ -279,11 +251,17 @@ pub mod prelude {
     pub use thiserror;
 }
 
-// Internal module used by macros and unstable apis.
+/// Internal module used by macros and unstable apis.
 pub mod __private {
     // Modules with useful information for users
     // don't use #[doc(hidden)] on these
     pub use crate::error::ErrorCode;
+
+    /// The discriminator anchor uses to mark an account as closed.
+    pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255, 255, 255, 255, 255, 255, 255, 255];
+
+    /// The starting point for user defined error codes.
+    pub const ERROR_CODE_OFFSET: u32 = 6000;
 
     #[doc(hidden)]
     pub use crate::ctor::Ctor;
@@ -306,9 +284,6 @@ pub mod __private {
     pub mod state {
         pub use crate::accounts::state::*;
     }
-
-    /// The starting point for user defined error codes.
-    pub const ERROR_CODE_OFFSET: u32 = 6000;
 
     // Calculates the size of an account, which may be larger than the deserialized
     // data in it. This trait is currently only used for `#[state]` accounts.
@@ -336,8 +311,6 @@ pub mod __private {
 
     #[doc(hidden)]
     pub use crate::accounts::state::PROGRAM_STATE_SEED;
-    #[doc(hidden)]
-    pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255, 255, 255, 255, 255, 255, 255, 255];
 }
 
 /// Ensures a condition is true, otherwise returns the given error.

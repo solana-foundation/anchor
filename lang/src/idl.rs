@@ -17,6 +17,8 @@
 //! Note that IDL account instructions are automatically inserted into all
 //! Anchor programs. To remove them, one can use the `no-idl` feature.
 
+#[allow(deprecated)]
+use crate::accounts::program_account::ProgramAccount;
 use crate::prelude::*;
 use solana_program::pubkey::Pubkey;
 

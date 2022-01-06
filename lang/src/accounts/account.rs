@@ -26,7 +26,7 @@ use std::ops::{Deref, DerefMut};
 /// - `Account.info.owner == T::owner()`
 /// - `!(Account.info.owner == SystemProgram && Account.info.lamports() == 0)`
 ///
-/// Example
+/// # Example
 /// ```ignore
 /// use anchor_lang::prelude::*;
 /// use other_program::Auth;
@@ -68,6 +68,8 @@ use std::ops::{Deref, DerefMut};
 /// }
 /// ...
 /// ```
+///
+/// # Using Account with non-anchor programs
 ///
 /// Account can also be used with non-anchor programs. The data types from
 /// those programs are not annotated with `#[account]` so you have to

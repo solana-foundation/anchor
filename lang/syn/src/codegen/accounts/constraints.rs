@@ -447,7 +447,7 @@ pub fn generate_init(
                             authority: #owner.to_account_info(),
                             rent: rent.to_account_info(),
                         };
-                        let cpi_ctx = CpiContext::new(cpi_program, accounts);
+                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
                         anchor_spl::token::initialize_account(cpi_ctx)?;
                     }
 
@@ -480,7 +480,7 @@ pub fn generate_init(
                             token_program: token_program.to_account_info(),
                             rent: rent.to_account_info(),
                         };
-                        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, cpi_accounts);
                         anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info;
@@ -530,7 +530,7 @@ pub fn generate_init(
                             mint: #field.to_account_info(),
                             rent: rent.to_account_info(),
                         };
-                        let cpi_ctx = CpiContext::new(cpi_program, accounts);
+                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
                         anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
                     let pa: #ty_decl = #from_account_info;
@@ -735,7 +735,7 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
     quote! {
         // Checks the given state account is the canonical state account for
         // the target program.
-        if #ident.key() != anchor_lang::CpiState::<#account_ty>::address(&#program_target.key()) {
+        if #ident.key() != anchor_lang::accounts::cpi_state::CpiState::<#account_ty>::address(&#program_target.key()) {
             return Err(anchor_lang::__private::ErrorCode::ConstraintState.into());
         }
         if #ident.to_account_info().owner != &#program_target.key() {

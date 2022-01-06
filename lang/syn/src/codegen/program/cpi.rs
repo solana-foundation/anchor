@@ -29,7 +29,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                             quote! {
                                 pub fn #method_name<'a, 'b, 'c, 'info>(
-                                    ctx: CpiStateContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                                    ctx: anchor_lang::context::CpiStateContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                                     #(#args),*
                                 ) -> ProgramResult {
                                     let ix = {
@@ -72,7 +72,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {
                     pub fn #method_name<'a, 'b, 'c, 'info>(
-                        ctx: CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                        ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
                     ) -> ProgramResult {
                         let ix = {
