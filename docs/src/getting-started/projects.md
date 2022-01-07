@@ -22,4 +22,5 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [PsyOptions](https://psyoptions.io/)
 * [sosol](https://sosol.app/)
 * [Arrow Protocol](https://arrowprotocol.com/)
+* [Hubble Protocol](https://hubbleprotocol.io/)
 
