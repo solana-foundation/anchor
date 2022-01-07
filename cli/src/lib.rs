@@ -1089,7 +1089,7 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
     docker_exec(container_name, &["rm", "-rf", target_dir.to_str().unwrap()])?;
 
     // Remove the docker image.
-    println!("Removing the docker image");
+    println!("Removing the docker container");
     let exit = std::process::Command::new("docker")
         .args(&["rm", "-f", container_name])
         .stdout(Stdio::inherit())
@@ -1097,7 +1097,7 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
         .output()
         .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
     if !exit.status.success() {
-        println!("Unable to remove docker container");
+        println!("Unable to remove the docker container");
         std::process::exit(exit.status.code().unwrap_or(1));
     }
     Ok(())
