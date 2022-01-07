@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+#### Fixes
+
+*lang: Improved error msgs when required programs are missing when using the `init` constraint([#1257](https://github.com/project-serum/anchor/pull/1257))
+
 ## [0.20.0] - 2022-01-06
 
 ### Fixes

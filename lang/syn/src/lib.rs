@@ -154,6 +154,15 @@ pub enum AccountField {
     CompositeField(CompositeField),
 }
 
+impl AccountField {
+    fn ident(&self) -> &Ident {
+        match self {
+            AccountField::Field(field) => &field.ident,
+            AccountField::CompositeField(c_field) => &c_field.ident,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Field {
     pub ident: Ident,
