@@ -342,6 +342,7 @@ pub mod __private {
 /// // An account validation struct
 /// #[derive(Accounts)]
 /// pub struct SetData<'info> {
+///     #[account(mut)]
 ///     pub data: Account<'info, MyData>
 /// }
 /// ```
