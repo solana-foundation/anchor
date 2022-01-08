@@ -409,7 +409,7 @@ use syn::parse_macro_input;
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>
-/// use anchor_spl::{mint, token::{TokenAccount, Mint}};
+/// use anchor_spl::{mint, token::{TokenAccount, Mint, Token}};
 /// ...&#10;
 /// #[account(
 ///     init,
@@ -422,6 +422,8 @@ use syn::parse_macro_input;
 /// pub mint: Account<'info, Mint>,
 /// #[account(mut)]
 /// pub payer: Signer<'info>,
+/// pub token_program: Program<'info, Token>,
+/// pub system_program: Program<'info, System>
 ///                 </pre>
 ///             </td>
 ///         </tr>
@@ -438,7 +440,7 @@ use syn::parse_macro_input;
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>
-/// use anchor_spl::token::Mint;
+/// use anchor_spl::token::{Mint, Token};
 /// ...&#10;
 /// #[account(
 ///     init,
@@ -457,6 +459,8 @@ use syn::parse_macro_input;
 /// pub mint_two: Account<'info, Mint>,
 /// #[account(mut)]
 /// pub payer: Signer<'info>,
+/// pub token_program: Program<'info, Token>,
+/// pub system_program: Program<'info, System>
 ///                 </pre>
 ///             </td>
 ///         </tr>
@@ -470,7 +474,11 @@ use syn::parse_macro_input;
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>
-/// use anchor_spl::{mint, token::{TokenAccount, Mint}};
+/// use anchor_spl::{
+///     associated_token::AssociatedToken,
+///     mint,
+///     token::{TokenAccount, Mint, Token}
+/// };
 /// ...&#10;
 /// #[account(
 ///     init,
@@ -488,6 +496,9 @@ use syn::parse_macro_input;
 /// pub mint: Account<'info, Mint>,
 /// #[account(mut)]
 /// pub payer: Signer<'info>,
+/// pub token_program: Program<'info, Token>,
+/// pub associated_token_program: Program<'info, AssociatedToken>,
+/// pub system_program: Program<'info, System>
 ///                 </pre>
 ///             </td>
 ///         </tr>
