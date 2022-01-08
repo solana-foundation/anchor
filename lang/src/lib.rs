@@ -317,24 +317,34 @@ pub mod __private {
 /// Use this with a custom error type.
 ///
 /// # Example
-///
-/// After defining an `ErrorCode`
-///
 /// ```ignore
+/// // Instruction function
+/// pub fn set_data(ctx: Context<SetData>, data: u64) -> ProgramResult {
+///     require!(ctx.accounts.data.mutation_allowed, MyError::MutationForbidden);
+///     ctx.accounts.data.data = data;
+///     Ok(())
+/// }
+///
+/// // An enum for custom error codes
 /// #[error]
-/// pub struct ErrorCode {
-///     InvalidArgument,
+/// pub enum MyError {
+///     MutationForbidden
+/// }
+///
+/// // An account definition
+/// #[account]
+/// #[derive(Default)]
+/// pub struct MyData {
+///     mutation_allowed: bool,
+///     data: u64
+/// }
+///
+/// // An account validation struct
+/// #[derive(Accounts)]
+/// pub struct SetData<'info> {
+///     pub data: Account<'info, MyData>
 /// }
 /// ```
-///
-/// One can write a `require` assertion as
-///
-/// ```ignore
-/// require!(condition, InvalidArgument);
-/// ```
-///
-/// which would exit the program with the `InvalidArgument` error code if
-/// `condition` is false.
 #[macro_export]
 macro_rules! require {
     ($invariant:expr, $error:tt $(,)?) => {
