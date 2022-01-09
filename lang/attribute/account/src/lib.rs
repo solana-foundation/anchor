@@ -291,9 +291,21 @@ pub fn zero_copy(
 ) -> proc_macro::TokenStream {
     let account_strct = parse_macro_input!(item as syn::ItemStruct);
 
+    // Takes the first repr. It's assumed that more than one are not on the
+    // struct.
+    let attr = account_strct
+        .attrs
+        .iter()
+        .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "repr");
+
+    let repr = match attr {
+        Some(_attr) => quote! {},
+        None => quote! {#[repr(C)]},
+    };
+
     proc_macro::TokenStream::from(quote! {
         #[derive(anchor_lang::__private::ZeroCopyAccessor, Copy, Clone)]
-        #[repr(C)]
+        #repr
         #account_strct
     })
 }

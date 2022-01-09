@@ -139,6 +139,7 @@ pub struct UpdateLargeAccount<'info> {
 
 #[account(zero_copy)]
 #[derive(Default)]
+#[repr(packed)]
 pub struct Foo {
     pub authority: Pubkey,
     pub data: u64,
