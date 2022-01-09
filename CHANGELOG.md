@@ -11,9 +11,15 @@ incremented for features.
 
 ## [Unreleased]
 
-#### Fixes
+## [0.20.1] - 2022-01-09
+
+### Fixes
 
 *lang: Improved error msgs when required programs are missing when using the `init` constraint([#1257](https://github.com/project-serum/anchor/pull/1257))
+
+### Features
+
+* lang: Allow repr overrides for zero copy accounts ([#1273](https://github.com/project-serum/anchor/pull/1273)).
 
 ## [0.20.0] - 2022-01-06
 
