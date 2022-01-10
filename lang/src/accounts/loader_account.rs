@@ -15,6 +15,7 @@ use std::cell::{Ref, RefMut};
 use std::fmt;
 use std::io::Write;
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::DerefMut;
 
 /// Type facilitating on demand zero copy deserialization.
@@ -154,7 +155,9 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
-        Ok(Ref::map(data, |data| bytemuck::from_bytes(&data[8..])))
+        Ok(Ref::map(data, |data| {
+            bytemuck::from_bytes(&data[8..mem::size_of::<T>() + 8])
+        }))
     }
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
@@ -173,7 +176,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
 
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..])
+            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..mem::size_of::<T>() + 8])
         }))
     }
 
@@ -197,7 +200,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
 
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..])
+            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..mem::size_of::<T>() + 8])
         }))
     }
 }
