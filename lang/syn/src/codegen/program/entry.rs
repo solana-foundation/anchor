@@ -51,7 +51,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        #[cfg(not(feature = "no-entrypoint"))]
         pub fn entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
             #[cfg(feature = "anchor-debug")]
             {
