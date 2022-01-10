@@ -1,6 +1,3 @@
-import { Buffer } from "buffer";
-import { snakeCase } from "snake-case";
-import { sha256 } from "js-sha256";
 import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl.js";
 import { IdlError } from "../error.js";
 
@@ -70,6 +67,9 @@ function typeSize(idl: Idl, ty: IdlType): number {
       if ("option" in ty) {
         return 1 + typeSize(idl, ty.option);
       }
+      if ("coption" in ty) {
+        return 4 + typeSize(idl, ty.coption);
+      }
       if ("defined" in ty) {
         const filtered = idl.types?.filter((t) => t.name === ty.defined) ?? [];
         if (filtered.length !== 1) {
@@ -86,12 +86,4 @@ function typeSize(idl: Idl, ty: IdlType): number {
       }
       throw new Error(`Invalid type ${JSON.stringify(ty)}`);
   }
-}
-
-// Not technically sighash, since we don't include the arguments, as Rust
-// doesn't allow function overloading.
-export function sighash(nameSpace: string, ixName: string): Buffer {
-  let name = snakeCase(ixName);
-  let preimage = `${nameSpace}:${name}`;
-  return Buffer.from(sha256.digest(preimage)).slice(0, 8);
 }

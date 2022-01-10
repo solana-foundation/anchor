@@ -1,20 +1,13 @@
-import { Idl } from "../idl.js";
-import { InstructionCoder } from "./instruction.js";
-import { AccountsCoder } from "./accounts.js";
-import { EventCoder } from "./event.js";
-import { StateCoder } from "./state.js";
-import { sighash } from "./common.js";
+import { IdlEvent, IdlTypeDef } from "../idl.js";
+import { Event } from "../program/event.js";
 
-export { accountSize } from "./common.js";
-export { InstructionCoder } from "./instruction.js";
-export { AccountsCoder, ACCOUNT_DISCRIMINATOR_SIZE } from "./accounts.js";
-export { EventCoder, eventDiscriminator } from "./event.js";
-export { StateCoder, stateDiscriminator } from "./state.js";
+export * from "./borsh/index.js";
+export * from "./spl-token/index.js";
 
 /**
  * Coder provides a facade for encoding and decoding all IDL related objects.
  */
-export default class Coder<A extends string = string> {
+export interface Coder {
   /**
    * Instruction coder.
    */
@@ -23,7 +16,7 @@ export default class Coder<A extends string = string> {
   /**
    * Account coder.
    */
-  readonly accounts: AccountsCoder<A>;
+  readonly accounts: AccountsCoder;
 
   /**
    * Coder for state structs.
@@ -34,17 +27,28 @@ export default class Coder<A extends string = string> {
    * Coder for events.
    */
   readonly events: EventCoder;
+}
 
-  constructor(idl: Idl) {
-    this.instruction = new InstructionCoder(idl);
-    this.accounts = new AccountsCoder(idl);
-    this.events = new EventCoder(idl);
-    if (idl.state) {
-      this.state = new StateCoder(idl);
-    }
-  }
+export interface StateCoder {
+  encode<T = any>(name: string, account: T): Promise<Buffer>;
+  decode<T = any>(ix: Buffer): T;
+}
 
-  public sighash(nameSpace: string, ixName: string): Buffer {
-    return sighash(nameSpace, ixName);
-  }
+export interface AccountsCoder<A extends string = string> {
+  encode<T = any>(accountName: A, account: T): Promise<Buffer>;
+  decode<T = any>(accountName: A, ix: Buffer): T;
+  decodeUnchecked<T = any>(accountName: A, ix: Buffer): T;
+  memcmp(accountName: A, appendData?: Buffer): any;
+  size(idlAccount: IdlTypeDef): number;
+}
+
+export interface InstructionCoder {
+  encode(ixName: string, ix: any): Buffer;
+  encodeState(ixName: string, ix: any): Buffer;
+}
+
+export interface EventCoder {
+  decode<E extends IdlEvent = IdlEvent, T = Record<string, string>>(
+    log: string
+  ): Event<E, T> | null;
 }

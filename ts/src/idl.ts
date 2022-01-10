@@ -99,6 +99,7 @@ export type IdlType =
   | "publicKey"
   | IdlTypeDefined
   | IdlTypeOption
+  | IdlTypeCOption
   | IdlTypeVec
   | IdlTypeArray;
 
@@ -109,6 +110,10 @@ export type IdlTypeDefined = {
 
 export type IdlTypeOption = {
   option: IdlType;
+};
+
+export type IdlTypeCOption = {
+  coption: IdlType;
 };
 
 export type IdlTypeVec = {

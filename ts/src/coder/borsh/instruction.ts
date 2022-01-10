@@ -1,8 +1,11 @@
-import { Buffer } from "buffer";
-import camelCase from "camelcase";
-import { Layout } from "buffer-layout";
-import * as borsh from "@project-serum/borsh";
 import bs58 from "bs58";
+import { Buffer } from "buffer";
+import { Layout } from "buffer-layout";
+import camelCase from "camelcase";
+import { snakeCase } from "snake-case";
+import { sha256 } from "js-sha256";
+import * as borsh from "@project-serum/borsh";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
 import {
   Idl,
   IdlField,
@@ -16,10 +19,9 @@ import {
   IdlTypeOption,
   IdlTypeDefined,
   IdlAccounts,
-} from "../idl";
+} from "../../idl.js";
 import { IdlCoder } from "./idl.js";
-import { sighash } from "./common.js";
-import { AccountMeta, PublicKey } from "@solana/web3.js";
+import { InstructionCoder } from "../index.js";
 
 /**
  * Namespace for state method function signatures.
@@ -34,7 +36,7 @@ export const SIGHASH_GLOBAL_NAMESPACE = "global";
 /**
  * Encodes and decodes program instructions.
  */
-export class InstructionCoder {
+export class BorshInstructionCoder implements InstructionCoder {
   // Instruction args layout. Maps namespaced method
   private ixLayout: Map<string, Layout>;
 
@@ -42,7 +44,7 @@ export class InstructionCoder {
   private sighashLayouts: Map<string, { layout: Layout; name: string }>;
 
   public constructor(private idl: Idl) {
-    this.ixLayout = InstructionCoder.parseIxLayout(idl);
+    this.ixLayout = BorshInstructionCoder.parseIxLayout(idl);
 
     const sighashLayouts = new Map();
     idl.instructions.forEach((ix) => {
@@ -69,14 +71,14 @@ export class InstructionCoder {
   /**
    * Encodes a program instruction.
    */
-  public encode(ixName: string, ix: any) {
+  public encode(ixName: string, ix: any): Buffer {
     return this._encode(SIGHASH_GLOBAL_NAMESPACE, ixName, ix);
   }
 
   /**
    * Encodes a program state instruction.
    */
-  public encodeState(ixName: string, ix: any) {
+  public encodeState(ixName: string, ix: any): Buffer {
     return this._encode(SIGHASH_STATE_NAMESPACE, ixName, ix);
   }
 
@@ -378,4 +380,12 @@ class InstructionFormatter {
 function sentenceCase(field: string): string {
   const result = field.replace(/([A-Z])/g, " $1");
   return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+// Not technically sighash, since we don't include the arguments, as Rust
+// doesn't allow function overloading.
+function sighash(nameSpace: string, ixName: string): Buffer {
+  let name = snakeCase(ixName);
+  let preimage = `${nameSpace}:${name}`;
+  return Buffer.from(sha256.digest(preimage)).slice(0, 8);
 }

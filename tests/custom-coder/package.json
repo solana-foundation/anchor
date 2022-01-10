@@ -1,0 +1,19 @@
+{
+  "name": "custom-coder",
+  "version": "0.20.0",
+  "license": "(MIT OR Apache-2.0)",
+  "homepage": "https://github.com/project-serum/anchor#readme",
+  "bugs": {
+    "url": "https://github.com/project-serum/anchor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/project-serum/anchor.git"
+  },
+  "engines": {
+    "node": ">=11"
+  },
+  "scripts": {
+    "test": "anchor test"
+  }
+}

@@ -1,11 +1,11 @@
 import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
 import { sha256 } from "js-sha256";
-import { Idl } from "../idl.js";
+import { Idl } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
-import * as features from "../utils/features.js";
+import * as features from "../../utils/features.js";
 
-export class StateCoder {
+export class BorshStateCoder {
   private layout: Layout;
 
   public constructor(idl: Idl) {

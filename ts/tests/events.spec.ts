@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { EventParser } from "../src/program/event";
-import { Coder } from "../src";
+import { BorshCoder } from "../src";
 
 describe("Events", () => {
   it("Parses multiple instructions", async () => {
@@ -22,7 +22,7 @@ describe("Events", () => {
         },
       ],
     };
-    const coder = new Coder(idl);
+    const coder = new BorshCoder(idl);
     const programId = PublicKey.default;
     const eventParser = new EventParser(programId, coder);
 

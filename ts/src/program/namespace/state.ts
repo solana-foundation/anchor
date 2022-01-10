@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 import Provider, { getProvider } from "../../provider.js";
 import { Idl, IdlInstruction, IdlStateMethod, IdlTypeDef } from "../../idl.js";
-import Coder, { stateDiscriminator } from "../../coder/index.js";
+import { BorshCoder, Coder, stateDiscriminator } from "../../coder/index.js";
 import {
   RpcNamespace,
   InstructionNamespace,
@@ -87,7 +87,7 @@ export class StateClient<IDL extends Idl> {
     /**
      * Returns the coder.
      */
-    public readonly coder: Coder = new Coder(idl)
+    public readonly coder: Coder = new BorshCoder(idl)
   ) {
     this._idl = idl;
     this._programId = programId;

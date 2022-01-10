@@ -21,6 +21,10 @@ incremented for features.
 
 * lang: Allow repr overrides for zero copy accounts ([#1273](https://github.com/project-serum/anchor/pull/1273)).
 
+### Breaking
+
+* ts: `Coder` is now an interface and the existing class has been renamed to `BorshCoder`. This change allows the generation of Anchor clients for non anchor programs  ([#1259](https://github.com/project-serum/anchor/pull/1259/files)).
+
 ## [0.20.0] - 2022-01-06
 
 ### Fixes

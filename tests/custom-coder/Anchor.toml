@@ -1,0 +1,13 @@
+[programs.localnet]
+custom_coder = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+spl_token = "FmpfPa1LHEYRbueNMnwNVd2JvyQ89GXGWdyZEXNNKV8w"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

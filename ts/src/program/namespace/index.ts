@@ -1,8 +1,8 @@
 import camelCase from "camelcase";
 import { PublicKey } from "@solana/web3.js";
-import Coder from "../../coder/index.js";
+import { Coder } from "../../coder/index.js";
 import Provider from "../../provider.js";
-import { Idl, IdlInstruction } from "../../idl.js";
+import { Idl } from "../../idl.js";
 import StateFactory, { StateClient } from "./state.js";
 import InstructionFactory, { InstructionNamespace } from "./instruction.js";
 import TransactionFactory, { TransactionNamespace } from "./transaction.js";

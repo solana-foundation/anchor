@@ -2,11 +2,12 @@ import { Buffer } from "buffer";
 import * as base64 from "base64-js";
 import { Layout } from "buffer-layout";
 import { sha256 } from "js-sha256";
-import { Idl, IdlEvent, IdlTypeDef } from "../idl.js";
-import { Event, EventData } from "../program/event.js";
+import { Idl, IdlEvent, IdlTypeDef } from "../../idl.js";
+import { Event, EventData } from "../../program/event.js";
 import { IdlCoder } from "./idl.js";
+import { EventCoder } from "../index.js";
 
-export class EventCoder {
+export class BorshEventCoder implements EventCoder {
   /**
    * Maps account type identifier to a layout.
    */

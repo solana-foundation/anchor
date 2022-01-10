@@ -1,8 +1,8 @@
 import camelCase from "camelcase";
 import { Layout } from "buffer-layout";
 import * as borsh from "@project-serum/borsh";
-import { IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl.js";
-import { IdlError } from "../error.js";
+import { IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../../idl.js";
+import { IdlError } from "../../error.js";
 
 export class IdlCoder {
   public static fieldLayout(

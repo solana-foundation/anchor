@@ -2,7 +2,7 @@ import { inflate } from "pako";
 import { PublicKey } from "@solana/web3.js";
 import Provider, { getProvider } from "../provider.js";
 import { Idl, idlAddress, decodeIdlAccount } from "../idl.js";
-import Coder from "../coder/index.js";
+import { Coder, BorshCoder } from "../coder/index.js";
 import NamespaceFactory, {
   RpcNamespace,
   InstructionNamespace,
@@ -249,7 +249,12 @@ export class Program<IDL extends Idl = Idl> {
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    */
-  public constructor(idl: IDL, programId: Address, provider?: Provider) {
+  public constructor(
+    idl: IDL,
+    programId: Address,
+    provider?: Provider,
+    coder?: Coder
+  ) {
     programId = translateAddress(programId);
 
     if (!provider) {
@@ -260,7 +265,7 @@ export class Program<IDL extends Idl = Idl> {
     this._idl = idl;
     this._provider = provider;
     this._programId = programId;
-    this._coder = new Coder(idl);
+    this._coder = coder ?? new BorshCoder(idl);
     this._events = new EventManager(this._programId, provider, this._coder);
 
     // Dynamic namespaces.
