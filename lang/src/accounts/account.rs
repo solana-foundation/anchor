@@ -369,14 +369,6 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountI
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountInfo<'info>
-    for Account<'info, T>
-{
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.info.clone()
-    }
-}
-
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<AccountInfo<'info>>
     for Account<'info, T>
 {
@@ -409,11 +401,5 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> DerefMut for 
             panic!();
         }
         &mut self.account
-    }
-}
-
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Key for Account<'info, T> {
-    fn key(&self) -> Pubkey {
-        *self.info.key
     }
 }

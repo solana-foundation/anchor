@@ -87,7 +87,10 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
 /// should be done here.
 pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
     /// `program_id` is the currently executing program.
-    fn exit(&self, program_id: &Pubkey) -> ProgramResult;
+    fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
+        // no-op
+        Ok(())
+    }
 }
 
 /// The close procedure to initiate garabage collection of an account, allowing
@@ -118,6 +121,15 @@ pub trait ToAccountInfos<'info> {
 /// Transformation to an `AccountInfo` struct.
 pub trait ToAccountInfo<'info> {
     fn to_account_info(&self) -> AccountInfo<'info>;
+}
+
+impl<'info, T> ToAccountInfo<'info> for T
+where
+    T: AsRef<AccountInfo<'info>>,
+{
+    fn to_account_info(&self) -> AccountInfo<'info> {
+        self.as_ref().clone()
+    }
 }
 
 /// A data structure that can be serialized and stored into account storage,
@@ -209,9 +221,12 @@ pub trait Key {
     fn key(&self) -> Pubkey;
 }
 
-impl Key for Pubkey {
+impl<'info, T> Key for T
+where
+    T: AsRef<AccountInfo<'info>>,
+{
     fn key(&self) -> Pubkey {
-        *self
+        *self.as_ref().key
     }
 }
 

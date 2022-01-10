@@ -2,8 +2,8 @@
 use crate::accounts::cpi_account::CpiAccount;
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key,
-    ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, ToAccountInfo,
+    ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -140,15 +140,6 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'in
 }
 
 #[allow(deprecated)]
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'info>
-    for ProgramAccount<'info, T>
-{
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.inner.info.clone()
-    }
-}
-
-#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
     for ProgramAccount<'info, T>
 {
@@ -186,12 +177,5 @@ where
 {
     fn from(a: CpiAccount<'info, T>) -> Self {
         Self::new(a.to_account_info(), Deref::deref(&a).clone())
-    }
-}
-
-#[allow(deprecated)]
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramAccount<'info, T> {
-    fn key(&self) -> Pubkey {
-        *self.inner.info.key
     }
 }

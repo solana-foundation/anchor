@@ -2,8 +2,8 @@
 use crate::accounts::cpi_account::CpiAccount;
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, ToAccountInfo,
-    ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, ToAccountInfo, ToAccountInfos,
+    ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::entrypoint::ProgramResult;
@@ -109,15 +109,6 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'in
 }
 
 #[allow(deprecated)]
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfo<'info>
-    for ProgramState<'info, T>
-{
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.inner.info.clone()
-    }
-}
-
-#[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
     for ProgramState<'info, T>
 {
@@ -171,11 +162,4 @@ pub fn address(program_id: &Pubkey) -> Pubkey {
     let seed = PROGRAM_STATE_SEED;
     let owner = program_id;
     Pubkey::create_with_seed(&base, seed, owner).unwrap()
-}
-
-#[allow(deprecated)]
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramState<'info, T> {
-    fn key(&self) -> Pubkey {
-        *self.inner.info.key
-    }
 }

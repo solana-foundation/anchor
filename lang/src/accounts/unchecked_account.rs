@@ -2,9 +2,8 @@
 //! that no checks are performed
 
 use crate::error::ErrorCode;
-use crate::{Accounts, AccountsExit, Key, ToAccountInfo, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -53,22 +52,11 @@ impl<'info> ToAccountInfos<'info> for UncheckedAccount<'info> {
     }
 }
 
-impl<'info> ToAccountInfo<'info> for UncheckedAccount<'info> {
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.0.clone()
-    }
-}
+impl<'info> AccountsExit<'info> for UncheckedAccount<'info> {}
 
-impl<'info> AccountsExit<'info> for UncheckedAccount<'info> {
-    fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
-        // no-op
-        Ok(())
-    }
-}
-
-impl<'info> Key for UncheckedAccount<'info> {
-    fn key(&self) -> Pubkey {
-        *self.key
+impl<'info> AsRef<AccountInfo<'info>> for UncheckedAccount<'info> {
+    fn as_ref(&self) -> &AccountInfo<'info> {
+        &self.0
     }
 }
 

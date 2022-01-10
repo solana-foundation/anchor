@@ -2,8 +2,8 @@
 
 use crate::error::ErrorCode;
 use crate::{
-    Accounts, AccountsClose, AccountsExit, Key, Owner, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas, ZeroCopy,
+    Accounts, AccountsClose, AccountsExit, Owner, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    ZeroCopy,
 };
 use arrayref::array_ref;
 use solana_program::account_info::AccountInfo;
@@ -256,17 +256,5 @@ impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo<'info>> for AccountLoader<'in
 impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.acc_info.clone()]
-    }
-}
-
-impl<'info, T: ZeroCopy + Owner> ToAccountInfo<'info> for AccountLoader<'info, T> {
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.acc_info.clone()
-    }
-}
-
-impl<'info, T: ZeroCopy + Owner> Key for AccountLoader<'info, T> {
-    fn key(&self) -> Pubkey {
-        *self.acc_info.key
     }
 }
