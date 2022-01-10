@@ -160,7 +160,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<Ty> {
         "AccountInfo" => Ty::AccountInfo,
         "UncheckedAccount" => Ty::UncheckedAccount,
         "Loader" => Ty::Loader(parse_program_account_zero_copy(&path)?),
-        "AccountLoader" => Ty::AccountLoader(parse_program_loader_account(&path)?),
+        "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
         "Signer" => Ty::Signer,
@@ -229,9 +229,9 @@ fn parse_program_account_zero_copy(path: &syn::Path) -> ParseResult<LoaderTy> {
         account_type_path: account_ident,
     })
 }
-fn parse_program_loader_account(path: &syn::Path) -> ParseResult<LoaderAccountTy> {
+fn parse_program_account_loader(path: &syn::Path) -> ParseResult<AccountLoaderTy> {
     let account_ident = parse_account(path)?;
-    Ok(LoaderAccountTy {
+    Ok(AccountLoaderTy {
         account_type_path: account_ident,
     })
 }

@@ -294,7 +294,7 @@ impl Field {
                 anchor_lang::accounts::account::Account
             },
             Ty::AccountLoader(_) => quote! {
-                anchor_lang::accounts::loader_account::AccountLoader
+                anchor_lang::accounts::account_loader::AccountLoader
             },
             Ty::Loader(_) => quote! {
                 anchor_lang::accounts::loader::Loader
@@ -414,7 +414,7 @@ pub enum Ty {
     CpiState(CpiStateTy),
     ProgramAccount(ProgramAccountTy),
     Loader(LoaderTy),
-    AccountLoader(LoaderAccountTy),
+    AccountLoader(AccountLoaderTy),
     CpiAccount(CpiAccountTy),
     Sysvar(SysvarTy),
     Account(AccountTy),
@@ -461,7 +461,7 @@ pub struct CpiAccountTy {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct LoaderAccountTy {
+pub struct AccountLoaderTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
 }
