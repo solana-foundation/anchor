@@ -159,7 +159,9 @@ use syn::parse_macro_input;
 ///                         you can pass it in as instruction data and set the bump value like shown in the example,
 ///                         using the <code>instruction_data</code> attribute.
 ///                         Anchor will then check that the bump returned by <code>find_program_address</code> equals
-///                         the bump in the instruction data.
+///                         the bump in the instruction data.<br>
+///                         <code>seeds::program</code> cannot be used together with init because the creation of an
+///                         account requires its signature which for PDAs only the currently executing program can provide.
 ///                     </li>
 ///                 </ul>
 ///                 Example:
@@ -228,21 +230,42 @@ use syn::parse_macro_input;
 ///         <tr>
 ///             <td>
 ///                 <code>#[account(seeds = &lt;seeds&gt;, bump)]</code><br><br>
-///                 <code>#[account(seeds = &lt;seeds&gt;, bump = &lt;expr&gt;)]</code>
+///                 <code>#[account(seeds = &lt;seeds&gt;, bump, seeds::program = &lt;expr&gt;)]<br><br>
+///                 <code>#[account(seeds = &lt;seeds&gt;, bump = &lt;expr&gt;)]</code><br><br>
+///                 <code>#[account(seeds = &lt;seeds&gt;, bump = &lt;expr&gt;, seeds::program = &lt;expr&gt;)]</code><br><br>
 ///             </td>
 ///             <td>
 ///                 Checks that given account is a PDA derived from the currently executing program,
 ///                 the seeds, and if provided, the bump. If not provided, anchor uses the canonical
-///                 bump. Will be adjusted in the future to allow PDA to be derived from other programs.<br>
+///                 bump. <br>
+///                 Add <code>seeds::program = &lt;expr&gt;</code> to derive the PDA from a different
+///                 program than the currently executing one.<br>
 ///                 This constraint behaves slightly differently when used with <code>init</code>.
 ///                 See its description.
 ///                 <br><br>
 ///                 Example:
 ///                 <pre><code>
-/// #[account(seeds = [b"example_seed], bump)]
-/// pub canonical_pda: AccountInfo<'info>,
-/// #[account(seeds = [b"other_seed], bump = 142)]
-/// pub arbitrary_pda: AccountInfo<'info>
+/// #[derive(Accounts)]
+/// #[instruction(first_bump: u8, second_bump: u8)]
+/// pub struct Example {
+///     #[account(seeds = [b"example_seed], bump)]
+///     pub canonical_pda: AccountInfo<'info>,
+///     #[account(
+///         seeds = [b"example_seed],
+///         bump,
+///         seeds::program = other_program.key()
+///     )]
+///     pub canonical_pda_two: AccountInfo<'info>,
+///     #[account(seeds = [b"other_seed], bump = first_bump)]
+///     pub arbitrary_pda: AccountInfo<'info>
+///     #[account(
+///         seeds = [b"other_seed],
+///         bump = second_bump,
+///         seeds::program = other_program.key()
+///     )]
+///     pub arbitrary_pda_two: AccountInfo<'info>,
+///     pub other_program: Program<'info, OtherProgram>
+/// }
 ///                 </code></pre>
 ///             </td>
 ///         </tr>

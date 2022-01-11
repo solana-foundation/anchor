@@ -15,5 +15,8 @@
   },
   "scripts": {
     "test": "anchor test"
+  },
+  "dependencies": {
+    "mocha": "^9.1.3"
   }
 }

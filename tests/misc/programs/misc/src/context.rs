@@ -379,3 +379,25 @@ pub struct InitIfNeededChecksRentExemption<'info> {
     pub system_program: Program<'info, System>
 }
 
+#[derive(Accounts)]
+#[instruction(bump: u8, second_bump: u8)]
+pub struct TestProgramIdConstraint<'info> {
+    // not a real associated token account
+    // just deriving like this for testing purposes
+    #[account(seeds = [b"seed"], bump = bump, seeds::program = anchor_spl::associated_token::ID)]
+    first: AccountInfo<'info>,
+
+    #[account(seeds = [b"seed"], bump = second_bump, seeds::program = crate::ID)]
+    second: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestProgramIdConstraintUsingFindPda<'info> {
+    // not a real associated token account
+    // just deriving like this for testing purposes
+    #[account(seeds = [b"seed"], bump, seeds::program = anchor_spl::associated_token::ID)]
+    first: AccountInfo<'info>,
+
+    #[account(seeds = [b"seed"], bump, seeds::program = crate::ID)]
+    second: AccountInfo<'info>,
+}

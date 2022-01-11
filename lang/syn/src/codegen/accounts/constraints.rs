@@ -327,6 +327,15 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
 fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
     let name = &f.ident;
     let s = &mut c.seeds.clone();
+
+    let deriving_program_id = c
+        .program_seed
+        .clone()
+        // If they specified a seeds::program to use when deriving the PDA, use it.
+        .map(|program_id| quote! { #program_id })
+        // Otherwise fall back to the current program's program_id.
+        .unwrap_or(quote! { program_id });
+
     // If the seeds came with a trailing comma, we need to chop it off
     // before we interpolate them below.
     if let Some(pair) = s.pop() {
@@ -340,7 +349,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         quote! {
             let (__program_signer, __bump) = anchor_lang::solana_program::pubkey::Pubkey::find_program_address(
                 &[#s],
-                program_id,
+                &#deriving_program_id,
             );
             if #name.key() != __program_signer {
                 return Err(anchor_lang::__private::ErrorCode::ConstraintSeeds.into());
@@ -362,7 +371,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                         &[
                             Pubkey::find_program_address(
                                 &[#s],
-                                program_id,
+                                &#deriving_program_id,
                             ).1
                         ][..]
                     ]
@@ -378,7 +387,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         quote! {
             let __program_signer = Pubkey::create_program_address(
                 &#seeds[..],
-                program_id,
+                &#deriving_program_id,
             ).map_err(|_| anchor_lang::__private::ErrorCode::ConstraintSeeds)?;
             if #name.key() != __program_signer {
                 return Err(anchor_lang::__private::ErrorCode::ConstraintSeeds.into());

@@ -268,4 +268,18 @@ pub mod misc {
     pub fn init_if_needed_checks_rent_exemption(_ctx: Context<InitIfNeededChecksRentExemption>) -> ProgramResult {
         Ok(())
     }
+        
+    pub fn test_program_id_constraint(
+        _ctx: Context<TestProgramIdConstraint>,
+        _bump: u8,
+        _second_bump: u8
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    pub fn test_program_id_constraint_find_pda(
+        _ctx: Context<TestProgramIdConstraintUsingFindPda>,
+    ) -> ProgramResult {
+        Ok(())
+    }
 }
