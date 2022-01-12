@@ -16,5 +16,6 @@ regex = "1.4.5"
 serde = { version = "1.0.122", features = ["derive"] }
 solana-client = "1.7.2"
 solana-sdk = "1.7.2"
+solana-account-decoder = "1.7.2"
 thiserror = "1.0.20"
 url = "2.2.2"
