@@ -30,4 +30,5 @@ jobs:
         mv ../book/* .
         git add .
         git commit -m "Deploy $GITHUB_SHA to gh-pages"
-        git push --force
+        git remote add book git@github.com:project-serum/anchor-book.git
+        git push book --force
