@@ -14,6 +14,7 @@ incremented for features.
 ### Features
 
 * lang: Add `seeds::program` constraint for specifying which program_id to use when deriving PDAs.([#1197](https://github.com/project-serum/anchor/pull/1197))
+* ts: Remove error logging in the event parser when log websocket encounters a program error. ([#1313](https://github.com/project-serum/anchor/pull/1313))
 
 ### Breaking
 

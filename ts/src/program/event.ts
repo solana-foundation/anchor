@@ -95,7 +95,6 @@ export class EventManager {
       this._programId,
       (logs, ctx) => {
         if (logs.err) {
-          console.error(logs);
           return;
         }
         this._eventParser.parseLogs(logs.logs, (event) => {
