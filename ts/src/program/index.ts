@@ -10,6 +10,7 @@ import NamespaceFactory, {
   AccountNamespace,
   StateClient,
   SimulateNamespace,
+  MethodsNamespace,
 } from "./namespace/index.js";
 import { utf8 } from "../utils/bytes/index.js";
 import { EventManager } from "./event.js";
@@ -207,6 +208,12 @@ export class Program<IDL extends Idl = Idl> {
   readonly state?: StateClient<IDL>;
 
   /**
+   * The namespace provides a builder API for all APIs on the program.
+   * This is an alternative to using namespace the other namespaces..
+   */
+  readonly methods: MethodsNamespace<IDL>;
+
+  /**
    * Address of the program.
    */
   public get programId(): PublicKey {
@@ -275,6 +282,7 @@ export class Program<IDL extends Idl = Idl> {
       transaction,
       account,
       simulate,
+      methods,
       state,
     ] = NamespaceFactory.build(idl, this._coder, programId, provider);
     this.rpc = rpc;
@@ -282,6 +290,7 @@ export class Program<IDL extends Idl = Idl> {
     this.transaction = transaction;
     this.account = account;
     this.simulate = simulate;
+    this.methods = methods;
     this.state = state;
   }
 

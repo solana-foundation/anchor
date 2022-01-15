@@ -134,7 +134,7 @@ export type SimulateFn<
   Promise<SimulateResponse<NullableEvents<IDL>, IdlTypes<IDL>>>
 >;
 
-type SimulateResponse<E extends IdlEvent, Defined> = {
+export type SimulateResponse<E extends IdlEvent, Defined> = {
   events: readonly Event<E, Defined>[];
   raw: readonly string[];
 };

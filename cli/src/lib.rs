@@ -1021,7 +1021,7 @@ fn docker_build_bpf(
     println!(
         "Building {} manifest: {:?}",
         binary_name,
-        manifest_path.display().to_string()
+        manifest_path.display()
     );
 
     // Execute the build.

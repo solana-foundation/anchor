@@ -225,29 +225,24 @@ describe("cfo", () => {
       stake: stakeBump,
       treasury: treasuryBump,
     };
-    await program.rpc.createOfficer(
-      bumps,
-      distribution,
-      registrar,
-      msrmRegistrar,
-      {
-        accounts: {
-          officer,
-          srmVault,
-          usdcVault,
-          stake,
-          treasury,
-          srmMint: ORDERBOOK_ENV.mintA,
-          usdcMint: ORDERBOOK_ENV.usdc,
-          authority: program.provider.wallet.publicKey,
-          dexProgram: DEX_PID,
-          swapProgram: SWAP_PID,
-          tokenProgram: TOKEN_PID,
-          systemProgram: SystemProgram.programId,
-          rent: SYSVAR_RENT_PUBKEY,
-        },
-      }
-    );
+    await program.methods
+      .createOfficer(bumps, distribution, registrar, msrmRegistrar)
+      .accounts({
+        officer,
+        srmVault,
+        usdcVault,
+        stake,
+        treasury,
+        srmMint: ORDERBOOK_ENV.mintA,
+        usdcMint: ORDERBOOK_ENV.usdc,
+        authority: program.provider.wallet.publicKey,
+        dexProgram: DEX_PID,
+        swapProgram: SWAP_PID,
+        tokenProgram: TOKEN_PID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+      })
+      .rpc();
 
     officerAccount = await program.account.officer.fetch(officer);
     assert.ok(
@@ -260,8 +255,9 @@ describe("cfo", () => {
   });
 
   it("Creates a token account for the officer associated with the market", async () => {
-    await program.rpc.createOfficerToken(bBump, {
-      accounts: {
+    await program.methods
+      .createOfficerToken(bBump)
+      .accounts({
         officer,
         token: bVault,
         mint: ORDERBOOK_ENV.mintB,
@@ -269,16 +265,17 @@ describe("cfo", () => {
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PID,
         rent: SYSVAR_RENT_PUBKEY,
-      },
-    });
+      })
+      .rpc();
     const tokenAccount = await B_TOKEN_CLIENT.getAccountInfo(bVault);
     assert.ok(tokenAccount.state === 1);
     assert.ok(tokenAccount.isInitialized);
   });
 
   it("Creates an open orders account for the officer", async () => {
-    await program.rpc.createOfficerOpenOrders(openOrdersBump, {
-      accounts: {
+    await program.methods
+      .createOfficerOpenOrders(openOrdersBump)
+      .accounts({
         officer,
         openOrders,
         payer: program.provider.wallet.publicKey,
@@ -286,8 +283,8 @@ describe("cfo", () => {
         systemProgram: SystemProgram.programId,
         rent: SYSVAR_RENT_PUBKEY,
         market: ORDERBOOK_ENV.marketA.address,
-      },
-    });
+      })
+      .rpc();
     await program.rpc.createOfficerOpenOrders(openOrdersBumpB, {
       accounts: {
         officer,
@@ -310,8 +307,9 @@ describe("cfo", () => {
       program.provider,
       sweepVault
     );
-    await program.rpc.sweepFees({
-      accounts: {
+    await program.methods
+      .sweepFees()
+      .accounts({
         officer,
         sweepVault,
         mint: ORDERBOOK_ENV.usdc,
@@ -323,8 +321,8 @@ describe("cfo", () => {
           dexProgram: DEX_PID,
           tokenProgram: TOKEN_PID,
         },
-      },
-    });
+      })
+      .rpc();
     const afterTokenAccount = await serumCmn.getTokenAccount(
       program.provider,
       sweepVault
@@ -336,26 +334,28 @@ describe("cfo", () => {
   });
 
   it("Creates a market auth token", async () => {
-    await program.rpc.authorizeMarket(marketAuthBump, {
-      accounts: {
+    await program.methods
+      .authorizeMarket(marketAuthBump)
+      .accounts({
         officer,
         authority: program.provider.wallet.publicKey,
         marketAuth,
         payer: program.provider.wallet.publicKey,
         market: ORDERBOOK_ENV.marketA.address,
         systemProgram: SystemProgram.programId,
-      },
-    });
-    await program.rpc.authorizeMarket(marketAuthBumpB, {
-      accounts: {
+      })
+      .rpc();
+    await program.methods
+      .authorizeMarket(marketAuthBumpB)
+      .accounts({
         officer,
         authority: program.provider.wallet.publicKey,
         marketAuth: marketAuthB,
         payer: program.provider.wallet.publicKey,
         market: ORDERBOOK_ENV.marketB.address,
         systemProgram: SystemProgram.programId,
-      },
-    });
+      })
+      .rpc();
   });
 
   it("Transfers into the mintB vault", async () => {
@@ -378,8 +378,9 @@ describe("cfo", () => {
       quoteDecimals: 6,
       strict: false,
     };
-    await program.rpc.swapToUsdc(minExchangeRate, {
-      accounts: {
+    await program.methods
+      .swapToUsdc(minExchangeRate)
+      .accounts({
         officer,
         market: {
           market: marketBClient.address,
@@ -402,8 +403,8 @@ describe("cfo", () => {
         tokenProgram: TOKEN_PID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
         rent: SYSVAR_RENT_PUBKEY,
-      },
-    });
+      })
+      .rpc();
 
     const bVaultAfter = await B_TOKEN_CLIENT.getAccountInfo(bVault);
     const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
@@ -424,8 +425,9 @@ describe("cfo", () => {
       quoteDecimals: 6,
       strict: false,
     };
-    await program.rpc.swapToSrm(minExchangeRate, {
-      accounts: {
+    await program.methods
+      .swapToSrm(minExchangeRate)
+      .accounts({
         officer,
         market: {
           market: marketAClient.address,
@@ -449,8 +451,8 @@ describe("cfo", () => {
         tokenProgram: TOKEN_PID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
         rent: SYSVAR_RENT_PUBKEY,
-      },
-    });
+      })
+      .rpc();
 
     const srmVaultAfter = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
     const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
@@ -467,8 +469,9 @@ describe("cfo", () => {
     const stakeBefore = await SRM_TOKEN_CLIENT.getAccountInfo(stake);
     const mintInfoBefore = await SRM_TOKEN_CLIENT.getMintInfo();
 
-    await program.rpc.distribute({
-      accounts: {
+    await program.methods
+      .distribute()
+      .accounts({
         officer,
         treasury,
         stake,
@@ -476,8 +479,8 @@ describe("cfo", () => {
         srmMint: ORDERBOOK_ENV.mintA,
         tokenProgram: TOKEN_PID,
         dexProgram: DEX_PID,
-      },
-    });
+      })
+      .rpc();
 
     const srmVaultAfter = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
     const treasuryAfter = await SRM_TOKEN_CLIENT.getAccountInfo(treasury);
