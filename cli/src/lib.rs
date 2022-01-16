@@ -2017,7 +2017,7 @@ fn start_test_validator(
     }
     if count == ms_wait {
         eprintln!(
-            "Unable to start test validator. Check {} for errors.",
+            "Unable to get recent blockhash. Test validator does not look started. Check {} for errors. Consider increasing [test.startup_wait] in Anchor.toml.",
             test_ledger_log_filename
         );
         validator_handle.kill()?;
