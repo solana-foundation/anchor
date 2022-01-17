@@ -113,7 +113,7 @@ pub fn setup_game(ctx: Context<SetupGame>, player_two: Pubkey) -> ProgramResult 
     Ok(())
 }
 ```
-Why didn't we just add `player_two` as an account in the accounts struct? There are two reasons for this.First, adding it there requires a little more space in the transaction that saves whether the account is writable and whether it's a signer. But we care about neither of that, we just want the address. This brings us to the second and more important reason. A transaction can have effects on other transaction that are processed at the same time in the network if they share accounts. For example, if we add `player_two` to the accounts struct, during our transaction, no other transaction can edit `player_two`'s account. Therefore, we block all other transactions that want to edit `player_two`'s account, even though we neither want to read from nor write to the account. We just care about its address!
+Why didn't we just add `player_two` as an account in the accounts struct? There are two reasons for this. First, adding it there requires a little more space in the transaction that saves whether the account is writable and whether it's a signer. But we care about neither of that. We just want the address. This brings us to the second and more important reason: Simultaneous network transactions can affect each other if they share the same accounts. For example, if we add `player_two` to the accounts struct, during our transaction, no other transaction can edit `player_two`'s account. Therefore, we block all other transactions that want to edit `player_two`'s account, even though we neither want to read from nor write to the account. We just care about its address!
 
 Finish the instruction function by setting the game to its initial values:
 ```rust,ignore
@@ -163,7 +163,7 @@ import { expect } from 'chai';
 
 The test begins by creating some keypairs. Importantly, `playerOne` is not a keypair but the wallet of the program's provider. The provider details are defined in the `Anchor.toml` file in the root of the project.
 Then, we send the transaction. Because the anchor typescript client has parsed the IDL, all transaction inputs have types. If you remove one of the accounts for example, typescript will complain. 
-The structure of the transaction function is as follows. First come the instruction arguments. For this function, the public key of the second player. Then come the accounts. Lastly, we add a signers array. We have to add the `gameKeypair` here because whenever an account gets created, it has to sign its creation transaction. We don't have to add `playerOne` even though we gave it the `Signer` type in the program because it is the program provider and therefore signs the transaction by default.
+The structure of the transaction function is as follows: First come the instruction arguments. For this function, the public key of the second player. Then come the accounts. Lastly, we add a signers array. We have to add the `gameKeypair` here because whenever an account gets created, it has to sign its creation transaction. We don't have to add `playerOne` even though we gave it the `Signer` type in the program because it is the program provider and therefore signs the transaction by default.
 
 After the transaction returns, we can fetch the state of the game account. You can fetch account state using the `program.account` namespace. 
 Finally, we verify the game has been set up properly. Anchor's typescript client deserializes rust enums like this: `{ active: {}}` for a fieldless variant and `{ won: { winner: Pubkey }}` for a variant with fields. The `None` variant of `Option` becomes `null`. The `Some(x)` variant becomes whatever `x` deserializes to.
@@ -284,12 +284,12 @@ impl Game {
 ```
 
 We are not going to explore this code in detail together because it's rather simple rust code. It's just tic-tac-toe after all! Roughly, what happens when `play` is called:
-1. return error if game is over or
+1. Return error if game is over or
 return error if given row or column are outside the 3x3 board or
 return error if tile on board is already set
-2. determine current player and set tile to X or O
-3. update game state
-4. if game is still active, increase the turn
+2. Determine current player and set tile to X or O
+3. Update game state
+4. If game is still active, increase the turn
 
 Currently, the code doesn't compile because we need to add the `Tile`
 ```rust,ignore
@@ -478,12 +478,12 @@ We are going to deploy on `devnet`.
 
 Here is your deployment checklist 🚀
 
-1. run `anchor build`. Your program keypair is now in `target/deploy`. Keep this secret. You can reuse it on all clusters.
-2. run `solana address -k target/deploy/tic_tac_toe-keypair.json` and copy the address into your `declare_id!` macro at the top of `lib.rs`.
-3. run `anchor build` again. This step is is necessary to include our new program id in the binary.
-4. change the `provider.cluster` variable in `Anchor.toml` to `devnet`.
-5. run `anchor deploy`
-6. run `anchor test`
+1. Run `anchor build`. Your program keypair is now in `target/deploy`. Keep this secret. You can reuse it on all clusters.
+2. Run `solana address -k target/deploy/tic_tac_toe-keypair.json` and copy the address into your `declare_id!` macro at the top of `lib.rs`.
+3. Run `anchor build` again. This step is necessary to include our new program id in the binary.
+4. Change the `provider.cluster` variable in `Anchor.toml` to `devnet`.
+5. Run `anchor deploy`
+6. Run `anchor test`
 
 There is more to deployments than this e.g. understanding how the BPFLoader works, how to manage keys, how to upgrade your programs and more. Keep reading to learn more!
 
