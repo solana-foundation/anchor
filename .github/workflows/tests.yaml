@@ -272,6 +272,8 @@ jobs:
             path: tests/ido-pool
           - cmd: cd tests/cfo && anchor run test-with-build
             path: tests/cfo
+          - cmd: cd tests/auction-house && yarn && anchor test
+            path: tests/auction-house
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/

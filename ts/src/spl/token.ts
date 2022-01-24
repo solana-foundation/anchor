@@ -8,12 +8,11 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 );
 
 export function program(provider?: Provider): Program<SplToken> {
-  return new Program<SplToken>(
-    IDL,
-    TOKEN_PROGRAM_ID,
-    provider,
-    new SplTokenCoder(IDL)
-  );
+  return new Program<SplToken>(IDL, TOKEN_PROGRAM_ID, provider, coder());
+}
+
+export function coder(): SplTokenCoder {
+  return new SplTokenCoder(IDL);
 }
 
 /**

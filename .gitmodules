@@ -13,3 +13,6 @@
 [submodule "examples/permissioned-markets/deps/serum-dex"]
 	path = tests/permissioned-markets/deps/serum-dex
 	url = https://github.com/project-serum/serum-dex
+[submodule "tests/auction-house"]
+	path = tests/auction-house
+	url = https://github.com/armaniferrante/auction-house

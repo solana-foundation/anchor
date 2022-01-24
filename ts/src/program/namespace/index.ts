@@ -49,6 +49,10 @@ export default class NamespaceFactory {
 
     const idlErrors = parseIdlErrors(idl);
 
+    const account: AccountNamespace<IDL> = idl.accounts
+      ? AccountFactory.build(idl, coder, programId, provider)
+      : ({} as AccountNamespace<IDL>);
+
     const state = StateFactory.build(idl, coder, programId, provider);
 
     idl.instructions.forEach(<I extends AllInstructions<IDL>>(idlIx: I) => {
@@ -69,10 +73,14 @@ export default class NamespaceFactory {
         idl
       );
       const methodItem = MethodsBuilderFactory.build(
+        provider,
+        programId,
+        idlIx,
         ixItem,
         txItem,
         rpcItem,
-        simulateItem
+        simulateItem,
+        account
       );
 
       const name = camelCase(idlIx.name);
@@ -83,10 +91,6 @@ export default class NamespaceFactory {
       simulate[name] = simulateItem;
       methods[name] = methodItem;
     });
-
-    const account: AccountNamespace<IDL> = idl.accounts
-      ? AccountFactory.build(idl, coder, programId, provider)
-      : ({} as AccountNamespace<IDL>);
 
     return [
       rpc as RpcNamespace<IDL>,

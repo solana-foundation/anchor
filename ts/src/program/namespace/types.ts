@@ -65,6 +65,10 @@ export type MakeInstructionsNamespace<
     Mk[M];
 };
 
+export type MakeMethodsNamespace<IDL extends Idl, I extends IdlInstruction> = {
+  [M in keyof InstructionMap<I>]: MethodsFn<IDL, InstructionMap<I>[M], any>;
+};
+
 export type InstructionContextFn<
   IDL extends Idl,
   I extends AllInstructions<IDL>,
@@ -78,6 +82,12 @@ export type InstructionContextFnArgs<
   ...ArgsTuple<I["args"], IdlTypes<IDL>>,
   Context<Accounts<I["accounts"][number]>>
 ];
+
+export type MethodsFn<
+  IDL extends Idl,
+  I extends IDL["instructions"][number],
+  Ret
+> = (...args: ArgsTuple<I["args"], IdlTypes<IDL>>) => Ret;
 
 type TypeMap = {
   publicKey: PublicKey;

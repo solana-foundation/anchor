@@ -12,6 +12,7 @@ idl = []
 hash = []
 default = []
 anchor-debug = []
+seeds = []
 
 [dependencies]
 proc-macro2 = "1.0"

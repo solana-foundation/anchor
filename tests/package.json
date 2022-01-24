@@ -20,6 +20,7 @@
     "misc",
     "multisig",
     "permissioned-markets",
+    "pda-derivation",
     "pyth",
     "spl/token-proxy",
     "swap",

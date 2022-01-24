@@ -1,12 +1,12 @@
 [package]
-name = "misc"
+name = "pda-derivation"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "misc"
+name = "pda_derivation"
 
 [features]
 no-entrypoint = []
@@ -16,6 +16,3 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl" }
-misc2 = { path = "../misc2", features = ["cpi"] }
-spl-associated-token-account = "=1.0.3"
