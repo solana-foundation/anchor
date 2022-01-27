@@ -31,8 +31,8 @@ If your function requires instruction data, you can add it by adding arguments t
 mod hello_anchor {
     use super::*;
     pub fn set_data(ctx: Context<SetData>, data: Data) -> ProgramResult {
-        ctx.accounts.my_account.data = init_data.data;
-        ctx.accounts.my_account.age = init_data.age;
+        ctx.accounts.my_account.data = data.data;
+        ctx.accounts.my_account.age = data.age;
         Ok(())
     }
 }
