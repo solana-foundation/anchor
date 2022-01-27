@@ -1,5 +1,7 @@
 # Introduction
 
+<div style="border: 2px solid red; text-align: center; padding: 10px 10px 10px 10px; box-sizing: border-box"> This documentation is being sunset in favor of <a href="https://book.anchor-lang.com" rel="noopener noreferrer" target="_blank">The Anchor Book</a>. At this point in time, either documentation may contain information that the other does not.</div>
+
 Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools.
 
 - Rust crates and eDSL for writing Solana programs

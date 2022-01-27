@@ -85,6 +85,7 @@ module.exports = {
     ],
 
     nav: [
+      { text: "The Anchor Book", link: "https://book.anchor-lang.com" },
       { text: "Rust", link: "https://docs.rs/anchor-lang/latest/anchor_lang/" },
       { text: "TypeScript", link: "https://project-serum.github.io/anchor/ts/index.html" },
       { text: "GitHub", link: "https://github.com/project-serum/anchor" }
