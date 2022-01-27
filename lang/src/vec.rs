@@ -3,6 +3,7 @@ use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use std::collections::BTreeMap;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
@@ -25,9 +26,10 @@ impl<'info, T: Accounts<'info>> Accounts<'info> for Vec<T> {
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         ix_data: &[u8],
+        bumps: &mut BTreeMap<String, u8>,
     ) -> Result<Self, ProgramError> {
         let mut vec: Vec<T> = Vec::new();
-        T::try_accounts(program_id, accounts, ix_data).map(|item| vec.push(item))?;
+        T::try_accounts(program_id, accounts, ix_data, bumps).map(|item| vec.push(item))?;
         Ok(vec)
     }
 }
@@ -76,9 +78,10 @@ mod tests {
             false,
             Epoch::default(),
         );
-
+        let mut bumps = std::collections::BTreeMap::new();
         let mut accounts = &[account1, account2][..];
-        let parsed_accounts = Vec::<Test>::try_accounts(&program_id, &mut accounts, &[]).unwrap();
+        let parsed_accounts =
+            Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps).unwrap();
 
         assert_eq!(accounts.len(), parsed_accounts.len());
     }
@@ -87,8 +90,8 @@ mod tests {
     #[should_panic]
     fn test_accounts_trait_for_vec_empty() {
         let program_id = Pubkey::default();
-
+        let mut bumps = std::collections::BTreeMap::new();
         let mut accounts = &[][..];
-        Vec::<Test>::try_accounts(&program_id, &mut accounts, &[]).unwrap();
+        Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps).unwrap();
     }
 }

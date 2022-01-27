@@ -7,6 +7,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 
 /// Type validating that the account is owned by the system program
@@ -39,6 +40,7 @@ impl<'info> Accounts<'info> for SystemAccount<'info> {
         _program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
+        _bumps: &mut BTreeMap<String, u8>,
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

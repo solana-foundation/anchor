@@ -29,6 +29,7 @@ use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use std::collections::BTreeMap;
 use std::io::Write;
 
 mod account_meta;
@@ -80,6 +81,7 @@ pub trait Accounts<'info>: ToAccountMetas + ToAccountInfos<'info> + Sized {
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         ix_data: &[u8],
+        bumps: &mut BTreeMap<String, u8>,
     ) -> Result<Self, ProgramError>;
 }
 

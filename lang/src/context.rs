@@ -4,6 +4,7 @@ use crate::{Accounts, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
+use std::collections::BTreeMap;
 use std::fmt;
 
 /// Provides non-argument inputs to the program.
@@ -29,6 +30,10 @@ pub struct Context<'a, 'b, 'c, 'info, T> {
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
     pub remaining_accounts: &'c [AccountInfo<'info>],
+    /// Bump seeds found during constraint validation. This is provided as a
+    /// convenience so that handlers don't have to recalculate bump seeds or
+    /// pass them in as arguments.
+    pub bumps: BTreeMap<String, u8>,
 }
 
 impl<'a, 'b, 'c, 'info, T: fmt::Debug> fmt::Debug for Context<'a, 'b, 'c, 'info, T> {
@@ -37,6 +42,7 @@ impl<'a, 'b, 'c, 'info, T: fmt::Debug> fmt::Debug for Context<'a, 'b, 'c, 'info,
             .field("program_id", &self.program_id)
             .field("accounts", &self.accounts)
             .field("remaining_accounts", &self.remaining_accounts)
+            .field("bumps", &self.bumps)
             .finish()
     }
 }
@@ -46,11 +52,13 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {
         program_id: &'a Pubkey,
         accounts: &'b mut T,
         remaining_accounts: &'c [AccountInfo<'info>],
+        bumps: BTreeMap<String, u8>,
     ) -> Self {
         Self {
             program_id,
             accounts,
             remaining_accounts,
+            bumps,
         }
     }
 }

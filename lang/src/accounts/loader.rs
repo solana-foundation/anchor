@@ -9,6 +9,7 @@ use solana_program::instruction::AccountMeta;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::cell::{Ref, RefMut};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::Write;
 use std::marker::PhantomData;
@@ -150,6 +151,7 @@ impl<'info, T: ZeroCopy> Accounts<'info> for Loader<'info, T> {
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
+        _bumps: &mut BTreeMap<String, u8>,
     ) -> Result<Self, ProgramError> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

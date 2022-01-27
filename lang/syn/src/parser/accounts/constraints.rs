@@ -570,7 +570,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         };
         Ok(ConstraintGroup {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
-            if_needed: i.if_needed,
+                if_needed: i.if_needed,
                 seeds: seeds.clone(),
                 payer: into_inner!(payer.clone()).map(|a| a.target),
                 space: space.clone().map(|s| s.space.clone()),

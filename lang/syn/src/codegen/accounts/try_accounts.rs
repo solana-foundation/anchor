@@ -25,7 +25,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     quote! {
                         #[cfg(feature = "anchor-debug")]
                         ::solana_program::log::sol_log(stringify!(#name));
-                        let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data)?;
+                        let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data, __bumps)?;
                     }
                 }
                 AccountField::Field(f) => {
@@ -43,7 +43,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         quote! {
                             #[cfg(feature = "anchor-debug")]
                             ::solana_program::log::sol_log(stringify!(#name));
-                            let #name = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data)?;
+                            let #name = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data, __bumps)?;
                         }
                     }
                 }
@@ -92,6 +92,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 program_id: &anchor_lang::solana_program::pubkey::Pubkey,
                 accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>],
                 ix_data: &[u8],
+                __bumps: &mut std::collections::BTreeMap<String, u8>,
             ) -> std::result::Result<Self, anchor_lang::solana_program::program_error::ProgramError> {
                 // Deserialize instruction, if declared.
                 #ix_de
