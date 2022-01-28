@@ -1,7 +1,7 @@
 use anchor_client::Cluster;
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Error, Result};
-use clap::{ArgEnum, Clap};
+use clap::{ArgEnum, Parser};
 use heck::SnakeCase;
 use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
@@ -15,7 +15,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Default, Debug, Clap)]
+#[derive(Default, Debug, Parser)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -294,7 +294,7 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ArgEnum, Clap, Clone, PartialEq, Debug)]
+#[derive(ArgEnum, Parser, Clone, PartialEq, Debug)]
 pub enum BootstrapMode {
     None,
     Debian,

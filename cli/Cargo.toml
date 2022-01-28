@@ -13,7 +13,7 @@ dev = []
 default = []
 
 [dependencies]
-clap = "3.0.0-beta.1"
+clap = { version = "3.0.13", features = ["derive"] }
 anyhow = "1.0.32"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 anchor-lang = { path = "../lang" }

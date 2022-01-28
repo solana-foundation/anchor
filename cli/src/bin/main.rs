@@ -1,6 +1,6 @@
 use anchor_cli::Opts;
 use anyhow::Result;
-use clap::Clap;
+use clap::Parser;
 
 fn main() -> Result<()> {
     anchor_cli::entry(Opts::parse())

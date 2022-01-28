@@ -7,7 +7,7 @@ use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Result};
-use clap::Clap;
+use clap::Parser;
 use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
@@ -48,7 +48,7 @@ pub mod template;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 #[clap(version = VERSION)]
 pub struct Opts {
     #[clap(flatten)]
@@ -57,7 +57,7 @@ pub struct Opts {
     pub command: Command,
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub enum Command {
     /// Initializes a workspace.
     Init {
@@ -261,12 +261,12 @@ pub enum Command {
     },
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub enum KeysCommand {
     List,
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
@@ -341,7 +341,7 @@ pub enum IdlCommand {
     },
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub enum ClusterCommand {
     /// Prints common cluster urls.
     List,
