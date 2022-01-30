@@ -14,13 +14,14 @@ incremented for features.
 ### Features
 
 * lang: Add `seeds::program` constraint for specifying which program_id to use when deriving PDAs.([#1197](https://github.com/project-serum/anchor/pull/1197))
-* lang: `Context` now has a new `bumps: BTree<String, u8>` argument, mapping account name to bump seed "found" by the accounts context. This allows one to access bump seeds without having to pass them in from the client or recalculate them in the handler ([#1367](calculated )).
+* lang: `Context` now has a new `bumps: BTree<String, u8>` argument, mapping account name to bump seed "found" by the accounts context. This allows one to access bump seeds without having to pass them in from the client or recalculate them in the handler ([#1367](https://github.com/project-serum/anchor/pull/1367)).
 * ts: Remove error logging in the event parser when log websocket encounters a program error ([#1313](https://github.com/project-serum/anchor/pull/1313)).
 * ts: Add new `methods` namespace to the program client, introducing a more ergonomic builder API ([#1324](https://github.com/project-serum/anchor/pull/1324)).
 * ts: Add registry utility for fetching the latest verified build ([#1371](https://github.com/project-serum/anchor/pull/1371)).
 
 ### Breaking
 
+* lang: Put `init_if_needed` behind a feature flag to decrease wrong usage ([#1258](https://github.com/project-serum/anchor/pull/1258)).
 * lang: rename `loader_account` module to `account_loader` module ([#1279](https://github.com/project-serum/anchor/pull/1279))
 * lang: The `Accounts` trait's `try_accounts` method now has an additional `bumps: &mut BTreeMap<String, u8>` argument, which accumulates bump seeds ([#1367](https://github.com/project-serum/anchor/pull/1367)).
 * ts: `Coder` is now an interface and the existing class has been renamed to `BorshCoder`. This change allows the generation of Anchor clients for non anchor programs  ([#1259](https://github.com/project-serum/anchor/pull/1259/files)).

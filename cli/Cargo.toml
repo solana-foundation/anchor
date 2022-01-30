@@ -18,7 +18,7 @@ anyhow = "1.0.32"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 anchor-lang = { path = "../lang" }
 anchor-client = { path = "../client" }
-anchor-syn = { path = "../lang/syn", features = ["idl"] }
+anchor-syn = { path = "../lang/syn", features = ["idl", "init-if-needed"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 toml = "0.5.8"

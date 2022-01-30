@@ -15,7 +15,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { path = "../../../../lang" }
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
 anchor-spl = { path = "../../../../spl" }
 misc2 = { path = "../misc2", features = ["cpi"] }
 spl-associated-token-account = "=1.0.3"

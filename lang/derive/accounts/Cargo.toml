@@ -11,6 +11,7 @@ edition = "2018"
 proc-macro = true
 
 [features]
+init-if-needed = ["anchor-syn/init-if-needed"]
 default = []
 anchor-debug = ["anchor-syn/anchor-debug"]
 

@@ -8,6 +8,7 @@ license = "Apache-2.0"
 description = "Solana Sealevel eDSL"
 
 [features]
+init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 derive = []
 default = []
 anchor-debug = [
