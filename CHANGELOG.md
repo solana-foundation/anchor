@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+* ts: Fix the root type declaration of the `Wallet` / `NodeWallet` class. ([#1363](https://github.com/project-serum/anchor/pull/1363))
+
 ### Features
 
 * lang: Add `seeds::program` constraint for specifying which program_id to use when deriving PDAs.([#1197](https://github.com/project-serum/anchor/pull/1197))
