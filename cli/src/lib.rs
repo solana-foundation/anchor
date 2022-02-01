@@ -1891,22 +1891,34 @@ fn validator_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
                 flags.push(entry.program.clone());
             }
         }
-        if let Some(clone) = &test.clone {
-            for entry in clone {
-                flags.push("--clone".to_string());
-                flags.push(entry.address.clone());
-            }
-        }
         if let Some(validator) = &test.validator {
             for (key, value) in serde_json::to_value(validator)?.as_object().unwrap() {
                 if key == "ledger" {
+                    // Ledger flag is a special case as it is passed separately to the rest of
+                    // these validator flags.
                     continue;
                 };
-                flags.push(format!("--{}", key.replace('_', "-")));
-                if let serde_json::Value::String(v) = value {
-                    flags.push(v.to_string());
+                if key == "account" {
+                    for entry in value.as_array().unwrap() {
+                        // Push the account flag for each array entry
+                        flags.push("--account".to_string());
+                        flags.push(entry["address"].as_str().unwrap().to_string());
+                        flags.push(entry["filename"].as_str().unwrap().to_string());
+                    }
+                } else if key == "clone" {
+                    for entry in value.as_array().unwrap() {
+                        // Push the clone flag for each array entry
+                        flags.push("--clone".to_string());
+                        flags.push(entry["address"].as_str().unwrap().to_string());
+                    }
                 } else {
-                    flags.push(value.to_string());
+                    // Remaining validator flags are non-array types
+                    flags.push(format!("--{}", key.replace('_', "-")));
+                    if let serde_json::Value::String(v) = value {
+                        flags.push(v.to_string());
+                    } else {
+                        flags.push(value.to_string());
+                    }
                 }
             }
         }
