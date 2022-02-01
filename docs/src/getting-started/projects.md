@@ -10,7 +10,7 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [01](https://01protocol.com/)
 * [Parrot Finance](https://parrot.fi/)
 * [Marinade Finance](https://marinade.finance/)
-* [Cryptocurrencies.Ai](https://dex.cryptocurrencies.ai/)
+* [Aldrin](https://dex.aldrin.com/)
 * [Cyclos](https://cyclos.io/)
 * [Solend](https://solend.fi)
 * [Drift](https://www.drift.trade/)
