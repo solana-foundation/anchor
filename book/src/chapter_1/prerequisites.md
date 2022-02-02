@@ -1,4 +1,0 @@
-# Prerequisites
-This guide (for now) assumes that you already have some knowledge of Solana programs and basic Rust. Ideally, you have already written a basic program without anchor. To make it through the essentials section, you should at least understand [Solana's programming model](https://docs.solana.com/developing/programming-model/overview). Additionally, you should've read chapter 1-9 of the [Rust book](https://doc.rust-lang.org/book/title-page.html) which cover the basics of using Rust (Most of the time you don't need advanced Rust to write anchor programs).
-
-If you're not familiar with Solana at all, the official [Solana developers page](https://solana.com/developers) is a good starting point.
