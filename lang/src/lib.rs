@@ -38,7 +38,7 @@ mod bpf_upgradeable_state;
 mod common;
 pub mod context;
 mod ctor;
-mod error;
+pub mod error;
 #[doc(hidden)]
 pub mod idl;
 mod system_program;
@@ -269,6 +269,7 @@ pub mod prelude {
 }
 
 /// Internal module used by macros and unstable apis.
+#[doc(hidden)]
 pub mod __private {
     // Modules with useful information for users
     // don't use #[doc(hidden)] on these
@@ -280,24 +281,22 @@ pub mod __private {
     /// The starting point for user defined error codes.
     pub const ERROR_CODE_OFFSET: u32 = 6000;
 
-    #[doc(hidden)]
     pub use crate::ctor::Ctor;
-    #[doc(hidden)]
+
     pub use crate::error::Error;
-    #[doc(hidden)]
+
     pub use anchor_attribute_account::ZeroCopyAccessor;
-    #[doc(hidden)]
+
     pub use anchor_attribute_event::EventIndex;
-    #[doc(hidden)]
+
     pub use base64;
-    #[doc(hidden)]
+
     pub use bytemuck;
-    #[doc(hidden)]
+
     use solana_program::program_error::ProgramError;
-    #[doc(hidden)]
+
     use solana_program::pubkey::Pubkey;
-    #[doc(hidden)]
-    #[doc(hidden)]
+
     pub mod state {
         pub use crate::accounts::state::*;
     }
