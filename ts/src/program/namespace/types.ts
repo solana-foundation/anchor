@@ -92,6 +92,7 @@ export type MethodsFn<
 type TypeMap = {
   publicKey: PublicKey;
   bool: boolean;
+  string: string;
 } & {
   [K in "u8" | "i8" | "u16" | "i16" | "u32" | "i32"]: number;
 } &
@@ -105,6 +106,8 @@ export type DecodeType<T extends IdlType, Defined> = T extends keyof TypeMap
   ? Defined[T["defined"]]
   : T extends { option: { defined: keyof Defined } }
   ? Defined[T["option"]["defined"]] | null
+  : T extends { option: keyof TypeMap }
+  ? TypeMap[T["option"]]
   : T extends { vec: keyof TypeMap }
   ? TypeMap[T["vec"]][]
   : T extends { array: [defined: keyof TypeMap, size: number] }

@@ -14,6 +14,7 @@ incremented for features.
 ### Fixes
 
 * ts: Fix the root type declaration of the `Wallet` / `NodeWallet` class. ([#1363](https://github.com/project-serum/anchor/pull/1363))
+* ts: Improve type mapping of Account fields into Typescript with additional support for `Option<T>` and `Vec<String>` types. ([#1393](https://github.com/project-serum/anchor/pull/1393))
 
 ### Features
 
