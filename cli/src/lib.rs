@@ -417,7 +417,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             cargo_args,
         ),
         #[cfg(feature = "dev")]
-        Command::Airdrop => airdrop(cfg_override),
+        Command::Airdrop { .. } => airdrop(&opts.cfg_override),
         Command::Cluster { subcmd } => cluster(subcmd),
         Command::Shell => shell(&opts.cfg_override),
         Command::Run { script } => run(&opts.cfg_override, script),
@@ -2410,7 +2410,9 @@ fn set_workspace_dir_or_exit() {
 fn airdrop(cfg_override: &ConfigOverride) -> Result<()> {
     let url = cfg_override
         .cluster
-        .unwrap_or_else(|| "https://api.devnet.solana.com".to_string());
+        .as_ref()
+        .unwrap_or_else(|| &Cluster::Devnet)
+        .url();
     loop {
         let exit = std::process::Command::new("solana")
             .arg("airdrop")
