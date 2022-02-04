@@ -1,0 +1,26 @@
+[package]
+name = "avm"
+version = "0.1.0"
+edition = "2018"
+
+[[bin]]
+name = "avm"
+path = "src/main.rs"
+
+[[bin]]
+name = "anchor"
+path = "src/anchor/main.rs"
+
+[dependencies]
+clap = { version = "3.0.13", features = [ "derive" ]}
+cfg-if = "1.0.0"
+anyhow = "1.0.32"
+dialoguer = "0.9.0"
+dirs = "4.0"
+semver = "1.0.4"
+serde = { version = "1.0.136", features = [ "derive" ]}
+serde_json = "1.0.78"
+thiserror = "1.0.30"
+once_cell = { version = "1.8.0" }
+reqwest = { version = "0.11.9", features = ['blocking', 'json'] }
+tempfile = "3.3.0"

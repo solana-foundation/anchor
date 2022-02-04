@@ -23,6 +23,7 @@ incremented for features.
 * ts: Add new `methods` namespace to the program client, introducing a more ergonomic builder API ([#1324](https://github.com/project-serum/anchor/pull/1324)).
 * ts: Add registry utility for fetching the latest verified build ([#1371](https://github.com/project-serum/anchor/pull/1371)).
 * cli: Expose the solana-test-validator --account flag in Anchor.toml via [[test.validator.account]] ([#1366](https://github.com/project-serum/anchor/pull/1366)).
+* cli: Add avm, a tool for managing anchor-cli versions ([#1385](https://github.com/project-serum/anchor/pull/1385)).
 
 ### Breaking
 

@@ -6,6 +6,7 @@ codegen-units = 1
 
 [workspace]
 members = [
+    "avm",
     "cli",
     "client",
     "lang",
