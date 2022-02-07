@@ -38,7 +38,7 @@ describe("chat", () => {
       [authority.toBuffer()],
       program.programId
     );
-    await program.rpc.createUser("My User", bump, {
+    await program.rpc.createUser("My User", {
       accounts: {
         user,
         authority,

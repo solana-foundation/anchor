@@ -19,7 +19,7 @@ pub mod ido_pool {
     pub fn initialize_pool(
         ctx: Context<InitializePool>,
         ido_name: String,
-        bumps: PoolBumps,
+        _bumps: PoolBumps, // No longer used.
         num_ido_tokens: u64,
         ido_times: IdoTimes,
     ) -> ProgramResult {
@@ -32,7 +32,12 @@ pub mod ido_pool {
         name_data[..name_bytes.len()].copy_from_slice(name_bytes);
 
         ido_account.ido_name = name_data;
-        ido_account.bumps = bumps;
+        ido_account.bumps = PoolBumps {
+            ido_account: *ctx.bumps.get("ido_account").unwrap(),
+            redeemable_mint: *ctx.bumps.get("redeemable_mint").unwrap(),
+            pool_watermelon: *ctx.bumps.get("pool_watermelon").unwrap(),
+            pool_usdc: *ctx.bumps.get("pool_usdc").unwrap(),
+        };
         ido_account.ido_authority = ctx.accounts.ido_authority.key();
 
         ido_account.usdc_mint = ctx.accounts.usdc_mint.key();
@@ -289,7 +294,7 @@ pub struct InitializePool<'info> {
     // IDO Accounts
     #[account(init,
         seeds = [ido_name.as_bytes()],
-        bump = bumps.ido_account,
+        bump,
         payer = ido_authority)]
     pub ido_account: Box<Account<'info, IdoAccount>>,
     // TODO Confirm USDC mint address on mainnet or leave open as an option for other stables
@@ -299,7 +304,7 @@ pub struct InitializePool<'info> {
         mint::decimals = DECIMALS,
         mint::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"redeemable_mint".as_ref()],
-        bump = bumps.redeemable_mint,
+        bump,
         payer = ido_authority)]
     pub redeemable_mint: Box<Account<'info, Mint>>,
     #[account(constraint = watermelon_mint.key() == ido_authority_watermelon.mint)]
@@ -308,14 +313,14 @@ pub struct InitializePool<'info> {
         token::mint = watermelon_mint,
         token::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"pool_watermelon"],
-        bump = bumps.pool_watermelon,
+        bump,
         payer = ido_authority)]
     pub pool_watermelon: Box<Account<'info, TokenAccount>>,
     #[account(init,
         token::mint = usdc_mint,
         token::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"pool_usdc"],
-        bump = bumps.pool_usdc,
+        bump,
         payer = ido_authority)]
     pub pool_usdc: Box<Account<'info, TokenAccount>>,
     // Programs and Sysvars

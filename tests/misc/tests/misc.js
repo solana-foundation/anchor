@@ -307,7 +307,7 @@ describe("misc", () => {
       [Buffer.from(anchor.utils.bytes.utf8.encode("my-seed"))],
       program.programId
     );
-    await program.rpc.testPdaInitZeroCopy(nonce, {
+    await program.rpc.testPdaInitZeroCopy({
       accounts: {
         myPda,
         myPayer: program.provider.wallet.publicKey,
@@ -347,7 +347,7 @@ describe("misc", () => {
       [Buffer.from(anchor.utils.bytes.utf8.encode("my-token-seed"))],
       program.programId
     );
-    await program.rpc.testTokenSeedsInit(token_bump, mint_bump, {
+    await program.rpc.testTokenSeedsInit({
       accounts: {
         myPda,
         mint,

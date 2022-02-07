@@ -322,14 +322,14 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         seeds = [dex_program.key.as_ref()],
-        bump = bumps.bump,
+        bump,
         payer = authority,
     )]
     officer: Box<Account<'info, Officer>>,
     #[account(
         init,
         seeds = [b"token", officer.key().as_ref(), srm_mint.key().as_ref()],
-        bump = bumps.srm,
+        bump,
         payer = authority,
         token::mint = srm_mint,
         token::authority = officer,
@@ -338,7 +338,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         seeds = [b"token", officer.key().as_ref(), usdc_mint.key().as_ref()],
-        bump = bumps.usdc,
+        bump,
         payer = authority,
         token::mint = usdc_mint,
         token::authority = officer,
@@ -347,7 +347,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         seeds = [b"stake", officer.key().as_ref()],
-        bump = bumps.stake,
+        bump,
         payer = authority,
         token::mint = srm_mint,
         token::authority = officer,
@@ -356,7 +356,7 @@ pub struct CreateOfficer<'info> {
     #[account(
         init,
         seeds = [b"treasury", officer.key().as_ref()],
-        bump = bumps.treasury,
+        bump,
         payer = authority,
         token::mint = srm_mint,
         token::authority = officer,
@@ -390,7 +390,7 @@ pub struct AuthorizeMarket<'info> {
         init,
         payer = payer,
         seeds = [b"market-auth", officer.key().as_ref(), market.key.as_ref()],
-        bump = bump,
+        bump,
     )]
     market_auth: Account<'info, MarketAuth>,
     payer: Signer<'info>,
@@ -416,7 +416,7 @@ pub struct CreateOfficerToken<'info> {
     #[account(
         init,
         seeds = [b"token", officer.key().as_ref(), mint.key().as_ref()],
-        bump = bump,
+        bump,
         token::mint = mint,
         token::authority = officer,
         payer = payer,
@@ -437,7 +437,7 @@ pub struct CreateOfficerOpenOrders<'info> {
     #[account(
         init,
         seeds = [b"open-orders", officer.key().as_ref(), market.key.as_ref()],
-        bump = bump,
+        bump,
         space = 12 + size_of::<OpenOrders>(),
         payer = payer,
         owner = dex::ID,

@@ -1,7 +1,7 @@
 //! A simple chat program using a ring buffer to store messages.
 
-use anchor_lang::prelude::*;
 use anchor_lang::accounts::loader::Loader;
+use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -9,10 +9,10 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod chat {
     use super::*;
 
-    pub fn create_user(ctx: Context<CreateUser>, name: String, bump: u8) -> Result<()> {
+    pub fn create_user(ctx: Context<CreateUser>, name: String) -> Result<()> {
         ctx.accounts.user.name = name;
         ctx.accounts.user.authority = *ctx.accounts.authority.key;
-        ctx.accounts.user.bump = bump;
+        ctx.accounts.user.bump = *ctx.bumps.get("user").unwrap();
         Ok(())
     }
     pub fn create_chat_room(ctx: Context<CreateChatRoom>, name: String) -> Result<()> {
@@ -39,12 +39,12 @@ pub mod chat {
 }
 
 #[derive(Accounts)]
-#[instruction(name: String, bump: u8)]
+#[instruction(name: String)]
 pub struct CreateUser<'info> {
     #[account(
         init,
         seeds = [authority.key().as_ref()],
-        bump = bump,
+        bump,
         payer = authority,
         space = 320,
     )]

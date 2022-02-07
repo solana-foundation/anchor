@@ -414,6 +414,16 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 self.signer
                     .replace(Context::new(i.span(), ConstraintSigner { error: None }));
             }
+
+            // Assert a bump target is not given on init.
+            if let Some(b) = &self.bump {
+                if b.bump.is_some() {
+                    return Err(ParseError::new(
+                        b.span(),
+                        "bump targets should not be provided with init. Please use bump without a target."
+                    ));
+                }
+            }
         }
 
         // Zero.

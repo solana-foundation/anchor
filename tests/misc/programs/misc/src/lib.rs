@@ -121,10 +121,10 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>, bump: u8) -> ProgramResult {
+    pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> ProgramResult {
         let mut acc = ctx.accounts.my_pda.load_init()?;
         acc.data = 9;
-        acc.bump = bump;
+        acc.bump = *ctx.bumps.get("my_pda").unwrap();
         Ok(())
     }
 
@@ -134,11 +134,7 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_token_seeds_init(
-        _ctx: Context<TestTokenSeedsInit>,
-        _token_bump: u8,
-        _mint_bump: u8,
-    ) -> ProgramResult {
+    pub fn test_token_seeds_init(_ctx: Context<TestTokenSeedsInit>) -> ProgramResult {
         Ok(())
     }
 
@@ -264,15 +260,17 @@ pub mod misc {
         **ctx.accounts.user.try_borrow_mut_lamports()? += 1;
         Ok(())
     }
-    
-    pub fn init_if_needed_checks_rent_exemption(_ctx: Context<InitIfNeededChecksRentExemption>) -> ProgramResult {
+
+    pub fn init_if_needed_checks_rent_exemption(
+        _ctx: Context<InitIfNeededChecksRentExemption>,
+    ) -> ProgramResult {
         Ok(())
     }
-        
+
     pub fn test_program_id_constraint(
         _ctx: Context<TestProgramIdConstraint>,
         _bump: u8,
-        _second_bump: u8
+        _second_bump: u8,
     ) -> ProgramResult {
         Ok(())
     }

@@ -1,19 +1,18 @@
 use crate::account::*;
-use anchor_lang::prelude::*;
-use anchor_lang::accounts::loader::Loader;
 use anchor_lang::accounts::cpi_state::CpiState;
+use anchor_lang::accounts::loader::Loader;
+use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use misc2::misc2::MyState as Misc2State;
 use std::mem::size_of;
 
 #[derive(Accounts)]
-#[instruction(token_bump: u8, mint_bump: u8)]
 pub struct TestTokenSeedsInit<'info> {
     #[account(
         init,
         seeds = [b"my-mint-seed".as_ref()],
-        bump = mint_bump,
+        bump,
         payer = authority,
         mint::decimals = 6,
         mint::authority = authority,
@@ -22,7 +21,7 @@ pub struct TestTokenSeedsInit<'info> {
     #[account(
         init,
         seeds = [b"my-token-seed".as_ref(),],
-        bump = token_bump,
+        bump,
         payer = authority,
         token::mint = mint,
         token::authority = authority,
@@ -79,7 +78,7 @@ pub struct TestPdaInit<'info> {
     #[account(
         init,
         seeds = [b"my-seed", domain.as_bytes(), foo.key.as_ref(), &seed],
-        bump = bump,
+        bump,
         payer = my_payer,
     )]
     pub my_pda: Account<'info, DataU16>,
@@ -89,12 +88,11 @@ pub struct TestPdaInit<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
 pub struct TestPdaInitZeroCopy<'info> {
     #[account(
         init,
         seeds = [b"my-seed".as_ref()],
-        bump = bump,
+        bump,
         payer = my_payer,
     )]
     pub my_pda: Loader<'info, DataZeroCopy>,
@@ -367,7 +365,7 @@ pub struct InitDecreaseLamports<'info> {
     pub data: AccountInfo<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -376,7 +374,7 @@ pub struct InitIfNeededChecksRentExemption<'info> {
     pub data: AccountInfo<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
