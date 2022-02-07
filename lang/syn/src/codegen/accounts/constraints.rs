@@ -365,7 +365,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                     }
 
                     let pa: #ty_decl = #from_account_info;
-                    if !(!#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID) {
+                    if #if_needed {
                         if pa.mint != #mint.key() {
                             return Err(anchor_lang::__private::ErrorCode::ConstraintTokenMint.into());
                         }
@@ -400,7 +400,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                         anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info;
-                    if !(!#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID) {
+                    if #if_needed {
                         if pa.mint != #mint.key() {
                             return Err(anchor_lang::__private::ErrorCode::ConstraintTokenMint.into());
                         }
@@ -453,7 +453,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                         anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
                     let pa: #ty_decl = #from_account_info;
-                    if !(!#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID) {
+                    if #if_needed {
                         if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
                             return Err(anchor_lang::__private::ErrorCode::ConstraintMintMintAuthority.into());
                         }
@@ -538,7 +538,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                     let pa: #ty_decl = #from_account_info;
 
                     // Assert the account was created correctly.
-                    if !(!#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID) {
+                    if #if_needed {
                         if space != actual_field.data_len() {
                             return Err(anchor_lang::__private::ErrorCode::ConstraintSpace.into());
                         }
