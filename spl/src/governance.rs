@@ -4,15 +4,15 @@ macro_rules! vote_weight_record {
     ($id:expr) => {
         /// Anchor wrapper for the SPL governance program's VoterWeightRecord type.
         #[derive(Clone)]
-        pub struct VoterWeightRecord(spl_governance::addins::voter_weight::VoterWeightRecord);
+        pub struct VoterWeightRecord(spl_governance_addin_api::voter_weight::VoterWeightRecord);
 
         impl anchor_lang::AccountDeserialize for VoterWeightRecord {
             fn try_deserialize(buf: &mut &[u8]) -> std::result::Result<Self, ProgramError> {
                 let mut data = buf;
-                let vwr: spl_governance::addins::voter_weight::VoterWeightRecord =
+                let vwr: spl_governance_addin_api::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
                         .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotDeserialize)?;
-                if vwr.account_type != spl_governance::addins::voter_weight::VoterWeightAccountType::VoterWeightRecord {
+                if !solana_program::program_pack::IsInitialized::is_initialized(&vwr) {
                     return Err(anchor_lang::__private::ErrorCode::AccountDidNotSerialize.into());
                 }
                 Ok(VoterWeightRecord(vwr))
@@ -22,7 +22,7 @@ macro_rules! vote_weight_record {
                 buf: &mut &[u8],
             ) -> std::result::Result<Self, ProgramError> {
                 let mut data = buf;
-                let vwr: spl_governance::addins::voter_weight::VoterWeightRecord =
+                let vwr: spl_governance_addin_api::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
                         .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotDeserialize)?;
                 Ok(VoterWeightRecord(vwr))
@@ -47,7 +47,7 @@ macro_rules! vote_weight_record {
         }
 
         impl std::ops::Deref for VoterWeightRecord {
-            type Target = spl_governance::addins::voter_weight::VoterWeightRecord;
+            type Target = spl_governance_addin_api::voter_weight::VoterWeightRecord;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
