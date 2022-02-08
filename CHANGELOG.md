@@ -11,7 +11,7 @@ incremented for features.
 
 ## [Unreleased]
 
-## [0.21.1] - 2022-02-07
+## [0.21.0] - 2022-02-07
 
 ### Fixes
 
