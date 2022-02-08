@@ -55,11 +55,17 @@ pub fn use_version(version: &Version) -> Result<()> {
                 "anchor-cli {} is not installed, would you like to install it? (y/n)",
                 version
             ))
-            .with_initial_text("y")
             .default("n".into())
             .interact_text()?;
         if matches!(input.as_str(), "y" | "yy" | "Y" | "yes" | "Yes") {
             install_version(version)?;
+        } else {
+            println!(
+                "Version {} is not installed, staying on version {}.",
+                version,
+                current_version()?
+            );
+            return Ok(());
         }
     }
 
