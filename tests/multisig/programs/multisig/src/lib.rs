@@ -177,8 +177,7 @@ pub struct CreateTransaction<'info> {
     #[account(zero)]
     transaction: ProgramAccount<'info, Transaction>,
     // One of the owners. Checked in the handler.
-    #[account(signer)]
-    proposer: AccountInfo<'info>,
+    proposer: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -187,8 +186,7 @@ pub struct Approve<'info> {
     #[account(mut, has_one = multisig)]
     transaction: ProgramAccount<'info, Transaction>,
     // One of the multisig owners. Checked in the handler.
-    #[account(signer)]
-    owner: AccountInfo<'info>,
+    owner: Signer<'info>,
 }
 
 #[derive(Accounts)]

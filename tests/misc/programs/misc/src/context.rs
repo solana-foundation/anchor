@@ -27,10 +27,11 @@ pub struct TestTokenSeedsInit<'info> {
         token::authority = authority,
     )]
     pub my_pda: Account<'info, TokenAccount>,
+    #[account(mut)]
     pub authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
-    pub token_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -43,6 +44,7 @@ pub struct TestInitAssociatedToken<'info> {
     )]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
@@ -82,9 +84,10 @@ pub struct TestPdaInit<'info> {
         payer = my_payer,
     )]
     pub my_pda: Account<'info, DataU16>,
-    pub my_payer: AccountInfo<'info>,
+    #[account(mut)]
+    pub my_payer: Signer<'info>,
     pub foo: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -96,8 +99,9 @@ pub struct TestPdaInitZeroCopy<'info> {
         payer = my_payer,
     )]
     pub my_pda: Loader<'info, DataZeroCopy>,
-    pub my_payer: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub my_payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -189,29 +193,29 @@ pub struct TestI8<'info> {
 pub struct TestInit<'info> {
     #[account(init, payer = payer)]
     pub data: Account<'info, DataI8>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct TestInitZeroCopy<'info> {
     #[account(init, payer = payer, space = 8 + size_of::<DataZeroCopy>())]
     pub data: Loader<'info, DataZeroCopy>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct TestInitMint<'info> {
     #[account(init, mint::decimals = 6, mint::authority = payer, mint::freeze_authority = payer, payer = payer)]
     pub mint: Account<'info, Mint>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -219,11 +223,11 @@ pub struct TestInitToken<'info> {
     #[account(init, token::mint = mint, token::authority = payer, payer = payer)]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -238,6 +242,7 @@ pub struct TestCompositePayer<'info> {
 pub struct TestFetchAll<'info> {
     #[account(init, payer = authority)]
     pub data: Account<'info, DataWithFilter>,
+    #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -246,6 +251,7 @@ pub struct TestFetchAll<'info> {
 pub struct TestInitWithEmptySeeds<'info> {
     #[account(init, seeds = [], bump, payer = authority, space = 8 + size_of::<Data>())]
     pub pda: Account<'info, Data>,
+    #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -260,6 +266,7 @@ pub struct TestEmptySeedsConstraint<'info> {
 pub struct InitWithSpace<'info> {
     #[account(init, payer = payer)]
     pub data: Account<'info, DataU16>,
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -268,6 +275,7 @@ pub struct InitWithSpace<'info> {
 pub struct TestInitIfNeeded<'info> {
     #[account(init_if_needed, payer = payer, space = 500)]
     pub data: Account<'info, DataU16>,
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -276,6 +284,7 @@ pub struct TestInitIfNeeded<'info> {
 pub struct TestInitIfNeededChecksOwner<'info> {
     #[account(init_if_needed, payer = payer, space = 100, owner = *owner.key, seeds = [b"hello"], bump)]
     pub data: UncheckedAccount<'info>,
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
     pub owner: AccountInfo<'info>,
@@ -296,11 +305,11 @@ pub struct TestInitIfNeededChecksSeeds<'info> {
 pub struct TestInitMintIfNeeded<'info> {
     #[account(init_if_needed, mint::decimals = decimals, mint::authority = mint_authority, mint::freeze_authority = freeze_authority, payer = payer)]
     pub mint: Account<'info, Mint>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
     pub mint_authority: AccountInfo<'info>,
     pub freeze_authority: AccountInfo<'info>,
 }
@@ -310,11 +319,11 @@ pub struct TestInitTokenIfNeeded<'info> {
     #[account(init_if_needed, token::mint = mint, token::authority = authority, payer = payer)]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
-    #[account(signer)]
-    pub payer: AccountInfo<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
     pub authority: AccountInfo<'info>,
 }
 
@@ -328,6 +337,7 @@ pub struct TestInitAssociatedTokenIfNeeded<'info> {
     )]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,

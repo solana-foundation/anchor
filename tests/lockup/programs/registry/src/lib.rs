@@ -596,8 +596,7 @@ impl<'info> Initialize<'info> {
 pub struct UpdateRegistrar<'info> {
     #[account(mut, has_one = authority)]
     registrar: Account<'info, Registrar>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -607,8 +606,7 @@ pub struct CreateMember<'info> {
     // Member.
     #[account(zero)]
     member: Box<Account<'info, Member>>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(
         "&balances.spt.owner == member_signer.key",
         "balances.spt.mint == registrar.pool_mint",
@@ -672,8 +670,7 @@ pub struct Ctor<'info> {
 
 #[derive(Accounts)]
 pub struct SetLockupProgram<'info> {
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -691,8 +688,7 @@ pub struct IsRealized<'info> {
 pub struct UpdateMember<'info> {
     #[account(mut, has_one = beneficiary)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -700,8 +696,7 @@ pub struct Deposit<'info> {
     // Member.
     #[account(has_one = beneficiary)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
     vault: Account<'info, TokenAccount>,
     // Depositor.
@@ -726,8 +721,7 @@ pub struct DepositLocked<'info> {
     vesting_vault: AccountInfo<'info>,
     // Note: no need to verify the depositor_authority since the SPL program
     //       will fail the transaction if it's not correct.
-    #[account(signer)]
-    depositor_authority: AccountInfo<'info>,
+    pub depositor_authority: Signer<'info>,
     #[account(constraint = token_program.key == &token::ID)]
     token_program: AccountInfo<'info>,
     #[account(
@@ -746,8 +740,7 @@ pub struct DepositLocked<'info> {
     registrar: Box<Account<'info, Registrar>>,
     #[account(has_one = registrar, has_one = beneficiary)]
     member: Box<Account<'info, Member>>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -762,8 +755,7 @@ pub struct Stake<'info> {
     // Member.
     #[account(mut, has_one = beneficiary, has_one = registrar)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
     balances: BalanceSandboxAccounts<'info>,
     #[account(constraint = BalanceSandbox::from(&balances_locked) == member.balances_locked)]
@@ -801,8 +793,7 @@ pub struct StartUnstake<'info> {
     pending_withdrawal: Account<'info, PendingWithdrawal>,
     #[account(has_one = beneficiary, has_one = registrar)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
     balances: BalanceSandboxAccounts<'info>,
     #[account(constraint = BalanceSandbox::from(&balances_locked) == member.balances_locked)]
@@ -827,8 +818,7 @@ pub struct EndUnstake<'info> {
 
     #[account(has_one = registrar, has_one = beneficiary)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(mut, has_one = registrar, has_one = member, constraint = !pending_withdrawal.burned)]
     pending_withdrawal: Account<'info, PendingWithdrawal>,
 
@@ -859,8 +849,7 @@ pub struct Withdraw<'info> {
     // Member.
     #[account(has_one = registrar, has_one = beneficiary)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
     vault: Account<'info, TokenAccount>,
     #[account(
@@ -886,8 +875,7 @@ pub struct WithdrawLocked<'info> {
     vesting: Box<Account<'info, Vesting>>,
     #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
     vesting_vault: AccountInfo<'info>,
-    #[account(signer)]
-    vesting_signer: AccountInfo<'info>,
+    vesting_signer: Signer<'info>,
     #[account(constraint = token_program.key == &token::ID)]
     token_program: AccountInfo<'info>,
     #[account(
@@ -906,8 +894,7 @@ pub struct WithdrawLocked<'info> {
     registrar: Box<Account<'info, Registrar>>,
     #[account(has_one = registrar, has_one = beneficiary)]
     member: Box<Account<'info, Member>>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -977,8 +964,7 @@ pub struct ClaimRewardCommon<'info> {
     // Member.
     #[account(mut, has_one = registrar, has_one = beneficiary)]
     member: Account<'info, Member>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(constraint = BalanceSandbox::from(&balances) == member.balances)]
     balances: BalanceSandboxAccounts<'info>,
     #[account(constraint = BalanceSandbox::from(&balances_locked) == member.balances_locked)]
@@ -1014,8 +1000,7 @@ pub struct ExpireReward<'info> {
     )]
     vendor_signer: AccountInfo<'info>,
     // Receiver.
-    #[account(signer)]
-    expiry_receiver: AccountInfo<'info>,
+    expiry_receiver: Signer<'info>,
     #[account(mut)]
     expiry_receiver_token: AccountInfo<'info>,
     // Misc.
@@ -1263,7 +1248,7 @@ impl<'a, 'b, 'c, 'info> From<&mut DepositLocked<'info>>
         let cpi_accounts = Transfer {
             from: accounts.vesting_vault.clone(),
             to: accounts.member_vault.to_account_info(),
-            authority: accounts.depositor_authority.clone(),
+            authority: accounts.depositor_authority.to_account_info().clone(),
         };
         let cpi_program = accounts.token_program.clone();
         CpiContext::new(cpi_program, cpi_accounts)

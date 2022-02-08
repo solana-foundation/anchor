@@ -64,24 +64,21 @@ pub mod zero_copy {
 
 #[derive(Accounts)]
 pub struct SetEvent<'info> {
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct CreateFoo<'info> {
     #[account(zero)]
     foo: AccountLoader<'info, Foo>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateFoo<'info> {
     #[account(mut, has_one = authority)]
     foo: AccountLoader<'info, Foo>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -91,8 +88,7 @@ pub struct UpdateFooSecond<'info> {
         constraint = &foo.load()?.get_second_authority() == second_authority.key,
     )]
     foo: AccountLoader<'info, Foo>,
-    #[account(signer)]
-    second_authority: AccountInfo<'info>,
+    second_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -104,8 +100,8 @@ pub struct CreateBar<'info> {
         payer = authority, owner = *program_id
     )]
     bar: AccountLoader<'info, Bar>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    #[account(mut)]
+    authority: Signer<'info>,
     foo: AccountLoader<'info, Foo>,
     system_program: AccountInfo<'info>,
 }
@@ -118,8 +114,7 @@ pub struct UpdateBar<'info> {
         bump,
     )]
     pub bar: AccountLoader<'info, Bar>,
-    #[account(signer)]
-    pub authority: AccountInfo<'info>,
+    pub authority: Signer<'info>,
     pub foo: AccountLoader<'info, Foo>,
 }
 
@@ -133,8 +128,7 @@ pub struct CreateLargeAccount<'info> {
 pub struct UpdateLargeAccount<'info> {
     #[account(mut)]
     event_q: AccountLoader<'info, EventQ>,
-    #[account(signer)]
-    from: AccountInfo<'info>,
+    from: Signer<'info>,
 }
 
 #[account(zero_copy)]

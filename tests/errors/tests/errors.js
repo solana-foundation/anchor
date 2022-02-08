@@ -108,7 +108,7 @@ describe("errors", () => {
       assert.ok(false);
     } catch (err) {
       const errMsg =
-        "Error: failed to send transaction: Transaction simulation failed: Error processing Instruction 0: custom program error: 0x7d2";
+        "Error: failed to send transaction: Transaction simulation failed: Error processing Instruction 0: custom program error: 0xbc2";
       assert.equal(err.toString(), errMsg);
     }
   });

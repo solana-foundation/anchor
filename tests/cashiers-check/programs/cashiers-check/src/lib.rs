@@ -130,8 +130,7 @@ pub struct CashCheck<'info> {
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     to: Account<'info, TokenAccount>,
-    #[account(signer)]
-    owner: AccountInfo<'info>,
+    owner: Signer<'info>,
     token_program: AccountInfo<'info>,
 }
 
@@ -148,8 +147,7 @@ pub struct CancelCheck<'info> {
     check_signer: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     from: Account<'info, TokenAccount>,
-    #[account(signer)]
-    owner: AccountInfo<'info>,
+    owner: Signer<'info>,
     token_program: AccountInfo<'info>,
 }
 

@@ -60,8 +60,7 @@ pub struct HasOneError<'info> {
 
 #[derive(Accounts)]
 pub struct SignerError<'info> {
-    #[account(signer)]
-    my_account: AccountInfo<'info>,
+    my_account: Signer<'info>,
 }
 
 #[account]

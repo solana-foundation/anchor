@@ -64,14 +64,12 @@ pub struct Status<'info> {
 pub struct Initializedashboard<'info> {
     #[account(zero)]
     dashboard: Account<'info, Dashboard>,
-    #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(signer)]
-    player_x: AccountInfo<'info>,
+    player_x: Signer<'info>,
     #[account(mut)]
     dashboard: Account<'info, Dashboard>,
     #[account(zero)]
@@ -80,16 +78,14 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct Playerjoin<'info> {
-    #[account(signer)]
-    player_o: AccountInfo<'info>,
+    player_o: Signer<'info>,
     #[account(mut, constraint = game.game_state != 0 && game.player_x != Pubkey::default())]
     game: Account<'info, Game>,
 }
 
 #[derive(Accounts)]
 pub struct Playermove<'info> {
-    #[account(signer)]
-    player: AccountInfo<'info>,
+    player: Signer<'info>,
     #[account(mut)]
     game: Account<'info, Game>,
 }

@@ -102,8 +102,8 @@ pub mod escrow {
 #[derive(Accounts)]
 #[instruction(initializer_amount: u64)]
 pub struct InitializeEscrow<'info> {
-    #[account(signer)]
-    pub initializer: AccountInfo<'info>,
+    #[account(mut)]
+    pub initializer: Signer<'info>,
     #[account(
         mut,
         constraint = initializer_deposit_token_account.amount >= initializer_amount
@@ -181,7 +181,7 @@ impl<'info> From<&mut InitializeEscrow<'info>>
                 .initializer_deposit_token_account
                 .to_account_info()
                 .clone(),
-            current_authority: accounts.initializer.clone(),
+            current_authority: accounts.initializer.to_account_info().clone(),
         };
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)

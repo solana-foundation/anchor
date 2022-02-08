@@ -250,8 +250,7 @@ pub struct Withdraw<'info> {
     // Vesting.
     #[account(mut, has_one = beneficiary, has_one = vault)]
     vesting: Account<'info, Vesting>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     #[account(mut)]
     vault: Account<'info, TokenAccount>,
     #[account(
@@ -281,8 +280,7 @@ pub struct WhitelistDeposit<'info> {
 #[derive(Accounts)]
 pub struct WhitelistTransfer<'info> {
     lockup: ProgramState<'info, Lockup>,
-    #[account(signer)]
-    beneficiary: AccountInfo<'info>,
+    beneficiary: Signer<'info>,
     whitelisted_program: AccountInfo<'info>,
 
     // Whitelist interface.

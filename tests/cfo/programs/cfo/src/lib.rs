@@ -362,6 +362,7 @@ pub struct CreateOfficer<'info> {
         token::authority = officer,
     )]
     treasury: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
     authority: Signer<'info>,
     #[cfg_attr(
         not(feature = "test"),
@@ -393,6 +394,7 @@ pub struct AuthorizeMarket<'info> {
         bump,
     )]
     market_auth: Account<'info, MarketAuth>,
+    #[account(mut)]
     payer: Signer<'info>,
     // Not read or written to so not validated.
     market: UncheckedAccount<'info>,
