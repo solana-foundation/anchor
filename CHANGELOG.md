@@ -11,15 +11,18 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.21.1] - 2022-02-07
+
 ### Fixes
 
-* ts: Fix the root type declaration of the `Wallet` / `NodeWallet` class. ([#1363](https://github.com/project-serum/anchor/pull/1363))
-* ts: Improve type mapping of Account fields into Typescript with additional support for `Option<T>` and `Vec<String>` types. ([#1393](https://github.com/project-serum/anchor/pull/1393))
+* ts: Fix the root type declaration of the `Wallet` / `NodeWallet` class ([#1363](https://github.com/project-serum/anchor/pull/1363)).
+* ts: Improve type mapping of Account fields into Typescript with additional support for `Option<T>` and `Vec<String>` types ([#1393](https://github.com/project-serum/anchor/pull/1393)).
 
 ### Features
 
-* lang: Add `seeds::program` constraint for specifying which program_id to use when deriving PDAs.([#1197](https://github.com/project-serum/anchor/pull/1197))
+* lang: Add `seeds::program` constraint for specifying which program_id to use when deriving PDAs ([#1197](https://github.com/project-serum/anchor/pull/1197)).
 * lang: `Context` now has a new `bumps: BTree<String, u8>` argument, mapping account name to bump seed "found" by the accounts context. This allows one to access bump seeds without having to pass them in from the client or recalculate them in the handler ([#1367](https://github.com/project-serum/anchor/pull/1367)).
+* lang, ts: Automatically infer PDA addresses ([#1331](https://github.com/project-serum/anchor/pull/1331)).
 * ts: Remove error logging in the event parser when log websocket encounters a program error ([#1313](https://github.com/project-serum/anchor/pull/1313)).
 * ts: Add new `methods` namespace to the program client, introducing a more ergonomic builder API ([#1324](https://github.com/project-serum/anchor/pull/1324)).
 * ts: Add registry utility for fetching the latest verified build ([#1371](https://github.com/project-serum/anchor/pull/1371)).

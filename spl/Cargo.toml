@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl"
-version = "0.20.1"
+version = "0.21.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -17,7 +17,7 @@ devnet = []
 dex = ["serum_dex"]
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.20.1", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.21.0", features = ["derive"] }
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
 solana-program = "1.8.5"
 spl-token = { version = "3.1.1", features = ["no-entrypoint"], optional = true }
