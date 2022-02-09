@@ -96,7 +96,9 @@ use syn::parse_macro_input;
 ///                 Creates the account via a CPI to the system program and
 ///                 initializes it (sets its account discriminator).<br>
 ///                 Marks the account as mutable and is mutually exclusive with <code>mut</code>.<br>
-///                 Makes the account rent exempt unless skipped with `rent_exempt = skip`.<br>
+///                 Makes the account rent exempt unless skipped with <code>rent_exempt = skip</code>.<br><br>
+///                 Use <code>#[account(zero)]</code> for accounts larger than 10 Kibibyte.<br><br>
+///                 <code>init</code> has to be used with additional constraints:
 ///                 <ul>
 ///                     <li>
 ///                         Requires the <code>payer</code> constraint to also be on the account.
@@ -371,7 +373,14 @@ use syn::parse_macro_input;
 ///             </td>
 ///             <td>
 ///                 Checks the account discriminator is zero.<br>
-///                 Enforces rent exemption unless skipped with <code>rent_exempt = skip</code><br><br>
+///                 Enforces rent exemption unless skipped with <code>rent_exempt = skip</code>.<br><br>
+///                 Use this constraint if you want to create an account in a previous instruction
+///                 and then initialize it in your instruction instead of using <code>init</code>.
+///                 This is necessary for accounts that are larger than 10 Kibibyte because those
+///                 accounts cannot be created via a CPI (which is what <code>init</code> would do).<br><br>
+///                 Anchor adds internal data to the account when using <code>zero</code> just like it
+///                 does with <code>init</code> which is why <code>zero</code> implies <code>mut</code>.
+///                 <br><br>
 ///                 Example:
 ///                 <pre><code>
 /// #[account(zero)]
