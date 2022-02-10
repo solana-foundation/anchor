@@ -79,7 +79,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 let __Args {
                     #(#field_names),*
                 } = __Args::deserialize(&mut ix_data)
-                    .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
             }
         }
     };

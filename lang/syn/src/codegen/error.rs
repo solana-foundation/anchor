@@ -33,7 +33,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         .collect();
 
     let offset = match error.args {
-        None => quote! { anchor_lang::__private::ERROR_CODE_OFFSET},
+        None => quote! { anchor_lang::error::ERROR_CODE_OFFSET},
         Some(args) => {
             let offset = &args.offset;
             quote! { #offset }

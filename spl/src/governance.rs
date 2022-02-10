@@ -11,9 +11,9 @@ macro_rules! vote_weight_record {
                 let mut data = buf;
                 let vwr: spl_governance_addin_api::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
-                        .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotDeserialize)?;
+                        .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize)?;
                 if !solana_program::program_pack::IsInitialized::is_initialized(&vwr) {
-                    return Err(anchor_lang::__private::ErrorCode::AccountDidNotSerialize.into());
+                    return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                 }
                 Ok(VoterWeightRecord(vwr))
             }
@@ -24,7 +24,7 @@ macro_rules! vote_weight_record {
                 let mut data = buf;
                 let vwr: spl_governance_addin_api::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
-                        .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotDeserialize)?;
+                        .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize)?;
                 Ok(VoterWeightRecord(vwr))
             }
         }
@@ -35,7 +35,7 @@ macro_rules! vote_weight_record {
                 writer: &mut W,
             ) -> std::result::Result<(), ProgramError> {
                 anchor_lang::AnchorSerialize::serialize(&self.0, writer)
-                    .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotSerialize)?;
+                    .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotSerialize)?;
                 Ok(())
             }
         }

@@ -1,5 +1,8 @@
 use crate::error;
 
+/// The starting point for user defined error codes.
+pub const ERROR_CODE_OFFSET: u32 = 6000;
+
 /// Error codes that can be returned by internal framework code.
 ///
 /// - &gt;= 100 Instruction error codes
@@ -10,7 +13,7 @@ use crate::error;
 /// - = 5000 deprecated error code
 ///
 /// The starting point for user-defined errors is defined
-/// by the [ERROR_CODE_OFFSET](crate::__private::ERROR_CODE_OFFSET).
+/// by the [ERROR_CODE_OFFSET](crate::error::ERROR_CODE_OFFSET).
 #[error(offset = 0)]
 pub enum ErrorCode {
     // Instructions

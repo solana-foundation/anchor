@@ -21,7 +21,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let mut data: &[u8] = idl_ix_data;
 
                 let ix = anchor_lang::idl::IdlInstruction::deserialize(&mut data)
-                    .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
 
                 match ix {
                     anchor_lang::idl::IdlInstruction::Create { data_len } => {
@@ -66,7 +66,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #[inline(never)]
             #[cfg(feature = "no-idl")]
             pub fn __idl_dispatch(program_id: &Pubkey, accounts: &[AccountInfo], idl_ix_data: &[u8]) -> ProgramResult {
-                Err(anchor_lang::__private::ErrorCode::IdlInstructionStub.into())
+                Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into())
             }
 
             // One time IDL account initializer. Will faill on subsequent
@@ -81,7 +81,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 anchor_lang::prelude::msg!("Instruction: IdlCreateAccount");
 
                 if program_id != accounts.program.key {
-                    return Err(anchor_lang::__private::ErrorCode::IdlInstructionInvalidProgram.into());
+                    return Err(anchor_lang::error::ErrorCode::IdlInstructionInvalidProgram.into());
                 }
                 // Create the IDL's account.
                 let from = accounts.from.key;
@@ -212,7 +212,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                             // Deserialize instruction data.
                             let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-                                .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                             let instruction::state::#variant_arm = ix;
 
                             let mut __bumps = std::collections::BTreeMap::new();
@@ -291,7 +291,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                             // Deserialize instruction data.
                             let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-                                .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                             let instruction::state::#variant_arm = ix;
 
                             let mut __bumps = std::collections::BTreeMap::new();
@@ -399,7 +399,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                                     // Deserialize instruction.
                                     let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                                     let instruction::state::#variant_arm = ix;
 
                                     // Bump collector.
@@ -408,7 +408,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     // Load state.
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
-                                        return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
+                                        return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                     }
                                     let loader: anchor_lang::accounts::loader::Loader<#mod_name::#name> = anchor_lang::accounts::loader::Loader::try_accounts(program_id, &mut remaining_accounts, &[], &mut __bumps)?;
 
@@ -455,7 +455,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                                     // Deserialize instruction.
                                     let ix = instruction::state::#ix_name::deserialize(&mut &ix_data[..])
-                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                                     let instruction::state::#variant_arm = ix;
 
                                     // Bump collector.
@@ -464,7 +464,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                     // Load state.
                                     let mut remaining_accounts: &[AccountInfo] = accounts;
                                     if remaining_accounts.is_empty() {
-                                        return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
+                                        return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                     }
                                     let mut state: anchor_lang::accounts::state::ProgramState<#state_ty> = anchor_lang::accounts::state::ProgramState::try_accounts(
                                         program_id,
@@ -566,7 +566,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 let deserialize_instruction = quote! {
                                     #args_struct
                                     let ix = Args::deserialize(&mut &ix_data[..])
-                                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                                     let Args {
                                         #(#ix_arg_names),*
                                     } = ix;
@@ -592,7 +592,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                             // Deserialize the program state account.
                                             let mut remaining_accounts: &[AccountInfo] = accounts;
                                             if remaining_accounts.is_empty() {
-                                                return Err(anchor_lang::__private::ErrorCode::AccountNotEnoughKeys.into());
+                                                return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                             }
                                             let mut state: anchor_lang::accounts::state::ProgramState<#state_ty> = anchor_lang::accounts::state::ProgramState::try_accounts(
                                                 program_id,
@@ -705,7 +705,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &ix_data[..])
-                        .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotDeserialize)?;
+                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                     let instruction::#variant_arm = ix;
 
                     // Bump collector.

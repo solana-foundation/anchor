@@ -208,7 +208,7 @@ pub fn interface(
                             #(#args_no_tys),*
                         };
                         let mut ix_data = anchor_lang::AnchorSerialize::try_to_vec(&ix)
-                            .map_err(|_| anchor_lang::__private::ErrorCode::InstructionDidNotSerialize)?;
+                            .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
                         let mut data = #sighash_tts.to_vec();
                         data.append(&mut ix_data);
                         let accounts = ctx.to_account_metas(None);

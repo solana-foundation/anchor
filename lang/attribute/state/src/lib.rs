@@ -45,7 +45,7 @@ pub fn state(
                     fn size(&self) -> std::result::Result<u64, anchor_lang::solana_program::program_error::ProgramError> {
                         Ok(8 + self
                            .try_to_vec()
-                           .map_err(|_| anchor_lang::__private::ErrorCode::AccountDidNotSerialize)?
+                           .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotSerialize)?
                            .len() as u64)
                     }
                 }
