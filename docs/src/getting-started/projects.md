@@ -14,8 +14,6 @@ Open a pull request to add your project to the [list](https://github.com/project
 * [Cyclos](https://cyclos.io/)
 * [Solend](https://solend.fi)
 * [Drift](https://www.drift.trade/)
-* [SpringBoard](https://springboard.finance/)
-* [Unk](https://unk.finance/)
 * [Fabric](https://stake.fsynth.io/)
 * [Jet Protocol](https://jetprotocol.io/)
 * [Quarry](https://quarry.so/)
