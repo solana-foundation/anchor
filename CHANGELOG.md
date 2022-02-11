@@ -18,6 +18,7 @@ incremented for features.
 ### Breaking
 
 * lang: Enforce that the payer for an init-ed account be marked `mut` ([#1271](https://github.com/project-serum/anchor/pull/1271)).
+* lang: All error-related code is now in the error module ([#1426](https://github.com/project-serum/anchor/pull/1426)).
 
 ## [0.21.0] - 2022-02-07
 
