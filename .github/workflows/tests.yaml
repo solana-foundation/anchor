@@ -262,6 +262,8 @@ jobs:
             path: tests/events
           - cmd: cd tests/cashiers-check && anchor test
             path: tests/cashiers-check
+          - cmd: cd tests/declare-id && anchor test
+            path: tests/declare-id
           - cmd: cd tests/typescript && anchor test
             path: tests/typescript
           - cmd: cd tests/zero-copy && anchor test && cd programs/zero-copy && cargo test-bpf

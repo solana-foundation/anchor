@@ -25,7 +25,7 @@ describe("interface", () => {
         });
       },
       (err) => {
-        if (err.toString().split("custom program error: 0x32").length !== 2) {
+        if (err.toString().split("custom program error: 0x3a98").length !== 2) {
           return false;
         }
         return true;
@@ -33,7 +33,7 @@ describe("interface", () => {
     );
   });
 
-  it("Shold succeed to go from even to odd", async () => {
+  it("Should succeed to go from even to odd", async () => {
     await counter.state.rpc.setCount(new anchor.BN(3), {
       accounts: {
         authProgram: counterAuth.programId,

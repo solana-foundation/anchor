@@ -154,6 +154,11 @@ pub enum ErrorCode {
     #[msg("The given state account does not have the correct address")]
     StateInvalidAddress = 4000,
 
+    // Miscellaneous
+    /// 4100 - The declared program id does not match actual program id
+    #[msg("The declared program id does not match the actual program id")]
+    DeclaredProgramIdMismatch = 4100,
+
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
     #[msg("The API being used is deprecated and should no longer be used")]

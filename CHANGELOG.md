@@ -11,6 +11,10 @@ incremented for features.
 
 ## [Unreleased]
 
+### Features
+
+* lang: add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451))
+
 ### Fixes
 
 * ts: Allow nullable types for `Option<T>` mapped types ([#1428](https://github.com/project-serum/anchor/pull/1428)).

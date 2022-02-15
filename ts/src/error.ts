@@ -102,6 +102,9 @@ const LangErrorCode = {
   // State.
   StateInvalidAddress: 4000,
 
+  // Miscellaneous
+  DeclaredProgramIdMismatch: 4100,
+
   // Used for APIs that shouldn't be used anymore.
   Deprecated: 5000,
 };
@@ -219,7 +222,13 @@ const LangErrorMessage = new Map([
     "The given state account does not have the correct address",
   ],
 
-  // Misc.
+  // Miscellaneous
+  [
+    LangErrorCode.DeclaredProgramIdMismatch,
+    "The declared program id does not match the actual program id",
+  ],
+
+  // Deprecated
   [
     LangErrorCode.Deprecated,
     "The API being used is deprecated and should no longer be used",

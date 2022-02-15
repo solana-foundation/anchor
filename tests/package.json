@@ -28,7 +28,8 @@
     "sysvars",
     "tictactoe",
     "typescript",
-    "zero-copy"
+    "zero-copy",
+    "declare-id"
   ],
   "dependencies": {
     "@project-serum/anchor": "^0.21.0",
