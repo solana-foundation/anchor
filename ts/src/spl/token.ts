@@ -543,7 +543,7 @@ export type SplToken = {
   ];
   accounts: [
     {
-      name: "Mint";
+      name: "mint";
       type: {
         kind: "struct";
         fields: [
@@ -575,7 +575,7 @@ export type SplToken = {
       };
     },
     {
-      name: "Token";
+      name: "token";
       type: {
         kind: "struct";
         fields: [
@@ -1148,7 +1148,7 @@ export const IDL: SplToken = {
   ],
   accounts: [
     {
-      name: "Mint",
+      name: "mint",
       type: {
         kind: "struct",
         fields: [
@@ -1180,7 +1180,7 @@ export const IDL: SplToken = {
       },
     },
     {
-      name: "Token",
+      name: "token",
       type: {
         kind: "struct",
         fields: [
