@@ -261,6 +261,9 @@ mod tests {
         let mut current_version_file =
             fs::File::create(current_version_file_path().as_path()).unwrap();
         current_version_file.write_all("0.18.2".as_bytes()).unwrap();
+        // Sync the file to disk before the read in current_version() to
+        // mitigate the read not seeing the written version bytes.
+        current_version_file.sync_all().unwrap();
         assert!(current_version().unwrap() == Version::parse("0.18.2").unwrap());
     }
 
