@@ -10,7 +10,7 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 /// - &gt;= 2000 constraint error codes
 /// - &gt;= 3000 account error codes
 /// - = 4000 state error code
-/// - &gt;= 4100 misc error codes 
+/// - &gt;= 4100 misc error codes
 /// - = 5000 deprecated error code
 ///
 /// The starting point for user-defined errors is defined
