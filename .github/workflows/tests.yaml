@@ -278,6 +278,8 @@ jobs:
             path: tests/auction-house
           - cmd: cd tests/floats && yarn && anchor test
             path: tests/floats
+          - cmd: cd tests/safety-checks && ./test.sh
+            path: tests/safety-checks
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/

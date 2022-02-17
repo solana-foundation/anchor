@@ -7,3 +7,6 @@ token_proxy = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"
+
+[features]
+safety_checks = false
