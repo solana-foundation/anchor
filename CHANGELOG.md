@@ -14,6 +14,7 @@ incremented for features.
 ### Features
 
 * lang: add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451))
+* ts: Added float types support ([#1425](https://github.com/project-serum/anchor/pull/1425)).
 
 ### Fixes
 

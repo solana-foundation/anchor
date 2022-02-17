@@ -94,7 +94,7 @@ type TypeMap = {
   bool: boolean;
   string: string;
 } & {
-  [K in "u8" | "i8" | "u16" | "i16" | "u32" | "i32"]: number;
+  [K in "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "f32" | "f64"]: number;
 } &
   {
     [K in "u64" | "i64" | "u128" | "i128"]: BN;

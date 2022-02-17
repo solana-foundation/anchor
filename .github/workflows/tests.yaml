@@ -276,6 +276,8 @@ jobs:
             path: tests/cfo
           - cmd: cd tests/auction-house && yarn && anchor test
             path: tests/auction-house
+          - cmd: cd tests/floats && yarn && anchor test
+            path: tests/floats
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/

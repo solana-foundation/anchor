@@ -46,9 +46,13 @@ function typeSize(idl: Idl, ty: IdlType): number {
       return 4;
     case "i32":
       return 4;
+    case "f32":
+      return 4;
     case "u64":
       return 8;
     case "i64":
+      return 8;
+    case "f64":
       return 8;
     case "u128":
       return 16;

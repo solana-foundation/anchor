@@ -33,11 +33,17 @@ export class IdlCoder {
       case "i32": {
         return borsh.i32(fieldName);
       }
+      case "f32": {
+        return borsh.f32(fieldName);
+      }
       case "u64": {
         return borsh.u64(fieldName);
       }
       case "i64": {
         return borsh.i64(fieldName);
+      }
+      case "f64": {
+        return borsh.f64(fieldName);
       }
       case "u128": {
         return borsh.u128(fieldName);

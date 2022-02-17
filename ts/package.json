@@ -33,7 +33,7 @@
     "test": "jest tests --detectOpenHandles"
   },
   "dependencies": {
-    "@project-serum/borsh": "^0.2.4",
+    "@project-serum/borsh": "^0.2.5",
     "@solana/web3.js": "^1.17.0",
     "base64-js": "^1.5.1",
     "bn.js": "^5.1.2",
