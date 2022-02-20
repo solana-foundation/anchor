@@ -31,7 +31,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 pub fn #method_name<'a, 'b, 'c, 'info>(
                                     ctx: anchor_lang::context::CpiStateContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                                     #(#args),*
-                                ) -> ProgramResult {
+                                ) -> anchor_lang::Result<()> {
                                     let ix = {
                                         let ix = instruction::state::#ix_variant;
                                         let data = anchor_lang::InstructionData::data(&ix);
@@ -47,7 +47,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                         &ix,
                                         &acc_infos,
                                         ctx.signer_seeds(),
-                                    )
+                                    ).map_err(Into::into)
                                 }
                             }
                         })
@@ -74,7 +74,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     pub fn #method_name<'a, 'b, 'c, 'info>(
                         ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
-                    ) -> ProgramResult {
+                    ) -> anchor_lang::Result<()> {
                         let ix = {
                             let ix = instruction::#ix_variant;
                             let mut ix_data = AnchorSerialize::try_to_vec(&ix)
@@ -93,7 +93,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,
-                        )
+                        ).map_err(Into::into)
                     }
                 }
             };

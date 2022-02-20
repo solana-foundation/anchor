@@ -8,7 +8,7 @@ declare_id!("EHthziFziNoac9LBGxEaVN47Y3uUiRoXvqAiR6oes4iU");
 #[program]
 mod composite {
     use super::*;
-    pub fn initialize(_ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
         Ok(())
     }
 
@@ -16,7 +16,7 @@ mod composite {
         ctx: Context<CompositeUpdate>,
         dummy_a: u64,
         dummy_b: u64,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let a = &mut ctx.accounts.foo.dummy_a;
         let b = &mut ctx.accounts.bar.dummy_b;
 

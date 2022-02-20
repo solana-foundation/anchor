@@ -8,7 +8,7 @@ declare_id!("2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy");
 #[program]
 pub mod events {
     use super::*;
-    pub fn initialize(_ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
         emit!(MyEvent {
             data: 5,
             label: "hello".to_string(),
@@ -16,7 +16,7 @@ pub mod events {
         Ok(())
     }
 
-    pub fn test_event(_ctx: Context<TestEvent>) -> ProgramResult {
+    pub fn test_event(_ctx: Context<TestEvent>) -> Result<()> {
         emit!(MyOtherEvent {
             data: 6,
             label: "bye".to_string(),

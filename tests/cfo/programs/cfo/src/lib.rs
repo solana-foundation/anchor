@@ -155,7 +155,7 @@ pub mod cfo {
             .checked_div(100)
             .unwrap()
             .try_into()
-            .map_err(|_| ErrorCode::U128CannotConvert)?;
+            .map_err(|_| error!(ErrorCode::U128CannotConvert))?;
         token::burn(ctx.accounts.into_burn().with_signer(&[&seeds]), burn_amount)?;
 
         // Stake.
@@ -165,7 +165,7 @@ pub mod cfo {
             .checked_div(100)
             .unwrap()
             .try_into()
-            .map_err(|_| ErrorCode::U128CannotConvert)?;
+            .map_err(|_| error!(ErrorCode::U128CannotConvert))?;
         token::transfer(
             ctx.accounts.into_stake_transfer().with_signer(&[&seeds]),
             stake_amount,
@@ -178,7 +178,7 @@ pub mod cfo {
             .checked_div(100)
             .unwrap()
             .try_into()
-            .map_err(|_| ErrorCode::U128CannotConvert)?;
+            .map_err(|_| error!(ErrorCode::U128CannotConvert))?;
         token::transfer(
             ctx.accounts.into_treasury_transfer().with_signer(&[&seeds]),
             treasury_amount,
@@ -236,7 +236,7 @@ pub mod cfo {
             .checked_div(total_pool_value)
             .unwrap()
             .try_into()
-            .map_err(|_| ErrorCode::U128CannotConvert)?;
+            .map_err(|_| error!(ErrorCode::U128CannotConvert))?;
 
         // Proportion of the reward going to the msrm pool.
         //
@@ -248,7 +248,7 @@ pub mod cfo {
             .checked_div(total_pool_value)
             .unwrap()
             .try_into()
-            .map_err(|_| ErrorCode::U128CannotConvert)?;
+            .map_err(|_| error!(ErrorCode::U128CannotConvert))?;
 
         // SRM drop.
         {
@@ -606,9 +606,9 @@ pub struct Distribute<'info> {
         has_one = treasury,
         has_one = stake,
     )]
-    officer: Account<'info, Officer>,
+    officer: Box<Account<'info, Officer>>,
     #[account(mut)]
-    treasury: Account<'info, TokenAccount>,
+    treasury: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     stake: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -900,7 +900,7 @@ pub struct OfficerDidCreate {
 
 // Error.
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Distribution does not add to 100")]
     InvalidDistribution,
@@ -918,14 +918,14 @@ pub enum ErrorCode {
 
 fn is_distribution_valid(d: &Distribution) -> Result<()> {
     if d.burn + d.stake + d.treasury != 100 {
-        return Err(ErrorCode::InvalidDistribution.into());
+        return err!(ErrorCode::InvalidDistribution);
     }
     Ok(())
 }
 
 fn is_distribution_ready(accounts: &Distribute) -> Result<()> {
     if accounts.srm_vault.amount < 1_000_000 {
-        return Err(ErrorCode::InsufficientDistributionAmount.into());
+        return err!(ErrorCode::InsufficientDistributionAmount);
     }
     Ok(())
 }
@@ -934,7 +934,7 @@ fn is_distribution_ready(accounts: &Distribute) -> Result<()> {
 fn is_not_trading(ixs: &UncheckedAccount) -> Result<()> {
     let data = ixs.try_borrow_data()?;
     match tx_instructions::load_instruction_at(1, &data) {
-        Ok(_) => Err(ErrorCode::TooManyInstructions.into()),
+        Ok(_) => err!(ErrorCode::TooManyInstructions),
         Err(_) => Ok(()),
     }
 }
@@ -943,7 +943,7 @@ fn is_stake_reward_ready(accounts: &DropStakeReward) -> Result<()> {
     // Min drop is 15,0000 SRM.
     let min_reward: u64 = 15_000_000_000;
     if accounts.stake.amount < min_reward {
-        return Err(ErrorCode::InsufficientStakeReward.into());
+        return err!(ErrorCode::InsufficientStakeReward);
     }
     Ok(())
 }

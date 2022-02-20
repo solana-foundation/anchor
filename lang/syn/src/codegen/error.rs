@@ -6,7 +6,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
     let enum_name = &error.ident;
     // Each arm of the `match` statement for implementing `std::fmt::Display`
     // on the user defined error code.
-    let variant_dispatch: Vec<proc_macro2::TokenStream> = error
+    let display_variant_dispatch: Vec<proc_macro2::TokenStream> = error
         .raw_enum
         .variants
         .iter()
@@ -14,7 +14,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         .map(|(idx, variant)| {
             let ident = &variant.ident;
             let error_code = &error.codes[idx];
-            let msg = match &error_code.msg {
+            let display_msg = match &error_code.msg {
                 None => {
                     quote! {
                         <Self as std::fmt::Debug>::fmt(self, fmt)
@@ -27,7 +27,22 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
                 }
             };
             quote! {
-                #enum_name::#ident => #msg
+                #enum_name::#ident => #display_msg
+            }
+        })
+        .collect();
+
+    // Each arm of the `match` statement for implementing the `name` function
+    // on the user defined error code.
+    let name_variant_dispatch: Vec<proc_macro2::TokenStream> = error
+        .raw_enum
+        .variants
+        .iter()
+        .map(|variant| {
+            let ident = &variant.ident;
+            let ident_name = ident.to_string();
+            quote! {
+                #enum_name::#ident => #ident_name.to_string()
             }
         })
         .collect();
@@ -41,49 +56,43 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
     };
 
     quote! {
-        /// Anchor generated Result to be used as the return type for the
-        /// program.
-        pub type Result<T> = std::result::Result<T, Error>;
-
-        /// Anchor generated error allowing one to easily return a
-        /// `ProgramError` or a custom, user defined error code by utilizing
-        /// its `From` implementation.
-        #[doc(hidden)]
-        #[derive(thiserror::Error, Debug)]
-        pub enum Error {
-            #[error(transparent)]
-            ProgramError(#[from] anchor_lang::solana_program::program_error::ProgramError),
-            #[error(transparent)]
-            ErrorCode(#[from] #enum_name),
-        }
-
         #[derive(std::fmt::Debug, Clone, Copy)]
         #[repr(u32)]
         #error_enum
 
+        impl #enum_name {
+            pub fn name(&self) -> String {
+                match self {
+                    #(#name_variant_dispatch),*
+                }
+            }
+        }
+
+        impl From<#enum_name> for u32 {
+            fn from(e: #enum_name) -> u32 {
+                e as u32 + #offset
+            }
+        }
+
+        impl From<#enum_name> for anchor_lang::error::Error {
+            fn from(error_code: #enum_name) -> Error {
+                anchor_lang::error::Error::from(
+                    anchor_lang::error::AnchorError {
+                        error_name: error_code.name(),
+                        error_code_number: error_code.into(),
+                        error_msg: error_code.to_string(),
+                        source: None,
+                        account_name: None
+                    }
+                )
+            }
+        }
+
         impl std::fmt::Display for #enum_name {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
                 match self {
-                    #(#variant_dispatch),*
+                    #(#display_variant_dispatch),*
                 }
-            }
-        }
-
-        impl std::error::Error for #enum_name {}
-
-        impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
-            fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
-                match e {
-                    Error::ProgramError(e) => e,
-                    Error::ErrorCode(c) => anchor_lang::solana_program::program_error::ProgramError::Custom(c as u32 + #offset),
-                }
-            }
-        }
-
-        impl std::convert::From<#enum_name> for anchor_lang::solana_program::program_error::ProgramError {
-            fn from(e: #enum_name) -> anchor_lang::solana_program::program_error::ProgramError {
-                let err: Error = e.into();
-                err.into()
             }
         }
     }

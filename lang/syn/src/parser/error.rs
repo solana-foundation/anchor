@@ -1,4 +1,6 @@
 use crate::{Error, ErrorArgs, ErrorCode};
+use syn::parse::{Parse, Result as ParseResult};
+use syn::{Expr, Token};
 
 // Removes any internal #[msg] attributes, as they are inert.
 pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
@@ -73,5 +75,33 @@ fn parse_error_attribute(variant: &syn::Variant) -> Option<String> {
         _ => {
             panic!("Too many attributes found. Use `msg` to specify error strings");
         }
+    }
+}
+
+pub struct ErrorInput {
+    pub error_code: Expr,
+}
+
+impl Parse for ErrorInput {
+    fn parse(stream: syn::parse::ParseStream) -> ParseResult<Self> {
+        let error_code = stream.call(Expr::parse)?;
+        Ok(Self { error_code })
+    }
+}
+
+pub struct ErrorWithAccountNameInput {
+    pub error_code: Expr,
+    pub account_name: Expr,
+}
+
+impl Parse for ErrorWithAccountNameInput {
+    fn parse(stream: syn::parse::ParseStream) -> ParseResult<Self> {
+        let error_code = stream.call(Expr::parse)?;
+        let _ = stream.parse::<Token!(,)>();
+        let account_name = stream.call(Expr::parse)?;
+        Ok(Self {
+            error_code,
+            account_name,
+        })
     }
 }

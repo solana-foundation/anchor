@@ -22,7 +22,7 @@ use syn::parse_macro_input;
 ///
 /// ```ignore
 /// ...
-/// pub fn initialize(ctx: Context<Create>, bump: u8, authority: Pubkey, data: u64) -> ProgramResult {
+/// pub fn initialize(ctx: Context<Create>, bump: u8, authority: Pubkey, data: u64) -> anchor_lang::Result<()> {
 ///     ...
 ///     Ok(())
 /// }

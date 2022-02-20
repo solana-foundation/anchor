@@ -3,9 +3,7 @@
 use crate::error::ErrorCode;
 use crate::*;
 use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -44,7 +42,7 @@ use std::ops::{Deref, DerefMut};
 /// #[program]
 /// mod hello_anchor {
 ///     use super::*;
-///     pub fn set_data(ctx: Context<SetData>, data: u64) -> ProgramResult {
+///     pub fn set_data(ctx: Context<SetData>, data: u64) -> Result<()> {
 ///         if (*ctx.accounts.auth_account).authorized {
 ///             (*ctx.accounts.my_account).data = data;
 ///         }
@@ -104,7 +102,7 @@ use std::ops::{Deref, DerefMut};
 /// // "try_deserialize_unchecked" by default which is what we want here
 /// // because non-anchor accounts don't have a discriminator to check
 /// impl anchor_lang::AccountDeserialize for Mint {
-///     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+///     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
 ///         spl_token::state::Mint::unpack(buf).map(Mint)
 ///     }
 /// }
@@ -161,7 +159,7 @@ use std::ops::{Deref, DerefMut};
 ///     pub fn set_initial_admin(
 ///         ctx: Context<SetInitialAdmin>,
 ///         admin_key: Pubkey
-///     ) -> ProgramResult {
+///     ) -> Result<()> {
 ///         ctx.accounts.admin_settings.admin_key = admin_key;
 ///         Ok(())
 ///     }
@@ -243,7 +241,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
 
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'a>) -> Result<Account<'a, T>, ProgramError> {
+    pub fn try_from(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -258,7 +256,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// the account discriminator. Be careful when using this and avoid it if
     /// possible.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<Account<'a, T>, ProgramError> {
+    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -274,7 +272,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
-    pub fn reload(&mut self) -> ProgramResult {
+    pub fn reload(&mut self) -> Result<()> {
         let mut data: &[u8] = &self.info.try_borrow_data()?;
         self.account = T::try_deserialize(&mut data)?;
         Ok(())
@@ -288,7 +286,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     ///
     /// Instead of this:
     /// ```ignore
-    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> ProgramResult {
+    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> Result<()> {
     ///     (*ctx.accounts.user_to_create).name = new_user.name;
     ///     (*ctx.accounts.user_to_create).age = new_user.age;
     ///     (*ctx.accounts.user_to_create).address = new_user.address;
@@ -296,7 +294,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// ```
     /// You can do this:
     /// ```ignore
-    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> ProgramResult {
+    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> Result<()> {
     ///     ctx.accounts.user_to_create.set_inner(new_user);
     /// }
     /// ```
@@ -316,7 +314,7 @@ where
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
@@ -329,7 +327,7 @@ where
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsExit<'info>
     for Account<'info, T>
 {
-    fn exit(&self, program_id: &Pubkey) -> ProgramResult {
+    fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program.
         if &T::owner() == program_id {
             let info = self.to_account_info();
@@ -345,7 +343,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsEx
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsClose<'info>
     for Account<'info, T>
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
+    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }

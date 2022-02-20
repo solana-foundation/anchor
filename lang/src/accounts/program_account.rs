@@ -2,13 +2,11 @@
 use crate::accounts::cpi_account::CpiAccount;
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, ToAccountInfo,
-    ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Result,
+    ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -37,10 +35,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
 
     /// Deserializes the given `info` into a `ProgramAccount`.
     #[inline(never)]
-    pub fn try_from(
-        program_id: &Pubkey,
-        info: &AccountInfo<'a>,
-    ) -> Result<ProgramAccount<'a, T>, ProgramError> {
+    pub fn try_from(program_id: &Pubkey, info: &AccountInfo<'a>) -> Result<ProgramAccount<'a, T>> {
         if info.owner != program_id {
             return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
@@ -58,7 +53,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramAccount<'a, T>
     pub fn try_from_unchecked(
         program_id: &Pubkey,
         info: &AccountInfo<'a>,
-    ) -> Result<ProgramAccount<'a, T>, ProgramError> {
+    ) -> Result<ProgramAccount<'a, T>> {
         if info.owner != program_id {
             return Err(ErrorCode::AccountOwnedByWrongProgram.into());
         }
@@ -85,7 +80,7 @@ where
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
@@ -99,7 +94,7 @@ where
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info>
     for ProgramAccount<'info, T>
 {
-    fn exit(&self, _program_id: &Pubkey) -> ProgramResult {
+    fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         let info = self.to_account_info();
         let mut data = info.try_borrow_mut_data()?;
         let dst: &mut [u8] = &mut data;
@@ -113,7 +108,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for ProgramAccount<'info, T>
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> ProgramResult {
+    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }

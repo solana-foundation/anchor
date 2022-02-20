@@ -55,7 +55,7 @@ impl<'info> SetCount<'info> {
     // we separate it from the business logic of the instruction handler itself.
     pub fn accounts(counter: &Counter, ctx: &Context<SetCount>) -> Result<()> {
         if ctx.accounts.auth_program.key != &counter.auth_program {
-            return Err(ErrorCode::InvalidAuthProgram.into());
+            return err!(ErrorCode::InvalidAuthProgram);
         }
         Ok(())
     }
@@ -63,10 +63,10 @@ impl<'info> SetCount<'info> {
 
 #[interface]
 pub trait Auth<'info, T: Accounts<'info>> {
-    fn is_authorized(ctx: Context<T>, current: u64, new: u64) -> ProgramResult;
+    fn is_authorized(ctx: Context<T>, current: u64, new: u64) -> Result<()>;
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("Invalid auth program.")]
     InvalidAuthProgram,

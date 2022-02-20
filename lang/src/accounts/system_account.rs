@@ -4,7 +4,6 @@ use crate::error::ErrorCode;
 use crate::*;
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
 use std::collections::BTreeMap;
@@ -26,7 +25,7 @@ impl<'info> SystemAccount<'info> {
     }
 
     #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'info>) -> Result<SystemAccount<'info>, ProgramError> {
+    pub fn try_from(info: &AccountInfo<'info>) -> Result<SystemAccount<'info>> {
         if *info.owner != system_program::ID {
             return Err(ErrorCode::AccountNotSystemOwned.into());
         }
@@ -41,7 +40,7 @@ impl<'info> Accounts<'info> for SystemAccount<'info> {
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }

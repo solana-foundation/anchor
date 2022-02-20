@@ -1,4 +1,7 @@
-use crate::error;
+use anchor_attribute_error::error_code;
+use borsh::maybestd::io::Error as BorshIoError;
+use solana_program::program_error::ProgramError;
+use std::fmt::{Debug, Display};
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -15,7 +18,7 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 ///
 /// The starting point for user-defined errors is defined
 /// by the [ERROR_CODE_OFFSET](crate::error::ERROR_CODE_OFFSET).
-#[error(offset = 0)]
+#[error_code(offset = 0)]
 pub enum ErrorCode {
     // Instructions
     /// 100 - 8 byte instruction identifier not provided
@@ -164,4 +167,188 @@ pub enum ErrorCode {
     /// 5000 - The API being used is deprecated and should no longer be used
     #[msg("The API being used is deprecated and should no longer be used")]
     Deprecated = 5000,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    AnchorError(AnchorError),
+    ProgramError(ProgramErrorWithOrigin),
+}
+
+impl std::error::Error for Error {}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::AnchorError(ae) => Display::fmt(&ae, f),
+            Error::ProgramError(pe) => Display::fmt(&pe, f),
+        }
+    }
+}
+
+impl Display for AnchorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self, f)
+    }
+}
+
+impl From<AnchorError> for Error {
+    fn from(ae: AnchorError) -> Self {
+        Self::AnchorError(ae)
+    }
+}
+
+impl From<ProgramError> for Error {
+    fn from(program_error: ProgramError) -> Self {
+        Self::ProgramError(program_error.into())
+    }
+}
+impl From<BorshIoError> for Error {
+    fn from(error: BorshIoError) -> Self {
+        Error::ProgramError(ProgramError::from(error).into())
+    }
+}
+
+impl From<ProgramErrorWithOrigin> for Error {
+    fn from(pe: ProgramErrorWithOrigin) -> Self {
+        Self::ProgramError(pe)
+    }
+}
+
+impl Error {
+    pub fn log(&self) {
+        match self {
+            Error::ProgramError(program_error) => program_error.log(),
+            Error::AnchorError(anchor_error) => anchor_error.log(),
+        }
+    }
+
+    pub fn with_account_name(mut self, account_name: impl ToString) -> Self {
+        match &mut self {
+            Error::AnchorError(ae) => ae.account_name = Some(account_name.to_string()),
+            Error::ProgramError(pe) => pe.account_name = Some(account_name.to_string()),
+        };
+        self
+    }
+
+    pub fn with_source(mut self, source: Source) -> Self {
+        match &mut self {
+            Error::AnchorError(ae) => ae.source = Some(source),
+            Error::ProgramError(pe) => pe.source = Some(source),
+        };
+        self
+    }
+}
+
+#[derive(Debug)]
+pub struct ProgramErrorWithOrigin {
+    pub program_error: ProgramError,
+    pub source: Option<Source>,
+    pub account_name: Option<String>,
+}
+
+impl Display for ProgramErrorWithOrigin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.program_error, f)
+    }
+}
+
+impl ProgramErrorWithOrigin {
+    pub fn log(&self) {
+        if let Some(source) = &self.source {
+            anchor_lang::solana_program::msg!(
+                "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                source.filename,
+                source.line,
+                self.program_error,
+                u64::from(self.program_error.clone()),
+                self.program_error
+            );
+        } else if let Some(account_name) = &self.account_name {
+            anchor_lang::solana_program::log::sol_log(&format!(
+                "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                account_name,
+                self.program_error,
+                u64::from(self.program_error.clone()),
+                self.program_error
+            ));
+        } else {
+            anchor_lang::solana_program::log::sol_log(&format!(
+                "ProgramError occurred. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                self.program_error,
+                u64::from(self.program_error.clone()),
+                self.program_error
+            ));
+        }
+    }
+}
+
+impl From<ProgramError> for ProgramErrorWithOrigin {
+    fn from(program_error: ProgramError) -> Self {
+        Self {
+            program_error,
+            source: None,
+            account_name: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct AnchorError {
+    pub error_name: String,
+    pub error_code_number: u32,
+    pub error_msg: String,
+    pub source: Option<Source>,
+    pub account_name: Option<String>,
+}
+
+impl AnchorError {
+    pub fn log(&self) {
+        if let Some(source) = &self.source {
+            anchor_lang::solana_program::msg!(
+                "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error Message: {}.",
+                source.filename,
+                source.line,
+                self.error_name,
+                self.error_code_number,
+                self.error_msg
+            );
+        } else if let Some(account_name) = &self.account_name {
+            anchor_lang::solana_program::log::sol_log(&format!(
+                "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.",
+                account_name,
+                self.error_name,
+                self.error_code_number,
+                self.error_msg
+            ));
+        } else {
+            anchor_lang::solana_program::log::sol_log(&format!(
+                "AnchorError occurred. Error Code: {}. Error Number: {}. Error Message: {}.",
+                self.error_name, self.error_code_number, self.error_msg
+            ));
+        }
+    }
+}
+
+impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
+    fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
+        match e {
+            Error::AnchorError(AnchorError {
+                error_name: _,
+                error_code_number,
+                error_msg: _,
+                source: _,
+                account_name: _,
+            }) => {
+                anchor_lang::solana_program::program_error::ProgramError::Custom(error_code_number)
+            }
+            Error::ProgramError(program_error) => program_error.program_error,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Source {
+    pub filename: &'static str,
+    pub line: u32,
 }

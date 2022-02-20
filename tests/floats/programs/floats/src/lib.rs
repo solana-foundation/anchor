@@ -6,7 +6,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod floats {
     use super::*;
 
-    pub fn create(ctx: Context<Create>, data_f32: f32, data_f64: f64) -> ProgramResult {
+    pub fn create(ctx: Context<Create>, data_f32: f32, data_f64: f64) -> Result<()> {
         let account = &mut ctx.accounts.account;
         let authority = &mut ctx.accounts.authority;
 
@@ -17,7 +17,7 @@ pub mod floats {
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, data_f32: f32, data_f64: f64) -> ProgramResult {
+    pub fn update(ctx: Context<Update>, data_f32: f32, data_f64: f64) -> Result<()> {
         let account = &mut ctx.accounts.account;
 
         account.data_f32 = data_f32;

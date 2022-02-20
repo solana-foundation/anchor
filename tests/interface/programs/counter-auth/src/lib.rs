@@ -16,14 +16,14 @@ pub mod counter_auth {
     pub struct CounterAuth;
 
     impl<'info> Auth<'info, Empty> for CounterAuth {
-        fn is_authorized(_ctx: Context<Empty>, current: u64, new: u64) -> ProgramResult {
+        fn is_authorized(_ctx: Context<Empty>, current: u64, new: u64) -> Result<()> {
             if current % 2 == 0 {
                 if new % 2 == 0 {
-                    return Err(ProgramError::Custom(15000)); // Arbitrary error code.
+                    return Err(ProgramError::Custom(15000).into()); // Arbitrary error code.
                 }
             } else {
                 if new % 2 == 1 {
-                    return Err(ProgramError::Custom(16000)); // Arbitrary error code.
+                    return Err(ProgramError::Custom(16000).into()); // Arbitrary error code.
                 }
             }
             Ok(())

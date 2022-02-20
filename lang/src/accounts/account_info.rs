@@ -3,10 +3,9 @@
 //! should be used instead.
 
 use crate::error::ErrorCode;
-use crate::{Accounts, AccountsExit, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeMap;
 
@@ -16,7 +15,7 @@ impl<'info> Accounts<'info> for AccountInfo<'info> {
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }

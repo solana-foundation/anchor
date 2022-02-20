@@ -6,14 +6,14 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 mod basic_2 {
     use super::*;
 
-    pub fn create(ctx: Context<Create>, authority: Pubkey) -> ProgramResult {
+    pub fn create(ctx: Context<Create>, authority: Pubkey) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.authority = authority;
         counter.count = 0;
         Ok(())
     }
 
-    pub fn increment(ctx: Context<Increment>) -> ProgramResult {
+    pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.count += 1;
         Ok(())

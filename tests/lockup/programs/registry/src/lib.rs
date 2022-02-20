@@ -41,7 +41,7 @@ mod registry {
                 .parse()
                 .unwrap();
             if ctx.accounts.authority.key != &expected {
-                return Err(ErrorCode::InvalidProgramAuthority.into());
+                return err!(ErrorCode::InvalidProgramAuthority);
             }
 
             self.lockup_program = lockup_program;
@@ -51,16 +51,16 @@ mod registry {
     }
 
     impl<'info> RealizeLock<'info, IsRealized<'info>> for Registry {
-        fn is_realized(ctx: Context<IsRealized>, v: Vesting) -> ProgramResult {
+        fn is_realized(ctx: Context<IsRealized>, v: Vesting) -> Result<()> {
             if let Some(realizor) = &v.realizor {
                 if &realizor.metadata != ctx.accounts.member.to_account_info().key {
-                    return Err(ErrorCode::InvalidRealizorMetadata.into());
+                    return err!(ErrorCode::InvalidRealizorMetadata);
                 }
                 assert!(ctx.accounts.member.beneficiary == v.beneficiary);
                 let total_staked =
                     ctx.accounts.member_spt.amount + ctx.accounts.member_spt_locked.amount;
                 if total_staked != 0 {
-                    return Err(ErrorCode::UnrealizedReward.into());
+                    return err!(ErrorCode::UnrealizedReward);
                 }
             }
             Ok(())
@@ -285,7 +285,7 @@ mod registry {
 
     pub fn end_unstake(ctx: Context<EndUnstake>) -> Result<()> {
         if ctx.accounts.pending_withdrawal.end_ts > ctx.accounts.clock.unix_timestamp {
-            return Err(ErrorCode::UnstakeTimelock.into());
+            return err!(ErrorCode::UnstakeTimelock);
         }
 
         // Select which balance set this affects.
@@ -298,10 +298,10 @@ mod registry {
         };
         // Check the vaults given are corrrect.
         if &balances.vault != ctx.accounts.vault.key {
-            return Err(ErrorCode::InvalidVault.into());
+            return err!(ErrorCode::InvalidVault);
         }
         if &balances.vault_pw != ctx.accounts.vault_pw.key {
-            return Err(ErrorCode::InvalidVault.into());
+            return err!(ErrorCode::InvalidVault);
         }
 
         // Transfer tokens between vaults.
@@ -377,10 +377,10 @@ mod registry {
         nonce: u8,
     ) -> Result<()> {
         if total < ctx.accounts.pool_mint.supply {
-            return Err(ErrorCode::InsufficientReward.into());
+            return err!(ErrorCode::InsufficientReward);
         }
         if ctx.accounts.clock.unix_timestamp >= expiry_ts {
-            return Err(ErrorCode::InvalidExpiry.into());
+            return err!(ErrorCode::InvalidExpiry);
         }
         if let RewardVendorKind::Locked {
             start_ts,
@@ -389,7 +389,7 @@ mod registry {
         } = kind
         {
             if !lockup::is_valid_schedule(start_ts, end_ts, period_count) {
-                return Err(ErrorCode::InvalidVestingSchedule.into());
+                return err!(ErrorCode::InvalidVestingSchedule);
             }
         }
 
@@ -426,7 +426,7 @@ mod registry {
     #[access_control(reward_eligible(&ctx.accounts.cmn))]
     pub fn claim_reward(ctx: Context<ClaimReward>) -> Result<()> {
         if RewardVendorKind::Unlocked != ctx.accounts.cmn.vendor.kind {
-            return Err(ErrorCode::ExpectedUnlockedVendor.into());
+            return err!(ErrorCode::ExpectedUnlockedVendor);
         }
         // Reward distribution.
         let spt_total =
@@ -469,7 +469,7 @@ mod registry {
         nonce: u8,
     ) -> Result<()> {
         let (start_ts, end_ts, period_count) = match ctx.accounts.cmn.vendor.kind {
-            RewardVendorKind::Unlocked => return Err(ErrorCode::ExpectedLockedVendor.into()),
+            RewardVendorKind::Unlocked => return err!(ErrorCode::ExpectedLockedVendor),
             RewardVendorKind::Locked {
                 start_ts,
                 end_ts,
@@ -535,7 +535,7 @@ mod registry {
 
     pub fn expire_reward(ctx: Context<ExpireReward>) -> Result<()> {
         if ctx.accounts.clock.unix_timestamp < ctx.accounts.vendor.expiry_ts {
-            return Err(ErrorCode::VendorNotYetExpired.into());
+            return err!(ErrorCode::VendorNotYetExpired);
         }
 
         // Send all remaining funds to the expiry receiver's token.
@@ -583,9 +583,9 @@ impl<'info> Initialize<'info> {
             ],
             ctx.program_id,
         )
-        .map_err(|_| ErrorCode::InvalidNonce)?;
+        .map_err(|_| error!(ErrorCode::InvalidNonce))?;
         if ctx.accounts.pool_mint.mint_authority != COption::Some(registrar_signer) {
-            return Err(ErrorCode::InvalidPoolMintAuthority.into());
+            return err!(ErrorCode::InvalidPoolMintAuthority);
         }
         assert!(ctx.accounts.pool_mint.supply == 0);
         Ok(())
@@ -633,9 +633,9 @@ impl<'info> CreateMember<'info> {
             &[nonce],
         ];
         let member_signer = Pubkey::create_program_address(seeds, ctx.program_id)
-            .map_err(|_| ErrorCode::InvalidNonce)?;
+            .map_err(|_| error!(ErrorCode::InvalidNonce))?;
         if &member_signer != ctx.accounts.member_signer.to_account_info().key {
-            return Err(ErrorCode::InvalidMemberSigner.into());
+            return err!(ErrorCode::InvalidMemberSigner);
         }
 
         Ok(())
@@ -931,9 +931,9 @@ impl<'info> DropReward<'info> {
             ],
             ctx.program_id,
         )
-        .map_err(|_| ErrorCode::InvalidNonce)?;
+        .map_err(|_| error!(ErrorCode::InvalidNonce))?;
         if vendor_signer != ctx.accounts.vendor_vault.owner {
-            return Err(ErrorCode::InvalidVaultOwner.into());
+            return err!(ErrorCode::InvalidVaultOwner);
         }
 
         Ok(())
@@ -960,7 +960,7 @@ pub struct ClaimRewardLocked<'info> {
 #[derive(Accounts)]
 pub struct ClaimRewardCommon<'info> {
     // Stake instance.
-    registrar: Account<'info, Registrar>,
+    registrar: Box<Account<'info, Registrar>>,
     // Member.
     #[account(mut, has_one = registrar, has_one = beneficiary)]
     member: Account<'info, Member>,
@@ -1173,7 +1173,7 @@ pub enum RewardVendorKind {
     },
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("The given reward queue has already been initialized.")]
     RewardQAlreadyInitialized,
@@ -1284,13 +1284,13 @@ fn reward_eligible(cmn: &ClaimRewardCommon) -> Result<()> {
     let vendor = &cmn.vendor;
     let member = &cmn.member;
     if vendor.expired {
-        return Err(ErrorCode::VendorExpired.into());
+        return err!(ErrorCode::VendorExpired);
     }
     if member.rewards_cursor > vendor.reward_event_q_cursor {
-        return Err(ErrorCode::CursorAlreadyProcessed.into());
+        return err!(ErrorCode::CursorAlreadyProcessed);
     }
     if member.last_stake_ts > vendor.start_ts {
-        return Err(ErrorCode::NotStakedDuringDrop.into());
+        return err!(ErrorCode::NotStakedDuringDrop);
     }
     Ok(())
 }
@@ -1316,7 +1316,7 @@ pub fn no_available_rewards<'info>(
         let r_event = reward_q.get(cursor);
         if member.last_stake_ts < r_event.ts {
             if balances.spt.amount > 0 || balances_locked.spt.amount > 0 {
-                return Err(ErrorCode::RewardsNeedsProcessing.into());
+                return err!(ErrorCode::RewardsNeedsProcessing);
             }
         }
         cursor += 1;

@@ -107,7 +107,7 @@ pub struct Message {
     pub data: [u8; 280],
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     Unknown,
 }

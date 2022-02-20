@@ -18,14 +18,14 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod tictactoe {
     use super::*;
 
-    pub fn initialize_dashboard(ctx: Context<Initializedashboard>) -> ProgramResult {
+    pub fn initialize_dashboard(ctx: Context<Initializedashboard>) -> Result<()> {
         let dashboard = &mut ctx.accounts.dashboard;
         dashboard.game_count = 0;
         dashboard.address = *dashboard.to_account_info().key;
         Ok(())
     }
 
-    pub fn initialize(ctx: Context<Initialize>) -> ProgramResult {
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         let dashboard = &mut ctx.accounts.dashboard;
         let game = &mut ctx.accounts.game;
         dashboard.game_count = dashboard.game_count + 1;
@@ -34,7 +34,7 @@ pub mod tictactoe {
         Ok(())
     }
 
-    pub fn player_join(ctx: Context<Playerjoin>) -> ProgramResult {
+    pub fn player_join(ctx: Context<Playerjoin>) -> Result<()> {
         let game = &mut ctx.accounts.game;
         game.player_o = *ctx.accounts.player_o.key;
         game.game_state = 1;
@@ -42,14 +42,14 @@ pub mod tictactoe {
     }
 
     #[access_control(Playermove::accounts(&ctx, x_or_o, player_move))]
-    pub fn player_move(ctx: Context<Playermove>, x_or_o: u8, player_move: u8) -> ProgramResult {
+    pub fn player_move(ctx: Context<Playermove>, x_or_o: u8, player_move: u8) -> Result<()> {
         let game = &mut ctx.accounts.game;
         game.board[player_move as usize] = x_or_o;
         game.status(x_or_o);
         Ok(())
     }
 
-    pub fn status(ctx: Context<Status>) -> ProgramResult {
+    pub fn status(ctx: Context<Status>) -> Result<()> {
         Ok(())
     }
 }

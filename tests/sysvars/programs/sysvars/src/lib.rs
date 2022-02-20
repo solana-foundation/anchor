@@ -5,7 +5,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[program]
 mod sysvars {
     use super::*;
-    pub fn sysvars(_ctx: Context<Sysvars>) -> ProgramResult {
+    pub fn sysvars(_ctx: Context<Sysvars>) -> Result<()> {
         Ok(())
     }
 }

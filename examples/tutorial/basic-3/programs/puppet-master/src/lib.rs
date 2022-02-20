@@ -9,7 +9,7 @@ declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 #[program]
 mod puppet_master {
     use super::*;
-    pub fn pull_strings(ctx: Context<PullStrings>, data: u64) -> ProgramResult {
+    pub fn pull_strings(ctx: Context<PullStrings>, data: u64) -> anchor_lang::Result<()> {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let cpi_accounts = SetData {
             puppet: ctx.accounts.puppet.to_account_info(),

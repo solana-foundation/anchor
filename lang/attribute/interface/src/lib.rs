@@ -26,7 +26,7 @@ use syn::parse_macro_input;
 ///
 /// #[interface]
 /// pub trait Auth<'info, T: Accounts<'info>> {
-///     fn is_authorized(ctx: Context<T>, current: u64, new: u64) -> ProgramResult;
+///     fn is_authorized(ctx: Context<T>, current: u64, new: u64) -> anchor_lang::Result<()>;
 /// }
 ///
 /// #[program]
@@ -74,13 +74,13 @@ use syn::parse_macro_input;
 /// impl<'info> SetCount<'info> {
 ///     pub fn accounts(counter: &Counter, ctx: &Context<SetCount>) -> Result<()> {
 ///         if ctx.accounts.auth_program.key != &counter.auth_program {
-///             return Err(ErrorCode::InvalidAuthProgram.into());
+///             return Err(error!(ErrorCode::InvalidAuthProgram));
 ///         }
 ///         Ok(())
 ///     }
 /// }
 ///
-/// #[error]
+/// #[error_code]
 /// pub enum ErrorCode {
 ///     #[msg("Invalid auth program.")]
 ///     InvalidAuthProgram,
@@ -104,14 +104,14 @@ use syn::parse_macro_input;
 ///     pub struct CounterAuth;
 ///
 ///     impl<'info> Auth<'info, Empty> for CounterAuth {
-///         fn is_authorized(_ctx: Context<Empty>, current: u64, new: u64) -> ProgramResult {
+///         fn is_authorized(_ctx: Context<Empty>, current: u64, new: u64) -> Result<()> {
 ///             if current % 2 == 0 {
 ///                 if new % 2 == 0 {
-///                     return Err(ProgramError::Custom(50)); // Arbitrary error code.
+///                     return Err(ProgramError::Custom(50).into()); // Arbitrary error code.
 ///                 }
 ///             } else {
 ///                 if new % 2 == 1 {
-///                     return Err(ProgramError::Custom(60)); // Arbitrary error code.
+///                     return Err(ProgramError::Custom(60).into()); // Arbitrary error code.
 ///                 }
 ///             }
 ///             Ok(())
@@ -200,7 +200,7 @@ pub fn interface(
                 pub fn #method_name<'a,'b, 'c, 'info, T: anchor_lang::Accounts<'info> + anchor_lang::ToAccountMetas + anchor_lang::ToAccountInfos<'info>>(
                     ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, T>,
                     #(#args),*
-                ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+                ) -> anchor_lang::Result<()> {
                     #args_struct
 
                     let ix = {
@@ -224,7 +224,7 @@ pub fn interface(
                         &ix,
                         &acc_infos,
                         ctx.signer_seeds,
-                    )
+                    ).map_err(Into::into)
                 }
             }
         })

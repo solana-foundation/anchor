@@ -15,14 +15,14 @@ pub const MY_SEED_U64: u64 = 3;
 pub mod pda_derivation {
     use super::*;
 
-    pub fn init_base(ctx: Context<InitBase>, data: u64, data_key: Pubkey) -> ProgramResult {
+    pub fn init_base(ctx: Context<InitBase>, data: u64, data_key: Pubkey) -> Result<()> {
         let base = &mut ctx.accounts.base;
         base.base_data = data;
         base.base_data_key = data_key;
         Ok(())
     }
 
-    pub fn init_my_account(ctx: Context<InitMyAccount>, seed_a: u8) -> ProgramResult {
+    pub fn init_my_account(ctx: Context<InitMyAccount>, seed_a: u8) -> Result<()> {
         Ok(())
     }
 }

@@ -1,9 +1,7 @@
 use crate::*;
 use crate::{error::ErrorCode, prelude::Account};
 use solana_program::account_info::AccountInfo;
-use solana_program::entrypoint::ProgramResult;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -23,7 +21,7 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
     }
 
     /// Deserializes the given `info` into a `CpiAccount`.
-    pub fn try_from(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>, ProgramError> {
+    pub fn try_from(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>> {
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(CpiAccount::new(
             info.clone(),
@@ -31,13 +29,13 @@ impl<'a, T: AccountDeserialize + Clone> CpiAccount<'a, T> {
         ))
     }
 
-    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>, ProgramError> {
+    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<CpiAccount<'a, T>> {
         Self::try_from(info)
     }
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
-    pub fn reload(&mut self) -> ProgramResult {
+    pub fn reload(&mut self) -> Result<()> {
         let mut data: &[u8] = &self.info.try_borrow_data()?;
         self.account = Box::new(T::try_deserialize(&mut data)?);
         Ok(())
@@ -55,7 +53,7 @@ where
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }

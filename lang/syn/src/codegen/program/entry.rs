@@ -6,7 +6,7 @@ use quote::quote;
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     let fallback_maybe = dispatch::gen_fallback(program).unwrap_or(quote! {
-        Err(anchor_lang::error::ErrorCode::InstructionMissing.into());
+        Err(anchor_lang::error::ErrorCode::InstructionMissing.into())
     });
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
@@ -51,7 +51,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        pub fn entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+        pub fn entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+            try_entry(program_id, accounts, data).map_err(|e| {
+                e.log();
+                e.into()
+            })
+        }
+
+        fn try_entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
@@ -60,14 +67,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into());
             }
             if data.len() < 8 {
-                return #fallback_maybe
+                return #fallback_maybe;
             }
 
             dispatch(program_id, accounts, data)
-                .map_err(|e| {
-                    anchor_lang::solana_program::msg!(&e.to_string());
-                    e
-                })
         }
 
         pub mod program {

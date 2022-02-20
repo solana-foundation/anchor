@@ -376,6 +376,8 @@ pub enum ClientError {
     #[error("Account not found")]
     AccountNotFound,
     #[error("{0}")]
+    AnchorError(#[from] anchor_lang::error::Error),
+    #[error("{0}")]
     ProgramError(#[from] ProgramError),
     #[error("{0}")]
     SolanaClientError(#[from] SolanaClientError),

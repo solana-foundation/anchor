@@ -11,7 +11,7 @@ use std::fmt;
 ///
 /// # Example
 /// ```ignore
-/// pub fn set_data(ctx: Context<SetData>, age: u64, other_data: u32) -> ProgramResult {
+/// pub fn set_data(ctx: Context<SetData>, age: u64, other_data: u32) -> Result<()> {
 ///     // Set account data like this
 ///     (*ctx.accounts.my_account).age = age;
 ///     (*ctx.accounts.my_account).other_data = other_data;
@@ -76,12 +76,12 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {
 /// #[program]
 /// pub mod callee {
 ///     use super::*;
-///     pub fn init(ctx: Context<Init>) -> ProgramResult {
+///     pub fn init(ctx: Context<Init>) -> Result<()> {
 ///         (*ctx.accounts.data).authority = ctx.accounts.authority.key();
 ///         Ok(())
 ///     }
 ///
-///     pub fn set_data(ctx: Context<SetData>, data: u64) -> ProgramResult {
+///     pub fn set_data(ctx: Context<SetData>, data: u64) -> Result<()> {
 ///         (*ctx.accounts.data_acc).data = data;
 ///         Ok(())
 ///     }
@@ -120,7 +120,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {
 /// #[program]
 /// pub mod caller {
 ///     use super::*;
-///     pub fn do_cpi(ctx: Context<DoCpi>, data: u64) -> ProgramResult {
+///     pub fn do_cpi(ctx: Context<DoCpi>, data: u64) -> Result<()> {
 ///         let callee_id = ctx.accounts.callee.to_account_info();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
 ///             data_acc: ctx.accounts.data_acc.to_account_info(),
@@ -130,7 +130,7 @@ impl<'a, 'b, 'c, 'info, T: Accounts<'info>> Context<'a, 'b, 'c, 'info, T> {
 ///         callee::cpi::set_data(cpi_ctx, data)
 ///     }
 ///
-///     pub fn do_cpi_with_pda_authority(ctx: Context<DoCpiWithPDAAuthority>, bump: u8, data: u64) -> ProgramResult {
+///     pub fn do_cpi_with_pda_authority(ctx: Context<DoCpiWithPDAAuthority>, bump: u8, data: u64) -> Result<()> {
 ///         let seeds = &[&[b"example_seed", bytemuck::bytes_of(&bump)][..]];
 ///         let callee_id = ctx.accounts.callee.to_account_info();
 ///         let callee_accounts = callee::cpi::accounts::SetData {

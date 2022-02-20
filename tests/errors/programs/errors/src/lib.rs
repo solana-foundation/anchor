@@ -10,15 +10,32 @@ mod errors {
     use super::*;
 
     pub fn hello(_ctx: Context<Hello>) -> Result<()> {
-        Err(MyError::Hello.into())
+        err!(MyError::Hello)
     }
 
     pub fn hello_no_msg(_ctx: Context<Hello>) -> Result<()> {
-        Err(MyError::HelloNoMsg.into())
+        err!(MyError::HelloNoMsg)
     }
 
     pub fn hello_next(_ctx: Context<Hello>) -> Result<()> {
-        Err(MyError::HelloNext.into())
+        err!(MyError::HelloNext)
+    }
+
+    pub fn test_require(_ctx: Context<Hello>) -> Result<()> {
+        require!(false, MyError::Hello);
+        Ok(())
+    }
+
+    pub fn test_err(_ctx: Context<Hello>) -> Result<()> {
+        err!(MyError::Hello)
+    }
+
+    pub fn test_program_error(_ctx: Context<Hello>) -> Result<()> {
+        Err(ProgramError::InvalidAccountData.into())
+    }
+
+    pub fn test_program_error_with_source(_ctx: Context<Hello>) -> Result<()> {
+        Err(Error::from(ProgramError::InvalidAccountData).with_source(source!()))
     }
 
     pub fn mut_error(_ctx: Context<MutError>) -> Result<()> {
@@ -82,7 +99,7 @@ pub struct AccountNotInitializedError<'info> {
     not_initialized_account: Account<'info, AnyAccount>,
 }
 
-#[error]
+#[error_code]
 pub enum MyError {
     #[msg("This is an error message clients will automatically display")]
     Hello,

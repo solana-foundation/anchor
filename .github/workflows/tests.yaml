@@ -121,6 +121,7 @@ jobs:
     name: Setup Client Example Test
     runs-on: ubuntu-18.04
     strategy:
+      fail-fast: false
       matrix:
         node:
           - path: tests/events/
@@ -232,6 +233,7 @@ jobs:
     name: Test ${{ matrix.node.path }}
     runs-on: ubuntu-18.04
     strategy:
+      fail-fast: false
       matrix:
         node:
           - cmd: cd tests/sysvars && anchor test

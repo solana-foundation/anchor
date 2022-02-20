@@ -17,8 +17,8 @@
 //! the `execute_transaction`, once enough (i.e. `threshold`) of the owners have
 //! signed.
 
-use anchor_lang::prelude::*;
 use anchor_lang::accounts::program_account::ProgramAccount;
+use anchor_lang::prelude::*;
 use anchor_lang::solana_program;
 use anchor_lang::solana_program::instruction::Instruction;
 use std::convert::Into;
@@ -57,7 +57,7 @@ pub mod multisig {
             .owners
             .iter()
             .position(|a| a == ctx.accounts.proposer.key)
-            .ok_or(ErrorCode::InvalidOwner)?;
+            .ok_or(error!(ErrorCode::InvalidOwner))?;
 
         let mut signers = Vec::new();
         signers.resize(ctx.accounts.multisig.owners.len(), false);
@@ -82,7 +82,7 @@ pub mod multisig {
             .owners
             .iter()
             .position(|a| a == ctx.accounts.owner.key)
-            .ok_or(ErrorCode::InvalidOwner)?;
+            .ok_or(error!(ErrorCode::InvalidOwner))?;
 
         ctx.accounts.transaction.signers[owner_index] = true;
 
@@ -107,7 +107,7 @@ pub mod multisig {
     // change_threshold.
     pub fn change_threshold(ctx: Context<Auth>, threshold: u64) -> Result<()> {
         if threshold > ctx.accounts.multisig.owners.len() as u64 {
-            return Err(ErrorCode::InvalidThreshold.into());
+            return err!(ErrorCode::InvalidThreshold);
         }
         let multisig = &mut ctx.accounts.multisig;
         multisig.threshold = threshold;
@@ -118,7 +118,7 @@ pub mod multisig {
     pub fn execute_transaction(ctx: Context<ExecuteTransaction>) -> Result<()> {
         // Has this been executed already?
         if ctx.accounts.transaction.did_execute {
-            return Err(ErrorCode::AlreadyExecuted.into());
+            return err!(ErrorCode::AlreadyExecuted);
         }
 
         // Do we have enough signers?
@@ -134,7 +134,7 @@ pub mod multisig {
             .collect::<Vec<_>>()
             .len() as u64;
         if sig_count < ctx.accounts.multisig.threshold {
-            return Err(ErrorCode::NotEnoughSigners.into());
+            return err!(ErrorCode::NotEnoughSigners);
         }
 
         // Execute the transaction signed by the multisig.
@@ -262,7 +262,7 @@ impl From<TransactionAccount> for AccountMeta {
     }
 }
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
     #[msg("The given owner is not part of this multisig.")]
     InvalidOwner,

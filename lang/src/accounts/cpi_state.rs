@@ -2,11 +2,11 @@ use crate::error::ErrorCode;
 #[allow(deprecated)]
 use crate::{accounts::state::ProgramState, context::CpiStateContext};
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, ToAccountInfos, ToAccountMetas,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Result, ToAccountInfos,
+    ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -35,7 +35,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> CpiState<'info, T>
 
     /// Deserializes the given `info` into a `CpiState`.
     #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'info>) -> Result<CpiState<'info, T>, ProgramError> {
+    pub fn try_from(info: &AccountInfo<'info>) -> Result<CpiState<'info, T>> {
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(CpiState::new(info.clone(), T::try_deserialize(&mut data)?))
     }
@@ -72,7 +72,7 @@ where
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
-    ) -> Result<Self, ProgramError> {
+    ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
