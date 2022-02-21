@@ -1,6 +1,7 @@
 use crate::{AccountField, AccountsStruct, Ty};
 use heck::SnakeCase;
 use quote::quote;
+use std::str::FromStr;
 
 // Generates the private `__client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
@@ -20,6 +21,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .map(|f: &AccountField| match f {
             AccountField::CompositeField(s) => {
                 let name = &s.ident;
+                let docs = if !s.docs.is_empty() {
+                    proc_macro2::TokenStream::from_str(&format!("#[doc = \"{}\"]", s.docs)).unwrap()
+                } else {
+                    quote!()
+                };
                 let symbol: proc_macro2::TokenStream = format!(
                     "__client_accounts_{0}::{1}",
                     s.symbol.to_snake_case(),
@@ -28,12 +34,19 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 .parse()
                 .unwrap();
                 quote! {
+                    #docs
                     pub #name: #symbol
                 }
             }
             AccountField::Field(f) => {
                 let name = &f.ident;
+                let docs = if !f.docs.is_empty() {
+                    proc_macro2::TokenStream::from_str(&format!("#[doc = \"{}\"]", f.docs)).unwrap()
+                } else {
+                    quote!()
+                };
                 quote! {
+                    #docs
                     pub #name: anchor_lang::solana_program::pubkey::Pubkey
                 }
             }
@@ -99,6 +112,13 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             })
             .collect()
     };
+
+    let struct_doc = proc_macro2::TokenStream::from_str(&format!(
+        "#[doc = \" Generated client accounts for [`{}`].\"]",
+        name
+    ))
+    .unwrap();
+
     quote! {
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a struct for a given
@@ -114,6 +134,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             use anchor_lang::prelude::borsh;
             #(#re_exports)*
 
+            #struct_doc
             #[derive(anchor_lang::AnchorSerialize)]
             pub struct #name {
                 #(#account_struct_fields),*

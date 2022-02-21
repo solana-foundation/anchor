@@ -61,6 +61,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         #error_enum
 
         impl #enum_name {
+            /// Gets the name of this [#enum_name].
             pub fn name(&self) -> String {
                 match self {
                     #(#name_variant_dispatch),*

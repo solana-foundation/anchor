@@ -207,6 +207,8 @@ pub struct Field {
     pub constraints: ConstraintGroup,
     pub instruction_constraints: ConstraintGroup,
     pub ty: Ty,
+    /// Documentation string.
+    pub docs: String,
 }
 
 impl Field {
@@ -441,6 +443,8 @@ pub struct CompositeField {
     pub instruction_constraints: ConstraintGroup,
     pub symbol: String,
     pub raw_field: syn::Field,
+    /// Documentation string.
+    pub docs: String,
 }
 
 // A type of an account field.
