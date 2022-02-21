@@ -231,6 +231,13 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
     }
 }
 
+/// This function is for INTERNAL USE ONLY.
+/// Do NOT use this function in a program.
+/// Manual closing of `AccountLoader<'info, T>` types is NOT supported.
+///
+/// Details: Using `close` with `AccountLoader<'info, T>` is not safe because
+/// it requires the `mut` constraint but for that type the constraint
+/// overwrites the "closed account" discriminator at the end of the instruction.
 impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)

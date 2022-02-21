@@ -104,6 +104,13 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info
     }
 }
 
+/// This function is for INTERNAL USE ONLY.
+/// Do NOT use this function in a program.
+/// Manual closing of `ProgramAccount<'info, T>` types is NOT supported.
+///
+/// Details: Using `close` with `ProgramAccount<'info, T>` is not safe because
+/// it requires the `mut` constraint but for that type the constraint
+/// overwrites the "closed account" discriminator at the end of the instruction.
 #[allow(deprecated)]
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for ProgramAccount<'info, T>

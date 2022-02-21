@@ -174,6 +174,13 @@ impl<'info, T: ZeroCopy> AccountsExit<'info> for Loader<'info, T> {
     }
 }
 
+/// This function is for INTERNAL USE ONLY.
+/// Do NOT use this function in a program.
+/// Manual closing of `Loader<'info, T>` types is NOT supported.
+///
+/// Details: Using `close` with `Loader<'info, T>` is not safe because
+/// it requires the `mut` constraint but for that type the constraint
+/// overwrites the "closed account" discriminator at the end of the instruction.
 #[allow(deprecated)]
 impl<'info, T: ZeroCopy> AccountsClose<'info> for Loader<'info, T> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
