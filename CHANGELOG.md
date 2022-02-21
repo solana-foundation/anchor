@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.22.0] - 2022-02-20
+
 ### Features
 
 * lang: add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451))
