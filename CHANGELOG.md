@@ -37,6 +37,7 @@ This change will break most programs. Do the following to upgrade:
      * change all `ProgramResult`'s to `Result<()>`
      * change `#[error]` to `#[error_code]`
      * change all `Err(MyError::SomeError.into())` to `Err(error!(MyError::SomeError))` and all `Err(ProgramError::SomeProgramError)` to `Err(ProgramError::SomeProgramError.into())` or `Err(Error::from(ProgramError::SomeProgramError).with_source(source!()))` to provide file and line source of the error (`with_source` is most useful with `ProgramError`s. `error!` already adds source information for custom and anchor internal errors).
+     * change all `solana_program::program::invoke()` to `solana_program::program::invoke().map_err(Into::into)` and `solana_program::program::invoke_signed()` to `solana_program::program::invoke().map_err(Into::into)`
 
 ## [0.21.0] - 2022-02-07
 
