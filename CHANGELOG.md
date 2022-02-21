@@ -11,13 +11,17 @@ incremented for features.
 
 ## [Unreleased]
 
+### Fixes
+
+* cli: Fix rust template ([#1488](https://github.com/project-serum/anchor/pull/1488)).
+
 ## [0.22.0] - 2022-02-20
 
 ### Features
 
-* lang: add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451))
+* lang: Add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451)).
 * ts: Added float types support ([#1425](https://github.com/project-serum/anchor/pull/1425)).
-* cli: Add `--skip-lint` option to disable check linting introduced in ([#1452](https://github.com/project-serum/anchor/pull/1452)) for rapid prototyping ([#1482](https://github.com/project-serum/anchor/pull/1482))
+* cli: Add `--skip-lint` option to disable check linting introduced in ([#1452](https://github.com/project-serum/anchor/pull/1452)) for rapid prototyping ([#1482](https://github.com/project-serum/anchor/pull/1482)).
 
 ### Fixes
 
@@ -30,7 +34,7 @@ incremented for features.
 * lang: Require doc comments when using AccountInfo or UncheckedAccount types ([#1452](https://github.com/project-serum/anchor/pull/1452)).
 * lang: add [`error!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.error.html) and [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.err.html) macro and `Result` type ([#1462](https://github.com/project-serum/anchor/pull/1462)).
 This change will break most programs. Do the following to upgrade:
-     * change all `ProgramResult`'s to `Result<()>` 
+     * change all `ProgramResult`'s to `Result<()>`
      * change `#[error]` to `#[error_code]`
      * change all `Err(MyError::SomeError.into())` to `Err(error!(MyError::SomeError))` and all `Err(ProgramError::SomeProgramError)` to `Err(ProgramError::SomeProgramError.into())` or `Err(Error::from(ProgramError::SomeProgramError).with_source(source!()))` to provide file and line source of the error (`with_source` is most useful with `ProgramError`s. `error!` already adds source information for custom and anchor internal errors).
 

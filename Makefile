@@ -53,27 +53,27 @@ clean:
 .PHONY: publish
 publish:
 	cd lang/syn/ && cargo publish && cd ../../
-	sleep 10
+	sleep 25
 	cd lang/derive/accounts/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/access-control/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/account/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/constant/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/error/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/interface/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/program/ && cargo publish && cd ../../..
-	sleep 10
+	sleep 25
 	cd lang/attribute/state/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/attribute/event/ && cargo publish && cd ../../../
-	sleep 10
+	sleep 25
 	cd lang/ && cargo publish && cd../
-	sleep 10
+	sleep 25
 	cd spl/ && cargo publish && cd ../
-	sleep 10
+	sleep 25
 	cd client/ && cargo publish && cd ../
