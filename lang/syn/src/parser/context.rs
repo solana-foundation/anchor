@@ -138,7 +138,7 @@ impl ParsedModule {
                 path: module.path.clone(),
                 name: item.ident.to_string(),
             }));
-            modules.insert(name.clone(), module);
+            modules.insert(format!("{}{}", module.path.clone(), name.clone()), module);
         }
 
         modules.insert(root_mod.name.clone(), root_mod);
