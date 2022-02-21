@@ -13,4 +13,4 @@ zero_cpi = "ErjUjtqKE5AGWUsjseSJCVLtddM6rhaMbDqmhzraF9h6"
 zero_copy = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [features]
-safety_checks = false
+

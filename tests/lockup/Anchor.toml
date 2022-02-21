@@ -10,4 +10,3 @@ registry = "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
 test = "yarn run mocha -t 1000000 tests/"
 
 [features]
-safety_checks = false

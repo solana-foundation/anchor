@@ -1,6 +1,5 @@
 [features]
 seeds = true
-safety_checks = false
 
 [provider]
 cluster = "localnet"

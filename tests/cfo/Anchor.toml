@@ -12,15 +12,15 @@ lockup = { address = "6ebQNeTPZ1j7k3TtkCCtEPRvG7GQsucQrZ7sSEDQi9Ks", idl = "./de
 # Testing.
 #
 test = "yarn run mocha -t 1000000 tests/"
-test-with-build = "anchor run build && anchor test --skip-build"
+test-with-build = "anchor run build && anchor test --skip-build --skip-lint"
 #
 # Build the program and all CPI dependencies.
 #
-build = "anchor run build-deps && anchor build"
+build = "anchor run build-deps && anchor build --skip-lint"
 build-deps = "anchor run build-dex && anchor run build-swap && anchor run build-stake"
 build-dex = "pushd deps/serum-dex/dex/ && cargo build-bpf && popd"
-build-swap = "cd deps/swap && pwd && anchor build && cd ../../"
-build-stake = "pushd deps/stake && anchor build && popd"
+build-swap = "cd deps/swap && pwd && anchor build --skip-lint && cd ../../"
+build-stake = "pushd deps/stake && anchor build --skip-lint && popd"
 #
 # Runs a localnet with all the programs deployed.
 #
@@ -43,4 +43,3 @@ address = "6ebQNeTPZ1j7k3TtkCCtEPRvG7GQsucQrZ7sSEDQi9Ks"
 program = "./deps/stake/target/deploy/lockup.so"
 
 [features]
-safety_checks = false

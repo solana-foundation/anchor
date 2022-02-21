@@ -13,4 +13,3 @@ program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"
 test = "yarn run mocha -t 1000000 tests/"
 
 [features]
-safety_checks = false

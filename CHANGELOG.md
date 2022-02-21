@@ -15,6 +15,7 @@ incremented for features.
 
 * lang: add check that declared id == program id ([#1451](https://github.com/project-serum/anchor/pull/1451))
 * ts: Added float types support ([#1425](https://github.com/project-serum/anchor/pull/1425)).
+* cli: Add `--skip-lint` option to disable check linting introduced in ([#1452](https://github.com/project-serum/anchor/pull/1452)) for rapid prototyping ([#1482](https://github.com/project-serum/anchor/pull/1482))
 
 ### Fixes
 
