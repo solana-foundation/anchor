@@ -15,6 +15,7 @@ jobs:
   test-core:
     name: Core Tests
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/
@@ -49,6 +50,7 @@ jobs:
   setup-anchor-cli:
     name: Setup Anchor cli
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/
@@ -74,6 +76,7 @@ jobs:
     needs: setup-anchor-cli
     name: Examples Test
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: actions/download-artifact@v2
@@ -120,6 +123,7 @@ jobs:
     needs: setup-anchor-cli
     name: Setup Client Example Test
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -152,6 +156,7 @@ jobs:
     needs: setup-client-example
     name: Client Example Test
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/
@@ -190,6 +195,7 @@ jobs:
     needs: setup-anchor-cli
     name: Test tests/bpf-upgradeable-state
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/
@@ -232,6 +238,7 @@ jobs:
     needs: setup-anchor-cli
     name: Test ${{ matrix.node.path }}
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
