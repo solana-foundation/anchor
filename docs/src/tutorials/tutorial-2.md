@@ -13,7 +13,7 @@ To address these problems, Anchor provides several types, traits, and macros. It
   from the untrusted `&[AccountInfo]` slice given to a Solana program into a validated struct
   of deserialized account types.
 - [#[account]](https://docs.rs/anchor-lang/latest/anchor_lang/attr.account.html): attribute macro implementing [AccountSerialize](https://docs.rs/anchor-lang/latest/anchor_lang/trait.AccountSerialize.html) and [AccountDeserialize](https://docs.rs/anchor-lang/latest/anchor_lang/trait.AnchorDeserialize.html), automatically prepending a unique 8 byte discriminator to the account array. The discriminator is defined by the first 8 bytes of the `Sha256` hash of the account's Rust identifier--i.e., the struct type name--and ensures no account can be substituted for another.
-- [Account](https://docs.rs/anchor-lang/latest/anchor_lang/struct.Account.html): a wrapper type for a deserialized account implementing `AccountDeserialize`. Using this type within an `Accounts` struct will ensure the account is **owned** by the address defined by `declare_id!` where the inner account was defined.
+- [Account](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/account/struct.Account.html): a wrapper type for a deserialized account implementing `AccountDeserialize`. Using this type within an `Accounts` struct will ensure the account is **owned** by the address defined by `declare_id!` where the inner account was defined.
 
 With the above, we can define preconditions for any instruction handler expecting a certain set of
 accounts, allowing us to more easily reason about the security of our programs.
