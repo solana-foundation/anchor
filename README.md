@@ -26,7 +26,7 @@ If you're familiar with developing in Ethereum's [Solidity](https://docs.solidit
 
 ## Getting Started
 
-For a quickstart guide and in depth tutorials, see the guided [documentation](https://project-serum.github.io/anchor/getting-started/introduction.html).
+For a quickstart guide and in depth tutorials, see the [anchor book](https://book.anchor-lang.com) and the older [documentation](https://project-serum.github.io/anchor/getting-started/introduction.html) that is being phased out.
 To jump straight to examples, go [here](https://github.com/project-serum/anchor/tree/master/examples). For the latest Rust and TypeScript API documentation, see [docs.rs](https://docs.rs/anchor-lang) and the [typedoc](https://project-serum.github.io/anchor/ts/index.html).
 
 ## Packages
@@ -58,14 +58,14 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 mod counter {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, start: u64) -> ProgramResult {
+    pub fn initialize(ctx: Context<Initialize>, start: u64) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.authority = *ctx.accounts.authority.key;
         counter.count = start;
         Ok(())
     }
 
-    pub fn increment(ctx: Context<Increment>) -> ProgramResult {
+    pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.count += 1;
         Ok(())
@@ -107,19 +107,8 @@ licensed as above, without any additional terms or conditions.
 
 ## Contribution
 
-Thank you for your interest in contributing to Anchor! All contributions are welcome no
-matter how big or small. This includes (but is not limited to) filing issues,
-adding documentation, fixing bugs, creating examples, and implementing features.
-
-If you'd like to contribute, please claim an issue by commenting, forking, and
-opening a pull request, even if empty. This allows the maintainers to track who
-is working on what issue as to not overlap work. If you're looking to get started,
-check out [good first issues](https://github.com/project-serum/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-or issues where [help is wanted](https://github.com/project-serum/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-For simple documentation changes, feel free to just open a pull request.
-
-If you're considering larger changes or self motivated features, please file an issue
-and engage with the maintainers in [Discord](https://discord.gg/sxy4zxBckh).
+Thank you for your interest in contributing to Anchor!
+Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) to learn how.
 
 ### Thanks ❤️
 
