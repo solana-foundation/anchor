@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.22.1] - 2022-02-28
+
 ### Fixes
 
 * cli: Fix rust template ([#1488](https://github.com/project-serum/anchor/pull/1488)).
