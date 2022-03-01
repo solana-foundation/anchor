@@ -353,7 +353,7 @@ fn parse_account_derives(ctx: &CrateContext) -> HashMap<String, AccountsStruct> 
     ctx.structs()
         .filter_map(|i_strct| {
             for attr in &i_strct.attrs {
-                if attr.tokens.to_string().contains(DERIVE_NAME) {
+                if attr.path.is_ident("derive") && attr.tokens.to_string().contains(DERIVE_NAME) {
                     let strct = accounts::parse(i_strct).expect("Code not parseable");
                     return Some((strct.ident.to_string(), strct));
                 }
