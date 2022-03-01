@@ -111,6 +111,7 @@ const LangErrorCode = {
   AccountNotInitialized: 3012,
   AccountNotProgramData: 3013,
   AccountNotAssociatedTokenAccount: 3014,
+  AccountSysvarMismatch: 3015,
   // State.
   StateInvalidAddress: 4000,
 
@@ -226,6 +227,10 @@ const LangErrorMessage = new Map([
   [
     LangErrorCode.AccountNotAssociatedTokenAccount,
     "The given account is not the associated token account",
+  ],
+  [
+    LangErrorCode.AccountSysvarMismatch,
+    "The given public key does not match the required sysvar",
   ],
 
   // State.

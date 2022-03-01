@@ -152,6 +152,9 @@ pub enum ErrorCode {
     /// 3014 - The given account is not the associated token account
     #[msg("The given account is not the associated token account")]
     AccountNotAssociatedTokenAccount,
+    /// 3015 - The given public key does not match the required sysvar
+    #[msg("The given public key does not match the required sysvar")]
+    AccountSysvarMismatch,
 
     // State.
     /// 4000 - The given state account does not have the correct address
