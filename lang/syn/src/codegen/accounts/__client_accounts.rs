@@ -22,7 +22,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             AccountField::CompositeField(s) => {
                 let name = &s.ident;
                 let docs = if !s.docs.is_empty() {
-                    proc_macro2::TokenStream::from_str(&format!("#[doc = \"{}\"]", s.docs)).unwrap()
+                    proc_macro2::TokenStream::from_str(&format!("#[doc = r#\"{}\"#]", s.docs))
+                        .unwrap()
                 } else {
                     quote!()
                 };
@@ -41,7 +42,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             AccountField::Field(f) => {
                 let name = &f.ident;
                 let docs = if !f.docs.is_empty() {
-                    proc_macro2::TokenStream::from_str(&format!("#[doc = \"{}\"]", f.docs)).unwrap()
+                    proc_macro2::TokenStream::from_str(&format!("#[doc = r#\"{}\"#]", f.docs))
+                        .unwrap()
                 } else {
                     quote!()
                 };

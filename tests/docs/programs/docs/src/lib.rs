@@ -24,6 +24,7 @@ pub struct Hello<'info> {
     pub rent: Sysvar<'info, Rent>,
     /// Composite accounts test.
     /// Multiple lines supported.
+    /// You can also include "double quotes".
     pub other: HelloComposite<'info>,
 }
 
