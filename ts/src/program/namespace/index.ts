@@ -10,7 +10,6 @@ import RpcFactory, { RpcNamespace } from "./rpc.js";
 import AccountFactory, { AccountNamespace } from "./account.js";
 import SimulateFactory, { SimulateNamespace } from "./simulate.js";
 import { parseIdlErrors } from "../common.js";
-import { AllInstructions } from "./types.js";
 import { MethodsBuilderFactory, MethodsNamespace } from "./methods";
 
 // Re-exports.
@@ -55,8 +54,8 @@ export default class NamespaceFactory {
 
     const state = StateFactory.build(idl, coder, programId, provider);
 
-    idl.instructions.forEach(<I extends AllInstructions<IDL>>(idlIx: I) => {
-      const ixItem = InstructionFactory.build<IDL, I>(
+    idl.instructions.forEach((idlIx) => {
+      const ixItem = InstructionFactory.build<IDL, typeof idlIx>(
         idlIx,
         (ixName, ix) => coder.instruction.encode(ixName, ix),
         programId
@@ -72,7 +71,7 @@ export default class NamespaceFactory {
         programId,
         idl
       );
-      const methodItem = MethodsBuilderFactory.build(
+      const methodItem = MethodsBuilderFactory.build<IDL, typeof idlIx>(
         provider,
         programId,
         idlIx,

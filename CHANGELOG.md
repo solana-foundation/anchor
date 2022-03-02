@@ -15,6 +15,14 @@ incremented for features.
 
 * lang: Add new `AccountSysvarMismatch` error code and test cases for sysvars ([#1535](https://github.com/project-serum/anchor/pull/1535)).
 
+### Fixes
+
+* ts: Fix the loss of strict typing using the `methods` namespace on builder functions ([#1539](https://github.com/project-serum/anchor/pull/1539)).
+
+### Breaking
+
+* ts: Mark `transaction`, `instruction`, `simulate` and `rpc` program namespaces as deprecated in favor of `methods` ([#1539](https://github.com/project-serum/anchor/pull/1539)).
+
 ## [0.22.1] - 2022-02-28
 
 ### Fixes

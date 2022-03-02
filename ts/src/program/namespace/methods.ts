@@ -17,6 +17,7 @@ import { SimulateFn } from "./simulate.js";
 import Provider from "../../provider.js";
 import { AccountNamespace } from "./account.js";
 import { AccountsResolver } from "../accounts-resolver.js";
+import { Accounts } from "../context.js";
 
 export type MethodsNamespace<
   IDL extends Idl = Idl,
@@ -33,9 +34,9 @@ export class MethodsBuilderFactory {
     rpcFn: RpcFn<IDL>,
     simulateFn: SimulateFn<IDL>,
     accountNamespace: AccountNamespace<IDL>
-  ): MethodsFn<IDL, I, any> {
-    const request: MethodsFn<IDL, I, any> = (...args) => {
-      return new MethodsBuilder(
+  ): MethodsFn<IDL, I, MethodsBuilder<IDL, I>> {
+    return (...args) =>
+      new MethodsBuilder(
         args,
         ixFn,
         txFn,
@@ -46,13 +47,11 @@ export class MethodsBuilderFactory {
         idlIx,
         accountNamespace
       );
-    };
-    return request;
   }
 }
 
 export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
-  readonly _accounts: { [name: string]: PublicKey } = {};
+  private readonly _accounts: { [name: string]: PublicKey } = {};
   private _remainingAccounts: Array<AccountMeta> = [];
   private _signers: Array<Signer> = [];
   private _preInstructions: Array<TransactionInstruction> = [];
@@ -80,8 +79,9 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
     );
   }
 
-  // TODO: don't use any.
-  public accounts(accounts: any): MethodsBuilder<IDL, I> {
+  public accounts(
+    accounts: Accounts<I["accounts"][number]>
+  ): MethodsBuilder<IDL, I> {
     Object.assign(this._accounts, accounts);
     return this;
   }
@@ -112,7 +112,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
     return this;
   }
 
-  public async rpc(options: ConfirmOptions): Promise<TransactionSignature> {
+  public async rpc(options?: ConfirmOptions): Promise<TransactionSignature> {
     await this._accountsResolver.resolve();
     // @ts-ignore
     return this._rpcFn(...this._args, {
@@ -126,7 +126,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public async simulate(
-    options: ConfirmOptions
+    options?: ConfirmOptions
   ): Promise<SimulateResponse<any, any>> {
     await this._accountsResolver.resolve();
     // @ts-ignore

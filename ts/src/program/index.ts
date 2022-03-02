@@ -77,6 +77,7 @@ export class Program<IDL extends Idl = Idl> {
    *   },
    * });
    * ```
+   * @deprecated
    */
   readonly rpc: RpcNamespace<IDL>;
 
@@ -130,6 +131,7 @@ export class Program<IDL extends Idl = Idl> {
    *   },
    * });
    * ```
+   * @deprecated
    */
   readonly instruction: InstructionNamespace<IDL>;
 
@@ -161,6 +163,7 @@ export class Program<IDL extends Idl = Idl> {
    *   },
    * });
    * ```
+   * @deprecated
    */
   readonly transaction: TransactionNamespace<IDL>;
 
@@ -197,6 +200,7 @@ export class Program<IDL extends Idl = Idl> {
    *   },
    * });
    * ```
+   * @deprecated
    */
   readonly simulate: SimulateNamespace<IDL>;
 
