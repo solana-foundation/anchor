@@ -14,6 +14,7 @@ incremented for features.
 ### Features
 
 * lang: Add new `AccountSysvarMismatch` error code and test cases for sysvars ([#1535](https://github.com/project-serum/anchor/pull/1535)).
+* spl: Add support for revoke instruction ([#1493](https://github.com/project-serum/anchor/pull/1493)).
 
 ### Fixes
 
