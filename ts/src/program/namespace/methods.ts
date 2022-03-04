@@ -80,7 +80,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public accounts(
-    accounts: Accounts<I["accounts"][number]>
+    accounts: Partial<Accounts<I["accounts"][number]>>
   ): MethodsBuilder<IDL, I> {
     Object.assign(this._accounts, accounts);
     return this;

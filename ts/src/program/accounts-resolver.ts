@@ -10,6 +10,13 @@ import { coder } from "../spl/token";
 
 // Populates a given accounts context with PDAs and common missing accounts.
 export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
+  static readonly CONST_ACCOUNTS = {
+    systemProgram: SystemProgram.programId,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+    rent: SYSVAR_RENT_PUBKEY,
+  };
+
   private _accountStore: AccountStore<IDL>;
 
   constructor(
@@ -40,40 +47,28 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       const accountDescName = camelCase(accountDesc.name);
 
       // PDA derived from IDL seeds.
-      if (accountDesc.pda && accountDesc.pda.seeds.length > 0) {
-        if (this._accounts[accountDescName] === undefined) {
-          await this.autoPopulatePda(accountDesc);
-          continue;
-        }
+      if (
+        accountDesc.pda &&
+        accountDesc.pda.seeds.length > 0 &&
+        !this._accounts[accountDescName]
+      ) {
+        await this.autoPopulatePda(accountDesc);
+        continue;
       }
 
       // Signers default to the provider.
-      if (
-        accountDesc.isSigner &&
-        this._accounts[accountDescName] === undefined
-      ) {
+      if (accountDesc.isSigner && !this._accounts[accountDescName]) {
         this._accounts[accountDescName] = this._provider.wallet.publicKey;
         continue;
       }
 
       // Common accounts are auto populated with magic names by convention.
-      switch (accountDescName) {
-        case "systemProgram":
-          if (this._accounts[accountDescName] === undefined) {
-            this._accounts[accountDescName] = SystemProgram.programId;
-          }
-        case "rent":
-          if (this._accounts[accountDescName] === undefined) {
-            this._accounts[accountDescName] = SYSVAR_RENT_PUBKEY;
-          }
-        case "tokenProgram":
-          if (this._accounts[accountDescName] === undefined) {
-            this._accounts[accountDescName] = TOKEN_PROGRAM_ID;
-          }
-        case "associatedTokenProgram":
-          if (this._accounts[accountDescName] === undefined) {
-            this._accounts[accountDescName] = ASSOCIATED_PROGRAM_ID;
-          }
+      if (
+        Reflect.has(AccountsResolver.CONST_ACCOUNTS, accountDescName) &&
+        !this._accounts[accountDescName]
+      ) {
+        this._accounts[accountDescName] =
+          AccountsResolver.CONST_ACCOUNTS[accountDescName];
       }
     }
   }
@@ -234,7 +229,7 @@ export class AccountStore<IDL extends Idl> {
     publicKey: PublicKey
   ): Promise<T> {
     const address = publicKey.toString();
-    if (this._cache.get(address) === undefined) {
+    if (!this._cache.has(address)) {
       if (name === "TokenAccount") {
         const accountInfo = await this._provider.connection.getAccountInfo(
           publicKey
