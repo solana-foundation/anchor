@@ -42,7 +42,7 @@ mod id;
 ///
 /// This can be used to conveniently implement
 /// [`ZeroCopy`](./trait.ZeroCopy.html) so that the account can be used
-/// with [`Loader`](./struct.Loader.html).
+/// with [`AccountLoader`](./accounts/account_loader/struct.AccountLoader.html).
 ///
 /// Other than being more efficient, the most salient benefit this provides is
 /// the ability to define account types larger than the max stack or heap size.
