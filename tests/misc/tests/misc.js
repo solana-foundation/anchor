@@ -1002,7 +1002,8 @@ describe("misc", () => {
 
   it("init_if_needed throws if account exists but is not the expected space", async () => {
     const newAcc = anchor.web3.Keypair.generate();
-    await program.rpc.initWithSpace(3, {
+    const _irrelevantForTest = 3;
+    await program.rpc.initWithSpace(_irrelevantForTest, {
       accounts: {
         data: newAcc.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -1012,7 +1013,7 @@ describe("misc", () => {
     });
 
     try {
-      await program.rpc.testInitIfNeeded(3, {
+      await program.rpc.testInitIfNeeded(_irrelevantForTest, {
         accounts: {
           data: newAcc.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,

@@ -89,7 +89,6 @@ use syn::parse_macro_input;
 ///         </tr>
 ///         <tr>
 ///             <td>
-///                 <code>#[account(init, payer = &lt;target_account&gt;)]</code><br><br>
 ///                 <code>#[account(init, payer = &lt;target_account&gt;, space = &lt;num_bytes&gt;)]</code>
 ///             </td>
 ///             <td>
@@ -110,14 +109,12 @@ use syn::parse_macro_input;
 ///                         and be called <code>system_program</code>.
 ///                     </li>
 ///                     <li>
-///                         Requires that the <code>space</code> constraint is specified
-///                         or, if creating an <code>Account</code> type, the <code>T</code> of <code>Account</code>
-///                         to implement the rust std <code>Default</code> trait.<br>
+///                         Requires that the <code>space</code> constraint is specified.
 ///                         When using the <code>space</code> constraint, one must remember to add 8 to it
-///                         which is the size of the account discriminator.<br>
-///                         The given number is the size of the account in bytes, so accounts that hold
-///                         a variable number of items such as a <code>Vec</code> should use the <code>space</code>
-///                         constraint instead of using the <code>Default</code> trait and allocate sufficient space for all items that may
+///                         which is the size of the account discriminator. This only has to be done
+///                         for accounts owned by anchor programs.<br>
+///                         The given space number is the size of the account in bytes, so accounts that hold
+///                         a variable number of items such as a <code>Vec</code> should allocate sufficient space for all items that may
 ///                         be added to the data structure because account size is fixed. Check out the <a href = "https://borsh.io/" target = "_blank" rel = "noopener noreferrer">borsh library</a>
 ///                         (which anchor uses under the hood for serialization) specification to learn how much
 ///                         space different data structures require.
@@ -126,20 +123,13 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre>
 /// #[account]
-/// #[derive(Default)]
 /// pub struct MyData {
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data: u64
-/// }&#10;
-/// #[account]
-/// pub struct OtherData {
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub data: u64
 /// }&#10;
 /// #[derive(Accounts)]
 /// pub struct Initialize<'info> {
-/// &nbsp;&nbsp;&nbsp;&nbsp;#[account(init, payer = payer)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account: Account<'info, MyData>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(init, payer = payer, space = 8 + 8)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account<'info, OtherData>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account<'info, MyData>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program<'info, System>,
@@ -172,7 +162,7 @@ use syn::parse_macro_input;
 /// #[instruction(bump: u8)]
 /// pub struct Initialize<'info> {
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
-/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer,
+/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"example_seed".as_ref()], bump = bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_data_account: Account<'info, MyData>,
@@ -182,7 +172,7 @@ use syn::parse_macro_input;
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountInfo<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
-/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init,payer = payer, space = 8 + 8,
+/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;owner = other_program.key(),
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed".as_ref()], bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]

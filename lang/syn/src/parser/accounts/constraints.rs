@@ -505,17 +505,28 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
         }
 
-        // SPL Space.
-        if self.init.is_some()
-            && self.seeds.is_some()
-            && self.token_mint.is_some()
-            && (self.mint_authority.is_some() || self.token_authority.is_some())
-            && self.space.is_some()
-        {
-            return Err(ParseError::new(
-                self.space.as_ref().unwrap().span(),
-                "space is not required for initializing an spl account",
-            ));
+        // Space.
+        if let Some(i) = &self.init {
+            let initializing_token_program_acc = self.token_mint.is_some()
+                || self.mint_authority.is_some()
+                || self.token_authority.is_some()
+                || self.associated_token_authority.is_some();
+
+            match (self.space.is_some(), initializing_token_program_acc) {
+                (true, true) => {
+                    return Err(ParseError::new(
+                        self.space.as_ref().unwrap().span(),
+                        "space is not required for initializing an spl account",
+                    ));
+                }
+                (false, false) => {
+                    return Err(ParseError::new(
+                        i.span(),
+                        "space must be provided with init",
+                    ));
+                }
+                _ => (),
+            }
         }
 
         let ConstraintGroupBuilder {
@@ -593,7 +604,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
                 if_needed: i.if_needed,
                 seeds: seeds.clone(),
-                payer: into_inner!(payer.clone()).map(|a| a.target),
+                payer: into_inner!(payer.clone()).unwrap().target,
                 space: space.clone().map(|s| s.space.clone()),
                 kind: if let Some(tm) = &token_mint {
                     InitKind::Token {

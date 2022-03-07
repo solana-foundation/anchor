@@ -97,7 +97,8 @@ pub struct CreateBar<'info> {
         init,
         seeds = [authority.key().as_ref(), foo.key().as_ref()],
         bump,
-        payer = authority, owner = *program_id
+        payer = authority, owner = *program_id,
+        space = Bar::LEN + 8
     )]
     bar: AccountLoader<'info, Bar>,
     #[account(mut)]
@@ -132,8 +133,8 @@ pub struct UpdateLargeAccount<'info> {
 }
 
 #[account(zero_copy)]
-#[derive(Default)]
 #[repr(packed)]
+#[derive(Default)]
 pub struct Foo {
     pub authority: Pubkey,
     pub data: u64,
@@ -143,10 +144,13 @@ pub struct Foo {
 }
 
 #[account(zero_copy)]
-#[derive(Default)]
 pub struct Bar {
-    pub authority: Pubkey,
-    pub data: u64,
+    pub authority: Pubkey, // 32
+    pub data: u64,         // 8
+}
+
+impl Bar {
+    pub const LEN: usize = 32 + 8;
 }
 
 #[account(zero_copy)]

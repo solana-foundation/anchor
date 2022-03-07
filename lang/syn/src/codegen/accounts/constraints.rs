@@ -480,29 +480,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
         }
         InitKind::Program { owner } => {
             // Define the space variable.
-            let space = match space {
-                // If no explicit space param was given, serialize the type to bytes
-                // and take the length (with +8 for the discriminator.)
-                None => {
-                    let account_ty = f.account_ty();
-                    match matches!(f.ty, Ty::Loader(_) | Ty::AccountLoader(_)) {
-                        false => {
-                            quote! {
-                                let space = 8 + #account_ty::default().try_to_vec().unwrap().len();
-                            }
-                        }
-                        true => {
-                            quote! {
-                                let space = 8 + anchor_lang::__private::bytemuck::bytes_of(&#account_ty::default()).len();
-                            }
-                        }
-                    }
-                }
-                // Explicit account size given. Use it.
-                Some(s) => quote! {
-                    let space = #s;
-                },
-            };
+            let space = quote! {let space = #space;};
 
             // Define the owner of the account being created. If not specified,
             // default to the currently executing program.

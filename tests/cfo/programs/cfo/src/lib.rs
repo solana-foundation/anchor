@@ -324,6 +324,7 @@ pub struct CreateOfficer<'info> {
         seeds = [dex_program.key.as_ref()],
         bump,
         payer = authority,
+        space = Officer::LEN + 8
     )]
     officer: Box<Account<'info, Officer>>,
     #[account(
@@ -332,7 +333,7 @@ pub struct CreateOfficer<'info> {
         bump,
         payer = authority,
         token::mint = srm_mint,
-        token::authority = officer,
+        token::authority = officer
     )]
     srm_vault: Box<Account<'info, TokenAccount>>,
     #[account(
@@ -341,7 +342,7 @@ pub struct CreateOfficer<'info> {
         bump,
         payer = authority,
         token::mint = usdc_mint,
-        token::authority = officer,
+        token::authority = officer
     )]
     usdc_vault: Box<Account<'info, TokenAccount>>,
     #[account(
@@ -350,7 +351,7 @@ pub struct CreateOfficer<'info> {
         bump,
         payer = authority,
         token::mint = srm_mint,
-        token::authority = officer,
+        token::authority = officer
     )]
     stake: Box<Account<'info, TokenAccount>>,
     #[account(
@@ -359,7 +360,7 @@ pub struct CreateOfficer<'info> {
         bump,
         payer = authority,
         token::mint = srm_mint,
-        token::authority = officer,
+        token::authority = officer
     )]
     treasury: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
@@ -392,6 +393,7 @@ pub struct AuthorizeMarket<'info> {
         payer = payer,
         seeds = [b"market-auth", officer.key().as_ref(), market.key.as_ref()],
         bump,
+        space = MarketAuth::LEN + 8
     )]
     market_auth: Account<'info, MarketAuth>,
     #[account(mut)]
@@ -421,7 +423,7 @@ pub struct CreateOfficerToken<'info> {
         bump,
         token::mint = mint,
         token::authority = officer,
-        payer = payer,
+        payer = payer
     )]
     token: Account<'info, TokenAccount>,
     mint: Account<'info, Mint>,
@@ -666,28 +668,31 @@ pub struct DropStakeRewardPool<'info> {
 ///
 /// PDA - [dex_program_id].
 #[account]
-#[derive(Default)]
 pub struct Officer {
     // Priviledged account.
-    pub authority: Pubkey,
+    pub authority: Pubkey, // 32
     // Vault holding the officer's SRM tokens prior to distribution.
-    pub srm_vault: Pubkey,
+    pub srm_vault: Pubkey, // 32
     // Escrow SRM vault holding tokens which are dropped onto stakers.
-    pub stake: Pubkey,
+    pub stake: Pubkey, // 32
     // SRM token account to send treasury earned tokens to.
-    pub treasury: Pubkey,
+    pub treasury: Pubkey, // 32
     // Defines the fee distribution, i.e., what percent each fee category gets.
-    pub distribution: Distribution,
+    pub distribution: Distribution, // Distribution::LEN
     // Swap frontend for the dex.
-    pub swap_program: Pubkey,
+    pub swap_program: Pubkey, // 32
     // Dex program the officer is associated with.
-    pub dex_program: Pubkey,
+    pub dex_program: Pubkey, // 32
     // SRM stake pool address
-    pub registrar: Pubkey,
+    pub registrar: Pubkey, // 32
     // MSRM stake pool address.
-    pub msrm_registrar: Pubkey,
+    pub msrm_registrar: Pubkey, // 32
     // Bump seeds for pdas.
-    pub bumps: OfficerBumps,
+    pub bumps: OfficerBumps, // OfficerBumps::LEN
+}
+
+impl Officer {
+    pub const LEN: usize = 8 * 32 + Distribution::LEN + OfficerBumps::LEN;
 }
 
 /// MarketAuth represents an authorization token created by the Officer
@@ -702,26 +707,37 @@ pub struct Officer {
 ///
 /// PDA - [b"market-auth", officer, market_address]
 #[account]
-#[derive(Default)]
 pub struct MarketAuth {
     // Bump seed for this account's PDA.
-    pub bump: u8,
+    pub bump: u8, // 1
+}
+
+impl MarketAuth {
+    pub const LEN: usize = 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct OfficerBumps {
-    pub bump: u8,
-    pub srm: u8,
-    pub usdc: u8,
-    pub stake: u8,
-    pub treasury: u8,
+    pub bump: u8,     // 1
+    pub srm: u8,      // 1
+    pub usdc: u8,     // 1
+    pub stake: u8,    // 1
+    pub treasury: u8, // 1
+}
+
+impl OfficerBumps {
+    pub const LEN: usize = 5;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Clone)]
 pub struct Distribution {
-    burn: u8,
-    stake: u8,
-    treasury: u8,
+    burn: u8,     // 1
+    stake: u8,    // 1
+    treasury: u8, // 1
+}
+
+impl Distribution {
+    pub const LEN: usize = 3;
 }
 
 // CpiContext transformations.

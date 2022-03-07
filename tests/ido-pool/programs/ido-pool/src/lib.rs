@@ -295,7 +295,9 @@ pub struct InitializePool<'info> {
     #[account(init,
         seeds = [ido_name.as_bytes()],
         bump,
-        payer = ido_authority)]
+        payer = ido_authority,
+        space = IdoAccount::LEN + 8
+    )]
     pub ido_account: Box<Account<'info, IdoAccount>>,
     // TODO Confirm USDC mint address on mainnet or leave open as an option for other stables
     #[account(constraint = usdc_mint.decimals == DECIMALS)]
@@ -305,7 +307,8 @@ pub struct InitializePool<'info> {
         mint::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"redeemable_mint".as_ref()],
         bump,
-        payer = ido_authority)]
+        payer = ido_authority
+    )]
     pub redeemable_mint: Box<Account<'info, Mint>>,
     #[account(constraint = watermelon_mint.key() == ido_authority_watermelon.mint)]
     pub watermelon_mint: Box<Account<'info, Mint>>,
@@ -314,14 +317,16 @@ pub struct InitializePool<'info> {
         token::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"pool_watermelon"],
         bump,
-        payer = ido_authority)]
+        payer = ido_authority
+    )]
     pub pool_watermelon: Box<Account<'info, TokenAccount>>,
     #[account(init,
         token::mint = usdc_mint,
         token::authority = ido_account,
         seeds = [ido_name.as_bytes(), b"pool_usdc"],
         bump,
-        payer = ido_authority)]
+        payer = ido_authority
+    )]
     pub pool_usdc: Box<Account<'info, TokenAccount>>,
     // Programs and Sysvars
     pub system_program: Program<'info, System>,
@@ -341,7 +346,8 @@ pub struct InitUserRedeemable<'info> {
             ido_account.ido_name.as_ref().trim_ascii_whitespace(),
             b"user_redeemable"],
         bump,
-        payer = user_authority)]
+        payer = user_authority
+    )]
     pub user_redeemable: Box<Account<'info, TokenAccount>>,
     // IDO Accounts
     #[account(seeds = [ido_account.ido_name.as_ref().trim_ascii_whitespace()],
@@ -401,7 +407,8 @@ pub struct InitEscrowUsdc<'info> {
             ido_account.ido_name.as_ref().trim_ascii_whitespace(),
             b"escrow_usdc"],
         bump,
-        payer = user_authority)]
+        payer = user_authority
+    )]
     pub escrow_usdc: Box<Account<'info, TokenAccount>>,
     #[account(seeds = [ido_account.ido_name.as_ref().trim_ascii_whitespace()],
         bump = ido_account.bumps.ido_account,
@@ -541,36 +548,39 @@ pub struct WithdrawFromEscrow<'info> {
 }
 
 #[account]
-#[derive(Default)]
 pub struct IdoAccount {
-    pub ido_name: [u8; 10], // Setting an arbitrary max of ten characters in the ido name.
-    pub bumps: PoolBumps,
-    pub ido_authority: Pubkey,
+    pub ido_name: [u8; 10], // Setting an arbitrary max of ten characters in the ido name. // 10
+    pub bumps: PoolBumps,   // 4
+    pub ido_authority: Pubkey, // 32
 
-    pub usdc_mint: Pubkey,
-    pub redeemable_mint: Pubkey,
-    pub watermelon_mint: Pubkey,
-    pub pool_usdc: Pubkey,
-    pub pool_watermelon: Pubkey,
+    pub usdc_mint: Pubkey,       // 32
+    pub redeemable_mint: Pubkey, // 32
+    pub watermelon_mint: Pubkey, // 32
+    pub pool_usdc: Pubkey,       // 32
+    pub pool_watermelon: Pubkey, // 32
 
-    pub num_ido_tokens: u64,
-    pub ido_times: IdoTimes,
+    pub num_ido_tokens: u64, // 8
+    pub ido_times: IdoTimes, // 32
+}
+
+impl IdoAccount {
+    pub const LEN: usize = 10 + 4 + 32 + 5 * 32 + 8 + 32;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Clone, Copy)]
 pub struct IdoTimes {
-    pub start_ido: i64,
-    pub end_deposits: i64,
-    pub end_ido: i64,
-    pub end_escrow: i64,
+    pub start_ido: i64,    // 8
+    pub end_deposits: i64, // 8
+    pub end_ido: i64,      // 8
+    pub end_escrow: i64,   // 8
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Clone)]
 pub struct PoolBumps {
-    pub ido_account: u8,
-    pub redeemable_mint: u8,
-    pub pool_watermelon: u8,
-    pub pool_usdc: u8,
+    pub ido_account: u8,     // 1
+    pub redeemable_mint: u8, // 1
+    pub pool_watermelon: u8, // 1
+    pub pool_usdc: u8,       // 1
 }
 
 #[error_code]

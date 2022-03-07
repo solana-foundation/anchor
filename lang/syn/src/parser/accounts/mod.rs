@@ -93,8 +93,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for field in init_fields {
             // Get payer for init-ed account
-            let associated_payer_name = match field.constraints.init.clone().unwrap().payer.unwrap()
-            {
+            let associated_payer_name = match field.constraints.init.clone().unwrap().payer {
                 // composite payer, check not supported
                 Expr::Field(_) => continue,
                 field_name => field_name.to_token_stream().to_string(),
