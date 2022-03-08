@@ -6,9 +6,9 @@ echo "Building programs"
 # Build the UncheckedAccount variant.
 #
 pushd programs/unchecked-account/
-anchor build
-if [ $? -eq 0 ]; then
-   echo "Error: expected failure"
+output=$(anchor build 2>&1 > /dev/null)
+if ! [[ $output =~ "Struct field \"unchecked\" is unsafe" ]]; then
+   echo "Error: expected /// CHECK error"
    exit 1
 fi
 popd
@@ -17,9 +17,9 @@ popd
 # Build the AccountInfo variant.
 #
 pushd programs/account-info/
-anchor build
-if [ $? -eq 0 ]; then
-   echo "Error: expected failure"
+output=$(anchor build 2>&1 > /dev/null)
+if ! [[ $output =~ "Struct field \"unchecked\" is unsafe" ]]; then
+   echo "Error: expected /// CHECK error"
    exit 1
 fi
 popd
