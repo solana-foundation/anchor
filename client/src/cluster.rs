@@ -28,16 +28,15 @@ impl FromStr for Cluster {
             "d" | "devnet" => Ok(Cluster::Devnet),
             "l" | "localnet" => Ok(Cluster::Localnet),
             "g" | "debug" => Ok(Cluster::Debug),
-            url if url.contains("http") => {
-                let http_url = url;
+            _ if s.starts_with("http") => {
+                let http_url = s;
 
-                // Websocket port is always +1 the http port.
+                // Taken from:
+                // https://github.com/solana-labs/solana/blob/aea8f0df1610248d29d8ca3bc0d60e9fabc99e31/web3.js/src/util/url.ts
+
                 let mut ws_url = Url::parse(http_url)?;
                 if let Some(port) = ws_url.port() {
                     ws_url.set_port(Some(port + 1))
-                        .map_err(|_| anyhow!("Unable to set port"))?;
-                } else {
-                    ws_url.set_port(Some(8900))
                         .map_err(|_| anyhow!("Unable to set port"))?;
                 }
                 if ws_url.scheme() == "https" {
@@ -134,7 +133,7 @@ mod tests {
         let url = "http://my-url.com/";
         let cluster = Cluster::from_str(url).unwrap();
         assert_eq!(
-            Cluster::Custom(url.to_string(), "ws://my-url.com:8900/".to_string()),
+            Cluster::Custom(url.to_string(), "ws://my-url.com/".to_string()),
             cluster
         );
     }
@@ -153,7 +152,17 @@ mod tests {
         let url = "https://my-url.com/";
         let cluster = Cluster::from_str(url).unwrap();
         assert_eq!(
-            Cluster::Custom(url.to_string(), "wss://my-url.com:8900/".to_string()),
+            Cluster::Custom(url.to_string(), "wss://my-url.com/".to_string()),
+            cluster
+        );
+    }
+
+    #[test]
+    fn test_upper_case() {
+        let url = "http://my-url.com/FooBar";
+        let cluster = Cluster::from_str(url).unwrap();
+        assert_eq!(
+            Cluster::Custom(url.to_string(), "ws://my-url.com/FooBar".to_string()),
             cluster
         );
     }
