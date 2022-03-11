@@ -386,6 +386,12 @@ pub struct TestConstArraySize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TestMultidimensionalArrayConstSizes<'info> {
+    #[account(zero)]
+    pub data: Account<'info, DataMultidimensionalArrayConstSizes>,
+}
+
+#[derive(Accounts)]
 pub struct NoRentExempt<'info> {
     /// CHECK:
     pub data: AccountInfo<'info>,

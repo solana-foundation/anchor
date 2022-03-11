@@ -9,6 +9,7 @@ macro_rules! size {
 }
 
 pub const MAX_SIZE: usize = 10;
+pub const MAX_SIZE_U8: u8 = 11;
 
 #[account]
 pub struct Data {
@@ -61,3 +62,14 @@ pub struct DataConstArraySize {
     pub data: [u8; MAX_SIZE], // 10
 }
 size!(DataConstArraySize, MAX_SIZE);
+
+#[account]
+pub struct DataConstCastArraySize {
+    pub data_one: [u8; MAX_SIZE as usize],
+    pub data_two: [u8; MAX_SIZE_U8 as usize],
+}
+
+#[account]
+pub struct DataMultidimensionalArrayConstSizes {
+    pub data: [[u8; MAX_SIZE_U8 as usize]; MAX_SIZE],
+}

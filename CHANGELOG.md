@@ -35,6 +35,7 @@ incremented for features.
 ### Fixes
 
 * cli: Fix rust template ([#1488](https://github.com/project-serum/anchor/pull/1488)).
+* lang: Handle array sizes with variable sizes in events and array size casting in IDL parsing ([#1485](https://github.com/project-serum/anchor/pull/1485))
 
 ## [0.22.0] - 2022-02-20
 
