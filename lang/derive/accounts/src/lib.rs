@@ -163,7 +163,7 @@ use syn::parse_macro_input;
 /// pub struct Initialize<'info> {
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8
-/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"example_seed".as_ref()], bump = bump
+/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"example_seed"], bump = bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_data_account: Account<'info, MyData>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
@@ -174,7 +174,7 @@ use syn::parse_macro_input;
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;owner = other_program.key(),
-/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed".as_ref()], bump
+/// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed"], bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountInfo<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
@@ -250,18 +250,18 @@ use syn::parse_macro_input;
 /// #[derive(Accounts)]
 /// #[instruction(first_bump: u8, second_bump: u8)]
 /// pub struct Example {
-///     #[account(seeds = [b"example_seed], bump)]
+///     #[account(seeds = [b"example_seed"], bump)]
 ///     pub canonical_pda: AccountInfo<'info>,
 ///     #[account(
-///         seeds = [b"example_seed],
+///         seeds = [b"example_seed"],
 ///         bump,
 ///         seeds::program = other_program.key()
 ///     )]
 ///     pub canonical_pda_two: AccountInfo<'info>,
-///     #[account(seeds = [b"other_seed], bump = first_bump)]
+///     #[account(seeds = [b"other_seed"], bump = first_bump)]
 ///     pub arbitrary_pda: AccountInfo<'info>
 ///     #[account(
-///         seeds = [b"other_seed],
+///         seeds = [b"other_seed"],
 ///         bump = second_bump,
 ///         seeds::program = other_program.key()
 ///     )]
