@@ -189,6 +189,8 @@ pub enum Command {
         #[clap(subcommand)]
         subcmd: IdlCommand,
     },
+    /// Remove all artifacts from the target directory except program keypairs.
+    Clean,
     /// Deploys each program in the workspace.
     Deploy {
         #[clap(short, long)]
@@ -403,6 +405,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             bootstrap,
             cargo_args,
         ),
+        Command::Clean => clean(&opts.cfg_override),
         Command::Deploy { program_name } => deploy(&opts.cfg_override, program_name),
         Command::Expand {
             program_name,
@@ -2137,6 +2140,34 @@ fn cluster_url(cfg: &Config) -> String {
         true => test_validator_rpc_url(cfg),
         false => cfg.provider.cluster.url().to_string(),
     }
+}
+
+fn clean(cfg_override: &ConfigOverride) -> Result<()> {
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+    let target_dir = cfg_parent.join("target");
+    let deploy_dir = target_dir.join("deploy");
+
+    for entry in fs::read_dir(target_dir)? {
+        let path = entry?.path();
+        if path.is_dir() && path != deploy_dir {
+            fs::remove_dir_all(&path)
+                .map_err(|e| anyhow!("Could not remove directory {}: {}", path.display(), e))?;
+        } else if path.is_file() {
+            fs::remove_file(&path)
+                .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+        }
+    }
+
+    for file in fs::read_dir(deploy_dir)? {
+        let path = file?.path();
+        if path.extension() != Some(&OsString::from("json")) {
+            fs::remove_file(&path)
+                .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+        }
+    }
+
+    Ok(())
 }
 
 fn deploy(cfg_override: &ConfigOverride, program_str: Option<String>) -> Result<()> {
