@@ -19,6 +19,7 @@ incremented for features.
 * spl: Add support for revoke instruction ([#1493](https://github.com/project-serum/anchor/pull/1493)).
 * cli: Add support for `anchor idl fetch` to work outside anchor workspace ([#1509](https://github.com/project-serum/anchor/pull/1509)).
 * ts: Add provider parameter to `Spl.token` factory method ([#1597](https://github.com/project-serum/anchor/pull/1597)).
+* cli: [[test.validator.clone]] also clones the program data account of programs owned by the bpf upgradeable loader ([#1481](https://github.com/project-serum/anchor/issues/1481)).
 
 ### Fixes
 
@@ -39,6 +40,7 @@ incremented for features.
 
 * cli: Fix rust template ([#1488](https://github.com/project-serum/anchor/pull/1488)).
 * lang: Handle array sizes with variable sizes in events and array size casting in IDL parsing ([#1485](https://github.com/project-serum/anchor/pull/1485))
+
 
 ## [0.22.0] - 2022-02-20
 

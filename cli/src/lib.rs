@@ -33,11 +33,13 @@ use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
+use std::str::FromStr;
 use std::string::ToString;
 use tar::Archive;
 
@@ -1952,7 +1954,8 @@ fn validator_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
             }
         }
         if let Some(validator) = &test.validator {
-            for (key, value) in serde_json::to_value(validator)?.as_object().unwrap() {
+            let entries = serde_json::to_value(validator)?;
+            for (key, value) in entries.as_object().unwrap() {
                 if key == "ledger" {
                     // Ledger flag is a special case as it is passed separately to the rest of
                     // these validator flags.
@@ -1966,10 +1969,58 @@ fn validator_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
                         flags.push(entry["filename"].as_str().unwrap().to_string());
                     }
                 } else if key == "clone" {
-                    for entry in value.as_array().unwrap() {
+                    // Client for fetching accounts data
+                    let client = if let Some(url) = entries["url"].as_str() {
+                        RpcClient::new(url.to_string())
+                    } else {
+                        return Err(anyhow!(
+                    "Validator url for Solana's JSON RPC should be provided in order to clone accounts from it"
+                ));
+                    };
+
+                    let mut pubkeys = value
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|entry| {
+                            let address = entry["address"].as_str().unwrap();
+                            Pubkey::from_str(address)
+                                .map_err(|_| anyhow!("Invalid pubkey {}", address))
+                        })
+                        .collect::<Result<HashSet<Pubkey>>>()?;
+
+                    let accounts_keys = pubkeys.iter().cloned().collect::<Vec<_>>();
+                    let accounts = client
+                        .get_multiple_accounts_with_commitment(
+                            &accounts_keys,
+                            CommitmentConfig::default(),
+                        )?
+                        .value;
+
+                    // Check if there are program accounts
+                    for (account, acc_key) in accounts.iter().zip(accounts_keys) {
+                        if let Some(account) = account {
+                            if account.owner == bpf_loader_upgradeable::id() {
+                                let upgradable: UpgradeableLoaderState = account
+                                    .deserialize_data()
+                                    .map_err(|_| anyhow!("Invalid program account {}", acc_key))?;
+
+                                if let UpgradeableLoaderState::Program {
+                                    programdata_address,
+                                } = upgradable
+                                {
+                                    pubkeys.insert(programdata_address);
+                                }
+                            }
+                        } else {
+                            return Err(anyhow!("Account {} not found", acc_key));
+                        }
+                    }
+
+                    for pubkey in &pubkeys {
                         // Push the clone flag for each array entry
                         flags.push("--clone".to_string());
-                        flags.push(entry["address"].as_str().unwrap().to_string());
+                        flags.push(pubkey.to_string());
                     }
                 } else {
                     // Remaining validator flags are non-array types
