@@ -1,3 +1,4 @@
+use crate::bpf_writer::BpfWriter;
 use crate::error::ErrorCode;
 use crate::prelude::error;
 use crate::Result;
@@ -14,8 +15,8 @@ pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info
     // Mark the account discriminator as closed.
     let mut data = info.try_borrow_mut_data()?;
     let dst: &mut [u8] = &mut data;
-    let mut cursor = std::io::Cursor::new(dst);
-    cursor
+    let mut writer = BpfWriter::new(dst);
+    writer
         .write_all(&crate::__private::CLOSED_ACCOUNT_DISCRIMINATOR)
         .map_err(|_| error!(ErrorCode::AccountDidNotSerialize))
 }

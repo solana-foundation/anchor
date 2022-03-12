@@ -1,3 +1,4 @@
+use crate::bpf_writer::BpfWriter;
 use crate::error::ErrorCode;
 use crate::{
     Accounts, AccountsClose, AccountsExit, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
@@ -168,8 +169,8 @@ impl<'info, T: ZeroCopy> AccountsExit<'info> for Loader<'info, T> {
     fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         let mut data = self.acc_info.try_borrow_mut_data()?;
         let dst: &mut [u8] = &mut data;
-        let mut cursor = std::io::Cursor::new(dst);
-        cursor.write_all(&T::discriminator()).unwrap();
+        let mut writer = BpfWriter::new(dst);
+        writer.write_all(&T::discriminator()).unwrap();
         Ok(())
     }
 }
