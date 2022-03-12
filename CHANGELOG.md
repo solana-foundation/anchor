@@ -17,6 +17,7 @@ incremented for features.
 * lang: Add new `AccountSysvarMismatch` error code and test cases for sysvars ([#1535](https://github.com/project-serum/anchor/pull/1535)).
 * lang: Replace `std::io::Cursor` with a custom `Write` impl that uses the Solana mem syscalls ([#1589](https://github.com/project-serum/anchor/pull/1589)).
 * spl: Add support for revoke instruction ([#1493](https://github.com/project-serum/anchor/pull/1493)).
+* cli: Add support for `anchor idl fetch` to work outside anchor workspace ([#1509](https://github.com/project-serum/anchor/pull/1509)).
 * ts: Add provider parameter to `Spl.token` factory method ([#1597](https://github.com/project-serum/anchor/pull/1597)).
 
 ### Fixes

@@ -1400,8 +1400,21 @@ pub enum BinVerificationState {
 
 // Fetches an IDL for the given program_id.
 fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
-    let cfg = Config::discover(cfg_override)?.expect("Inside a workspace");
-    let url = cluster_url(&cfg);
+    let url = match Config::discover(cfg_override)? {
+        Some(cfg) => cluster_url(&cfg),
+        None => {
+            // If the command is not run inside a workspace,
+            // cluster_url will be used from default solana config
+            // provider.cluster option can be used to override this
+
+            if let Some(cluster) = cfg_override.cluster.clone() {
+                cluster.url().to_string()
+            } else {
+                config::get_solana_cfg_url()?
+            }
+        }
+    };
+
     let client = RpcClient::new(url);
 
     let mut account = client

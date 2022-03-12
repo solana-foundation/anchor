@@ -4,11 +4,13 @@ use anyhow::{anyhow, Error, Result};
 use clap::{ArgEnum, Parser};
 use heck::SnakeCase;
 use serde::{Deserialize, Serialize};
+use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::{self, File};
+use std::io;
 use std::io::prelude::*;
 use std::ops::Deref;
 use std::path::Path;
@@ -443,6 +445,16 @@ impl FromStr for Config {
             workspace: cfg.workspace.unwrap_or_default(),
         })
     }
+}
+
+pub fn get_solana_cfg_url() -> Result<String, io::Error> {
+    let config_file = CONFIG_FILE.as_ref().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "Default Solana config was not found",
+        )
+    })?;
+    SolanaConfig::load(config_file).map(|config| config.json_rpc_url)
 }
 
 fn ser_programs(
