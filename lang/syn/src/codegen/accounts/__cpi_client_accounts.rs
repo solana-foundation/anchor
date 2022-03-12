@@ -159,12 +159,12 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             #(#re_exports)*
 
             #struct_doc
-            pub struct #name#generics {
+            pub struct #name #generics {
                 #(#account_struct_fields),*
             }
 
             #[automatically_derived]
-            impl#generics anchor_lang::ToAccountMetas for #name#generics {
+            impl #generics anchor_lang::ToAccountMetas for #name #generics {
                 fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                     let mut account_metas = vec![];
                     #(#account_struct_metas)*
@@ -173,7 +173,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             }
 
             #[automatically_derived]
-            impl<'info> anchor_lang::ToAccountInfos<'info> for #name#generics {
+            impl<'info> anchor_lang::ToAccountInfos<'info> for #name #generics {
                 fn to_account_infos(&self) -> Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
