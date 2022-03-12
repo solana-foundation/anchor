@@ -119,3 +119,10 @@ where
         Self::new(a.to_account_info(), Box::new(a.into_inner()))
     }
 }
+
+#[allow(deprecated)]
+impl<'info, T: AccountDeserialize + Clone> Key for CpiAccount<'info, T> {
+    fn key(&self) -> Pubkey {
+        *self.info.key
+    }
+}

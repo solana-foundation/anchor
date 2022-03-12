@@ -2,7 +2,7 @@
 //! that no checks are performed
 
 use crate::error::ErrorCode;
-use crate::{Accounts, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
@@ -66,5 +66,11 @@ impl<'info> Deref for UncheckedAccount<'info> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<'info> Key for UncheckedAccount<'info> {
+    fn key(&self) -> Pubkey {
+        *self.0.key
     }
 }

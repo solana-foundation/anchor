@@ -3,7 +3,7 @@ use crate::accounts::cpi_account::CpiAccount;
 use crate::bpf_writer::BpfWriter;
 use crate::error::ErrorCode;
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Result, ToAccountInfo,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Result, ToAccountInfo,
     ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -160,4 +160,10 @@ pub fn address(program_id: &Pubkey) -> Pubkey {
     let seed = PROGRAM_STATE_SEED;
     let owner = program_id;
     Pubkey::create_with_seed(&base, seed, owner).unwrap()
+}
+
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for ProgramState<'info, T> {
+    fn key(&self) -> Pubkey {
+        *self.inner.info.key
+    }
 }

@@ -1,6 +1,6 @@
 //! Type validating that the account signed the transaction
 use crate::error::ErrorCode;
-use crate::*;
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
@@ -101,5 +101,11 @@ impl<'info> Deref for Signer<'info> {
 
     fn deref(&self) -> &Self::Target {
         &self.info
+    }
+}
+
+impl<'info> Key for Signer<'info> {
+    fn key(&self) -> Pubkey {
+        *self.info.key
     }
 }

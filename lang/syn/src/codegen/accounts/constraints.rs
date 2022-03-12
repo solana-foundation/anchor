@@ -558,7 +558,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         .program_seed
         .clone()
         // If they specified a seeds::program to use when deriving the PDA, use it.
-        .map(|program_id| quote! { #program_id })
+        .map(|program_id| quote! { #program_id.key() })
         // Otherwise fall back to the current program's program_id.
         .unwrap_or(quote! { program_id });
 

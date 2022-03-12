@@ -2,7 +2,7 @@ use crate::error::ErrorCode;
 #[allow(deprecated)]
 use crate::{accounts::state::ProgramState, context::CpiStateContext};
 use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Result, ToAccountInfos,
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Result, ToAccountInfos,
     ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
@@ -138,4 +138,11 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for CpiSt
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsExit<'info>
     for CpiState<'info, T>
 {
+}
+
+#[allow(deprecated)]
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for CpiState<'info, T> {
+    fn key(&self) -> Pubkey {
+        *self.inner.info.key
+    }
 }

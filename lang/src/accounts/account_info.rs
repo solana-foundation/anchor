@@ -3,7 +3,7 @@
 //! should be used instead.
 
 use crate::error::ErrorCode;
-use crate::{Accounts, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
@@ -43,3 +43,9 @@ impl<'info> ToAccountInfos<'info> for AccountInfo<'info> {
 }
 
 impl<'info> AccountsExit<'info> for AccountInfo<'info> {}
+
+impl<'info> Key for AccountInfo<'info> {
+    fn key(&self) -> Pubkey {
+        *self.key
+    }
+}
