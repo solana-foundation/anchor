@@ -14,6 +14,7 @@ incremented for features.
 ### Features
 
 * cli: Add `anchor clean` command that's the same as `cargo clean` but preserves keypairs inside `target/deploy` ([#1470](https://github.com/project-serum/anchor/issues/1470)).
+* cli: Running `anchor init` now initializes a new git repository for the workspace. This can be disabled with the `--no-git` flag ([#1605](https://github.com/project-serum/anchor/pull/1605)).
 * lang: Add new `AccountSysvarMismatch` error code and test cases for sysvars ([#1535](https://github.com/project-serum/anchor/pull/1535)).
 * lang: Replace `std::io::Cursor` with a custom `Write` impl that uses the Solana mem syscalls ([#1589](https://github.com/project-serum/anchor/pull/1589)).
 * spl: Add support for revoke instruction ([#1493](https://github.com/project-serum/anchor/pull/1493)).

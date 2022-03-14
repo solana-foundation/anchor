@@ -66,6 +66,8 @@ pub enum Command {
         name: String,
         #[clap(short, long)]
         javascript: bool,
+        #[clap(long)]
+        no_git: bool,
     },
     /// Builds the workspace.
     Build {
@@ -365,7 +367,11 @@ pub enum ClusterCommand {
 
 pub fn entry(opts: Opts) -> Result<()> {
     match opts.command {
-        Command::Init { name, javascript } => init(&opts.cfg_override, name, javascript),
+        Command::Init {
+            name,
+            javascript,
+            no_git,
+        } => init(&opts.cfg_override, name, javascript, no_git),
         Command::New { name } => new(&opts.cfg_override, name),
         Command::Build {
             idl,
@@ -463,7 +469,7 @@ pub fn entry(opts: Opts) -> Result<()> {
     }
 }
 
-fn init(cfg_override: &ConfigOverride, name: String, javascript: bool) -> Result<()> {
+fn init(cfg_override: &ConfigOverride, name: String, javascript: bool, no_git: bool) -> Result<()> {
     if Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
@@ -574,6 +580,18 @@ fn init(cfg_override: &ConfigOverride, name: String, javascript: bool) -> Result
             .output()
             .map_err(|e| anyhow::format_err!("npm install failed: {}", e.to_string()))?;
         println!("Failed to install node dependencies")
+    }
+
+    if !no_git {
+        let git_result = std::process::Command::new("git")
+            .arg("init")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow::format_err!("git init failed: {}", e.to_string()))?;
+        if !git_result.status.success() {
+            eprintln!("Failed to automatically initialize a new git repository");
+        }
     }
 
     println!("{} initialized", name);
