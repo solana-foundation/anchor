@@ -13,8 +13,9 @@ mod id;
 /// - [`AccountDeserialize`](./trait.AccountDeserialize.html)
 /// - [`AnchorSerialize`](./trait.AnchorSerialize.html)
 /// - [`AnchorDeserialize`](./trait.AnchorDeserialize.html)
-/// - [`Owner`](./trait.Owner.html)
+/// - [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html)
 /// - [`Discriminator`](./trait.Discriminator.html)
+/// - [`Owner`](./trait.Owner.html)
 ///
 /// When implementing account serialization traits the first 8 bytes are
 /// reserved for a unique account discriminator, self described by the first 8
