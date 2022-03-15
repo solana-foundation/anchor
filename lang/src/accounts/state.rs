@@ -1,7 +1,7 @@
 #[allow(deprecated)]
 use crate::accounts::cpi_account::CpiAccount;
 use crate::bpf_writer::BpfWriter;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Result, ToAccountInfo,
     ToAccountInfos, ToAccountMetas,
@@ -40,7 +40,8 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ProgramState<'a, T> {
     #[inline(never)]
     pub fn try_from(program_id: &Pubkey, info: &AccountInfo<'a>) -> Result<ProgramState<'a, T>> {
         if info.owner != program_id {
-            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, *program_id)));
         }
         if info.key != &Self::address(program_id) {
             solana_program::msg!("Invalid state address");

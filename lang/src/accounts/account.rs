@@ -1,7 +1,7 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::bpf_writer::BpfWriter;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
     Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
@@ -251,7 +251,8 @@ impl<'a, T: AccountSerialize + AccountDeserialize + crate::Owner + Clone> Accoun
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
-            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, T::owner())));
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Account::new(info.clone(), T::try_deserialize(&mut data)?))
@@ -266,7 +267,8 @@ impl<'a, T: AccountSerialize + AccountDeserialize + crate::Owner + Clone> Accoun
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
-            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, T::owner())));
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Account::new(

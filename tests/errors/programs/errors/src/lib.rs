@@ -57,6 +57,32 @@ mod errors {
     pub fn account_not_initialized_error(_ctx: Context<AccountNotInitializedError>) -> Result<()> {
         Ok(())
     }
+
+    pub fn account_owned_by_wrong_program_error(
+        _ctx: Context<AccountOwnedByWrongProgramError>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn require_eq(_ctx: Context<RequireEq>) -> Result<()> {
+        require_eq!(5241, 124124124, MyError::ValueMismatch);
+        Ok(())
+    }
+
+    pub fn require_eq_default_error(_ctx: Context<RequireEq>) -> Result<()> {
+        require_eq!(5241, 124124124);
+        Ok(())
+    }
+
+    pub fn require_keys_eq(ctx: Context<RequireKeysEq>) -> Result<()> {
+        require_keys_eq!(ctx.accounts.some_account.key(), *ctx.program_id, MyError::ValueMismatch);
+        Ok(())
+    }
+
+    pub fn require_keys_eq_default_error(ctx: Context<RequireKeysEq>) -> Result<()> {
+        require_keys_eq!(ctx.accounts.some_account.key(), *ctx.program_id);
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -99,6 +125,19 @@ pub struct AccountNotInitializedError<'info> {
     not_initialized_account: Account<'info, AnyAccount>,
 }
 
+#[derive(Accounts)]
+pub struct AccountOwnedByWrongProgramError<'info> {
+    pub wrong_account: Account<'info, AnyAccount>,
+}
+
+#[derive(Accounts)]
+pub struct RequireEq {}
+
+#[derive(Accounts)]
+pub struct RequireKeysEq<'info> {
+    pub some_account: UncheckedAccount<'info>
+}
+
 #[error_code]
 pub enum MyError {
     #[msg("This is an error message clients will automatically display")]
@@ -106,4 +145,5 @@ pub enum MyError {
     HelloNoMsg = 123,
     HelloNext,
     HelloCustom,
+    ValueMismatch,
 }

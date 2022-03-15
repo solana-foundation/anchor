@@ -1,5 +1,5 @@
 use crate::bpf_writer::BpfWriter;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Result, ToAccountInfo, ToAccountInfos,
     ToAccountMetas, ZeroCopy,
@@ -59,7 +59,8 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
         acc_info: &AccountInfo<'info>,
     ) -> Result<Loader<'info, T>> {
         if acc_info.owner != program_id {
-            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*acc_info.owner, *program_id)));
         }
         let data: &[u8] = &acc_info.try_borrow_data()?;
         // Discriminator must match.
@@ -79,7 +80,8 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
         acc_info: &AccountInfo<'info>,
     ) -> Result<Loader<'info, T>> {
         if acc_info.owner != program_id {
-            return Err(ErrorCode::AccountOwnedByWrongProgram.into());
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*acc_info.owner, *program_id)));
         }
         Ok(Loader::new(acc_info.clone()))
     }

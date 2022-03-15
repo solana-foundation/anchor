@@ -1,6 +1,7 @@
 const assert = require("assert");
 const anchor = require("@project-serum/anchor");
 const { Account, Transaction, TransactionInstruction } = anchor.web3;
+const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
 
 // sleep to allow logs to come in
 const sleep = (ms) =>
@@ -8,15 +9,31 @@ const sleep = (ms) =>
     setTimeout(() => resolve(), ms);
   });
 
-const withLogTest = async (callback, expectedLog) => {
+const withLogTest = async (callback, expectedLogs) => {
   let logTestOk = false;
   const listener = anchor.getProvider().connection.onLogs(
     "all",
     (logs) => {
-      if (logs.logs.some((logLine) => logLine === expectedLog)) {
-        logTestOk = true;
-      } else {
+      const index = logs.logs.findIndex(
+        (logLine) => logLine === expectedLogs[0]
+      );
+      if (index === -1) {
+        console.log("Expected: ");
+        console.log(expectedLogs);
+        console.log("Actual: ");
         console.log(logs);
+      } else {
+        const actualLogs = logs.logs.slice(index, index + expectedLogs.length);
+        for (let i = 0; i < expectedLogs.length; i++) {
+          if (actualLogs[i] !== expectedLogs[i]) {
+            console.log("Expected: ");
+            console.log(expectedLogs);
+            console.log("Actual: ");
+            console.log(logs);
+            return;
+          }
+        }
+        logTestOk = true;
       }
     },
     "recent"
@@ -52,7 +69,9 @@ describe("errors", () => {
         assert.equal(err.msg, errMsg);
         assert.equal(err.code, 6000);
       }
-    }, "Program log: AnchorError thrown in programs/errors/src/lib.rs:13. Error Code: Hello. Error Number: 6000. Error Message: This is an error message clients will automatically display.");
+    }, [
+      "Program log: AnchorError thrown in programs/errors/src/lib.rs:13. Error Code: Hello. Error Number: 6000. Error Message: This is an error message clients will automatically display.",
+    ]);
   });
 
   it("Emits a Hello error via require!", async () => {
@@ -89,7 +108,9 @@ describe("errors", () => {
       } catch (err) {
         // No-op (withLogTest expects the callback to catch the initial tx error)
       }
-    }, "Program log: ProgramError occurred. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.");
+    }, [
+      "Program log: ProgramError occurred. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.",
+    ]);
   });
 
   it("Logs a ProgramError with source", async () => {
@@ -100,7 +121,9 @@ describe("errors", () => {
       } catch (err) {
         // No-op (withLogTest expects the callback to catch the initial tx error)
       }
-    }, "Program log: ProgramError thrown in programs/errors/src/lib.rs:38. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.");
+    }, [
+      "Program log: ProgramError thrown in programs/errors/src/lib.rs:38. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.",
+    ]);
   });
 
   it("Emits a HelloNoMsg error", async () => {
@@ -142,7 +165,9 @@ describe("errors", () => {
         assert.equal(err.msg, errMsg);
         assert.equal(err.code, 2000);
       }
-    }, "Program log: AnchorError caused by account: my_account. Error Code: ConstraintMut. Error Number: 2000. Error Message: A mut constraint was violated.");
+    }, [
+      "Program log: AnchorError caused by account: my_account. Error Code: ConstraintMut. Error Number: 2000. Error Message: A mut constraint was violated.",
+    ]);
   });
 
   it("Emits a has one error", async () => {
@@ -235,6 +260,124 @@ describe("errors", () => {
           "The program expected this account to be already initialized";
         assert.equal(err.toString(), errMsg);
       }
-    }, "Program log: AnchorError caused by account: not_initialized_account. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.");
+    }, [
+      "Program log: AnchorError caused by account: not_initialized_account. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.",
+    ]);
+  });
+
+  it("Emits an AccountOwnedByWrongProgram error", async () => {
+    let client = await Token.createMint(
+      program.provider.connection,
+      program.provider.wallet.payer,
+      program.provider.wallet.publicKey,
+      program.provider.wallet.publicKey,
+      9,
+      TOKEN_PROGRAM_ID
+    );
+
+    await withLogTest(async () => {
+      try {
+        const tx = await program.rpc.accountOwnedByWrongProgramError({
+          accounts: {
+            wrongAccount: client.publicKey,
+          },
+        });
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `AccountOwnedByWrongProgram` error"
+        );
+      } catch (err) {
+        const errMsg =
+          "The given account is owned by a different program than expected";
+        assert.equal(err.toString(), errMsg);
+      }
+    }, [
+      "Program log: AnchorError caused by account: wrong_account. Error Code: AccountOwnedByWrongProgram. Error Number: 3007. Error Message: The given account is owned by a different program than expected.",
+      "Program log: Left:",
+      "Program log: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "Program log: Right:",
+      "Program log: Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS",
+    ]);
+  });
+
+  it("Emits a ValueMismatch error via require_eq", async () => {
+    await withLogTest(async () => {
+      try {
+        const tx = await program.rpc.requireEq();
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
+        );
+      } catch (err) {
+        assert.equal(err.code, 6126);
+      }
+    }, [
+      "Program log: AnchorError thrown in programs/errors/src/lib.rs:68. Error Code: ValueMismatch. Error Number: 6126. Error Message: ValueMismatch.",
+      "Program log: Left: 5241",
+      "Program log: Right: 124124124",
+    ]);
+  });
+
+  it("Emits a RequireEqViolated error via require_eq", async () => {
+    await withLogTest(async () => {
+      try {
+        const tx = await program.rpc.requireEqDefaultError();
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
+        );
+      } catch (err) {
+        assert.equal(err.code, 2501);
+      }
+    }, [
+      "Program log: AnchorError thrown in programs/errors/src/lib.rs:73. Error Code: RequireEqViolated. Error Number: 2501. Error Message: A require_eq expression was violated.",
+      "Program log: Left: 5241",
+      "Program log: Right: 124124124",
+    ]);
+  });
+
+  it("Emits a ValueMismatch error via require_keys_eq", async () => {
+    const someAccount = anchor.web3.Keypair.generate().publicKey;
+    await withLogTest(async () => {
+      try {
+        const tx = await program.rpc.requireKeysEq({
+          accounts: {
+            someAccount,
+          },
+        });
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
+        );
+      } catch (err) {
+        assert.equal(err.code, 6126);
+      }
+    }, [
+      "Program log: AnchorError thrown in programs/errors/src/lib.rs:78. Error Code: ValueMismatch. Error Number: 6126. Error Message: ValueMismatch.",
+      "Program log: Left:",
+      `Program log: ${someAccount}`,
+      "Program log: Right:",
+      `Program log: ${program.programId}`,
+    ]);
+  });
+
+  it("Emits a RequireKeysEqViolated error via require_keys_eq", async () => {
+    const someAccount = anchor.web3.Keypair.generate().publicKey;
+    await withLogTest(async () => {
+      try {
+        const tx = await program.rpc.requireKeysEqDefaultError({
+          accounts: {
+            someAccount,
+          },
+        });
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
+        );
+      } catch (err) {
+        assert.equal(err.code, 2502);
+      }
+    }, [
+      "Program log: AnchorError thrown in programs/errors/src/lib.rs:83. Error Code: RequireKeysEqViolated. Error Number: 2502. Error Message: A require_keys_eq expression was violated.",
+      "Program log: Left:",
+      `Program log: ${someAccount}`,
+      "Program log: Right:",
+      `Program log: ${program.programId}`,
+    ]);
   });
 });

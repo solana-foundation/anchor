@@ -3,9 +3,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 
-use anchor_syn::parser::error::{self as error_parser, ErrorWithAccountNameInput};
+use anchor_syn::codegen;
+use anchor_syn::parser::error::{self as error_parser, ErrorInput};
 use anchor_syn::ErrorArgs;
-use anchor_syn::{codegen, parser::error::ErrorInput};
 use syn::{parse_macro_input, Expr};
 
 /// Generates `Error` and `type Result<T> = Result<T, Error>` types to be
@@ -88,39 +88,28 @@ pub fn error(ts: proc_macro::TokenStream) -> TokenStream {
     create_error(error_code, true, None)
 }
 
-#[proc_macro]
-pub fn error_with_account_name(ts: proc_macro::TokenStream) -> TokenStream {
-    let input = parse_macro_input!(ts as ErrorWithAccountNameInput);
-    let error_code = input.error_code;
-    let account_name = input.account_name;
-    create_error(error_code, false, Some(account_name))
-}
-
 fn create_error(error_code: Expr, source: bool, account_name: Option<Expr>) -> TokenStream {
-    let source = if source {
-        quote! {
-            Some(anchor_lang::error::Source {
+    let error_origin = match (source, account_name) {
+        (false, None) => quote! { None },
+        (false, Some(account_name)) => quote! {
+            Some(anchor_lang::error::ErrorOrigin::AccountName(#account_name.to_string()))
+        },
+        (true, _) => quote! {
+            Some(anchor_lang::error::ErrorOrigin::Source(anchor_lang::error::Source {
                 filename: file!(),
                 line: line!()
-            })
-        }
-    } else {
-        quote! {
-            None
-        }
+            }))
+        },
     };
-    let account_name = match account_name {
-        Some(_) => quote! { Some(#account_name.to_string()) },
-        None => quote! { None },
-    };
+
     TokenStream::from(quote! {
         anchor_lang::error::Error::from(
             anchor_lang::error::AnchorError {
                 error_name: #error_code.name(),
                 error_code_number: #error_code.into(),
                 error_msg: #error_code.to_string(),
-                source: #source,
-                account_name: #account_name
+                error_origin: #error_origin,
+                compared_values: None
             }
         )
     })
