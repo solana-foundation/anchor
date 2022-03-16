@@ -48,7 +48,7 @@ pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, zero_copy};
 pub use anchor_attribute_constant::constant;
-pub use anchor_attribute_error;
+pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_interface::interface;
 pub use anchor_attribute_program::program;
@@ -355,14 +355,12 @@ pub mod __private {
 macro_rules! require {
     ($invariant:expr, $error:tt $(,)?) => {
         if !($invariant) {
-            return Err(anchor_lang::anchor_attribute_error::error!(
-                crate::ErrorCode::$error
-            ));
+            return Err(anchor_lang::error!(crate::ErrorCode::$error));
         }
     };
     ($invariant:expr, $error:expr $(,)?) => {
         if !($invariant) {
-            return Err(anchor_lang::anchor_attribute_error::error!($error));
+            return Err(anchor_lang::error!($error));
         }
     };
 }
@@ -566,12 +564,10 @@ macro_rules! require_gte {
 #[macro_export]
 macro_rules! err {
     ($error:tt $(,)?) => {
-        Err(anchor_lang::anchor_attribute_error::error!(
-            crate::ErrorCode::$error
-        ))
+        Err(anchor_lang::error!(crate::ErrorCode::$error))
     };
     ($error:expr $(,)?) => {
-        Err(anchor_lang::anchor_attribute_error::error!($error))
+        Err(anchor_lang::error!($error))
     };
 }
 

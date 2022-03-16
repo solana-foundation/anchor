@@ -29,6 +29,7 @@ incremented for features.
 * spl: Update `spl/governance` to use new errors ([#1582](https://github.com/project-serum/anchor/pull/1582)).
 * client: Fix `Cluster`'s `FromStr` implementation ([#1362](https://github.com/project-serum/anchor/pull/1362)).
 * lang: implement `Key` for `Pubkey` again, so `associated_token::*` constraints can use pubkey targets again ([#1601](https://github.com/project-serum/anchor/pull/1601)).
+* lang: adjust error code so `#[error_code]` works with just importing `anchor_lang::error_code` ([#1610](https://github.com/project-serum/anchor/pull/1610)).
 * cli/ts: generated `IDL` variable in `types/<project-name.ts>` should equal the `<project-name>.json` idl file ([#1609](https://github.com/project-serum/anchor/pull/1609)) 
 
 ### Breaking

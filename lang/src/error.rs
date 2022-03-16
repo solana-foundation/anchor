@@ -1,4 +1,4 @@
-use anchor_attribute_error::error_code;
+use anchor_lang::error_code;
 use borsh::maybestd::io::Error as BorshIoError;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::fmt::{Debug, Display};
