@@ -8,7 +8,7 @@ on:
     branches:
       - master
 env:
-  SOLANA_CLI_VERSION: 1.8.5
+  SOLANA_CLI_VERSION: 1.8.14
   NODE_VERSION: 17.0.1
 
 jobs:
@@ -92,31 +92,31 @@ jobs:
         id: cache-basic-0
         with:
           path: ./examples/tutorial/basic-0/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/cache@v2
         name: basic-1 cache
         id: cache-basic-1
         with:
           path: ./examples/tutorial/basic-1/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/cache@v2
         name: basic-2 cache
         id: cache-basic-2
         with:
           path: ./examples/tutorial/basic-2/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/cache@v2
         name: basic-3 cache
         id: cache-basic-3
         with:
           path: ./examples/tutorial/basic-3/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/cache@v2
         name: basic-4 cache
         id: cache-basic-4
         with:
           path: ./examples/tutorial/basic-4/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - run: cd examples/tutorial && yarn workspaces run test
 
   setup-client-example:
@@ -187,7 +187,7 @@ jobs:
         id: cache-test-target
         with:
           path: client/example/target
-          key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}
+          key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: ./.github/actions/setup-solana/
       - run: cd client/example && ./run-test.sh
 
@@ -224,7 +224,7 @@ jobs:
         id: cache-test-target
         with:
           path: tests/bpf-upgradeable-state/target
-          key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}
+          key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - run: solana-test-validator -r --quiet &
         name: start validator
@@ -349,7 +349,7 @@ jobs:
         id: cache-test-target
         with:
           path: ${{ matrix.node.path }}/target
-          key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}
+          key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - run: ${{ matrix.node.cmd }}
         name: ${{ matrix.node.path }} program test
