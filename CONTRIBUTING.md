@@ -26,6 +26,7 @@ Please follow these guidelines:
 
 Before coding:
 - choose a branch name that describes the issue you're working on
+- enable [commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
 
 While coding:
 - Submit a draft PR asap
