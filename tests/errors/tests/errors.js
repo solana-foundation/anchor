@@ -2,6 +2,7 @@ const assert = require("assert");
 const anchor = require("@project-serum/anchor");
 const { Account, Transaction, TransactionInstruction } = anchor.web3;
 const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
+const { Keypair } = require("@solana/web3.js");
 
 // sleep to allow logs to come in
 const sleep = (ms) =>
@@ -171,26 +172,34 @@ describe("errors", () => {
   });
 
   it("Emits a has one error", async () => {
-    try {
-      const account = new Account();
-      const tx = await program.rpc.hasOneError({
-        accounts: {
-          myAccount: account.publicKey,
-          owner: anchor.web3.SYSVAR_RENT_PUBKEY,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        },
-        instructions: [
-          await program.account.hasOneAccount.createInstruction(account),
-        ],
-        signers: [account],
-      });
-      assert.ok(false);
-    } catch (err) {
-      const errMsg = "A has_one constraint was violated";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 2001);
-    }
+    await withLogTest(async () => {
+      try {
+        const account = new Keypair();
+        const tx = await program.rpc.hasOneError({
+          accounts: {
+            myAccount: account.publicKey,
+            owner: anchor.web3.SYSVAR_RENT_PUBKEY,
+          },
+          // this initializes the account.owner variable with Pubkey::default
+          instructions: [
+            await program.account.hasOneAccount.createInstruction(account),
+          ],
+          signers: [account],
+        });
+        assert.ok(false);
+      } catch (err) {
+        const errMsg = "A has_one constraint was violated";
+        assert.equal(err.toString(), errMsg);
+        assert.equal(err.msg, errMsg);
+        assert.equal(err.code, 2001);
+      }
+    }, [
+      "Program log: AnchorError caused by account: my_account. Error Code: ConstraintHasOne. Error Number: 2001. Error Message: A has one constraint was violated.",
+      "Program log: Left:",
+      "Program log: 11111111111111111111111111111111",
+      "Program log: Right:",
+      "Program log: SysvarRent111111111111111111111111111111111",
+    ]);
   });
 
   // This test uses a raw transaction and provider instead of a program
