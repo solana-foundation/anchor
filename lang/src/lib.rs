@@ -40,9 +40,8 @@ mod ctor;
 pub mod error;
 #[doc(hidden)]
 pub mod idl;
-mod system_program;
+pub mod system_program;
 
-pub use crate::system_program::System;
 mod vec;
 pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
@@ -241,9 +240,9 @@ pub mod prelude {
         context::Context, context::CpiContext, declare_id, emit, err, error, event, interface,
         program, require, require_eq, require_gt, require_gte, require_keys_eq, require_keys_neq,
         require_neq, solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source, state,
-        zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsExit, AnchorDeserialize,
-        AnchorSerialize, Id, Key, Owner, ProgramData, Result, System, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
+        AccountsExit, AnchorDeserialize, AnchorSerialize, Id, Key, Owner, ProgramData, Result,
+        ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     pub use anchor_attribute_error::*;
     pub use borsh;
