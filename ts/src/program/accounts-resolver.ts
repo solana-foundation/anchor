@@ -237,7 +237,7 @@ export class AccountStore<IDL extends Idl> {
         if (accountInfo === null) {
           throw new Error(`invalid account info for ${address}`);
         }
-        const data = coder().accounts.decode("Token", accountInfo.data);
+        const data = coder().accounts.decode("token", accountInfo.data);
         this._cache.set(address, data);
       } else {
         const account = this._accounts[camelCase(name)].fetch(publicKey);

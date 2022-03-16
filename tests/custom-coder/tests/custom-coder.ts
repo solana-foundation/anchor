@@ -63,7 +63,7 @@ describe("custom-coder", () => {
     assert.ok(token.mint.equals(mintKeypair.publicKey));
     assert.ok(token.amount.toNumber() === 0);
     assert.ok(token.delegate === null);
-    assert.ok(token.state === 0);
+    assert.ok(token.state === 1);
     assert.ok(token.isNative === null);
     assert.ok(token.delegatedAmount.toNumber() === 0);
     assert.ok(token.closeAuthority === null);

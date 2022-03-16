@@ -10,12 +10,12 @@ export class SplTokenAccountsCoder<A extends string = string>
 
   public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
     switch (accountName) {
-      case "Token": {
+      case "token": {
         const buffer = Buffer.alloc(165);
         const len = TOKEN_ACCOUNT_LAYOUT.encode(account, buffer);
         return buffer.slice(0, len);
       }
-      case "Mint": {
+      case "mint": {
         const buffer = Buffer.alloc(82);
         const len = MINT_ACCOUNT_LAYOUT.encode(account, buffer);
         return buffer.slice(0, len);
@@ -32,10 +32,10 @@ export class SplTokenAccountsCoder<A extends string = string>
 
   public decodeUnchecked<T = any>(accountName: A, ix: Buffer): T {
     switch (accountName) {
-      case "Token": {
+      case "token": {
         return decodeTokenAccount(ix);
       }
-      case "Mint": {
+      case "mint": {
         return decodeMintAccount(ix);
       }
       default: {
@@ -47,12 +47,12 @@ export class SplTokenAccountsCoder<A extends string = string>
   // TODO: this won't use the appendData.
   public memcmp(accountName: A, _appendData?: Buffer): any {
     switch (accountName) {
-      case "Token": {
+      case "token": {
         return {
           dataSize: 165,
         };
       }
-      case "Mint": {
+      case "mint": {
         return {
           dataSize: 82,
         };
