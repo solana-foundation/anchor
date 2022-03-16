@@ -54,9 +54,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            let data = anchor_lang::Event::data(&#data);
-            let msg_str = &anchor_lang::__private::base64::encode(data);
-            anchor_lang::solana_program::msg!(msg_str);
+            anchor_lang::solana_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
         }
     })
 }

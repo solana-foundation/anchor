@@ -33,6 +33,7 @@ incremented for features.
 
 * ts: Mark `transaction`, `instruction`, `simulate` and `rpc` program namespaces as deprecated in favor of `methods` ([#1539](https://github.com/project-serum/anchor/pull/1539)).
 * ts: No longer allow manual setting of globally resolvable program public keys in `methods#accounts()`. ([#1548][https://github.com/project-serum/anchor/pull/1548])
+* lang/ts: Events are now emitted using the `sol_log_data` syscall ([#1608](https://github.com/project-serum/anchor/pull/1608)).
 * lang: Remove space calculation using `#[derive(Default)]` ([#1519](https://github.com/project-serum/anchor/pull/1519)).
 * lang: Add support for logging expected and actual values and pubkeys. Add `require_eq` and `require_keys_eq` macros. Add default error code to `require` macro ([#1572](https://github.com/project-serum/anchor/pull/1572)).
 
