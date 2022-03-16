@@ -1,6 +1,6 @@
 use anchor_client::Cluster;
 use anchor_syn::idl::Idl;
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use clap::{ArgEnum, Parser};
 use heck::SnakeCase;
 use serde::{Deserialize, Serialize};
@@ -57,9 +57,10 @@ pub struct Manifest(cargo_toml::Manifest);
 
 impl Manifest {
     pub fn from_path(p: impl AsRef<Path>) -> Result<Self> {
-        cargo_toml::Manifest::from_path(p)
+        cargo_toml::Manifest::from_path(&p)
             .map(Manifest)
-            .map_err(Into::into)
+            .map_err(anyhow::Error::from)
+            .with_context(|| format!("Error reading manifest from path: {}", p.as_ref().display()))
     }
 
     pub fn lib_name(&self) -> Result<String> {
@@ -101,8 +102,14 @@ impl Manifest {
         let mut cwd_opt = Some(start_from.as_path());
 
         while let Some(cwd) = cwd_opt {
-            for f in fs::read_dir(cwd)? {
-                let p = f?.path();
+            for f in fs::read_dir(cwd).with_context(|| {
+                format!("Error reading the directory with path: {}", cwd.display())
+            })? {
+                let p = f
+                    .with_context(|| {
+                        format!("Error reading the directory with path: {}", cwd.display())
+                    })?
+                    .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Cargo.toml") {
                         let m = WithPath::new(Manifest::from_path(&p)?, p);
@@ -341,8 +348,14 @@ impl Config {
         let mut cwd_opt = Some(_cwd.as_path());
 
         while let Some(cwd) = cwd_opt {
-            for f in fs::read_dir(cwd)? {
-                let p = f?.path();
+            for f in fs::read_dir(cwd).with_context(|| {
+                format!("Error reading the directory with path: {}", cwd.display())
+            })? {
+                let p = f
+                    .with_context(|| {
+                        format!("Error reading the directory with path: {}", cwd.display())
+                    })?
+                    .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Anchor.toml") {
                         let cfg = Config::from_path(&p)?;
@@ -358,12 +371,9 @@ impl Config {
     }
 
     fn from_path(p: impl AsRef<Path>) -> Result<Self> {
-        let mut cfg_file = File::open(&p)?;
-        let mut cfg_contents = String::new();
-        cfg_file.read_to_string(&mut cfg_contents)?;
-        let cfg = cfg_contents.parse()?;
-
-        Ok(cfg)
+        fs::read_to_string(&p)
+            .with_context(|| format!("Error reading the file with path: {}", p.as_ref().display()))?
+            .parse()
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
@@ -625,15 +635,22 @@ impl Program {
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        fs::create_dir_all("target/deploy/")?;
+        let deploy_dir_path = "target/deploy/";
+        fs::create_dir_all(deploy_dir_path)
+            .with_context(|| format!("Error creating directory with path: {}", deploy_dir_path))?;
         let path = std::env::current_dir()
             .expect("Must have current dir")
             .join(format!("target/deploy/{}-keypair.json", self.lib_name));
         if path.exists() {
-            return Ok(WithPath::new(File::open(&path)?, path));
+            return Ok(WithPath::new(
+                File::open(&path)
+                    .with_context(|| format!("Error opening file with path: {}", path.display()))?,
+                path,
+            ));
         }
         let program_kp = Keypair::generate(&mut rand::rngs::OsRng);
-        let mut file = File::create(&path)?;
+        let mut file = File::create(&path)
+            .with_context(|| format!("Error creating file with path: {}", path.display()))?;
         file.write_all(format!("{:?}", &program_kp.to_bytes()).as_bytes())?;
         Ok(WithPath::new(file, path))
     }
