@@ -9,3 +9,4 @@ errors = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 test = "yarn run mocha -t 1000000 tests/"
 
 [features]
+seeds = false

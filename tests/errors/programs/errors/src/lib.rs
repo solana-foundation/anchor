@@ -74,13 +74,61 @@ mod errors {
         Ok(())
     }
 
+    pub fn require_neq(_ctx: Context<RequireNeq>) -> Result<()> {
+        require_neq!(500, 500, MyError::ValueMatch);
+        Ok(())
+    }
+
+    pub fn require_neq_default_error(_ctx: Context<RequireNeq>) -> Result<()> {
+        require_neq!(500, 500);
+        Ok(())
+    }
+
     pub fn require_keys_eq(ctx: Context<RequireKeysEq>) -> Result<()> {
-        require_keys_eq!(ctx.accounts.some_account.key(), *ctx.program_id, MyError::ValueMismatch);
+        require_keys_eq!(
+            ctx.accounts.some_account.key(),
+            *ctx.program_id,
+            MyError::ValueMismatch
+        );
         Ok(())
     }
 
     pub fn require_keys_eq_default_error(ctx: Context<RequireKeysEq>) -> Result<()> {
         require_keys_eq!(ctx.accounts.some_account.key(), *ctx.program_id);
+        Ok(())
+    }
+
+    pub fn require_keys_neq(ctx: Context<RequireKeysNeq>) -> Result<()> {
+        require_keys_neq!(
+            ctx.accounts.some_account.key(),
+            *ctx.program_id,
+            MyError::ValueMatch
+        );
+        Ok(())
+    }
+
+    pub fn require_keys_neq_default_error(ctx: Context<RequireKeysNeq>) -> Result<()> {
+        require_keys_neq!(ctx.accounts.some_account.key(), *ctx.program_id);
+        Ok(())
+    }
+
+    pub fn require_gt(_ctx: Context<RequireGt>) -> Result<()> {
+        require_gt!(5, 10, MyError::ValueLessOrEqual);
+        Ok(())
+    }
+
+    pub fn require_gt_default_error(_ctx: Context<RequireGt>) -> Result<()> {
+        require_gt!(10, 10);
+        Ok(())
+    }
+
+    pub fn require_gte(_ctx: Context<RequireGt>) -> Result<()> {
+        require_gte!(5, 10, MyError::ValueLess);
+        Ok(())
+    }
+
+    pub fn require_gte_default_error(_ctx: Context<RequireGt>) -> Result<()> {
+        require_gte!(5, 10);
         Ok(())
     }
 }
@@ -134,8 +182,22 @@ pub struct AccountOwnedByWrongProgramError<'info> {
 pub struct RequireEq {}
 
 #[derive(Accounts)]
+pub struct RequireNeq {}
+
+#[derive(Accounts)]
+pub struct RequireGt {}
+
+#[derive(Accounts)]
+pub struct RequireGte {}
+
+#[derive(Accounts)]
 pub struct RequireKeysEq<'info> {
-    pub some_account: UncheckedAccount<'info>
+    pub some_account: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RequireKeysNeq<'info> {
+    pub some_account: UncheckedAccount<'info>,
 }
 
 #[error_code]
@@ -146,4 +208,7 @@ pub enum MyError {
     HelloNext,
     HelloCustom,
     ValueMismatch,
+    ValueMatch,
+    ValueLess,
+    ValueLessOrEqual,
 }

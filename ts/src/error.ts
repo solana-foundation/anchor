@@ -99,6 +99,10 @@ const LangErrorCode = {
   RequireViolated: 2500,
   RequireEqViolated: 2501,
   RequireKeysEqViolated: 2502,
+  RequireNeqViolated: 2503,
+  RequireKeysNeqViolated: 2504,
+  RequireGtViolated: 2505,
+  RequireGteViolated: 2506,
 
   // Accounts.
   AccountDiscriminatorAlreadySet: 3000,
@@ -197,6 +201,13 @@ const LangErrorMessage = new Map([
     LangErrorCode.RequireKeysEqViolated,
     "A require_keys_eq expression was violated",
   ],
+  [LangErrorCode.RequireNeqViolated, "A require_neq expression was violated"],
+  [
+    LangErrorCode.RequireKeysNeqViolated,
+    "A require_keys_neq expression was violated",
+  ],
+  [LangErrorCode.RequireGtViolated, "A require_gt expression was violated"],
+  [LangErrorCode.RequireGteViolated, "A require_gte expression was violated"],
 
   // Accounts.
   [
