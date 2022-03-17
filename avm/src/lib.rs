@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use dialoguer::Input;
 use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
 use semver::Version;
@@ -50,27 +49,24 @@ pub fn use_version(version: &Version) -> Result<()> {
     let installed_versions = read_installed_versions();
     // Make sure the requested version is installed
     if !installed_versions.contains(version) {
-        let input: String = Input::new()
-            .with_prompt(format!(
-                "anchor-cli {} is not installed, would you like to install it? (y/n)",
-                version
-            ))
-            .default("n".into())
-            .interact_text()?;
-        if matches!(input.as_str(), "y" | "yy" | "Y" | "yes" | "Yes") {
-            install_version(version)?;
-        } else {
+        if let Ok(current) = current_version() {
             println!(
                 "Version {} is not installed, staying on version {}.",
-                version,
-                current_version()?
+                version, current
             );
-            return Ok(());
+        } else {
+            println!("Version {} is not installed, no current version.", version);
         }
+
+        return Err(anyhow!(
+            "You need to run 'avm install {}' to install it before using it.",
+            version
+        ));
     }
 
     let mut current_version_file = fs::File::create(current_version_file_path().as_path())?;
     current_version_file.write_all(version.to_string().as_bytes())?;
+    println!("Now using anchor version {}.", current_version()?);
     Ok(())
 }
 

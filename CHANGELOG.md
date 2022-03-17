@@ -40,6 +40,7 @@ incremented for features.
 * lang: Remove space calculation using `#[derive(Default)]` ([#1519](https://github.com/project-serum/anchor/pull/1519)).
 * lang: Add support for logging expected and actual values and pubkeys. Add `require_eq` and `require_keys_eq` macros. Add default error code to `require` macro ([#1572](https://github.com/project-serum/anchor/pull/1572)).
 * lang: Add `system_program` CPI wrapper functions. Make `system_program` module public instead of re-exporting `system_program::System`([#1629](https://github.com/project-serum/anchor/pull/1629)).
+* cli: `avm use` no long prompts [y/n] if an install is needed first - it just tells the user to `avm install` ([#1565](https://github.com/project-serum/anchor/pull/1565))
 
 ## [0.22.1] - 2022-02-28
 
