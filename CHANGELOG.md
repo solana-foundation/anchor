@@ -31,6 +31,7 @@ incremented for features.
 * lang: implement `Key` for `Pubkey` again, so `associated_token::*` constraints can use pubkey targets again ([#1601](https://github.com/project-serum/anchor/pull/1601)).
 * lang: adjust error code so `#[error_code]` works with just importing `anchor_lang::error_code` ([#1610](https://github.com/project-serum/anchor/pull/1610)).
 * ts: fix `spl-token` coder account parsing ([#1604](https://github.com/project-serum/anchor/pull/1604)).
+* cli: fix `npm install` fallback if `yarn` install doesn't work ([#1643](https://github.com/project-serum/anchor/pull/1643)).
 
 ### Breaking
 
