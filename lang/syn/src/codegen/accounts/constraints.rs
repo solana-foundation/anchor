@@ -282,7 +282,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
     );
     quote! {
         {
-            let my_owner = #ident.as_ref().owner;
+            let my_owner = AsRef::<AccountInfo>::as_ref(&#ident).owner;
             let owner_address = #owner_address;
             if my_owner != &owner_address {
                 return #error;
@@ -379,7 +379,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                 #find_pda
 
                 let #field: #ty_decl = {
-                    if !#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || AsRef::<AccountInfo>::as_ref(&#field).owner == &anchor_lang::solana_program::system_program::ID {
                         // Define payer variable.
                         #payer
 
@@ -417,7 +417,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                 #find_pda
 
                 let #field: #ty_decl = {
-                    if !#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || AsRef::<AccountInfo>::as_ref(&#field).owner == &anchor_lang::solana_program::system_program::ID {
                         #payer
 
                         let cpi_program = associated_token_program.to_account_info();
@@ -470,7 +470,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                 #find_pda
 
                 let #field: #ty_decl = {
-                    if !#if_needed || #field.as_ref().owner == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || AsRef::<AccountInfo>::as_ref(&#field).owner == &anchor_lang::solana_program::system_program::ID {
                         // Define payer variable.
                         #payer
 
@@ -765,7 +765,7 @@ pub fn generate_constraint_state(f: &Field, c: &ConstraintState) -> proc_macro2:
         if #ident.key() != anchor_lang::accounts::cpi_state::CpiState::<#account_ty>::address(&#program_target.key()) {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintState).with_account_name(#name_str));
         }
-        if #ident.as_ref().owner != &#program_target.key() {
+        if AsRef::<AccountInfo>::as_ref(&#ident).owner != &#program_target.key() {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintState).with_account_name(#name_str));
         }
     }
