@@ -149,15 +149,18 @@ describe("misc", () => {
   it("Can retrieve events when simulating a transaction", async () => {
     const resp = await program.simulate.testSimulate(44);
     const expectedRaw = [
-      "Program Z2Ddx1Lcd8CHTV9tkWtNnFQrSz6kxz2H38wrr18zZRZ invoke [1]",
-      "Program log: NgyCA9omwbMsAAAA",
-      "Program log: fPhuIELK/k7SBAAA",
-      "Program log: jvbowsvlmkcJAAAA",
-      "Program Z2Ddx1Lcd8CHTV9tkWtNnFQrSz6kxz2H38wrr18zZRZ consumed 4819 of 200000 compute units",
-      "Program Z2Ddx1Lcd8CHTV9tkWtNnFQrSz6kxz2H38wrr18zZRZ success",
+      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS invoke [1]",
+      "Program log: Instruction: TestSimulate",
+      "Program data: NgyCA9omwbMsAAAA",
+      "Program data: fPhuIELK/k7SBAAA",
+      "Program data: jvbowsvlmkcJAAAA",
+      "Program data: zxM5neEnS1kBAgMEBQYHCAkK",
+      "Program data: g06Ei2GL1gIBAgMEBQYHCAkKCw==",
+      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS consumed 5320 of 200000 compute units",
+      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS success",
     ];
 
-    assert.ok(JSON.stringify(expectedRaw), resp.raw);
+    assert.deepStrictEqual(expectedRaw, resp.raw);
     assert.ok(resp.events[0].name === "E1");
     assert.ok(resp.events[0].data.data === 44);
     assert.ok(resp.events[1].name === "E2");
@@ -328,7 +331,7 @@ describe("misc", () => {
 
     const myPdaAccount = await program.account.dataZeroCopy.fetch(myPda);
     assert.ok(myPdaAccount.data === 9);
-    assert.ok((myPdaAccount.bump = nonce));
+    assert.ok(myPdaAccount.bump === nonce);
   });
 
   it("Can write to a zero copy PDA account", async () => {
@@ -345,7 +348,7 @@ describe("misc", () => {
 
     const myPdaAccount = await program.account.dataZeroCopy.fetch(myPda);
     assert.ok(myPdaAccount.data === 1234);
-    assert.ok((myPdaAccount.bump = bump));
+    assert.ok(myPdaAccount.bump === bump);
   });
 
   it("Can create a token account from seeds pda", async () => {
@@ -887,7 +890,7 @@ describe("misc", () => {
       signers: [ifNeededAcc],
     });
     const account = await program.account.dataU16.fetch(ifNeededAcc.publicKey);
-    assert.ok(account.data, 1);
+    assert.equal(account.data, 1);
   });
 
   it("Can init if needed a previously created account", async () => {
@@ -900,7 +903,7 @@ describe("misc", () => {
       signers: [ifNeededAcc],
     });
     const account = await program.account.dataU16.fetch(ifNeededAcc.publicKey);
-    assert.ok(account.data, 3);
+    assert.equal(account.data, 3);
   });
 
   it("Can use const for array size", async () => {
