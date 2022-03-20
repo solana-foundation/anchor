@@ -48,6 +48,7 @@ build-example-bpf-all: build-example-bpf-zero-copy
 .PHONY: clean
 clean:
 	find . -type d -name .anchor -print0 | xargs -0 rm -rf
+	find . -type d -name node_modules -print0 | xargs -0 rm -rf
 	find . -type d -name target -print0 | xargs -0 rm -rf
 
 .PHONY: publish

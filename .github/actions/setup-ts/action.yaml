@@ -20,10 +20,10 @@ runs:
           path: |
             ./ts/dist/
           key: solana-${{ runner.os }}-v0000-${{ env.NODE_VERSION }}-${{ hashFiles('./ts/**/*.ts') }}  
-      - run: cd ts && yarn && yarn build:node && yarn link && cd ../
+      - run: cd ts && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../
         shell: bash
-      - run: cd examples/tutorial && yarn link @project-serum/anchor && yarn && cd ../../
+      - run: cd examples/tutorial && yarn link @project-serum/anchor && yarn --frozen-lockfile && cd ../../
         shell: bash
-      - run: cd tests && yarn link @project-serum/anchor && yarn && cd ..
+      - run: cd tests && yarn link @project-serum/anchor && yarn --frozen-lockfile && cd ..
         shell: bash
         
