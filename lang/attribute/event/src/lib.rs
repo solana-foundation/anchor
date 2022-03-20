@@ -45,10 +45,12 @@ pub fn event(
     })
 }
 
-/// Creates an event that can be subscribed to by clients. Calling this method
-/// will internally borsh serialize the [event](./attr.event.html), base64
-/// encode the bytes, and then add a [msg!](../solana_program/macro.msg.html)
-/// log to the transaction.
+/// Logs an event that can be subscribed to by clients.
+/// Uses the [`sol_log_data`](https://docs.rs/solana-program/latest/solana_program/log/fn.sol_log_data.html)
+/// syscall which results in the following log:
+/// ```ignore
+/// Program data: <Base64EncodedEvent>
+/// ```
 #[proc_macro]
 pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
