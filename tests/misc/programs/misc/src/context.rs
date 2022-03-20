@@ -386,6 +386,12 @@ pub struct TestConstArraySize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TestConstIxDataSize<'info> {
+    #[account(zero)]
+    pub data: Account<'info, DataConstArraySize>,
+}
+
+#[derive(Accounts)]
 pub struct TestMultidimensionalArrayConstSizes<'info> {
     #[account(zero)]
     pub data: Account<'info, DataMultidimensionalArrayConstSizes>,

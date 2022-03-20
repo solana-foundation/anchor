@@ -156,14 +156,9 @@ pub fn parse(
             let args = ix
                 .args
                 .iter()
-                .map(|arg| {
-                    let mut tts = proc_macro2::TokenStream::new();
-                    arg.raw_arg.ty.to_tokens(&mut tts);
-                    let ty = tts.to_string().parse().unwrap();
-                    IdlField {
-                        name: arg.name.to_string().to_mixed_case(),
-                        ty,
-                    }
+                .map(|arg| IdlField {
+                    name: arg.name.to_string().to_mixed_case(),
+                    ty: to_idl_type(&ctx, &arg.raw_arg.ty),
                 })
                 .collect::<Vec<_>>();
             // todo: don't unwrap
@@ -194,7 +189,7 @@ pub fn parse(
                     };
                     IdlEventField {
                         name: f.ident.clone().unwrap().to_string().to_mixed_case(),
-                        ty: to_idl_type(&ctx, f),
+                        ty: to_idl_type(&ctx, &f.ty),
                         index,
                     }
                 })
@@ -411,7 +406,7 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
                     .map(|f: &syn::Field| {
                         Ok(IdlField {
                             name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
-                            ty: to_idl_type(ctx, f),
+                            ty: to_idl_type(ctx, &f.ty),
                         })
                     })
                     .collect::<Result<Vec<IdlField>>>(),
@@ -434,8 +429,11 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
                     let fields = match &variant.fields {
                         syn::Fields::Unit => None,
                         syn::Fields::Unnamed(fields) => {
-                            let fields: Vec<IdlType> =
-                                fields.unnamed.iter().map(|f| to_idl_type(ctx, f)).collect();
+                            let fields: Vec<IdlType> = fields
+                                .unnamed
+                                .iter()
+                                .map(|f| to_idl_type(ctx, &f.ty))
+                                .collect();
                             Some(EnumFields::Tuple(fields))
                         }
                         syn::Fields::Named(fields) => {
@@ -444,7 +442,7 @@ fn parse_ty_defs(ctx: &CrateContext) -> Result<Vec<IdlTypeDefinition>> {
                                 .iter()
                                 .map(|f: &syn::Field| {
                                     let name = f.ident.as_ref().unwrap().to_string();
-                                    let ty = to_idl_type(ctx, f);
+                                    let ty = to_idl_type(ctx, &f.ty);
                                     IdlField { name, ty }
                                 })
                                 .collect();
@@ -522,8 +520,8 @@ fn resolve_variable_array_lengths(ctx: &CrateContext, mut tts_string: String) ->
     tts_string
 }
 
-fn to_idl_type(ctx: &CrateContext, f: &syn::Field) -> IdlType {
-    let mut tts_string = parser::tts_to_string(&f.ty);
+fn to_idl_type(ctx: &CrateContext, ty: &syn::Type) -> IdlType {
+    let mut tts_string = parser::tts_to_string(&ty);
     if tts_string.starts_with('[') {
         tts_string = resolve_variable_array_lengths(ctx, tts_string);
     }
