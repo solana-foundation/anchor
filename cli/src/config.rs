@@ -197,7 +197,9 @@ impl WithPath<Config> {
                     .unwrap()
                     .join(m)
                     .canonicalize()
-                    .unwrap()
+                    .unwrap_or_else(|_| {
+                        panic!("Error reading workspace.members. File {:?} does not exist at path {:?}.", m, self.path)
+                    })
             })
             .collect();
         let exclude = self
@@ -210,7 +212,9 @@ impl WithPath<Config> {
                     .unwrap()
                     .join(m)
                     .canonicalize()
-                    .unwrap()
+                    .unwrap_or_else(|_| {
+                        panic!("Error reading workspace.exclude. File {:?} does not exist at path {:?}.", m, self.path)
+                    })
             })
             .collect();
         Ok((members, exclude))
