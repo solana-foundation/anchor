@@ -52,9 +52,8 @@ describe("system_accounts", () => {
       assert.ok(false);
     } catch (err) {
       const errMsg = "The given account is not owned by the system program";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 3011);
+      assert.equal(err.error.errorMessage, errMsg);
+      assert.equal(err.error.errorCode.number, 3011);
     }
   });
 });

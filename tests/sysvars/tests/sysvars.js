@@ -18,7 +18,7 @@ describe("sysvars", () => {
     console.log("Your transaction signature", tx);
   });
 
-  it("Fails when the wrote pubkeys are provided", async () => {
+  it("Fails when the wrong pubkeys are provided", async () => {
     try {
       await program.methods
         .sysvars()
@@ -31,9 +31,8 @@ describe("sysvars", () => {
       assert.ok(false);
     } catch (err) {
       const errMsg = "The given public key does not match the required sysvar";
-      assert.strictEqual(err.toString(), errMsg);
-      assert.strictEqual(err.msg, errMsg);
-      assert.strictEqual(err.code, 3015);
+      assert.strictEqual(err.error.errorMessage, errMsg);
+      assert.strictEqual(err.error.errorCode.number, 3015);
     }
   });
 });

@@ -2,7 +2,6 @@ import BN from "bn.js";
 import * as BufferLayout from "buffer-layout";
 import { Layout } from "buffer-layout";
 import { PublicKey } from "@solana/web3.js";
-import * as utils from "../../utils";
 
 export function uint64(property?: string): Layout<u64 | null> {
   return new WrappedLayout(
@@ -88,7 +87,7 @@ export class COptionLayout<T> extends Layout<T | null> {
     } else if (discriminator === 1) {
       return this.layout.decode(b, offset + 4);
     }
-    throw new Error("Invalid coption " + this.property);
+    throw new Error("Invalid coption " + this.layout.property);
   }
 
   getSpan(b: Buffer, offset = 0): number {

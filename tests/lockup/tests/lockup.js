@@ -3,6 +3,8 @@ const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 const utils = require("./utils");
+const chai = require("chai");
+const expect = chai.expect;
 
 anchor.utils.features.set("anchor-deprecated-state");
 
@@ -118,8 +120,8 @@ describe("Lockup and Registry", () => {
         await lockup.state.rpc.whitelistAdd(e, { accounts });
       },
       (err) => {
-        assert.equal(err.code, 6008);
-        assert.equal(err.msg, "Whitelist is full");
+        assert.equal(err.error.errorCode.number, 6008);
+        assert.equal(err.error.errorMessage, "Whitelist is full");
         return true;
       }
     );
@@ -216,8 +218,11 @@ describe("Lockup and Registry", () => {
         });
       },
       (err) => {
-        assert.equal(err.code, 6007);
-        assert.equal(err.msg, "Insufficient withdrawal balance.");
+        assert.equal(err.error.errorCode.number, 6007);
+        assert.equal(
+          err.error.errorMessage,
+          "Insufficient withdrawal balance."
+        );
         return true;
       }
     );
@@ -773,8 +778,24 @@ describe("Lockup and Registry", () => {
       (err) => {
         // Solana doesn't propagate errors across CPI. So we receive the registry's error code,
         // not the lockup's.
-        const errorCode = "custom program error: 0x1784";
-        assert.ok(err.toString().split(errorCode).length === 2);
+        assert.equal(err.error.errorCode.number, 6020);
+        assert.equal(err.error.errorCode.code, "UnrealizedReward");
+        assert.equal(
+          err.error.errorMessage,
+          "Locked rewards cannot be realized until one unstaked all tokens."
+        );
+        expect(err.error.origin).to.deep.equal({
+          file: "programs/registry/src/lib.rs",
+          line: 63,
+        });
+        assert.equal(
+          err.program.toString(),
+          "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
+        );
+        expect(err.programErrorStack.map((pk) => pk.toString())).to.deep.equal([
+          "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS",
+          "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L",
+        ]);
         return true;
       }
     );
@@ -855,8 +876,11 @@ describe("Lockup and Registry", () => {
         await tryEndUnstake();
       },
       (err) => {
-        assert.equal(err.code, 6009);
-        assert.equal(err.msg, "The unstake timelock has not yet expired.");
+        assert.equal(err.error.errorCode.number, 6009);
+        assert.equal(
+          err.error.errorMessage,
+          "The unstake timelock has not yet expired."
+        );
         return true;
       }
     );

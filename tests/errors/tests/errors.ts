@@ -1,13 +1,26 @@
-const assert = require("assert");
-const anchor = require("@project-serum/anchor");
-const { Account, Transaction, TransactionInstruction } = anchor.web3;
-const { TOKEN_PROGRAM_ID, Token } = require("@solana/spl-token");
-const { Keypair } = require("@solana/web3.js");
+import * as anchor from "@project-serum/anchor";
+import {
+  Program,
+  BN,
+  IdlAccounts,
+  AnchorError,
+  ProgramError,
+} from "@project-serum/anchor";
+import {
+  PublicKey,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import { assert, expect } from "chai";
+import { Errors } from "../target/types/errors";
 
 // sleep to allow logs to come in
 const sleep = (ms) =>
   new Promise((resolve) => {
-    setTimeout(() => resolve(), ms);
+    setTimeout(() => resolve(0), ms);
   });
 
 const withLogTest = async (callback, expectedLogs) => {
@@ -45,7 +58,6 @@ const withLogTest = async (callback, expectedLogs) => {
     anchor.getProvider().connection.removeOnLogsListener(listener);
     throw err;
   }
-  await sleep(3000);
   anchor.getProvider().connection.removeOnLogsListener(listener);
   assert.ok(logTestOk);
 };
@@ -54,21 +66,33 @@ describe("errors", () => {
   // Configure the client to use the local cluster.
   const localProvider = anchor.Provider.local();
   localProvider.opts.skipPreflight = true;
+  // processed failed tx do not result in AnchorErrors in the client
+  // because we cannot get logs for them (only through overkill `onLogs`)
+  localProvider.opts.commitment = "confirmed";
   anchor.setProvider(localProvider);
 
-  const program = anchor.workspace.Errors;
+  const program = anchor.workspace.Errors as Program<Errors>;
 
   it("Emits a Hello error", async () => {
     await withLogTest(async () => {
       try {
         const tx = await program.rpc.hello();
         assert.ok(false);
-      } catch (err) {
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
         const errMsg =
           "This is an error message clients will automatically display";
-        assert.equal(err.toString(), errMsg);
-        assert.equal(err.msg, errMsg);
-        assert.equal(err.code, 6000);
+        const fullErrMsg =
+          "AnchorError thrown in programs/errors/src/lib.rs:13. Error Code: Hello. Error Number: 6000. Error Message: This is an error message clients will automatically display.";
+        assert.equal(err.toString(), fullErrMsg);
+        assert.equal(err.error.errorMessage, errMsg);
+        assert.equal(err.error.errorCode.number, 6000);
+        assert.equal(err.program.toString(), program.programId.toString());
+        expect(err.error.origin).to.deep.equal({
+          file: "programs/errors/src/lib.rs",
+          line: 13,
+        });
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:13. Error Code: Hello. Error Number: 6000. Error Message: This is an error message clients will automatically display.",
@@ -79,12 +103,14 @@ describe("errors", () => {
     try {
       const tx = await program.rpc.testRequire();
       assert.ok(false);
-    } catch (err) {
+    } catch (_err) {
+      assert.ok(_err instanceof AnchorError);
+      const err: AnchorError = _err;
       const errMsg =
         "This is an error message clients will automatically display";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 6000);
+      assert.equal(err.error.errorMessage, errMsg);
+      assert.equal(err.error.errorCode.number, 6000);
+      assert.equal(err.error.errorCode.code, "Hello");
     }
   });
 
@@ -92,12 +118,13 @@ describe("errors", () => {
     try {
       const tx = await program.rpc.testErr();
       assert.ok(false);
-    } catch (err) {
+    } catch (_err) {
+      assert.ok(_err instanceof AnchorError);
+      const err: AnchorError = _err;
       const errMsg =
         "This is an error message clients will automatically display";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 6000);
+      assert.equal(err.error.errorMessage, errMsg);
+      assert.equal(err.error.errorCode.number, 6000);
     }
   });
 
@@ -107,7 +134,10 @@ describe("errors", () => {
         const tx = await program.rpc.testProgramError();
         assert.ok(false);
       } catch (err) {
-        // No-op (withLogTest expects the callback to catch the initial tx error)
+        expect(err.programErrorStack.map((pk) => pk.toString())).to.deep.equal([
+          program.programId.toString(),
+        ]);
+        expect(err.program.toString()).to.equal(program.programId.toString());
       }
     }, [
       "Program log: ProgramError occurred. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.",
@@ -120,7 +150,9 @@ describe("errors", () => {
         const tx = await program.rpc.testProgramErrorWithSource();
         assert.ok(false);
       } catch (err) {
-        // No-op (withLogTest expects the callback to catch the initial tx error)
+        expect(err.programErrorStack.map((pk) => pk.toString())).to.deep.equal([
+          program.programId.toString(),
+        ]);
       }
     }, [
       "Program log: ProgramError thrown in programs/errors/src/lib.rs:38. Error Code: InvalidAccountData. Error Number: 17179869184. Error Message: An account's data contents was invalid.",
@@ -131,11 +163,11 @@ describe("errors", () => {
     try {
       const tx = await program.rpc.helloNoMsg();
       assert.ok(false);
-    } catch (err) {
-      const errMsg = "HelloNoMsg";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 6000 + 123);
+    } catch (_err) {
+      assert.ok(_err instanceof AnchorError);
+      const err: AnchorError = _err;
+      assert.equal(err.error.errorMessage, "HelloNoMsg");
+      assert.equal(err.error.errorCode.number, 6123);
     }
   });
 
@@ -143,11 +175,11 @@ describe("errors", () => {
     try {
       const tx = await program.rpc.helloNext();
       assert.ok(false);
-    } catch (err) {
-      const errMsg = "HelloNext";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 6000 + 124);
+    } catch (_err) {
+      assert.ok(_err instanceof AnchorError);
+      const err: AnchorError = _err;
+      assert.equal(err.error.errorMessage, "HelloNext");
+      assert.equal(err.error.errorCode.number, 6124);
     }
   });
 
@@ -160,11 +192,12 @@ describe("errors", () => {
           },
         });
         assert.ok(false);
-      } catch (err) {
-        const errMsg = "A mut constraint was violated";
-        assert.equal(err.toString(), errMsg);
-        assert.equal(err.msg, errMsg);
-        assert.equal(err.code, 2000);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorMessage, "A mut constraint was violated");
+        assert.equal(err.error.errorCode.number, 2000);
+        assert.equal(err.error.origin, "my_account");
       }
     }, [
       "Program log: AnchorError caused by account: my_account. Error Code: ConstraintMut. Error Number: 2000. Error Message: A mut constraint was violated.",
@@ -187,11 +220,23 @@ describe("errors", () => {
           signers: [account],
         });
         assert.ok(false);
-      } catch (err) {
-        const errMsg = "A has_one constraint was violated";
-        assert.equal(err.toString(), errMsg);
-        assert.equal(err.msg, errMsg);
-        assert.equal(err.code, 2001);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(
+          err.error.errorMessage,
+          "A has one constraint was violated"
+        );
+        assert.equal(err.error.errorCode.number, 2001);
+        assert.equal(err.error.errorCode.code, "ConstraintHasOne");
+        assert.equal(err.error.origin, "my_account");
+        assert.equal(err.program.toString(), program.programId.toString());
+        expect(
+          err.error.comparedValues.map((pk) => pk.toString())
+        ).to.deep.equal([
+          "11111111111111111111111111111111",
+          "SysvarRent111111111111111111111111111111111",
+        ]);
       }
     }, [
       "Program log: AnchorError caused by account: my_account. Error Code: ConstraintHasOne. Error Number: 2001. Error Message: A has one constraint was violated.",
@@ -228,7 +273,6 @@ describe("errors", () => {
       await program.provider.send(tx);
       assert.ok(false);
     } catch (err) {
-      await sleep(3000);
       anchor.getProvider().connection.removeOnLogsListener(listener);
       const errMsg = `Error: Raw transaction ${signature} failed ({"err":{"InstructionError":[0,{"Custom":3010}]}})`;
       assert.equal(err.toString(), errMsg);
@@ -245,11 +289,12 @@ describe("errors", () => {
         },
       });
       assert.ok(false);
-    } catch (err) {
+    } catch (_err) {
+      assert.ok(_err instanceof AnchorError);
+      const err: AnchorError = _err;
       const errMsg = "HelloCustom";
-      assert.equal(err.toString(), errMsg);
-      assert.equal(err.msg, errMsg);
-      assert.equal(err.code, 6000 + 125);
+      assert.equal(err.error.errorMessage, errMsg);
+      assert.equal(err.error.errorCode.number, 6125);
     }
   });
 
@@ -264,10 +309,12 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have fail with `AccountNotInitialized` error"
         );
-      } catch (err) {
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
         const errMsg =
           "The program expected this account to be already initialized";
-        assert.equal(err.toString(), errMsg);
+        assert.equal(err.error.errorMessage, errMsg);
       }
     }, [
       "Program log: AnchorError caused by account: not_initialized_account. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.",
@@ -294,10 +341,12 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `AccountOwnedByWrongProgram` error"
         );
-      } catch (err) {
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
         const errMsg =
           "The given account is owned by a different program than expected";
-        assert.equal(err.toString(), errMsg);
+        assert.equal(err.error.errorMessage, errMsg);
       }
     }, [
       "Program log: AnchorError caused by account: wrong_account. Error Code: AccountOwnedByWrongProgram. Error Number: 3007. Error Message: The given account is owned by a different program than expected.",
@@ -315,8 +364,11 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6126);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6126);
+        expect(err.error.comparedValues).to.deep.equal(["5241", "124124124"]);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:68. Error Code: ValueMismatch. Error Number: 6126. Error Message: ValueMismatch.",
@@ -332,8 +384,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2501);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2501);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:73. Error Code: RequireEqViolated. Error Number: 2501. Error Message: A require_eq expression was violated.",
@@ -349,8 +403,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6127);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6127);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:78. Error Code: ValueMatch. Error Number: 6127. Error Message: ValueMatch.",
@@ -366,8 +422,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `RequireNeqViolated` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2503);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2503);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:83. Error Code: RequireNeqViolated. Error Number: 2503. Error Message: A require_neq expression was violated.",
@@ -388,8 +446,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6126);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6126);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:88. Error Code: ValueMismatch. Error Number: 6126. Error Message: ValueMismatch.",
@@ -412,8 +472,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2502);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2502);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:97. Error Code: RequireKeysEqViolated. Error Number: 2502. Error Message: A require_keys_eq expression was violated.",
@@ -436,8 +498,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueMatch` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6127);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6127);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:102. Error Code: ValueMatch. Error Number: 6127. Error Message: ValueMatch.",
@@ -460,8 +524,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `RequireKeysNeqViolated` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2504);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2504);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:111. Error Code: RequireKeysNeqViolated. Error Number: 2504. Error Message: A require_keys_neq expression was violated.",
@@ -479,8 +545,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueLessOrEqual` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6129);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6129);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:116. Error Code: ValueLessOrEqual. Error Number: 6129. Error Message: ValueLessOrEqual.",
@@ -496,8 +564,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `RequireGtViolated` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2505);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2505);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:121. Error Code: RequireGtViolated. Error Number: 2505. Error Message: A require_gt expression was violated.",
@@ -513,8 +583,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ValueLess` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 6128);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 6128);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:126. Error Code: ValueLess. Error Number: 6128. Error Message: ValueLess.",
@@ -530,8 +602,10 @@ describe("errors", () => {
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `RequireGteViolated` error"
         );
-      } catch (err) {
-        assert.equal(err.code, 2506);
+      } catch (_err) {
+        assert.ok(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.equal(err.error.errorCode.number, 2506);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:131. Error Code: RequireGteViolated. Error Number: 2506. Error Message: A require_gte expression was violated.",

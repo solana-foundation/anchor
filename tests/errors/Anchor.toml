@@ -6,7 +6,7 @@ wallet = "~/.config/solana/id.json"
 errors = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [scripts]
-test = "yarn run mocha -t 1000000 tests/"
+test = "yarn run ts-mocha -t 1000000 tests/*.ts"
 
 [features]
 seeds = false

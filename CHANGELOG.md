@@ -23,6 +23,7 @@ incremented for features.
 * lang: Handle arrays with const as size in instruction data ([#1623](https://github.com/project-serum/anchor/issues/1623).
 * spl: Add support for revoke instruction ([#1493](https://github.com/project-serum/anchor/pull/1493)).
 * ts: Add provider parameter to `Spl.token` factory method ([#1597](https://github.com/project-serum/anchor/pull/1597)).
+* ts: Add `AnchorError` with program stack and also a program stack for non-`AnchorError` errors ([#1640](https://github.com/project-serum/anchor/pull/1640)). `AnchorError` is not returned for `processed` tx that have `skipPreflight` set to `true` (it falls back to `ProgramError` or the raw solana library error).
 
 ### Fixes
 
