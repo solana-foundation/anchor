@@ -11,6 +11,8 @@ incremented for features.
 
 ## [Unreleased]
 
+## [0.23.0] - 2022-03-20
+
 ### Features
 
 * cli: Add `anchor clean` command that's the same as `cargo clean` but preserves keypairs inside `target/deploy` ([#1470](https://github.com/project-serum/anchor/issues/1470)).

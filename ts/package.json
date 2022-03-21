@@ -1,6 +1,6 @@
 {
   "name": "@project-serum/anchor",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "description": "Anchor client",
   "module": "./dist/esm/index.js",
   "main": "./dist/cjs/index.js",
@@ -77,7 +77,7 @@
     "ts-jest-resolver": "^2.0.0",
     "ts-node": "^9.0.0",
     "tslib": "^2.3.1",
-    "typedoc": "^0.22.10",
+    "typedoc": "^0.23.00",
     "typescript": "^4.5.2"
   }
 }
