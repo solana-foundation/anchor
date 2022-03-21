@@ -44,6 +44,7 @@ use std::string::ToString;
 use tar::Archive;
 
 pub mod config;
+mod path;
 pub mod template;
 
 // Version of the docker image.

@@ -732,4 +732,4 @@ impl AnchorPackage {
     }
 }
 
-serum_common::home_path!(WalletPath, ".config/solana/id.json");
+crate::home_path!(WalletPath, ".config/solana/id.json");
