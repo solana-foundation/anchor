@@ -17,7 +17,8 @@ export const ACCOUNT_DISCRIMINATOR_SIZE = 8;
  * Encodes and decodes account objects.
  */
 export class BorshAccountsCoder<A extends string = string>
-  implements AccountsCoder {
+  implements AccountsCoder
+{
   /**
    * Maps account type identifier to a layout.
    */

@@ -291,9 +291,10 @@ export class AccountClient<
       fromPubkey: this._provider.wallet.publicKey,
       newAccountPubkey: signer.publicKey,
       space: sizeOverride ?? size,
-      lamports: await this._provider.connection.getMinimumBalanceForRentExemption(
-        sizeOverride ?? size
-      ),
+      lamports:
+        await this._provider.connection.getMinimumBalanceForRentExemption(
+          sizeOverride ?? size
+        ),
       programId: this._programId,
     });
   }

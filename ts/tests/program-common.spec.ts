@@ -29,9 +29,9 @@ describe("program/common", () => {
     });
 
     it("should accept an object with a PublicKey shape { _bn }", () => {
-      const obj = ({
+      const obj = {
         _bn: new BN(bs58.decode("11111111111111111111111111111111")),
-      } as any) as PublicKey;
+      } as any as PublicKey;
       const func = () => translateAddress(obj);
 
       expect(func).not.toThrow();

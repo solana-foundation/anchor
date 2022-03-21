@@ -163,8 +163,7 @@ describe("AnchorError", () => {
       "An unexpected oracle account was provided for the transaction."
     );
     expect(anchorError.error.origin).toEqual({
-      file:
-        "programs/switchboard_v2/src/actions/aggregator_save_result_action.rs",
+      file: "programs/switchboard_v2/src/actions/aggregator_save_result_action.rs",
       line: 235,
     });
     expect(
@@ -208,8 +207,7 @@ describe("AnchorError", () => {
       "An unexpected oracle account was provided for the transaction."
     );
     expect(anchorError.error.origin).toEqual({
-      file:
-        "programs/switchboard_v2/src/actions/aggregator_save_result_action.rs",
+      file: "programs/switchboard_v2/src/actions/aggregator_save_result_action.rs",
       line: 235,
     });
     expect(anchorError.error.comparedValues!).toEqual(["1337", "4220"]);

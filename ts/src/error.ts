@@ -116,18 +116,18 @@ export class AnchorError extends Error {
         comparedValues = [leftValue, rightValue];
       }
     }
-    const regexNoInfo = /^Program log: AnchorError occurred\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
+    const regexNoInfo =
+      /^Program log: AnchorError occurred\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
     const noInfoAnchorErrorLog = regexNoInfo.exec(anchorErrorLog);
-    const regexFileLine = /^Program log: AnchorError thrown in (.*):(\d*)\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
+    const regexFileLine =
+      /^Program log: AnchorError thrown in (.*):(\d*)\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
     const fileLineAnchorErrorLog = regexFileLine.exec(anchorErrorLog);
-    const regexAccountName = /^Program log: AnchorError caused by account: (.*)\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
+    const regexAccountName =
+      /^Program log: AnchorError caused by account: (.*)\. Error Code: (.*)\. Error Number: (\d*)\. Error Message: (.*)\./;
     const accountNameAnchorErrorLog = regexAccountName.exec(anchorErrorLog);
     if (noInfoAnchorErrorLog) {
-      const [
-        errorCodeString,
-        errorNumber,
-        errorMessage,
-      ] = noInfoAnchorErrorLog.slice(1, 4);
+      const [errorCodeString, errorNumber, errorMessage] =
+        noInfoAnchorErrorLog.slice(1, 4);
       const errorCode = {
         code: errorCodeString,
         number: parseInt(errorNumber),
@@ -141,13 +141,8 @@ export class AnchorError extends Error {
         comparedValues
       );
     } else if (fileLineAnchorErrorLog) {
-      const [
-        file,
-        line,
-        errorCodeString,
-        errorNumber,
-        errorMessage,
-      ] = fileLineAnchorErrorLog.slice(1, 6);
+      const [file, line, errorCodeString, errorNumber, errorMessage] =
+        fileLineAnchorErrorLog.slice(1, 6);
       const errorCode = {
         code: errorCodeString,
         number: parseInt(errorNumber),
@@ -162,12 +157,8 @@ export class AnchorError extends Error {
         comparedValues
       );
     } else if (accountNameAnchorErrorLog) {
-      const [
-        accountName,
-        errorCodeString,
-        errorNumber,
-        errorMessage,
-      ] = accountNameAnchorErrorLog.slice(1, 5);
+      const [accountName, errorCodeString, errorNumber, errorMessage] =
+        accountNameAnchorErrorLog.slice(1, 5);
       const origin = accountName;
       const errorCode = {
         code: errorCodeString,

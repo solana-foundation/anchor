@@ -5,7 +5,8 @@ import { Idl, IdlTypeDef } from "../../idl.js";
 import { accountSize } from "../common";
 
 export class SplTokenAccountsCoder<A extends string = string>
-  implements AccountsCoder {
+  implements AccountsCoder
+{
   constructor(private idl: Idl) {}
 
   public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
