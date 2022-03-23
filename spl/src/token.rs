@@ -6,6 +6,7 @@ use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{solana_program, Result};
 use std::ops::Deref;
 
+pub use spl_token;
 pub use spl_token::ID;
 
 pub fn transfer<'a, 'b, 'c, 'info>(
