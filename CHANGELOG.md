@@ -6,13 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 **Note:** Version 0 of Semantic Versioning is handled differently from version 1 and above.
-The minor version will be incremented upon a breaking change and the patch version will be
-incremented for features.
+The minor version will be incremented upon a breaking change and the patch version will be incremented for features.
 
 ## [Unreleased]
 
 ### Features
 
+* avm: New `avm update` command to update the Anchor CLI to the latest version ([#1670](https://github.com/project-serum/anchor/pull/1670)).
+
+### Fixes
+
+* avm: `avm install` no longer downloads the version if already installed in the machine ([#1670](https://github.com/project-serum/anchor/pull/1670)).
+
+### Breaking
+
+* avm: `amv install` switches to the newly installed version after installation finishes ([#1670](https://github.com/project-serum/anchor/pull/1670)).
 * spl: Re-export the `spl_token` crate ([#1665](https://github.com/project-serum/anchor/pull/1665)).
 
 ## [0.23.0] - 2022-03-20

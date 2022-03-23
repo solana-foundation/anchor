@@ -70,8 +70,23 @@ pub fn use_version(version: &Version) -> Result<()> {
     Ok(())
 }
 
+/// Update to the latest version
+pub fn update() -> Result<()> {
+    // Find last stable version
+    let version = &get_latest_version();
+
+    install_version(version, false)
+}
+
 /// Install a version of anchor-cli
-pub fn install_version(version: &Version) -> Result<()> {
+pub fn install_version(version: &Version, force: bool) -> Result<()> {
+    // If version is already installed we ignore the request.
+    let installed_versions = read_installed_versions();
+    if installed_versions.contains(version) && !force {
+        println!("Version {} is already installed", version);
+        return Ok(());
+    }
+
     let exit = std::process::Command::new("cargo")
         .args(&[
             "install",
@@ -105,7 +120,8 @@ pub fn install_version(version: &Version) -> Result<()> {
         let mut current_version_file = fs::File::create(current_version_file_path().as_path())?;
         current_version_file.write_all(version.to_string().as_bytes())?;
     }
-    Ok(())
+
+    use_version(version)
 }
 
 /// Remove an installed version of anchor-cli
