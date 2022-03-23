@@ -10,7 +10,7 @@ import {
   AccountInfo,
 } from "@solana/web3.js";
 import Provider, { getProvider } from "../../provider.js";
-import { Idl, IdlTypeDef } from "../../idl.js";
+import { Idl, IdlAccountDef } from "../../idl.js";
 import { Coder, BorshCoder } from "../../coder/index.js";
 import { Subscription, Address, translateAddress } from "../common.js";
 import { AllAccountsMap, IdlTypes, TypeDef } from "./types.js";
@@ -42,7 +42,7 @@ export default class AccountFactory {
 }
 
 type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
-  ? IdlTypeDef
+  ? IdlAccountDef
   : NonNullable<IDL["accounts"]>[number];
 
 /**
@@ -72,7 +72,7 @@ export type AccountNamespace<IDL extends Idl = Idl> = {
 export class AccountClient<
   IDL extends Idl = Idl,
   A extends NullableIdlAccount<IDL> = IDL["accounts"] extends undefined
-    ? IdlTypeDef
+    ? IdlAccountDef
     : NonNullable<IDL["accounts"]>[number],
   T = TypeDef<A, IdlTypes<IDL>>
 > {

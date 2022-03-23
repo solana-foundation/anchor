@@ -7,7 +7,7 @@ export type Idl = {
   name: string;
   instructions: IdlInstruction[];
   state?: IdlState;
-  accounts?: IdlTypeDef[];
+  accounts?: IdlAccountDef[];
   types?: IdlTypeDef[];
   events?: IdlEvent[];
   errors?: IdlErrorCode[];
@@ -77,6 +77,11 @@ export type IdlField = {
 export type IdlTypeDef = {
   name: string;
   type: IdlTypeDefTy;
+};
+
+export type IdlAccountDef = {
+  name: string;
+  type: IdlTypeDefTyStruct;
 };
 
 export type IdlTypeDefTyStruct = {
