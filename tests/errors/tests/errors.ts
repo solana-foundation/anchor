@@ -59,7 +59,7 @@ const withLogTest = async (callback, expectedLogs) => {
     throw err;
   }
   anchor.getProvider().connection.removeOnLogsListener(listener);
-  assert.ok(logTestOk);
+  assert.isTrue(logTestOk);
 };
 
 describe("errors", () => {
@@ -79,16 +79,19 @@ describe("errors", () => {
         const tx = await program.rpc.hello();
         assert.ok(false);
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
         const errMsg =
           "This is an error message clients will automatically display";
         const fullErrMsg =
           "AnchorError thrown in programs/errors/src/lib.rs:13. Error Code: Hello. Error Number: 6000. Error Message: This is an error message clients will automatically display.";
-        assert.equal(err.toString(), fullErrMsg);
-        assert.equal(err.error.errorMessage, errMsg);
-        assert.equal(err.error.errorCode.number, 6000);
-        assert.equal(err.program.toString(), program.programId.toString());
+        assert.strictEqual(err.toString(), fullErrMsg);
+        assert.strictEqual(err.error.errorMessage, errMsg);
+        assert.strictEqual(err.error.errorCode.number, 6000);
+        assert.strictEqual(
+          err.program.toString(),
+          program.programId.toString()
+        );
         expect(err.error.origin).to.deep.equal({
           file: "programs/errors/src/lib.rs",
           line: 13,
@@ -104,13 +107,13 @@ describe("errors", () => {
       const tx = await program.rpc.testRequire();
       assert.ok(false);
     } catch (_err) {
-      assert.ok(_err instanceof AnchorError);
+      assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
       const errMsg =
         "This is an error message clients will automatically display";
-      assert.equal(err.error.errorMessage, errMsg);
-      assert.equal(err.error.errorCode.number, 6000);
-      assert.equal(err.error.errorCode.code, "Hello");
+      assert.strictEqual(err.error.errorMessage, errMsg);
+      assert.strictEqual(err.error.errorCode.number, 6000);
+      assert.strictEqual(err.error.errorCode.code, "Hello");
     }
   });
 
@@ -119,12 +122,12 @@ describe("errors", () => {
       const tx = await program.rpc.testErr();
       assert.ok(false);
     } catch (_err) {
-      assert.ok(_err instanceof AnchorError);
+      assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
       const errMsg =
         "This is an error message clients will automatically display";
-      assert.equal(err.error.errorMessage, errMsg);
-      assert.equal(err.error.errorCode.number, 6000);
+      assert.strictEqual(err.error.errorMessage, errMsg);
+      assert.strictEqual(err.error.errorCode.number, 6000);
     }
   });
 
@@ -164,10 +167,10 @@ describe("errors", () => {
       const tx = await program.rpc.helloNoMsg();
       assert.ok(false);
     } catch (_err) {
-      assert.ok(_err instanceof AnchorError);
+      assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
-      assert.equal(err.error.errorMessage, "HelloNoMsg");
-      assert.equal(err.error.errorCode.number, 6123);
+      assert.strictEqual(err.error.errorMessage, "HelloNoMsg");
+      assert.strictEqual(err.error.errorCode.number, 6123);
     }
   });
 
@@ -176,10 +179,10 @@ describe("errors", () => {
       const tx = await program.rpc.helloNext();
       assert.ok(false);
     } catch (_err) {
-      assert.ok(_err instanceof AnchorError);
+      assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
-      assert.equal(err.error.errorMessage, "HelloNext");
-      assert.equal(err.error.errorCode.number, 6124);
+      assert.strictEqual(err.error.errorMessage, "HelloNext");
+      assert.strictEqual(err.error.errorCode.number, 6124);
     }
   });
 
@@ -193,11 +196,14 @@ describe("errors", () => {
         });
         assert.ok(false);
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorMessage, "A mut constraint was violated");
-        assert.equal(err.error.errorCode.number, 2000);
-        assert.equal(err.error.origin, "my_account");
+        assert.strictEqual(
+          err.error.errorMessage,
+          "A mut constraint was violated"
+        );
+        assert.strictEqual(err.error.errorCode.number, 2000);
+        assert.strictEqual(err.error.origin, "my_account");
       }
     }, [
       "Program log: AnchorError caused by account: my_account. Error Code: ConstraintMut. Error Number: 2000. Error Message: A mut constraint was violated.",
@@ -221,16 +227,19 @@ describe("errors", () => {
         });
         assert.ok(false);
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(
+        assert.strictEqual(
           err.error.errorMessage,
           "A has one constraint was violated"
         );
-        assert.equal(err.error.errorCode.number, 2001);
-        assert.equal(err.error.errorCode.code, "ConstraintHasOne");
-        assert.equal(err.error.origin, "my_account");
-        assert.equal(err.program.toString(), program.programId.toString());
+        assert.strictEqual(err.error.errorCode.number, 2001);
+        assert.strictEqual(err.error.errorCode.code, "ConstraintHasOne");
+        assert.strictEqual(err.error.origin, "my_account");
+        assert.strictEqual(
+          err.program.toString(),
+          program.programId.toString()
+        );
         expect(
           err.error.comparedValues.map((pk) => pk.toString())
         ).to.deep.equal([
@@ -275,7 +284,7 @@ describe("errors", () => {
     } catch (err) {
       anchor.getProvider().connection.removeOnLogsListener(listener);
       const errMsg = `Error: Raw transaction ${signature} failed ({"err":{"InstructionError":[0,{"Custom":3010}]}})`;
-      assert.equal(err.toString(), errMsg);
+      assert.strictEqual(err.toString(), errMsg);
     } finally {
       anchor.getProvider().connection.removeOnLogsListener(listener);
     }
@@ -290,11 +299,11 @@ describe("errors", () => {
       });
       assert.ok(false);
     } catch (_err) {
-      assert.ok(_err instanceof AnchorError);
+      assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
       const errMsg = "HelloCustom";
-      assert.equal(err.error.errorMessage, errMsg);
-      assert.equal(err.error.errorCode.number, 6125);
+      assert.strictEqual(err.error.errorMessage, errMsg);
+      assert.strictEqual(err.error.errorCode.number, 6125);
     }
   });
 
@@ -310,11 +319,11 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have fail with `AccountNotInitialized` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
         const errMsg =
           "The program expected this account to be already initialized";
-        assert.equal(err.error.errorMessage, errMsg);
+        assert.strictEqual(err.error.errorMessage, errMsg);
       }
     }, [
       "Program log: AnchorError caused by account: not_initialized_account. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.",
@@ -342,11 +351,11 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `AccountOwnedByWrongProgram` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
         const errMsg =
           "The given account is owned by a different program than expected";
-        assert.equal(err.error.errorMessage, errMsg);
+        assert.strictEqual(err.error.errorMessage, errMsg);
       }
     }, [
       "Program log: AnchorError caused by account: wrong_account. Error Code: AccountOwnedByWrongProgram. Error Number: 3007. Error Message: The given account is owned by a different program than expected.",
@@ -365,9 +374,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6126);
+        assert.strictEqual(err.error.errorCode.number, 6126);
         expect(err.error.comparedValues).to.deep.equal(["5241", "124124124"]);
       }
     }, [
@@ -385,9 +394,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2501);
+        assert.strictEqual(err.error.errorCode.number, 2501);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:73. Error Code: RequireEqViolated. Error Number: 2501. Error Message: A require_eq expression was violated.",
@@ -404,9 +413,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6127);
+        assert.strictEqual(err.error.errorCode.number, 6127);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:78. Error Code: ValueMatch. Error Number: 6127. Error Message: ValueMatch.",
@@ -423,9 +432,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `RequireNeqViolated` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2503);
+        assert.strictEqual(err.error.errorCode.number, 2503);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:83. Error Code: RequireNeqViolated. Error Number: 2503. Error Message: A require_neq expression was violated.",
@@ -447,9 +456,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6126);
+        assert.strictEqual(err.error.errorCode.number, 6126);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:88. Error Code: ValueMismatch. Error Number: 6126. Error Message: ValueMismatch.",
@@ -473,9 +482,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMismatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2502);
+        assert.strictEqual(err.error.errorCode.number, 2502);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:97. Error Code: RequireKeysEqViolated. Error Number: 2502. Error Message: A require_keys_eq expression was violated.",
@@ -499,9 +508,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueMatch` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6127);
+        assert.strictEqual(err.error.errorCode.number, 6127);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:102. Error Code: ValueMatch. Error Number: 6127. Error Message: ValueMatch.",
@@ -525,9 +534,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `RequireKeysNeqViolated` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2504);
+        assert.strictEqual(err.error.errorCode.number, 2504);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:111. Error Code: RequireKeysNeqViolated. Error Number: 2504. Error Message: A require_keys_neq expression was violated.",
@@ -546,9 +555,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueLessOrEqual` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6129);
+        assert.strictEqual(err.error.errorCode.number, 6129);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:116. Error Code: ValueLessOrEqual. Error Number: 6129. Error Message: ValueLessOrEqual.",
@@ -565,9 +574,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `RequireGtViolated` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2505);
+        assert.strictEqual(err.error.errorCode.number, 2505);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:121. Error Code: RequireGtViolated. Error Number: 2505. Error Message: A require_gt expression was violated.",
@@ -584,9 +593,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `ValueLess` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 6128);
+        assert.strictEqual(err.error.errorCode.number, 6128);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:126. Error Code: ValueLess. Error Number: 6128. Error Message: ValueLess.",
@@ -603,9 +612,9 @@ describe("errors", () => {
           "Unexpected success in creating a transaction that should have failed with `RequireGteViolated` error"
         );
       } catch (_err) {
-        assert.ok(_err instanceof AnchorError);
+        assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
-        assert.equal(err.error.errorCode.number, 2506);
+        assert.strictEqual(err.error.errorCode.number, 2506);
       }
     }, [
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:131. Error Code: RequireGteViolated. Error Number: 2506. Error Message: A require_gte expression was violated.",

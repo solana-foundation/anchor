@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 
 describe("token", () => {
   const provider = anchor.Provider.local();
@@ -31,7 +31,7 @@ describe("token", () => {
 
     const fromAccount = await getTokenAccount(provider, from);
 
-    assert.ok(fromAccount.amount.eq(new anchor.BN(1000)));
+    assert.isTrue(fromAccount.amount.eq(new anchor.BN(1000)));
   });
 
   it("Transfers a token", async () => {
@@ -47,8 +47,8 @@ describe("token", () => {
     const fromAccount = await getTokenAccount(provider, from);
     const toAccount = await getTokenAccount(provider, to);
 
-    assert.ok(fromAccount.amount.eq(new anchor.BN(600)));
-    assert.ok(toAccount.amount.eq(new anchor.BN(400)));
+    assert.isTrue(fromAccount.amount.eq(new anchor.BN(600)));
+    assert.isTrue(toAccount.amount.eq(new anchor.BN(400)));
   });
 
   it("Burns a token", async () => {
@@ -62,7 +62,7 @@ describe("token", () => {
     });
 
     const toAccount = await getTokenAccount(provider, to);
-    assert.ok(toAccount.amount.eq(new anchor.BN(1)));
+    assert.isTrue(toAccount.amount.eq(new anchor.BN(1)));
   });
 
   it("Set new mint authority", async () => {
@@ -80,7 +80,7 @@ describe("token", () => {
     );
 
     const mintInfo = await getMintInfo(provider, mint);
-    assert.ok(mintInfo.mintAuthority.equals(newMintAuthority.publicKey));
+    assert.isTrue(mintInfo.mintAuthority.equals(newMintAuthority.publicKey));
   });
 });
 

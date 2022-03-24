@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import assert from "assert";
+import { assert } from "chai";
 import { ValidatorClone } from "../target/types/validator_clone";
 
 describe("validator-clone", () => {
@@ -17,7 +17,7 @@ describe("validator-clone", () => {
       connection,
       [new anchor.web3.PublicKey(account)]
     );
-    assert.ok(accountInfo !== null, "Account " + account + " not found");
+    assert.isNotNull(accountInfo, "Account " + account + " not found");
   });
 
   it("Cloned bpf2-program account", async () => {
@@ -27,7 +27,7 @@ describe("validator-clone", () => {
       connection,
       [new anchor.web3.PublicKey(account)]
     );
-    assert.ok(accountInfo !== null, "Account " + account + " not found");
+    assert.isNotNull(accountInfo, "Account " + account + " not found");
   });
 
   it("Cloned bpf3-program accounts and their program data", async () => {
@@ -47,7 +47,7 @@ describe("validator-clone", () => {
     );
 
     accountInfos.forEach((acc, i) => {
-      assert.ok(acc !== null, "Account " + accounts[i] + " not found");
+      assert.isNotNull(acc, "Account " + accounts[i] + " not found");
     });
   });
 
@@ -64,7 +64,7 @@ describe("validator-clone", () => {
     );
 
     accountInfos.forEach((acc, i) => {
-      assert.ok(acc !== null, "Account " + accounts[i] + " not found");
+      assert.isNotNull(acc, "Account " + accounts[i] + " not found");
     });
   });
 });

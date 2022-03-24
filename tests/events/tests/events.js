@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 
 describe("events", () => {
   // Configure the client to use the local cluster.
@@ -17,9 +17,9 @@ describe("events", () => {
     });
     await program.removeEventListener(listener);
 
-    assert.ok(slot > 0);
-    assert.ok(event.data.toNumber() === 5);
-    assert.ok(event.label === "hello");
+    assert.isAbove(slot, 0);
+    assert.strictEqual(event.data.toNumber(), 5);
+    assert.strictEqual(event.label, "hello");
   });
 
   it("Multiple events", async () => {
@@ -46,13 +46,13 @@ describe("events", () => {
     await program.removeEventListener(listenerOne);
     await program.removeEventListener(listenerTwo);
 
-    assert.ok(slotOne > 0);
-    assert.ok(eventOne.data.toNumber() === 5);
-    assert.ok(eventOne.label === "hello");
+    assert.isAbove(slotOne, 0);
+    assert.strictEqual(eventOne.data.toNumber(), 5);
+    assert.strictEqual(eventOne.label, "hello");
 
-    assert.ok(slotTwo > 0);
-    assert.ok(eventTwo.data.toNumber() === 6);
-    assert.ok(eventTwo.label === "bye");
+    assert.isAbove(slotTwo, 0);
+    assert.strictEqual(eventTwo.data.toNumber(), 6);
+    assert.strictEqual(eventTwo.label, "bye");
   });
 });
 

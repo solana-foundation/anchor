@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 
 describe("sysvars", () => {
   // Configure the client to use the local cluster.

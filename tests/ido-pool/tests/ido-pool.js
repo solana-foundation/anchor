@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 const {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -59,7 +59,9 @@ describe("ido-pool", () => {
       provider,
       idoAuthorityWatermelon
     );
-    assert.ok(idoAuthority_watermelon_account.amount.eq(watermelonIdoAmount));
+    assert.isTrue(
+      idoAuthority_watermelon_account.amount.eq(watermelonIdoAmount)
+    );
   });
 
   // These are all variables the client will need to create in order to
@@ -131,7 +133,7 @@ describe("ido-pool", () => {
       provider,
       idoAuthorityWatermelon
     );
-    assert.ok(idoAuthorityWatermelonAccount.amount.eq(new anchor.BN(0)));
+    assert.isTrue(idoAuthorityWatermelonAccount.amount.eq(new anchor.BN(0)));
   });
 
   // We're going to need to start using the associated program account for creating token accounts
@@ -190,7 +192,7 @@ describe("ido-pool", () => {
 
     // Check if we inited correctly
     userUsdcAccount = await getTokenAccount(provider, userUsdc);
-    assert.ok(userUsdcAccount.amount.eq(firstDeposit));
+    assert.isTrue(userUsdcAccount.amount.eq(firstDeposit));
 
     const [userRedeemable] = await anchor.web3.PublicKey.findProgramAddress(
       [
@@ -232,9 +234,9 @@ describe("ido-pool", () => {
       console.log("This is the error message", err.toString());
     }
     poolUsdcAccount = await getTokenAccount(provider, poolUsdc);
-    assert.ok(poolUsdcAccount.amount.eq(firstDeposit));
+    assert.isTrue(poolUsdcAccount.amount.eq(firstDeposit));
     userRedeemableAccount = await getTokenAccount(provider, userRedeemable);
-    assert.ok(userRedeemableAccount.amount.eq(firstDeposit));
+    assert.isTrue(userRedeemableAccount.amount.eq(firstDeposit));
   });
 
   // 23 usdc
@@ -291,7 +293,7 @@ describe("ido-pool", () => {
 
     // Checking the transfer went through
     secondUserUsdcAccount = await getTokenAccount(provider, secondUserUsdc);
-    assert.ok(secondUserUsdcAccount.amount.eq(secondDeposit));
+    assert.isTrue(secondUserUsdcAccount.amount.eq(secondDeposit));
 
     const [secondUserRedeemable] =
       await anchor.web3.PublicKey.findProgramAddress(
@@ -335,11 +337,11 @@ describe("ido-pool", () => {
       provider,
       secondUserRedeemable
     );
-    assert.ok(secondUserRedeemableAccount.amount.eq(secondDeposit));
+    assert.isTrue(secondUserRedeemableAccount.amount.eq(secondDeposit));
 
     totalPoolUsdc = firstDeposit.add(secondDeposit);
     poolUsdcAccount = await getTokenAccount(provider, poolUsdc);
-    assert.ok(poolUsdcAccount.amount.eq(totalPoolUsdc));
+    assert.isTrue(poolUsdcAccount.amount.eq(totalPoolUsdc));
   });
 
   const firstWithdrawal = new anchor.BN(2_000_000);
@@ -407,9 +409,9 @@ describe("ido-pool", () => {
 
     totalPoolUsdc = totalPoolUsdc.sub(firstWithdrawal);
     poolUsdcAccount = await getTokenAccount(provider, poolUsdc);
-    assert.ok(poolUsdcAccount.amount.eq(totalPoolUsdc));
+    assert.isTrue(poolUsdcAccount.amount.eq(totalPoolUsdc));
     escrowUsdcAccount = await getTokenAccount(provider, escrowUsdc);
-    assert.ok(escrowUsdcAccount.amount.eq(firstWithdrawal));
+    assert.isTrue(escrowUsdcAccount.amount.eq(firstWithdrawal));
   });
 
   it("Exchanges user Redeemable tokens for watermelon", async () => {
@@ -469,9 +471,9 @@ describe("ido-pool", () => {
       .mul(watermelonIdoAmount)
       .div(totalPoolUsdc);
     let remainingWatermelon = watermelonIdoAmount.sub(redeemedWatermelon);
-    assert.ok(poolWatermelonAccount.amount.eq(remainingWatermelon));
+    assert.isTrue(poolWatermelonAccount.amount.eq(remainingWatermelon));
     userWatermelonAccount = await getTokenAccount(provider, userWatermelon);
-    assert.ok(userWatermelonAccount.amount.eq(redeemedWatermelon));
+    assert.isTrue(userWatermelonAccount.amount.eq(redeemedWatermelon));
   });
 
   it("Exchanges second user's Redeemable tokens for watermelon", async () => {
@@ -521,7 +523,7 @@ describe("ido-pool", () => {
     });
 
     poolWatermelonAccount = await getTokenAccount(provider, poolWatermelon);
-    assert.ok(poolWatermelonAccount.amount.eq(new anchor.BN(0)));
+    assert.isTrue(poolWatermelonAccount.amount.eq(new anchor.BN(0)));
   });
 
   it("Withdraws total USDC from pool account", async () => {
@@ -548,9 +550,9 @@ describe("ido-pool", () => {
     });
 
     poolUsdcAccount = await getTokenAccount(provider, poolUsdc);
-    assert.ok(poolUsdcAccount.amount.eq(new anchor.BN(0)));
+    assert.isTrue(poolUsdcAccount.amount.eq(new anchor.BN(0)));
     idoAuthorityUsdcAccount = await getTokenAccount(provider, idoAuthorityUsdc);
-    assert.ok(idoAuthorityUsdcAccount.amount.eq(totalPoolUsdc));
+    assert.isTrue(idoAuthorityUsdcAccount.amount.eq(totalPoolUsdc));
   });
 
   it("Withdraws USDC from the escrow account after waiting period is over", async () => {
@@ -586,7 +588,7 @@ describe("ido-pool", () => {
     });
 
     userUsdcAccount = await getTokenAccount(provider, userUsdc);
-    assert.ok(userUsdcAccount.amount.eq(firstWithdrawal));
+    assert.isTrue(userUsdcAccount.amount.eq(firstWithdrawal));
   });
 
   function PoolBumps() {

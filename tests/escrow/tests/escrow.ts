@@ -82,8 +82,11 @@ describe("escrow", () => {
     );
     let _takerTokenAccountB = await mintB.getAccountInfo(takerTokenAccountB);
 
-    assert.ok(_initializerTokenAccountA.amount.toNumber() == initializerAmount);
-    assert.ok(_takerTokenAccountB.amount.toNumber() == takerAmount);
+    assert.strictEqual(
+      _initializerTokenAccountA.amount.toNumber(),
+      initializerAmount
+    );
+    assert.strictEqual(_takerTokenAccountB.amount.toNumber(), takerAmount);
   });
 
   it("Initialize escrow", async () => {
@@ -119,18 +122,23 @@ describe("escrow", () => {
       await program.account.escrowAccount.fetch(escrowAccount.publicKey);
 
     // Check that the new owner is the PDA.
-    assert.ok(_initializerTokenAccountA.owner.equals(pda));
+    assert.isTrue(_initializerTokenAccountA.owner.equals(pda));
 
     // Check that the values in the escrow account match what we expect.
-    assert.ok(_escrowAccount.initializerKey.equals(provider.wallet.publicKey));
-    assert.ok(_escrowAccount.initializerAmount.toNumber() == initializerAmount);
-    assert.ok(_escrowAccount.takerAmount.toNumber() == takerAmount);
-    assert.ok(
+    assert.isTrue(
+      _escrowAccount.initializerKey.equals(provider.wallet.publicKey)
+    );
+    assert.strictEqual(
+      _escrowAccount.initializerAmount.toNumber(),
+      initializerAmount
+    );
+    assert.strictEqual(_escrowAccount.takerAmount.toNumber(), takerAmount);
+    assert.isTrue(
       _escrowAccount.initializerDepositTokenAccount.equals(
         initializerTokenAccountA
       )
     );
-    assert.ok(
+    assert.isTrue(
       _escrowAccount.initializerReceiveTokenAccount.equals(
         initializerTokenAccountB
       )
@@ -162,12 +170,18 @@ describe("escrow", () => {
     );
 
     // Check that the initializer gets back ownership of their token account.
-    assert.ok(_takerTokenAccountA.owner.equals(provider.wallet.publicKey));
+    assert.isTrue(_takerTokenAccountA.owner.equals(provider.wallet.publicKey));
 
-    assert.ok(_takerTokenAccountA.amount.toNumber() == initializerAmount);
-    assert.ok(_initializerTokenAccountA.amount.toNumber() == 0);
-    assert.ok(_initializerTokenAccountB.amount.toNumber() == takerAmount);
-    assert.ok(_takerTokenAccountB.amount.toNumber() == 0);
+    assert.strictEqual(
+      _takerTokenAccountA.amount.toNumber(),
+      initializerAmount
+    );
+    assert.strictEqual(_initializerTokenAccountA.amount.toNumber(), 0);
+    assert.strictEqual(
+      _initializerTokenAccountB.amount.toNumber(),
+      takerAmount
+    );
+    assert.strictEqual(_takerTokenAccountB.amount.toNumber(), 0);
   });
 
   let newEscrow = Keypair.generate();
@@ -202,7 +216,7 @@ describe("escrow", () => {
     );
 
     // Check that the new owner is the PDA.
-    assert.ok(_initializerTokenAccountA.owner.equals(pda));
+    assert.isTrue(_initializerTokenAccountA.owner.equals(pda));
 
     // Cancel the escrow.
     await program.rpc.cancelEscrow({
@@ -219,11 +233,14 @@ describe("escrow", () => {
     _initializerTokenAccountA = await mintA.getAccountInfo(
       initializerTokenAccountA
     );
-    assert.ok(
+    assert.isTrue(
       _initializerTokenAccountA.owner.equals(provider.wallet.publicKey)
     );
 
     // Check all the funds are still there.
-    assert.ok(_initializerTokenAccountA.amount.toNumber() == initializerAmount);
+    assert.strictEqual(
+      _initializerTokenAccountA.amount.toNumber(),
+      initializerAmount
+    );
   });
 });

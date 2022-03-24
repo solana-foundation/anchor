@@ -1,4 +1,4 @@
-const assert = require("assert");
+const { assert } = require("chai");
 const { Token } = require("@solana/spl-token");
 const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
@@ -90,7 +90,7 @@ describe("cfo", () => {
     const tokenAccount = await USDC_TOKEN_CLIENT.getAccountInfo(
       ORDERBOOK_ENV.marketA._decoded.quoteVault
     );
-    assert.ok(tokenAccount.amount.toString() === "10000902263700");
+    assert.strictEqual(tokenAccount.amount.toString(), "10000902263700");
   });
 
   it("BOILERPLATE: Executes trades to generate fees", async () => {
@@ -111,7 +111,10 @@ describe("cfo", () => {
       { commitment: "processed" },
       DEX_PID
     );
-    assert.ok(marketAClient._decoded.quoteFeesAccrued.toString() === FEES);
+    assert.strictEqual(
+      marketAClient._decoded.quoteFeesAccrued.toString(),
+      FEES
+    );
   });
 
   it("BOILERPLATE: Sets up the staking pools", async () => {
@@ -245,12 +248,12 @@ describe("cfo", () => {
       .rpc();
 
     officerAccount = await program.account.officer.fetch(officer);
-    assert.ok(
+    assert.isTrue(
       officerAccount.authority.equals(program.provider.wallet.publicKey)
     );
-    assert.ok(
-      JSON.stringify(officerAccount.distribution) ===
-        JSON.stringify(distribution)
+    assert.strictEqual(
+      JSON.stringify(officerAccount.distribution),
+      JSON.stringify(distribution)
     );
   });
 
@@ -268,8 +271,8 @@ describe("cfo", () => {
       })
       .rpc();
     const tokenAccount = await B_TOKEN_CLIENT.getAccountInfo(bVault);
-    assert.ok(tokenAccount.state === 1);
-    assert.ok(tokenAccount.isInitialized);
+    assert.strictEqual(tokenAccount.state, 1);
+    assert.isTrue(tokenAccount.isInitialized);
   });
 
   it("Creates an open orders account for the officer", async () => {
@@ -327,9 +330,9 @@ describe("cfo", () => {
       program.provider,
       sweepVault
     );
-    assert.ok(
-      afterTokenAccount.amount.sub(beforeTokenAccount.amount).toString() ===
-        FEES
+    assert.strictEqual(
+      afterTokenAccount.amount.sub(beforeTokenAccount.amount).toString(),
+      FEES
     );
   });
 
@@ -409,10 +412,10 @@ describe("cfo", () => {
     const bVaultAfter = await B_TOKEN_CLIENT.getAccountInfo(bVault);
     const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
 
-    assert.ok(bVaultBefore.amount.toNumber() === 616035558100);
-    assert.ok(usdcVaultBefore.amount.toNumber() === 6160355581);
-    assert.ok(bVaultAfter.amount.toNumber() === 615884458100);
-    assert.ok(usdcVaultAfter.amount.toNumber() === 7060634298);
+    assert.strictEqual(bVaultBefore.amount.toNumber(), 616035558100);
+    assert.strictEqual(usdcVaultBefore.amount.toNumber(), 6160355581);
+    assert.strictEqual(bVaultAfter.amount.toNumber(), 615884458100);
+    assert.strictEqual(usdcVaultAfter.amount.toNumber(), 7060634298);
   });
 
   it("Swaps to SRM", async () => {
@@ -457,10 +460,10 @@ describe("cfo", () => {
     const srmVaultAfter = await SRM_TOKEN_CLIENT.getAccountInfo(srmVault);
     const usdcVaultAfter = await USDC_TOKEN_CLIENT.getAccountInfo(usdcVault);
 
-    assert.ok(srmVaultBefore.amount.toNumber() === 0);
-    assert.ok(srmVaultAfter.amount.toNumber() === 1152000000);
-    assert.ok(usdcVaultBefore.amount.toNumber() === 7060634298);
-    assert.ok(usdcVaultAfter.amount.toNumber() === 530863);
+    assert.strictEqual(srmVaultBefore.amount.toNumber(), 0);
+    assert.strictEqual(srmVaultAfter.amount.toNumber(), 1152000000);
+    assert.strictEqual(usdcVaultBefore.amount.toNumber(), 7060634298);
+    assert.strictEqual(usdcVaultAfter.amount.toNumber(), 530863);
   });
 
   it("Distributes the tokens to categories", async () => {
@@ -488,21 +491,21 @@ describe("cfo", () => {
     const mintInfoAfter = await SRM_TOKEN_CLIENT.getMintInfo();
 
     const beforeAmount = 1152000000;
-    assert.ok(srmVaultBefore.amount.toNumber() === beforeAmount);
-    assert.ok(srmVaultAfter.amount.toNumber() === 0); // Fully distributed.
-    assert.ok(
-      stakeAfter.amount.toNumber() ===
-        beforeAmount * (distribution.stake / 100.0)
+    assert.strictEqual(srmVaultBefore.amount.toNumber(), beforeAmount);
+    assert.strictEqual(srmVaultAfter.amount.toNumber(), 0); // Fully distributed.
+    assert.strictEqual(
+      stakeAfter.amount.toNumber(),
+      beforeAmount * (distribution.stake / 100.0)
     );
-    assert.ok(
-      treasuryAfter.amount.toNumber() ===
-        beforeAmount * (distribution.treasury / 100.0)
+    assert.strictEqual(
+      treasuryAfter.amount.toNumber(),
+      beforeAmount * (distribution.treasury / 100.0)
     );
     // Check burn amount.
-    assert.ok(mintInfoBefore.supply.toString() === "1000000000000000000");
-    assert.ok(
-      mintInfoBefore.supply.sub(mintInfoAfter.supply).toNumber() ===
-        beforeAmount * (distribution.burn / 100.0)
+    assert.strictEqual(mintInfoBefore.supply.toString(), "1000000000000000000");
+    assert.strictEqual(
+      mintInfoBefore.supply.sub(mintInfoAfter.supply).toNumber(),
+      beforeAmount * (distribution.burn / 100.0)
     );
   });
 });

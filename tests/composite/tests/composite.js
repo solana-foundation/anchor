@@ -1,4 +1,4 @@
-const assert = require("assert");
+const { assert } = require("chai");
 const anchor = require("@project-serum/anchor");
 
 describe("composite", () => {
@@ -44,7 +44,7 @@ describe("composite", () => {
     const dummyAAccount = await program.account.dummyA.fetch(dummyA.publicKey);
     const dummyBAccount = await program.account.dummyB.fetch(dummyB.publicKey);
 
-    assert.ok(dummyAAccount.data.eq(new anchor.BN(1234)));
-    assert.ok(dummyBAccount.data.eq(new anchor.BN(4321)));
+    assert.isTrue(dummyAAccount.data.eq(new anchor.BN(1234)));
+    assert.isTrue(dummyBAccount.data.eq(new anchor.BN(4321)));
   });
 });

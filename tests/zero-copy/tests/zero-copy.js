@@ -1,7 +1,8 @@
 const anchor = require("@project-serum/anchor");
+const { assert } = require("chai");
+const nativeAssert = require("assert");
 const PublicKey = anchor.web3.PublicKey;
 const BN = anchor.BN;
-const assert = require("assert");
 
 describe("zero-copy", () => {
   // Configure the client to use the local cluster.
@@ -22,15 +23,15 @@ describe("zero-copy", () => {
       signers: [foo],
     });
     const account = await program.account.foo.fetch(foo.publicKey);
-    assert.ok(
-      JSON.stringify(account.authority.toBuffer()) ===
-        JSON.stringify(program.provider.wallet.publicKey.toBuffer())
+    assert.strictEqual(
+      JSON.stringify(account.authority.toBuffer()),
+      JSON.stringify(program.provider.wallet.publicKey.toBuffer())
     );
-    assert.ok(account.data.toNumber() === 0);
-    assert.ok(account.secondData.toNumber() === 0);
-    assert.ok(
-      JSON.stringify(account.secondAuthority) ===
-        JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
+    assert.strictEqual(account.data.toNumber(), 0);
+    assert.strictEqual(account.secondData.toNumber(), 0);
+    assert.strictEqual(
+      JSON.stringify(account.secondAuthority),
+      JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
     );
   });
 
@@ -44,15 +45,15 @@ describe("zero-copy", () => {
 
     const account = await program.account.foo.fetch(foo.publicKey);
 
-    assert.ok(
-      JSON.stringify(account.authority.toBuffer()) ===
-        JSON.stringify(program.provider.wallet.publicKey.toBuffer())
+    assert.strictEqual(
+      JSON.stringify(account.authority.toBuffer()),
+      JSON.stringify(program.provider.wallet.publicKey.toBuffer())
     );
-    assert.ok(account.data.toNumber() === 1234);
-    assert.ok(account.secondData.toNumber() === 0);
-    assert.ok(
-      JSON.stringify(account.secondAuthority) ===
-        JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
+    assert.strictEqual(account.data.toNumber(), 1234);
+    assert.strictEqual(account.secondData.toNumber(), 0);
+    assert.strictEqual(
+      JSON.stringify(account.secondAuthority),
+      JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
     );
   });
 
@@ -66,15 +67,15 @@ describe("zero-copy", () => {
 
     const account = await program.account.foo.fetch(foo.publicKey);
 
-    assert.ok(
-      JSON.stringify(account.authority.toBuffer()) ===
-        JSON.stringify(program.provider.wallet.publicKey.toBuffer())
+    assert.strictEqual(
+      JSON.stringify(account.authority.toBuffer()),
+      JSON.stringify(program.provider.wallet.publicKey.toBuffer())
     );
-    assert.ok(account.data.toNumber() === 1234);
-    assert.ok(account.secondData.toNumber() === 55);
-    assert.ok(
-      JSON.stringify(account.secondAuthority) ===
-        JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
+    assert.strictEqual(account.data.toNumber(), 1234);
+    assert.strictEqual(account.secondData.toNumber(), 55);
+    assert.strictEqual(
+      JSON.stringify(account.secondAuthority),
+      JSON.stringify([...program.provider.wallet.publicKey.toBuffer()])
     );
   });
 
@@ -106,8 +107,10 @@ describe("zero-copy", () => {
       )
     )[0];
     const barAccount = await program.account.bar.fetch(bar);
-    assert.ok(barAccount.authority.equals(program.provider.wallet.publicKey));
-    assert.ok(barAccount.data.toNumber() === 0);
+    assert.isTrue(
+      barAccount.authority.equals(program.provider.wallet.publicKey)
+    );
+    assert.strictEqual(barAccount.data.toNumber(), 0);
   });
 
   it("Updates an associated zero copy account", async () => {
@@ -128,8 +131,10 @@ describe("zero-copy", () => {
       },
     });
     const barAccount = await program.account.bar.fetch(bar);
-    assert.ok(barAccount.authority.equals(program.provider.wallet.publicKey));
-    assert.ok(barAccount.data.toNumber() === 99);
+    assert.isTrue(
+      barAccount.authority.equals(program.provider.wallet.publicKey)
+    );
+    assert.strictEqual(barAccount.data.toNumber(), 99);
     // Check zero_copy CPI
     await programCpi.rpc.checkCpi(new BN(1337), {
       accounts: {
@@ -140,10 +145,10 @@ describe("zero-copy", () => {
       },
     });
     const barAccountAfterCpi = await program.account.bar.fetch(bar);
-    assert.ok(
+    assert.isTrue(
       barAccountAfterCpi.authority.equals(program.provider.wallet.publicKey)
     );
-    assert.ok(barAccountAfterCpi.data.toNumber() === 1337);
+    assert.strictEqual(barAccountAfterCpi.data.toNumber(), 1337);
   });
 
   const eventQ = anchor.web3.Keypair.generate();
@@ -161,10 +166,10 @@ describe("zero-copy", () => {
       signers: [eventQ],
     });
     const account = await program.account.eventQ.fetch(eventQ.publicKey);
-    assert.ok(account.events.length === 25000);
+    assert.strictEqual(account.events.length, 25000);
     account.events.forEach((event) => {
-      assert.ok(event.from.equals(PublicKey.default));
-      assert.ok(event.data.toNumber() === 0);
+      assert.isTrue(event.from.equals(PublicKey.default));
+      assert.strictEqual(event.data.toNumber(), 0);
     });
   });
 
@@ -178,14 +183,14 @@ describe("zero-copy", () => {
     });
     // Verify update.
     let account = await program.account.eventQ.fetch(eventQ.publicKey);
-    assert.ok(account.events.length === 25000);
+    assert.strictEqual(account.events.length, 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 48);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 48);
       } else {
-        assert.ok(event.from.equals(PublicKey.default));
-        assert.ok(event.data.toNumber() === 0);
+        assert.isTrue(event.from.equals(PublicKey.default));
+        assert.strictEqual(event.data.toNumber(), 0);
       }
     });
 
@@ -198,17 +203,17 @@ describe("zero-copy", () => {
     });
     // Verify update.
     account = await program.account.eventQ.fetch(eventQ.publicKey);
-    assert.ok(account.events.length === 25000);
+    assert.strictEqual(account.events.length, 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 48);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 48);
       } else if (idx === 11111) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 1234);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 1234);
       } else {
-        assert.ok(event.from.equals(PublicKey.default));
-        assert.ok(event.data.toNumber() === 0);
+        assert.isTrue(event.from.equals(PublicKey.default));
+        assert.strictEqual(event.data.toNumber(), 0);
       }
     });
 
@@ -221,27 +226,27 @@ describe("zero-copy", () => {
     });
     // Verify update.
     account = await program.account.eventQ.fetch(eventQ.publicKey);
-    assert.ok(account.events.length === 25000);
+    assert.strictEqual(account.events.length, 25000);
     account.events.forEach((event, idx) => {
       if (idx === 0) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 48);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 48);
       } else if (idx === 11111) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 1234);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 1234);
       } else if (idx === 24999) {
-        assert.ok(event.from.equals(program.provider.wallet.publicKey));
-        assert.ok(event.data.toNumber() === 99);
+        assert.isTrue(event.from.equals(program.provider.wallet.publicKey));
+        assert.strictEqual(event.data.toNumber(), 99);
       } else {
-        assert.ok(event.from.equals(PublicKey.default));
-        assert.ok(event.data.toNumber() === 0);
+        assert.isTrue(event.from.equals(PublicKey.default));
+        assert.strictEqual(event.data.toNumber(), 0);
       }
     });
   });
 
   it("Errors when setting an out of bounds index", async () => {
     // Fail to set non existing index.
-    await assert.rejects(
+    await nativeAssert.rejects(
       async () => {
         await program.rpc.updateLargeAccount(25000, new BN(1), {
           accounts: {

@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 
 describe("multisig", () => {
   // Configure the client to use the local cluster.
@@ -41,8 +41,8 @@ describe("multisig", () => {
       multisig.publicKey
     );
 
-    assert.equal(multisigAccount.nonce, nonce);
-    assert.ok(multisigAccount.threshold.eq(new anchor.BN(2)));
+    assert.strictEqual(multisigAccount.nonce, nonce);
+    assert.isTrue(multisigAccount.threshold.eq(new anchor.BN(2)));
     assert.deepEqual(multisigAccount.owners, owners);
 
     const pid = program.programId;
@@ -85,11 +85,11 @@ describe("multisig", () => {
       transaction.publicKey
     );
 
-    assert.ok(txAccount.programId.equals(pid));
+    assert.isTrue(txAccount.programId.equals(pid));
     assert.deepEqual(txAccount.accounts, accounts);
     assert.deepEqual(txAccount.data, data);
-    assert.ok(txAccount.multisig.equals(multisig.publicKey));
-    assert.equal(txAccount.didExecute, false);
+    assert.isTrue(txAccount.multisig.equals(multisig.publicKey));
+    assert.strictEqual(txAccount.didExecute, false);
 
     // Other owner approves transaction.
     await program.rpc.approve({
@@ -128,8 +128,8 @@ describe("multisig", () => {
 
     multisigAccount = await program.account.multisig.fetch(multisig.publicKey);
 
-    assert.equal(multisigAccount.nonce, nonce);
-    assert.ok(multisigAccount.threshold.eq(new anchor.BN(2)));
+    assert.strictEqual(multisigAccount.nonce, nonce);
+    assert.isTrue(multisigAccount.threshold.eq(new anchor.BN(2)));
     assert.deepEqual(multisigAccount.owners, newOwners);
   });
 });

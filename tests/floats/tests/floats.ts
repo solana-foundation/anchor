@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { Program, getProvider } from "@project-serum/anchor";
 import { Keypair, SystemProgram } from "@solana/web3.js";
 import { Floats } from "../target/types/floats";
-import assert from "assert";
+import { assert } from "chai";
 
 describe("floats", () => {
   // Configure the client to use the local cluster.

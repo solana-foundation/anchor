@@ -1,5 +1,5 @@
 const anchor = require("@project-serum/anchor");
-const assert = require("assert");
+const { assert } = require("chai");
 const { PublicKey } = anchor.web3;
 
 describe("chat", () => {
@@ -26,10 +26,10 @@ describe("chat", () => {
 
     const chat = await program.account.chatRoom.fetch(chatRoom.publicKey);
     const name = new TextDecoder("utf-8").decode(new Uint8Array(chat.name));
-    assert.ok(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
-    assert.ok(chat.messages.length === 33607);
-    assert.ok(chat.head.toNumber() === 0);
-    assert.ok(chat.tail.toNumber() === 0);
+    assert.isTrue(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
+    assert.lengthOf(chat.messages, 33607);
+    assert.strictEqual(chat.head.toNumber(), 0);
+    assert.strictEqual(chat.tail.toNumber(), 0);
   });
 
   it("Creates a user", async () => {
@@ -46,8 +46,8 @@ describe("chat", () => {
       },
     });
     const account = await program.account.user.fetch(user);
-    assert.ok(account.name === "My User");
-    assert.ok(account.authority.equals(authority));
+    assert.strictEqual(account.name, "My User");
+    assert.isTrue(account.authority.equals(authority));
   });
 
   it("Sends messages", async () => {
@@ -85,19 +85,20 @@ describe("chat", () => {
     // Check the chat room state is as expected.
     const chat = await program.account.chatRoom.fetch(chatRoom.publicKey);
     const name = new TextDecoder("utf-8").decode(new Uint8Array(chat.name));
-    assert.ok(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
-    assert.ok(chat.messages.length === 33607);
-    assert.ok(chat.head.toNumber() === numMessages);
-    assert.ok(chat.tail.toNumber() === 0);
+    assert.isTrue(name.startsWith("Test Chat")); // [u8; 280] => trailing zeros.
+    assert.lengthOf(chat.messages, 33607);
+    assert.strictEqual(chat.head.toNumber(), numMessages);
+    assert.strictEqual(chat.tail.toNumber(), 0);
     chat.messages.forEach((msg, idx) => {
       if (idx < 10) {
         const data = new TextDecoder("utf-8").decode(new Uint8Array(msg.data));
         console.log("Message", data);
-        assert.ok(msg.from.equals(user));
-        assert.ok(data.startsWith(messages[idx]));
+        assert.isTrue(msg.from.equals(user));
+        assert.isTrue(data.startsWith(messages[idx]));
       } else {
-        assert.ok(
-          JSON.stringify(msg.data) === JSON.stringify(new Array(280).fill(0))
+        assert.strictEqual(
+          JSON.stringify(msg.data),
+          JSON.stringify(new Array(280).fill(0))
         );
       }
     });
