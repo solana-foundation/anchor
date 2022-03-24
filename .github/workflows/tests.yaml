@@ -329,6 +329,8 @@ jobs:
             path: tests/custom-coder
           - cmd: cd tests/validator-clone && yarn --frozen-lockfile && anchor test --skip-lint
             path: tests/validator-clone
+          - cmd: cd tests/cpi-returns && anchor test --skip-lint
+            path: tests/cpi-returns
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/

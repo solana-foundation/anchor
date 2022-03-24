@@ -66,6 +66,7 @@ pub fn parse(
                                     name,
                                     accounts,
                                     args,
+                                    returns: None,
                                 }
                             })
                             .collect::<Vec<_>>()
@@ -105,6 +106,7 @@ pub fn parse(
                         name,
                         accounts,
                         args,
+                        returns: None,
                     }
                 };
 
@@ -164,10 +166,16 @@ pub fn parse(
             // todo: don't unwrap
             let accounts_strct = accs.get(&ix.anchor_ident.to_string()).unwrap();
             let accounts = idl_accounts(&ctx, accounts_strct, &accs, seeds_feature);
+            let ret_type_str = ix.returns.ty.to_token_stream().to_string();
+            let returns = match ret_type_str.as_str() {
+                "()" => None,
+                _ => Some(ret_type_str.parse().unwrap()),
+            };
             IdlInstruction {
                 name: ix.ident.to_string().to_mixed_case(),
                 accounts,
                 args,
+                returns,
             }
         })
         .collect::<Vec<_>>();

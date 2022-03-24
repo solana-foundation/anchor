@@ -1,7 +1,7 @@
 use crate::codegen::program::common::*;
 use crate::{Program, State};
 use heck::CamelCase;
-use quote::quote;
+use quote::{quote, ToTokens};
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -694,6 +694,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let anchor = &ix.anchor_ident;
             let variant_arm = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
             let ix_name_log = format!("Instruction: {}", ix_name);
+            let ret_type = &ix.returns.ty.to_token_stream();
+            let maybe_set_return_data = match ret_type.to_string().as_str() {
+                "()" => quote! {},
+                _ => quote! {
+                    anchor_lang::solana_program::program::set_return_data(&result.try_to_vec().unwrap());
+                },
+            };
             quote! {
                 #[inline(never)]
                 pub fn #ix_method_name(
@@ -722,7 +729,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     )?;
 
                     // Invoke user defined handler.
-                    #program_name::#ix_method_name(
+                    let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
                             program_id,
                             &mut accounts,
@@ -731,6 +738,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         ),
                         #(#ix_arg_names),*
                     )?;
+
+                    // Maybe set Solana return data.
+                    #maybe_set_return_data
 
                     // Exit routine.
                     accounts.exit(program_id)

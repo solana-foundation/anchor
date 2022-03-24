@@ -2,7 +2,7 @@ use crate::codegen::program::common::{generate_ix_variant, sighash, SIGHASH_GLOB
 use crate::Program;
 use crate::StateIx;
 use heck::SnakeCase;
-use quote::quote;
+use quote::{quote, ToTokens};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Generate cpi methods for the state struct.
@@ -70,11 +70,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, name);
                 let sighash_tts: proc_macro2::TokenStream =
                     format!("{:?}", sighash_arr).parse().unwrap();
+                let ret_type = &ix.returns.ty.to_token_stream();
+                let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
+                    "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
+                    _ => (
+                        quote! { anchor_lang::Result<crate::cpi::Return::<#ret_type>> },
+                        quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData }) }
+                    )
+                };
+
                 quote! {
                     pub fn #method_name<'a, 'b, 'c, 'info>(
                         ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
-                    ) -> anchor_lang::Result<()> {
+                    ) -> #method_ret {
                         let ix = {
                             let ix = instruction::#ix_variant;
                             let mut ix_data = AnchorSerialize::try_to_vec(&ix)
@@ -93,7 +102,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,
-                        ).map_err(Into::into)
+                        ).map_or_else(
+                            |e| Err(Into::into(e)),
+                            // Maybe handle Solana return data.
+                            |_| { #maybe_return }
+                        )
                     }
                 }
             };
@@ -108,11 +121,23 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         #[cfg(feature = "cpi")]
         pub mod cpi {
             use super::*;
+            use std::marker::PhantomData;
 
             pub mod state {
                 use super::*;
 
                 #(#state_cpi_methods)*
+            }
+
+            pub struct Return<T> {
+                phantom: std::marker::PhantomData<T>
+            }
+
+            impl<T: AnchorDeserialize> Return<T> {
+                pub fn get(&self) -> T {
+                    let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                    T::try_from_slice(&data).unwrap()
+                }
             }
 
             #(#global_cpi_methods)*

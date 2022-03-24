@@ -38,6 +38,7 @@ export type IdlInstruction = {
   name: string;
   accounts: IdlAccountItem[];
   args: IdlField[];
+  returns?: IdlType;
 };
 
 export type IdlState = {

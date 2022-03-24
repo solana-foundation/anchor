@@ -31,7 +31,8 @@
     "typescript",
     "validator-clone",
     "zero-copy",
-    "declare-id"
+    "declare-id",
+    "cpi-returns"
   ],
   "dependencies": {
     "@project-serum/anchor": "^0.23.0",

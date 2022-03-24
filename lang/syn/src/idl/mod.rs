@@ -45,6 +45,7 @@ pub struct IdlInstruction {
     pub name: String,
     pub accounts: Vec<IdlAccountItem>,
     pub args: Vec<IdlField>,
+    pub returns: Option<IdlType>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

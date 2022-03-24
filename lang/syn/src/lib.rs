@@ -14,7 +14,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{
     Expr, Generics, Ident, ImplItemMethod, ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, LitInt,
-    LitStr, PatType, Token, TypePath,
+    LitStr, PatType, Token, Type, TypePath,
 };
 
 pub mod codegen;
@@ -85,6 +85,7 @@ pub struct Ix {
     pub raw_method: ItemFn,
     pub ident: Ident,
     pub args: Vec<IxArg>,
+    pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
 }
@@ -93,6 +94,11 @@ pub struct Ix {
 pub struct IxArg {
     pub name: Ident,
     pub raw_arg: PatType,
+}
+
+#[derive(Debug)]
+pub struct IxReturn {
+    pub ty: Type,
 }
 
 #[derive(Debug)]
