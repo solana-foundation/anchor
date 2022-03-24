@@ -8,6 +8,7 @@ use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use config::{default_faucet_port, default_rpc_port};
 use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
@@ -2136,6 +2137,27 @@ fn start_test_validator(
     };
 
     let rpc_url = test_validator_rpc_url(cfg);
+
+    let rpc_port = cfg
+        .test
+        .as_ref()
+        .and_then(|test| test.validator.as_ref().map(|v| v.rpc_port))
+        .unwrap_or_else(default_rpc_port);
+    if !portpicker::is_free(rpc_port) {
+        return Err(anyhow!(
+            "Your configured rpc port: {rpc_port} is already in use"
+        ));
+    }
+    let faucet_port = cfg
+        .test
+        .as_ref()
+        .and_then(|test| test.validator.as_ref().map(|v| v.faucet_port))
+        .unwrap_or_else(default_faucet_port);
+    if !portpicker::is_free(faucet_port) {
+        return Err(anyhow!(
+            "Your configured faucet port: {faucet_port} is already in use"
+        ));
+    }
 
     let mut validator_handle = std::process::Command::new("solana-test-validator")
         .arg("--ledger")

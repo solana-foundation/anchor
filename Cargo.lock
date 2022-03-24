@@ -163,7 +163,8 @@ dependencies = [
  "flate2",
  "heck 0.3.3",
  "pathdiff",
- "rand",
+ "portpicker",
+ "rand 0.7.3",
  "reqwest",
  "semver 1.0.6",
  "serde",
@@ -171,6 +172,7 @@ dependencies = [
  "shellexpand",
  "solana-cli-config",
  "solana-client",
+ "solana-faucet",
  "solana-program",
  "solana-sdk",
  "syn 1.0.88",
@@ -1067,7 +1069,7 @@ checksum = "c762bae6dcaf24c4c84667b8579785430908723d5c889f469d76a41d59cc7a9d"
 dependencies = [
  "curve25519-dalek 3.2.0",
  "ed25519",
- "rand",
+ "rand 0.7.3",
  "serde",
  "serde_bytes",
  "sha2",
@@ -1792,7 +1794,7 @@ dependencies = [
  "libsecp256k1-core",
  "libsecp256k1-gen-ecmult",
  "libsecp256k1-gen-genmult",
- "rand",
+ "rand 0.7.3",
  "serde",
  "sha2",
  "typenum",
@@ -2261,6 +2263,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 
 [[package]]
+name = "portpicker"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be97d76faf1bfab666e1375477b23fde79eccf0276e9b63b92a39d676a889ba9"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2375,9 +2386,20 @@ checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
 dependencies = [
  "getrandom 0.1.16",
  "libc",
- "rand_chacha",
+ "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "rand_hc",
+]
+
+[[package]]
+name = "rand"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+dependencies = [
+ "libc",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
 ]
 
 [[package]]
@@ -2388,6 +2410,16 @@ checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
 dependencies = [
  "ppv-lite86",
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "rand_chacha"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
+dependencies = [
+ "ppv-lite86",
+ "rand_core 0.6.3",
 ]
 
 [[package]]
@@ -2404,6 +2436,9 @@ name = "rand_core"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
+dependencies = [
+ "getrandom 0.2.5",
+]
 
 [[package]]
 name = "rand_hc"
@@ -2968,7 +3003,7 @@ dependencies = [
  "bv",
  "fnv",
  "log",
- "rand",
+ "rand 0.7.3",
  "rayon",
  "rustc_version 0.4.0",
  "serde",
@@ -3082,7 +3117,7 @@ dependencies = [
  "either",
  "lazy_static",
  "libc",
- "rand_chacha",
+ "rand_chacha 0.2.2",
  "regex-syntax",
  "reqwest",
  "ring",
@@ -3202,7 +3237,7 @@ dependencies = [
  "clap 2.34.0",
  "log",
  "nix",
- "rand",
+ "rand 0.7.3",
  "serde",
  "serde_derive",
  "socket2 0.3.19",
@@ -3230,7 +3265,7 @@ dependencies = [
  "libc",
  "log",
  "nix",
- "rand",
+ "rand 0.7.3",
  "rayon",
  "serde",
  "solana-bloom",
@@ -3263,7 +3298,7 @@ dependencies = [
  "log",
  "num-derive",
  "num-traits",
- "rand",
+ "rand 0.7.3",
  "rustc_version 0.2.3",
  "rustversion",
  "serde",
@@ -3336,7 +3371,7 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "ouroboros",
- "rand",
+ "rand 0.7.3",
  "rayon",
  "regex",
  "rustc_version 0.2.3",
@@ -3395,8 +3430,8 @@ dependencies = [
  "num-traits",
  "pbkdf2 0.6.0",
  "qstring",
- "rand",
- "rand_chacha",
+ "rand 0.7.3",
+ "rand_chacha 0.2.2",
  "rand_core 0.6.3",
  "rustc_version 0.2.3",
  "rustversion",
@@ -3742,7 +3777,7 @@ dependencies = [
  "hmac 0.8.1",
  "once_cell",
  "pbkdf2 0.4.0",
- "rand",
+ "rand 0.7.3",
  "rustc-hash",
  "sha2",
  "thiserror",
@@ -3887,7 +3922,7 @@ dependencies = [
  "input_buffer",
  "log",
  "native-tls",
- "rand",
+ "rand 0.7.3",
  "sha-1",
  "url",
  "utf-8",
