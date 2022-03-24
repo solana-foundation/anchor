@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Fixes
 
 * avm: `avm install` no longer downloads the version if already installed in the machine ([#1670](https://github.com/project-serum/anchor/pull/1670)).
+* lang: Return proper error instead of panicking if account length is smaller than discriminator in functions of `(Account)Loader` ([#1678](https://github.com/project-serum/anchor/pull/1678)).
 
 ### Breaking
 

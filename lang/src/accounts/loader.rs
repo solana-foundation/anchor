@@ -63,6 +63,9 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
                 .with_pubkeys((*acc_info.owner, *program_id)));
         }
         let data: &[u8] = &acc_info.try_borrow_data()?;
+        if data.len() < T::discriminator().len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
         // Discriminator must match.
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &T::discriminator() {
@@ -90,6 +93,9 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
     #[allow(deprecated)]
     pub fn load(&self) -> Result<Ref<T>> {
         let data = self.acc_info.try_borrow_data()?;
+        if data.len() < T::discriminator().len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
 
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &T::discriminator() {
@@ -109,6 +115,9 @@ impl<'info, T: ZeroCopy> Loader<'info, T> {
         }
 
         let data = self.acc_info.try_borrow_mut_data()?;
+        if data.len() < T::discriminator().len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
 
         let disc_bytes = array_ref![data, 0, 8];
         if disc_bytes != &T::discriminator() {
