@@ -254,9 +254,7 @@ pub mod prelude {
     pub use solana_program::pubkey::Pubkey;
     pub use solana_program::sysvar::clock::Clock;
     pub use solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_program::sysvar::fees::Fees;
     pub use solana_program::sysvar::instructions::Instructions;
-    pub use solana_program::sysvar::recent_blockhashes::RecentBlockhashes;
     pub use solana_program::sysvar::rent::Rent;
     pub use solana_program::sysvar::rewards::Rewards;
     pub use solana_program::sysvar::slot_hashes::SlotHashes;

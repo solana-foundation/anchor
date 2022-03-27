@@ -11,7 +11,7 @@ mod account;
 mod context;
 mod event;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh");
 
 #[constant]
 pub const BASE: u128 = 1_000_000;

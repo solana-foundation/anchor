@@ -8,7 +8,7 @@ on:
     branches:
       - master
 env:
-  SOLANA_CLI_VERSION: 1.8.14
+  SOLANA_CLI_VERSION: 1.9.13
   NODE_VERSION: 17.0.1
 
 jobs:
@@ -238,6 +238,56 @@ jobs:
       - run: cd tests/bpf-upgradeable-state && solana program deploy --program-id program_with_different_programdata.json target/deploy/bpf_upgradeable_state.so
       - run: cd tests/bpf-upgradeable-state && cp bpf_upgradeable_state-keypair.json target/deploy/bpf_upgradeable_state-keypair.json && anchor test --skip-local-validator --skip-build --skip-lint
       - uses: ./.github/actions/git-diff/
+
+  # this test exists to make sure that anchor
+  # checks rent correctly for legacy accounts
+  # that don't have to be rent-exempt
+  test-misc-non-rent-exempt:
+    # the anchor cli is built with a different solana version
+    # but that's fine since it's just the cli
+    needs: setup-anchor-cli 
+    name: Test tests/misc/nonRentExempt
+    runs-on: ubuntu-18.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-ts/
+      - uses: actions/cache@v2
+        name: Cache Solana Tool Suite
+        id: cache-solana
+        with:
+          path: |
+            ~/.cache/solana/
+            ~/.local/share/solana/
+          key: solana-${{ runner.os }}-v0000-1.8.14
+      # using an outdated validator but that
+      # is ok as long as the test doesn't
+      # include newer incompatible features
+      - run: sh -c "$(curl -sSfL https://release.solana.com/v1.8.14/install)"
+        shell: bash
+      - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        shell: bash
+      - run: solana-keygen new --no-bip39-passphrase
+        shell: bash
+      - run: solana config set --url localhost
+        shell: bash
+      - uses: actions/download-artifact@v2
+        with:
+          name: anchor-binary
+          path: ~/.cargo/bin/
+      - run: chmod +x ~/.cargo/bin/anchor
+      - uses: actions/cache@v2
+        name: Cache tests/misc target
+        id: cache-test-target
+        with:
+          path: tests/misc/target
+          key: cargo-${{ runner.os }}-tests/misc-${{ env.ANCHOR_VERSION }}-1.8.14-${{ hashFiles('**/Cargo.lock') }}
+      
+      - run: cd tests/misc && yarn --frozen-lockfile
+      - run: cd tests/misc && yarn link @project-serum/anchor
+      - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
+      - run: cd tests/misc && anchor test --skip-lint
 
   test-anchor-init:
     needs: setup-anchor-cli

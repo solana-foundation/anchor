@@ -544,12 +544,12 @@ impl<'a> RequestBuilder<'a> {
         let rpc_client = RpcClient::new_with_commitment(self.cluster, self.options);
 
         let tx = {
-            let (recent_hash, _fee_calc) = rpc_client.get_recent_blockhash()?;
+            let latest_hash = rpc_client.get_latest_blockhash()?;
             Transaction::new_signed_with_payer(
                 &instructions,
                 Some(&self.payer.pubkey()),
                 &signers,
-                recent_hash,
+                latest_hash,
             )
         };
 

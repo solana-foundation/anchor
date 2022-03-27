@@ -12,6 +12,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Misc } from "../target/types/misc";
+import { Misc2 } from "../target/types/misc2";
 const utf8 = anchor.utils.bytes.utf8;
 const { assert } = require("chai");
 const nativeAssert = require("assert");
@@ -20,8 +21,8 @@ const miscIdl = require("../target/idl/misc.json");
 describe("misc", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
-  const program = anchor.workspace.Misc;
-  const misc2Program = anchor.workspace.Misc2;
+  const program = anchor.workspace.Misc as Program<Misc>;
+  const misc2Program = anchor.workspace.Misc2 as Program<Misc2>;
 
   it("Can allocate extra space for a state constructor", async () => {
     const tx = await program.state.rpc.new();
@@ -152,15 +153,15 @@ describe("misc", () => {
   it("Can retrieve events when simulating a transaction", async () => {
     const resp = await program.simulate.testSimulate(44);
     const expectedRaw = [
-      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS invoke [1]",
+      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh invoke [1]",
       "Program log: Instruction: TestSimulate",
       "Program data: NgyCA9omwbMsAAAA",
       "Program data: fPhuIELK/k7SBAAA",
       "Program data: jvbowsvlmkcJAAAA",
       "Program data: zxM5neEnS1kBAgMEBQYHCAkK",
       "Program data: g06Ei2GL1gIBAgMEBQYHCAkKCw==",
-      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS consumed 5320 of 200000 compute units",
-      "Program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS success",
+      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 5395 of 1400000 compute units",
+      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh success",
     ];
 
     assert.deepStrictEqual(expectedRaw, resp.raw);
@@ -1456,34 +1457,6 @@ describe("misc", () => {
     }
   });
 
-  it("init_if_needed checks rent_exemption if init is not needed", async () => {
-    const data = anchor.web3.Keypair.generate();
-    await program.rpc.initDecreaseLamports({
-      accounts: {
-        data: data.publicKey,
-        user: anchor.getProvider().wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      },
-      signers: [data],
-    });
-
-    try {
-      await program.rpc.initIfNeededChecksRentExemption({
-        accounts: {
-          data: data.publicKey,
-          user: anchor.getProvider().wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        },
-        signers: [data],
-      });
-      assert.ok(false);
-    } catch (_err) {
-      assert.isTrue(_err instanceof AnchorError);
-      const err: AnchorError = _err;
-      assert.strictEqual(err.error.errorCode.number, 2005);
-    }
-  });
-
   it("Can use multidimensional array", async () => {
     const array2d = new Array(10).fill(new Array(10).fill(99));
     const data = anchor.web3.Keypair.generate();
@@ -1523,97 +1496,6 @@ describe("misc", () => {
         data.publicKey
       );
     assert.deepStrictEqual(dataAccount.data, array2d);
-  });
-
-  it("allows non-rent exempt accounts", async () => {
-    const data = anchor.web3.Keypair.generate();
-    await program.rpc.initializeNoRentExempt({
-      accounts: {
-        data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [data],
-      instructions: [
-        SystemProgram.createAccount({
-          programId: program.programId,
-          space: 8 + 16 + 16,
-          lamports:
-            await program.provider.connection.getMinimumBalanceForRentExemption(
-              39
-            ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
-          newAccountPubkey: data.publicKey,
-        }),
-      ],
-    });
-    await program.rpc.testNoRentExempt({
-      accounts: {
-        data: data.publicKey,
-      },
-    });
-  });
-
-  it("allows rent exemption to be skipped", async () => {
-    const data = anchor.web3.Keypair.generate();
-    await program.rpc.initializeSkipRentExempt({
-      accounts: {
-        data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [data],
-      instructions: [
-        SystemProgram.createAccount({
-          programId: program.programId,
-          space: 8 + 16 + 16,
-          lamports:
-            await program.provider.connection.getMinimumBalanceForRentExemption(
-              39
-            ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
-          newAccountPubkey: data.publicKey,
-        }),
-      ],
-    });
-  });
-
-  it("can use rent_exempt to enforce rent exemption", async () => {
-    const data = anchor.web3.Keypair.generate();
-    await program.rpc.initializeSkipRentExempt({
-      accounts: {
-        data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [data],
-      instructions: [
-        SystemProgram.createAccount({
-          programId: program.programId,
-          space: 8 + 16 + 16,
-          lamports:
-            await program.provider.connection.getMinimumBalanceForRentExemption(
-              39
-            ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
-          newAccountPubkey: data.publicKey,
-        }),
-      ],
-    });
-
-    try {
-      await program.rpc.testEnforceRentExempt({
-        accounts: {
-          data: data.publicKey,
-        },
-      });
-      assert.ok(false);
-    } catch (_err) {
-      assert.isTrue(_err instanceof AnchorError);
-      const err: AnchorError = _err;
-      assert.strictEqual(err.error.errorCode.number, 2005);
-      assert.strictEqual(
-        "A rent exemption constraint was violated",
-        err.error.errorMessage
-      );
-    }
   });
 
   describe("Can validate PDAs derived from other program ids", () => {
