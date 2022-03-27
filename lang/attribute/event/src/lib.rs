@@ -7,6 +7,8 @@ use syn::parse_macro_input;
 /// [emit!](./macro.emit.html) so that programs can log significant events in
 /// their programs that clients can subscribe to. Currently, this macro is for
 /// structs only.
+///
+/// See the [`emit!` macro](emit!) for an example.
 #[proc_macro_attribute]
 pub fn event(
     _args: proc_macro::TokenStream,
@@ -50,6 +52,26 @@ pub fn event(
 /// syscall which results in the following log:
 /// ```ignore
 /// Program data: <Base64EncodedEvent>
+/// ```
+/// # Example
+///
+/// ```rust,ignore
+/// use anchor_lang::prelude::*;
+///
+/// // handler function inside #[program]
+/// pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
+///     emit!(MyEvent {
+///         data: 5,
+///         label: [1,2,3,4,5],
+///     });
+///     Ok(())
+/// }
+///
+/// #[event]
+/// pub struct MyEvent {
+///     pub data: u64,
+///     pub label: [u8; 5],
+/// }
 /// ```
 #[proc_macro]
 pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

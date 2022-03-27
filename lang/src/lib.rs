@@ -185,7 +185,7 @@ pub trait InstructionData: AnchorSerialize {
     fn data(&self) -> Vec<u8>;
 }
 
-/// An event that can be emitted via a Solana log.
+/// An event that can be emitted via a Solana log. See [`emit!`](crate::prelude::emit) for an example.
 pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
     fn data(&self) -> Vec<u8>;
 }
