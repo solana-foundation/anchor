@@ -52,7 +52,7 @@ pub fn cargo_toml(name: &str) -> String {
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -295,6 +295,7 @@ pub fn git_ignore() -> &'static str {
 target
 **/*.rs.bk
 node_modules
+test-ledger
 "#
 }
 
