@@ -381,6 +381,8 @@ jobs:
             path: tests/validator-clone
           - cmd: cd tests/cpi-returns && anchor test --skip-lint
             path: tests/cpi-returns
+          - cmd: cd tests/multiple-suites && anchor test --skip-lint
+            path: tests/multiple-suites
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/

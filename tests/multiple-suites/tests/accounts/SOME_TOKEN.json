@@ -1,0 +1,13 @@
+{
+  "pubkey": "C4XeBpzX4tDjGV1gkLsj7jJh6XHunVqAykANWCfTLszw",
+  "account": {
+    "lamports": 839123197950,
+    "data": [
+      "AAAAAFnkpzMo+KIHXFu0C7POimfWZAwz81Y+ImohwO+lC39o2tFLxYmAIwAGAQAAAABZ5KczKPiiB1xbtAuzzopn1mQMM/NWPiJqIcDvpQt/aA==",
+      "base64"
+    ],
+    "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "executable": false,
+    "rentEpoch": 292
+  }
+}

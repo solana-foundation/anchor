@@ -12,6 +12,8 @@ examples/*/Cargo.lock
 examples/**/Cargo.lock
 tests/*/Cargo.lock
 tests/**/Cargo.lock
+tests/*/yarn.lock
+tests/**/yarn.lock
 .DS_Store
 docs/yarn.lock
 ts/docs/

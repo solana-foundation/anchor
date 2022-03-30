@@ -1,0 +1,5 @@
+extends = ["./Test.root.base.toml"]
+
+[[test.validator.account]]
+address = "C4XeBpzX4tDjGV1gkLsj7jJh6XHunVqAykANWCfTLszw"
+filename = "./accounts/SOME_TOKEN.json"

@@ -39,6 +39,6 @@ reqwest = { version = "0.11.4", features = ["multipart", "blocking"] }
 tokio = "1.0"
 pathdiff = "0.2.0"
 cargo_toml = "0.9.2"
-walkdir = "2"
+walkdir = "2.3.2"
 chrono = "0.4.19"
 portpicker = "0.1.1"

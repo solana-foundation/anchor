@@ -1,0 +1,18 @@
+[features]
+seeds = false
+[programs.localnet]
+multiple_suites = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[test]
+startup_wait = 20000
+
+[[test.validator.account]]
+address = "C4XeBpzX4tDjGV1gkLsj7jJh6XHunVqAykANWCfTLszw"
+filename = "./tests/accounts/SOME_ACCOUNT.json"

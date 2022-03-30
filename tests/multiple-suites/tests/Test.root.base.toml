@@ -1,0 +1,12 @@
+[test]
+startup_wait = 20000
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+[[test.validator.account]]
+address = "JC7Vcye5upE6tMLAjAem76MCGuPNidTtg2cuYm71UukH"
+filename = "./accounts/ANOTHER_ACC.json"

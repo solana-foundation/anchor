@@ -32,7 +32,8 @@
     "validator-clone",
     "zero-copy",
     "declare-id",
-    "cpi-returns"
+    "cpi-returns",
+    "multiple-suites"
   ],
   "dependencies": {
     "@project-serum/anchor": "^0.23.0",
