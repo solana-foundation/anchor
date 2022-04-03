@@ -160,7 +160,7 @@ describe("misc", () => {
       "Program data: jvbowsvlmkcJAAAA",
       "Program data: zxM5neEnS1kBAgMEBQYHCAkK",
       "Program data: g06Ei2GL1gIBAgMEBQYHCAkKCw==",
-      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 5395 of 1400000 compute units",
+      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 5418 of 1400000 compute units",
       "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh success",
     ];
 
