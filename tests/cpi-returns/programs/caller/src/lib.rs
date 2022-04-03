@@ -9,6 +9,12 @@ declare_id!("HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L");
 pub mod caller {
     use super::*;
 
+    #[derive(AnchorSerialize, AnchorDeserialize)]
+    pub struct Struct {
+        pub a: u64,
+        pub b: u64,
+    }
+
     pub fn cpi_call_return_u64(ctx: Context<CpiReturnContext>) -> Result<()> {
         let cpi_program = ctx.accounts.cpi_return_program.to_account_info();
         let cpi_accounts = CpiReturn {
@@ -44,6 +50,18 @@ pub mod caller {
         anchor_lang::solana_program::log::sol_log_data(&[&solana_return.try_to_vec().unwrap()]);
         Ok(())
     }
+
+    pub fn return_u64(ctx: Context<ReturnContext>) -> Result<u64> {
+        Ok(99)
+    }
+
+    pub fn return_struct(ctx: Context<ReturnContext>) -> Result<Struct> {
+        Ok(Struct { a: 1, b: 2 })
+    }
+
+    pub fn return_vec(ctx: Context<ReturnContext>) -> Result<Vec<u64>> {
+        Ok(vec![1, 2, 3])
+    }
 }
 
 #[derive(Accounts)]
@@ -52,3 +70,6 @@ pub struct CpiReturnContext<'info> {
     pub cpi_return: Account<'info, CpiReturnAccount>,
     pub cpi_return_program: Program<'info, Callee>,
 }
+
+#[derive(Accounts)]
+pub struct ReturnContext {}

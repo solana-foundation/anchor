@@ -158,4 +158,63 @@ describe("CPI return", () => {
       defined: "StructReturn",
     });
   });
+
+  it("can return a u64 via view", async () => {
+    assert(new anchor.BN(99).eq(await callerProgram.views.returnU64()));
+    // Via methods API
+    assert(
+      new anchor.BN(99).eq(await callerProgram.methods.returnU64().view())
+    );
+  });
+
+  it("can return a struct via view", async () => {
+    const struct = await callerProgram.views.returnStruct();
+    assert(struct.a.eq(new anchor.BN(1)));
+    assert(struct.b.eq(new anchor.BN(2)));
+    // Via methods API
+    const struct2 = await callerProgram.methods.returnStruct().view();
+    assert(struct2.a.eq(new anchor.BN(1)));
+    assert(struct2.b.eq(new anchor.BN(2)));
+  });
+
+  it("can return a vec via view", async () => {
+    const vec = await callerProgram.views.returnVec();
+    assert(vec[0].eq(new anchor.BN(1)));
+    assert(vec[1].eq(new anchor.BN(2)));
+    assert(vec[2].eq(new anchor.BN(3)));
+    // Via methods API
+    const vec2 = await callerProgram.methods.returnVec().view();
+    assert(vec2[0].eq(new anchor.BN(1)));
+    assert(vec2[1].eq(new anchor.BN(2)));
+    assert(vec2[2].eq(new anchor.BN(3)));
+  });
+
+  it("can return a u64 from an account via view", async () => {
+    const value = new anchor.BN(10);
+    assert(
+      value.eq(
+        await calleeProgram.methods
+          .returnU64FromAccount()
+          .accounts({ account: cpiReturn.publicKey })
+          .view()
+      )
+    );
+  });
+
+  it("cant call view on mutable instruction", async () => {
+    assert.equal(calleeProgram.views.initialize, undefined);
+    try {
+      await calleeProgram.methods
+        .initialize()
+        .accounts({
+          account: cpiReturn.publicKey,
+          user: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([cpiReturn])
+        .view();
+    } catch (e) {
+      assert(e.message.includes("Method does not support views"));
+    }
+  });
 });

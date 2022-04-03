@@ -11,7 +11,9 @@ pub mod callee {
         pub value: u64,
     }
 
-    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        let account = &mut ctx.accounts.account;
+        account.value = 10;
         Ok(())
     }
 
@@ -27,6 +29,12 @@ pub mod callee {
     pub fn return_vec(_ctx: Context<CpiReturn>) -> Result<Vec<u8>> {
         Ok(vec![12, 13, 14, 100])
     }
+
+    // Used for testing views
+    pub fn return_u64_from_account(ctx: Context<CpiReturn>) -> Result<u64> {
+        let account = &ctx.accounts.account;
+        Ok(account.value)
+    }
 }
 
 #[derive(Accounts)]
@@ -40,7 +48,6 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct CpiReturn<'info> {
-    #[account(mut)]
     pub account: Account<'info, CpiReturnAccount>,
 }
 
