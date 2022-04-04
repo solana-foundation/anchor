@@ -42,7 +42,7 @@ const PROGRAM_DATA: &str = "Program data: ";
 pub type EventHandle = PubsubClientSubscription<RpcResponse<RpcLogsResponse>>;
 
 /// Client defines the base configuration for building RPC clients to
-/// communitcate with Anchor programs running on a Solana cluster. It's
+/// communicate with Anchor programs running on a Solana cluster. It's
 /// primary use is to build a `Program` client via the `program` method.
 pub struct Client {
     cfg: Config,
