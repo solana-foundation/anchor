@@ -29,6 +29,10 @@ use solana_program::pubkey::Pubkey;
 // Sha256(anchor:idl)[..8];
 pub const IDL_IX_TAG: u64 = 0x0a69e9a778bcf440;
 
+// The Pubkey that is stored as the 'authority' on the IdlAccount when the authority
+// is "erased".
+pub const ERASED_AUTHORITY: Pubkey = Pubkey::new_from_array([0u8; 32]);
+
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum IdlInstruction {
     // One time initializer for creating the program's idl account.
@@ -52,8 +56,8 @@ pub struct IdlAccounts<'info> {
     #[account(mut, has_one = authority)]
     #[allow(deprecated)]
     pub idl: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
-    pub authority: AccountInfo<'info>,
+    #[account(constraint = authority.key != &ERASED_AUTHORITY)]
+    pub authority: Signer<'info>,
 }
 
 // Accounts for creating an idl buffer.
@@ -62,8 +66,8 @@ pub struct IdlCreateBuffer<'info> {
     #[account(zero)]
     #[allow(deprecated)]
     pub buffer: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
-    pub authority: AccountInfo<'info>,
+    #[account(constraint = authority.key != &ERASED_AUTHORITY)]
+    pub authority: Signer<'info>,
 }
 
 // Accounts for upgrading the canonical IdlAccount with the buffer.
@@ -77,8 +81,8 @@ pub struct IdlSetBuffer<'info> {
     #[account(mut, has_one = authority)]
     #[allow(deprecated)]
     pub idl: ProgramAccount<'info, IdlAccount>,
-    #[account(signer, constraint = authority.key != &Pubkey::new_from_array([0u8; 32]))]
-    pub authority: AccountInfo<'info>,
+    #[account(constraint = authority.key != &ERASED_AUTHORITY)]
+    pub authority: Signer<'info>,
 }
 
 // The account holding a program's IDL. This is stored on chain so that clients

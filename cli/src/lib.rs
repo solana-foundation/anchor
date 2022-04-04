@@ -3,7 +3,7 @@ use crate::config::{
     ProgramWorkspace, ScriptsConfig, TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
-use anchor_lang::idl::{IdlAccount, IdlInstruction};
+use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Result};
@@ -1681,9 +1681,7 @@ fn idl_erase_authority(cfg_override: &ConfigOverride, program_id: Pubkey) -> Res
         return Ok(());
     }
 
-    // Program will treat the zero authority as erased.
-    let new_authority = Pubkey::new_from_array([0u8; 32]);
-    idl_set_authority(cfg_override, program_id, None, new_authority)?;
+    idl_set_authority(cfg_override, program_id, None, ERASED_AUTHORITY)?;
 
     Ok(())
 }
