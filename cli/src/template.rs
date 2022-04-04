@@ -201,7 +201,7 @@ describe("{}", () => {{
   it("Is initialized!", async () => {{
     // Add your test here.
     const program = anchor.workspace.{};
-    const tx = await program.rpc.initialize();
+    const tx = await program.methods.initialize().rpc();
     console.log("Your transaction signature", tx);
   }});
 }});
@@ -262,7 +262,7 @@ describe("{}", () => {{
 
   it("Is initialized!", async () => {{
     // Add your test here.
-    const tx = await program.rpc.initialize({{}});
+    const tx = await program.methods.initialize().rpc();
     console.log("Your transaction signature", tx);
   }});
 }});
