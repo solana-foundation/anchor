@@ -35,6 +35,9 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     if is_init(af) || f.constraints.zeroed.is_some() {
                         let name = &f.ident;
                         quote!{
+                            if accounts.is_empty() {
+                                return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
+                            }
                             let #name = &accounts[0];
                             *accounts = &accounts[1..];
                         }
