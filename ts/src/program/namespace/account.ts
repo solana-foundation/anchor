@@ -66,7 +66,7 @@ type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
  * For the full API, see the [[AccountClient]] reference.
  */
 export type AccountNamespace<IDL extends Idl = Idl> = {
-  [M in keyof AllAccountsMap<IDL>]: AccountClient<IDL, AllAccountsMap<IDL>[M]>;
+  [M in keyof AllAccountsMap<IDL>]: AccountClient<IDL>;
 };
 
 export class AccountClient<
