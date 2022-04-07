@@ -680,11 +680,20 @@ impl _TestToml {
 /// into a canonical one
 fn canonicalize_filepath_from_origin(
     file_path: impl AsRef<Path>,
-    path: impl AsRef<Path>,
+    origin: impl AsRef<Path>,
 ) -> Result<String> {
     let previous_dir = std::env::current_dir()?;
-    std::env::set_current_dir(path.as_ref().parent().unwrap())?;
-    let result = fs::canonicalize(file_path)?.display().to_string();
+    std::env::set_current_dir(origin.as_ref().parent().unwrap())?;
+    let result = fs::canonicalize(&file_path)
+        .with_context(|| {
+            format!(
+                "Error reading (possibly relative) path: {}. If relative, this is the path that was used as the current path: {}",
+                &file_path.as_ref().display(),
+                &origin.as_ref().display()
+            )
+        })?
+        .display()
+        .to_string();
     std::env::set_current_dir(previous_dir)?;
     Ok(result)
 }
