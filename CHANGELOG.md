@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * ts: Add view functions ([#1695](https://github.com/project-serum/anchor/pull/1695)).
 * avm: New `avm update` command to update the Anchor CLI to the latest version ([#1670](https://github.com/project-serum/anchor/pull/1670)).
 * cli: Update js/ts templates to use new `program.methods` syntax ([#1732](https://github.com/project-serum/anchor/pull/1732)).
+* cli: Workspaces created with `anchor init` now come with the `prettier` formatter and scripts included ([#1741](https://github.com/project-serum/anchor/pull/1741)).
 
 ### Fixes
 

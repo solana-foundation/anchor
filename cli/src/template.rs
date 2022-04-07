@@ -214,12 +214,17 @@ describe("{}", () => {{
 pub fn package_json() -> String {
     format!(
         r#"{{
+    "scripts": {{
+        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+    }},
     "dependencies": {{
         "@project-serum/anchor": "^{0}"
     }},
     "devDependencies": {{
         "chai": "^4.3.4",
-        "mocha": "^9.0.3"
+        "mocha": "^9.0.3",
+        "prettier": "^2.6.2"
     }}
 }}
 "#,
@@ -230,6 +235,10 @@ pub fn package_json() -> String {
 pub fn ts_package_json() -> String {
     format!(
         r#"{{
+    "scripts": {{
+        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+    }},
     "dependencies": {{
         "@project-serum/anchor": "^{0}"
     }},
@@ -240,7 +249,8 @@ pub fn ts_package_json() -> String {
         "@types/bn.js": "^5.1.0",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^9.0.0",
-        "typescript": "^4.3.5"
+        "typescript": "^4.3.5",
+        "prettier": "^2.6.2"
     }}
 }}
 "#,
@@ -296,6 +306,18 @@ pub fn git_ignore() -> &'static str {
 target
 **/*.rs.bk
 node_modules
+test-ledger
+"#
+}
+
+pub fn prettier_ignore() -> &'static str {
+    r#"
+.anchor
+.DS_Store
+target
+node_modules
+dist
+build
 test-ledger
 "#
 }
