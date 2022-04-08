@@ -143,43 +143,33 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             // Split the instruction data into the first 8 byte method
             // identifier (sighash) and the serialized instruction data.
             let mut ix_data: &[u8] = data;
-            let sighash: Option<[u8; 8]> = {
+            let sighash: [u8; 8] = {
                 let mut sighash: [u8; 8] = [0; 8];
-                if ix_data.len() < 8 {
-                    None
-                } else {
-                    sighash.copy_from_slice(&ix_data[..8]);
-                    ix_data = &ix_data[8..];
-                    Some(sighash)
-                }
+                sighash.copy_from_slice(&ix_data[..8]);
+                ix_data = &ix_data[8..];
+                sighash
             };
 
             // If the method identifier is the IDL tag, then execute an IDL
             // instruction, injected into all Anchor programs.
             if cfg!(not(feature = "no-idl")) {
-                if let Some(sighash) = sighash {
-                    if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
-                        return __private::__idl::__idl_dispatch(
-                            program_id,
-                            accounts,
-                            &ix_data,
-                        );
-                    }
+                if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
+                    return __private::__idl::__idl_dispatch(
+                        program_id,
+                        accounts,
+                        &ix_data,
+                    );
                 }
             }
+
             match sighash {
-                Some(sighash) => {
-                    match sighash {
-                        #ctor_state_dispatch_arm
-                        #(#state_dispatch_arms)*
-                        #(#trait_dispatch_arms)*
-                        #(#global_dispatch_arms)*
-                        _ => {
-                            #fallback_fn
-                        }
-                    }
+                #ctor_state_dispatch_arm
+                #(#state_dispatch_arms)*
+                #(#trait_dispatch_arms)*
+                #(#global_dispatch_arms)*
+                _ => {
+                    #fallback_fn
                 }
-                None => #fallback_fn
             }
         }
     }
