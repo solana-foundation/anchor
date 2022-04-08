@@ -32,6 +32,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * spl: Re-export the `spl_token` crate ([#1665](https://github.com/project-serum/anchor/pull/1665)).
 * lang, cli, spl: Update solana toolchain to v1.9.13 ([#1653](https://github.com/project-serum/anchor/pull/1653)).
 * lang: Use fallback function if ix data length smaller than `8` instead of panicking ([#1721](https://github.com/project-serum/anchor/pull/1721)).
+* lang: `Program` type now deserializes `programdata_address` only on demand ([#1723](https://github.com/project-serum/anchor/pull/1723)).
 
 ## [0.23.0] - 2022-03-20
 

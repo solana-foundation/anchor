@@ -186,7 +186,7 @@ use std::ops::{Deref, DerefMut};
 ///     pub admin_settings: Account<'info, AdminSettings>,
 ///     #[account(mut)]
 ///     pub authority: Signer<'info>,
-///     #[account(constraint = program.programdata_address() == Some(program_data.key()))]
+///     #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
 ///     pub program: Program<'info, MyProgram>,
 ///     #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()))]
 ///     pub program_data: Account<'info, ProgramData>,
