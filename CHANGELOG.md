@@ -18,6 +18,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * avm: New `avm update` command to update the Anchor CLI to the latest version ([#1670](https://github.com/project-serum/anchor/pull/1670)).
 * cli: Update js/ts templates to use new `program.methods` syntax ([#1732](https://github.com/project-serum/anchor/pull/1732)).
 * cli: Workspaces created with `anchor init` now come with the `prettier` formatter and scripts included ([#1741](https://github.com/project-serum/anchor/pull/1741)).
+* ts: Add `pubkeys` function to methods builder to get all instruction account addresses ([#1733](https://github.com/project-serum/anchor/pull/1733)).
 
 ### Fixes
 

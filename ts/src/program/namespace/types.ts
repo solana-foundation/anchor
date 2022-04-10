@@ -88,6 +88,13 @@ export type InstructionContextFnArgs<
   Context<Accounts<I["accounts"][number]>>
 ];
 
+export type InstructionAccountAddresses<
+  IDL extends Idl,
+  I extends AllInstructions<IDL>
+> = {
+  [N in keyof Accounts<I["accounts"][number]>]: PublicKey;
+};
+
 export type MethodsFn<
   IDL extends Idl,
   I extends IDL["instructions"][number],

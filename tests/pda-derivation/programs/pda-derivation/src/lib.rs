@@ -22,7 +22,8 @@ pub mod pda_derivation {
         Ok(())
     }
 
-    pub fn init_my_account(ctx: Context<InitMyAccount>, seed_a: u8) -> Result<()> {
+    pub fn init_my_account(ctx: Context<InitMyAccount>, _seed_a: u8) -> Result<()> {
+        ctx.accounts.account.data = 1337;
         Ok(())
     }
 }

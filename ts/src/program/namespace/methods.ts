@@ -10,7 +10,12 @@ import {
 import { SimulateResponse } from "./simulate.js";
 import { TransactionFn } from "./transaction.js";
 import { Idl } from "../../idl.js";
-import { AllInstructions, MethodsFn, MakeMethodsNamespace } from "./types.js";
+import {
+  AllInstructions,
+  MethodsFn,
+  MakeMethodsNamespace,
+  InstructionAccountAddresses,
+} from "./types.js";
 import { InstructionFn } from "./instruction.js";
 import { RpcFn } from "./rpc.js";
 import { SimulateFn } from "./simulate.js";
@@ -81,6 +86,13 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
       _idlIx,
       _accountNamespace
     );
+  }
+
+  public async pubkeys(): Promise<
+    Partial<InstructionAccountAddresses<IDL, I>>
+  > {
+    await this._accountsResolver.resolve();
+    return this._accounts as Partial<InstructionAccountAddresses<IDL, I>>;
   }
 
   public accounts(
