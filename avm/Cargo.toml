@@ -24,3 +24,5 @@ thiserror = "1.0.30"
 once_cell = { version = "1.8.0" }
 reqwest = { version = "0.11.9", features = ['blocking', 'json'] }
 tempfile = "3.3.0"
+
+[workspace]

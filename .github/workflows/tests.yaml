@@ -37,6 +37,7 @@ jobs:
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      - run: cd avm && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test
       - run: cd ts && yarn --frozen-lockfile
       - run: cd ts && yarn test
       - run: cd ts && yarn lint
