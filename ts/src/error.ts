@@ -305,7 +305,7 @@ export function translateError(err: any, idlErrors: Map<number, string>) {
   return err;
 }
 
-const LangErrorCode = {
+export const LangErrorCode = {
   // Instructions.
   InstructionMissing: 100,
   InstructionFallbackNotFound: 101,
@@ -374,7 +374,7 @@ const LangErrorCode = {
   Deprecated: 5000,
 };
 
-const LangErrorMessage = new Map([
+export const LangErrorMessage = new Map([
   // Instructions.
   [
     LangErrorCode.InstructionMissing,

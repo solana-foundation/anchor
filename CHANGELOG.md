@@ -19,6 +19,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * cli: Update js/ts templates to use new `program.methods` syntax ([#1732](https://github.com/project-serum/anchor/pull/1732)).
 * cli: Workspaces created with `anchor init` now come with the `prettier` formatter and scripts included ([#1741](https://github.com/project-serum/anchor/pull/1741)).
 * ts: Add `pubkeys` function to methods builder to get all instruction account addresses ([#1733](https://github.com/project-serum/anchor/pull/1733)).
+* ts: Export `LangErrorCode` and `LangErrorMessage` from `error.ts` ([#1756](https://github.com/project-serum/anchor/pull/1756)).
 
 ### Fixes
 
