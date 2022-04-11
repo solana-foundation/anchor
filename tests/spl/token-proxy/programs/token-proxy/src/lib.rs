@@ -71,7 +71,7 @@ pub struct ProxyBurn<'info> {
     #[account(mut)]
     pub mint: AccountInfo<'info>,
     #[account(mut)]
-    pub to: AccountInfo<'info>,
+    pub from: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
 }
 
@@ -116,7 +116,7 @@ impl<'a, 'b, 'c, 'info> From<&mut ProxyBurn<'info>> for CpiContext<'a, 'b, 'c, '
     fn from(accounts: &mut ProxyBurn<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
         let cpi_accounts = Burn {
             mint: accounts.mint.clone(),
-            to: accounts.to.clone(),
+            from: accounts.from.clone(),
             authority: accounts.authority.clone(),
         };
         let cpi_program = accounts.token_program.clone();

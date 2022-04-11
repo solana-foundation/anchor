@@ -237,7 +237,7 @@ mod registry {
                 ctx.accounts.token_program.clone(),
                 token::Burn {
                     mint: ctx.accounts.pool_mint.to_account_info(),
-                    to: balances.spt.to_account_info(),
+                    from: balances.spt.to_account_info(),
                     authority: ctx.accounts.member_signer.to_account_info(),
                 },
                 member_signer,

@@ -56,7 +56,7 @@ describe("token", () => {
       accounts: {
         authority: provider.wallet.publicKey,
         mint,
-        to,
+        from: to,
         tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
       },
     });
