@@ -14,7 +14,7 @@ import {
 import { Misc } from "../target/types/misc";
 import { Misc2 } from "../target/types/misc2";
 const utf8 = anchor.utils.bytes.utf8;
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 const nativeAssert = require("assert");
 const miscIdl = require("../target/idl/misc.json");
 
@@ -160,7 +160,7 @@ describe("misc", () => {
       "Program data: jvbowsvlmkcJAAAA",
       "Program data: zxM5neEnS1kBAgMEBQYHCAkK",
       "Program data: g06Ei2GL1gIBAgMEBQYHCAkKCw==",
-      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 5395 of 1400000 compute units",
+      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 3983 of 1400000 compute units",
       "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh success",
     ];
 
@@ -232,7 +232,7 @@ describe("misc", () => {
           solDest: data.publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (err) {
       const errMsg = "A close constraint was violated";
       assert.strictEqual(err.error.errorMessage, errMsg);
@@ -266,7 +266,7 @@ describe("misc", () => {
     ).lamports;
 
     // Retrieved rent exemption sol.
-    assert.ok(afterBalance > beforeBalance);
+    expect(afterBalance > beforeBalance).to.be.true;
 
     const closedAccount = await program.provider.connection.getAccountInfo(
       data.publicKey
@@ -989,7 +989,7 @@ describe("misc", () => {
           owner: anchor.web3.Keypair.generate().publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1028,7 +1028,7 @@ describe("misc", () => {
           owner: anchor.web3.Keypair.generate().publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1057,7 +1057,7 @@ describe("misc", () => {
         },
         signers: [newAcc],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1091,7 +1091,7 @@ describe("misc", () => {
         },
         signers: [mint],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1125,7 +1125,7 @@ describe("misc", () => {
         },
         signers: [mint],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1159,7 +1159,7 @@ describe("misc", () => {
         },
         signers: [mint],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1206,7 +1206,7 @@ describe("misc", () => {
         },
         signers: [token],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1265,7 +1265,7 @@ describe("misc", () => {
         },
         signers: [token],
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1318,7 +1318,7 @@ describe("misc", () => {
           authority: anchor.web3.Keypair.generate().publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1383,7 +1383,7 @@ describe("misc", () => {
           authority: program.provider.wallet.publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1449,7 +1449,7 @@ describe("misc", () => {
           authority: program.provider.wallet.publicKey,
         },
       });
-      assert.ok(false);
+      expect(false).to.be.true;
     } catch (_err) {
       assert.isTrue(_err instanceof AnchorError);
       const err: AnchorError = _err;
@@ -1463,7 +1463,6 @@ describe("misc", () => {
     await program.rpc.testMultidimensionalArray(array2d, {
       accounts: {
         data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [data],
       instructions: [
@@ -1482,7 +1481,6 @@ describe("misc", () => {
     await program.rpc.testMultidimensionalArrayConstSizes(array2d, {
       accounts: {
         data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [data],
       instructions: [
@@ -1520,7 +1518,7 @@ describe("misc", () => {
             second: secondPDA,
           },
         });
-        assert.ok(false);
+        expect(false).to.be.true;
       } catch (_err) {
         assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
@@ -1535,7 +1533,7 @@ describe("misc", () => {
             second: secondPDA,
           },
         });
-        assert.ok(false);
+        expect(false).to.be.true;
       } catch (_err) {
         assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
@@ -1574,7 +1572,7 @@ describe("misc", () => {
             second: secondPDA,
           },
         });
-        assert.ok(false);
+        expect(false).to.be.true;
       } catch (_err) {
         assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
@@ -1589,7 +1587,7 @@ describe("misc", () => {
             second: secondPDA,
           },
         });
-        assert.ok(false);
+        expect(false).to.be.true;
       } catch (_err) {
         assert.isTrue(_err instanceof AnchorError);
         const err: AnchorError = _err;
@@ -1603,6 +1601,541 @@ describe("misc", () => {
           second: secondPDA,
         },
       });
+    });
+  });
+  describe("Token Constraint Test", () => {
+    it("Token Constraint Test(no init) - Can make token::mint and token::authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      await program.rpc.testTokenConstraint({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+        },
+      });
+      const mintAccount = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const account = await mintAccount.getAccountInfo(token.publicKey);
+      assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+      assert.isTrue(account.mint.equals(mint.publicKey));
+    });
+
+    it("Token Constraint Test(no init) - Can make only token::authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      await program.rpc.testOnlyAuthConstraint({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+        },
+      });
+      const mintAccount = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const account = await mintAccount.getAccountInfo(token.publicKey);
+      assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+    });
+
+    it("Token Constraint Test(no init) - Can make only token::mint", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      await program.rpc.testOnlyMintConstraint({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+        },
+      });
+      const mintAccount = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const account = await mintAccount.getAccountInfo(token.publicKey);
+      assert.isTrue(account.mint.equals(mint.publicKey));
+    });
+
+    it("Token Constraint Test(no init) - throws if token::mint mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const mint1 = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint1.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint1],
+      });
+
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      try {
+        await program.rpc.testTokenConstraint({
+          accounts: {
+            token: token.publicKey,
+            mint: mint1.publicKey,
+            payer: program.provider.wallet.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2014);
+        assert.strictEqual(err.error.errorCode.code, "ConstraintTokenMint");
+      }
+    });
+
+    it("Token Constraint Test(no init) - throws if token::authority mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      const fakeAuthority = Keypair.generate();
+      try {
+        await program.rpc.testTokenAuthConstraint({
+          accounts: {
+            token: token.publicKey,
+            mint: mint.publicKey,
+            fakeAuthority: fakeAuthority.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2015);
+        assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner");
+      }
+    });
+
+    it("Token Constraint Test(no init) - throws if both token::authority, token::mint mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+      const mint1 = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint1.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint1],
+      });
+      const token = anchor.web3.Keypair.generate();
+      await program.rpc.testInitToken({
+        accounts: {
+          token: token.publicKey,
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [token],
+      });
+      const fakeAuthority = Keypair.generate();
+      try {
+        await program.rpc.testTokenAuthConstraint({
+          accounts: {
+            token: token.publicKey,
+            mint: mint1.publicKey,
+            fakeAuthority: fakeAuthority.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2015);
+        assert.strictEqual(err.error.errorCode.code, "ConstraintTokenOwner");
+      }
+    });
+
+    it("Mint Constraint Test(no init) - mint::decimals, mint::authority, mint::freeze_authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+      await program.rpc.testMintConstraint(6, {
+        accounts: {
+          mint: mint.publicKey,
+          mintAuthority: program.provider.wallet.publicKey,
+          freezeAuthority: program.provider.wallet.publicKey,
+        },
+      });
+      const client = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const mintAccount = await client.getMintInfo();
+      assert.strictEqual(mintAccount.decimals, 6);
+      assert.isTrue(
+        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+      );
+      assert.isTrue(
+        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+      );
+    });
+
+    it("Mint Constraint Test(no init) - throws if mint::decimals mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+      const fakeDecimal = 5;
+      try {
+        await program.rpc.testMintConstraint(fakeDecimal, {
+          accounts: {
+            mint: mint.publicKey,
+            mintAuthority: program.provider.wallet.publicKey,
+            freezeAuthority: program.provider.wallet.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2018);
+        assert.strictEqual(err.error.errorCode.code, "ConstraintMintDecimals");
+      }
+    });
+
+    it("Mint Constraint Test(no init) - throws if mint::mint_authority mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const fakeAuthority = Keypair.generate();
+      try {
+        await program.rpc.testMintConstraint(6, {
+          accounts: {
+            mint: mint.publicKey,
+            mintAuthority: fakeAuthority.publicKey,
+            freezeAuthority: program.provider.wallet.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2016);
+        assert.strictEqual(
+          err.error.errorCode.code,
+          "ConstraintMintMintAuthority"
+        );
+      }
+    });
+
+    it("Mint Constraint Test(no init) - throws if mint::freeze_authority mismatch", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      const fakeAuthority = Keypair.generate();
+      try {
+        await program.rpc.testMintConstraint(6, {
+          accounts: {
+            mint: mint.publicKey,
+            mintAuthority: program.provider.wallet.publicKey,
+            freezeAuthority: fakeAuthority.publicKey,
+          },
+        });
+        assert.isTrue(false);
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 2017);
+        assert.strictEqual(
+          err.error.errorCode.code,
+          "ConstraintMintFreezeAuthority"
+        );
+      }
+    });
+
+    it("Mint Constraint Test(no init) - can write only mint::decimals", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      await program.rpc.testMintOnlyDecimalsConstraint(6, {
+        accounts: {
+          mint: mint.publicKey,
+        },
+      });
+      const client = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const mintAccount = await client.getMintInfo();
+      assert.strictEqual(mintAccount.decimals, 6);
+    });
+
+    it("Mint Constraint Test(no init) - can write only mint::authority and mint::freeze_authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      await program.rpc.testMintOnlyAuthConstraint({
+        accounts: {
+          mint: mint.publicKey,
+          mintAuthority: program.provider.wallet.publicKey,
+          freezeAuthority: program.provider.wallet.publicKey,
+        },
+      });
+      const client = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const mintAccount = await client.getMintInfo();
+      assert.isTrue(
+        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+      );
+      assert.isTrue(
+        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+      );
+    });
+
+    it("Mint Constraint Test(no init) - can write only mint::authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      await program.rpc.testMintOnlyOneAuthConstraint({
+        accounts: {
+          mint: mint.publicKey,
+          mintAuthority: program.provider.wallet.publicKey,
+        },
+      });
+      const client = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const mintAccount = await client.getMintInfo();
+      assert.isTrue(
+        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+      );
+    });
+
+    it("Mint Constraint Test(no init) - can write only mint::decimals and mint::freeze_authority", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.rpc.testInitMint({
+        accounts: {
+          mint: mint.publicKey,
+          payer: program.provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [mint],
+      });
+
+      await program.rpc.testMintMissMintAuthConstraint(6, {
+        accounts: {
+          mint: mint.publicKey,
+          freezeAuthority: program.provider.wallet.publicKey,
+        },
+      });
+      const client = new Token(
+        program.provider.connection,
+        mint.publicKey,
+        TOKEN_PROGRAM_ID,
+        program.provider.wallet.payer
+      );
+      const mintAccount = await client.getMintInfo();
+      assert.strictEqual(mintAccount.decimals, 6);
+      assert.isTrue(
+        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+      );
     });
   });
 });

@@ -57,6 +57,8 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         close,
         address,
         associated_token,
+        token_account,
+        mint,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -100,6 +102,12 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = address {
         constraints.push(Constraint::Address(c));
     }
+    if let Some(c) = token_account {
+        constraints.push(Constraint::TokenAccount(c));
+    }
+    if let Some(c) = mint {
+        constraints.push(Constraint::Mint(c));
+    }
     constraints
 }
 
@@ -120,6 +128,8 @@ fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
         Constraint::Close(c) => generate_constraint_close(f, c),
         Constraint::Address(c) => generate_constraint_address(f, c),
         Constraint::AssociatedToken(c) => generate_constraint_associated_token(f, c),
+        Constraint::TokenAccount(c) => generate_constraint_token_account(f, c),
+        Constraint::Mint(c) => generate_constraint_mint(f, c),
     }
 }
 
@@ -679,6 +689,63 @@ fn generate_constraint_associated_token(
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintAssociated).with_account_name(#name_str).with_pubkeys((my_key, __associated_token_address)));
             }
         }
+    }
+}
+
+fn generate_constraint_token_account(
+    f: &Field,
+    c: &ConstraintTokenAccountGroup,
+) -> proc_macro2::TokenStream {
+    let name = &f.ident;
+    let authority_check = match &c.authority {
+        Some(authority) => {
+            quote! { if #name.owner != #authority.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenOwner.into()); } }
+        }
+        None => quote! {},
+    };
+    let mint_check = match &c.mint {
+        Some(mint) => {
+            quote! { if #name.mint != #mint.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenMint.into()); } }
+        }
+        None => quote! {},
+    };
+    quote! {
+        #authority_check
+        #mint_check
+    }
+}
+
+fn generate_constraint_mint(f: &Field, c: &ConstraintTokenMintGroup) -> proc_macro2::TokenStream {
+    let name = &f.ident;
+
+    let decimal_check = match &c.decimals {
+        Some(decimals) => quote! {
+            if #name.decimals != #decimals {
+                return Err(anchor_lang::error::ErrorCode::ConstraintMintDecimals.into());
+            }
+        },
+        None => quote! {},
+    };
+    let mint_authority_check = match &c.mint_authority {
+        Some(mint_authority) => quote! {
+            if #name.mint_authority != anchor_lang::solana_program::program_option::COption::Some(anchor_lang::Key::key(&#mint_authority)) {
+                return Err(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority.into());
+            }
+        },
+        None => quote! {},
+    };
+    let freeze_authority_check = match &c.freeze_authority {
+        Some(freeze_authority) => quote! {
+            if #name.freeze_authority != anchor_lang::solana_program::program_option::COption::Some(anchor_lang::Key::key(&#freeze_authority)) {
+                return Err(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority.into());
+            }
+        },
+        None => quote! {},
+    };
+    quote! {
+        #decimal_check
+        #mint_authority_check
+        #freeze_authority_check
     }
 }
 

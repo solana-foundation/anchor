@@ -436,8 +436,9 @@ use syn::parse_macro_input;
 ///                 <code>#[account(token::mint = &lt;target_account&gt;, token::authority = &lt;target_account&gt;)]</code>
 ///             </td>
 ///             <td>
-///                 Can currently only be used with <code>init</code> to create a token
-///                 account with the given mint address and authority.
+///                 Can be used as a check or with <code>init</code> to create a token
+///                 account with the given mint address and authority.<br>
+///                  When used as a check, it's possible to only specify a subset of the constraints.
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>
@@ -466,9 +467,10 @@ use syn::parse_macro_input;
 ///                 <code>#[account(mint::authority = &lt;target_account&gt;, mint::decimals = &lt;expr&gt;, mint::freeze_authority = &lt;target_account&gt;)]</code>
 ///             </td>
 ///             <td>
-///                 Can currently only be used with <code>init</code> to create a mint
+///                 Can be used as a check or with <code>init</code> to create a mint
 ///                 account with the given mint decimals and mint authority.<br>
-///                 The freeze authority is optional.
+///                 The freeze authority is optional when used with <code>init</code>.<br>
+///                 When used as a check, it's possible to only specify a subset of the constraints.
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>

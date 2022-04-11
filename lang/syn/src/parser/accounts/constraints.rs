@@ -424,6 +424,42 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     ));
                 }
             }
+
+            // TokenAccount.
+            if let Some(token_mint) = &self.token_mint {
+                if self.token_authority.is_none() {
+                    return Err(ParseError::new(
+                        token_mint.span(),
+                        "when initializing, token authority must be provided if token mint is",
+                    ));
+                }
+            }
+            if let Some(token_authority) = &self.token_authority {
+                if self.token_mint.is_none() {
+                    return Err(ParseError::new(
+                        token_authority.span(),
+                        "when initializing, token mint must be provided if token authority is",
+                    ));
+                }
+            }
+
+            // Mint.
+            if let Some(mint_decimals) = &self.mint_decimals {
+                if self.mint_authority.is_none() {
+                    return Err(ParseError::new(
+                        mint_decimals.span(),
+                        "when initializing, mint authority must be provided if mint decimals is",
+                    ));
+                }
+            }
+            if let Some(mint_authority) = &self.mint_authority {
+                if self.mint_decimals.is_none() {
+                    return Err(ParseError::new(
+                        mint_authority.span(),
+                        "when initializing, mint decimals must be provided if mint authority is",
+                    ));
+                }
+            }
         }
 
         // Zero.
@@ -458,49 +494,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 return Err(ParseError::new(
                     i.span(),
                     "bump must be provided with seeds",
-                ));
-            }
-        }
-
-        // Token.
-        if let Some(token_mint) = &self.token_mint {
-            if self.token_authority.is_none() {
-                return Err(ParseError::new(
-                    token_mint.span(),
-                    "token authority must be provided if token mint is",
-                ));
-            }
-
-            if self.init.is_none() {
-                return Err(ParseError::new(
-                    token_mint.span(),
-                    "init is required for a pda token",
-                ));
-            }
-        }
-        if let Some(token_authority) = &self.token_authority {
-            if self.token_mint.is_none() {
-                return Err(ParseError::new(
-                    token_authority.span(),
-                    "token mint must be provided if token authority is",
-                ));
-            }
-        }
-
-        // Mint.
-        if let Some(mint_decimals) = &self.mint_decimals {
-            if self.mint_authority.is_none() {
-                return Err(ParseError::new(
-                    mint_decimals.span(),
-                    "mint authority must be provided if mint decimals is",
-                ));
-            }
-        }
-        if let Some(mint_authority) = &self.mint_authority {
-            if self.mint_decimals.is_none() {
-                return Err(ParseError::new(
-                    mint_authority.span(),
-                    "mint decimals must be provided if mint authority is",
                 ));
             }
         }
@@ -600,6 +593,31 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             _ => None,
         };
+        let token_account = match (&token_mint, &token_authority) {
+            (None, None) => None,
+            _ => Some(ConstraintTokenAccountGroup {
+                mint: token_mint.as_ref().map(|a| a.clone().into_inner().mint),
+                authority: token_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().auth),
+            }),
+        };
+
+        let mint = match (&mint_decimals, &mint_authority, &mint_freeze_authority) {
+            (None, None, None) => None,
+            _ => Some(ConstraintTokenMintGroup {
+                decimals: mint_decimals
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().decimals),
+                mint_authority: mint_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().mint_auth),
+                freeze_authority: mint_freeze_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().mint_freeze_auth),
+            }),
+        };
+
         Ok(ConstraintGroup {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
                 if_needed: i.if_needed,
@@ -654,6 +672,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             address: into_inner!(address),
             associated_token: if !is_init { associated_token } else { None },
             seeds,
+            token_account: if !is_init {token_account} else {None},
+            mint: if !is_init {mint} else {None},
         })
     }
 
@@ -693,6 +713,48 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         }
         if self.zeroed.is_some() {
             return Err(ParseError::new(c.span(), "zeroed already provided"));
+        }
+        if self.token_mint.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before token mint",
+            ));
+        }
+        if self.token_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before token authority",
+            ));
+        }
+        if self.mint_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before mint authority",
+            ));
+        }
+        if self.mint_freeze_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before mint freeze authority",
+            ));
+        }
+        if self.mint_decimals.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before mint decimals",
+            ));
+        }
+        if self.associated_token_mint.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before associated token mint",
+            ));
+        }
+        if self.associated_token_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "init must be provided before associated token authority",
+            ));
         }
         self.init.replace(c);
         Ok(())
@@ -749,12 +811,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(
                 c.span(),
                 "associated token mint already provided",
-            ));
-        }
-        if self.init.is_none() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before token",
             ));
         }
         self.token_mint.replace(c);
@@ -823,12 +879,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 "token authority already provided",
             ));
         }
-        if self.init.is_none() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before token authority",
-            ));
-        }
         self.token_authority.replace(c);
         Ok(())
     }
@@ -857,12 +907,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.mint_authority.is_some() {
             return Err(ParseError::new(c.span(), "mint authority already provided"));
         }
-        if self.init.is_none() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint authority",
-            ));
-        }
         self.mint_authority.replace(c);
         Ok(())
     }
@@ -877,12 +921,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 "mint freeze_authority already provided",
             ));
         }
-        if self.init.is_none() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint freeze_authority",
-            ));
-        }
         self.mint_freeze_authority.replace(c);
         Ok(())
     }
@@ -890,12 +928,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_mint_decimals(&mut self, c: Context<ConstraintMintDecimals>) -> ParseResult<()> {
         if self.mint_decimals.is_some() {
             return Err(ParseError::new(c.span(), "mint decimals already provided"));
-        }
-        if self.init.is_none() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint decimals",
-            ));
         }
         self.mint_decimals.replace(c);
         Ok(())

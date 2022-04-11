@@ -303,4 +303,54 @@ pub mod misc {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn test_token_constraint(_ctx: Context<TestConstraintToken>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_token_auth_constraint(_ctx: Context<TestAuthorityConstraint>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_only_auth_constraint(_ctx: Context<TestOnlyAuthorityConstraint>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_only_mint_constraint(_ctx: Context<TestOnlyMintConstraint>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_mint_constraint(_ctx: Context<TestMintConstraint>, _decimals: u8) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_mint_only_decimals_constraint(
+        _ctx: Context<TestMintOnlyDecimalsConstraint>,
+        _decimals: u8,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_mint_only_auth_constraint(
+        _ctx: Context<TestMintAuthorityConstraint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_mint_only_one_auth_constraint(
+        _ctx: Context<TestMintOneAuthorityConstraint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_mint_miss_mint_auth_constraint(
+        _ctx: Context<TestMintMissMintAuthConstraint>,
+        _decimals: u8,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_associated_constraint(_ctx: Context<TestAssociatedToken>) -> Result<()> {
+        Ok(())
+    }
 }

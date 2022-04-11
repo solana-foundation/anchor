@@ -16,7 +16,6 @@ pub struct TestTokenSeedsInit<'info> {
         payer = authority,
         mint::decimals = 6,
         mint::authority = authority,
-        
     )]
     pub mint: Account<'info, Mint>,
     #[account(
@@ -26,7 +25,6 @@ pub struct TestTokenSeedsInit<'info> {
         payer = authority,
         token::mint = mint,
         token::authority = authority,
-        
     )]
     pub my_pda: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -41,10 +39,9 @@ pub struct TestTokenSeedsInit<'info> {
 pub struct TestInitAssociatedToken<'info> {
     #[account(
         init,
-        payer = payer,
         associated_token::mint = mint,
+        payer = payer,
         associated_token::authority = payer,
-        
     )]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
@@ -475,4 +472,107 @@ pub struct TestUnsafeFieldSafetyErrors<'info> {
     pub data_four: UncheckedAccount<'info>,
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TestConstraintToken<'info> {
+    #[account(
+        token::mint = mint,
+        token::authority = payer
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub payer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestAuthorityConstraint<'info> {
+    #[account(
+        token::mint = mint,
+        token::authority = fake_authority
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub fake_authority: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct TestOnlyAuthorityConstraint<'info> {
+    #[account(
+        token::authority = payer
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub payer: Signer<'info>,
+}
+#[derive(Accounts)]
+pub struct TestOnlyMintConstraint<'info> {
+    #[account(
+        token::mint = mint,
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+}
+
+#[derive(Accounts)]
+#[instruction(decimals: u8)]
+pub struct TestMintConstraint<'info> {
+    #[account(
+        mint::decimals = decimals,
+        mint::authority = mint_authority,
+        mint::freeze_authority = freeze_authority
+    )]
+    pub mint: Account<'info, Mint>,
+    pub mint_authority: AccountInfo<'info>,
+    pub freeze_authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(decimals: u8)]
+pub struct TestMintOnlyDecimalsConstraint<'info> {
+    #[account(
+        mint::decimals = decimals,
+    )]
+    pub mint: Account<'info, Mint>,
+}
+
+#[derive(Accounts)]
+pub struct TestMintAuthorityConstraint<'info> {
+    #[account(
+        mint::authority = mint_authority,
+        mint::freeze_authority = freeze_authority
+    )]
+    pub mint: Account<'info, Mint>,
+    pub mint_authority: AccountInfo<'info>,
+    pub freeze_authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestMintOneAuthorityConstraint<'info> {
+    #[account(
+        mint::authority = mint_authority,
+    )]
+    pub mint: Account<'info, Mint>,
+    pub mint_authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(decimals: u8)]
+pub struct TestMintMissMintAuthConstraint<'info> {
+    #[account(
+        mint::decimals = decimals,
+        mint::freeze_authority = freeze_authority,
+    )]
+    pub mint: Account<'info, Mint>,
+    pub freeze_authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestAssociatedToken<'info> {
+    #[account(
+        associated_token::mint = mint,
+        associated_token::authority = authority,
+    )]
+    pub token: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>,
+    pub authority: AccountInfo<'info>,
 }
