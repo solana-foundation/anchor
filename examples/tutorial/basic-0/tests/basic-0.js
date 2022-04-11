@@ -2,7 +2,7 @@ const anchor = require("@project-serum/anchor");
 
 describe("basic-0", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.local());
+  anchor.setProvider(anchor.AnchorProvider.local());
 
   it("Uses the workspace to invoke the initialize instruction", async () => {
     // #region code

@@ -4,7 +4,7 @@ const { PublicKey } = anchor.web3;
 
 describe("chat", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   // Program client handle.
   const program = anchor.workspace.Chat;

@@ -6,7 +6,7 @@ import { assert } from "chai";
 import { BpfUpgradeableState } from "../target/types/bpf_upgradeable_state";
 
 describe("bpf_upgradeable_state", () => {
-  const provider = anchor.Provider.env();
+  const provider = anchor.AnchorProvider.env();
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
 

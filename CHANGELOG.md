@@ -35,6 +35,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * spl: Re-export the `spl_token` crate ([#1665](https://github.com/project-serum/anchor/pull/1665)).
 * lang, cli, spl: Update solana toolchain to v1.9.13 ([#1653](https://github.com/project-serum/anchor/pull/1653) and [#1751](https://github.com/project-serum/anchor/pull/1751)).
 * lang: `Program` type now deserializes `programdata_address` only on demand ([#1723](https://github.com/project-serum/anchor/pull/1723)).
+* ts: Make `Provider` an interface and adjust its signatures and add `AnchorProvider` implementor class ([#1707](https://github.com/project-serum/anchor/pull/1707)).
 * spl: Change "to" to "from" in `token::burn` ([#1080](https://github.com/project-serum/anchor/pull/1080)).
 
 ## [0.23.0] - 2022-03-20

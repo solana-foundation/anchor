@@ -9,7 +9,7 @@ const encode = anchor.utils.bytes.utf8.encode;
 
 describe("typescript", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.PdaDerivation as Program<PdaDerivation>;
   const base = Keypair.generate();

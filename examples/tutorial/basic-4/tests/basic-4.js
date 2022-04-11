@@ -2,7 +2,7 @@ const assert = require("assert");
 const anchor = require("@project-serum/anchor");
 
 describe("basic-4", () => {
-  const provider = anchor.Provider.local();
+  const provider = anchor.AnchorProvider.local();
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);

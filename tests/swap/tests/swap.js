@@ -11,7 +11,11 @@ const TAKER_FEE = 0.0022;
 
 describe("swap", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  const provider = anchor.AnchorProvider.env();
+  // hack so we don't have to update serum-common library
+  // to the new AnchorProvider class and Provider interface
+  provider.send = provider.sendAndConfirm;
+  anchor.setProvider(provider);
 
   // Swap program client.
   const program = anchor.workspace.Swap;

@@ -5,7 +5,7 @@
 const anchor = require("@project-serum/anchor");
 
 // Configure the local cluster.
-anchor.setProvider(anchor.Provider.local());
+anchor.setProvider(anchor.AnchorProvider.local());
 
 async function main() {
   // #region main

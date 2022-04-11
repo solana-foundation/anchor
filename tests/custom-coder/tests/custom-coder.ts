@@ -6,7 +6,7 @@ import { Keypair, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 
 describe("custom-coder", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   // Client.
   const program = Spl.token();

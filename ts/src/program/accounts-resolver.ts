@@ -58,6 +58,13 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
 
       // Signers default to the provider.
       if (accountDesc.isSigner && !this._accounts[accountDescName]) {
+        // @ts-expect-error
+        if (this._provider.wallet === undefined) {
+          throw new Error(
+            "This function requires the Provider interface implementor to have a 'wallet' field."
+          );
+        }
+        // @ts-expect-error
         this._accounts[accountDescName] = this._provider.wallet.publicKey;
         continue;
       }

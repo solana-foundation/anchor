@@ -1,7 +1,7 @@
 const anchor = require("@project-serum/anchor");
 
 describe("tictactoe", () => {
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Tictactoe;
   let dashboard = anchor.web3.Keypair.generate();
   let game = anchor.web3.Keypair.generate();

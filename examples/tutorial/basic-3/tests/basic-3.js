@@ -3,7 +3,7 @@ const anchor = require("@project-serum/anchor");
 const { SystemProgram } = anchor.web3;
 
 describe("basic-3", () => {
-  const provider = anchor.Provider.local();
+  const provider = anchor.AnchorProvider.local();
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);

@@ -9,7 +9,7 @@ const { runTradeBot } = require("../tests/utils");
 
 async function main() {
   const market = new PublicKey(process.argv[2]);
-  const provider = anchor.Provider.local();
+  const provider = anchor.AnchorProvider.local();
   runTradeBot(market, provider);
 }
 

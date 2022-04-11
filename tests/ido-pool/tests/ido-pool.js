@@ -14,7 +14,7 @@ const {
 const { token } = require("@project-serum/anchor/dist/cjs/utils");
 
 describe("ido-pool", () => {
-  const provider = anchor.Provider.local();
+  const provider = anchor.AnchorProvider.local();
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
@@ -182,7 +182,7 @@ describe("ido-pool", () => {
     let createUserUsdcTrns = new anchor.web3.Transaction().add(
       createUserUsdcInstr
     );
-    await provider.send(createUserUsdcTrns);
+    await provider.sendAndConfirm(createUserUsdcTrns);
     await usdcMintAccount.mintTo(
       userUsdc,
       provider.wallet.publicKey,
@@ -283,7 +283,7 @@ describe("ido-pool", () => {
     let createSecondUserUsdcTrns = new anchor.web3.Transaction();
     createSecondUserUsdcTrns.add(transferSolInstr);
     createSecondUserUsdcTrns.add(createSecondUserUsdcInstr);
-    await provider.send(createSecondUserUsdcTrns);
+    await provider.sendAndConfirm(createSecondUserUsdcTrns);
     await usdcMintAccount.mintTo(
       secondUserUsdc,
       provider.wallet.publicKey,

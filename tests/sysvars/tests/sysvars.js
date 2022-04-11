@@ -3,7 +3,7 @@ const { assert } = require("chai");
 
 describe("sysvars", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.local());
+  anchor.setProvider(anchor.AnchorProvider.local());
   const program = anchor.workspace.Sysvars;
 
   it("Is initialized!", async () => {

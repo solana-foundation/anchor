@@ -8,7 +8,7 @@ import { Escrow } from "../target/types/escrow";
 type EscrowAccount = IdlAccounts<Escrow>["escrowAccount"];
 
 describe("escrow", () => {
-  const provider = anchor.Provider.env();
+  const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Escrow as Program<Escrow>;

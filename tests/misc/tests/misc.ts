@@ -20,7 +20,7 @@ const miscIdl = require("../target/idl/misc.json");
 
 describe("misc", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Misc as Program<Misc>;
   const misc2Program = anchor.workspace.Misc2 as Program<Misc2>;
 
@@ -760,7 +760,7 @@ describe("misc", () => {
     const anotherProgram = new anchor.Program(
       miscIdl,
       program.programId,
-      new anchor.Provider(
+      new anchor.AnchorProvider(
         program.provider.connection,
         new anchor.Wallet(anchor.web3.Keypair.generate()),
         { commitment: program.provider.connection.commitment }

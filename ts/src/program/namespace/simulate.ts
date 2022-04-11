@@ -1,9 +1,6 @@
-import {
-  PublicKey,
-  RpcResponseAndContext,
-  SimulatedTransactionResponse,
-} from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import Provider from "../../provider.js";
+import { SuccessfulTxSimulationResponse } from "src/utils/rpc.js";
 import { splitArgsAndCtx } from "../context.js";
 import { TransactionFn } from "./transaction.js";
 import { EventParser, Event } from "../event.js";
@@ -30,21 +27,25 @@ export default class SimulateFactory {
     const simulate: SimulateFn<IDL> = async (...args) => {
       const tx = txFn(...args);
       const [, ctx] = splitArgsAndCtx(idlIx, [...args]);
-      let resp:
-        | RpcResponseAndContext<SimulatedTransactionResponse>
-        | undefined = undefined;
+      let resp: SuccessfulTxSimulationResponse | undefined = undefined;
+      if (provider.simulate === undefined) {
+        throw new Error(
+          "This function requires 'Provider.simulate' to be implemented."
+        );
+      }
       try {
-        resp = await provider!.simulate(tx, ctx.signers, ctx.options);
+        resp = await provider!.simulate(
+          tx,
+          ctx.signers,
+          ctx.options?.commitment
+        );
       } catch (err) {
         throw translateError(err, idlErrors);
       }
       if (resp === undefined) {
         throw new Error("Unable to simulate transaction");
       }
-      if (resp.value.err) {
-        throw new Error(`Simulate error: ${resp.value.err.toString()}`);
-      }
-      const logs = resp.value.logs;
+      const logs = resp.logs;
       if (!logs) {
         throw new Error("Simulated logs not found");
       }

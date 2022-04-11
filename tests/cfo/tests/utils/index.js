@@ -125,7 +125,7 @@ async function fundAccount({ provider, mints }) {
   };
 
   // Transfer lamports to market maker.
-  await provider.send(
+  await provider.sendAndConfirm(
     (() => {
       const tx = new Transaction();
       tx.add(
@@ -155,7 +155,7 @@ async function fundAccount({ provider, mints }) {
       MARKET_MAKER.publicKey
     );
 
-    await provider.send(
+    await provider.sendAndConfirm(
       (() => {
         const tx = new Transaction();
         tx.add(
@@ -220,7 +220,10 @@ async function setupMarket({
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    await provider.send(transaction, signers.concat(marketMaker.account));
+    await provider.sendAndConfirm(
+      transaction,
+      signers.concat(marketMaker.account)
+    );
   }
 
   for (let k = 0; k < bids.length; k += 1) {
@@ -239,7 +242,10 @@ async function setupMarket({
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    await provider.send(transaction, signers.concat(marketMaker.account));
+    await provider.sendAndConfirm(
+      transaction,
+      signers.concat(marketMaker.account)
+    );
   }
 
   return [MARKET_A_USDC, vaultOwner];
@@ -527,7 +533,7 @@ async function runTradeBot(market, provider, iterations = undefined) {
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    let txSig = await provider.send(tx_ask, sigs_ask.concat(maker));
+    let txSig = await provider.sendAndConfirm(tx_ask, sigs_ask.concat(maker));
     console.log("Ask", txSig);
 
     // Take.
@@ -545,7 +551,7 @@ async function runTradeBot(market, provider, iterations = undefined) {
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    txSig = await provider.send(tx_bid, sigs_bid.concat(taker));
+    txSig = await provider.sendAndConfirm(tx_bid, sigs_bid.concat(taker));
     console.log("Bid", txSig);
 
     await sleep(1000);

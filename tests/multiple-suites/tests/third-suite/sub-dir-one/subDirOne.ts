@@ -6,7 +6,7 @@ import { assert } from "chai";
 
 describe("multiple-suites", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.MultipleSuites as Program<MultipleSuites>;
 

@@ -4,7 +4,7 @@ import { assert } from "chai";
 import { createPriceFeed, setFeedPrice, getFeedData } from "./oracleUtils";
 
 describe("pyth-oracle", () => {
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Pyth as Program;
 
   it("initialize", async () => {

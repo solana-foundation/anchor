@@ -3,7 +3,7 @@ const splToken = require("@solana/spl-token");
 const { assert } = require("chai");
 
 describe("system_accounts", () => {
-  anchor.setProvider(anchor.Provider.local());
+  anchor.setProvider(anchor.AnchorProvider.local());
   const program = anchor.workspace.SystemAccounts;
   const authority = program.provider.wallet.payer;
   const wallet = anchor.web3.Keypair.generate();

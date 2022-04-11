@@ -3,7 +3,7 @@ const { assert } = require("chai");
 
 describe("multisig", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.Multisig;
 

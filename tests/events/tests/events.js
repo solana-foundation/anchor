@@ -3,7 +3,7 @@ const { assert } = require("chai");
 
 describe("events", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Events;
 
   it("Is initialized!", async () => {

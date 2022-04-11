@@ -196,7 +196,7 @@ async function fundAccount({ provider, mints }) {
   };
 
   // Transfer lamports to market maker.
-  await provider.send(
+  await provider.sendAndConfirm(
     (() => {
       const tx = new Transaction();
       tx.add(
@@ -226,7 +226,7 @@ async function fundAccount({ provider, mints }) {
       MARKET_MAKER.publicKey
     );
 
-    await provider.send(
+    await provider.sendAndConfirm(
       (() => {
         const tx = new Transaction();
         tx.add(
@@ -291,7 +291,10 @@ async function setupMarket({
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    await provider.send(transaction, signers.concat(marketMaker.account));
+    await provider.sendAndConfirm(
+      transaction,
+      signers.concat(marketMaker.account)
+    );
   }
 
   for (let k = 0; k < bids.length; k += 1) {
@@ -310,7 +313,10 @@ async function setupMarket({
         feeDiscountPubkey: null,
         selfTradeBehavior: "abortTransaction",
       });
-    await provider.send(transaction, signers.concat(marketMaker.account));
+    await provider.sendAndConfirm(
+      transaction,
+      signers.concat(marketMaker.account)
+    );
   }
 
   return MARKET_A_USDC;

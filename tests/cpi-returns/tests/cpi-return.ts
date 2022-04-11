@@ -8,7 +8,7 @@ import { Caller } from "../target/types/caller";
 const { SystemProgram } = anchor.web3;
 
 describe("CPI return", () => {
-  const provider = anchor.Provider.env();
+  const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
   const callerProgram = anchor.workspace.Caller as Program<Caller>;

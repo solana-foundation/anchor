@@ -4,7 +4,7 @@ const { SystemProgram } = anchor.web3;
 
 describe("basic-1", () => {
   // Use a local provider.
-  const provider = anchor.Provider.local();
+  const provider = anchor.AnchorProvider.local();
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);

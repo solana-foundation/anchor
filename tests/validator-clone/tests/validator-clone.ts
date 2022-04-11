@@ -5,7 +5,7 @@ import { ValidatorClone } from "../target/types/validator_clone";
 
 describe("validator-clone", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.ValidatorClone as Program<ValidatorClone>;
   const connection = program.provider.connection;
