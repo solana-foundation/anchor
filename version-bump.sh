@@ -33,6 +33,10 @@ cargo update --workspace
 # Insert version number into CHANGELOG.md
 sed "${sedi[@]}" -e "s/## \[Unreleased\]/## [Unreleased]\n\n## [$1] - $(date '+%Y-%m-%d')/g" CHANGELOG.md
 
+pushd ts && yarn && popd
+pushd tests && yarn && popd
+pushd examples && yarn && pushd tutorial && yarn && popd && popd
+
 echo $1 > VERSION
 
 echo "$(git diff --stat | tail -n1) files modified"
