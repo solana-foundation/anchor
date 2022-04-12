@@ -1,6 +1,6 @@
 [package]
 name = "anchor-client"
-version = "0.24.0"
+version = "0.24.1"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 rust-version = "1.56"
 edition = "2021"
@@ -11,7 +11,7 @@ description = "Rust client for Anchor programs"
 debug = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.24.0" }
+anchor-lang = { path = "../lang", version = "0.24.1" }
 anyhow = "1.0.32"
 regex = "1.4.5"
 serde = { version = "1.0.122", features = ["derive"] }

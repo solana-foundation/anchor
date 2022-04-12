@@ -195,7 +195,7 @@ pub mod cfo {
         let expiry_ts = 1853942400; // 9/30/2028.
         let expiry_receiver = *ctx.accounts.officer.to_account_info().key;
         let locked_kind = {
-            let start_ts = 1633017600; // 9/30.24.0.
+            let start_ts = 1633017600; // 9/30.24.1.
             let end_ts = 1822320000; // 9/30/2027.
             let period_count = 2191;
             RewardVendorKind::Locked {

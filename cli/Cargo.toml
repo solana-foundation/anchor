@@ -1,6 +1,6 @@
 [package]
 name = "anchor-cli"
-version = "0.24.0"
+version = "0.24.1"
 authors = ["armaniferrante <armaniferrante@gmail.com>"]
 rust-version = "1.56"
 edition = "2021"
