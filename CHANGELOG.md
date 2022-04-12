@@ -12,6 +12,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+* lang: Fix `anchor build` failing if `Test.toml` included a relative path that didn't exist yet because it's created by `anchor build` ([#1772](https://github.com/project-serum/anchor/pull/1772)).
 * cli: Update js/ts template to use new `AnchorProvider` class ([#1770](https://github.com/project-serum/anchor/pull/1770)).
 
 ## [0.24.0] - 2022-04-12

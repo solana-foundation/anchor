@@ -335,9 +335,9 @@ pub struct BuildConfig {
 }
 
 impl Config {
-    fn with_test_config(mut self, p: impl AsRef<Path>) -> Result<Self> {
-        self.test_config = TestConfig::discover(p)?;
-        Ok(self)
+    pub fn add_test_config(&mut self, root: impl AsRef<Path>) -> Result<()> {
+        self.test_config = TestConfig::discover(root)?;
+        Ok(())
     }
 
     pub fn docker(&self) -> String {
@@ -393,8 +393,7 @@ impl Config {
     fn from_path(p: impl AsRef<Path>) -> Result<Self> {
         fs::read_to_string(&p)
             .with_context(|| format!("Error reading the file with path: {}", p.as_ref().display()))?
-            .parse::<Self>()?
-            .with_test_config(p.as_ref().parent().unwrap())
+            .parse::<Self>()
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {

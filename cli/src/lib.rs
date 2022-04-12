@@ -1828,6 +1828,9 @@ fn test(
             )?;
         }
 
+        let root = cfg.path().parent().unwrap().to_owned();
+        cfg.add_test_config(root)?;
+
         // Run the deploy against the cluster in two cases:
         //
         // 1. The cluster is not localnet.
@@ -3050,14 +3053,17 @@ fn localnet(
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
-fn with_workspace<R>(cfg_override: &ConfigOverride, f: impl FnOnce(&WithPath<Config>) -> R) -> R {
+fn with_workspace<R>(
+    cfg_override: &ConfigOverride,
+    f: impl FnOnce(&mut WithPath<Config>) -> R,
+) -> R {
     set_workspace_dir_or_exit();
 
-    let cfg = Config::discover(cfg_override)
+    let mut cfg = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
         .expect("Anchor.toml must always exist");
 
-    let r = f(&cfg);
+    let r = f(&mut cfg);
 
     set_workspace_dir_or_exit();
 
