@@ -31,7 +31,7 @@ publish:
 	sleep 25
 	cd lang/attribute/event/ && cargo publish && cd ../../../
 	sleep 25
-	cd lang/ && cargo publish && cd../
+	cd lang/ && cargo publish && cd ../
 	sleep 25
 	cd spl/ && cargo publish && cd ../
 	sleep 25
