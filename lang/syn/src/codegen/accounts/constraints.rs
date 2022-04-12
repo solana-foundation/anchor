@@ -169,7 +169,7 @@ pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macr
     let field = &f.ident;
     let name_str = field.to_string();
     let ty_decl = f.ty_decl();
-    let from_account_info = f.from_account_info_unchecked(None);
+    let from_account_info = f.from_account_info(None, false);
     quote! {
         let #field: #ty_decl = {
             let mut __data: &[u8] = &#field.try_borrow_data()?;
@@ -340,7 +340,8 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
     };
 
     // Convert from account info to account context wrapper type.
-    let from_account_info = f.from_account_info_unchecked(Some(&c.kind));
+    let from_account_info = f.from_account_info(Some(&c.kind), true);
+    let from_account_info_unchecked = f.from_account_info(Some(&c.kind), false);
 
     // PDA bump seeds.
     let (find_pda, seeds_with_bump) = match &c.seeds {
@@ -408,7 +409,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                         anchor_spl::token::initialize_account(cpi_ctx)?;
                     }
 
-                    let pa: #ty_decl = #from_account_info;
+                    let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
                         if pa.mint != #mint.key() {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenMint).with_account_name(#name_str).with_pubkeys((pa.mint, #mint.key())));
@@ -443,7 +444,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, cpi_accounts);
                         anchor_spl::associated_token::create(cpi_ctx)?;
                     }
-                    let pa: #ty_decl = #from_account_info;
+                    let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
                         if pa.mint != #mint.key() {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenMint).with_account_name(#name_str).with_pubkeys((pa.mint, #mint.key())));
@@ -496,7 +497,7 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
                         anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
-                    let pa: #ty_decl = #from_account_info;
+                    let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
                         if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
@@ -548,16 +549,19 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
 
                     // Create the account. Always do this in the event
                     // if needed is not specified or the system program is the owner.
-                    if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
+                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
                         // Define the payer variable.
                         #payer
 
                         // CPI to the system program to create.
                         #create_account
-                    }
 
-                    // Convert from account info to account context wrapper type.
-                    let pa: #ty_decl = #from_account_info;
+                        // Convert from account info to account context wrapper type.
+                        #from_account_info_unchecked
+                    } else {
+                        // Convert from account info to account context wrapper type.
+                        #from_account_info
+                    };
 
                     // Assert the account was created correctly.
                     if #if_needed {

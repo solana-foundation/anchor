@@ -1,0 +1,6 @@
+[[test.genesis]]
+address = "FtMNMKp9DZHKWUyVAsj3Q5QV8ow4P3fUPP7ZrWEQJzKr"
+program = "../../target/deploy/misc.so"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 ./tests/misc/*.ts"

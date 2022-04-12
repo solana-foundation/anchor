@@ -281,20 +281,55 @@ impl Field {
 
     // TODO: remove the option once `CpiAccount` is completely removed (not
     //       just deprecated).
-    pub fn from_account_info_unchecked(&self, kind: Option<&InitKind>) -> proc_macro2::TokenStream {
+    pub fn from_account_info(
+        &self,
+        kind: Option<&InitKind>,
+        checked: bool,
+    ) -> proc_macro2::TokenStream {
         let field = &self.ident;
         let container_ty = self.container_ty();
+        let owner_addr = match &kind {
+            None => quote! { program_id },
+            Some(InitKind::Program { .. }) => quote! {
+                program_id
+            },
+            _ => quote! {
+                &anchor_spl::token::ID
+            },
+        };
         match &self.ty {
             Ty::AccountInfo => quote! { #field.to_account_info() },
             Ty::UncheckedAccount => {
                 quote! { UncheckedAccount::try_from(#field.to_account_info()) }
             }
             Ty::Account(AccountTy { boxed, .. }) => {
+                let stream = if checked {
+                    quote! {
+                        #container_ty::try_from(
+                            &#field,
+                        )?
+                    }
+                } else {
+                    quote! {
+                        #container_ty::try_from_unchecked(
+                            &#field,
+                        )?
+                    }
+                };
                 if *boxed {
                     quote! {
-                        Box::new(#container_ty::try_from_unchecked(
+                        Box::new(#stream)
+                    }
+                } else {
+                    stream
+                }
+            }
+            Ty::CpiAccount(_) => {
+                if checked {
+                    quote! {
+                        #container_ty::try_from(
                             &#field,
-                        )?)
+                        )?
                     }
                 } else {
                     quote! {
@@ -304,28 +339,37 @@ impl Field {
                     }
                 }
             }
-            Ty::CpiAccount(_) => {
-                quote! {
-                    #container_ty::try_from_unchecked(
-                        &#field,
-                    )?
+            Ty::AccountLoader(_) => {
+                if checked {
+                    quote! {
+                        #container_ty::try_from(
+                            &#field,
+                        )?
+                    }
+                } else {
+                    quote! {
+                        #container_ty::try_from_unchecked(
+                            #owner_addr,
+                            &#field,
+                        )?
+                    }
                 }
             }
             _ => {
-                let owner_addr = match &kind {
-                    None => quote! { program_id },
-                    Some(InitKind::Program { .. }) => quote! {
-                        program_id
-                    },
-                    _ => quote! {
-                        &anchor_spl::token::ID
-                    },
-                };
-                quote! {
-                    #container_ty::try_from_unchecked(
-                        #owner_addr,
-                        &#field,
-                    )?
+                if checked {
+                    quote! {
+                        #container_ty::try_from(
+                            #owner_addr,
+                            &#field,
+                        )?
+                    }
+                } else {
+                    quote! {
+                        #container_ty::try_from_unchecked(
+                            #owner_addr,
+                            &#field,
+                        )?
+                    }
                 }
             }
         }

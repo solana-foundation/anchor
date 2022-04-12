@@ -6,7 +6,7 @@ import {
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
-import { Misc } from "../target/types/misc";
+import { Misc } from "../../target/types/misc";
 const { assert } = require("chai");
 
 describe("miscNonRentExempt", () => {

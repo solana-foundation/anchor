@@ -11,12 +11,12 @@ import {
   Token,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { Misc } from "../target/types/misc";
-import { Misc2 } from "../target/types/misc2";
+import { Misc } from "../../target/types/misc";
+import { Misc2 } from "../../target/types/misc2";
 const utf8 = anchor.utils.bytes.utf8;
 const { assert, expect } = require("chai");
 const nativeAssert = require("assert");
-const miscIdl = require("../target/idl/misc.json");
+const miscIdl = require("../../target/idl/misc.json");
 
 describe("misc", () => {
   // Configure the client to use the local cluster.
@@ -160,11 +160,9 @@ describe("misc", () => {
       "Program data: jvbowsvlmkcJAAAA",
       "Program data: zxM5neEnS1kBAgMEBQYHCAkK",
       "Program data: g06Ei2GL1gIBAgMEBQYHCAkKCw==",
-      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh consumed 3983 of 1400000 compute units",
-      "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh success",
     ];
 
-    assert.deepStrictEqual(expectedRaw, resp.raw);
+    assert.deepStrictEqual(expectedRaw, resp.raw.slice(0, -2));
     assert.strictEqual(resp.events[0].name, "E1");
     assert.strictEqual(resp.events[0].data.data, 44);
     assert.strictEqual(resp.events[1].name, "E2");

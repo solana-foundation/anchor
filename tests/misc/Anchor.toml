@@ -5,13 +5,7 @@ wallet = "~/.config/solana/id.json"
 [programs.localnet]
 misc = "3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh"
 misc2 = "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
-
-[[test.genesis]]
-address = "FtMNMKp9DZHKWUyVAsj3Q5QV8ow4P3fUPP7ZrWEQJzKr"
-program = "./target/deploy/misc.so"
+init_if_needed = "BZoppwWi6jMnydnUBEJzotgEXHwLr3b3NramJgZtWeF2"
 
 [workspace]
 exclude = ["programs/shared"]
-
-[scripts]
-test = "yarn run ts-mocha -t 1000000 tests/*.ts"
