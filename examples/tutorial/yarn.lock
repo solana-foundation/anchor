@@ -30,10 +30,8 @@
     "@ethersproject/logger" "^5.5.0"
     hash.js "1.1.7"
 
-"@project-serum/anchor@^0.24.0":
+"@project-serum/anchor@file:../../ts":
   version "0.24.0"
-  resolved "https://registry.yarnpkg.com/@project-serum/anchor/-/anchor-0.24.0.tgz#ec8a45847f6b54f56ab97552cf5735beded3b39e"
-  integrity sha512-kDCpDMmXAEyhjExv0A5voEJN6eiKtCChu4egidk8ljdsxp0c29YWjSkx3zjOrMUK0YH1cz0qnsxuT1nCCtUgUQ==
   dependencies:
     "@project-serum/borsh" "^0.2.5"
     "@solana/web3.js" "^1.36.0"

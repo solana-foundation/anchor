@@ -161,7 +161,7 @@ jobs:
       - run: solana-test-validator -r --quiet &
         name: start validator
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
-      - run: cd tests/bpf-upgradeable-state && yarn link @project-serum/anchor
+      - run: cd tests/bpf-upgradeable-state
       - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint
       - run: cd tests/bpf-upgradeable-state && solana program deploy --program-id program_with_different_programdata.json target/deploy/bpf_upgradeable_state.so
       - run: cd tests/bpf-upgradeable-state && cp bpf_upgradeable_state-keypair.json target/deploy/bpf_upgradeable_state-keypair.json && anchor test --skip-local-validator --skip-build --skip-lint
@@ -199,7 +199,7 @@ jobs:
       - run: chmod +x ~/.cargo/bin/anchor
       
       - run: cd tests/misc && yarn --frozen-lockfile
-      - run: cd tests/misc && yarn link @project-serum/anchor
+      - run: cd tests/misc
       - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
       - run: cd tests/misc && anchor test --skip-lint
 

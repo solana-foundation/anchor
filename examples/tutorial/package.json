@@ -13,7 +13,7 @@
     "basic-4"
   ],
   "dependencies": {
-    "@project-serum/anchor": "^0.24.0"
+    "@project-serum/anchor": "file:../../ts"
   },
   "devDependencies": {
     "mocha": "^9.1.3",
