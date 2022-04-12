@@ -33,7 +33,8 @@
     "zero-copy",
     "declare-id",
     "cpi-returns",
-    "multiple-suites"
+    "multiple-suites",
+    "bpf-upgradeable-state"
   ],
   "dependencies": {
     "@project-serum/anchor": "file:../ts",
