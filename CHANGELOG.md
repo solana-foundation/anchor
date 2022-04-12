@@ -10,6 +10,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+## [0.24.0] - 2022-04-12
+
 ### Features
 
 * lang: Add support for multiple test suites with separate local validators ([#1681](https://github.com/project-serum/anchor/pull/1681)).
