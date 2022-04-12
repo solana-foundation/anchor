@@ -91,7 +91,7 @@ async function main() {{
     const connection = new anchor.web3.Connection(url, preflightCommitment);
     const wallet = anchor.Wallet.local();
 
-    const provider = new anchor.Provider(connection, wallet, {{
+    const provider = new anchor.AnchorProvider(connection, wallet, {{
         preflightCommitment,
         commitment: 'recent',
     }});
@@ -118,7 +118,7 @@ async function main() {{
     const connection = new anchor.web3.Connection(url, preflightCommitment);
     const wallet = anchor.Wallet.local();
 
-    const provider = new anchor.Provider(connection, wallet, {{
+    const provider = new anchor.AnchorProvider(connection, wallet, {{
         preflightCommitment,
         commitment: 'recent',
     }});
@@ -199,7 +199,7 @@ pub fn mocha(name: &str) -> String {
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   it("Is initialized!", async () => {{
     // Add your test here.
@@ -269,7 +269,7 @@ import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.Provider.env());
+  anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.{} as Program<{}>;
 
@@ -352,7 +352,7 @@ const __wallet = new anchor.Wallet(
   ),
 );
 const __connection = new web3.Connection("{}", "processed");
-const provider = new anchor.Provider(__connection, __wallet, {{
+const provider = new anchor.AnchorProvider(__connection, __wallet, {{
   commitment: "processed",
   preflightcommitment: "processed",
 }});

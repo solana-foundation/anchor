@@ -10,6 +10,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+### Fixes
+
+* cli: Update js/ts template to use new `AnchorProvider` class ([#1770](https://github.com/project-serum/anchor/pull/1770)).
+
 ## [0.24.0] - 2022-04-12
 
 ### Features
