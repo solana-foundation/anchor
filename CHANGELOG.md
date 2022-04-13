@@ -10,6 +10,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+## [0.24.2] - 2022-04-13
+
 ### Fixes
 
 * lang: Fix `returns` being serialized as `null` instead of `undefined` in IDL ([#1782](https://github.com/project-serum/anchor/pull/1782)).
