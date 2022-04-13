@@ -35,7 +35,7 @@ This macro generates internal anchor code that helps anchor turn the error code 
 
 To create an error, use the [`error!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.error.html) macro together with an error code. This macro creates an [`AnchorError`](https://docs.rs/anchor-lang/latest/anchor_lang/error/struct.AnchorError.html) that includes helpful information like the file and line the error was created in.
 
-To make writing errors even easier, anchor also provides the [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.err.html and the [`require!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.require.html macros.
+To make writing errors even easier, anchor also provides the [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.err.html) and the [`require!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.require.html) macros.
 
 ## Using the Client
 
