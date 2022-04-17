@@ -5,7 +5,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use misc2::misc2::MyState as Misc2State;
-use std::mem::size_of;
 
 #[derive(Accounts)]
 pub struct TestTokenSeedsInit<'info> {

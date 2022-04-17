@@ -24,4 +24,4 @@ if ! [[ $output =~ "Struct field \"unchecked\" is unsafe" ]]; then
 fi
 popd
 
-echo "Success. All builds failed."
+echo "Success. As expected, all builds failed."

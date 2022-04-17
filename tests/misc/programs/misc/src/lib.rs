@@ -49,11 +49,11 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn initialize_no_rent_exempt(ctx: Context<InitializeNoRentExempt>) -> Result<()> {
+    pub fn initialize_no_rent_exempt(_ctx: Context<InitializeNoRentExempt>) -> Result<()> {
         Ok(())
     }
 
-    pub fn initialize_skip_rent_exempt(ctx: Context<InitializeSkipRentExempt>) -> Result<()> {
+    pub fn initialize_skip_rent_exempt(_ctx: Context<InitializeSkipRentExempt>) -> Result<()> {
         Ok(())
     }
 
@@ -207,11 +207,11 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_with_empty_seeds(ctx: Context<TestInitWithEmptySeeds>) -> Result<()> {
+    pub fn test_init_with_empty_seeds(_ctx: Context<TestInitWithEmptySeeds>) -> Result<()> {
         Ok(())
     }
 
-    pub fn test_empty_seeds_constraint(ctx: Context<TestEmptySeedsConstraint>) -> Result<()> {
+    pub fn test_empty_seeds_constraint(_ctx: Context<TestEmptySeedsConstraint>) -> Result<()> {
         Ok(())
     }
 
@@ -221,36 +221,36 @@ pub mod misc {
     }
 
     pub fn test_init_if_needed_checks_owner(
-        ctx: Context<TestInitIfNeededChecksOwner>,
+        _ctx: Context<TestInitIfNeededChecksOwner>,
     ) -> Result<()> {
         Ok(())
     }
 
     pub fn test_init_if_needed_checks_seeds(
-        ctx: Context<TestInitIfNeededChecksSeeds>,
-        seed_data: String,
+        _ctx: Context<TestInitIfNeededChecksSeeds>,
+        _seed_data: String,
     ) -> Result<()> {
         Ok(())
     }
 
     pub fn test_init_mint_if_needed(
-        ctx: Context<TestInitMintIfNeeded>,
-        decimals: u8,
+        _ctx: Context<TestInitMintIfNeeded>,
+        _decimals: u8,
     ) -> Result<()> {
         Ok(())
     }
 
-    pub fn test_init_token_if_needed(ctx: Context<TestInitTokenIfNeeded>) -> Result<()> {
+    pub fn test_init_token_if_needed(_ctx: Context<TestInitTokenIfNeeded>) -> Result<()> {
         Ok(())
     }
 
     pub fn test_init_associated_token_if_needed(
-        ctx: Context<TestInitAssociatedTokenIfNeeded>,
+        _ctx: Context<TestInitAssociatedTokenIfNeeded>,
     ) -> Result<()> {
         Ok(())
     }
 
-    pub fn init_with_space(ctx: Context<InitWithSpace>, data: u16) -> Result<()> {
+    pub fn init_with_space(_ctx: Context<InitWithSpace>, data: u16) -> Result<()> {
         Ok(())
     }
 
@@ -270,11 +270,11 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_no_rent_exempt(ctx: Context<NoRentExempt>) -> Result<()> {
+    pub fn test_no_rent_exempt(_ctx: Context<NoRentExempt>) -> Result<()> {
         Ok(())
     }
 
-    pub fn test_enforce_rent_exempt(ctx: Context<EnforceRentExempt>) -> Result<()> {
+    pub fn test_enforce_rent_exempt(_ctx: Context<EnforceRentExempt>) -> Result<()> {
         Ok(())
     }
 

@@ -5,7 +5,8 @@ import { SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("init-if-needed", () => {
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
 
   const program = anchor.workspace.InitIfNeeded as Program<InitIfNeeded>;
 
@@ -37,11 +38,11 @@ describe("init-if-needed", () => {
             .close()
             .accounts({
               acc: account.publicKey,
-              receiver: program.provider.wallet.publicKey,
+              receiver: provider.wallet.publicKey,
             })
             .instruction(),
           SystemProgram.transfer({
-            fromPubkey: program.provider.wallet.publicKey,
+            fromPubkey: provider.wallet.publicKey,
             toPubkey: account.publicKey,
             lamports: 1 * LAMPORTS_PER_SOL,
           }),

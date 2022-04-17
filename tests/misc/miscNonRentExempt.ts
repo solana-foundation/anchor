@@ -1,17 +1,19 @@
 import * as anchor from "@project-serum/anchor";
-import { Program, BN, IdlAccounts, AnchorError } from "@project-serum/anchor";
+import { Program, AnchorError } from "@project-serum/anchor";
 import {
   PublicKey,
   Keypair,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
+// @ts-expect-error
 import { Misc } from "../../target/types/misc";
 const { assert } = require("chai");
 
 describe("miscNonRentExempt", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
   const program = anchor.workspace.Misc as Program<Misc>;
 
   it("init_if_needed checks rent_exemption if init is not needed", async () => {
@@ -19,7 +21,7 @@ describe("miscNonRentExempt", () => {
     await program.rpc.initDecreaseLamports({
       accounts: {
         data: data.publicKey,
-        user: anchor.getProvider().wallet.publicKey,
+        user: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
       },
       signers: [data],
@@ -29,7 +31,7 @@ describe("miscNonRentExempt", () => {
       await program.rpc.initIfNeededChecksRentExemption({
         accounts: {
           data: data.publicKey,
-          user: anchor.getProvider().wallet.publicKey,
+          user: provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
         },
         signers: [data],
@@ -58,7 +60,7 @@ describe("miscNonRentExempt", () => {
             await program.provider.connection.getMinimumBalanceForRentExemption(
               39
             ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: data.publicKey,
         }),
       ],
@@ -86,7 +88,7 @@ describe("miscNonRentExempt", () => {
             await program.provider.connection.getMinimumBalanceForRentExemption(
               39
             ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: data.publicKey,
         }),
       ],
@@ -109,7 +111,7 @@ describe("miscNonRentExempt", () => {
             await program.provider.connection.getMinimumBalanceForRentExemption(
               39
             ),
-          fromPubkey: anchor.getProvider().wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: data.publicKey,
         }),
       ],

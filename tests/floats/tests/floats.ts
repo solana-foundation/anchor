@@ -6,7 +6,8 @@ import { assert } from "chai";
 
 describe("floats", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
 
   const program = anchor.workspace.Floats as Program<Floats>;
 
@@ -17,7 +18,7 @@ describe("floats", () => {
       .create(1.0, 2.0)
       .accounts({
         account: accountKeypair.publicKey,
-        authority: getProvider().wallet.publicKey,
+        authority: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .signers([accountKeypair])
@@ -33,7 +34,7 @@ describe("floats", () => {
 
   it("Updates an account with float data", async () => {
     const accountKeypair = Keypair.generate();
-    const authorityPublicKey = getProvider().wallet.publicKey;
+    const authorityPublicKey = provider.wallet.publicKey;
 
     await program.methods
       .create(1.0, 2.0)

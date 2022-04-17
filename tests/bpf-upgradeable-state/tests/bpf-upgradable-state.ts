@@ -21,7 +21,7 @@ describe("bpf_upgradeable_state", () => {
     const settings = anchor.web3.Keypair.generate();
     const tx = await program.rpc.setAdminSettings(new anchor.BN(500), {
       accounts: {
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         programData: programDataAddress,
         program: program.programId,
@@ -43,7 +43,7 @@ describe("bpf_upgradeable_state", () => {
       new anchor.BN(500),
       {
         accounts: {
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           programData: programDataAddress,
           program: program.programId,
@@ -98,7 +98,7 @@ describe("bpf_upgradeable_state", () => {
     try {
       await program.rpc.setAdminSettings(new anchor.BN(500), {
         accounts: {
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           programData: program.programId,
           settings: settings.publicKey,
@@ -123,9 +123,9 @@ describe("bpf_upgradeable_state", () => {
     try {
       await program.rpc.setAdminSettings(new anchor.BN(500), {
         accounts: {
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
-          programData: program.provider.wallet.publicKey,
+          programData: provider.wallet.publicKey,
           settings: settings.publicKey,
           program: program.programId,
         },
@@ -156,7 +156,7 @@ describe("bpf_upgradeable_state", () => {
     try {
       await program.rpc.setAdminSettings(new anchor.BN(500), {
         accounts: {
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           programData: secondProgramProgramDataAddress,
           settings: settings.publicKey,
@@ -185,7 +185,7 @@ describe("bpf_upgradeable_state", () => {
     try {
       await program.rpc.setAdminSettingsUseProgramState(new anchor.BN(500), {
         accounts: {
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           programData: secondProgramProgramDataAddress,
           settings: settings.publicKey,

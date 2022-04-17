@@ -1,5 +1,11 @@
 import * as anchor from "@project-serum/anchor";
-import { Program, BN, IdlAccounts, AnchorError } from "@project-serum/anchor";
+import {
+  Program,
+  BN,
+  IdlAccounts,
+  AnchorError,
+  Wallet,
+} from "@project-serum/anchor";
 import {
   PublicKey,
   Keypair,
@@ -20,15 +26,19 @@ const miscIdl = require("../../target/idl/misc.json");
 
 describe("misc", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  const wallet = provider.wallet as Wallet;
+  anchor.setProvider(provider);
   const program = anchor.workspace.Misc as Program<Misc>;
   const misc2Program = anchor.workspace.Misc2 as Program<Misc2>;
 
   it("Can allocate extra space for a state constructor", async () => {
+    // @ts-expect-error
     const tx = await program.state.rpc.new();
     const addr = await program.state.address();
     const state = await program.state.fetch();
     const accountInfo = await program.provider.connection.getAccountInfo(addr);
+    // @ts-expect-error
     assert.isTrue(state.v.equals(Buffer.from([])));
     assert.lengthOf(accountInfo.data, 99);
   });
@@ -50,7 +60,6 @@ describe("misc", () => {
       {
         accounts: {
           data: data.publicKey,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         },
         signers: [data],
         instructions: [await program.account.data.createInstruction(data)],
@@ -66,7 +75,6 @@ describe("misc", () => {
     const tx = await program.rpc.testU16(99, {
       accounts: {
         myAccount: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [data],
       instructions: [await program.account.dataU16.createInstruction(data)],
@@ -95,7 +103,7 @@ describe("misc", () => {
       async () => {
         await program.rpc.testOwner({
           accounts: {
-            data: program.provider.wallet.publicKey,
+            data: provider.wallet.publicKey,
             misc: program.programId,
           },
         });
@@ -117,7 +125,7 @@ describe("misc", () => {
       async () => {
         await program.rpc.testExecutable({
           accounts: {
-            program: program.provider.wallet.publicKey,
+            program: provider.wallet.publicKey,
           },
         });
       },
@@ -131,27 +139,27 @@ describe("misc", () => {
     const oldData = new anchor.BN(0);
     await misc2Program.state.rpc.new({
       accounts: {
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
       },
     });
     let stateAccount = await misc2Program.state.fetch();
     assert.isTrue(stateAccount.data.eq(oldData));
-    assert.isTrue(stateAccount.auth.equals(program.provider.wallet.publicKey));
+    assert.isTrue(stateAccount.auth.equals(provider.wallet.publicKey));
     const newData = new anchor.BN(2134);
     await program.rpc.testStateCpi(newData, {
       accounts: {
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         cpiState: await misc2Program.state.address(),
         misc2Program: misc2Program.programId,
       },
     });
     stateAccount = await misc2Program.state.fetch();
     assert.isTrue(stateAccount.data.eq(newData));
-    assert.isTrue(stateAccount.auth.equals(program.provider.wallet.publicKey));
+    assert.isTrue(stateAccount.auth.equals(provider.wallet.publicKey));
   });
 
   it("Can retrieve events when simulating a transaction", async () => {
-    const resp = await program.simulate.testSimulate(44);
+    const resp = await program.methods.testSimulate(44).simulate();
     const expectedRaw = [
       "Program 3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh invoke [1]",
       "Program log: Instruction: TestSimulate",
@@ -188,7 +196,6 @@ describe("misc", () => {
     await program.rpc.testI8(-3, {
       accounts: {
         data: dataI8.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       instructions: [await program.account.dataI8.createInstruction(dataI8)],
       signers: [dataI8],
@@ -204,7 +211,6 @@ describe("misc", () => {
     await program.rpc.testI16(-2048, {
       accounts: {
         data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       instructions: [await program.account.dataI16.createInstruction(data)],
       signers: [data],
@@ -246,20 +252,20 @@ describe("misc", () => {
 
     let beforeBalance = (
       await program.provider.connection.getAccountInfo(
-        program.provider.wallet.publicKey
+        provider.wallet.publicKey
       )
     ).lamports;
 
     await program.rpc.testClose({
       accounts: {
         data: data.publicKey,
-        solDest: program.provider.wallet.publicKey,
+        solDest: provider.wallet.publicKey,
       },
     });
 
     let afterBalance = (
       await program.provider.connection.getAccountInfo(
-        program.provider.wallet.publicKey
+        provider.wallet.publicKey
       )
     ).lamports;
 
@@ -305,9 +311,8 @@ describe("misc", () => {
     await program.rpc.testPdaInit(domain, seed, nonce, {
       accounts: {
         myPda,
-        myPayer: program.provider.wallet.publicKey,
+        myPayer: provider.wallet.publicKey,
         foo,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -324,8 +329,7 @@ describe("misc", () => {
     await program.rpc.testPdaInitZeroCopy({
       accounts: {
         myPda,
-        myPayer: program.provider.wallet.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        myPayer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -343,7 +347,7 @@ describe("misc", () => {
     await program.rpc.testPdaMutZeroCopy({
       accounts: {
         myPda,
-        myPayer: program.provider.wallet.publicKey,
+        myPayer: provider.wallet.publicKey,
       },
     });
 
@@ -365,7 +369,7 @@ describe("misc", () => {
       accounts: {
         myPda,
         mint,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -376,13 +380,14 @@ describe("misc", () => {
       program.provider.connection,
       mint,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const account = await mintAccount.getAccountInfo(myPda);
+    // @ts-expect-error
     assert.strictEqual(account.state, 1);
     assert.strictEqual(account.amount.toNumber(), 0);
     assert.isTrue(account.isInitialized);
-    assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+    assert.isTrue(account.owner.equals(provider.wallet.publicKey));
     assert.isTrue(account.mint.equals(mint));
   });
 
@@ -403,7 +408,7 @@ describe("misc", () => {
     await program.rpc.testInit({
       accounts: {
         data: data.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
       signers: [data],
@@ -418,13 +423,13 @@ describe("misc", () => {
     await program.rpc.testInit({
       accounts: {
         data: data.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
       signers: [data],
       instructions: [
         anchor.web3.SystemProgram.transfer({
-          fromPubkey: program.provider.wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           toPubkey: data.publicKey,
           lamports: 4039280,
         }),
@@ -440,7 +445,7 @@ describe("misc", () => {
     await program.rpc.testInitZeroCopy({
       accounts: {
         data: data.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
       signers: [data],
@@ -457,7 +462,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -468,15 +473,13 @@ describe("misc", () => {
       program.provider.connection,
       mint.publicKey,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const mintAccount = await client.getMintInfo();
     assert.strictEqual(mintAccount.decimals, 6);
+    assert.isTrue(mintAccount.mintAuthority.equals(provider.wallet.publicKey));
     assert.isTrue(
-      mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
-    );
-    assert.isTrue(
-      mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+      mintAccount.freezeAuthority.equals(provider.wallet.publicKey)
     );
   });
 
@@ -485,7 +488,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -493,7 +496,7 @@ describe("misc", () => {
       signers: [mint],
       instructions: [
         anchor.web3.SystemProgram.transfer({
-          fromPubkey: program.provider.wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           toPubkey: mint.publicKey,
           lamports: 4039280,
         }),
@@ -503,13 +506,11 @@ describe("misc", () => {
       program.provider.connection,
       mint.publicKey,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const mintAccount = await client.getMintInfo();
     assert.strictEqual(mintAccount.decimals, 6);
-    assert.isTrue(
-      mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
-    );
+    assert.isTrue(mintAccount.mintAuthority.equals(provider.wallet.publicKey));
   });
 
   it("Can create a random token account", async () => {
@@ -518,7 +519,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -529,13 +530,14 @@ describe("misc", () => {
       program.provider.connection,
       mint.publicKey,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const account = await client.getAccountInfo(token.publicKey);
+    // @ts-expect-error
     assert.strictEqual(account.state, 1);
     assert.strictEqual(account.amount.toNumber(), 0);
     assert.isTrue(account.isInitialized);
-    assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+    assert.isTrue(account.owner.equals(provider.wallet.publicKey));
     assert.isTrue(account.mint.equals(mint.publicKey));
   });
 
@@ -545,7 +547,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -553,7 +555,7 @@ describe("misc", () => {
       signers: [token],
       instructions: [
         anchor.web3.SystemProgram.transfer({
-          fromPubkey: program.provider.wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           toPubkey: token.publicKey,
           lamports: 4039280,
         }),
@@ -563,13 +565,14 @@ describe("misc", () => {
       program.provider.connection,
       mint.publicKey,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const account = await client.getAccountInfo(token.publicKey);
+    // @ts-expect-error
     assert.strictEqual(account.state, 1);
     assert.strictEqual(account.amount.toNumber(), 0);
     assert.isTrue(account.isInitialized);
-    assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+    assert.isTrue(account.owner.equals(provider.wallet.publicKey));
     assert.isTrue(account.mint.equals(mint.publicKey));
   });
 
@@ -579,7 +582,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -587,7 +590,7 @@ describe("misc", () => {
       signers: [token],
       instructions: [
         anchor.web3.SystemProgram.transfer({
-          fromPubkey: program.provider.wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           toPubkey: token.publicKey,
           lamports: 1,
         }),
@@ -597,13 +600,14 @@ describe("misc", () => {
       program.provider.connection,
       mint.publicKey,
       TOKEN_PROGRAM_ID,
-      program.provider.wallet.payer
+      wallet.payer
     );
     const account = await client.getAccountInfo(token.publicKey);
+    // @ts-expect-error
     assert.strictEqual(account.state, 1);
     assert.strictEqual(account.amount.toNumber(), 0);
     assert.isTrue(account.isInitialized);
-    assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+    assert.isTrue(account.owner.equals(provider.wallet.publicKey));
     assert.isTrue(account.mint.equals(mint.publicKey));
   });
 
@@ -615,7 +619,7 @@ describe("misc", () => {
       accounts: {
         composite: {
           data: data1.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
         data: data2.publicKey,
@@ -637,9 +641,9 @@ describe("misc", () => {
     // apparently cannot await here so doing it in the 'it' statements
     let client = Token.createMint(
       program.provider.connection,
-      program.provider.wallet.payer,
-      program.provider.wallet.publicKey,
-      program.provider.wallet.publicKey,
+      wallet.payer,
+      provider.wallet.publicKey,
+      provider.wallet.publicKey,
       9,
       TOKEN_PROGRAM_ID
     );
@@ -650,14 +654,14 @@ describe("misc", () => {
         ASSOCIATED_TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
         localClient.publicKey,
-        program.provider.wallet.publicKey
+        provider.wallet.publicKey
       );
 
       await program.rpc.testInitAssociatedToken({
         accounts: {
           token: associatedToken,
           mint: localClient.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -666,10 +670,11 @@ describe("misc", () => {
       });
 
       const account = await localClient.getAccountInfo(associatedToken);
+      // @ts-expect-error
       assert.strictEqual(account.state, 1);
       assert.strictEqual(account.amount.toNumber(), 0);
       assert.isTrue(account.isInitialized);
-      assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+      assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(localClient.publicKey));
     });
 
@@ -679,15 +684,15 @@ describe("misc", () => {
         accounts: {
           token: associatedToken,
           mint: localClient.publicKey,
-          wallet: program.provider.wallet.publicKey,
+          wallet: provider.wallet.publicKey,
         },
       });
 
       let otherMint = await Token.createMint(
         program.provider.connection,
-        program.provider.wallet.payer,
-        program.provider.wallet.publicKey,
-        program.provider.wallet.publicKey,
+        wallet.payer,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey,
         9,
         TOKEN_PROGRAM_ID
       );
@@ -698,7 +703,7 @@ describe("misc", () => {
             accounts: {
               token: associatedToken,
               mint: otherMint.publicKey,
-              wallet: program.provider.wallet.publicKey,
+              wallet: provider.wallet.publicKey,
             },
           });
         },
@@ -715,7 +720,7 @@ describe("misc", () => {
         accounts: {
           token: associatedToken,
           mint: localClient.publicKey,
-          wallet: program.provider.wallet.publicKey,
+          wallet: provider.wallet.publicKey,
         },
       });
 
@@ -723,7 +728,7 @@ describe("misc", () => {
         associatedToken,
         anchor.web3.Keypair.generate().publicKey,
         "AccountOwner",
-        program.provider.wallet.payer,
+        wallet.payer,
         []
       );
 
@@ -733,7 +738,7 @@ describe("misc", () => {
             accounts: {
               token: associatedToken,
               mint: localClient.publicKey,
-              wallet: program.provider.wallet.publicKey,
+              wallet: provider.wallet.publicKey,
             },
           });
         },
@@ -755,18 +760,19 @@ describe("misc", () => {
     const filterable1 = anchor.web3.Keypair.generate().publicKey;
     const filterable2 = anchor.web3.Keypair.generate().publicKey;
     // Set up a secondary wallet and program.
+    const anotherProvider = new anchor.AnchorProvider(
+      program.provider.connection,
+      new anchor.Wallet(anchor.web3.Keypair.generate()),
+      { commitment: program.provider.connection.commitment }
+    );
     const anotherProgram = new anchor.Program(
       miscIdl,
       program.programId,
-      new anchor.AnchorProvider(
-        program.provider.connection,
-        new anchor.Wallet(anchor.web3.Keypair.generate()),
-        { commitment: program.provider.connection.commitment }
-      )
+      anotherProvider
     );
     // Request airdrop for secondary wallet.
     const signature = await program.provider.connection.requestAirdrop(
-      anotherProgram.provider.wallet.publicKey,
+      anotherProvider.wallet.publicKey,
       anchor.web3.LAMPORTS_PER_SOL
     );
     await program.provider.connection.confirmTransaction(signature);
@@ -775,7 +781,7 @@ describe("misc", () => {
       program.rpc.testFetchAll(filterable1, {
         accounts: {
           data: data1.publicKey,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
         signers: [data1],
@@ -783,7 +789,7 @@ describe("misc", () => {
       program.rpc.testFetchAll(filterable1, {
         accounts: {
           data: data2.publicKey,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
         signers: [data2],
@@ -791,7 +797,7 @@ describe("misc", () => {
       program.rpc.testFetchAll(filterable2, {
         accounts: {
           data: data3.publicKey,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
         signers: [data3],
@@ -799,7 +805,7 @@ describe("misc", () => {
       anotherProgram.rpc.testFetchAll(filterable1, {
         accounts: {
           data: data4.publicKey,
-          authority: anotherProgram.provider.wallet.publicKey,
+          authority: anotherProvider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         },
         signers: [data4],
@@ -809,14 +815,14 @@ describe("misc", () => {
     const allAccounts = await program.account.dataWithFilter.all();
     const allAccountsFilteredByBuffer =
       await program.account.dataWithFilter.all(
-        program.provider.wallet.publicKey.toBuffer()
+        provider.wallet.publicKey.toBuffer()
       );
     const allAccountsFilteredByProgramFilters1 =
       await program.account.dataWithFilter.all([
         {
           memcmp: {
             offset: 8,
-            bytes: program.provider.wallet.publicKey.toBase58(),
+            bytes: provider.wallet.publicKey.toBase58(),
           },
         },
         { memcmp: { offset: 40, bytes: filterable1.toBase58() } },
@@ -826,7 +832,7 @@ describe("misc", () => {
         {
           memcmp: {
             offset: 8,
-            bytes: program.provider.wallet.publicKey.toBase58(),
+            bytes: provider.wallet.publicKey.toBase58(),
           },
         },
         { memcmp: { offset: 40, bytes: filterable2.toBase58() } },
@@ -852,7 +858,7 @@ describe("misc", () => {
     await program.rpc.testInitWithEmptySeeds({
       accounts: {
         pda: pda,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
     });
@@ -862,8 +868,8 @@ describe("misc", () => {
       },
     });
 
-    const [pda2, bump2] = await PublicKey.findProgramAddress(
-      ["non-empty"],
+    const [pda2] = await PublicKey.findProgramAddress(
+      [anchor.utils.bytes.utf8.encode("non-empty")],
       program.programId
     );
     await nativeAssert.rejects(
@@ -886,7 +892,7 @@ describe("misc", () => {
       accounts: {
         data: ifNeededAcc.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
       },
       signers: [ifNeededAcc],
     });
@@ -899,7 +905,7 @@ describe("misc", () => {
       accounts: {
         data: ifNeededAcc.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
       },
       signers: [ifNeededAcc],
     });
@@ -912,7 +918,6 @@ describe("misc", () => {
     const tx = await program.rpc.testConstArraySize(99, {
       accounts: {
         data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [data],
       instructions: [
@@ -931,7 +936,6 @@ describe("misc", () => {
     const tx = await program.rpc.testConstIxDataSize(dataArray, {
       accounts: {
         data: data.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [data],
       instructions: [
@@ -973,7 +977,7 @@ describe("misc", () => {
       accounts: {
         data: newAcc[0],
         systemProgram: anchor.web3.SystemProgram.programId,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         owner: program.programId,
       },
     });
@@ -983,7 +987,7 @@ describe("misc", () => {
         accounts: {
           data: newAcc[0],
           systemProgram: anchor.web3.SystemProgram.programId,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           owner: anchor.web3.Keypair.generate().publicKey,
         },
       });
@@ -1004,7 +1008,7 @@ describe("misc", () => {
       accounts: {
         data: newAcc[0],
         systemProgram: anchor.web3.SystemProgram.programId,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
       },
     });
 
@@ -1022,8 +1026,7 @@ describe("misc", () => {
         accounts: {
           data: newAcc[0],
           systemProgram: anchor.web3.SystemProgram.programId,
-          payer: program.provider.wallet.publicKey,
-          owner: anchor.web3.Keypair.generate().publicKey,
+          payer: provider.wallet.publicKey,
         },
       });
       expect(false).to.be.true;
@@ -1041,7 +1044,7 @@ describe("misc", () => {
       accounts: {
         data: newAcc.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
       },
       signers: [newAcc],
     });
@@ -1051,7 +1054,7 @@ describe("misc", () => {
         accounts: {
           data: newAcc.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
         },
         signers: [newAcc],
       });
@@ -1068,7 +1071,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1080,12 +1083,12 @@ describe("misc", () => {
       await program.rpc.testInitMintIfNeeded(6, {
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           mintAuthority: anchor.web3.Keypair.generate().publicKey,
-          freezeAuthority: program.provider.wallet.publicKey,
+          freezeAuthority: provider.wallet.publicKey,
         },
         signers: [mint],
       });
@@ -1102,7 +1105,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1114,11 +1117,11 @@ describe("misc", () => {
       await program.rpc.testInitMintIfNeeded(6, {
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          mintAuthority: program.provider.wallet.publicKey,
+          mintAuthority: provider.wallet.publicKey,
           freezeAuthority: anchor.web3.Keypair.generate().publicKey,
         },
         signers: [mint],
@@ -1136,7 +1139,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1148,12 +1151,12 @@ describe("misc", () => {
       await program.rpc.testInitMintIfNeeded(9, {
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          mintAuthority: program.provider.wallet.publicKey,
-          freezeAuthority: program.provider.wallet.publicKey,
+          mintAuthority: provider.wallet.publicKey,
+          freezeAuthority: provider.wallet.publicKey,
         },
         signers: [mint],
       });
@@ -1170,7 +1173,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1183,7 +1186,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1196,7 +1199,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1217,7 +1220,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1229,7 +1232,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint2.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1242,7 +1245,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1255,11 +1258,11 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint2.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
         },
         signers: [token],
       });
@@ -1276,7 +1279,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: SYSVAR_RENT_PUBKEY,
@@ -1288,14 +1291,14 @@ describe("misc", () => {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       mint.publicKey,
-      program.provider.wallet.publicKey
+      provider.wallet.publicKey
     );
 
     await program.rpc.testInitAssociatedToken({
       accounts: {
         token: associatedToken,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1308,7 +1311,7 @@ describe("misc", () => {
         accounts: {
           token: associatedToken,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -1329,7 +1332,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1341,7 +1344,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint2.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1353,14 +1356,14 @@ describe("misc", () => {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       mint.publicKey,
-      program.provider.wallet.publicKey
+      provider.wallet.publicKey
     );
 
     await program.rpc.testInitAssociatedToken({
       accounts: {
         token: associatedToken,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1373,12 +1376,12 @@ describe("misc", () => {
         accounts: {
           token: associatedToken,
           mint: mint2.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
         },
       });
       expect(false).to.be.true;
@@ -1394,7 +1397,7 @@ describe("misc", () => {
     await program.rpc.testInitMint({
       accounts: {
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1406,14 +1409,14 @@ describe("misc", () => {
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
       mint.publicKey,
-      program.provider.wallet.publicKey
+      provider.wallet.publicKey
     );
 
     await program.rpc.testInitAssociatedToken({
       accounts: {
         token: associatedToken,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1426,7 +1429,7 @@ describe("misc", () => {
       accounts: {
         token: token.publicKey,
         mint: mint.publicKey,
-        payer: program.provider.wallet.publicKey,
+        payer: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1439,12 +1442,12 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          authority: program.provider.wallet.publicKey,
+          authority: provider.wallet.publicKey,
         },
       });
       expect(false).to.be.true;
@@ -1607,7 +1610,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1620,7 +1623,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1631,17 +1634,17 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
         },
       });
       const mintAccount = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const account = await mintAccount.getAccountInfo(token.publicKey);
-      assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+      assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(mint.publicKey));
     });
 
@@ -1650,7 +1653,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1663,7 +1666,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1674,17 +1677,17 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
         },
       });
       const mintAccount = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const account = await mintAccount.getAccountInfo(token.publicKey);
-      assert.isTrue(account.owner.equals(program.provider.wallet.publicKey));
+      assert.isTrue(account.owner.equals(provider.wallet.publicKey));
     });
 
     it("Token Constraint Test(no init) - Can make only token::mint", async () => {
@@ -1692,7 +1695,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1705,7 +1708,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1722,7 +1725,7 @@ describe("misc", () => {
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const account = await mintAccount.getAccountInfo(token.publicKey);
       assert.isTrue(account.mint.equals(mint.publicKey));
@@ -1733,7 +1736,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1745,7 +1748,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint1.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1758,7 +1761,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1770,7 +1773,7 @@ describe("misc", () => {
           accounts: {
             token: token.publicKey,
             mint: mint1.publicKey,
-            payer: program.provider.wallet.publicKey,
+            payer: provider.wallet.publicKey,
           },
         });
         assert.isTrue(false);
@@ -1787,7 +1790,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1799,7 +1802,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1829,7 +1832,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1840,7 +1843,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint1.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1852,7 +1855,7 @@ describe("misc", () => {
         accounts: {
           token: token.publicKey,
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1882,7 +1885,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1892,23 +1895,23 @@ describe("misc", () => {
       await program.rpc.testMintConstraint(6, {
         accounts: {
           mint: mint.publicKey,
-          mintAuthority: program.provider.wallet.publicKey,
-          freezeAuthority: program.provider.wallet.publicKey,
+          mintAuthority: provider.wallet.publicKey,
+          freezeAuthority: provider.wallet.publicKey,
         },
       });
       const client = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const mintAccount = await client.getMintInfo();
       assert.strictEqual(mintAccount.decimals, 6);
       assert.isTrue(
-        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.mintAuthority.equals(provider.wallet.publicKey)
       );
       assert.isTrue(
-        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.freezeAuthority.equals(provider.wallet.publicKey)
       );
     });
 
@@ -1917,7 +1920,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1929,8 +1932,8 @@ describe("misc", () => {
         await program.rpc.testMintConstraint(fakeDecimal, {
           accounts: {
             mint: mint.publicKey,
-            mintAuthority: program.provider.wallet.publicKey,
-            freezeAuthority: program.provider.wallet.publicKey,
+            mintAuthority: provider.wallet.publicKey,
+            freezeAuthority: provider.wallet.publicKey,
           },
         });
         assert.isTrue(false);
@@ -1947,7 +1950,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1961,7 +1964,7 @@ describe("misc", () => {
           accounts: {
             mint: mint.publicKey,
             mintAuthority: fakeAuthority.publicKey,
-            freezeAuthority: program.provider.wallet.publicKey,
+            freezeAuthority: provider.wallet.publicKey,
           },
         });
         assert.isTrue(false);
@@ -1981,7 +1984,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -1994,7 +1997,7 @@ describe("misc", () => {
         await program.rpc.testMintConstraint(6, {
           accounts: {
             mint: mint.publicKey,
-            mintAuthority: program.provider.wallet.publicKey,
+            mintAuthority: provider.wallet.publicKey,
             freezeAuthority: fakeAuthority.publicKey,
           },
         });
@@ -2015,7 +2018,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -2032,7 +2035,7 @@ describe("misc", () => {
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const mintAccount = await client.getMintInfo();
       assert.strictEqual(mintAccount.decimals, 6);
@@ -2043,7 +2046,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -2054,22 +2057,22 @@ describe("misc", () => {
       await program.rpc.testMintOnlyAuthConstraint({
         accounts: {
           mint: mint.publicKey,
-          mintAuthority: program.provider.wallet.publicKey,
-          freezeAuthority: program.provider.wallet.publicKey,
+          mintAuthority: provider.wallet.publicKey,
+          freezeAuthority: provider.wallet.publicKey,
         },
       });
       const client = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const mintAccount = await client.getMintInfo();
       assert.isTrue(
-        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.mintAuthority.equals(provider.wallet.publicKey)
       );
       assert.isTrue(
-        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.freezeAuthority.equals(provider.wallet.publicKey)
       );
     });
 
@@ -2078,7 +2081,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -2089,18 +2092,18 @@ describe("misc", () => {
       await program.rpc.testMintOnlyOneAuthConstraint({
         accounts: {
           mint: mint.publicKey,
-          mintAuthority: program.provider.wallet.publicKey,
+          mintAuthority: provider.wallet.publicKey,
         },
       });
       const client = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const mintAccount = await client.getMintInfo();
       assert.isTrue(
-        mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.mintAuthority.equals(provider.wallet.publicKey)
       );
     });
 
@@ -2109,7 +2112,7 @@ describe("misc", () => {
       await program.rpc.testInitMint({
         accounts: {
           mint: mint.publicKey,
-          payer: program.provider.wallet.publicKey,
+          payer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -2120,19 +2123,19 @@ describe("misc", () => {
       await program.rpc.testMintMissMintAuthConstraint(6, {
         accounts: {
           mint: mint.publicKey,
-          freezeAuthority: program.provider.wallet.publicKey,
+          freezeAuthority: provider.wallet.publicKey,
         },
       });
       const client = new Token(
         program.provider.connection,
         mint.publicKey,
         TOKEN_PROGRAM_ID,
-        program.provider.wallet.payer
+        wallet.payer
       );
       const mintAccount = await client.getMintInfo();
       assert.strictEqual(mintAccount.decimals, 6);
       assert.isTrue(
-        mintAccount.freezeAuthority.equals(program.provider.wallet.publicKey)
+        mintAccount.freezeAuthority.equals(provider.wallet.publicKey)
       );
     });
   });

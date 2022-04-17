@@ -6,7 +6,8 @@ import { Keypair, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 
 describe("custom-coder", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
 
   // Client.
   const program = Spl.token();
@@ -18,25 +19,18 @@ describe("custom-coder", () => {
   const rent = SYSVAR_RENT_PUBKEY;
 
   it("Creates a mint", async () => {
-    await program.rpc.initializeMint(
-      6,
-      program.provider.wallet.publicKey,
-      null,
-      {
-        accounts: {
-          mint: mintKeypair.publicKey,
-          rent,
-        },
-        signers: [mintKeypair],
-        preInstructions: [
-          await program.account.mint.createInstruction(mintKeypair),
-        ],
-      }
-    );
+    await program.rpc.initializeMint(6, provider.wallet.publicKey, null, {
+      accounts: {
+        mint: mintKeypair.publicKey,
+        rent,
+      },
+      signers: [mintKeypair],
+      preInstructions: [
+        await program.account.mint.createInstruction(mintKeypair),
+      ],
+    });
     const mintAccount = await program.account.mint.fetch(mintKeypair.publicKey);
-    assert.isTrue(
-      mintAccount.mintAuthority.equals(program.provider.wallet.publicKey)
-    );
+    assert.isTrue(mintAccount.mintAuthority.equals(provider.wallet.publicKey));
     assert.isNull(mintAccount.freezeAuthority);
     assert.strictEqual(mintAccount.decimals, 6);
     assert.isTrue(mintAccount.isInitialized);
@@ -48,7 +42,7 @@ describe("custom-coder", () => {
       accounts: {
         account: aliceTokenKeypair.publicKey,
         mint: mintKeypair.publicKey,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         rent,
       },
       signers: [aliceTokenKeypair],
@@ -59,7 +53,7 @@ describe("custom-coder", () => {
     const token = await program.account.token.fetch(
       aliceTokenKeypair.publicKey
     );
-    assert.isTrue(token.authority.equals(program.provider.wallet.publicKey));
+    assert.isTrue(token.authority.equals(provider.wallet.publicKey));
     assert.isTrue(token.mint.equals(mintKeypair.publicKey));
     assert.strictEqual(token.amount.toNumber(), 0);
     assert.isNull(token.delegate);
@@ -74,7 +68,7 @@ describe("custom-coder", () => {
       accounts: {
         mint: mintKeypair.publicKey,
         to: aliceTokenKeypair.publicKey,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
       },
     });
 
@@ -91,7 +85,7 @@ describe("custom-coder", () => {
       accounts: {
         account: bobTokenKeypair.publicKey,
         mint: mintKeypair.publicKey,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
         rent,
       },
       signers: [bobTokenKeypair],
@@ -106,7 +100,7 @@ describe("custom-coder", () => {
       accounts: {
         source: aliceTokenKeypair.publicKey,
         destination: bobTokenKeypair.publicKey,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
       },
     });
     const aliceToken = await program.account.token.fetch(
@@ -124,7 +118,7 @@ describe("custom-coder", () => {
       accounts: {
         source: aliceTokenKeypair.publicKey,
         mint: mintKeypair.publicKey,
-        authority: program.provider.wallet.publicKey,
+        authority: provider.wallet.publicKey,
       },
     });
     const aliceToken = await program.account.token.fetch(

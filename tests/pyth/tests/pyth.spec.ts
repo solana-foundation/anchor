@@ -4,7 +4,8 @@ import { assert } from "chai";
 import { createPriceFeed, setFeedPrice, getFeedData } from "./oracleUtils";
 
 describe("pyth-oracle", () => {
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
   const program = anchor.workspace.Pyth as Program;
 
   it("initialize", async () => {
@@ -13,6 +14,7 @@ describe("pyth-oracle", () => {
       oracleProgram: program,
       initPrice: price,
       expo: -6,
+      provider,
     });
     const feedData = await getFeedData(program, priceFeedAddress);
     assert.strictEqual(feedData.price, price);
@@ -25,6 +27,7 @@ describe("pyth-oracle", () => {
       oracleProgram: program,
       initPrice: price,
       expo: expo,
+      provider,
     });
     const feedDataBefore = await getFeedData(program, priceFeedAddress);
     assert.strictEqual(feedDataBefore.price, price);

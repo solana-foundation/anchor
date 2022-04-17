@@ -4,6 +4,7 @@ import * as borsh from "borsh";
 import { Program } from "@project-serum/anchor";
 import { Callee } from "../target/types/callee";
 import { Caller } from "../target/types/caller";
+import { ConfirmOptions } from "@solana/web3.js";
 
 const { SystemProgram } = anchor.web3;
 
@@ -27,7 +28,7 @@ describe("CPI return", () => {
 
   const cpiReturn = anchor.web3.Keypair.generate();
 
-  const confirmOptions = { commitment: "confirmed" };
+  const confirmOptions: ConfirmOptions = { commitment: "confirmed" };
 
   it("can initialize", async () => {
     await calleeProgram.methods
@@ -146,11 +147,13 @@ describe("CPI return", () => {
   });
 
   it("sets a return value in idl", async () => {
+    // @ts-expect-error
     const returnu64Instruction = calleeProgram._idl.instructions.find(
       (f) => f.name == "returnU64"
     );
     assert.equal(returnu64Instruction.returns, "u64");
 
+    // @ts-expect-error
     const returnStructInstruction = calleeProgram._idl.instructions.find(
       (f) => f.name == "returnStruct"
     );
@@ -160,6 +163,7 @@ describe("CPI return", () => {
   });
 
   it("can return a u64 via view", async () => {
+    // @ts-expect-error
     assert(new anchor.BN(99).eq(await callerProgram.views.returnU64()));
     // Via methods API
     assert(
@@ -168,6 +172,7 @@ describe("CPI return", () => {
   });
 
   it("can return a struct via view", async () => {
+    // @ts-expect-error
     const struct = await callerProgram.views.returnStruct();
     assert(struct.a.eq(new anchor.BN(1)));
     assert(struct.b.eq(new anchor.BN(2)));
@@ -178,6 +183,7 @@ describe("CPI return", () => {
   });
 
   it("can return a vec via view", async () => {
+    // @ts-expect-error
     const vec = await callerProgram.views.returnVec();
     assert(vec[0].eq(new anchor.BN(1)));
     assert(vec[1].eq(new anchor.BN(2)));

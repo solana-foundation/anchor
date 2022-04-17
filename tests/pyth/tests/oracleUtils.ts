@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { BN, Program, web3 } from "@project-serum/anchor";
+import { AnchorProvider, BN, Program, web3 } from "@project-serum/anchor";
 
 export const Magic = 0xa1b2c3d4;
 export const Version1 = 1;
@@ -17,12 +17,14 @@ interface ICreatePriceFeed {
   initPrice: number;
   confidence?: BN;
   expo?: number;
+  provider: AnchorProvider;
 }
 export const createPriceFeed = async ({
   oracleProgram,
   initPrice,
   confidence,
   expo = -4,
+  provider,
 }: ICreatePriceFeed) => {
   const conf = confidence || new BN((initPrice / 10) * 10 ** -expo);
   const collateralTokenFeed = new web3.Account();
@@ -35,13 +37,12 @@ export const createPriceFeed = async ({
       signers: [collateralTokenFeed],
       instructions: [
         web3.SystemProgram.createAccount({
-          fromPubkey: oracleProgram.provider.wallet.publicKey,
+          fromPubkey: provider.wallet.publicKey,
           newAccountPubkey: collateralTokenFeed.publicKey,
           space: 3312,
-          lamports:
-            await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(
-              3312
-            ),
+          lamports: await provider.connection.getMinimumBalanceForRentExemption(
+            3312
+          ),
           programId: oracleProgram.programId,
         }),
       ],
