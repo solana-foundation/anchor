@@ -2139,9 +2139,12 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
         let mut contents = vec![];
         file.read_to_end(&mut contents)?;
         let idl: Idl = serde_json::from_slice(&contents)?;
-        let metadata = idl
-            .metadata
-            .ok_or_else(|| anyhow!("Program address not found."))?;
+        let metadata = idl.metadata.ok_or_else(|| {
+            anyhow!(
+                "Metadata property not found in IDL of program: {}",
+                program.lib_name
+            )
+        })?;
         let metadata: IdlTestMetadata = serde_json::from_value(metadata)?;
 
         let log_file = File::create(format!(
