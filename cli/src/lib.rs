@@ -198,8 +198,12 @@ pub enum Command {
     Clean,
     /// Deploys each program in the workspace.
     Deploy {
+        /// Only deploy this program
         #[clap(short, long)]
         program_name: Option<String>,
+        /// Keypair of the program (filepath) (requires program-name)
+        #[clap(long, requires = "program-name")]
+        program_keypair: Option<String>,
     },
     /// Runs the deploy migration script.
     Migrate,
@@ -415,7 +419,10 @@ pub fn entry(opts: Opts) -> Result<()> {
             cargo_args,
         ),
         Command::Clean => clean(&opts.cfg_override),
-        Command::Deploy { program_name } => deploy(&opts.cfg_override, program_name),
+        Command::Deploy {
+            program_name,
+            program_keypair,
+        } => deploy(&opts.cfg_override, program_name, program_keypair),
         Command::Expand {
             program_name,
             cargo_args,
@@ -1839,7 +1846,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None)?;
+            deploy(cfg_override, None, None)?;
         }
         let mut is_first_suite = true;
         if cfg.scripts.get("test").is_some() {
@@ -2338,7 +2345,11 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     Ok(())
 }
 
-fn deploy(cfg_override: &ConfigOverride, program_str: Option<String>) -> Result<()> {
+fn deploy(
+    cfg_override: &ConfigOverride,
+    program_str: Option<String>,
+    program_keypair: Option<String>,
+) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let keypair = cfg.provider.wallet.to_string();
@@ -2362,7 +2373,10 @@ fn deploy(cfg_override: &ConfigOverride, program_str: Option<String>) -> Result<
             );
             println!("Program path: {}...", binary_path);
 
-            let file = program.keypair_file()?;
+            let program_keypair_filepath = match &program_keypair {
+                Some(program_keypair) => program_keypair.clone(),
+                None => program.keypair_file()?.path().display().to_string(),
+            };
 
             // Send deploy transactions.
             let exit = std::process::Command::new("solana")
@@ -2373,7 +2387,7 @@ fn deploy(cfg_override: &ConfigOverride, program_str: Option<String>) -> Result<
                 .arg("--keypair")
                 .arg(&keypair)
                 .arg("--program-id")
-                .arg(file.path().display().to_string())
+                .arg(program_keypair_filepath)
                 .arg(&binary_path)
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
