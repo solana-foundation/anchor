@@ -17,9 +17,9 @@ default = []
 clap = { version = "3.0.13", features = ["derive"] }
 anyhow = "1.0.32"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
-anchor-lang = { path = "../lang" }
-anchor-client = { path = "../client" }
-anchor-syn = { path = "../lang/syn", features = ["idl", "init-if-needed"] }
+anchor-lang = { path = "../lang", version = "0.24.2" }
+anchor-client = { path = "../client", version = "0.24.2" }
+anchor-syn = { path = "../lang/syn", features = ["idl", "init-if-needed"], version = "0.24.2" }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 toml = "0.5.8"

@@ -36,3 +36,6 @@ publish:
 	cd spl/ && cargo publish && cd ../
 	sleep 25
 	cd client/ && cargo publish && cd ../
+	sleep 25
+	cd cli/ && cargo publish && cd ../
+	sleep 25
