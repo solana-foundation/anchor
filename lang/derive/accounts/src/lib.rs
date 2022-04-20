@@ -116,7 +116,7 @@ use syn::parse_macro_input;
 ///                         The given space number is the size of the account in bytes, so accounts that hold
 ///                         a variable number of items such as a <code>Vec</code> should allocate sufficient space for all items that may
 ///                         be added to the data structure because account size is fixed.
-///                         Check out the <a href = "https://book.anchor-lang.com/chapter_5/space.html" target = "_blank" rel = "noopener noreferrer">space reference</a>
+///                         Check out the <a href = "https://book.anchor-lang.com/anchor_references/space.html" target = "_blank" rel = "noopener noreferrer">space reference</a>
 ///                         and the <a href = "https://borsh.io/" target = "_blank" rel = "noopener noreferrer">borsh library</a>
 ///                         (which anchor uses under the hood for serialization) specification to learn how much
 ///                         space different data structures require.
