@@ -593,6 +593,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             _ => None,
         };
+        if let Some(associated_token) = &associated_token {
+            if seeds.is_some() {
+                return Err(ParseError::new(
+                    associated_token.mint.span(),
+                    "'associated_token' constraints cannot be used with the 'seeds' constraint",
+                ));
+            }
+        }
+
         let token_account = match (&token_mint, &token_authority) {
             (None, None) => None,
             _ => Some(ConstraintTokenAccountGroup {
