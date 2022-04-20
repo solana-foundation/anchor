@@ -333,7 +333,7 @@ pub struct SetAuthority<'info> {
     pub account_or_mint: AccountInfo<'info>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TokenAccount(spl_token::state::Account);
 
 impl TokenAccount {
@@ -364,7 +364,7 @@ impl Deref for TokenAccount {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Mint(spl_token::state::Mint);
 
 impl Mint {
