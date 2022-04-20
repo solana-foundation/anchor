@@ -1,0 +1,16 @@
+[features]
+seeds = false
+
+[programs.localnet]
+idl_commands_one = "2uA3amp95zsEHUpo8qnLMhcFAUsiKVEcKHXS1JetFjU5"
+idl_commands_two = "DE4UbHnAcT6Kfh1fVTPRPwpiA3vipmQ4xR3gcLwX3wwS"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "./keypairs/deployer-keypair.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

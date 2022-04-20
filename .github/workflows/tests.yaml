@@ -254,7 +254,7 @@ jobs:
   test-misc-non-rent-exempt:
     # the anchor cli is built with a different solana version
     # but that's fine since it's just the cli
-    needs: setup-anchor-cli 
+    needs: setup-anchor-cli
     name: Test tests/misc/nonRentExempt
     runs-on: ubuntu-18.04
     timeout-minutes: 30
@@ -293,7 +293,7 @@ jobs:
         with:
           path: tests/misc/target
           key: cargo-${{ runner.os }}-tests/misc-${{ env.ANCHOR_VERSION }}-1.8.14-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - run: cd tests/misc && yarn --frozen-lockfile
       - run: cd tests/misc
       - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
@@ -396,6 +396,8 @@ jobs:
             path: tests/multiple-suites
           - cmd: cd tests/pda-derivation && anchor test --skip-lint && npx tsc --noEmit
             path: tests/pda-derivation
+          - cmd: cd tests/anchor-cli-idl && ./test.sh
+            path: tests/anchor-cli-idl
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/setup/
@@ -419,7 +421,7 @@ jobs:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
-      
+
       - uses: actions/cache@v2
         name: Cache ${{ matrix.node.path }} target
         id: cache-test-target

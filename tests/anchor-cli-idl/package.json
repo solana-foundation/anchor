@@ -1,0 +1,22 @@
+{
+  "name": "anchor-cli-idl",
+  "version": "0.24.2",
+  "license": "(MIT OR Apache-2.0)",
+  "homepage": "https://github.com/project-serum/anchor#readme",
+  "bugs": {
+    "url": "https://github.com/project-serum/anchor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/project-serum/anchor.git"
+  },
+  "engines": {
+    "node": ">=11"
+  },
+  "scripts": {
+    "test": "./test.sh"
+  },
+  "dependencies": {
+    "mocha": "^9.1.3"
+  }
+}

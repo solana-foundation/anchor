@@ -6,6 +6,7 @@
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
   "workspaces": [
+    "anchor-cli-idl",
     "cashiers-check",
     "cfo",
     "chat",
