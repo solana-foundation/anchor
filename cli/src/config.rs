@@ -183,6 +183,7 @@ impl WithPath<Config> {
                 version,
                 self.features.seeds,
                 false,
+                false,
             )?;
             r.push(Program {
                 lib_name,

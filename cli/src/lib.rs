@@ -106,6 +106,9 @@ pub enum Command {
             last = true
         )]
         cargo_args: Vec<String>,
+        /// Suppress doc strings in IDL output
+        #[clap(long)]
+        no_docs: bool,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -353,6 +356,9 @@ pub enum IdlCommand {
         /// Output file for the TypeScript IDL.
         #[clap(short = 't', long)]
         out_ts: Option<String>,
+        /// Suppress doc strings in output
+        #[clap(long)]
+        no_docs: bool,
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
@@ -388,6 +394,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             bootstrap,
             cargo_args,
             skip_lint,
+            no_docs,
         } => build(
             &opts.cfg_override,
             idl,
@@ -401,6 +408,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             None,
             None,
             cargo_args,
+            no_docs,
         ),
         Command::Verify {
             program_id,
@@ -748,6 +756,7 @@ pub fn build(
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
     cargo_args: Vec<String>,
+    no_docs: bool,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -793,6 +802,7 @@ pub fn build(
             stderr,
             cargo_args,
             skip_lint,
+            no_docs,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -805,6 +815,7 @@ pub fn build(
             stderr,
             cargo_args,
             skip_lint,
+            no_docs,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_cwd(
@@ -817,6 +828,7 @@ pub fn build(
             stderr,
             cargo_args,
             skip_lint,
+            no_docs,
         )?,
     }
 
@@ -836,6 +848,7 @@ fn build_all(
     stderr: Option<File>, // Used for the package registry server.
     cargo_args: Vec<String>,
     skip_lint: bool,
+    no_docs: bool,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -852,6 +865,7 @@ fn build_all(
                     stderr.as_ref().map(|f| f.try_clone()).transpose()?,
                     cargo_args.clone(),
                     skip_lint,
+                    no_docs,
                 )?;
             }
             Ok(())
@@ -873,6 +887,7 @@ fn build_cwd(
     stderr: Option<File>,
     cargo_args: Vec<String>,
     skip_lint: bool,
+    no_docs: bool,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
@@ -888,12 +903,14 @@ fn build_cwd(
             stderr,
             skip_lint,
             cargo_args,
+            no_docs,
         ),
     }
 }
 
 // Builds an anchor program in a docker image and copies the build artifacts
 // into the `target/` directory.
+#[allow(clippy::too_many_arguments)]
 fn build_cwd_verifiable(
     cfg: &WithPath<Config>,
     cargo_toml: PathBuf,
@@ -902,6 +919,7 @@ fn build_cwd_verifiable(
     stderr: Option<File>,
     skip_lint: bool,
     cargo_args: Vec<String>,
+    no_docs: bool,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -932,7 +950,7 @@ fn build_cwd_verifiable(
         Ok(_) => {
             // Build the idl.
             println!("Extracting the IDL");
-            if let Ok(Some(idl)) = extract_idl(cfg, "src/lib.rs", skip_lint) {
+            if let Ok(Some(idl)) = extract_idl(cfg, "src/lib.rs", skip_lint, no_docs) {
                 // Write out the JSON file.
                 println!("Writing the IDL file");
                 let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.name));
@@ -1207,7 +1225,7 @@ fn _build_cwd(
     }
 
     // Always assume idl is located at src/lib.rs.
-    if let Some(idl) = extract_idl(cfg, "src/lib.rs", skip_lint)? {
+    if let Some(idl) = extract_idl(cfg, "src/lib.rs", skip_lint, false)? {
         // JSON out path.
         let out = match idl_out {
             None => PathBuf::from(".").join(&idl.name).with_extension("json"),
@@ -1272,6 +1290,7 @@ fn verify(
         None,                                                  // stdout
         None,                                                  // stderr
         cargo_args,
+        false,
     )?;
     std::env::set_current_dir(&cur_dir)?;
 
@@ -1292,7 +1311,7 @@ fn verify(
     }
 
     // Verify IDL (only if it's not a buffer account).
-    if let Some(local_idl) = extract_idl(&cfg, "src/lib.rs", true)? {
+    if let Some(local_idl) = extract_idl(&cfg, "src/lib.rs", true, false)? {
         if bin_ver.state != BinVerificationState::Buffer {
             let deployed_idl = fetch_idl(cfg_override, program_id)?;
             if local_idl != deployed_idl {
@@ -1469,12 +1488,23 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
     serde_json::from_slice(&s[..]).map_err(Into::into)
 }
 
-fn extract_idl(cfg: &WithPath<Config>, file: &str, skip_lint: bool) -> Result<Option<Idl>> {
+fn extract_idl(
+    cfg: &WithPath<Config>,
+    file: &str,
+    skip_lint: bool,
+    no_docs: bool,
+) -> Result<Option<Idl>> {
     let file = shellexpand::tilde(file);
     let manifest_from_path = std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap());
     let cargo = Manifest::discover_from_path(manifest_from_path)?
         .ok_or_else(|| anyhow!("Cargo.toml not found"))?;
-    anchor_syn::idl::file::parse(&*file, cargo.version(), cfg.features.seeds, !skip_lint)
+    anchor_syn::idl::file::parse(
+        &*file,
+        cargo.version(),
+        cfg.features.seeds,
+        no_docs,
+        !skip_lint,
+    )
 }
 
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
@@ -1501,7 +1531,12 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_set_authority(cfg_override, program_id, address, new_authority),
         IdlCommand::EraseAuthority { program_id } => idl_erase_authority(cfg_override, program_id),
         IdlCommand::Authority { program_id } => idl_authority(cfg_override, program_id),
-        IdlCommand::Parse { file, out, out_ts } => idl_parse(cfg_override, file, out, out_ts),
+        IdlCommand::Parse {
+            file,
+            out,
+            out_ts,
+            no_docs,
+        } => idl_parse(cfg_override, file, out, out_ts, no_docs),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
     }
 }
@@ -1763,9 +1798,10 @@ fn idl_parse(
     file: String,
     out: Option<String>,
     out_ts: Option<String>,
+    no_docs: bool,
 ) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let idl = extract_idl(&cfg, &file, true)?.ok_or_else(|| anyhow!("IDL not parsed"))?;
+    let idl = extract_idl(&cfg, &file, true, no_docs)?.ok_or_else(|| anyhow!("IDL not parsed"))?;
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
@@ -1832,6 +1868,7 @@ fn test(
                 None,
                 None,
                 cargo_args,
+                false,
             )?;
         }
 
@@ -2930,6 +2967,7 @@ fn publish(
         None,
         None,
         cargo_args,
+        true,
     )?;
 
     // Success. Now we can finally upload to the server without worrying
@@ -3029,6 +3067,7 @@ fn localnet(
                 None,
                 None,
                 cargo_args,
+                false,
             )?;
         }
 

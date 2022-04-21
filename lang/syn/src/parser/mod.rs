@@ -1,5 +1,6 @@
 pub mod accounts;
 pub mod context;
+pub mod docs;
 pub mod error;
 pub mod program;
 

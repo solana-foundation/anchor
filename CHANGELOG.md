@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * cli: Add `--program-keypair` to `anchor deploy` ([#1786](https://github.com/project-serum/anchor/pull/1786)).
 * spl: Add more derived traits to `TokenAccount` to `Mint` ([#1818](https://github.com/project-serum/anchor/pull/1818)).
 * cli: Add compilation optimizations to cli template ([#1807](https://github.com/project-serum/anchor/pull/1807)).
+* cli: `build` now adds docs to idl. This can be turned off with `--no-docs` ([#1561](https://github.com/project-serum/anchor/pull/1561)).
 * lang: Add `PartialEq` and `Eq` for `anchor_lang::Error` ([#1544](https://github.com/project-serum/anchor/pull/1544)).
 
 ### Fixes

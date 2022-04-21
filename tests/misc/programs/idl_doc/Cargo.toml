@@ -1,0 +1,19 @@
+[package]
+name = "idl_doc"
+version = "0.1.0"
+description = "Created with Anchor"
+rust-version = "1.56"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "idl_doc"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }

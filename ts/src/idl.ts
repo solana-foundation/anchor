@@ -5,6 +5,7 @@ import * as borsh from "@project-serum/borsh";
 export type Idl = {
   version: string;
   name: string;
+  docs?: string[];
   instructions: IdlInstruction[];
   state?: IdlState;
   accounts?: IdlAccountDef[];
@@ -36,6 +37,7 @@ export type IdlEventField = {
 
 export type IdlInstruction = {
   name: string;
+  docs?: string[];
   accounts: IdlAccountItem[];
   args: IdlField[];
   returns?: IdlType;
@@ -54,6 +56,7 @@ export type IdlAccount = {
   name: string;
   isMut: boolean;
   isSigner: boolean;
+  docs?: string[];
   pda?: IdlPda;
 };
 
@@ -67,11 +70,13 @@ export type IdlSeed = any; // TODO
 // A nested/recursive version of IdlAccount.
 export type IdlAccounts = {
   name: string;
+  docs?: string[];
   accounts: IdlAccountItem[];
 };
 
 export type IdlField = {
   name: string;
+  docs?: string[];
   type: IdlType;
 };
 
