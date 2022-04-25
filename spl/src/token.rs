@@ -258,6 +258,14 @@ pub fn set_authority<'a, 'b, 'c, 'info>(
     .map_err(Into::into)
 }
 
+pub fn sync_native<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, SyncNative<'info>>,
+) -> Result<()> {
+    let ix = spl_token::instruction::sync_native(&spl_token::ID, ctx.accounts.account.key)?;
+    solana_program::program::invoke_signed(&ix, &[ctx.accounts.account.clone()], ctx.signer_seeds)
+        .map_err(Into::into)
+}
+
 #[derive(Accounts)]
 pub struct Transfer<'info> {
     pub from: AccountInfo<'info>,
@@ -331,6 +339,11 @@ pub struct InitializeMint<'info> {
 pub struct SetAuthority<'info> {
     pub current_authority: AccountInfo<'info>,
     pub account_or_mint: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SyncNative<'info> {
+    pub account: AccountInfo<'info>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
