@@ -20,6 +20,7 @@ import {
 
 export default interface Provider {
   readonly connection: Connection;
+  readonly publicKey: PublicKey;
 
   send?(
     tx: Transaction,
@@ -48,6 +49,8 @@ export default interface Provider {
  * by the provider.
  */
 export class AnchorProvider implements Provider {
+  readonly publicKey: PublicKey;
+
   /**
    * @param connection The cluster connection where the program is deployed.
    * @param wallet     The wallet used to pay for and sign all transactions.
@@ -57,7 +60,9 @@ export class AnchorProvider implements Provider {
     readonly connection: Connection,
     readonly wallet: Wallet,
     readonly opts: ConfirmOptions
-  ) {}
+  ) {
+    this.publicKey = wallet.publicKey;
+  }
 
   static defaultOptions(): ConfirmOptions {
     return {
