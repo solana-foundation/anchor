@@ -124,7 +124,7 @@ export class BorshInstructionCoder implements InstructionCoder {
   }
 
   /**
-   * Dewcodes a program instruction.
+   * Decodes a program instruction.
    */
   public decode(
     ix: Buffer | string,
