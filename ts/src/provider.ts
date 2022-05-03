@@ -9,7 +9,6 @@ import {
   Commitment,
   SendTransactionError,
   SendOptions,
-  RpcResponseAndContext,
 } from "@solana/web3.js";
 import { bs58 } from "./utils/bytes/index.js";
 import { isBrowser } from "./utils/common.js";
@@ -20,7 +19,7 @@ import {
 
 export default interface Provider {
   readonly connection: Connection;
-  readonly publicKey: PublicKey;
+  readonly publicKey?: PublicKey;
 
   send?(
     tx: Transaction,
