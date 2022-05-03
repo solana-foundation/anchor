@@ -258,6 +258,10 @@ pub enum Command {
             last = true
         )]
         cargo_args: Vec<String>,
+        /// Flag to skip building the program in the workspace,
+        /// use this to save time when publishing the program
+        #[clap(long)]
+        skip_build: bool,
     },
     /// Keypair commands.
     Keys {
@@ -470,7 +474,8 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::Publish {
             program,
             cargo_args,
-        } => publish(&opts.cfg_override, program, cargo_args),
+            skip_build,
+        } => publish(&opts.cfg_override, program, cargo_args, skip_build),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
@@ -2845,6 +2850,7 @@ fn publish(
     cfg_override: &ConfigOverride,
     program_name: String,
     cargo_args: Vec<String>,
+    skip_build: bool,
 ) -> Result<()> {
     // Discover the various workspace configs.
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
@@ -2956,24 +2962,23 @@ fn publish(
     unpack_archive(&tarball_filename)?;
 
     // Build the program before sending it to the server.
-    build(
-        cfg_override,
-        None,
-        None,
-        true,
-        false,
-        Some(program_name),
-        None,
-        None,
-        BootstrapMode::None,
-        None,
-        None,
-        cargo_args,
-        true,
-    )?;
-
-    // Success. Now we can finally upload to the server without worrying
-    // about a build failure.
+    if !skip_build {
+        build(
+            cfg_override,
+            None,
+            None,
+            true,
+            false,
+            Some(program_name),
+            None,
+            None,
+            BootstrapMode::None,
+            None,
+            None,
+            cargo_args,
+            true,
+        )?;
+    }
 
     // Upload the tarball to the server.
     let token = registry_api_token(cfg_override)?;
