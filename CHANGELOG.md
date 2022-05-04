@@ -28,6 +28,10 @@ com/project-serum/anchor/pull/1841)).
 * lang: Fix missing account name information when deserialization fails when using `init` or `zero` ([#1800](https://github.com/project-serum/anchor/pull/1800)).
 * ts: Expose the wallet's publickey on the Provider ([#1845](https://github.com/project-serum/anchor/pull/1845)).
 
+### Breaking
+
+ts: Change `BROWSER` env variable to `ANCHOR_BROWSER` ([#1233](https://github.com/project-serum/anchor/pull/1233)).
+
 ## [0.24.2] - 2022-04-13
 
 ### Fixes
