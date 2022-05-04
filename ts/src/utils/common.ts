@@ -3,7 +3,7 @@
  * false if in a Node process or electron app.
  */
 export const isBrowser =
-  process.env.BROWSER ||
+  process.env.ANCHOR_BROWSER ||
   (typeof window !== "undefined" && !window.process?.hasOwnProperty("type"));
 
 /**
