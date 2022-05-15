@@ -164,10 +164,9 @@ impl Program {
             filters: Some([vec![account_type_filter], filters].concat()),
             account_config: RpcAccountInfoConfig {
                 encoding: Some(UiAccountEncoding::Base64),
-                data_slice: None,
-                commitment: None,
+                ..RpcAccountInfoConfig::default()
             },
-            with_context: None,
+            ..RpcProgramAccountsConfig::default()
         };
         Ok(ProgramAccountsIterator {
             inner: self
