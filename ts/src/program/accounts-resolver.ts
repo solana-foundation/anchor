@@ -46,16 +46,6 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       const accountDesc = this._idlIx.accounts[k] as IdlAccount;
       const accountDescName = camelCase(accountDesc.name);
 
-      // PDA derived from IDL seeds.
-      if (
-        accountDesc.pda &&
-        accountDesc.pda.seeds.length > 0 &&
-        !this._accounts[accountDescName]
-      ) {
-        await this.autoPopulatePda(accountDesc);
-        continue;
-      }
-
       // Signers default to the provider.
       if (accountDesc.isSigner && !this._accounts[accountDescName]) {
         // @ts-expect-error
@@ -76,6 +66,23 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       ) {
         this._accounts[accountDescName] =
           AccountsResolver.CONST_ACCOUNTS[accountDescName];
+      }
+    }
+
+    for (let k = 0; k < this._idlIx.accounts.length; k += 1) {
+      // Cast is ok because only a non-nested IdlAccount can have a seeds
+      // cosntraint.
+      const accountDesc = this._idlIx.accounts[k] as IdlAccount;
+      const accountDescName = camelCase(accountDesc.name);
+
+      // PDA derived from IDL seeds.
+      if (
+        accountDesc.pda &&
+        accountDesc.pda.seeds.length > 0 &&
+        !this._accounts[accountDescName]
+      ) {
+        await this.autoPopulatePda(accountDesc);
+        continue;
       }
     }
   }
