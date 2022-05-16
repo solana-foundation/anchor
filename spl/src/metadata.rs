@@ -18,8 +18,8 @@ pub fn create_metadata_accounts_v2<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV2<'info>>,
     data: DataV2,
     is_mutable: bool,
+    update_authority_is_signer: bool,
 ) -> Result<()> {
-    let update_authority_is_signer = true;
     let DataV2 {
         name,
         symbol,
@@ -45,6 +45,30 @@ pub fn create_metadata_accounts_v2<'info>(
         is_mutable,
         collection,
         uses,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
+pub fn update_metadata_accounts_v2<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, UpdateMetadataAccountsV2<'info>>,
+    new_update_authority: Option<Pubkey>,
+    data: Option<DataV2>,
+    primary_sale_happened: Option<bool>,
+    is_mutable: Option<bool>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::update_metadata_accounts_v2(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.update_authority.key,
+        new_update_authority,
+        data,
+        primary_sale_happened,
+        is_mutable,
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -113,6 +137,12 @@ pub struct CreateMetadataAccountsV2<'info> {
     pub update_authority: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
     pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateMetadataAccountsV2<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
