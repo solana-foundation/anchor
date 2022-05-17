@@ -23,7 +23,7 @@ export type EventData<T extends IdlEventField, Defined> = {
   [N in T["name"]]: DecodeType<(T & { name: N })["type"], Defined>;
 };
 
-type EventCallback = (event: any, slot: number) => void;
+type EventCallback = (event: any, slot: number, signature: string) => void;
 
 export class EventManager {
   /**
@@ -72,7 +72,7 @@ export class EventManager {
 
   public addEventListener(
     eventName: string,
-    callback: (event: any, slot: number) => void
+    callback: (event: any, slot: number, signature: string) => void
   ): number {
     let listener = this._listenerIdCount;
     this._listenerIdCount += 1;
@@ -107,7 +107,7 @@ export class EventManager {
               const listenerCb = this._eventCallbacks.get(listener);
               if (listenerCb) {
                 const [, callback] = listenerCb;
-                callback(event.data, ctx.slot);
+                callback(event.data, ctx.slot, logs.signature);
               }
             });
           }
