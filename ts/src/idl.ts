@@ -82,11 +82,13 @@ export type IdlField = {
 
 export type IdlTypeDef = {
   name: string;
+  docs?: string[];
   type: IdlTypeDefTy;
 };
 
 export type IdlAccountDef = {
   name: string;
+  docs?: string[];
   type: IdlTypeDefTyStruct;
 };
 
