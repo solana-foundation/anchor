@@ -102,9 +102,9 @@ export type IdlTypeDefTyEnum = {
   variants: IdlEnumVariant[];
 };
 
-type IdlTypeDefTy = IdlTypeDefTyEnum | IdlTypeDefTyStruct;
+export type IdlTypeDefTy = IdlTypeDefTyEnum | IdlTypeDefTyStruct;
 
-type IdlTypeDefStruct = Array<IdlField>;
+export type IdlTypeDefStruct = Array<IdlField>;
 
 export type IdlType =
   | "bool"
@@ -155,11 +155,11 @@ export type IdlEnumVariant = {
   fields?: IdlEnumFields;
 };
 
-type IdlEnumFields = IdlEnumFieldsNamed | IdlEnumFieldsTuple;
+export type IdlEnumFields = IdlEnumFieldsNamed | IdlEnumFieldsTuple;
 
-type IdlEnumFieldsNamed = IdlField[];
+export type IdlEnumFieldsNamed = IdlField[];
 
-type IdlEnumFieldsTuple = IdlType[];
+export type IdlEnumFieldsTuple = IdlType[];
 
 export type IdlErrorCode = {
   code: number;
