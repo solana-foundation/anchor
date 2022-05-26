@@ -131,31 +131,41 @@ pub mod spl_token {
 #[derive(Accounts)]
 pub struct InitializeMint<'info> {
     #[account(mut)]
+    /// CHECK:
     mint: AccountInfo<'info>,
+    /// CHECK:
     rent: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
+    /// CHECK:
     authority: AccountInfo<'info>,
+    /// CHECK:
     rent: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMultisig<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     rent: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Transfer<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     destination: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -163,7 +173,9 @@ pub struct Transfer<'info> {
 #[derive(Accounts)]
 pub struct Approve<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
+    /// CHECK:
     delegate: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -171,6 +183,7 @@ pub struct Approve<'info> {
 #[derive(Accounts)]
 pub struct Revoke<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -178,6 +191,7 @@ pub struct Revoke<'info> {
 #[derive(Accounts)]
 pub struct SetAuthority<'info> {
     #[account(mut)]
+    /// CHECK:
     pub mint: AccountInfo<'info>,
     pub authority: Signer<'info>,
 }
@@ -185,8 +199,10 @@ pub struct SetAuthority<'info> {
 #[derive(Accounts)]
 pub struct MintTo<'info> {
     #[account(mut)]
+    /// CHECK:
     pub mint: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     pub to: AccountInfo<'info>,
     pub authority: Signer<'info>,
 }
@@ -194,8 +210,10 @@ pub struct MintTo<'info> {
 #[derive(Accounts)]
 pub struct Burn<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     mint: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -203,16 +221,21 @@ pub struct Burn<'info> {
 #[derive(Accounts)]
 pub struct CloseAccount<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     destination: AccountInfo<'info>,
+    /// CHECK:
     authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct FreezeAccount<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -220,7 +243,9 @@ pub struct FreezeAccount<'info> {
 #[derive(Accounts)]
 pub struct ThawAccount<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -228,9 +253,12 @@ pub struct ThawAccount<'info> {
 #[derive(Accounts)]
 pub struct TransferChecked<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     destination: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -238,8 +266,11 @@ pub struct TransferChecked<'info> {
 #[derive(Accounts)]
 pub struct ApproveChecked<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
+    /// CHECK:
     delegate: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -247,8 +278,10 @@ pub struct ApproveChecked<'info> {
 #[derive(Accounts)]
 pub struct MintToChecked<'info> {
     #[account(mut)]
+    /// CHECK:
     mint: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     to: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -256,8 +289,10 @@ pub struct MintToChecked<'info> {
 #[derive(Accounts)]
 pub struct BurnChecked<'info> {
     #[account(mut)]
+    /// CHECK:
     source: AccountInfo<'info>,
     #[account(mut)]
+    /// CHECK:
     mint: AccountInfo<'info>,
     authority: Signer<'info>,
 }
@@ -265,32 +300,40 @@ pub struct BurnChecked<'info> {
 #[derive(Accounts)]
 pub struct InitializeAccount2<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
+    /// CHECK:
     rent: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SyncNative<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount3<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
+    /// CHECK:
     mint: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMultisig2<'info> {
     #[account(mut)]
+    /// CHECK:
     account: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMint2<'info> {
     #[account(mut)]
+    /// CHECK:
     mint: AccountInfo<'info>,
 }

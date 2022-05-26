@@ -1,0 +1,20 @@
+[package]
+name = "native-system"
+version = "0.1.0"
+description = "Created with Anchor"
+rust-version = "1.56"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "native_system"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }

@@ -21,6 +21,7 @@ com/project-serum/anchor/pull/1841)).
 * lang: Add `PartialEq` and `Eq` for `anchor_lang::Error` ([#1544](https://github.com/project-serum/anchor/pull/1544)).
 * cli: Add `b` and `t` aliases for `build` and `test` respectively ([#1823](https://github.com/project-serum/anchor/pull/1823)).
 * spl: Add `sync_native` token program CPI wrapper function ([#1833](https://github.com/project-serum/anchor/pull/1833)).
+* ts: Implement a coder for system program ([#1920](https://github.com/project-serum/anchor/pull/1920)).
 
 ### Fixes
 

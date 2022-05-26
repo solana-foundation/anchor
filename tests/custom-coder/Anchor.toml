@@ -1,6 +1,7 @@
 [programs.localnet]
 custom_coder = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 spl_token = "FmpfPa1LHEYRbueNMnwNVd2JvyQ89GXGWdyZEXNNKV8w"
+native_system = "9NxAd91hhJ3ZBTHytYP894y4ESRKG7n8VbLgdyYGJFLB"
 
 [registry]
 url = "https://anchor.projectserum.com"
