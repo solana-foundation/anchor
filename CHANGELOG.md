@@ -22,6 +22,7 @@ com/project-serum/anchor/pull/1841)).
 * cli: Add `b` and `t` aliases for `build` and `test` respectively ([#1823](https://github.com/project-serum/anchor/pull/1823)).
 * spl: Add `sync_native` token program CPI wrapper function ([#1833](https://github.com/project-serum/anchor/pull/1833)).
 * ts: Implement a coder for system program ([#1920](https://github.com/project-serum/anchor/pull/1920)).
+* client: Add send_with_spinner_and_config function to RequestBuilder ([#1926](https://github.com/project-serum/anchor/pull/1926))
 
 ### Fixes
 
