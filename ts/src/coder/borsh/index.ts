@@ -3,6 +3,7 @@ import { BorshInstructionCoder } from "./instruction.js";
 import { BorshAccountsCoder } from "./accounts.js";
 import { BorshEventCoder } from "./event.js";
 import { BorshStateCoder } from "./state.js";
+import { BorshTypesCoder } from "./types.js";
 import { Coder } from "../index.js";
 
 export { BorshInstructionCoder } from "./instruction.js";
@@ -14,7 +15,9 @@ export { BorshStateCoder, stateDiscriminator } from "./state.js";
  * BorshCoder is the default Coder for Anchor programs implementing the
  * borsh based serialization interface.
  */
-export class BorshCoder<A extends string = string> implements Coder {
+export class BorshCoder<A extends string = string, T extends string = string>
+  implements Coder
+{
   /**
    * Instruction coder.
    */
@@ -35,6 +38,11 @@ export class BorshCoder<A extends string = string> implements Coder {
    */
   readonly events: BorshEventCoder;
 
+  /**
+   * Coder for user-defined types.
+   */
+  readonly types: BorshTypesCoder<T>;
+
   constructor(idl: Idl) {
     this.instruction = new BorshInstructionCoder(idl);
     this.accounts = new BorshAccountsCoder(idl);
@@ -42,5 +50,6 @@ export class BorshCoder<A extends string = string> implements Coder {
     if (idl.state) {
       this.state = new BorshStateCoder(idl);
     }
+    this.types = new BorshTypesCoder(idl);
   }
 }
