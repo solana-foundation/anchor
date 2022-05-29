@@ -240,6 +240,14 @@ pub enum Command {
     Run {
         /// The name of the script to run.
         script: String,
+        /// Argument to pass to the underlying script.
+        #[clap(
+            required = false,
+            takes_value = true,
+            multiple_values = true,
+            last = true
+        )]
+        script_args: Vec<String>,
     },
     /// Saves an api token from the registry locally.
     Login {
@@ -469,7 +477,10 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::Airdrop { .. } => airdrop(&opts.cfg_override),
         Command::Cluster { subcmd } => cluster(subcmd),
         Command::Shell => shell(&opts.cfg_override),
-        Command::Run { script } => run(&opts.cfg_override, script),
+        Command::Run {
+            script,
+            script_args,
+        } => run(&opts.cfg_override, script, script_args),
         Command::Login { token } => login(&opts.cfg_override, token),
         Command::Publish {
             program,
@@ -2809,16 +2820,17 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
     })
 }
 
-fn run(cfg_override: &ConfigOverride, script: String) -> Result<()> {
+fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let script = cfg
             .scripts
             .get(&script)
             .ok_or_else(|| anyhow!("Unable to find script"))?;
+        let script_with_args = format!("{script} {}", script_args.join(" "));
         let exit = std::process::Command::new("bash")
             .arg("-c")
-            .arg(&script)
+            .arg(&script_with_args)
             .env("ANCHOR_PROVIDER_URL", url)
             .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
             .stdout(Stdio::inherit())
