@@ -25,6 +25,7 @@ com/project-serum/anchor/pull/1841)).
 * ts: Implement a coder for system program ([#1920](https://github.com/project-serum/anchor/pull/1920)).
 * ts: Add `program.coder.types` for encoding/decoding user-defined types ([#1931](https://github.com/project-serum/anchor/pull/1931)).
 * client: Add send_with_spinner_and_config function to RequestBuilder ([#1926](https://github.com/project-serum/anchor/pull/1926)).
+* ts: Implement a coder for SPL associated token program ([#1939](https://github.com/project-serum/anchor/pull/1939)).
 
 ### Fixes
 

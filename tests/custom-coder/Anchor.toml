@@ -2,6 +2,7 @@
 custom_coder = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 spl_token = "FmpfPa1LHEYRbueNMnwNVd2JvyQ89GXGWdyZEXNNKV8w"
 native_system = "9NxAd91hhJ3ZBTHytYP894y4ESRKG7n8VbLgdyYGJFLB"
+spl_associated_token = "4dUGnkre6uBhX1abB4ofkoecGN4aDXdiWSaWLUjVw6bh"
 
 [registry]
 url = "https://anchor.projectserum.com"
