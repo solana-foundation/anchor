@@ -214,7 +214,6 @@ impl AccountField {
 pub struct Field {
     pub ident: Ident,
     pub constraints: ConstraintGroup,
-    pub instruction_constraints: ConstraintGroup,
     pub ty: Ty,
     /// IDL Doc comment
     pub docs: Option<Vec<String>>,
@@ -494,7 +493,6 @@ impl Field {
 pub struct CompositeField {
     pub ident: Ident,
     pub constraints: ConstraintGroup,
-    pub instruction_constraints: ConstraintGroup,
     pub symbol: String,
     pub raw_field: syn::Field,
     /// IDL Doc comment

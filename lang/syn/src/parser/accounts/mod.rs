@@ -23,7 +23,7 @@ pub fn parse(strct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         syn::Fields::Named(fields) => fields
             .named
             .iter()
-            .map(|f| parse_account_field(f, instruction_api.is_some()))
+            .map(parse_account_field)
             .collect::<ParseResult<Vec<AccountField>>>()?,
         _ => {
             return Err(ParseError::new_spanned(
@@ -144,29 +144,25 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
     Ok(())
 }
 
-pub fn parse_account_field(f: &syn::Field, has_instruction_api: bool) -> ParseResult<AccountField> {
+pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
     let ident = f.ident.clone().unwrap();
     let docs = docs::parse(&f.attrs);
     let account_field = match is_field_primitive(f)? {
         true => {
             let ty = parse_ty(f)?;
-            let (account_constraints, instruction_constraints) =
-                constraints::parse(f, Some(&ty), has_instruction_api)?;
+            let account_constraints = constraints::parse(f, Some(&ty))?;
             AccountField::Field(Field {
                 ident,
                 ty,
                 constraints: account_constraints,
-                instruction_constraints,
                 docs,
             })
         }
         false => {
-            let (account_constraints, instruction_constraints) =
-                constraints::parse(f, None, has_instruction_api)?;
+            let account_constraints = constraints::parse(f, None)?;
             AccountField::CompositeField(CompositeField {
                 ident,
                 constraints: account_constraints,
-                instruction_constraints,
                 symbol: ident_string(f)?,
                 raw_field: f.clone(),
                 docs,

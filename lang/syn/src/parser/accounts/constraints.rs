@@ -6,11 +6,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{bracketed, Expr, Ident, LitStr, Token};
 
-pub fn parse(
-    f: &syn::Field,
-    f_ty: Option<&Ty>,
-    has_instruction_api: bool,
-) -> ParseResult<(ConstraintGroup, ConstraintGroup)> {
+pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
     for attr in f.attrs.iter().filter(is_account) {
         for c in attr.parse_args_with(Punctuated::<ConstraintToken, Comma>::parse_terminated)? {
@@ -18,33 +14,14 @@ pub fn parse(
         }
     }
     let account_constraints = constraints.build()?;
-    let mut constraints = ConstraintGroupBuilder::new(f_ty);
-    for attr in f.attrs.iter().filter(is_instruction) {
-        if !has_instruction_api {
-            return Err(ParseError::new(
-                attr.span(),
-                "an instruction api must be declared",
-            ));
-        }
-        for c in attr.parse_args_with(Punctuated::<ConstraintToken, Comma>::parse_terminated)? {
-            constraints.add(c)?;
-        }
-    }
-    let instruction_constraints = constraints.build()?;
 
-    Ok((account_constraints, instruction_constraints))
+    Ok(account_constraints)
 }
 
 pub fn is_account(attr: &&syn::Attribute) -> bool {
     attr.path
         .get_ident()
         .map_or(false, |ident| ident == "account")
-}
-
-pub fn is_instruction(attr: &&syn::Attribute) -> bool {
-    attr.path
-        .get_ident()
-        .map_or(false, |ident| ident == "instruction")
 }
 
 // Parses a single constraint from a parse stream for `#[account(<STREAM>)]`.
