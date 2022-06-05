@@ -55,7 +55,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 init_fields[0].ident.span(),
                 "the init constraint requires \
                 the system_program field to exist in the account \
-                validation struct. Use the program type to add \
+                validation struct. Use the Program type to add \
                 the system_program field to your validation struct.",
             ));
         }
@@ -70,7 +70,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                         init_fields[0].ident.span(),
                         "the init constraint requires \
                             the token_program field to exist in the account \
-                            validation struct. Use the program type to add \
+                            validation struct. Use the Program type to add \
                             the token_program field to your validation struct.",
                     ));
                 }
@@ -86,7 +86,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     init_fields[0].ident.span(),
                     "the init constraint requires \
                     the associated_token_program field to exist in the account \
-                    validation struct. Use the program type to add \
+                    validation struct. Use the Program type to add \
                     the associated_token_program field to your validation struct.",
                 ));
             }
@@ -141,6 +141,61 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             }
         }
     }
+
+    // REALLOC
+    let realloc_fields: Vec<&Field> = fields
+        .iter()
+        .filter_map(|f| match f {
+            AccountField::Field(field) if field.constraints.realloc.is_some() => Some(field),
+            _ => None,
+        })
+        .collect();
+
+    if !realloc_fields.is_empty() {
+        // realloc needs system program.
+        if fields.iter().all(|f| f.ident() != "system_program") {
+            return Err(ParseError::new(
+                realloc_fields[0].ident.span(),
+                "the realloc constraint requires \
+                the system_program field to exist in the account \
+                validation struct. Use the Program type to add \
+                the system_program field to your validation struct.",
+            ));
+        }
+
+        for field in realloc_fields {
+            // Get allocator for realloc-ed account
+            let associated_payer_name = match field.constraints.realloc.clone().unwrap().payer {
+                // composite allocator, check not supported
+                Expr::Field(_) => continue,
+                field_name => field_name.to_token_stream().to_string(),
+            };
+
+            // Check allocator is mutable
+            let associated_payer_field = fields.iter().find_map(|f| match f {
+                AccountField::Field(field) if *f.ident() == associated_payer_name => Some(field),
+                _ => None,
+            });
+
+            match associated_payer_field {
+                Some(associated_payer_field) => {
+                    if !associated_payer_field.constraints.is_mutable() {
+                        return Err(ParseError::new(
+                            field.ident.span(),
+                            "the realloc::payer specified for an realloc constraint must be mutable.",
+                        ));
+                    }
+                }
+                _ => {
+                    return Err(ParseError::new(
+                        field.ident.span(),
+                        "the realloc::payer specified does not exist.",
+                    ));
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
