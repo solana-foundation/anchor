@@ -605,6 +605,13 @@ fn to_idl_type(ctx: &CrateContext, ty: &syn::Type) -> IdlType {
     if tts_string.starts_with('[') {
         tts_string = resolve_variable_array_lengths(ctx, tts_string);
     }
+    // Box<FooType> -> FooType
+    tts_string = tts_string
+        .strip_prefix("Box < ")
+        .and_then(|t| t.strip_suffix(" >"))
+        .unwrap_or(&tts_string)
+        .into();
+
     tts_string.parse().unwrap()
 }
 
