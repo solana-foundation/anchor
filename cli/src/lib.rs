@@ -508,24 +508,15 @@ fn init(cfg_override: &ConfigOverride, name: String, javascript: bool, no_git: b
         return Err(anyhow!("Workspace already initialized"));
     }
 
-    // The list is taken from https://doc.rust-lang.org/reference/keywords.html.
-    let key_words = [
-        "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn",
-        "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref",
-        "return", "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe",
-        "use", "where", "while", "async", "await", "dyn", "abstract", "become", "box", "do",
-        "final", "macro", "override", "priv", "typeof", "unsized", "virtual", "yield", "try",
-        "unique",
-    ];
-
-    if key_words.contains(&name[..].into()) {
+    // Additional keywords that have not been added to the `syn` crate as reserved words
+    // https://github.com/dtolnay/syn/pull/1098
+    let extra_keywords = ["async", "await", "try"];
+    // Anchor converts to snake case before writing the program name
+    if syn::parse_str::<syn::Ident>(&name.to_snake_case()).is_err()
+        || extra_keywords.contains(&name.to_snake_case().as_str())
+    {
         return Err(anyhow!(
-            "{} is a reserved word in rust, name your project something else!",
-            name
-        ));
-    } else if name.chars().next().unwrap().is_numeric() {
-        return Err(anyhow!(
-            "Cannot start project name with numbers, name your project something else!"
+            "Anchor workspace name must be a valid Rust identifier. It may not be a Rust reserved word, start with a digit, or include certain disallowed characters. See https://doc.rust-lang.org/reference/identifiers.html for more detail.",
         ));
     }
 
@@ -3174,4 +3165,69 @@ fn get_node_dns_option() -> Result<&'static str> {
         false => "",
     };
     Ok(option)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "Anchor workspace name must be a valid Rust identifier.")]
+    fn test_init_reserved_word() {
+        init(
+            &ConfigOverride {
+                cluster: None,
+                wallet: None,
+            },
+            "await".to_string(),
+            true,
+            false,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Anchor workspace name must be a valid Rust identifier.")]
+    fn test_init_reserved_word_from_syn() {
+        init(
+            &ConfigOverride {
+                cluster: None,
+                wallet: None,
+            },
+            "fn".to_string(),
+            true,
+            false,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Anchor workspace name must be a valid Rust identifier.")]
+    fn test_init_invalid_ident_chars() {
+        init(
+            &ConfigOverride {
+                cluster: None,
+                wallet: None,
+            },
+            "project.name".to_string(),
+            true,
+            false,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Anchor workspace name must be a valid Rust identifier.")]
+    fn test_init_starting_with_digit() {
+        init(
+            &ConfigOverride {
+                cluster: None,
+                wallet: None,
+            },
+            "1project".to_string(),
+            true,
+            false,
+        )
+        .unwrap();
+    }
 }
