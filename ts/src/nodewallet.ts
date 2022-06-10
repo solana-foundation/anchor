@@ -8,8 +8,15 @@ import { Wallet } from "./provider";
 export default class NodeWallet implements Wallet {
   constructor(readonly payer: Keypair) {}
 
-  static local(): NodeWallet {
+  static local(): NodeWallet | never {
     const process = require("process");
+
+    if (!process.env.ANCHOR_WALLET || process.env.ANCHOR_WALLET === "") {
+      throw new Error(
+        "expected environment variable `ANCHOR_WALLET` is not set."
+      );
+    }
+
     const payer = Keypair.fromSecretKey(
       Buffer.from(
         JSON.parse(
@@ -19,6 +26,7 @@ export default class NodeWallet implements Wallet {
         )
       )
     );
+
     return new NodeWallet(payer);
   }
 

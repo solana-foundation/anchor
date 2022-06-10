@@ -27,6 +27,7 @@ com/project-serum/anchor/pull/1841)).
 * ts: Add `program.coder.types` for encoding/decoding user-defined types ([#1931](https://github.com/project-serum/anchor/pull/1931)).
 * client: Add send_with_spinner_and_config function to RequestBuilder ([#1926](https://github.com/project-serum/anchor/pull/1926)).
 * ts: Implement a coder for SPL associated token program ([#1939](https://github.com/project-serum/anchor/pull/1939)).
+* ts: verbose error for missing `ANCHOR_WALLET` variable when using `NodeWallet.local()` ([#1958](https://github.com/project-serum/anchor/pull/1958)).
 
 ### Fixes
 
