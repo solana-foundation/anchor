@@ -37,10 +37,7 @@ com/project-serum/anchor/pull/1841)).
 
 ### Breaking
 
-ts: Change `BROWSER` env variable to `ANCHOR_BROWSER` ([#1233](https://github.com/project-serum/anchor/pull/1233)).
-
-### Breaking
-
+* ts: Change `BROWSER` env variable to `ANCHOR_BROWSER` ([#1233](https://github.com/project-serum/anchor/pull/1233)).
 * ts: Add transaction signature to `EventCallback` parameters ([#1851](https://github.com/project-serum/anchor/pull/1851)).
 
 ## [0.24.2] - 2022-04-13
