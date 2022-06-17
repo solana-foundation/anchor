@@ -24,7 +24,6 @@
     "permissioned-markets",
     "pda-derivation",
     "pyth",
-    "realloc",
     "spl/token-proxy",
     "swap",
     "system-accounts",

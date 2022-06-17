@@ -12,7 +12,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
-* lang: Add `realloc`, `realloc::payer`, and `realloc::zero` as a new constraint group for program accounts ([#1943](https://github.com/project-serum/anchor/pull/1943)).
 * lang: Add `PartialEq` and `Eq` for `anchor_lang::Error` ([#1544](https://github.com/project-serum/anchor/pull/1544)).
 * cli: Add `--skip-build` to `anchor publish` ([#1786](https://github.
 com/project-serum/anchor/pull/1841)).
