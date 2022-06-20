@@ -23,10 +23,10 @@ accounts, allowing us to more easily reason about the security of our programs.
 To get started, clone the repo.
 
 ```bash
-git clone https://github.com/project-serum/anchor
+git clone https://github.com/coral-xyz/anchor
 ```
 
-Change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-2).
+Change directories to the [example](https://github.com/coral-xyz/anchor/tree/master/examples/tutorial/basic-2).
 
 ```bash
 cd anchor/examples/tutorial/basic-2

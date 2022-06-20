@@ -7,8 +7,8 @@ adding documentation, fixing bugs, creating examples, and implementing features.
 ## Finding issues to work on
 
 If you're looking to get started,
-check out [good first issues](https://github.com/project-serum/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-or issues where [help is wanted](https://github.com/project-serum/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+check out [good first issues](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+or issues where [help is wanted](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 For simple documentation changes or typos, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue

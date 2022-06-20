@@ -12,7 +12,7 @@
 # Run this script from within the `example/` directory in which it is located.
 # The anchor cli must be installed.
 #
-# cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
+# cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
 #
 ################################################################################
 

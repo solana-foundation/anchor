@@ -17,7 +17,13 @@ module.exports = {
    * ref：https://v1.vuepress.vuejs.org/config/#head
    */
   head: [
-    ["link", { rel: "icon", href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓ </text></svg>"}],
+    [
+      "link",
+      {
+        rel: "icon",
+        href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓ </text></svg>",
+      },
+    ],
     ["meta", { name: "theme-color", content: "#3eaf7c" }],
     ["meta", { name: "apple-mobile-web-app-capable", content: "yes" }],
     [
@@ -52,9 +58,7 @@ module.exports = {
       {
         collapsable: false,
         title: "Teams",
-        children: [
-          "/getting-started/projects",
-        ],
+        children: ["/getting-started/projects"],
       },
       {
         collapsable: false,
@@ -70,9 +74,7 @@ module.exports = {
       {
         collapsable: false,
         title: "CLI",
-        children: [
-          "/cli/commands",
-        ],
+        children: ["/cli/commands"],
       },
       {
         collapsable: false,
@@ -87,8 +89,11 @@ module.exports = {
     nav: [
       { text: "The Anchor Book", link: "https://book.anchor-lang.com" },
       { text: "Rust", link: "https://docs.rs/anchor-lang/latest/anchor_lang/" },
-      { text: "TypeScript", link: "https://project-serum.github.io/anchor/ts/index.html" },
-      { text: "GitHub", link: "https://github.com/project-serum/anchor" }
+      {
+        text: "TypeScript",
+        link: "https://coral-xyz.github.io/anchor/ts/index.html",
+      },
+      { text: "GitHub", link: "https://github.com/coral-xyz/anchor" },
     ],
   },
 

@@ -1,6 +1,6 @@
 # Projects
 
-Open a pull request to add your project to the [list](https://github.com/project-serum/anchor/blob/master/docs/src/getting-started/projects.md).
+Open a pull request to add your project to the [list](https://github.com/coral-xyz/anchor/blob/master/docs/src/getting-started/projects.md).
 
 * [Serum](https://github.com/project-serum)
 * [Synthetify](https://github.com/Synthetify)

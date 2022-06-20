@@ -46,7 +46,7 @@ export * from "./namespace/index.js";
  *
  * API specifics are namespace dependent. The examples used in the documentation
  * below will refer to the two counter examples found
- * [here](https://github.com/project-serum/anchor#examples).
+ * [here](https://github.com/coral-xyz/anchor#examples).
  */
 export class Program<IDL extends Idl = Idl> {
   /**

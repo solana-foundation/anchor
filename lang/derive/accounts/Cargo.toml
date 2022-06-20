@@ -2,7 +2,7 @@
 name = "anchor-derive-accounts"
 version = "0.24.2"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
-repository = "https://github.com/project-serum/anchor"
+repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
 description = "Anchor Derive macro for accounts"
 rust-version = "1.56"

@@ -4,7 +4,7 @@ version = "0.24.2"
 authors = ["armaniferrante <armaniferrante@gmail.com>"]
 rust-version = "1.56"
 edition = "2021"
-repository = "https://github.com/project-serum/anchor"
+repository = "https://github.com/coral-xyz/anchor"
 description = "Anchor CLI"
 license = "Apache-2.0"
 

@@ -53,4 +53,4 @@ try {
 
 It's that easy. :)
 
-To run the full example, go [here](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-4).
+To run the full example, go [here](https://github.com/coral-xyz/anchor/tree/master/examples/tutorial/basic-4).

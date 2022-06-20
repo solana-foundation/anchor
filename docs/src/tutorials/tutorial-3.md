@@ -8,10 +8,10 @@ This tutorial covers how to call one program from another, a process known as
 To get started, clone the repo.
 
 ```bash
-git clone https://github.com/project-serum/anchor
+git clone https://github.com/coral-xyz/anchor
 ```
 
-Change directories to the [example](https://github.com/project-serum/anchor/tree/master/examples/tutorial/basic-3).
+Change directories to the [example](https://github.com/coral-xyz/anchor/tree/master/examples/tutorial/basic-3).
 
 ```bash
 cd anchor/examples/tutorial/basic-3

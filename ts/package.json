@@ -7,13 +7,13 @@
   "browser": "./dist/browser/index.js",
   "license": "(MIT OR Apache-2.0)",
   "types": "dist/cjs/index.d.ts",
-  "homepage": "https://github.com/project-serum/anchor#readme",
+  "homepage": "https://github.com/coral-xyz/anchor#readme",
   "bugs": {
-    "url": "https://github.com/project-serum/anchor/issues"
+    "url": "https://github.com/coral-xyz/anchor/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/project-serum/anchor.git"
+    "url": "https://github.com/coral-xyz/anchor.git"
   },
   "publishConfig": {
     "access": "public"
