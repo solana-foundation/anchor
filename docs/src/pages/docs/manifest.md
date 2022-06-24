@@ -1,0 +1,136 @@
+---
+title: Anchor.toml Reference
+description: Anchor - Anchor.toml Reference
+---
+
+## provider (required)
+
+A wallet and cluster that are used for all commands.
+
+Example:
+
+```toml
+[provider]
+cluster = "localnet"                    # The cluster used for all commands.
+wallet = "~/.config/solana/id.json"     # The keypair used for all commands.
+```
+
+## scripts (required for testing)
+
+Scripts that can be run with `anchor run <script>`. The `test` script is executed by `anchor test`.
+
+Example:
+
+```toml
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+```
+
+## registry
+
+The registry that is used in commands related to verifiable builds (e.g. when pushing a verifiable build with `anchor publish`).
+
+Example:
+
+```
+[registry]
+url = "https://anchor.projectserum.com"
+```
+
+## programs
+
+Example:
+
+```toml
+[programs.localnet]
+my_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+```
+
+The addresses of the programs in the workspace.
+
+`programs.localnet` is used during testing on localnet where it's possible to load a program at genesis with the `--bpf-program` option on `solana-test-validator`.
+
+## test
+
+#### startup_wait
+
+Increases the time anchor waits for the `solana-test-validator` to start up. This is, for example, useful if you're cloning (see `test.validator.clone`) many accounts which increases the validator's startup time.
+
+Example:
+
+```toml
+[test]
+startup_wait = 10000
+```
+
+#### genesis
+
+Makes commands like `anchor test` start `solana-test-validator` with a given program already loaded.
+
+Example
+
+```toml
+[[test.genesis]]
+address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
+program = "dex.so"
+
+[[test.genesis]]
+address = "22Y43yTVxuUkoRKdm9thyRhQ3SdgQS7c7kB6UNCiaczD"
+program = "swap.so"
+```
+
+## test.validator
+
+These options are passed into the options with the same name in the `solana-test-validator` cli (see `solana-test-validator --help`) in commands like `anchor test`.
+
+```toml
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"     # This is the url of the cluster that accounts are cloned from (See `test.validator.clone`).
+warp_slot = 1337                                # Warp the ledger to `warp_slot` after starting the validator.
+slots_per_epoch = 5                             # Override the number of slots in an epoch.
+rpc_port = 1337                                 # Set JSON RPC on this port, and the next port for the RPC websocket.
+limit_ledger_size = 1337                        # Keep this amount of shreds in root slots.
+ledger = "test-ledger"                          # Set ledger location.
+gossip_port = 1337                              # Gossip port number for the validator.
+gossip_host = "127.0.0.1"                       # Gossip DNS name or IP address for the validator to advertise in gossip.
+faucet_sol = 1337                               # Give the faucet address this much SOL in genesis.
+faucet_port = 1337                              # Enable the faucet on this port.
+dynamic_port_range = "1337 - 13337"             # Range to use for dynamically assigned ports.
+bind_address = "0.0.0.0"                        # IP address to bind the validator ports.
+```
+
+#### test.validator.clone
+
+Use this to clone an account from the `test.validator.clone.url` cluster to the cluster of your test.
+If `address` points to a program owned by the "BPF upgradeable loader", anchor (`>= 0.23.0`) will clone the
+program data account of the program for you automatically.
+
+Example:
+
+```toml
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "7NL2qWArf2BbEBBH1vTRZCsoNqFATTddH6h8GkVvrLpG"
+[[test.validator.clone]]
+address = "2RaN5auQwMdg5efgCaVqpETBV8sacWGR8tkK4m9kjo5r"
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" # implicitly also clones PwDiXFxQsGra4sFFTT8r1QWRMd4vfumiWC1jfWNfdYT
+```
+
+#### test.validator.account
+
+Use this to upload an account from a `.json` file.
+
+Example:
+
+```toml
+[[test.validator.account]]
+address = "Ev8WSPQsGb4wfjybqff5eZNcS3n6HaMsBkMk9suAiuM"
+filename = "some_account.json"
+
+[[test.validator.account]]
+address = "Ev8WSPQsGb4wfjybqff5eZNcS3n6HaMsBkMk9suAiuM"
+filename = "some_other_account.json"
+```

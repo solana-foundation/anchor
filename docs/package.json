@@ -1,24 +1,38 @@
 {
-  "name": "anchor",
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
-  "authors": {
-    "name": "",
-    "email": ""
-  },
-  "repository": "/anchor",
+  "name": "anchor-docs",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "deploy": "gh-pages -d src/.vuepress/dist",
-    "dev": "vuepress dev src",
-    "build": "vuepress build src"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "license": "MIT",
+  "browserslist": "defaults, not ie <= 11",
+  "dependencies": {
+    "@docsearch/react": "^3.1.0",
+    "@headlessui/react": "^1.6.5",
+    "@markdoc/markdoc": "^0.1.3",
+    "@markdoc/next.js": "^0.1.4",
+    "@sindresorhus/slugify": "^2.1.0",
+    "@tailwindcss/typography": "^0.5.2",
+    "autoprefixer": "^10.4.7",
+    "clsx": "^1.1.1",
+    "focus-visible": "^5.2.0",
+    "next": "12.1.6",
+    "next-plausible": "^3.2.0",
+    "postcss-focus-visible": "^6.0.4",
+    "postcss-import": "^14.1.0",
+    "prism-react-renderer": "^1.3.3",
+    "prismjs": "^1.28.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss": "^3.1.4"
+  },
   "devDependencies": {
-    "@xiaopanda/vuepress-plugin-code-copy": "^1.0.3",
-    "gh-pages": "^3.1.0",
-    "vuepress": "^1.5.3",
-    "vuepress-plugin-dehydrate": "^1.1.5",
-    "vuepress-theme-default-prefers-color-scheme": "^2.0.0"
+    "eslint": "8.18.0",
+    "eslint-config-next": "12.1.6",
+    "prettier": "^2.7.1",
+    "prettier-plugin-tailwindcss": "^0.1.11"
   }
 }
