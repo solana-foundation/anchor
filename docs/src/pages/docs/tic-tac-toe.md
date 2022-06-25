@@ -3,8 +3,6 @@ title: Project - Tic-Tac-Toe
 description: Anchor - Milestone Project - Tic-Tac-Toe
 ---
 
-<!-- TODO: fix -->
-
 > [Program Code](https://github.com/coral-xyz/anchor/tree/master/docs/programs/tic-tac-toe)
 
 You're now ready to build your first anchor project. Create a new anchor workspace with

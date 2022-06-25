@@ -32,7 +32,7 @@ Simply add it to an enum with a name of your choice. You can then use the varian
 
 To actually throw an error use the [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/macro.err.html) or the [`error!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.error.html) macro. These add file and line information to the error that is then logged by anchor.
 
-```rust,ignore
+```rust
 #[program]
 mod hello_anchor {
     use super::*;
@@ -57,7 +57,7 @@ pub enum MyError {
 
 You can use the [`require`](https://docs.rs/anchor-lang/latest/anchor_lang/macro.require.html) macro to simplify writing errors. The code above can be simplified to this (Note that the `>=` flips to `<`):
 
-```rust,ignore
+```rust
 #[program]
 mod hello_anchor {
     use super::*;

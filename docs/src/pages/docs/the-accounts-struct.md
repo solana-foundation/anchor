@@ -174,3 +174,7 @@ Note the doc comment needs to be a [line or block doc comment](https://doc.rust-
 {% callout type="warning" title="Note" %}
 The doc comment needs to be a [line or block doc comment](https://doc.rust-lang.org/reference/comments.html#doc-comments) (/// or /\*\*) to be interepreted as doc attribute by Rust. Double slash comments (//) are not interpreted as such.
 {% /callout %}
+
+## Other Resources
+
+- [Solana Cookbook](https://solanacookbook.com/core-concepts/accounts.html)

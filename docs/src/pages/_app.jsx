@@ -15,9 +15,16 @@ import '@/styles/tailwind.css'
 
 const navigation = [
   {
-    title: 'Introduction',
+    title: 'Prologue',
     links: [
-      { title: 'Getting started', href: '/' },
+      { title: 'Release Notes', href: '/docs/release-notes' },
+      { title: 'Contribution Guide', href: '/docs/contribution-guide' },
+    ],
+  },
+  {
+    title: 'Getting Started',
+    links: [
+      { title: 'Introduction', href: '/' },
       { title: 'Installation', href: '/docs/installation' },
       { title: 'Hello World', href: '/docs/hello-world' },
       { title: 'Intro to Solana', href: '/docs/intro-to-solana' },
@@ -59,18 +66,26 @@ const navigation = [
   {
     title: 'References',
     links: [
-      { title: 'Space', href: '/docs/space' },
+      { title: 'Anchor.toml', href: '/docs/manifest' },
+      { title: 'CLI', href: '/docs/cli' },
+      { title: 'AVM', href: '/docs/avm' },
+      {
+        title: 'Core Library',
+        href: 'https://docs.rs/anchor-lang/latest/anchor_lang/',
+      },
+      {
+        title: 'Rust Client Library',
+        href: 'https://docs.rs/anchor-client/latest/anchor_client/',
+      },
+      // {
+      //   title: 'TypeScript Client Library',
+      //   href: 'https://docs.rs/anchor-lang/latest/anchor_lang/error/enum.ErrorCode.html',
+      // },
       {
         title: 'JavaScript Anchor Types',
         href: '/docs/javascript-anchor-types',
       },
-      { title: 'CLI', href: '/docs/cli' },
-      { title: 'AVM', href: '/docs/avm' },
-      { title: 'Anchor.toml', href: '/docs/manifest' },
-      {
-        title: 'Important Links',
-        href: '/docs/important-links',
-      },
+      { title: 'Space', href: '/docs/space' },
     ],
   },
   {

@@ -195,3 +195,8 @@ fn increment(accounts) {
 There are many types of attacks possible on Solana that all revolve around passing in one account where another was expected but it wasn't checked that the actual one is really the expected one. This brings us from Solana to Anchor. A big part of Anchor's raison d'être is making input validation easier or even doing it for you when possible (e.g. with idiomatic anchor, this account type confusion cannot happen thanks to anchor's discriminator which we'll cover later in the book).
 
 Let's dive in.
+
+## Other Resources
+
+- [SolDev](https://soldev.app)
+- [Solana Cookbook](https://solanacookbook.com/)
