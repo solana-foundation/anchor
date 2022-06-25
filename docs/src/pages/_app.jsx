@@ -92,6 +92,10 @@ const navigation = [
     title: 'Projects',
     links: [{ title: 'Tic-Tac-Toe', href: '/docs/tic-tac-toe' }],
   },
+  {
+    title: 'Common Security Exploits',
+    links: [{ title: 'Sealevel Attacks', href: '/docs/security-exploits' }]
+  },
 ]
 
 function getNodeText(node) {
