@@ -1,6 +1,6 @@
 ---
-title: Changelog
-description: Anchor - Changelog
+title: Release Notes
+description: Anchor - Release Notes
 ---
 
 Version 0 of Semantic Versioning is handled differently from version 1 and above.
