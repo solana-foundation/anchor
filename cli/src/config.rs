@@ -296,7 +296,7 @@ pub struct RegistryConfig {
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
-            url: "https://anchor.projectserum.com".to_string(),
+            url: "https://api.apr.dev".to_string(),
         }
     }
 }

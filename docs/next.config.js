@@ -10,6 +10,7 @@ const nextConfig = withMarkdoc()({
     newNextLinkBehavior: true,
     scrollRestoration: true,
     legacyBrowsers: false,
+    images: { allowFutureImage: true },
   },
 })
 

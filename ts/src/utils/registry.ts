@@ -13,7 +13,7 @@ export async function verifiedBuild(
   programId: PublicKey,
   limit: number = 5
 ): Promise<Build | null> {
-  const url = `https://anchor.projectserum.com/api/v0/program/${programId.toString()}/latest?limit=${limit}`;
+  const url = `https://api.apr.dev/api/v0/program/${programId.toString()}/latest?limit=${limit}`;
   const [programData, latestBuildsResp] = await Promise.all([
     fetchData(connection, programId),
     fetch(url),

@@ -94,7 +94,7 @@ const navigation = [
   },
   {
     title: 'Common Security Exploits',
-    links: [{ title: 'Sealevel Attacks', href: '/docs/security-exploits' }]
+    links: [{ title: 'Sealevel Attacks', href: '/docs/security-exploits' }],
   },
 ]
 
@@ -154,6 +154,26 @@ export default function App({ Component, pageProps }) {
         <Head>
           <title>{pageTitle}</title>
           {description && <meta name="description" content={description} />}
+
+          {/* Open Graph */}
+          <meta property="og:type" content="website" />
+          <meta property="og:title" content={pageTitle} />
+          <meta property="og:description" content={description} />
+          <meta
+            property="og:image"
+            content="https://www.anchor-lang.com/logo.png"
+          />
+          <meta property="og:image:width" content="250" />
+          <meta property="og:image:height" content="214" />
+
+          {/* Twitter */}
+          <meta name="twitter:card" content="summary" />
+          <meta name="twitter:title" content={pageTitle} />
+          <meta name="twitter:description" content={description} />
+          <meta
+            name="twitter:image"
+            content="https://www.anchor-lang.com/logo.png"
+          />
         </Head>
         <Layout
           navigation={navigation}
