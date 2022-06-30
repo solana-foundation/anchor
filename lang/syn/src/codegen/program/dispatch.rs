@@ -124,7 +124,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// two pieces can be combined to creater a method identifier,
         /// specifically, Anchor uses
         ///
-        /// Sha256("<namespace>::<rust-identifier>")[..8],
+        /// Sha256("<namespace>:<rust-identifier>")[..8],
         ///
         /// where the namespace can be one of three types. 1) "global" for a
         /// regular instruction, 2) "state" for a state struct instruction
