@@ -27,6 +27,7 @@ com/project-serum/anchor/pull/1841)).
 * client: Add send_with_spinner_and_config function to RequestBuilder ([#1926](https://github.com/coral-xyz/anchor/pull/1926)).
 * ts: Implement a coder for SPL associated token program ([#1939](https://github.com/coral-xyz/anchor/pull/1939)).
 * ts: verbose error for missing `ANCHOR_WALLET` variable when using `NodeWallet.local()` ([#1958](https://github.com/coral-xyz/anchor/pull/1958)).
+* ts: Add `MethodsBuilder#accountsStrict` for strict typing on ix account input ([#2019](https://github.com/coral-xyz/anchor/pull/2019)).
 
 ### Fixes
 

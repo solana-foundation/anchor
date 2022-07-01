@@ -11,10 +11,10 @@ import { coder } from "../spl/token";
 // Populates a given accounts context with PDAs and common missing accounts.
 export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
   static readonly CONST_ACCOUNTS = {
-    systemProgram: SystemProgram.programId,
-    tokenProgram: TOKEN_PROGRAM_ID,
     associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
     rent: SYSVAR_RENT_PUBKEY,
+    systemProgram: SystemProgram.programId,
+    tokenProgram: TOKEN_PROGRAM_ID,
   };
 
   private _accountStore: AccountStore<IDL>;

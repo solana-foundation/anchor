@@ -65,6 +65,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   private _preInstructions: Array<TransactionInstruction> = [];
   private _postInstructions: Array<TransactionInstruction> = [];
   private _accountsResolver: AccountsResolver<IDL, I>;
+  private _autoResolveAccounts: boolean = true;
 
   constructor(
     private _args: Array<any>,
@@ -91,13 +92,24 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   public async pubkeys(): Promise<
     Partial<InstructionAccountAddresses<IDL, I>>
   > {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
     return this._accounts as Partial<InstructionAccountAddresses<IDL, I>>;
   }
 
   public accounts(
     accounts: Partial<Accounts<I["accounts"][number]>>
   ): MethodsBuilder<IDL, I> {
+    this._autoResolveAccounts = true;
+    Object.assign(this._accounts, accounts);
+    return this;
+  }
+
+  public accountsStrict(
+    accounts: Accounts<I["accounts"][number]>
+  ): MethodsBuilder<IDL, I> {
+    this._autoResolveAccounts = false;
     Object.assign(this._accounts, accounts);
     return this;
   }
@@ -129,7 +141,10 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public async rpc(options?: ConfirmOptions): Promise<TransactionSignature> {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
     // @ts-ignore
     return this._rpcFn(...this._args, {
       accounts: this._accounts,
@@ -142,10 +157,14 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public async view(options?: ConfirmOptions): Promise<any> {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
     if (!this._viewFn) {
       throw new Error("Method does not support views");
     }
+
     // @ts-ignore
     return this._viewFn(...this._args, {
       accounts: this._accounts,
@@ -160,7 +179,10 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   public async simulate(
     options?: ConfirmOptions
   ): Promise<SimulateResponse<any, any>> {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
     // @ts-ignore
     return this._simulateFn(...this._args, {
       accounts: this._accounts,
@@ -173,7 +195,10 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public async instruction(): Promise<TransactionInstruction> {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
     // @ts-ignore
     return this._ixFn(...this._args, {
       accounts: this._accounts,
@@ -185,7 +210,10 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   }
 
   public async transaction(): Promise<Transaction> {
-    await this._accountsResolver.resolve();
+    if (this._autoResolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
     // @ts-ignore
     return this._txFn(...this._args, {
       accounts: this._accounts,
