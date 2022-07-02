@@ -100,18 +100,21 @@ export class EventManager {
         if (logs.err) {
           return;
         }
-        this._eventParser.parseLogs(logs.logs, (event) => {
+
+        for (const event of this._eventParser.parseLogs(logs.logs)) {
           const allListeners = this._eventListeners.get(event.name);
+
           if (allListeners) {
             allListeners.forEach((listener) => {
               const listenerCb = this._eventCallbacks.get(listener);
+
               if (listenerCb) {
                 const [, callback] = listenerCb;
                 callback(event.data, ctx.slot, logs.signature);
               }
             });
           }
-        });
+        }
       }
     );
 
@@ -172,14 +175,14 @@ export class EventParser {
   // its emission, thereby allowing us to know if a given log event was
   // emitted by *this* program. If it was, then we parse the raw string and
   // emit the event if the string matches the event being subscribed to.
-  public parseLogs(logs: string[], callback: (log: Event) => void) {
+  public *parseLogs(logs: string[]) {
     const logScanner = new LogScanner(logs);
     const execution = new ExecutionContext();
     let log = logScanner.next();
     while (log !== null) {
       let [event, newProgram, didPop] = this.handleLog(execution, log);
       if (event) {
-        callback(event);
+        yield event;
       }
       if (newProgram) {
         execution.push(newProgram);

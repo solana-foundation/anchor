@@ -26,9 +26,9 @@ describe("Events", () => {
     const programId = PublicKey.default;
     const eventParser = new EventParser(programId, coder);
 
-    eventParser.parseLogs(logs, () => {
+    if (Array.from(eventParser.parseLogs(logs)).length > 0) {
       throw new Error("Should never find logs");
-    });
+    }
   });
   it("Upgrade event check", () => {
     const logs = [
@@ -54,9 +54,9 @@ describe("Events", () => {
     const programId = PublicKey.default;
     const eventParser = new EventParser(programId, coder);
 
-    eventParser.parseLogs(logs, () => {
+    if (Array.from(eventParser.parseLogs(logs)).length > 0) {
       throw new Error("Should never find logs");
-    });
+    }
   });
   it("Find event with different start log.", (done) => {
     const logs = [
@@ -118,10 +118,11 @@ describe("Events", () => {
     );
     const eventParser = new EventParser(programId, coder);
 
-    eventParser.parseLogs(logs, (event) => {
+    const gen = eventParser.parseLogs(logs);
+    for (const event of gen) {
       expect(event.name).toEqual("NftSold");
       done();
-    });
+    }
   });
   it("Find event from logs", (done) => {
     const logs = [
@@ -213,10 +214,11 @@ describe("Events", () => {
     );
     const eventParser = new EventParser(programId, coder);
 
-    eventParser.parseLogs(logs, (event) => {
+    const gen = eventParser.parseLogs(logs);
+    for (const event of gen) {
       expect(event.name).toEqual("ListingClosed");
       done();
-    });
+    }
   });
   it("Listen to different program and send other program logs with same name", () => {
     const logs = [
@@ -271,8 +273,8 @@ describe("Events", () => {
     );
     const eventParser = new EventParser(programId, coder);
 
-    eventParser.parseLogs(logs, () => {
+    if (Array.from(eventParser.parseLogs(logs)).length > 0) {
       throw new Error("Should never find logs");
-    });
+    }
   });
 });

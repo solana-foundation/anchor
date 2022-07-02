@@ -28,6 +28,7 @@ com/project-serum/anchor/pull/1841)).
 * ts: Implement a coder for SPL associated token program ([#1939](https://github.com/coral-xyz/anchor/pull/1939)).
 * ts: verbose error for missing `ANCHOR_WALLET` variable when using `NodeWallet.local()` ([#1958](https://github.com/coral-xyz/anchor/pull/1958)).
 * ts: Add `MethodsBuilder#accountsStrict` for strict typing on ix account input ([#2019](https://github.com/coral-xyz/anchor/pull/2019)).
+* ts: Change `EventParser#parseLogs` implementation to be a generator instead of callback function ([#2018](https://github.com/coral-xyz/anchor/pull/2018)).
 
 ### Fixes
 
