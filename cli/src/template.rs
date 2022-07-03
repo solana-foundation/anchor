@@ -254,7 +254,7 @@ pub fn ts_package_json() -> String {
     "devDependencies": {{
         "chai": "^4.3.4",
         "mocha": "^9.0.3",
-        "ts-mocha": "^8.0.0",
+        "ts-mocha": "^10.0.0",
         "@types/bn.js": "^5.1.0",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^9.0.0",
