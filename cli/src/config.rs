@@ -286,6 +286,8 @@ pub struct Config {
 pub struct FeaturesConfig {
     #[serde(default)]
     pub seeds: bool,
+    #[serde(default, rename = "skip-lint")]
+    pub skip_lint: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1116,3 +1118,41 @@ impl AnchorPackage {
 }
 
 crate::home_path!(WalletPath, ".config/solana/id.json");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const BASE_CONFIG: &str = "
+        [provider]
+        cluster = \"localnet\"
+        wallet = \"id.json\"
+    ";
+
+    #[test]
+    fn parse_skip_lint_no_section() {
+        let config = Config::from_str(BASE_CONFIG).unwrap();
+        assert!(!config.features.skip_lint);
+    }
+
+    #[test]
+    fn parse_skip_lint_no_value() {
+        let string = BASE_CONFIG.to_owned() + "[features]";
+        let config = Config::from_str(&string).unwrap();
+        assert!(!config.features.skip_lint);
+    }
+
+    #[test]
+    fn parse_skip_lint_true() {
+        let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = true";
+        let config = Config::from_str(&string).unwrap();
+        assert!(config.features.skip_lint);
+    }
+
+    #[test]
+    fn parse_skip_lint_false() {
+        let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = false";
+        let config = Config::from_str(&string).unwrap();
+        assert!(!config.features.skip_lint);
+    }
+}
