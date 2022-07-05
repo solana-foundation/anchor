@@ -59,6 +59,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         associated_token,
         token_account,
         mint,
+        realloc,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -68,6 +69,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     }
     if let Some(c) = init {
         constraints.push(Constraint::Init(c));
+    }
+    if let Some(c) = realloc {
+        constraints.push(Constraint::Realloc(c));
     }
     if let Some(c) = seeds {
         constraints.push(Constraint::Seeds(c));
@@ -130,6 +134,7 @@ fn generate_constraint(f: &Field, c: &Constraint) -> proc_macro2::TokenStream {
         Constraint::AssociatedToken(c) => generate_constraint_associated_token(f, c),
         Constraint::TokenAccount(c) => generate_constraint_token_account(f, c),
         Constraint::Mint(c) => generate_constraint_mint(f, c),
+        Constraint::Realloc(c) => generate_constraint_realloc(f, c),
     }
 }
 
@@ -317,6 +322,59 @@ pub fn generate_constraint_rent_exempt(
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
             }
         },
+    }
+}
+
+fn generate_constraint_realloc(f: &Field, c: &ConstraintReallocGroup) -> proc_macro2::TokenStream {
+    let field = &f.ident;
+    let account_name = field.to_string();
+    let new_space = &c.space;
+    let payer = &c.payer;
+    let zero = &c.zero;
+
+    quote! {
+        // Blocks duplicate account reallocs in a single instruction to prevent accidental account overwrites
+        // and to ensure the calculation of the change in bytes is based on account size at program entry
+        // which inheritantly guarantee idempotency.
+        if __reallocs.contains(&#field.key()) {
+            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDuplicateReallocs).with_account_name(#account_name));
+        }
+
+        let __anchor_rent = anchor_lang::prelude::Rent::get()?;
+        let __field_info = #field.to_account_info();
+        let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
+
+        let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
+            .checked_sub(::std::convert::TryInto::try_into(__field_info.data_len()).unwrap())
+            .unwrap();
+
+        if __delta_space != 0 {
+            if __delta_space > 0 {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
+                }
+
+                if __new_rent_minimum > __field_info.lamports() {
+                    anchor_lang::system_program::transfer(
+                        anchor_lang::context::CpiContext::new(
+                            system_program.to_account_info(),
+                            anchor_lang::system_program::Transfer {
+                                from: #payer.to_account_info(),
+                                to: __field_info.clone(),
+                            },
+                        ),
+                        __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
+                    )?;
+                }
+            } else {
+                let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
+                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
+                **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
+            }
+
+            #field.to_account_info().realloc(#new_space, #zero)?;
+            __reallocs.insert(#field.key());
+        }
     }
 }
 

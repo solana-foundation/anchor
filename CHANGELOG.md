@@ -12,9 +12,9 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+* lang: Add `realloc`, `realloc::payer`, and `realloc::zero` as a new constraint group for program accounts ([#1986](https://github.com/coral-xyz/anchor/pull/1986)).
 * lang: Add `PartialEq` and `Eq` for `anchor_lang::Error` ([#1544](https://github.com/coral-xyz/anchor/pull/1544)).
-* cli: Add `--skip-build` to `anchor publish` ([#1786](https://github.
-com/project-serum/anchor/pull/1841)).
+* cli: Add `--skip-build` to `anchor publish` ([#1786](https://github.com/coral-xyz/anchor/pull/1841)).
 * cli: Add `--program-keypair` to `anchor deploy` ([#1786](https://github.com/coral-xyz/anchor/pull/1786)).
 * cli: Add compilation optimizations to cli template ([#1807](https://github.com/coral-xyz/anchor/pull/1807)).
 * cli: `build` now adds docs to idl. This can be turned off with `--no-docs` ([#1561](https://github.com/coral-xyz/anchor/pull/1561)).
@@ -41,6 +41,7 @@ com/project-serum/anchor/pull/1841)).
 * ts: Change `BROWSER` env variable to `ANCHOR_BROWSER` ([#1233](https://github.com/coral-xyz/anchor/pull/1233)).
 * ts: Add transaction signature to `EventCallback` parameters ([#1851](https://github.com/coral-xyz/anchor/pull/1851)).
 * ts: Change `EventParser#parseLogs` implementation to be a generator instead of callback function ([#2018](https://github.com/coral-xyz/anchor/pull/2018)).
+* lang: Adds a new `&mut reallocs: BTreeSet<Pubkey>` argument to `Accounts::try_accounts` ([#1986](https://github.com/coral-xyz/anchor/pull/1986)).
 
 ## [0.24.2] - 2022-04-13
 

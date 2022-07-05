@@ -6,7 +6,7 @@ use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas}
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 
 /// Explicit wrapper for AccountInfo types to emphasize
@@ -26,6 +26,7 @@ impl<'info> Accounts<'info> for UncheckedAccount<'info> {
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut BTreeMap<String, u8>,
+        _reallocs: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

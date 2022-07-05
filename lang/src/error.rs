@@ -178,6 +178,12 @@ pub enum ErrorCode {
     /// 3015 - The given public key does not match the required sysvar
     #[msg("The given public key does not match the required sysvar")]
     AccountSysvarMismatch,
+    /// 3016 - The account reallocation exceeds the MAX_PERMITTED_DATA_INCREASE limit
+    #[msg("The account reallocation exceeds the MAX_PERMITTED_DATA_INCREASE limit")]
+    AccountReallocExceedsLimit,
+    /// 3017 - The account was duplicated for more than one reallocation
+    #[msg("The account was duplicated for more than one reallocation")]
+    AccountDuplicateReallocs,
 
     // State.
     /// 4000 - The given state account does not have the correct address
