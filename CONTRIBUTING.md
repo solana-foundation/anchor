@@ -33,9 +33,8 @@ While coding:
 - Only change code directly relevant to your PR. Sometimes you might find some code that could really need some refactoring. However, if it's not relevant to your PR, do not touch it. File an issue instead. This allows the reviewer to focus on a single problem at a time.
 - If you write comments, do not exceed 80 chars per line. This allows contributors who work with multiple open windows to still read the comments without horizontally scrolling.
 - Write adversarial tests. For example, if you're adding a new account type, do not only write tests where the instruction succeeds. Also write tests that test whether the instruction fails, if a check inside the new type is violated.
-  
+
 After coding:
 - If you've moved code around, build the docs with `cargo doc --open` and adjust broken links
 - Adjust the cli templates if necessary
-- If you made a change to anchor's periphery (avm or cli), make a PR to the `anchor-book` repo if necessary
 - If you've added a new folder to the `tests` directory, add it to the [CI](./.github/workflows/tests.yaml).
