@@ -6,7 +6,7 @@ ANCHOR_CLI=v$(shell awk -F ' = ' '$$1 ~ /version/ { gsub(/[\"]/, "", $$2); print
 #
 # Solana toolchain.
 #
-SOLANA_CLI=v1.9.13
+SOLANA_CLI=v1.10.29
 #
 # Build version should match the Anchor cli version.
 #
