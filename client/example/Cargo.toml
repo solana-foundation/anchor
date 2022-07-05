@@ -17,4 +17,4 @@ shellexpand = "2.1.0"
 anyhow = "1.0.32"
 rand = "0.7.3"
 clap = { version = "3.0.0-rc.0", features = ["derive"] }
-solana-sdk = "~1.9.13"
+solana-sdk = "~1.10.29"

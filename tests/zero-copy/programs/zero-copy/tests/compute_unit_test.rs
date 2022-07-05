@@ -38,7 +38,7 @@ async fn update_foo() {
 
     let mut pt = ProgramTest::new("zero_copy", zero_copy::id(), None);
     pt.add_account(foo_pubkey, foo_account);
-    pt.set_compute_max_units(3157);
+    pt.set_compute_max_units(4157);
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
     let client = Client::new_with_options(
