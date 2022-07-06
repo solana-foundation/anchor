@@ -23,5 +23,5 @@ anchor-lang = { path = "../lang", version = "0.25.0", features = ["derive"] }
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
 solana-program = "~1.10.29"
 spl-token = { version = "~3.3.0", features = ["no-entrypoint"], optional = true }
-spl-associated-token-account = { version = "~1.0.3", features = ["no-entrypoint"], optional = true }
+spl-associated-token-account = { version = "~1.0.5", features = ["no-entrypoint"], optional = true }
 mpl-token-metadata = { version = "1.2.7", optional = true, features = ["no-entrypoint"] }
