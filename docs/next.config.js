@@ -7,7 +7,6 @@ const nextConfig = withMarkdoc()({
   reactStrictMode: true,
   pageExtensions: ['js', 'jsx', 'md'],
   experimental: {
-    newNextLinkBehavior: true,
     scrollRestoration: true,
     legacyBrowsers: false,
     images: { allowFutureImage: true },
