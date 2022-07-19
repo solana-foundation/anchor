@@ -2031,7 +2031,8 @@ fn run_test_suite(
             }
         }
         Err(err) => {
-            println!("Failed to run test: {:#}", err)
+            println!("Failed to run test: {:#}", err);
+            return Err(err);
         }
     }
 
