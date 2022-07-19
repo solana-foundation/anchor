@@ -16,7 +16,7 @@
 //! generating clients from IDL is the same.
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
-//! [tutorials](https://coral-xyz.github.io/anchor) or examples in the GitHub
+//! [tutorials](https://anchor-lang.com) or examples in the GitHub
 //! [repository](https://github.com/coral-xyz/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
