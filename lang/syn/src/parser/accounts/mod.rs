@@ -33,7 +33,7 @@ pub fn parse(strct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         }
     };
 
-    let _ = constraints_cross_checks(&fields)?;
+    constraints_cross_checks(&fields)?;
 
     Ok(AccountsStruct::new(strct.clone(), fields, instruction_api))
 }

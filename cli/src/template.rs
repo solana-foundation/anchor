@@ -4,6 +4,7 @@ use anchor_syn::idl::Idl;
 use anyhow::Result;
 use heck::{CamelCase, MixedCase, SnakeCase};
 use solana_sdk::pubkey::Pubkey;
+use std::fmt::Write;
 
 pub fn default_program_id() -> Pubkey {
     "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
@@ -368,14 +369,15 @@ anchor.setProvider(provider);
     );
 
     for program in programs {
-        eval_string.push_str(&format!(
+        write!(
+            &mut eval_string,
             r#"
 anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
 "#,
             program.name.to_camel_case(),
             serde_json::to_string(&program.idl)?,
             program.program_id
-        ));
+        )?;
     }
 
     Ok(eval_string)

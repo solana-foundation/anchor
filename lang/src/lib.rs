@@ -353,7 +353,7 @@ pub mod __private {
 macro_rules! require {
     ($invariant:expr, $error:tt $(,)?) => {
         if !($invariant) {
-            return Err(anchor_lang::error!(crate::ErrorCode::$error));
+            return Err(anchor_lang::error!($crate::ErrorCode::$error));
         }
     };
     ($invariant:expr, $error:expr $(,)?) => {
@@ -562,7 +562,7 @@ macro_rules! require_gte {
 #[macro_export]
 macro_rules! err {
     ($error:tt $(,)?) => {
-        Err(anchor_lang::error!(crate::ErrorCode::$error))
+        Err(anchor_lang::error!($crate::ErrorCode::$error))
     };
     ($error:expr $(,)?) => {
         Err(anchor_lang::error!($error))
