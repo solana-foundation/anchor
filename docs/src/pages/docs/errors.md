@@ -5,7 +5,7 @@ description: Anchor - Errors
 
 > [`AnchorError` Rust Reference](https://docs.rs/anchor-lang/latest/anchor_lang/error/struct.AnchorError.html)
 
-> [`AnchorError` Typescript Reference](https://project-serum.github.io/anchor/ts/classes/AnchorError.html)
+> [`AnchorError` Typescript Reference](https://coral-xyz.github.io/anchor/ts/classes/AnchorError.html)
 
 There are two types of errors in anchor programs. AnchorErrors and non-anchor errors.
 AnchorErrors can be divided into Anchor Internal Errors that the framework returns from inside its own code or
@@ -16,7 +16,7 @@ custom errors which the user (you!) can return.
   - Custom Errors
 - Non-anchor errors.
 
-[AnchorErrors](https://docs.rs/anchor-lang/latest/anchor_lang/error/struct.AnchorError.html) provide a range of information like the error name and number or the location in the code where the anchor was thrown, or the account that violated a constraint (e.g. a `mut` constraint). Once thrown inside the program, [you can access the error information](https://project-serum.github.io/anchor/ts/classes/AnchorError.html) in the anchor clients like the typescript client. The typescript client also enriches the error with additional information about which program the error was thrown in and the CPI calls (which are explained [here](./cross-program-invocations) in the book) that led to the program from which the error was thrown from. [The milestone chapter](./milestone_project_tic-tac-toe.md) explores how all of this works together in practice. For now, let's look at how different errors can be returned from inside a program.
+[AnchorErrors](https://docs.rs/anchor-lang/latest/anchor_lang/error/struct.AnchorError.html) provide a range of information like the error name and number or the location in the code where the anchor was thrown, or the account that violated a constraint (e.g. a `mut` constraint). Once thrown inside the program, [you can access the error information](https://coral-xyz.github.io/anchor/ts/classes/AnchorError.html) in the anchor clients like the typescript client. The typescript client also enriches the error with additional information about which program the error was thrown in and the CPI calls (which are explained [here](./cross-program-invocations) in the book) that led to the program from which the error was thrown from. [The milestone chapter](./milestone_project_tic-tac-toe.md) explores how all of this works together in practice. For now, let's look at how different errors can be returned from inside a program.
 
 ## Anchor Internal Errors
 
