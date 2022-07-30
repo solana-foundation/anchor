@@ -1,6 +1,7 @@
 //! `anchor_client` provides an RPC client to send transactions and fetch
 //! deserialized accounts from Solana programs written in `anchor_lang`.
 
+use anchor_lang::solana_program::hash::Hash;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
@@ -534,23 +535,42 @@ impl<'a> RequestBuilder<'a> {
         Ok(instructions)
     }
 
-    pub fn send(self) -> Result<Signature, ClientError> {
+    fn signed_transaction_with_blockhash(
+        &self,
+        latest_hash: Hash,
+    ) -> Result<Transaction, ClientError> {
         let instructions = self.instructions()?;
-
-        let mut signers = self.signers;
+        let mut signers = self.signers.clone();
         signers.push(&*self.payer);
 
-        let rpc_client = RpcClient::new_with_commitment(self.cluster, self.options);
+        let tx = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&self.payer.pubkey()),
+            &signers,
+            latest_hash,
+        );
 
-        let tx = {
-            let latest_hash = rpc_client.get_latest_blockhash()?;
-            Transaction::new_signed_with_payer(
-                &instructions,
-                Some(&self.payer.pubkey()),
-                &signers,
-                latest_hash,
-            )
-        };
+        Ok(tx)
+    }
+
+    pub fn signed_transaction(&self) -> Result<Transaction, ClientError> {
+        let latest_hash =
+            RpcClient::new_with_commitment(&self.cluster, self.options).get_latest_blockhash()?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+
+        Ok(tx)
+    }
+
+    pub fn transaction(&self) -> Result<Transaction, ClientError> {
+        let instructions = &self.instructions;
+        let tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
+        Ok(tx)
+    }
+
+    pub fn send(self) -> Result<Signature, ClientError> {
+        let rpc_client = RpcClient::new_with_commitment(&self.cluster, self.options);
+        let latest_hash = rpc_client.get_latest_blockhash()?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
         rpc_client
             .send_and_confirm_transaction(&tx)
@@ -561,22 +581,9 @@ impl<'a> RequestBuilder<'a> {
         self,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
-        let instructions = self.instructions()?;
-
-        let mut signers = self.signers;
-        signers.push(&*self.payer);
-
-        let rpc_client = RpcClient::new_with_commitment(self.cluster, self.options);
-
-        let tx = {
-            let latest_hash = rpc_client.get_latest_blockhash()?;
-            Transaction::new_signed_with_payer(
-                &instructions,
-                Some(&self.payer.pubkey()),
-                &signers,
-                latest_hash,
-            )
-        };
+        let rpc_client = RpcClient::new_with_commitment(&self.cluster, self.options);
+        let latest_hash = rpc_client.get_latest_blockhash()?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
         rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
