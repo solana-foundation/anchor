@@ -455,7 +455,7 @@ it('player one wins', async () => {
 
 and run `anchor test`.
 
-You can finish writing the test by yourself (or check out [the reference implementation](https://github.com/project-serum/anchor-book/tree/master/programs/tic-tac-toe)). Try to simulate a win and a tie!
+You can finish writing the test by yourself (or check out [the reference implementation](https://github.com/coral-xyz/anchor/tree/master/docs/programs/tic-tac-toe)). Try to simulate a win and a tie!
 
 Proper testing also includes tests that try to exploit the contract. You can check whether you've protected yourself properly by calling `play` with unexpected parameters. You can also familiarize yourself with the returned `AnchorErrors` this way. For example:
 
@@ -538,7 +538,7 @@ There is more to deployments than this e.g. understanding how the BPFLoader work
 
 ## Program directory organization
 
-> [Program Code](https://github.com/project-serum/anchor-book/tree/master/programs/tic-tac-toe)
+> [Program Code](https://github.com/coral-xyz/anchor/tree/master/docs/programs/tic-tac-toe)
 
 Eventually, some programs become too big to keep them in a single file and it makes sense to break them up.
 

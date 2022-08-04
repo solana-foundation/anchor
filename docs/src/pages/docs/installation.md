@@ -32,7 +32,7 @@ Anchor version manager is a tool for using multiple versions of the anchor-cli. 
 Install `avm` using Cargo. Note this will replace your `anchor` binary if you had one installed.
 
 ```shell
-cargo install --git https://github.com/project-serum/anchor avm --locked --force
+cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 ```
 
 On Linux systems you may need to install additional dependencies if cargo install fails. E.g. on Ubuntu:
@@ -63,7 +63,7 @@ Anchor binaries are available via an NPM package [`@project-serum/anchor-cli`](h
 We can also use Cargo to install the CLI directly. Make sure that the `--tag` argument uses the version you want (the version here is just an example).
 
 ```shell
-cargo install --git https://github.com/project-serum/anchor --tag v0.24.1 anchor-cli --locked
+cargo install --git https://github.com/coral-xyz/anchor --tag v0.24.1 anchor-cli --locked
 ```
 
 On Linux systems you may need to install additional dependencies if cargo install fails. On Ubuntu,
