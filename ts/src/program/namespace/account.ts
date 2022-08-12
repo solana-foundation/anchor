@@ -201,21 +201,28 @@ export class AccountClient<
   async all(
     filters?: Buffer | GetProgramAccountsFilter[]
   ): Promise<ProgramAccount<T>[]> {
+    const filter: { offset?: number; bytes?: string; dataSize?: number } =
+      this.coder.accounts.memcmp(
+        this._idlAccount.name,
+        filters instanceof Buffer ? filters : undefined
+      );
+    const coderFilters: GetProgramAccountsFilter[] = [];
+    if (filter?.offset != undefined && filter?.bytes != undefined) {
+      coderFilters.push({
+        memcmp: { offset: filter.offset, bytes: filter.bytes },
+      });
+    }
+    if (filter?.dataSize != undefined) {
+      coderFilters.push({ dataSize: filter.dataSize });
+    }
     let resp = await this._provider.connection.getProgramAccounts(
       this._programId,
       {
         commitment: this._provider.connection.commitment,
-        filters: [
-          {
-            memcmp: this.coder.accounts.memcmp(
-              this._idlAccount.name,
-              filters instanceof Buffer ? filters : undefined
-            ),
-          },
-          ...(Array.isArray(filters) ? filters : []),
-        ],
+        filters: [...coderFilters, ...(Array.isArray(filters) ? filters : [])],
       }
     );
+
     return resp.map(({ pubkey, account }) => {
       return {
         publicKey: pubkey,
