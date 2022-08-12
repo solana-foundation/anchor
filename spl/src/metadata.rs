@@ -1,6 +1,6 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::{Accounts, Result, ToAccountInfos};
-use mpl_token_metadata::state::DataV2;
+use mpl_token_metadata::state::{CollectionDetails, DataV2};
 use mpl_token_metadata::ID;
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
@@ -45,6 +45,48 @@ pub fn create_metadata_accounts_v2<'info>(
         is_mutable,
         collection,
         uses,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
+pub fn create_metadata_accounts_v3<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
+    data: DataV2,
+    is_mutable: bool,
+    update_authority_is_signer: bool,
+    details: Option<CollectionDetails>,
+) -> Result<()> {
+    let DataV2 {
+        name,
+        symbol,
+        uri,
+        creators,
+        seller_fee_basis_points,
+        collection,
+        uses,
+    } = data;
+    let ix = mpl_token_metadata::instruction::create_metadata_accounts_v3(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.mint.key,
+        *ctx.accounts.mint_authority.key,
+        *ctx.accounts.payer.key,
+        *ctx.accounts.update_authority.key,
+        name,
+        symbol,
+        uri,
+        creators,
+        seller_fee_basis_points,
+        update_authority_is_signer,
+        is_mutable,
+        collection,
+        uses,
+        details,
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -128,8 +170,41 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
     Ok(())
 }
 
+pub fn set_collection_size<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, SetCollectionSize<'info>>,
+    collection_authority_record: Option<Pubkey>,
+    size: u64,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::set_collection_size(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.update_authority.key,
+        *ctx.accounts.mint.key,
+        collection_authority_record,
+        size,
+    );
+
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV2<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub mint_authority: AccountInfo<'info>,
+    pub payer: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CreateMetadataAccountsV3<'info> {
     pub metadata: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
     pub mint_authority: AccountInfo<'info>,
@@ -182,4 +257,12 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
     // helper pass in the `edition_mark_pda` directly.
     //
     pub metadata_mint: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetCollectionSize<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
 }
