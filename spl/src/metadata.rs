@@ -1,6 +1,6 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::{Accounts, Result, ToAccountInfos};
-use mpl_token_metadata::state::{CollectionDetails, DataV2};
+use mpl_token_metadata::state::{CollectionDetails, DataV2, TokenMetadataAccount};
 use mpl_token_metadata::ID;
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
