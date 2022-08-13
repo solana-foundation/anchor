@@ -4,6 +4,7 @@ use mpl_token_metadata::state::{CollectionDetails, DataV2};
 use mpl_token_metadata::ID;
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
+use std::ops::Deref;
 
 #[derive(Clone)]
 pub struct Metadata;
