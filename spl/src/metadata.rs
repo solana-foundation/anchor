@@ -266,3 +266,32 @@ pub struct SetCollectionSize<'info> {
     pub update_authority: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MetadataAccount(mpl_token_metadata::state::Metadata);
+
+impl MetadataAccount {
+    pub const LEN: usize = mpl_token_metadata::state::MAX_METADATA_LEN;
+}
+
+impl anchor_lang::AccountDeserialize for MetadataAccount {
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+        let result = mpl_token_metadata::state::Metadata::safe_deserialize(buf)?;
+        Ok(MetadataAccount(result))
+    }
+}
+
+impl anchor_lang::AccountSerialize for MetadataAccount {}
+
+impl anchor_lang::Owner for MetadataAccount {
+    fn owner() -> Pubkey {
+        ID
+    }
+}
+
+impl Deref for MetadataAccount {
+    type Target = mpl_token_metadata::state::Metadata;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
