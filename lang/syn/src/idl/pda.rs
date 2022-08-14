@@ -56,6 +56,8 @@ struct PdaParser<'a> {
     ix_args: HashMap<String, String>,
     // Constants available in the crate.
     const_names: Vec<String>,
+    // Constants declared in impl blocks available in the crate
+    impl_const_names: Vec<String>,
     // All field names of the accounts in the accounts context.
     account_field_names: Vec<String>,
 }
@@ -65,6 +67,12 @@ impl<'a> PdaParser<'a> {
         // All the available sources of seeds.
         let ix_args = accounts.instruction_args().unwrap_or_default();
         let const_names: Vec<String> = ctx.consts().map(|c| c.ident.to_string()).collect();
+
+        let impl_const_names: Vec<String> = ctx
+            .impl_consts()
+            .map(|(ident, item)| format!("{} :: {}", ident, item.ident))
+            .collect();
+
         let account_field_names = accounts.field_names();
 
         Self {
@@ -72,6 +80,7 @@ impl<'a> PdaParser<'a> {
             accounts,
             ix_args,
             const_names,
+            impl_const_names,
             account_field_names,
         }
     }
@@ -83,7 +92,6 @@ impl<'a> PdaParser<'a> {
             .iter()
             .map(|s| self.parse_seed(s))
             .collect::<Option<Vec<_>>>()?;
-
         // Parse the program id from the constraints.
         let program_id = seeds_grp
             .program_seed
@@ -104,6 +112,8 @@ impl<'a> PdaParser<'a> {
                     self.parse_instruction(&seed_path)
                 } else if self.is_const(&seed_path) {
                     self.parse_const(&seed_path)
+                } else if self.is_impl_const(&seed_path) {
+                    self.parse_impl_const(&seed_path)
                 } else if self.is_account(&seed_path) {
                     self.parse_account(&seed_path)
                 } else if self.is_str_literal(&seed_path) {
@@ -150,18 +160,30 @@ impl<'a> PdaParser<'a> {
             .find(|c| c.ident == seed_path.name())
             .unwrap();
         let idl_ty = IdlType::from_str(&parser::tts_to_string(&const_item.ty)).ok()?;
-        let mut idl_ty_value = parser::tts_to_string(&const_item.expr);
 
-        if let IdlType::Array(_ty, _size) = &idl_ty {
-            // Convert str literal to array.
-            if idl_ty_value.contains("b\"") {
-                let components: Vec<&str> = idl_ty_value.split('b').collect();
-                assert!(components.len() == 2);
-                let mut str_lit = components[1].to_string();
-                str_lit.retain(|c| c != '"');
-                idl_ty_value = format!("{:?}", str_lit.as_bytes());
-            }
-        }
+        let idl_ty_value = parser::tts_to_string(&const_item.expr);
+        let idl_ty_value = str_lit_to_array(&idl_ty, &idl_ty_value);
+
+        Some(IdlSeed::Const(IdlSeedConst {
+            ty: idl_ty,
+            value: serde_json::from_str(&idl_ty_value).unwrap(),
+        }))
+    }
+
+    fn parse_impl_const(&self, seed_path: &SeedPath) -> Option<IdlSeed> {
+        // Pull in the constant value directly into the IDL.
+        assert!(seed_path.components().is_empty());
+        let static_item = self
+            .ctx
+            .impl_consts()
+            .find(|(ident, item)| format!("{} :: {}", ident, item.ident) == seed_path.name())
+            .unwrap()
+            .1;
+
+        let idl_ty = IdlType::from_str(&parser::tts_to_string(&static_item.ty)).ok()?;
+
+        let idl_ty_value = parser::tts_to_string(&static_item.expr);
+        let idl_ty_value = str_lit_to_array(&idl_ty, &idl_ty_value);
 
         Some(IdlSeed::Const(IdlSeedConst {
             ty: idl_ty,
@@ -234,6 +256,10 @@ impl<'a> PdaParser<'a> {
 
     fn is_const(&self, seed_path: &SeedPath) -> bool {
         self.const_names.contains(&seed_path.name())
+    }
+
+    fn is_impl_const(&self, seed_path: &SeedPath) -> bool {
+        self.impl_const_names.contains(&seed_path.name())
     }
 
     fn is_account(&self, seed_path: &SeedPath) -> bool {
@@ -326,4 +352,18 @@ fn parse_field_path(ctx: &CrateContext, strct: &syn::ItemStruct, path: &mut &[St
         .unwrap();
 
     parse_field_path(ctx, strct, path)
+}
+
+fn str_lit_to_array(idl_ty: &IdlType, idl_ty_value: &String) -> String {
+    if let IdlType::Array(_ty, _size) = &idl_ty {
+        // Convert str literal to array.
+        if idl_ty_value.contains("b\"") {
+            let components: Vec<&str> = idl_ty_value.split('b').collect();
+            assert_eq!(components.len(), 2);
+            let mut str_lit = components[1].to_string();
+            str_lit.retain(|c| c != '"');
+            return format!("{:?}", str_lit.as_bytes());
+        }
+    }
+    idl_ty_value.to_string()
 }

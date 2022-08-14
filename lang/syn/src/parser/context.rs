@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use syn::parse::{Error as ParseError, Result as ParseResult};
+use syn::{Ident, ImplItem, ImplItemConst, Type, TypePath};
 
 /// Crate parse context
 ///
@@ -13,6 +14,10 @@ pub struct CrateContext {
 impl CrateContext {
     pub fn consts(&self) -> impl Iterator<Item = &syn::ItemConst> {
         self.modules.iter().flat_map(|(_, ctx)| ctx.consts())
+    }
+
+    pub fn impl_consts(&self) -> impl Iterator<Item = (&Ident, &syn::ImplItemConst)> {
+        self.modules.iter().flat_map(|(_, ctx)| ctx.impl_consts())
     }
 
     pub fn structs(&self) -> impl Iterator<Item = &syn::ItemStruct> {
@@ -243,5 +248,37 @@ impl ParsedModule {
             syn::Item::Const(item) => Some(item),
             _ => None,
         })
+    }
+
+    fn impl_consts(&self) -> impl Iterator<Item = (&Ident, &ImplItemConst)> {
+        self.items
+            .iter()
+            .filter_map(|i| match i {
+                syn::Item::Impl(syn::ItemImpl {
+                    self_ty: ty, items, ..
+                }) => {
+                    if let Type::Path(TypePath {
+                        qself: None,
+                        path: p,
+                    }) = ty.as_ref()
+                    {
+                        if let Some(ident) = p.get_ident() {
+                            let mut to_return = Vec::new();
+                            items.iter().for_each(|item| {
+                                if let ImplItem::Const(item) = item {
+                                    to_return.push((ident, item));
+                                }
+                            });
+                            Some(to_return)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .flatten()
     }
 }

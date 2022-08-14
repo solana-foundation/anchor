@@ -234,7 +234,7 @@ impl std::str::FromStr for IdlType {
             "u128" => IdlType::U128,
             "i128" => IdlType::I128,
             "Vec<u8>" => IdlType::Bytes,
-            "String" | "&str" => IdlType::String,
+            "String" | "&str" | "&'staticstr" => IdlType::String,
             "Pubkey" => IdlType::PublicKey,
             _ => match s.to_string().strip_prefix("Option<") {
                 None => match s.to_string().strip_prefix("Vec<") {
