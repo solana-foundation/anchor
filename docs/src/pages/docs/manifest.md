@@ -37,6 +37,19 @@ Example:
 url = "https://anchor.projectserum.com"
 ```
 
+## features
+
+#### seeds
+
+This tells the IDL to include seed generation for PDA Accounts. The default is `false`
+
+Example:
+
+```
+[features]
+seeds = true
+```
+
 ## workspace
 
 #### types
