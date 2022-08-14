@@ -16,6 +16,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 * spl: Add `create_metadata_accounts_v3` and `set_collection_size` wrappers ([#2119](https://github.com/coral-xyz/anchor/pull/2119))
 * spl: Add `MetadataAccount` account deserialization. ([#2014](https://github.com/coral-xyz/anchor/pull/2014)).
 
+### Fixes
+
+* lang: Fix IDL `seed` generation for byte string literals. ([#2125](https://github.com/coral-xyz/anchor/pull/2125))
+
 ## [0.25.0] - 2022-07-05
 
 ### Features

@@ -5,7 +5,7 @@ use crate::ConstraintSeedsGroup;
 use crate::{AccountsStruct, Field};
 use std::collections::HashMap;
 use std::str::FromStr;
-use syn::Expr;
+use syn::{Expr, ExprLit, Lit};
 
 // Parses a seeds constraint, extracting the IdlSeed types.
 //
@@ -117,6 +117,13 @@ impl<'a> PdaParser<'a> {
             Expr::Index(_) => {
                 println!("WARNING: auto pda derivation not currently supported for slice literals");
                 None
+            }
+            Expr::Lit(ExprLit {
+                lit: Lit::ByteStr(lit_byte_str),
+                ..
+            }) => {
+                let seed_path: SeedPath = SeedPath(lit_byte_str.token().to_string(), Vec::new());
+                self.parse_str_literal(&seed_path)
             }
             // Unknown type. Please file an issue.
             _ => {
