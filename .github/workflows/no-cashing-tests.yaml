@@ -168,41 +168,41 @@ jobs:
       - run: cd tests/bpf-upgradeable-state && npx tsc --noEmit
       - uses: ./.github/actions/git-diff/
 
-  # this test exists to make sure that anchor
-  # checks rent correctly for legacy accounts
-  # that don't have to be rent-exempt
-  test-misc-non-rent-exempt:
-    # the anchor cli is built with a different solana version
-    # but that's fine since it's just the cli
-    needs: setup-anchor-cli
-    name: Test tests/misc/nonRentExempt
-    runs-on: ubuntu-18.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/setup/
-      - uses: ./.github/actions/setup-ts/
-      # using an outdated validator but that
-      # is ok as long as the test doesn't
-      # include newer incompatible features
-      - run: sh -c "$(curl -sSfL https://release.solana.com/v1.8.14/install)"
-        shell: bash
-      - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-        shell: bash
-      - run: solana-keygen new --no-bip39-passphrase
-        shell: bash
-      - run: solana config set --url localhost
-        shell: bash
-      - uses: actions/download-artifact@v2
-        with:
-          name: anchor-binary-no-caching
-          path: ~/.cargo/bin/
-      - run: chmod +x ~/.cargo/bin/anchor
+  # # this test exists to make sure that anchor
+  # # checks rent correctly for legacy accounts
+  # # that don't have to be rent-exempt
+  # test-misc-non-rent-exempt:
+  #   # the anchor cli is built with a different solana version
+  #   # but that's fine since it's just the cli
+  #   needs: setup-anchor-cli
+  #   name: Test tests/misc/nonRentExempt
+  #   runs-on: ubuntu-18.04
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: ./.github/actions/setup/
+  #     - uses: ./.github/actions/setup-ts/
+  #     # using an outdated validator but that
+  #     # is ok as long as the test doesn't
+  #     # include newer incompatible features
+  #     - run: sh -c "$(curl -sSfL https://release.solana.com/v1.8.14/install)"
+  #       shell: bash
+  #     - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+  #       shell: bash
+  #     - run: solana-keygen new --no-bip39-passphrase
+  #       shell: bash
+  #     - run: solana config set --url localhost
+  #       shell: bash
+  #     - uses: actions/download-artifact@v2
+  #       with:
+  #         name: anchor-binary-no-caching
+  #         path: ~/.cargo/bin/
+  #     - run: chmod +x ~/.cargo/bin/anchor
 
-      - run: cd tests/misc && yarn --frozen-lockfile
-      - run: cd tests/misc
-      - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
-      - run: cd tests/misc && anchor test --skip-lint
+  #     - run: cd tests/misc && yarn --frozen-lockfile
+  #     - run: cd tests/misc
+  #     - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
+  #     - run: cd tests/misc && anchor test --skip-lint
 
   test-anchor-init:
     needs: setup-anchor-cli
