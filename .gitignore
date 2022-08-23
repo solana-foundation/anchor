@@ -21,3 +21,4 @@ cli/npm-package/anchor
 cli/npm-package/*.tgz
 docker-target
 .rollup.cache/
+test-keypair.json

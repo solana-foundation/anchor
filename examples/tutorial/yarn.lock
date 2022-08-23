@@ -30,7 +30,7 @@
     "@ethersproject/logger" "^5.5.0"
     hash.js "1.1.7"
 
-"@project-serum/anchor@file:../../ts":
+"@project-serum/anchor@file:../../ts/packages/anchor":
   version "0.25.0"
   dependencies:
     "@project-serum/borsh" "^0.2.5"
