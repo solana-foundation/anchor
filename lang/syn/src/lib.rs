@@ -500,7 +500,7 @@ pub struct CompositeField {
 }
 
 // A type of an account field.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Ty {
     AccountInfo,
     UncheckedAccount,
@@ -518,7 +518,7 @@ pub enum Ty {
     ProgramData,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SysvarTy {
     Clock,
     Rent,
@@ -532,41 +532,41 @@ pub enum SysvarTy {
     Rewards,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ProgramStateTy {
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CpiStateTy {
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ProgramAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CpiAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AccountLoaderTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LoaderTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
@@ -574,7 +574,7 @@ pub struct AccountTy {
     pub boxed: bool,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ProgramTy {
     // The struct type of the account.
     pub account_type_path: TypePath,

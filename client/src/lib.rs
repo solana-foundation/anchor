@@ -408,7 +408,7 @@ pub struct RequestBuilder<'a> {
     namespace: RequestNamespace,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum RequestNamespace {
     Global,
     State {
