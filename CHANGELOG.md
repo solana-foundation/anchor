@@ -18,6 +18,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * lang: Add parsing for consts from impl blocks for IDL PDA seeds generation ([#2128](https://github.com/coral-xyz/anchor/pull/2014))
 * lang: Account closing reassigns to system program and reallocates ([#2169](https://github.com/coral-xyz/anchor/pull/2169)).
 * ts: Add coders for SPL programs ([#2143](https://github.com/coral-xyz/anchor/pull/2143)).
+* spl: Add `freeze_delegated_account` and `thaw_delegated_account` wrappers ([#2164](https://github.com/coral-xyz/anchor/pull/2164))
 
 ### Fixes
 
