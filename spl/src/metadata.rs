@@ -251,6 +251,38 @@ pub fn update_primary_sale_happened_via_token<'info>(
     Ok(())
 }
 
+pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'info>>) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::sign_metadata(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.creator.key,
+    );
+
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
+pub fn remove_creator_verification<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, RemoveCreatorVerification<'info>>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::remove_creator_verification(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.creator.key,
+    );
+
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV2<'info> {
     pub metadata: AccountInfo<'info>,
@@ -351,6 +383,18 @@ pub struct UpdatePrimarySaleHappenedViaToken<'info> {
     pub metadata: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
     pub token: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SignMetadata<'info> {
+    pub creator: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveCreatorVerification<'info> {
+    pub creator: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
