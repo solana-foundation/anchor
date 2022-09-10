@@ -57,6 +57,7 @@ export type IdlAccount = {
   isMut: boolean;
   isSigner: boolean;
   docs?: string[];
+  relations?: string[];
   pda?: IdlPda;
 };
 

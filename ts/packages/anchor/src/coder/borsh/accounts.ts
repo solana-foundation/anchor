@@ -63,6 +63,18 @@ export class BorshAccountsCoder<A extends string = string>
     return this.decodeUnchecked(accountName, data);
   }
 
+  public decodeAny<T = any>(data: Buffer): T {
+    const accountDescriminator = data.slice(0, 8);
+    const accountName = Array.from(this.accountLayouts.keys()).find((key) =>
+      BorshAccountsCoder.accountDiscriminator(key).equals(accountDescriminator)
+    );
+    if (!accountName) {
+      throw new Error("Account descriminator not found");
+    }
+
+    return this.decodeUnchecked<T>(accountName as any, data);
+  }
+
   public decodeUnchecked<T = any>(accountName: A, ix: Buffer): T {
     // Chop off the discriminator before decoding.
     const data = ix.slice(ACCOUNT_DISCRIMINATOR_SIZE);

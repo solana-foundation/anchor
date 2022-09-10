@@ -1,15 +1,25 @@
 import camelCase from "camelcase";
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
-import { Idl, IdlSeed, IdlAccount } from "../idl.js";
+import {
+  Idl,
+  IdlSeed,
+  IdlAccount,
+  IdlAccountItem,
+  IdlAccounts,
+} from "../idl.js";
 import * as utf8 from "../utils/bytes/utf8.js";
 import { TOKEN_PROGRAM_ID, ASSOCIATED_PROGRAM_ID } from "../utils/token.js";
 import { AllInstructions } from "./namespace/types.js";
 import Provider from "../provider.js";
 import { AccountNamespace } from "./namespace/account.js";
 import { coder } from "../spl/token";
+import { BorshAccountsCoder } from "src/coder/index.js";
+
+type Accounts = { [name: string]: PublicKey | Accounts };
 
 // Populates a given accounts context with PDAs and common missing accounts.
 export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
+  _args: Array<any>;
   static readonly CONST_ACCOUNTS = {
     associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
     rent: SYSVAR_RENT_PUBKEY,
@@ -20,14 +30,19 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
   private _accountStore: AccountStore<IDL>;
 
   constructor(
-    private _args: Array<any>,
-    private _accounts: { [name: string]: PublicKey },
+    _args: Array<any>,
+    private _accounts: Accounts,
     private _provider: Provider,
     private _programId: PublicKey,
     private _idlIx: AllInstructions<IDL>,
     _accountNamespace: AccountNamespace<IDL>
   ) {
+    this._args = _args;
     this._accountStore = new AccountStore(_provider, _accountNamespace);
+  }
+
+  public args(_args: Array<any>): void {
+    this._args = _args;
   }
 
   // Note: We serially resolve PDAs one by one rather than doing them
@@ -85,6 +100,76 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
         continue;
       }
     }
+
+    // Auto populate has_one relationships until we stop finding new accounts
+    while ((await this.resolveRelations(this._idlIx.accounts)) > 0) {}
+  }
+
+  private get(path: string[]): PublicKey | undefined {
+    // Only return if pubkey
+    const ret = path.reduce(
+      (acc, subPath) => acc && acc[subPath],
+      this._accounts
+    );
+
+    if (ret && ret.toBase58) {
+      return ret as PublicKey;
+    }
+  }
+
+  private set(path: string[], value: PublicKey): void {
+    let curr = this._accounts;
+    path.forEach((p, idx) => {
+      const isLast = idx == path.length - 1;
+      if (isLast) {
+        curr[p] = value;
+      }
+
+      curr[p] = curr[p] || {};
+      curr = curr[p] as Accounts;
+    });
+  }
+
+  private async resolveRelations(
+    accounts: IdlAccountItem[],
+    path: string[] = []
+  ): Promise<number> {
+    let found = 0;
+    for (let k = 0; k < accounts.length; k += 1) {
+      const accountDesc = accounts[k];
+      const subAccounts = (accountDesc as IdlAccounts).accounts;
+      if (subAccounts) {
+        found += await this.resolveRelations(subAccounts, [
+          ...path,
+          accountDesc.name,
+        ]);
+      }
+      const relations = (accountDesc as IdlAccount).relations || [];
+      const accountDescName = camelCase(accountDesc.name);
+      const newPath = [...path, accountDescName];
+
+      // If we have this account and there's some missing accounts that are relations to this account, fetch them
+      const accountKey = this.get(newPath);
+      if (accountKey) {
+        const matching = relations.filter(
+          (rel) => !this.get([...path, camelCase(rel)])
+        );
+
+        found += matching.length;
+        if (matching.length > 0) {
+          const account = await this._accountStore.fetchAccount(accountKey);
+          await Promise.all(
+            matching.map(async (rel) => {
+              const relName = camelCase(rel);
+
+              this.set([...path, relName], account[relName]);
+              return account[relName];
+            })
+          );
+        }
+      }
+    }
+    return found;
   }
 
   private async autoPopulatePda(accountDesc: IdlAccount) {
@@ -176,8 +261,8 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     //
     // Fetch and deserialize it.
     const account = await this._accountStore.fetchAccount(
-      seedDesc.account,
-      fieldPubkey
+      fieldPubkey as PublicKey,
+      seedDesc.account
     );
 
     // Dereference all fields in the path to get the field value
@@ -239,8 +324,8 @@ export class AccountStore<IDL extends Idl> {
   ) {}
 
   public async fetchAccount<T = any>(
-    name: string,
-    publicKey: PublicKey
+    publicKey: PublicKey,
+    name?: string
   ): Promise<T> {
     const address = publicKey.toString();
     if (!this._cache.has(address)) {
@@ -253,9 +338,25 @@ export class AccountStore<IDL extends Idl> {
         }
         const data = coder().accounts.decode("token", accountInfo.data);
         this._cache.set(address, data);
-      } else {
+      } else if (name) {
         const account = this._accounts[camelCase(name)].fetch(publicKey);
         this._cache.set(address, account);
+      } else {
+        const account = await this._provider.connection.getAccountInfo(
+          publicKey
+        );
+        if (account === null) {
+          throw new Error(`invalid account info for ${address}`);
+        }
+        const data = account.data;
+        const firstAccountLayout = Object.values(this._accounts)[0] as any;
+        if (!firstAccountLayout) {
+          throw new Error("No accounts for this program");
+        }
+        const result = (
+          firstAccountLayout.coder.accounts as BorshAccountsCoder
+        ).decodeAny(data);
+        this._cache.set(address, result);
       }
     }
     return this._cache.get(address);

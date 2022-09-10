@@ -23,6 +23,7 @@
     "multisig",
     "permissioned-markets",
     "pda-derivation",
+    "relations-derivation",
     "pyth",
     "realloc",
     "spl/token-proxy",

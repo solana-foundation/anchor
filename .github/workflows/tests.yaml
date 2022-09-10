@@ -398,6 +398,8 @@ jobs:
             path: tests/multiple-suites
           - cmd: cd tests/pda-derivation && anchor test --skip-lint && npx tsc --noEmit
             path: tests/pda-derivation
+          - cmd: cd tests/relations-derivation && anchor test --skip-lint && npx tsc --noEmit
+            path: tests/relations-derivation
           - cmd: cd tests/anchor-cli-idl && ./test.sh
             path: tests/anchor-cli-idl
     steps:
