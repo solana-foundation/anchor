@@ -233,6 +233,24 @@ pub fn thaw_delegated_account<'info>(
     Ok(())
 }
 
+pub fn update_primary_sale_happened_via_token<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, UpdatePrimarySaleHappenedViaToken<'info>>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::update_primary_sale_happened_via_token(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.owner.key,
+        *ctx.accounts.token.key,
+    );
+
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV2<'info> {
     pub metadata: AccountInfo<'info>,
@@ -326,6 +344,13 @@ pub struct ThawDelegatedAccount<'info> {
     pub edition: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdatePrimarySaleHappenedViaToken<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+    pub token: AccountInfo<'info>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
