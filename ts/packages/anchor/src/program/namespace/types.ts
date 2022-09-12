@@ -105,6 +105,7 @@ type TypeMap = {
   publicKey: PublicKey;
   bool: boolean;
   string: string;
+  bytes: Buffer;
 } & {
   [K in "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "f32" | "f64"]: number;
 } & {
@@ -125,6 +126,8 @@ export type DecodeType<T extends IdlType, Defined> = T extends keyof TypeMap
   ? TypeMap[T["coption"]] | null
   : T extends { vec: keyof TypeMap }
   ? TypeMap[T["vec"]][]
+  : T extends { vec: { defined: keyof Defined } }
+  ? Defined[T["vec"]["defined"]][]
   : T extends { array: [defined: keyof TypeMap, size: number] }
   ? TypeMap[T["array"][0]][]
   : unknown;
@@ -147,24 +150,31 @@ type FieldsOfType<I extends IdlTypeDef> = NonNullable<
 >[number];
 
 export type TypeDef<I extends IdlTypeDef, Defined> = {
-  [F in FieldsOfType<I>["name"]]: DecodeType<
-    (FieldsOfType<I> & { name: F })["type"],
-    Defined
-  >;
+  [F in FieldsOfType<I> as F["name"]]: DecodeType<F["type"], Defined>;
 };
 
 type TypeDefDictionary<T extends IdlTypeDef[], Defined> = {
-  [K in T[number]["name"]]: TypeDef<T[number] & { name: K }, Defined>;
+  [K in T[number] as K["name"]]: TypeDef<K, Defined>;
 };
 
-export type IdlTypes<T extends Idl> = TypeDefDictionary<
-  NonNullable<T["types"]>,
-  Record<string, never>
+type NestedTypeDefDictionary<T extends IdlTypeDef[]> = {
+  [Outer in T[number] as Outer["name"]]: TypeDef<
+    Outer,
+    {
+      [Inner in T[number] as Inner["name"]]: Inner extends Outer
+        ? never
+        : TypeDef<Inner, Record<string, never>>;
+    }
+  >;
+};
+
+export type IdlTypes<T extends Idl> = NestedTypeDefDictionary<
+  NonNullable<T["types"]>
 >;
 
 export type IdlAccounts<T extends Idl> = TypeDefDictionary<
   NonNullable<T["accounts"]>,
-  Record<string, never>
+  IdlTypes<T>
 >;
 
 export type IdlErrorInfo<IDL extends Idl> = NonNullable<IDL["errors"]>[number];

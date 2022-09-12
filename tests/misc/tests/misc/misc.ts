@@ -38,7 +38,6 @@ describe("misc", () => {
     const addr = await program.state.address();
     const state = await program.state.fetch();
     const accountInfo = await program.provider.connection.getAccountInfo(addr);
-    // @ts-expect-error
     assert.isTrue(state.v.equals(Buffer.from([])));
     assert.lengthOf(accountInfo.data, 99);
   });
