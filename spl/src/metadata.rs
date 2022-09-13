@@ -6,15 +6,6 @@ use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 use std::ops::Deref;
 
-#[derive(Clone)]
-pub struct Metadata;
-
-impl anchor_lang::Id for Metadata {
-    fn id() -> Pubkey {
-        ID
-    }
-}
-
 pub fn create_metadata_accounts_v2<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV2<'info>>,
     data: DataV2,
@@ -51,8 +42,8 @@ pub fn create_metadata_accounts_v2<'info>(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn create_metadata_accounts_v3<'info>(
@@ -93,8 +84,8 @@ pub fn create_metadata_accounts_v3<'info>(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn update_metadata_accounts_v2<'info>(
@@ -117,8 +108,8 @@ pub fn update_metadata_accounts_v2<'info>(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn create_master_edition_v3<'info>(
@@ -139,8 +130,8 @@ pub fn create_master_edition_v3<'info>(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn mint_new_edition_from_master_edition_via_token<'info>(
@@ -162,13 +153,12 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
         *ctx.accounts.metadata_mint.key,
         edition,
     );
-
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn set_collection_size<'info>(
@@ -184,13 +174,34 @@ pub fn set_collection_size<'info>(
         collection_authority_record,
         size,
     );
-
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
+}
+
+pub fn verify_collection<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, VerifyCollection<'info>>,
+    collection_authority_record: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::verify_collection(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.collection_authority.key,
+        *ctx.accounts.payer.key,
+        *ctx.accounts.collection_mint.key,
+        *ctx.accounts.collection_metadata.key,
+        *ctx.accounts.collection_master_edition.key,
+        collection_authority_record,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
 }
 
 pub fn freeze_delegated_account<'info>(
@@ -203,14 +214,12 @@ pub fn freeze_delegated_account<'info>(
         *ctx.accounts.edition.key,
         *ctx.accounts.mint.key,
     );
-
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn thaw_delegated_account<'info>(
@@ -223,14 +232,12 @@ pub fn thaw_delegated_account<'info>(
         *ctx.accounts.edition.key,
         *ctx.accounts.mint.key,
     );
-
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 pub fn update_primary_sale_happened_via_token<'info>(
@@ -359,6 +366,16 @@ pub struct SetCollectionSize<'info> {
 }
 
 #[derive(Accounts)]
+pub struct VerifyCollection<'info> {
+    pub payer: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub collection_authority: AccountInfo<'info>,
+    pub collection_mint: AccountInfo<'info>,
+    pub collection_metadata: AccountInfo<'info>,
+    pub collection_master_edition: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct FreezeDelegatedAccount<'info> {
     pub metadata: AccountInfo<'info>,
     pub delegate: AccountInfo<'info>,
@@ -423,5 +440,14 @@ impl Deref for MetadataAccount {
     type Target = mpl_token_metadata::state::Metadata;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct Metadata;
+
+impl anchor_lang::Id for Metadata {
+    fn id() -> Pubkey {
+        ID
     }
 }
