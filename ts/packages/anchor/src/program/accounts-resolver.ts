@@ -17,6 +17,14 @@ import { BorshAccountsCoder } from "src/coder/index.js";
 
 type Accounts = { [name: string]: PublicKey | Accounts };
 
+export type CustomAccountResolver<IDL extends Idl> = (params: {
+  args: Array<any>;
+  accounts: Accounts;
+  provider: Provider;
+  programId: PublicKey;
+  idlIx: AllInstructions<IDL>;
+}) => Promise<Accounts>;
+
 // Populates a given accounts context with PDAs and common missing accounts.
 export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
   _args: Array<any>;
@@ -35,7 +43,8 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     private _provider: Provider,
     private _programId: PublicKey,
     private _idlIx: AllInstructions<IDL>,
-    _accountNamespace: AccountNamespace<IDL>
+    _accountNamespace: AccountNamespace<IDL>,
+    private _customResolver?: CustomAccountResolver<IDL>
   ) {
     this._args = _args;
     this._accountStore = new AccountStore(_provider, _accountNamespace);
@@ -84,25 +93,22 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       }
     }
 
-    for (let k = 0; k < this._idlIx.accounts.length; k += 1) {
-      // Cast is ok because only a non-nested IdlAccount can have a seeds
-      // cosntraint.
-      const accountDesc = this._idlIx.accounts[k] as IdlAccount;
-      const accountDescName = camelCase(accountDesc.name);
+    // Auto populate pdas and relations until we stop finding new accounts
+    while (
+      (await this.resolvePdas(this._idlIx.accounts)) +
+        (await this.resolveRelations(this._idlIx.accounts)) >
+      0
+    ) {}
 
-      // PDA derived from IDL seeds.
-      if (
-        accountDesc.pda &&
-        accountDesc.pda.seeds.length > 0 &&
-        !this._accounts[accountDescName]
-      ) {
-        await this.autoPopulatePda(accountDesc);
-        continue;
-      }
+    if (this._customResolver) {
+      this._accounts = await this._customResolver({
+        args: this._args,
+        accounts: this._accounts,
+        provider: this._provider,
+        programId: this._programId,
+        idlIx: this._idlIx,
+      });
     }
-
-    // Auto populate has_one relationships until we stop finding new accounts
-    while ((await this.resolveRelations(this._idlIx.accounts)) > 0) {}
   }
 
   private get(path: string[]): PublicKey | undefined {
@@ -128,6 +134,36 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       curr[p] = curr[p] || {};
       curr = curr[p] as Accounts;
     });
+  }
+
+  private async resolvePdas(
+    accounts: IdlAccountItem[],
+    path: string[] = []
+  ): Promise<number> {
+    let found = 0;
+    for (let k = 0; k < accounts.length; k += 1) {
+      const accountDesc = accounts[k];
+      const subAccounts = (accountDesc as IdlAccounts).accounts;
+      if (subAccounts) {
+        found += await this.resolvePdas(subAccounts, [
+          ...path,
+          accountDesc.name,
+        ]);
+      }
+
+      const accountDescCasted: IdlAccount = accountDesc as IdlAccount;
+      const accountDescName = camelCase(accountDesc.name);
+      // PDA derived from IDL seeds.
+      if (
+        accountDescCasted.pda &&
+        accountDescCasted.pda.seeds.length > 0 &&
+        !this.get([...path, accountDescName])
+      ) {
+        await this.autoPopulatePda(accountDescCasted, path);
+        found += 1;
+      }
+    }
+    return found;
   }
 
   private async resolveRelations(
@@ -172,7 +208,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     return found;
   }
 
-  private async autoPopulatePda(accountDesc: IdlAccount) {
+  private async autoPopulatePda(accountDesc: IdlAccount, path: string[] = []) {
     if (!accountDesc.pda || !accountDesc.pda.seeds)
       throw new Error("Must have seeds");
 
@@ -183,7 +219,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     const programId = await this.parseProgramId(accountDesc);
     const [pubkey] = await PublicKey.findProgramAddress(seeds, programId);
 
-    this._accounts[camelCase(accountDesc.name)] = pubkey;
+    this.set([...path, camelCase(accountDesc.name)], pubkey);
   }
 
   private async parseProgramId(accountDesc: IdlAccount): Promise<PublicKey> {

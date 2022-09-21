@@ -65,4 +65,31 @@ describe("typescript", () => {
       .data;
     expect(actualData.toNumber()).is.equal(1337);
   });
+
+  it("should allow custom resolvers", async () => {
+    let called = false;
+    const customProgram = new Program<PdaDerivation>(
+      program.idl,
+      program.programId,
+      program.provider,
+      program.coder,
+      (instruction) => {
+        if (instruction.name === "initMyAccount") {
+          return async ({ accounts }) => {
+            called = true;
+            return accounts;
+          };
+        }
+      }
+    );
+    await customProgram.methods
+      .initMyAccount(seedA)
+      .accounts({
+        base: base.publicKey,
+        base2: base.publicKey,
+      })
+      .pubkeys();
+
+    expect(called).is.true;
+  });
 });

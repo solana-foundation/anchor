@@ -1,7 +1,7 @@
 import { inflate } from "pako";
 import { PublicKey } from "@solana/web3.js";
 import Provider, { getProvider } from "../provider.js";
-import { Idl, idlAddress, decodeIdlAccount } from "../idl.js";
+import { Idl, idlAddress, decodeIdlAccount, IdlInstruction } from "../idl.js";
 import { Coder, BorshCoder } from "../coder/index.js";
 import NamespaceFactory, {
   RpcNamespace,
@@ -16,6 +16,7 @@ import NamespaceFactory, {
 import { utf8 } from "../utils/bytes/index.js";
 import { EventManager } from "./event.js";
 import { Address, translateAddress } from "./common.js";
+import { CustomAccountResolver } from "./accounts-resolver.js";
 
 export * from "./common.js";
 export * from "./context.js";
@@ -263,12 +264,18 @@ export class Program<IDL extends Idl = Idl> {
    * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
+   * @param getCustomResolver A function that returns a custom account resolver
+   *                          for the given instruction. This is useful for resolving
+   *                          public keys of missing accounts when building instructions
    */
   public constructor(
     idl: IDL,
     programId: Address,
     provider?: Provider,
-    coder?: Coder
+    coder?: Coder,
+    getCustomResolver?: (
+      instruction: IdlInstruction
+    ) => CustomAccountResolver<IDL> | undefined
   ) {
     programId = translateAddress(programId);
 
@@ -293,7 +300,13 @@ export class Program<IDL extends Idl = Idl> {
       methods,
       state,
       views,
-    ] = NamespaceFactory.build(idl, this._coder, programId, provider);
+    ] = NamespaceFactory.build(
+      idl,
+      this._coder,
+      programId,
+      provider,
+      getCustomResolver ?? (() => undefined)
+    );
     this.rpc = rpc;
     this.instruction = instruction;
     this.transaction = transaction;

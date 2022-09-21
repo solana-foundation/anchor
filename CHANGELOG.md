@@ -20,10 +20,12 @@ The minor version will be incremented upon a breaking change and the patch versi
 * lang: Add parsing for consts from impl blocks for IDL PDA seeds generation ([#2128](https://github.com/coral-xyz/anchor/pull/2014))
 * lang: Account closing reassigns to system program and reallocates ([#2169](https://github.com/coral-xyz/anchor/pull/2169)).
 * ts: Add coders for SPL programs ([#2143](https://github.com/coral-xyz/anchor/pull/2143)).
-* ts: Add `has_one` relations inference so accounts mapped via has_one relationships no longer need to be provided
-* ts: Add ability to set args after setting accounts and retriving pubkyes
-* ts: Add `.prepare()` to builder pattern
+* ts: Add `has_one` relations inference so accounts mapped via has_one relationships no longer need to be provided ([#2160](https://github.com/coral-xyz/anchor/pull/2160))
+* ts: Add ability to set args after setting accounts and retrieving pubkyes ([#2160](https://github.com/coral-xyz/anchor/pull/2160))
+* ts: Add `.prepare()` to builder pattern ([#2160](https://github.com/coral-xyz/anchor/pull/2160))
 * spl: Add `freeze_delegated_account` and `thaw_delegated_account` wrappers ([#2164](https://github.com/coral-xyz/anchor/pull/2164))
+* ts: Add nested PDA inference ([#2194](https://github.com/coral-xyz/anchor/pull/2194))
+* ts: Add ability to resolve missing accounts with a custom resolver ([#2194](https://github.com/coral-xyz/anchor/pull/2194))
 
 ### Fixes
 

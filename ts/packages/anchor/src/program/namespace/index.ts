@@ -2,7 +2,7 @@ import camelCase from "camelcase";
 import { PublicKey } from "@solana/web3.js";
 import { Coder } from "../../coder/index.js";
 import Provider from "../../provider.js";
-import { Idl } from "../../idl.js";
+import { Idl, IdlInstruction } from "../../idl.js";
 import StateFactory, { StateClient } from "./state.js";
 import InstructionFactory, { InstructionNamespace } from "./instruction.js";
 import TransactionFactory, { TransactionNamespace } from "./transaction.js";
@@ -12,6 +12,7 @@ import SimulateFactory, { SimulateNamespace } from "./simulate.js";
 import { parseIdlErrors } from "../common.js";
 import { MethodsBuilderFactory, MethodsNamespace } from "./methods";
 import ViewFactory, { ViewNamespace } from "./views";
+import { CustomAccountResolver } from "../accounts-resolver.js";
 
 // Re-exports.
 export { StateClient } from "./state.js";
@@ -32,7 +33,10 @@ export default class NamespaceFactory {
     idl: IDL,
     coder: Coder,
     programId: PublicKey,
-    provider: Provider
+    provider: Provider,
+    getCustomResolver?: (
+      instruction: IdlInstruction
+    ) => CustomAccountResolver<IDL> | undefined
   ): [
     RpcNamespace<IDL>,
     InstructionNamespace<IDL>,
@@ -85,7 +89,8 @@ export default class NamespaceFactory {
         rpcItem,
         simulateItem,
         viewItem,
-        account
+        account,
+        getCustomResolver && getCustomResolver(idlIx)
       );
       const name = camelCase(idlIx.name);
 
