@@ -1,5 +1,10 @@
 import camelCase from "camelcase";
-import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
+} from "@solana/web3.js";
 import {
   Idl,
   IdlSeed,
@@ -33,6 +38,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     rent: SYSVAR_RENT_PUBKEY,
     systemProgram: SystemProgram.programId,
     tokenProgram: TOKEN_PROGRAM_ID,
+    clock: SYSVAR_CLOCK_PUBKEY,
   };
 
   private _accountStore: AccountStore<IDL>;
@@ -64,34 +70,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
   //       dependency graph and resolve automatically.
   //
   public async resolve() {
-    for (let k = 0; k < this._idlIx.accounts.length; k += 1) {
-      // Cast is ok because only a non-nested IdlAccount can have a seeds
-      // cosntraint.
-      const accountDesc = this._idlIx.accounts[k] as IdlAccount;
-      const accountDescName = camelCase(accountDesc.name);
-
-      // Signers default to the provider.
-      if (accountDesc.isSigner && !this._accounts[accountDescName]) {
-        // @ts-expect-error
-        if (this._provider.wallet === undefined) {
-          throw new Error(
-            "This function requires the Provider interface implementor to have a 'wallet' field."
-          );
-        }
-        // @ts-expect-error
-        this._accounts[accountDescName] = this._provider.wallet.publicKey;
-        continue;
-      }
-
-      // Common accounts are auto populated with magic names by convention.
-      if (
-        Reflect.has(AccountsResolver.CONST_ACCOUNTS, accountDescName) &&
-        !this._accounts[accountDescName]
-      ) {
-        this._accounts[accountDescName] =
-          AccountsResolver.CONST_ACCOUNTS[accountDescName];
-      }
-    }
+    await this.resolveConst(this._idlIx.accounts);
 
     // Auto populate pdas and relations until we stop finding new accounts
     while (
@@ -136,6 +115,48 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
     });
   }
 
+  private async resolveConst(
+    accounts: IdlAccountItem[],
+    path: string[] = []
+  ): Promise<void> {
+    for (let k = 0; k < accounts.length; k += 1) {
+      const accountDescOrAccounts = accounts[k];
+      const subAccounts = (accountDescOrAccounts as IdlAccounts).accounts;
+      if (subAccounts) {
+        await this.resolveConst(subAccounts, [
+          ...path,
+          camelCase(accountDescOrAccounts.name),
+        ]);
+      }
+
+      const accountDesc = accountDescOrAccounts as IdlAccount;
+      const accountDescName = camelCase(accountDescOrAccounts.name);
+
+      // Signers default to the provider.
+      if (accountDesc.isSigner && !this.get([...path, accountDescName])) {
+        // @ts-expect-error
+        if (this._provider.wallet === undefined) {
+          throw new Error(
+            "This function requires the Provider interface implementor to have a 'wallet' field."
+          );
+        }
+        // @ts-expect-error
+        this.set([...path, accountDescName], this._provider.wallet.publicKey);
+      }
+
+      // Common accounts are auto populated with magic names by convention.
+      if (
+        Reflect.has(AccountsResolver.CONST_ACCOUNTS, accountDescName) &&
+        !this.get([...path, accountDescName])
+      ) {
+        this.set(
+          [...path, accountDescName],
+          AccountsResolver.CONST_ACCOUNTS[accountDescName]
+        );
+      }
+    }
+  }
+
   private async resolvePdas(
     accounts: IdlAccountItem[],
     path: string[] = []
@@ -147,7 +168,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       if (subAccounts) {
         found += await this.resolvePdas(subAccounts, [
           ...path,
-          accountDesc.name,
+          camelCase(accountDesc.name),
         ]);
       }
 
@@ -177,7 +198,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
       if (subAccounts) {
         found += await this.resolveRelations(subAccounts, [
           ...path,
-          accountDesc.name,
+          camelCase(accountDesc.name),
         ]);
       }
       const relations = (accountDesc as IdlAccount).relations || [];

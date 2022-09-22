@@ -12,6 +12,8 @@ export {
 export * from "./error.js";
 export { Instruction } from "./coder/borsh/instruction.js";
 export { Idl } from "./idl.js";
+export { CustomAccountResolver } from "./program/accounts-resolver.js";
+
 export * from "./coder/index.js";
 export * as utils from "./utils/index.js";
 export * from "./program/index.js";
