@@ -14,12 +14,14 @@ token = ["spl-token"]
 associated_token = ["spl-associated-token-account"]
 governance = []
 shmem = []
+stake = ["borsh"]
 devnet = []
 metadata = ["mpl-token-metadata"]
 dex = ["serum_dex"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.25.0", features = ["derive"] }
+borsh = { version = "^0.9", optional = true }
 serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
 solana-program = "~1.10.29"
 spl-token = { version = "~3.3.0", features = ["no-entrypoint"], optional = true }

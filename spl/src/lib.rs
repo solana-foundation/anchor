@@ -16,5 +16,8 @@ pub mod governance;
 #[cfg(feature = "shmem")]
 pub mod shmem;
 
+#[cfg(feature = "stake")]
+pub mod stake;
+
 #[cfg(feature = "metadata")]
 pub mod metadata;
