@@ -271,7 +271,7 @@ impl std::str::FromStr for IdlType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdlErrorCode {
     pub code: u32,
     pub name: String,

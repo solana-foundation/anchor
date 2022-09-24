@@ -30,6 +30,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Fixes
 
 * lang: Fix IDL `seed` generation for byte string literals. ([#2125](https://github.com/coral-xyz/anchor/pull/2125))
+* ts: Update seeds inference to allow nested user defined structs within the seeds ([#2198](https://github.com/coral-xyz/anchor/pull/2198))
 
 ## [0.25.0] - 2022-07-05
 

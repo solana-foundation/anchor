@@ -27,12 +27,9 @@ pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
             last_discriminant = id + 1;
 
             // Remove any non-doc attributes on the error variant.
-            variant.attrs = variant
+            variant
                 .attrs
-                .iter()
-                .filter(|attr| attr.path.segments[0].ident == "doc")
-                .cloned()
-                .collect();
+                .retain(|attr| attr.path.segments[0].ident == "doc");
 
             ErrorCode { id, ident, msg }
         })

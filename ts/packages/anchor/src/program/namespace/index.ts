@@ -90,6 +90,7 @@ export default class NamespaceFactory {
         simulateItem,
         viewItem,
         account,
+        idl.types || [],
         getCustomResolver && getCustomResolver(idlIx)
       );
       const name = camelCase(idlIx.name);
