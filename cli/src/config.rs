@@ -323,7 +323,7 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ArgEnum, Parser, Clone, PartialEq, Debug)]
+#[derive(ArgEnum, Parser, Clone, PartialEq, Eq, Debug)]
 pub enum BootstrapMode {
     None,
     Debian,
