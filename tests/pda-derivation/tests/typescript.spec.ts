@@ -77,7 +77,7 @@ describe("typescript", () => {
         if (instruction.name === "initMyAccount") {
           return async ({ accounts }) => {
             called = true;
-            return accounts;
+            return { accounts, resolved: 0 };
           };
         }
       }
