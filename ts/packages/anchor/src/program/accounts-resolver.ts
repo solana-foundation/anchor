@@ -231,12 +231,8 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
 
         found += matching.length;
         if (matching.length > 0) {
-          const programId = await this.parseProgramId(
-            accountDesc as IdlAccount
-          );
           const account = await this._accountStore.fetchAccount({
             publicKey: accountKey,
-            programId,
           });
           await Promise.all(
             matching.map(async (rel) => {
@@ -506,7 +502,7 @@ export class AccountStore<IDL extends Idl> {
           throw new Error(`invalid account info for ${address}`);
         }
         const data = account.data;
-        const accounts = await this.ensureIdl(programId);
+        const accounts = await this.ensureIdl(account.owner);
         if (accounts) {
           const firstAccountLayout = Object.values(accounts)[0] as any;
           if (!firstAccountLayout) {
