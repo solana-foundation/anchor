@@ -117,6 +117,7 @@ describe("CPI return", () => {
       [Data, { kind: "struct", fields: [["value", "u64"]] }],
     ]);
     const deserialized = borsh.deserialize(schema, Data, buffer);
+    // @ts-ignore
     assert(deserialized.value.toNumber() === 11);
   });
 

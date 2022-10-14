@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@project-serum/borsh": "^0.2.5",
-    "@solana/web3.js": "^1.36.0",
+    "@solana/web3.js": "^1.64.0",
     "base64-js": "^1.5.1",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
