@@ -1364,7 +1364,7 @@ pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<
         let account = client
             .get_account_with_commitment(&program_id, CommitmentConfig::default())?
             .value
-            .map_or(Err(anyhow!("Account not found")), Ok)?;
+            .map_or(Err(anyhow!("Program account not found")), Ok)?;
         if account.owner == bpf_loader::id() || account.owner == bpf_loader_deprecated::id() {
             let bin = account.data.to_vec();
             let state = BinVerificationState::ProgramData {
@@ -1383,7 +1383,7 @@ pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<
                             CommitmentConfig::default(),
                         )?
                         .value
-                        .map_or(Err(anyhow!("Account not found")), Ok)?;
+                        .map_or(Err(anyhow!("Program data account not found")), Ok)?;
                     let bin = account.data
                         [UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
                         .to_vec();
@@ -1477,14 +1477,14 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
     let mut account = client
         .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
         .value
-        .map_or(Err(anyhow!("Account not found")), Ok)?;
+        .map_or(Err(anyhow!("IDL account not found")), Ok)?;
 
     if account.executable {
         let idl_addr = IdlAccount::address(&idl_addr);
         account = client
             .get_account_with_commitment(&idl_addr, CommitmentConfig::processed())?
             .value
-            .map_or(Err(anyhow!("Account not found")), Ok)?;
+            .map_or(Err(anyhow!("IDL account not found")), Ok)?;
     }
 
     // Cut off account discriminator.
