@@ -68,7 +68,7 @@ impl CrateContext {
         {}:{}:{}
         Struct field "{}" is unsafe, but is not documented.
         Please add a `/// CHECK:` doc comment explaining why no checks through types are necessary.
-        See https://book.anchor-lang.com/anchor_in_depth/the_accounts_struct.html#safety-checks for more information.
+        See https://www.anchor-lang.com/docs/the-accounts-struct#safety-checks for more information.
                     "#,
                         ctx.file.canonicalize().unwrap().display(),
                         span.start().line,
@@ -222,7 +222,21 @@ impl ParsedModule {
     }
 
     fn unsafe_struct_fields(&self) -> impl Iterator<Item = &syn::Field> {
+        let accounts_filter = |item_struct: &&syn::ItemStruct| {
+            item_struct.attrs.iter().any(|attr| {
+                match attr.parse_meta() {
+                    Ok(syn::Meta::List(syn::MetaList{path, nested, ..})) => {
+                        path.is_ident("derive") && nested.iter().any(|nested| {
+                            matches!(nested, syn::NestedMeta::Meta(syn::Meta::Path(path)) if path.is_ident("Accounts"))
+                        })
+                    }
+                    _ => false
+                }
+            })
+        };
+
         self.structs()
+            .filter(accounts_filter)
             .flat_map(|s| &s.fields)
             .filter(|f| match &f.ty {
                 syn::Type::Path(syn::TypePath {
