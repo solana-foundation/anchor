@@ -2,6 +2,9 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { Idl } from "../../";
 import {
+  IdlEnumFields,
+  IdlEnumFieldsNamed,
+  IdlEnumFieldsTuple,
   IdlField,
   IdlInstruction,
   IdlType,
@@ -140,37 +143,134 @@ type ArgsTuple<A extends IdlField[], Defined> = {
     ? DecodeType<A[K]["type"], Defined>
     : unknown;
 } & unknown[];
+/**
+ * flat {a: number, b: {c: string}} into number | string
+ */
+type UnboxToUnion<T> = T extends (infer U)[]
+  ? UnboxToUnion<U>
+  : T extends Record<string, never> // empty object, eg: named enum variant without fields
+  ? "__empty_object__"
+  : T extends Record<string, infer V> // object with props, eg: struct
+  ? UnboxToUnion<V>
+  : T;
 
-type FieldsOfType<I extends IdlTypeDef> = NonNullable<
-  I["type"] extends IdlTypeDefTyStruct
-    ? I["type"]["fields"]
-    : I["type"] extends IdlTypeDefTyEnum
-    ? I["type"]["variants"][number]["fields"]
-    : any[]
->[number];
+/**
+ * decode single enum.field
+ */
+declare type DecodeEnumField<F, Defined> = F extends IdlType
+  ? DecodeType<F, Defined>
+  : never;
 
-export type TypeDef<I extends IdlTypeDef, Defined> = {
-  [F in FieldsOfType<I> as F["name"]]: DecodeType<F["type"], Defined>;
+/**
+ * decode enum variant: named or tuple
+ */
+declare type DecodeEnumFields<
+  F extends IdlEnumFields,
+  Defined
+> = F extends IdlEnumFieldsNamed
+  ? {
+      [F2 in F[number] as F2["name"]]: DecodeEnumField<F2["type"], Defined>;
+    }
+  : F extends IdlEnumFieldsTuple
+  ? {
+      [F3 in keyof F as Exclude<F3, keyof unknown[]>]: DecodeEnumField<
+        F[F3],
+        Defined
+      >;
+    }
+  : Record<string, never>;
+
+/**
+ * Since TypeScript do not provide OneOf helper we can
+ * simply mark enum variants with +?
+ */
+declare type DecodeEnum<K extends IdlTypeDefTyEnum, Defined> = {
+  // X = IdlEnumVariant
+  [X in K["variants"][number] as Uncapitalize<X["name"]>]+?: DecodeEnumFields<
+    NonNullable<X["fields"]>,
+    Defined
+  >;
 };
+
+type DecodeStruct<I extends IdlTypeDefTyStruct, Defined> = {
+  [F in I["fields"][number] as F["name"]]: DecodeType<F["type"], Defined>;
+};
+
+export type TypeDef<
+  I extends IdlTypeDef,
+  Defined
+> = I["type"] extends IdlTypeDefTyEnum
+  ? DecodeEnum<I["type"], Defined>
+  : I["type"] extends IdlTypeDefTyStruct
+  ? DecodeStruct<I["type"], Defined>
+  : never;
 
 type TypeDefDictionary<T extends IdlTypeDef[], Defined> = {
   [K in T[number] as K["name"]]: TypeDef<K, Defined>;
 };
 
-type NestedTypeDefDictionary<T extends IdlTypeDef[]> = {
-  [Outer in T[number] as Outer["name"]]: TypeDef<
-    Outer,
-    {
-      [Inner in T[number] as Inner["name"]]: Inner extends Outer
-        ? never
-        : TypeDef<Inner, Record<string, never>>;
-    }
-  >;
+type DecodedHelper<T extends IdlTypeDef[], Defined> = {
+  [D in T[number] as D["name"]]: TypeDef<D, Defined>;
 };
 
-export type IdlTypes<T extends Idl> = NestedTypeDefDictionary<
-  NonNullable<T["types"]>
->;
+type UnknownType = "__unknown_defined_type__";
+/**
+ * empty "defined" object to produce UnknownType instead of never/unknown during idl types decoding
+ *  */
+type EmptyDefined = Record<UnknownType, never>;
+
+type RecursiveDepth2<
+  T extends IdlTypeDef[],
+  Defined = EmptyDefined,
+  Decoded = DecodedHelper<T, Defined>
+> = UnknownType extends UnboxToUnion<Decoded>
+  ? RecursiveDepth3<T, DecodedHelper<T, Defined>>
+  : Decoded;
+
+type RecursiveDepth3<
+  T extends IdlTypeDef[],
+  Defined = EmptyDefined,
+  Decoded = DecodedHelper<T, Defined>
+> = UnknownType extends UnboxToUnion<Decoded>
+  ? RecursiveDepth4<T, DecodedHelper<T, Defined>>
+  : Decoded;
+
+type RecursiveDepth4<
+  T extends IdlTypeDef[],
+  Defined = EmptyDefined
+> = DecodedHelper<T, Defined>;
+
+/**
+ * typescript can't handle truly recursive type (RecursiveTypes instead of RecursiveDepth2).
+ * Hence we're doing "recursion" of depth=4 manually
+ *  */
+type RecursiveTypes<
+  T extends IdlTypeDef[],
+  Defined = EmptyDefined,
+  Decoded = DecodedHelper<T, Defined>
+> =
+  // check if some of decoded types is Unknown (not decoded properly)
+  UnknownType extends UnboxToUnion<Decoded>
+    ? RecursiveDepth2<T, DecodedHelper<T, Defined>>
+    : Decoded;
+
+export type IdlTypes<T extends Idl> = RecursiveTypes<NonNullable<T["types"]>>;
+
+type IdlEventType<
+  I extends Idl,
+  Event extends NonNullable<I["events"]>[number],
+  Defined
+> = {
+  [F in Event["fields"][number] as F["name"]]: DecodeType<F["type"], Defined>;
+};
+
+export type IdlEvents<I extends Idl, Defined = IdlTypes<I>> = {
+  [E in NonNullable<I["events"]>[number] as E["name"]]: IdlEventType<
+    I,
+    E,
+    Defined
+  >;
+};
 
 export type IdlAccounts<T extends Idl> = TypeDefDictionary<
   NonNullable<T["accounts"]>,

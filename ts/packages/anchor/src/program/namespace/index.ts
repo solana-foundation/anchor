@@ -21,7 +21,7 @@ export { TransactionNamespace, TransactionFn } from "./transaction.js";
 export { RpcNamespace, RpcFn } from "./rpc.js";
 export { AccountNamespace, AccountClient, ProgramAccount } from "./account.js";
 export { SimulateNamespace, SimulateFn } from "./simulate.js";
-export { IdlAccounts, IdlTypes, DecodeType } from "./types.js";
+export { IdlAccounts, IdlTypes, DecodeType, IdlEvents } from "./types.js";
 export { MethodsBuilderFactory, MethodsNamespace } from "./methods";
 export { ViewNamespace, ViewFn } from "./views";
 

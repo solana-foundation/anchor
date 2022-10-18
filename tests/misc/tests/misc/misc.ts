@@ -5,6 +5,8 @@ import {
   IdlAccounts,
   AnchorError,
   Wallet,
+  IdlTypes,
+  IdlEvents,
 } from "@project-serum/anchor";
 import {
   PublicKey,
@@ -188,6 +190,41 @@ describe("misc", () => {
       resp.events[4].data.data,
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     );
+  });
+
+  it("Can use enum in idl", async () => {
+    const resp1 = await program.methods.testInputEnum({ first: {} }).simulate();
+    const event1 = resp1.events[0].data as IdlEvents<Misc>["E7"];
+    assert.deepEqual(event1.data.first, {});
+
+    const resp2 = await program.methods
+      .testInputEnum({ second: { x: new BN(1), y: new BN(2) } })
+      .simulate();
+    const event2 = resp2.events[0].data as IdlEvents<Misc>["E7"];
+    assert.isTrue(new BN(1).eq(event2.data.second.x));
+    assert.isTrue(new BN(2).eq(event2.data.second.y));
+
+    const resp3 = await program.methods
+      .testInputEnum({
+        tupleStructTest: [
+          { data1: 1, data2: 11, data3: 111, data4: new BN(1111) },
+        ],
+      })
+      .simulate();
+    const event3 = resp3.events[0].data as IdlEvents<Misc>["E7"];
+    assert.strictEqual(event3.data.tupleStructTest[0].data1, 1);
+    assert.strictEqual(event3.data.tupleStructTest[0].data2, 11);
+    assert.strictEqual(event3.data.tupleStructTest[0].data3, 111);
+    assert.isTrue(event3.data.tupleStructTest[0].data4.eq(new BN(1111)));
+
+    const resp4 = await program.methods
+      .testInputEnum({ tupleTest: [1, 2, 3, 4] })
+      .simulate();
+    const event4 = resp4.events[0].data as IdlEvents<Misc>["E7"];
+    assert.strictEqual(event4.data.tupleTest[0], 1);
+    assert.strictEqual(event4.data.tupleTest[1], 2);
+    assert.strictEqual(event4.data.tupleTest[2], 3);
+    assert.strictEqual(event4.data.tupleTest[3], 4);
   });
 
   let dataI8;

@@ -92,6 +92,11 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_input_enum(ctx: Context<TestSimulate>, data: TestEnum) -> Result<()> {
+        emit!(E7 { data: data });
+        Ok(())
+    }
+
     pub fn test_i8(ctx: Context<TestI8>, data: i8) -> Result<()> {
         ctx.accounts.data.data = data;
         Ok(())
