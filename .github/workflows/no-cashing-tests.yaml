@@ -11,7 +11,7 @@ env:
 jobs:
   test-core:
     name: Core Tests
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -36,7 +36,7 @@ jobs:
 
   setup-anchor-cli:
     name: Setup Anchor cli
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -54,7 +54,7 @@ jobs:
   test-examples:
     needs: setup-anchor-cli
     name: Examples Test
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -73,7 +73,7 @@ jobs:
   setup-client-example:
     needs: setup-anchor-cli
     name: Setup Client Example Test
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -108,7 +108,7 @@ jobs:
   test-client-example:
     needs: setup-client-example
     name: Client Example Test
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -144,7 +144,7 @@ jobs:
   test-bpf-upgradeable-state:
     needs: setup-anchor-cli
     name: Test tests/bpf-upgradeable-state
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -176,7 +176,7 @@ jobs:
   #   # but that's fine since it's just the cli
   #   needs: setup-anchor-cli
   #   name: Test tests/misc/nonRentExempt
-  #   runs-on: ubuntu-18.04
+  #   runs-on: ubuntu-latest
   #   timeout-minutes: 30
   #   steps:
   #     - uses: actions/checkout@v2
@@ -207,7 +207,7 @@ jobs:
   test-anchor-init:
     needs: setup-anchor-cli
     name: Test Anchor Init
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
@@ -227,7 +227,7 @@ jobs:
   test-programs:
     needs: setup-anchor-cli
     name: Test ${{ matrix.node.path }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
