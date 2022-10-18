@@ -10,6 +10,7 @@ on:
 env:
   SOLANA_CLI_VERSION: 1.10.29
   NODE_VERSION: 17.0.1
+  CARGO_PROFILE: debug
 
 jobs:
   test-core:
@@ -66,8 +67,11 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ./target/
-          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo install --path cli anchor-cli --locked --force --debug
+        if: env.CARGO_PROFILE == 'debug'
       - run: cargo install --path cli anchor-cli --locked --force
+        if: env.CARGO_PROFILE != 'debug'
       - run: chmod +x ~/.cargo/bin/anchor
       - uses: actions/upload-artifact@v2
         with:
@@ -223,7 +227,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ./target/
-          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/download-artifact@v2
         with:
@@ -320,7 +324,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ./target/
-          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/download-artifact@v2
         with:
@@ -418,7 +422,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             ./target/
-          key: cargo-${{ runner.os }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/download-artifact@v2
         with:
