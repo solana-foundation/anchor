@@ -10,7 +10,7 @@ describe("basic-0", () => {
     const program = anchor.workspace.Basic0;
 
     // Execute the RPC.
-    await program.methods.initialize().rpc();
+    await program.rpc.initialize();
     // #endregion code
   });
 });
