@@ -183,6 +183,22 @@ pub struct TestClose<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TestCloseTwice<'info> {
+    #[account(mut, close = sol_dest)]
+    pub data: Account<'info, Data>,
+    /// CHECK:
+    pub sol_dest: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestCloseMut<'info> {
+    #[account(mut)]
+    pub data: Account<'info, Data>,
+    /// CHECK:
+    pub sol_dest: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct TestU16<'info> {
     #[account(zero)]
     pub my_account: Account<'info, DataU16>,

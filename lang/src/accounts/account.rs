@@ -336,8 +336,8 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsEx
     for Account<'info, T>
 {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
-        // Only persist if the owner is the current program.
-        if &T::owner() == program_id {
+        // Only persist if the owner is the current program and the account is not closed.
+        if &T::owner() == program_id && !crate::common::is_closed(&self.info) {
             let info = self.to_account_info();
             let mut data = info.try_borrow_mut_data()?;
             let dst: &mut [u8] = &mut data;
@@ -348,13 +348,6 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsEx
     }
 }
 
-/// This function is for INTERNAL USE ONLY.
-/// Do NOT use this function in a program.
-/// Manual closing of `Account<'info, T>` types is NOT supported.
-///
-/// Details: Using `close` with `Account<'info, T>` is not safe because
-/// it requires the `mut` constraint but for that type the constraint
-/// overwrites the "closed account" discriminator at the end of the instruction.
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsClose<'info>
     for Account<'info, T>
 {

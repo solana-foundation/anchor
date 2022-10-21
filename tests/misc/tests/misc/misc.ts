@@ -283,37 +283,140 @@ describe("misc", () => {
   });
 
   it("Can close an account", async () => {
-    const openAccount = await program.provider.connection.getAccountInfo(
-      data.publicKey
-    );
+    const connection = program.provider.connection;
+    const openAccount = await connection.getAccountInfo(data.publicKey);
+
     assert.isNotNull(openAccount);
+    const openAccountBalance = openAccount.lamports;
+    // double balance to calculate closed balance correctly
+    const transferIx = anchor.web3.SystemProgram.transfer({
+      fromPubkey: provider.wallet.publicKey,
+      toPubkey: data.publicKey,
+      lamports: openAccountBalance,
+    });
+    const transferTransaction = new anchor.web3.Transaction().add(transferIx);
+    await provider.sendAndConfirm(transferTransaction);
 
     let beforeBalance = (
-      await program.provider.connection.getAccountInfo(
-        provider.wallet.publicKey
-      )
+      await connection.getAccountInfo(provider.wallet.publicKey)
     ).lamports;
 
-    await program.rpc.testClose({
-      accounts: {
+    await program.methods
+      .testClose()
+      .accounts({
         data: data.publicKey,
         solDest: provider.wallet.publicKey,
-      },
-    });
+      })
+      .postInstructions([transferIx])
+      .rpc();
 
     let afterBalance = (
-      await program.provider.connection.getAccountInfo(
-        provider.wallet.publicKey
-      )
+      await connection.getAccountInfo(provider.wallet.publicKey)
     ).lamports;
 
     // Retrieved rent exemption sol.
     expect(afterBalance > beforeBalance).to.be.true;
 
-    const closedAccount = await program.provider.connection.getAccountInfo(
-      data.publicKey
-    );
-    assert.isNull(closedAccount);
+    const closedAccount = await connection.getAccountInfo(data.publicKey);
+
+    assert.isTrue(closedAccount.data.length === 0);
+    assert.isTrue(closedAccount.owner.equals(SystemProgram.programId));
+  });
+
+  it("Can close an account twice", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.methods
+      .initialize(new anchor.BN(10), new anchor.BN(10))
+      .accounts({ data: data.publicKey })
+      .preInstructions([await program.account.data.createInstruction(data)])
+      .signers([data])
+      .rpc();
+
+    const connection = program.provider.connection;
+    const openAccount = await connection.getAccountInfo(data.publicKey);
+    assert.isNotNull(openAccount);
+
+    const openAccountBalance = openAccount.lamports;
+    // double balance to calculate closed balance correctly
+    const transferIx = anchor.web3.SystemProgram.transfer({
+      fromPubkey: provider.wallet.publicKey,
+      toPubkey: data.publicKey,
+      lamports: openAccountBalance,
+    });
+    const transferTransaction = new anchor.web3.Transaction().add(transferIx);
+    await provider.sendAndConfirm(transferTransaction);
+
+    let beforeBalance = (
+      await connection.getAccountInfo(provider.wallet.publicKey)
+    ).lamports;
+
+    await program.methods
+      .testCloseTwice()
+      .accounts({
+        data: data.publicKey,
+        solDest: provider.wallet.publicKey,
+      })
+      .postInstructions([transferIx])
+      .rpc();
+
+    let afterBalance = (
+      await connection.getAccountInfo(provider.wallet.publicKey)
+    ).lamports;
+
+    // Retrieved rent exemption sol.
+    expect(afterBalance > beforeBalance).to.be.true;
+
+    const closedAccount = await connection.getAccountInfo(data.publicKey);
+    assert.isTrue(closedAccount.data.length === 0);
+    assert.isTrue(closedAccount.owner.equals(SystemProgram.programId));
+  });
+
+  it("Can close a mut account manually", async () => {
+    const data = anchor.web3.Keypair.generate();
+    await program.methods
+      .initialize(new anchor.BN(10), new anchor.BN(10))
+      .accounts({ data: data.publicKey })
+      .preInstructions([await program.account.data.createInstruction(data)])
+      .signers([data])
+      .rpc();
+
+    const connection = program.provider.connection;
+    const openAccount = await connection.getAccountInfo(data.publicKey);
+
+    assert.isNotNull(openAccount);
+    const openAccountBalance = openAccount.lamports;
+    // double balance to calculate closed balance correctly
+    const transferIx = anchor.web3.SystemProgram.transfer({
+      fromPubkey: provider.wallet.publicKey,
+      toPubkey: data.publicKey,
+      lamports: openAccountBalance,
+    });
+    const transferTransaction = new anchor.web3.Transaction().add(transferIx);
+    await provider.sendAndConfirm(transferTransaction);
+
+    let beforeBalance = (
+      await connection.getAccountInfo(provider.wallet.publicKey)
+    ).lamports;
+
+    await program.methods
+      .testCloseMut()
+      .accounts({
+        data: data.publicKey,
+        solDest: provider.wallet.publicKey,
+      })
+      .postInstructions([transferIx])
+      .rpc();
+
+    let afterBalance = (
+      await connection.getAccountInfo(provider.wallet.publicKey)
+    ).lamports;
+
+    // Retrieved rent exemption sol.
+    expect(afterBalance > beforeBalance).to.be.true;
+
+    const closedAccount = await connection.getAccountInfo(data.publicKey);
+    assert.isTrue(closedAccount.data.length === 0);
+    assert.isTrue(closedAccount.owner.equals(SystemProgram.programId));
   });
 
   it("Can use instruction data in accounts constraints", async () => {

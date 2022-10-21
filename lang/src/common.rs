@@ -1,3 +1,4 @@
+use crate::prelude::{Id, System};
 use crate::Result;
 use solana_program::account_info::AccountInfo;
 use solana_program::system_program;
@@ -11,4 +12,8 @@ pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info
 
     info.assign(&system_program::ID);
     info.realloc(0, false).map_err(Into::into)
+}
+
+pub fn is_closed(info: &AccountInfo) -> bool {
+    info.owner == &System::id() && info.data_is_empty()
 }

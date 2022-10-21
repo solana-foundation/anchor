@@ -124,6 +124,24 @@ pub mod misc {
         Ok(())
     }
 
+    pub fn test_close_twice(ctx: Context<TestCloseTwice>) -> Result<()> {
+        let data_account = &ctx.accounts.data;
+        let sol_dest_info = ctx.accounts.sol_dest.to_account_info();
+        data_account.close(sol_dest_info)?;
+        let data_account_info: &AccountInfo = data_account.as_ref();
+        require_keys_eq!(*data_account_info.owner, System::id());
+        Ok(())
+    }
+
+    pub fn test_close_mut(ctx: Context<TestCloseMut>) -> Result<()> {
+        let data_account = &ctx.accounts.data;
+        let sol_dest_info = ctx.accounts.sol_dest.to_account_info();
+        data_account.close(sol_dest_info)?;
+        let data_account_info: &AccountInfo = data_account.as_ref();
+        require_keys_eq!(*data_account_info.owner, System::id());
+        Ok(())
+    }
+
     pub fn test_instruction_constraint(
         _ctx: Context<TestInstructionConstraint>,
         _nonce: u8,
