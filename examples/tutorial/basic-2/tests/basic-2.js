@@ -15,14 +15,15 @@ describe("basic-2", () => {
   const program = anchor.workspace.Basic2;
 
   it("Creates a counter", async () => {
-    await program.rpc.create(provider.wallet.publicKey, {
-      accounts: {
+    await program.methods
+      .create(provider.wallet.publicKey)
+      .accounts({
         counter: counter.publicKey,
         user: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
-      },
-      signers: [counter],
-    });
+      })
+      .signers([counter])
+      .rpc();
 
     let counterAccount = await program.account.counter.fetch(counter.publicKey);
 
@@ -31,12 +32,13 @@ describe("basic-2", () => {
   });
 
   it("Updates a counter", async () => {
-    await program.rpc.increment({
-      accounts: {
+    await program.methods
+      .increment()
+      .accounts({
         counter: counter.publicKey,
         authority: provider.wallet.publicKey,
-      },
-    });
+      })
+      .rpc();
 
     const counterAccount = await program.account.counter.fetch(
       counter.publicKey
