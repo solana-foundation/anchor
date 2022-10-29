@@ -1385,7 +1385,7 @@ pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<
                         .value
                         .map_or(Err(anyhow!("Program data account not found")), Ok)?;
                     let bin = account.data
-                        [UpgradeableLoaderState::programdata_data_offset().unwrap_or(0)..]
+                        [UpgradeableLoaderState::size_of_programdata_metadata()..]
                         .to_vec();
 
                     if let UpgradeableLoaderState::ProgramData {
@@ -1403,7 +1403,7 @@ pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<
                     }
                 }
                 UpgradeableLoaderState::Buffer { .. } => {
-                    let offset = UpgradeableLoaderState::buffer_data_offset().unwrap_or(0);
+                    let offset = UpgradeableLoaderState::size_of_buffer_metadata();
                     (
                         account.data[offset..].to_vec(),
                         BinVerificationState::Buffer,
