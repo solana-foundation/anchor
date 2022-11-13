@@ -173,6 +173,17 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
     });
   }
 
+  public async rpcAndKeys(options?: ConfirmOptions): Promise<{
+    pubkeys: Partial<InstructionAccountAddresses<IDL, I>>;
+    signature: TransactionSignature;
+  }> {
+    const pubkeys = await this.pubkeys();
+    return {
+      pubkeys,
+      signature: await this.rpc(options),
+    };
+  }
+
   public async view(options?: ConfirmOptions): Promise<any> {
     if (this._autoResolveAccounts) {
       await this._accountsResolver.resolve();

@@ -335,7 +335,7 @@ export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
 
   private async toBufferArg(seedDesc: IdlSeed): Promise<Buffer | undefined> {
     const argValue = this.argValue(seedDesc);
-    if (!argValue) {
+    if (typeof argValue === "undefined") {
       return;
     }
     return this.toBufferValue(
