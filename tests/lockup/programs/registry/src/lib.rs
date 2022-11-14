@@ -296,7 +296,7 @@ mod registry {
                 &ctx.accounts.member.balances
             }
         };
-        // Check the vaults given are corrrect.
+        // Check the vaults given are correct.
         if &balances.vault != ctx.accounts.vault.key {
             return err!(ErrorCode::InvalidVault);
         }
@@ -644,7 +644,7 @@ impl<'info> CreateMember<'info> {
 
 // When creating a member, the mints and owners of these accounts are correct.
 // Upon creation, we assign the accounts. A onetime operation.
-// When using a member, we check these accounts addresess are equal to the
+// When using a member, we check these accounts addresses are equal to the
 // addresses stored on the member. If so, the correct accounts were given are
 // correct.
 #[derive(Accounts, Clone)]
@@ -1191,7 +1191,7 @@ pub enum ErrorCode {
     InvalidVault,
     #[msg("Invalid vault owner.")]
     InvalidVaultOwner,
-    #[msg("An unknown error has occured.")]
+    #[msg("An unknown error has occurred.")]
     Unknown,
     #[msg("The unstake timelock has not yet expired.")]
     UnstakeTimelock,
