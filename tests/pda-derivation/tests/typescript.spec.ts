@@ -57,7 +57,7 @@ describe("typescript", () => {
     });
 
     const keys = await tx.pubkeys();
-    expect(keys.account.equals(expectedPDAKey)).is.true;
+    expect(keys.account!.equals(expectedPDAKey)).is.true;
 
     await tx.rpc();
 

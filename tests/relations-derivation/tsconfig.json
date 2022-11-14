@@ -1,4 +1,5 @@
 {
+  "include": ["./target/types/relations_derivation.ts"],
   "compilerOptions": {
     "types": ["mocha", "chai"],
     "typeRoots": ["./node_modules/@types"],

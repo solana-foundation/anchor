@@ -36,7 +36,7 @@ describe("typescript", () => {
     await tx.instruction();
     const keys = await tx.pubkeys();
 
-    expect(keys.myAccount.equals(provider.wallet.publicKey)).is.true;
+    expect(keys.myAccount!.equals(provider.wallet.publicKey)).is.true;
 
     await tx.rpc();
   });

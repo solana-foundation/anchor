@@ -2,6 +2,8 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { Idl } from "../../";
 import {
+  IdlAccounts as IdlIdlAccounts,
+  IdlAccountItem,
   IdlEnumFields,
   IdlEnumFieldsNamed,
   IdlEnumFieldsTuple,
@@ -94,9 +96,16 @@ export type InstructionContextFnArgs<
 export type InstructionAccountAddresses<
   IDL extends Idl,
   I extends AllInstructions<IDL>
-> = {
-  [N in keyof Accounts<I["accounts"][number]>]: PublicKey;
+> = InstructionAccountsAddresses<I["accounts"][number]>;
+
+type InstructionAccountsAddresses<A extends IdlAccountItem = IdlAccountItem> = {
+  [N in A["name"]]: InstructionAccountsAddress<A & { name: N }>;
 };
+
+type InstructionAccountsAddress<A extends IdlAccountItem> =
+  A extends IdlIdlAccounts
+    ? InstructionAccountsAddresses<A["accounts"][number]>
+    : PublicKey;
 
 export type MethodsFn<
   IDL extends Idl,

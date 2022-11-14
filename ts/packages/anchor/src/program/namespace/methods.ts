@@ -7,12 +7,13 @@ import {
   TransactionInstruction,
   TransactionSignature,
 } from "@solana/web3.js";
-import { Idl, IdlTypeDef } from "../../idl.js";
+import { Idl, IdlAccountItem, IdlAccounts, IdlTypeDef } from "../../idl.js";
 import Provider from "../../provider.js";
 import {
   AccountsResolver,
   CustomAccountResolver,
 } from "../accounts-resolver.js";
+import { Address } from "../common.js";
 import { Accounts } from "../context.js";
 import { AccountNamespace } from "./account.js";
 import { InstructionFn } from "./instruction.js";
@@ -64,6 +65,14 @@ export class MethodsBuilderFactory {
   }
 }
 
+type PartialAccounts<A extends IdlAccountItem = IdlAccountItem> = Partial<{
+  [N in A["name"]]: PartialAccount<A & { name: N }>;
+}>;
+
+type PartialAccount<A extends IdlAccountItem> = A extends IdlAccounts
+  ? Partial<Accounts<A["accounts"][number]>>
+  : Address;
+
 export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   private readonly _accounts: { [name: string]: PublicKey } = {};
   private _remainingAccounts: Array<AccountMeta> = [];
@@ -112,12 +121,12 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
     if (this._autoResolveAccounts) {
       await this._accountsResolver.resolve();
     }
-    return this._accounts as Partial<InstructionAccountAddresses<IDL, I>>;
+    return this._accounts as unknown as Partial<
+      InstructionAccountAddresses<IDL, I>
+    >;
   }
 
-  public accounts(
-    accounts: Partial<Accounts<I["accounts"][number]>>
-  ): MethodsBuilder<IDL, I> {
+  public accounts(accounts: PartialAccounts): MethodsBuilder<IDL, I> {
     this._autoResolveAccounts = true;
     Object.assign(this._accounts, accounts);
     return this;
