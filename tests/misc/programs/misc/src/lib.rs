@@ -17,6 +17,10 @@ declare_id!("3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh");
 pub const BASE: u128 = 1_000_000;
 #[constant]
 pub const DECIMALS: u8 = 6;
+#[constant]
+pub const BYTES_STR: &[u8] = b"test";
+#[constant]
+pub const BYTE_STR: u8 = b't';
 pub const NO_IDL: u16 = 55;
 
 #[program]

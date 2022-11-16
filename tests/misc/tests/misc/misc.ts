@@ -1105,6 +1105,25 @@ describe("misc", () => {
     );
   });
 
+  it("Should include BYTES_STR const in IDL", async () => {
+    assert.isDefined(
+      miscIdl.constants.find(
+        (c) =>
+          c.name === "BYTES_STR" &&
+          c.type === "bytes" &&
+          c.value === "[116, 101, 115, 116]"
+      )
+    );
+  });
+
+  it("Should include BYTE_STR const in IDL", async () => {
+    assert.isDefined(
+      miscIdl.constants.find(
+        (c) => c.name === "BYTE_STR" && c.type === "u8" && c.value === "116"
+      )
+    );
+  });
+
   it("Should not include NO_IDL const in IDL", async () => {
     assert.isUndefined(miscIdl.constants.find((c) => c.name === "NO_IDL"));
   });
