@@ -78,7 +78,7 @@ export class EventManager {
     this._listenerIdCount += 1;
 
     // Store the listener into the event map.
-    if (!(eventName in this._eventCallbacks)) {
+    if (!this._eventListeners.has(eventName)) {
       this._eventListeners.set(eventName, []);
     }
     this._eventListeners.set(
@@ -138,6 +138,7 @@ export class EventManager {
     // Update both maps.
     this._eventCallbacks.delete(listener);
     listeners = listeners.filter((l) => l !== listener);
+    this._eventListeners.set(eventName, listeners);
     if (listeners.length === 0) {
       this._eventListeners.delete(eventName);
     }
