@@ -833,6 +833,9 @@ pub struct _Validator {
     // Give the faucet address this much SOL in genesis. [default: 1000000]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub faucet_sol: Option<String>,
+    // Geyser plugin config location
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub geyser_plugin_config: Option<String>,
     // Gossip DNS name or IP address for the validator to advertise in gossip. [default: 127.0.0.1]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gossip_host: Option<String>,
@@ -873,6 +876,8 @@ pub struct Validator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub faucet_sol: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub geyser_plugin_config: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gossip_host: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gossip_port: Option<u16>,
@@ -899,6 +904,7 @@ impl From<_Validator> for Validator {
             dynamic_port_range: _validator.dynamic_port_range,
             faucet_port: _validator.faucet_port,
             faucet_sol: _validator.faucet_sol,
+            geyser_plugin_config: _validator.geyser_plugin_config,
             gossip_host: _validator.gossip_host,
             gossip_port: _validator.gossip_port,
             url: _validator.url,
@@ -924,6 +930,7 @@ impl From<Validator> for _Validator {
             dynamic_port_range: validator.dynamic_port_range,
             faucet_port: validator.faucet_port,
             faucet_sol: validator.faucet_sol,
+            geyser_plugin_config: validator.geyser_plugin_config,
             gossip_host: validator.gossip_host,
             gossip_port: validator.gossip_port,
             url: validator.url,
@@ -987,6 +994,9 @@ impl Merge for _Validator {
                 .or_else(|| self.dynamic_port_range.take()),
             faucet_port: other.faucet_port.or_else(|| self.faucet_port.take()),
             faucet_sol: other.faucet_sol.or_else(|| self.faucet_sol.take()),
+            geyser_plugin_config: other
+                .geyser_plugin_config
+                .or_else(|| self.geyser_plugin_config.take()),
             gossip_host: other.gossip_host.or_else(|| self.gossip_host.take()),
             gossip_port: other.gossip_port.or_else(|| self.gossip_port.take()),
             url: other.url.or_else(|| self.url.take()),
