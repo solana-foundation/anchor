@@ -1,28 +1,27 @@
-import * as anchor from "@project-serum/anchor";
-import { Native, Spl } from "@project-serum/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Native, AnchorProvider, setProvider } from "@project-serum/anchor";
+import { splAssociatedTokenAccountProgram } from "@project-serum/spl-associated-token-account";
+import { splTokenProgram } from "@project-serum/spl-token";
+import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import * as assert from "assert";
-import BN from "bn.js";
 
 describe("spl-associated-token-coder", () => {
   // Configure the client to use the local cluster.
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
+  const provider = AnchorProvider.env();
+  setProvider(provider);
 
   // Client.
-  const program = Spl.associatedToken();
+  const program = splAssociatedTokenAccountProgram({
+    provider,
+  });
   const systemProgram = Native.system();
-  const tokenProgram = Spl.token();
+  const tokenProgram = splTokenProgram({
+    provider,
+  });
 
   it("Creates an account", async () => {
     // arrange
     const mintKeypair = Keypair.generate();
     const mintDecimals = 6;
-    const mintSize = tokenProgram.coder.accounts.size(
-      tokenProgram.idl.accounts[0]
-    );
-    const mintRentExemption =
-      await provider.connection.getMinimumBalanceForRentExemption(mintSize);
     const [associatedToken] = await PublicKey.findProgramAddress(
       [
         provider.publicKey.toBuffer(),
@@ -36,28 +35,21 @@ describe("spl-associated-token-coder", () => {
     await program.methods
       .create()
       .accounts({
-        authority: provider.wallet.publicKey,
-        mint: mintKeypair.publicKey,
-        owner: provider.wallet.publicKey,
-        associatedAccount: associatedToken,
+        associatedAccountAddress: associatedToken,
+        fundingAddress: provider.wallet.publicKey,
+        systemProgram: systemProgram.programId,
+        tokenMintAddress: mintKeypair.publicKey,
+        tokenProgram: tokenProgram.programId,
+        walletAddress: provider.wallet.publicKey,
       })
       .preInstructions(
         await Promise.all([
-          systemProgram.methods
-            .createAccount(
-              new BN(mintRentExemption),
-              new BN(mintSize),
-              tokenProgram.programId
-            )
-            .accounts({
-              from: provider.wallet.publicKey,
-              to: mintKeypair.publicKey,
-            })
-            .instruction(),
+          tokenProgram.account.mint.createInstruction(mintKeypair),
           tokenProgram.methods
             .initializeMint(mintDecimals, provider.wallet.publicKey, null)
             .accounts({
               mint: mintKeypair.publicKey,
+              rent: SYSVAR_RENT_PUBKEY,
             })
             .instruction(),
         ])
@@ -65,7 +57,7 @@ describe("spl-associated-token-coder", () => {
       .signers([mintKeypair])
       .rpc();
     // assert
-    const tokenAccount = await tokenProgram.account.token.fetch(
+    const tokenAccount = await tokenProgram.account.account.fetch(
       associatedToken
     );
     assert.ok(tokenAccount.mint.equals(mintKeypair.publicKey));

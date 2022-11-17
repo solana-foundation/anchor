@@ -41,6 +41,8 @@
   ],
   "dependencies": {
     "@project-serum/anchor": "file:../ts/packages/anchor",
+    "@project-serum/spl-associated-token-account": "file:../ts/packages/spl-associated-token-account",
+    "@project-serum/spl-token": "file:../ts/packages/spl-token",
     "@project-serum/common": "^0.0.1-beta.3",
     "@project-serum/serum": "^0.13.60",
     "@solana/spl-token": "^0.1.8",

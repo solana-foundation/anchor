@@ -6,4 +6,3 @@ for D in */;
         cd $D && yarn init:yarn; cd ..;
     fi
 done
-

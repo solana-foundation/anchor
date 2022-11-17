@@ -36,6 +36,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 * ts: Update seeds inference to allow nested user defined structs within the seeds ([#2198](https://github.com/coral-xyz/anchor/pull/2198))
 * event: Fix multiple event listeners with the same name. ([#2165](https://github.com/coral-xyz/anchor/pull/2165))
 
+### Breaking
+
+* ts: SPL coders have been removed from the main Anchor package. ([#2155](https://github.com/coral-xyz/anchor/pull/2155))
+
 ## [0.25.0] - 2022-07-05
 
 ### Features

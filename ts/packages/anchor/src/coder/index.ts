@@ -2,7 +2,6 @@ import { IdlEvent, IdlTypeDef } from "../idl.js";
 import { Event } from "../program/event.js";
 
 export * from "./borsh/index.js";
-export * from "./spl-token/index.js";
 export * from "./system/index.js";
 
 /**

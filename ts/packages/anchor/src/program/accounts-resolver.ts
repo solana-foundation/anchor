@@ -12,7 +12,6 @@ import {
   IdlAccountItem,
   IdlAccounts,
   IdlTypeDef,
-  IdlTypeDefStruct,
   IdlTypeDefTyStruct,
   IdlType,
 } from "../idl.js";
@@ -21,8 +20,8 @@ import { TOKEN_PROGRAM_ID, ASSOCIATED_PROGRAM_ID } from "../utils/token.js";
 import { AllInstructions } from "./namespace/types.js";
 import Provider from "../provider.js";
 import { AccountNamespace } from "./namespace/account.js";
-import { coder } from "../spl/token";
 import { BorshAccountsCoder } from "src/coder/index.js";
+import { decodeTokenAccount } from "./token-account-layout";
 import { Program } from "./index.js";
 
 type Accounts = { [name: string]: PublicKey | Accounts };
@@ -36,7 +35,7 @@ export type CustomAccountResolver<IDL extends Idl> = (params: {
 }) => Promise<{ accounts: Accounts; resolved: number }>;
 
 // Populates a given accounts context with PDAs and common missing accounts.
-export class AccountsResolver<IDL extends Idl, I extends AllInstructions<IDL>> {
+export class AccountsResolver<IDL extends Idl> {
   _args: Array<any>;
   static readonly CONST_ACCOUNTS = {
     associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
@@ -489,7 +488,7 @@ export class AccountStore<IDL extends Idl> {
         if (accountInfo === null) {
           throw new Error(`invalid account info for ${address}`);
         }
-        const data = coder().accounts.decode("token", accountInfo.data);
+        const data = decodeTokenAccount(accountInfo.data);
         this._cache.set(address, data);
       } else if (name) {
         const accounts = await this.ensureIdl(programId);

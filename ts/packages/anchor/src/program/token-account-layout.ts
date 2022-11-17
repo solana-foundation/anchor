@@ -3,7 +3,7 @@ import * as BufferLayout from "buffer-layout";
 import { Layout } from "buffer-layout";
 import { PublicKey } from "@solana/web3.js";
 
-export function uint64(property?: string): Layout<u64 | null> {
+function uint64(property?: string): Layout<u64 | null> {
   return new WrappedLayout(
     BufferLayout.blob(8),
     (b: Buffer) => u64.fromBuffer(b),
@@ -12,11 +12,7 @@ export function uint64(property?: string): Layout<u64 | null> {
   );
 }
 
-export function bool(property?: string): Layout<boolean> {
-  return new WrappedLayout(BufferLayout.u8(), decodeBool, encodeBool, property);
-}
-
-export function publicKey(property?: string): Layout<PublicKey> {
+function publicKey(property?: string): Layout<PublicKey> {
   return new WrappedLayout(
     BufferLayout.blob(32),
     (b: Buffer) => new PublicKey(b),
@@ -25,10 +21,7 @@ export function publicKey(property?: string): Layout<PublicKey> {
   );
 }
 
-export function coption<T>(
-  layout: Layout<T>,
-  property?: string
-): Layout<T | null> {
+function coption<T>(layout: Layout<T>, property?: string): Layout<T | null> {
   return new COptionLayout<T>(layout, property);
 }
 
@@ -62,7 +55,7 @@ class WrappedLayout<T, U> extends Layout<U> {
   }
 }
 
-export class COptionLayout<T> extends Layout<T | null> {
+class COptionLayout<T> extends Layout<T | null> {
   layout: Layout<T>;
   discriminator: Layout<number>;
 
@@ -95,20 +88,7 @@ export class COptionLayout<T> extends Layout<T | null> {
   }
 }
 
-function decodeBool(value: number): boolean {
-  if (value === 0) {
-    return false;
-  } else if (value === 1) {
-    return true;
-  }
-  throw new Error("Invalid bool: " + value);
-}
-
-function encodeBool(value: boolean): number {
-  return value ? 1 : 0;
-}
-
-export class u64 extends BN {
+class u64 extends BN {
   /**
    * Convert to Buffer representation
    */
@@ -142,4 +122,25 @@ export class u64 extends BN {
       16
     );
   }
+}
+
+const TOKEN_ACCOUNT_LAYOUT = BufferLayout.struct([
+  publicKey("mint"),
+  publicKey("owner"),
+  uint64("amount"),
+  coption(publicKey(), "delegate"),
+  ((p: string) => {
+    const U = BufferLayout.union(BufferLayout.u8("discriminator"), null, p);
+    U.addVariant(0, BufferLayout.struct([]), "uninitialized");
+    U.addVariant(1, BufferLayout.struct([]), "initialized");
+    U.addVariant(2, BufferLayout.struct([]), "frozen");
+    return U;
+  })("state"),
+  coption(uint64(), "isNative"),
+  uint64("delegatedAmount"),
+  coption(publicKey(), "closeAuthority"),
+]);
+
+export function decodeTokenAccount(b: Buffer) {
+  return TOKEN_ACCOUNT_LAYOUT.decode(b);
 }

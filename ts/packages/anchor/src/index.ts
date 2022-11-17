@@ -17,7 +17,6 @@ export { CustomAccountResolver } from "./program/accounts-resolver.js";
 export * from "./coder/index.js";
 export * as utils from "./utils/index.js";
 export * from "./program/index.js";
-export * from "./spl/index.js";
 export * from "./native/index.js";
 
 export declare const workspace: any;
