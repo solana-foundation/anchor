@@ -142,6 +142,23 @@ pub fn initialize_account<'a, 'b, 'c, 'info>(
     .map_err(Into::into)
 }
 
+pub fn initialize_account3<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, InitializeAccount3<'info>>,
+) -> Result<()> {
+    let ix = spl_token::instruction::initialize_account3(
+        &spl_token::ID,
+        ctx.accounts.account.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.authority.key,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &[ctx.accounts.account.clone(), ctx.accounts.mint.clone()],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
 pub fn close_account<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, CloseAccount<'info>>,
 ) -> Result<()> {
@@ -229,6 +246,23 @@ pub fn initialize_mint<'a, 'b, 'c, 'info>(
     .map_err(Into::into)
 }
 
+pub fn initialize_mint2<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, InitializeMint2<'info>>,
+    decimals: u8,
+    authority: &Pubkey,
+    freeze_authority: Option<&Pubkey>,
+) -> Result<()> {
+    let ix = spl_token::instruction::initialize_mint2(
+        &spl_token::ID,
+        ctx.accounts.mint.key,
+        authority,
+        freeze_authority,
+        decimals,
+    )?;
+    solana_program::program::invoke_signed(&ix, &[ctx.accounts.mint.clone()], ctx.signer_seeds)
+        .map_err(Into::into)
+}
+
 pub fn set_authority<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, SetAuthority<'info>>,
     authority_type: spl_token::instruction::AuthorityType,
@@ -309,6 +343,13 @@ pub struct InitializeAccount<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitializeAccount3<'info> {
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct CloseAccount<'info> {
     pub account: AccountInfo<'info>,
     pub destination: AccountInfo<'info>,
@@ -333,6 +374,11 @@ pub struct ThawAccount<'info> {
 pub struct InitializeMint<'info> {
     pub mint: AccountInfo<'info>,
     pub rent: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeMint2<'info> {
+    pub mint: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

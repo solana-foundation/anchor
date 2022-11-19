@@ -124,7 +124,6 @@ describe("ido-pool", () => {
           poolUsdc,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         },
       }
     );
@@ -225,7 +224,6 @@ describe("ido-pool", () => {
               redeemableMint,
               systemProgram: anchor.web3.SystemProgram.programId,
               tokenProgram: TOKEN_PROGRAM_ID,
-              rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             },
           }),
         ],
@@ -326,7 +324,6 @@ describe("ido-pool", () => {
             redeemableMint,
             systemProgram: anchor.web3.SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           },
         }),
       ],
@@ -401,7 +398,6 @@ describe("ido-pool", () => {
             usdcMint,
             systemProgram: anchor.web3.SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           },
         }),
       ],

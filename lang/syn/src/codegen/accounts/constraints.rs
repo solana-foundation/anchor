@@ -457,14 +457,13 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
 
                         // Initialize the token account.
                         let cpi_program = token_program.to_account_info();
-                        let accounts = anchor_spl::token::InitializeAccount {
+                        let accounts = anchor_spl::token::InitializeAccount3 {
                             account: #field.to_account_info(),
                             mint: #mint.to_account_info(),
                             authority: #owner.to_account_info(),
-                            rent: rent.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                        anchor_spl::token::initialize_account(cpi_ctx)?;
+                        anchor_spl::token::initialize_account3(cpi_ctx)?;
                     }
 
                     let pa: #ty_decl = #from_account_info_unchecked;
@@ -497,7 +496,6 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
                             mint: #mint.to_account_info(),
                             system_program: system_program.to_account_info(),
                             token_program: token_program.to_account_info(),
-                            rent: rent.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, cpi_accounts);
                         anchor_spl::associated_token::create(cpi_ctx)?;
@@ -548,12 +546,11 @@ fn generate_constraint_init_group(f: &Field, c: &ConstraintInitGroup) -> proc_ma
 
                         // Initialize the mint account.
                         let cpi_program = token_program.to_account_info();
-                        let accounts = anchor_spl::token::InitializeMint {
+                        let accounts = anchor_spl::token::InitializeMint2 {
                             mint: #field.to_account_info(),
-                            rent: rent.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                        anchor_spl::token::initialize_mint(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
+                        anchor_spl::token::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {

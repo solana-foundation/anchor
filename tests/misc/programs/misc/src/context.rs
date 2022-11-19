@@ -30,7 +30,6 @@ pub struct TestTokenSeedsInit<'info> {
     /// CHECK:
     pub authority: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -46,7 +45,6 @@ pub struct TestInitAssociatedToken<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -243,7 +241,6 @@ pub struct TestInitMint<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -255,7 +252,6 @@ pub struct TestInitToken<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
 }
@@ -342,7 +338,6 @@ pub struct TestInitMintIfNeeded<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     /// CHECK:
@@ -358,7 +353,6 @@ pub struct TestInitTokenIfNeeded<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     /// CHECK:
@@ -377,7 +371,6 @@ pub struct TestInitAssociatedTokenIfNeeded<'info> {
     pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,

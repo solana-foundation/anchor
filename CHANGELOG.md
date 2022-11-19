@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 * spl: Add `MetadataAccount` account deserialization. ([#2014](https://github.com/coral-xyz/anchor/pull/2014)).
 * spl: Add `update_primary_sale_happened_via_token` wrapper ([#2173](https://github.com/coral-xyz/anchor/pull/2173)).
 * spl: Add `sign_metadata` and `remove_creator_verification` wrappers ([#2175](https://github.com/coral-xyz/anchor/pull/2175)).
+* spl: Add `initialize_account3` and `initialize_mint2` ([#2265](https://github.com/coral-xyz/anchor/pull/2265)).
 * lang: Add parsing for consts from impl blocks for IDL PDA seeds generation ([#2128](https://github.com/coral-xyz/anchor/pull/2014))
 * lang: Account closing reassigns to system program and reallocates ([#2169](https://github.com/coral-xyz/anchor/pull/2169)).
 * ts: Add coders for SPL programs ([#2143](https://github.com/coral-xyz/anchor/pull/2143)).
@@ -39,6 +40,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Breaking
 
 * ts: SPL coders have been removed from the main Anchor package. ([#2155](https://github.com/coral-xyz/anchor/pull/2155))
+* lang: Remove `rent` from constraints ([#2265](https://github.com/coral-xyz/anchor/pull/2265)).
+* spl: Remove `rent` from `associated_token::Create` ([#2265](https://github.com/coral-xyz/anchor/pull/2265)).
 
 ## [0.25.0] - 2022-07-05
 

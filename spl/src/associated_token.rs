@@ -21,7 +21,6 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
             ctx.accounts.mint,
             ctx.accounts.system_program,
             ctx.accounts.token_program,
-            ctx.accounts.rent,
         ],
         ctx.signer_seeds,
     )
@@ -36,7 +35,6 @@ pub struct Create<'info> {
     pub mint: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
 }
 
 #[derive(Clone)]
