@@ -108,7 +108,12 @@ export class BorshAccountsCoder<A extends string = string>
    */
   public static accountDiscriminator(name: string): Buffer {
     return Buffer.from(
-      sha256.digest(`account:${camelcase(name, { pascalCase: true })}`)
+      sha256.digest(
+        `account:${camelcase(name, {
+          pascalCase: true,
+          preserveConsecutiveUppercase: true,
+        })}`
+      )
     ).slice(0, ACCOUNT_DISCRIMINATOR_SIZE);
   }
 }
