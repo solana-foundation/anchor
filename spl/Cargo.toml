@@ -2,7 +2,7 @@
 name = "anchor-spl"
 version = "0.25.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
-rust-version = "1.56"
+rust-version = "1.62"
 edition = "2021"
 license = "Apache-2.0"
 description = "CPI clients for SPL programs"

@@ -604,7 +604,7 @@ fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
                 println!("Unable to make new program");
             }
             Some(parent) => {
-                std::env::set_current_dir(&parent)?;
+                std::env::set_current_dir(parent)?;
                 new_program(&name)?;
                 println!("Created new program.");
             }
@@ -871,7 +871,7 @@ fn build_cwd(
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
-        Some(p) => std::env::set_current_dir(&p)?,
+        Some(p) => std::env::set_current_dir(p)?,
     };
     match build_config.verifiable {
         false => _build_cwd(cfg, idl_out, idl_ts_out, skip_lint, cargo_args),
@@ -983,7 +983,7 @@ fn docker_build(
     let target_dir = workdir.join("docker-target");
     println!("Run docker image");
     let exit = std::process::Command::new("docker")
-        .args(&[
+        .args([
             "run",
             "-it",
             "-d",
@@ -1095,7 +1095,7 @@ fn docker_build_bpf(
 
     // Execute the build.
     let exit = std::process::Command::new("docker")
-        .args(&[
+        .args([
             "exec",
             "--env",
             "PATH=/root/.local/share/solana/install/active_release/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -1138,7 +1138,7 @@ fn docker_build_bpf(
         bin_path.as_path().to_str().unwrap()
     );
     let exit = std::process::Command::new("docker")
-        .args(&["cp", &bin_artifact, &out_file])
+        .args(["cp", &bin_artifact, &out_file])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -1160,7 +1160,7 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
     // Remove the docker image.
     println!("Removing the docker container");
     let exit = std::process::Command::new("docker")
-        .args(&["rm", "-f", container_name])
+        .args(["rm", "-f", container_name])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -2317,10 +2317,10 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> (String,
         std::process::exit(1);
     }
     if Path::new(&ledger_directory).exists() {
-        fs::remove_dir_all(&ledger_directory).unwrap();
+        fs::remove_dir_all(ledger_directory).unwrap();
     }
 
-    fs::create_dir_all(&ledger_directory).unwrap();
+    fs::create_dir_all(ledger_directory).unwrap();
 
     (
         ledger_directory.to_string(),
@@ -2675,7 +2675,7 @@ fn set_workspace_dir_or_exit() {
                     println!("Unable to make new program");
                 }
                 Some(parent) => {
-                    if std::env::set_current_dir(&parent).is_err() {
+                    if std::env::set_current_dir(parent).is_err() {
                         println!("Not in anchor workspace.");
                         std::process::exit(1);
                     }
@@ -2770,7 +2770,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
         let url = cluster_url(cfg, &cfg.test_validator);
         let js_code = template::node_shell(&url, &cfg.provider.wallet.to_string(), programs)?;
         let mut child = std::process::Command::new("node")
-            .args(&["-e", &js_code, "-i", "--experimental-repl-await"])
+            .args(["-e", &js_code, "-i", "--experimental-repl-await"])
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()

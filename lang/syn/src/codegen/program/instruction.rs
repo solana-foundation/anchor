@@ -11,7 +11,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ctor_args: Vec<proc_macro2::TokenStream> = generate_ctor_typed_args(state)
                 .iter()
                 .map(|arg| {
-                    format!("pub {}", parser::tts_to_string(&arg))
+                    format!("pub {}", parser::tts_to_string(arg))
                         .parse()
                         .unwrap()
                 })

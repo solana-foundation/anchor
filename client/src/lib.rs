@@ -282,7 +282,7 @@ fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         .strip_prefix(PROGRAM_LOG)
         .or_else(|| l.strip_prefix(PROGRAM_DATA))
     {
-        let borsh_bytes = match anchor_lang::__private::base64::decode(&log) {
+        let borsh_bytes = match anchor_lang::__private::base64::decode(log) {
             Ok(borsh_bytes) => borsh_bytes,
             _ => {
                 #[cfg(feature = "debug")]

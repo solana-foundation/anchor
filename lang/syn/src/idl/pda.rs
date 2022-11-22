@@ -300,7 +300,7 @@ impl SeedPath {
 // Extracts the seed path from a single seed expression.
 fn parse_seed_path(seed: &Expr) -> Option<SeedPath> {
     // Convert the seed into the raw string representation.
-    let seed_str = parser::tts_to_string(&seed);
+    let seed_str = parser::tts_to_string(seed);
 
     // Break up the seed into each sub field component.
     let mut components: Vec<&str> = seed_str.split(" . ").collect();

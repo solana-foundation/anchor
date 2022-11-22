@@ -164,7 +164,7 @@ impl AccountsStruct {
             instruction_api
                 .iter()
                 .map(|expr| {
-                    let arg = parser::tts_to_string(&expr);
+                    let arg = parser::tts_to_string(expr);
                     let components: Vec<&str> = arg.split(" : ").collect();
                     assert!(components.len() == 2);
                     (components[0].to_string(), components[1].to_string())

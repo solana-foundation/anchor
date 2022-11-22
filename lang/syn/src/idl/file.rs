@@ -601,7 +601,7 @@ fn resolve_variable_array_lengths(ctx: &CrateContext, mut tts_string: String) ->
 }
 
 fn to_idl_type(ctx: &CrateContext, ty: &syn::Type) -> IdlType {
-    let mut tts_string = parser::tts_to_string(&ty);
+    let mut tts_string = parser::tts_to_string(ty);
     if tts_string.starts_with('[') {
         tts_string = resolve_variable_array_lengths(ctx, tts_string);
     }

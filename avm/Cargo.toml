@@ -1,7 +1,7 @@
 [package]
 name = "avm"
 version = "0.25.0"
-rust-version = "1.56"
+rust-version = "1.62"
 edition = "2021"
 
 [[bin]]
