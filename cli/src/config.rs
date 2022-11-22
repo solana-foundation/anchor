@@ -4,19 +4,22 @@ use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use heck::ToSnakeCase;
-use serde::{Deserialize, Serialize};
+use reqwest::Url;
+use serde::de::{self, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::fs::{self, File};
-use std::io;
 use std::io::prelude::*;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::{fmt, io};
 use walkdir::WalkDir;
 
 pub trait Merge: Sized {
@@ -420,8 +423,56 @@ struct _Config {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Provider {
-    cluster: String,
+    #[serde(deserialize_with = "des_cluster")]
+    cluster: Cluster,
     wallet: String,
+}
+
+fn des_cluster<'de, D>(deserializer: D) -> Result<Cluster, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrCustomCluster(PhantomData<fn() -> Cluster>);
+
+    impl<'de> Visitor<'de> for StringOrCustomCluster {
+        type Value = Cluster;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string or map")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Cluster, E>
+        where
+            E: de::Error,
+        {
+            value.parse().map_err(de::Error::custom)
+        }
+
+        fn visit_map<M>(self, mut map: M) -> Result<Cluster, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            // Gets keys
+            if let (Some((http_key, http_value)), Some((ws_key, ws_value))) = (
+                map.next_entry::<String, String>()?,
+                map.next_entry::<String, String>()?,
+            ) {
+                // Checks keys
+                if http_key != "http" || ws_key != "ws" {
+                    return Err(de::Error::custom("Invalid key"));
+                }
+
+                // Checks urls
+                Url::parse(&http_value).map_err(de::Error::custom)?;
+                Url::parse(&ws_value).map_err(de::Error::custom)?;
+
+                Ok(Cluster::Custom(http_value, ws_value))
+            } else {
+                Err(de::Error::custom("Invalid entry"))
+            }
+        }
+    }
+    deserializer.deserialize_any(StringOrCustomCluster(PhantomData))
 }
 
 impl ToString for Config {
@@ -440,7 +491,7 @@ impl ToString for Config {
             features: Some(self.features.clone()),
             registry: Some(self.registry.clone()),
             provider: Provider {
-                cluster: format!("{}", self.provider.cluster),
+                cluster: self.provider.cluster.clone(),
                 wallet: self.provider.wallet.to_string(),
             },
             test: self.test_validator.clone().map(Into::into),
@@ -469,7 +520,7 @@ impl FromStr for Config {
             features: cfg.features.unwrap_or_default(),
             registry: cfg.registry.unwrap_or_default(),
             provider: ProviderConfig {
-                cluster: cfg.provider.cluster.parse()?,
+                cluster: cfg.provider.cluster,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
             },
             scripts: cfg.scripts.unwrap_or_default(),
@@ -1138,6 +1189,18 @@ mod tests {
         cluster = \"localnet\"
         wallet = \"id.json\"
     ";
+
+    const CUSTOM_CONFIG: &str = "
+        [provider]
+        cluster = { http = \"http://my-url.com\", ws = \"ws://my-url.com\" }
+        wallet = \"id.json\"
+    ";
+
+    #[test]
+    fn parse_custom_cluster() {
+        let config = Config::from_str(CUSTOM_CONFIG).unwrap();
+        assert!(!config.features.skip_lint);
+    }
 
     #[test]
     fn parse_skip_lint_no_section() {

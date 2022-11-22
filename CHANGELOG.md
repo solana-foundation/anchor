@@ -29,7 +29,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Add ability to resolve missing accounts with a custom resolver ([#2194](https://github.com/coral-xyz/anchor/pull/2194))
 - ts: Update the Solana web3 library used by anchor ts to version 1.64.0 ([#2220](https://github.com/coral-xyz/anchor/issues/2220))
 - lang: Updates `AccountsClose` to make it safe to call manually ([#2209](https://github.com/coral-xyz/anchor/pull/2209))
-- lang: Update rust used in the repo version 1.64 ([#2272](https://github.com/coral-xyz/anchor/pull/2272))
+- lang: Update rust used in the repo version 1.62 ([#2272](https://github.com/coral-xyz/anchor/pull/2272))
+- cli: Allow custom cluster config ([#2271](https://github.com/coral-xyz/anchor/pull/2271)).
 
 ### Fixes
 
