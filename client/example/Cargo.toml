@@ -15,6 +15,5 @@ composite = { path = "../../tests/composite/programs/composite", features = ["no
 events = { path = "../../tests/events/programs/events", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
-rand = "0.7.3"
-clap = { version = "3.0.0-rc.0", features = ["derive"] }
+clap = { version = "4.0.26", features = ["derive"] }
 solana-sdk = "1.13.3"

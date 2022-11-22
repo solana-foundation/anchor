@@ -17,7 +17,7 @@ dev = []
 default = []
 
 [dependencies]
-clap = { version = "3.0.13", features = ["derive"] }
+clap = { version = "4.0.26", features = ["derive"] }
 anyhow = "1.0.32"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 anchor-lang = { path = "../lang", version = "0.25.0" }
@@ -33,15 +33,14 @@ solana-program = "1.13.3"
 solana-client = "1.13.3"
 solana-cli-config = "1.13.3"
 solana-faucet = "1.13.3"
-dirs = "3.0"
-heck = "0.3.1"
+dirs = "4.0"
+heck = "0.4.0"
 flate2 = "1.0.19"
-rand = "0.7.3"
 tar = "0.4.35"
 reqwest = { version = "0.11.4", features = ["multipart", "blocking"] }
 tokio = "1.0"
 pathdiff = "0.2.0"
-cargo_toml = "0.9.2"
+cargo_toml = "0.13.0"
 walkdir = "2.3.2"
 chrono = "0.4.19"
 portpicker = "0.1.1"

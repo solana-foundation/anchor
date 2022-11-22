@@ -2,8 +2,8 @@ use crate::is_hidden;
 use anchor_client::Cluster;
 use anchor_syn::idl::Idl;
 use anyhow::{anyhow, Context, Error, Result};
-use clap::{ArgEnum, Parser};
-use heck::SnakeCase;
+use clap::{Parser, ValueEnum};
+use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::pubkey::Pubkey;
@@ -94,7 +94,7 @@ impl Manifest {
 
     pub fn version(&self) -> String {
         match &self.package {
-            Some(package) => package.version.to_string(),
+            Some(package) => package.version().to_string(),
             _ => "0.0.0".to_string(),
         }
     }
@@ -323,7 +323,7 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ArgEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
 pub enum BootstrapMode {
     None,
     Debian,
@@ -1047,7 +1047,7 @@ impl Program {
                 path,
             ));
         }
-        let program_kp = Keypair::generate(&mut rand::rngs::OsRng);
+        let program_kp = Keypair::new();
         let mut file = File::create(&path)
             .with_context(|| format!("Error creating file with path: {}", path.display()))?;
         file.write_all(format!("{:?}", &program_kp.to_bytes()).as_bytes())?;

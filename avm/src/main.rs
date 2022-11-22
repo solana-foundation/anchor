@@ -15,12 +15,12 @@ pub struct Cli {
 pub enum Commands {
     #[clap(about = "Use a specific version of Anchor")]
     Use {
-        #[clap(parse(try_from_str = parse_version))]
+        #[clap(value_parser = parse_version)]
         version: Version,
     },
     #[clap(about = "Install a version of Anchor")]
     Install {
-        #[clap(parse(try_from_str = parse_version))]
+        #[clap(value_parser = parse_version)]
         version: Version,
         #[clap(long)]
         /// Flag to force installation even if the version
@@ -29,7 +29,7 @@ pub enum Commands {
     },
     #[clap(about = "Uninstall a version of Anchor")]
     Uninstall {
-        #[clap(parse(try_from_str = parse_version))]
+        #[clap(value_parser = parse_version)]
         version: Version,
     },
     #[clap(about = "List available versions of Anchor")]

@@ -21,7 +21,6 @@ use clap::Parser;
 use composite::accounts::{Bar, CompositeUpdate, Foo, Initialize};
 use composite::instruction as composite_instruction;
 use composite::{DummyA, DummyB};
-use rand::rngs::OsRng;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -72,8 +71,8 @@ fn composite(client: &Client, pid: Pubkey) -> Result<()> {
     let program = client.program(pid);
 
     // `Initialize` parameters.
-    let dummy_a = Keypair::generate(&mut OsRng);
-    let dummy_b = Keypair::generate(&mut OsRng);
+    let dummy_a = Keypair::new();
+    let dummy_b = Keypair::new();
 
     // Build and send a transaction.
     program
@@ -142,7 +141,7 @@ fn basic_2(client: &Client, pid: Pubkey) -> Result<()> {
     let program = client.program(pid);
 
     // `Create` parameters.
-    let counter = Keypair::generate(&mut OsRng);
+    let counter = Keypair::new();
     let authority = program.payer();
 
     // Build and send a transaction.

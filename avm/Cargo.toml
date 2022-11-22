@@ -13,10 +13,10 @@ name = "anchor"
 path = "src/anchor/main.rs"
 
 [dependencies]
-clap = { version = "3.0.13", features = [ "derive" ]}
+clap = { version = "4.0.26", features = [ "derive" ]}
 cfg-if = "1.0.0"
 anyhow = "1.0.32"
-dirs = "1.0.5"
+dirs = "4.0.0"
 semver = "1.0.4"
 serde = { version = "1.0.136", features = [ "derive" ]}
 serde_json = "1.0.78"
