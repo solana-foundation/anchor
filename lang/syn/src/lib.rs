@@ -197,7 +197,7 @@ impl AccountField {
     }
 
     pub fn ty_name(&self) -> Option<String> {
-        match self {
+        let qualified_ty_name = match self {
             AccountField::Field(field) => match &field.ty {
                 Ty::Account(account) => Some(parser::tts_to_string(&account.account_type_path)),
                 Ty::ProgramAccount(account) => {
@@ -206,7 +206,12 @@ impl AccountField {
                 _ => None,
             },
             AccountField::CompositeField(field) => Some(field.symbol.clone()),
-        }
+        };
+
+        qualified_ty_name.map(|name| match name.rsplit_once(" :: ") {
+            Some((_prefix, suffix)) => suffix.to_string(),
+            None => name,
+        })
     }
 }
 

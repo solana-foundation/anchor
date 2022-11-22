@@ -1,6 +1,8 @@
 //! The typescript example serves to show how one would setup an Anchor
 //! workspace with TypeScript tests and migrations.
 
+mod other;
+
 use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -19,6 +21,12 @@ pub mod pda_derivation {
         let base = &mut ctx.accounts.base;
         base.base_data = data;
         base.base_data_key = data_key;
+        Ok(())
+    }
+
+    pub fn init_another(ctx: Context<InitAnotherBase>, data: u64) -> Result<()> {
+        let base = &mut ctx.accounts.base;
+        base.data = data;
         Ok(())
     }
 
@@ -42,9 +50,24 @@ pub struct InitBase<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitAnotherBase<'info> {
+    #[account(
+        init,
+        payer = payer,
+        space = 8+8,
+    )]
+    base: Account<'info, crate::other::AnotherBaseAccount>,
+    #[account(mut)]
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(seed_a: u8)]
 pub struct InitMyAccount<'info> {
     base: Account<'info, BaseAccount>,
+    // Intentionally using this qualified form instead of importing to test parsing
+    another_base: Account<'info, crate::other::AnotherBaseAccount>,
     base2: AccountInfo<'info>,
     #[account(
         init,
@@ -63,6 +86,7 @@ pub struct InitMyAccount<'info> {
             &MY_SEED_U64.to_le_bytes(),
             base.base_data.to_le_bytes().as_ref(),
             base.base_data_key.as_ref(),
+            another_base.data.to_le_bytes().as_ref(),
         ],
         bump,
     )]

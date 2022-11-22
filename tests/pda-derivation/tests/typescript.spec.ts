@@ -15,6 +15,8 @@ describe("typescript", () => {
   const base = Keypair.generate();
   const dataKey = Keypair.generate();
   const data = new BN(1);
+  const another = Keypair.generate();
+  const anotherData = new BN(2);
   const seedA = 4;
 
   it("Inits the base account", async () => {
@@ -24,6 +26,14 @@ describe("typescript", () => {
         base: base.publicKey,
       })
       .signers([base])
+      .rpc();
+
+    await program.methods
+      .initAnother(anotherData)
+      .accounts({
+        base: another.publicKey,
+      })
+      .signers([another])
       .rpc();
   });
 
@@ -47,6 +57,7 @@ describe("typescript", () => {
         new anchor.BN(MY_SEED_U64).toArrayLike(Buffer, "le", 8),
         new anchor.BN(data).toArrayLike(Buffer, "le", 8),
         dataKey.publicKey.toBuffer(),
+        new anchor.BN(anotherData).toArrayLike(Buffer, "le", 8),
       ],
       program.programId
     )[0];
@@ -54,6 +65,7 @@ describe("typescript", () => {
     const tx = program.methods.initMyAccount(seedA).accounts({
       base: base.publicKey,
       base2: base.publicKey,
+      anotherBase: another.publicKey,
     });
 
     const keys = await tx.pubkeys();
@@ -87,6 +99,7 @@ describe("typescript", () => {
       .accounts({
         base: base.publicKey,
         base2: base.publicKey,
+        anotherBase: another.publicKey,
       })
       .pubkeys();
 
