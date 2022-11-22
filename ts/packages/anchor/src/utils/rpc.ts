@@ -13,6 +13,7 @@ import {
   RpcResponseAndContext,
   SimulatedTransactionResponse,
   SendTransactionError,
+  Context,
 } from "@solana/web3.js";
 import { chunks } from "../utils/common.js";
 import { Address, translateAddress } from "../program/common.js";
@@ -79,42 +80,78 @@ export async function getMultipleAccounts(
 ): Promise<
   Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
 > {
+  const results = await getMultipleAccountsAndContext(
+    connection,
+    publicKeys,
+    commitment
+  );
+  return results.map((result) => {
+    return result
+      ? { publicKey: result.publicKey, account: result.account }
+      : null;
+  });
+}
+
+export async function getMultipleAccountsAndContext(
+  connection: Connection,
+  publicKeys: PublicKey[],
+  commitment?: Commitment
+): Promise<
+  Array<null | {
+    context: Context;
+    publicKey: PublicKey;
+    account: AccountInfo<Buffer>;
+  }>
+> {
   if (publicKeys.length <= GET_MULTIPLE_ACCOUNTS_LIMIT) {
-    return await getMultipleAccountsCore(connection, publicKeys, commitment);
+    return await getMultipleAccountsAndContextCore(
+      connection,
+      publicKeys,
+      commitment
+    );
   } else {
     const batches = chunks(publicKeys, GET_MULTIPLE_ACCOUNTS_LIMIT);
     const results = await Promise.all<
-      Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
+      Array<null | {
+        publicKey: PublicKey;
+        account: AccountInfo<Buffer>;
+        context: Context;
+      }>
     >(
       batches.map((batch) =>
-        getMultipleAccountsCore(connection, batch, commitment)
+        getMultipleAccountsAndContextCore(connection, batch, commitment)
       )
     );
     return results.flat();
   }
 }
 
-async function getMultipleAccountsCore(
+async function getMultipleAccountsAndContextCore(
   connection: Connection,
   publicKeys: PublicKey[],
   commitmentOverride?: Commitment
 ): Promise<
-  Array<null | { publicKey: PublicKey; account: AccountInfo<Buffer> }>
+  Array<null | {
+    publicKey: PublicKey;
+    account: AccountInfo<Buffer>;
+    context: Context;
+  }>
 > {
   const commitment = commitmentOverride ?? connection.commitment;
-  const accounts = await connection.getMultipleAccountsInfo(
-    publicKeys,
-    commitment
-  );
-  return accounts.map((account, idx) => {
+  const { value: accountInfos, context } =
+    await connection.getMultipleAccountsInfoAndContext(publicKeys, commitment);
+  const accounts = accountInfos.map((account, idx) => {
     if (account === null) {
       return null;
     }
     return {
       publicKey: publicKeys[idx],
       account,
+      context,
     };
   });
+
+  return accounts;
 }
 
 // copy from @solana/web3.js that has a commitment param

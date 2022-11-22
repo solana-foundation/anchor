@@ -8,6 +8,8 @@ import {
   Commitment,
   GetProgramAccountsFilter,
   AccountInfo,
+  RpcResponseAndContext,
+  Context,
 } from "@solana/web3.js";
 import Provider, { getProvider } from "../../provider.js";
 import { Idl, IdlAccountDef } from "../../idl.js";
@@ -133,14 +135,30 @@ export class AccountClient<
     address: Address,
     commitment?: Commitment
   ): Promise<T | null> {
-    const accountInfo = await this.getAccountInfo(address, commitment);
-    if (accountInfo === null) {
-      return null;
-    }
-    return this._coder.accounts.decode<T>(
-      this._idlAccount.name,
-      accountInfo.data
+    const { data } = await this.fetchNullableAndContext(address, commitment);
+    return data;
+  }
+
+  /**
+   * Returns a deserialized account along with the associated rpc response context, returning null if it doesn't exist.
+   *
+   * @param address The address of the account to fetch.
+   */
+  async fetchNullableAndContext(
+    address: Address,
+    commitment?: Commitment
+  ): Promise<{ data: T | null; context: Context }> {
+    const accountInfo = await this.getAccountInfoAndContext(
+      address,
+      commitment
     );
+    const { value, context } = accountInfo;
+    return {
+      data: value
+        ? this._coder.accounts.decode<T>(this._idlAccount.name, value.data)
+        : null,
+      context,
+    };
   }
 
   /**
@@ -149,11 +167,30 @@ export class AccountClient<
    * @param address The address of the account to fetch.
    */
   async fetch(address: Address, commitment?: Commitment): Promise<T> {
-    const data = await this.fetchNullable(address, commitment);
+    const { data } = await this.fetchNullableAndContext(address, commitment);
     if (data === null) {
       throw new Error(`Account does not exist ${address.toString()}`);
     }
     return data;
+  }
+
+  /**
+   * Returns a deserialized account along with the associated rpc response context.
+   *
+   * @param address The address of the account to fetch.
+   */
+  async fetchAndContext(
+    address: Address,
+    commitment?: Commitment
+  ): Promise<{ data: T | null; context: Context }> {
+    const { data, context } = await this.fetchNullableAndContext(
+      address,
+      commitment
+    );
+    if (data === null) {
+      throw new Error(`Account does not exist ${address.toString()}`);
+    }
+    return { data, context };
   }
 
   /**
@@ -166,21 +203,36 @@ export class AccountClient<
     addresses: Address[],
     commitment?: Commitment
   ): Promise<(Object | null)[]> {
-    const accounts = await rpcUtil.getMultipleAccounts(
+    const accounts = await this.fetchMultipleAndContext(addresses, commitment);
+    return accounts.map((account) => (account ? account.data : null));
+  }
+
+  /**
+   * Returns multiple deserialized accounts.
+   * Accounts not found or with wrong discriminator are returned as null.
+   *
+   * @param addresses The addresses of the accounts to fetch.
+   */
+  async fetchMultipleAndContext(
+    addresses: Address[],
+    commitment?: Commitment
+  ): Promise<({ data: Object; context: Context } | null)[]> {
+    const accounts = await rpcUtil.getMultipleAccountsAndContext(
       this._provider.connection,
       addresses.map((address) => translateAddress(address)),
       commitment
     );
 
     // Decode accounts where discriminator is correct, null otherwise
-    return accounts.map((account) => {
-      if (account == null) {
+    return accounts.map((result) => {
+      if (result == null) {
         return null;
       }
-      return this._coder.accounts.decode(
-        this._idlAccount.name,
-        account?.account.data
-      );
+      const { account, context } = result;
+      return {
+        data: this._coder.accounts.decode(this._idlAccount.name, account.data),
+        context,
+      };
     });
   }
 
@@ -342,6 +394,16 @@ export class AccountClient<
     commitment?: Commitment
   ): Promise<AccountInfo<Buffer> | null> {
     return await this._provider.connection.getAccountInfo(
+      translateAddress(address),
+      commitment
+    );
+  }
+
+  async getAccountInfoAndContext(
+    address: Address,
+    commitment?: Commitment
+  ): Promise<RpcResponseAndContext<AccountInfo<Buffer> | null>> {
+    return await this._provider.connection.getAccountInfoAndContext(
       translateAddress(address),
       commitment
     );
