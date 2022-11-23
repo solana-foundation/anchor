@@ -14,5 +14,5 @@ wallet = "~/.config/solana/id.json"
 startup_wait = 20000
 
 [[test.validator.account]]
-address = "C4XeBpzX4tDjGV1gkLsj7jJh6XHunVqAykANWCfTLszw"
+address = "3vMPj13emX9JmifYcWc77ekEzV1F37ga36E1YeSr6Mdj"
 filename = "./tests/accounts/SOME_ACCOUNT.json"

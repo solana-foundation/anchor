@@ -24,10 +24,8 @@ describe("multiple-suites", () => {
       new PublicKey("3vMPj13emX9JmifYcWc77ekEzV1F37ga36E1YeSr6Mdj")
     );
 
-    // TODO: This test is failing, SOME_TOKEN is not null and SOME_ACCOUNT is null
-    // and i cannot figure out how this works. Possibly broken by solana-cli v1.14.7
-    // assert.isNull(SOME_TOKEN);
-    // assert.isNotNull(SOME_ACCOUNT);
+    assert.isNull(SOME_TOKEN);
+    assert.isNotNull(SOME_ACCOUNT);
 
     console.log("Your transaction signature", tx);
   });
