@@ -334,21 +334,19 @@ struct Execution {
 
 impl Execution {
     pub fn new(logs: &mut &[String]) -> Result<Self, ClientError> {
-        let l = &logs[0];
-        *logs = &logs[1..];
-
         let re = Regex::new(r"^Program (.*) invoke.*$").unwrap();
-        let c = re
-            .captures(l)
-            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?;
-        let program = c
-            .get(1)
-            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?
-            .as_str()
-            .to_string();
-        Ok(Self {
-            stack: vec![program],
-        })
+        let programs: Vec<String> = logs
+            .iter()
+            .filter_map(|l| re.captures(l))
+            .filter_map(|str| str.get(1))
+            .map(|matched_item| matched_item.as_str().to_string())
+            .collect();
+
+        if programs.is_empty() {
+            return Err(ClientError::MissingInvokeLogError());
+        }
+
+        Ok(Self { stack: programs })
     }
 
     pub fn program(&self) -> String {
@@ -386,6 +384,8 @@ pub enum ClientError {
     SolanaClientPubsubError(#[from] PubsubClientError),
     #[error("Unable to parse log: {0}")]
     LogParseError(String),
+    #[error("Program invoke log is missing")]
+    MissingInvokeLogError(),
 }
 
 /// `RequestBuilder` provides a builder interface to create and send
@@ -602,6 +602,25 @@ mod tests {
         assert_eq!(
             exe.stack[0],
             "7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw".to_string()
+        );
+    }
+
+    #[test]
+    fn new_execution_multiple_instruction() {
+        let mut logs: &[String] = &[
+            "Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string(),
+            "Program 7y8vdZEHOEWalQjFYXzymGycNmtcdHwUgFjkuVJywatW invoke [1]".to_string(),
+        ];
+        let exe = Execution::new(&mut logs).unwrap();
+
+        assert!(exe.stack.len() == 2);
+        assert_eq!(
+            exe.stack[0],
+            "7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw".to_string()
+        );
+        assert_eq!(
+            exe.stack[1],
+            "7y8vdZEHOEWalQjFYXzymGycNmtcdHwUgFjkuVJywatW".to_string()
         );
     }
 
