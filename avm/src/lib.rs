@@ -88,7 +88,7 @@ pub fn install_version(version: &Version, force: bool) -> Result<()> {
     }
 
     let exit = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "install",
             "--git",
             "https://github.com/coral-xyz/anchor",

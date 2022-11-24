@@ -122,7 +122,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for ProgramStat
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &(*self.inner).account
+        &(self.inner).account
     }
 }
 
