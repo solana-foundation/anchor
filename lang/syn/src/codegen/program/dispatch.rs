@@ -1,5 +1,6 @@
 use crate::codegen::program::common::*;
 use crate::Program;
+use heck::CamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -35,14 +36,25 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 methods
                     .iter()
                     .map(|ix: &crate::StateIx| {
-                        let name = &ix.raw_method.sig.ident.to_string();
                         let ix_method_name: proc_macro2::TokenStream =
-                            { format!("__{}", name).parse().unwrap() };
-                        let sighash_arr = sighash(SIGHASH_STATE_NAMESPACE, name);
-                        let sighash_tts: proc_macro2::TokenStream =
-                            format!("{:?}", sighash_arr).parse().unwrap();
+                            format!("__{}", ix.raw_method.sig.ident).parse().expect(
+                                "Failed to parse ix method name with `__` as `TokenStream`",
+                            );
+
+                        let ix_name_camel: proc_macro2::TokenStream = ix
+                            .raw_method
+                            .sig
+                            .ident
+                            .to_string()
+                            .as_str()
+                            .to_camel_case()
+                            .parse()
+                            .expect(
+                                "Failed to parse state ix method name in camel as `TokenStream`",
+                            );
+
                         quote! {
-                            #sighash_tts => {
+                            instruction::state::#ix_name_camel::DISCRIMINATOR => {
                                 __private::__state::#ix_method_name(
                                     program_id,
                                     accounts,
@@ -99,11 +111,15 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .iter()
         .map(|ix| {
             let ix_method_name = &ix.raw_method.sig.ident;
-            let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, &ix_method_name.to_string());
-            let sighash_tts: proc_macro2::TokenStream =
-                format!("{:?}", sighash_arr).parse().unwrap();
+            let ix_name_camel: proc_macro2::TokenStream = ix_method_name
+                .to_string()
+                .as_str()
+                .to_camel_case()
+                .parse()
+                .expect("Failed to parse ix method name in camel as `TokenStream`");
+
             quote! {
-                #sighash_tts => {
+                instruction::#ix_name_camel::DISCRIMINATOR => {
                     __private::__global::#ix_method_name(
                         program_id,
                         accounts,
@@ -162,6 +178,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 }
             }
 
+            use anchor_lang::Discriminator;
             match sighash {
                 #ctor_state_dispatch_arm
                 #(#state_dispatch_arms)*

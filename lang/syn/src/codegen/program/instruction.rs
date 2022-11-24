@@ -39,11 +39,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 /// constructor.
                 #strct
 
-                impl anchor_lang::InstructionData for New {
-                    fn data(&self) -> Vec<u8> {
-                        let mut d = #sighash_tts.to_vec();
-                        d.append(&mut self.try_to_vec().expect("Should always serialize"));
-                        d
+                impl anchor_lang::Discriminator for New {
+                    const DISCRIMINATOR: [u8; 8] = #sighash_tts;
+                }
+                impl anchor_lang::InstructionData for New {}
+                impl anchor_lang::Owner for New {
+                    fn owner() -> Pubkey {
+                        ID
                     }
                 }
             }
@@ -82,11 +84,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             let sighash_tts: proc_macro2::TokenStream =
                                 format!("{:?}", sighash_arr).parse().unwrap();
                             quote! {
-                                impl anchor_lang::InstructionData for #ix_name_camel {
-                                    fn data(&self) -> Vec<u8> {
-                                        let mut d = #sighash_tts.to_vec();
-                                        d.append(&mut self.try_to_vec().expect("Should always serialize"));
-                                        d
+                                impl anchor_lang::Discriminator for #ix_name_camel {
+                                    const DISCRIMINATOR: [u8; 8] = #sighash_tts;
+                                }
+                                impl anchor_lang::InstructionData for #ix_name_camel {}
+                                impl anchor_lang::Owner for #ix_name_camel {
+                                    fn owner() -> Pubkey {
+                                        ID
                                     }
                                 }
                             }
@@ -138,11 +142,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let sighash_tts: proc_macro2::TokenStream =
                     format!("{:?}", sighash_arr).parse().unwrap();
                 quote! {
-                    impl anchor_lang::InstructionData for #ix_name_camel {
-                        fn data(&self) -> Vec<u8> {
-                            let mut d = #sighash_tts.to_vec();
-                            d.append(&mut self.try_to_vec().expect("Should always serialize"));
-                            d
+                    impl anchor_lang::Discriminator for #ix_name_camel {
+                        const DISCRIMINATOR: [u8; 8] = #sighash_tts;
+                    }
+                    impl anchor_lang::InstructionData for #ix_name_camel {}
+                    impl anchor_lang::Owner for #ix_name_camel {
+                        fn owner() -> Pubkey {
+                            ID
                         }
                     }
                 }

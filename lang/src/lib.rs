@@ -182,8 +182,12 @@ pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 /// `Sha256(<namespace>:<method_name>)[..8] || BorshSerialize(args)`.
 /// `args` is a borsh serialized struct of named fields for each argument given
 /// to an instruction.
-pub trait InstructionData: AnchorSerialize {
-    fn data(&self) -> Vec<u8>;
+pub trait InstructionData: Discriminator + AnchorSerialize {
+    fn data(&self) -> Vec<u8> {
+        let mut d = Self::discriminator().to_vec();
+        d.append(&mut self.try_to_vec().expect("Should always serialize"));
+        d
+    }
 }
 
 /// An event that can be emitted via a Solana log. See [`emit!`](crate::prelude::emit) for an example.
@@ -201,7 +205,10 @@ pub trait EventData: AnchorSerialize + Discriminator {
 
 /// 8 byte unique identifier for a type.
 pub trait Discriminator {
-    fn discriminator() -> [u8; 8];
+    const DISCRIMINATOR: [u8; 8];
+    fn discriminator() -> [u8; 8] {
+        Self::DISCRIMINATOR
+    }
 }
 
 /// Bump seed for program derived addresses.

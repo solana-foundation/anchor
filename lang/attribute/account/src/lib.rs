@@ -139,9 +139,7 @@ pub fn account(
 
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::Discriminator for #account_name #type_gen #where_clause {
-                    fn discriminator() -> [u8; 8] {
-                        #discriminator
-                    }
+                    const DISCRIMINATOR: [u8; 8] = #discriminator;
                 }
 
                 // This trait is useful for clients deserializing accounts.
@@ -211,9 +209,7 @@ pub fn account(
 
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::Discriminator for #account_name #type_gen #where_clause {
-                    fn discriminator() -> [u8; 8] {
-                        #discriminator
-                    }
+                    const DISCRIMINATOR: [u8; 8] = #discriminator;
                 }
 
                 #owner_impl
