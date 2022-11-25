@@ -194,6 +194,9 @@ pub enum ErrorCode {
     /// 4100 - The declared program id does not match actual program id
     #[msg("The declared program id does not match the actual program id")]
     DeclaredProgramIdMismatch = 4100,
+    /// 4101 - You cannot/should not initialize the payer account as a program account
+    #[msg("You cannot/should not initialize the payer account as a program account")]
+    TryingToInitPayerAsProgramAccount = 4101,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
