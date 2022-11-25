@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: cargo build
@@ -39,12 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
 
       - run: cargo install --path cli anchor-cli --locked --force
       - run: chmod +x ~/.cargo/bin/anchor
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/anchor
@@ -57,8 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/
@@ -88,18 +88,18 @@ jobs:
           - path: tests/composite/
             name: composite.so
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
 
       - run: cd ${{ matrix.node.path }} && anchor build --skip-lint
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.node.name }}
           path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
@@ -111,29 +111,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: events.so
           path: tests/events/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: basic_4.so
           path: examples/tutorial/basic-4/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: basic_2.so
           path: examples/tutorial/basic-2/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: composite.so
           path: tests/composite/target/deploy/
@@ -147,12 +147,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/
@@ -179,7 +179,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   timeout-minutes: 30
   #   steps:
-  #     - uses: actions/checkout@v2
+  #     - uses: actions/checkout@v3
   #     - uses: ./.github/actions/setup/
   #     - uses: ./.github/actions/setup-ts/
   #     # using an outdated validator but that
@@ -193,7 +193,7 @@ jobs:
   #       shell: bash
   #     - run: solana config set --url localhost
   #       shell: bash
-  #     - uses: actions/download-artifact@v2
+  #     - uses: actions/download-artifact@v3
   #       with:
   #         name: anchor-binary-no-caching
   #         path: ~/.cargo/bin/
@@ -210,12 +210,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/
@@ -294,12 +294,12 @@ jobs:
           - cmd: cd tests/anchor-cli-idl && ./test.sh
             path: tests/anchor-cli-idl
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary-no-caching
           path: ~/.cargo/bin/

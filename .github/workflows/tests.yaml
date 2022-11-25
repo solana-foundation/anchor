@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache Cargo registry + index
         id: cache-cargo-build
         with:
@@ -54,10 +54,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache Cargo registry + index
         id: cache-anchor
         with:
@@ -73,7 +73,7 @@ jobs:
       - run: cargo install --path cli anchor-cli --locked --force
         if: env.CARGO_PROFILE != 'debug'
       - run: chmod +x ~/.cargo/bin/anchor
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/anchor
@@ -86,8 +86,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
@@ -96,31 +96,31 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-ts/
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: basic-0 cache
         id: cache-basic-0
         with:
           path: ./examples/tutorial/basic-0/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: basic-1 cache
         id: cache-basic-1
         with:
           path: ./examples/tutorial/basic-1/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: basic-2 cache
         id: cache-basic-2
         with:
           path: ./examples/tutorial/basic-2/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: basic-3 cache
         id: cache-basic-3
         with:
           path: ./examples/tutorial/basic-3/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: basic-4 cache
         id: cache-basic-4
         with:
@@ -147,18 +147,18 @@ jobs:
           - path: tests/composite/
             name: composite.so
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
 
       - run: cd ${{ matrix.node.path }} && anchor build --skip-lint
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.node.name }}
           path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
@@ -170,33 +170,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: events.so
           path: tests/events/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: basic_4.so
           path: examples/tutorial/basic-4/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: basic_2.so
           path: examples/tutorial/basic-2/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: composite.so
           path: tests/composite/target/deploy/
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache client/example target
         id: cache-test-target
         with:
@@ -212,12 +212,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache Cargo registry + index
         id: cache-anchor
         with:
@@ -229,13 +229,13 @@ jobs:
             ./target/
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache tests/bpf-upgradeable-state target
         id: cache-test-target
         with:
@@ -263,10 +263,10 @@ jobs:
   #   runs-on: ubuntu-latest
   #   timeout-minutes: 30
   #   steps:
-  #     - uses: actions/checkout@v2
+  #     - uses: actions/checkout@v3
   #     - uses: ./.github/actions/setup/
   #     - uses: ./.github/actions/setup-ts/
-  #     - uses: actions/cache@v2
+  #     - uses: actions/cache@v3
   #       name: Cache Solana Tool Suite
   #       id: cache-solana
   #       with:
@@ -285,13 +285,13 @@ jobs:
   #       shell: bash
   #     - run: solana config set --url localhost
   #       shell: bash
-  #     - uses: actions/download-artifact@v2
+  #     - uses: actions/download-artifact@v3
   #       with:
   #         name: anchor-binary
   #         path: ~/.cargo/bin/
   #     - run: chmod +x ~/.cargo/bin/anchor
 
-  #     - uses: actions/cache@v2
+  #     - uses: actions/cache@v3
   #       name: Cache tests/misc target
   #       id: cache-test-target
   #       with:
@@ -309,12 +309,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache Cargo registry + index
         id: cache-anchor
         with:
@@ -326,7 +326,7 @@ jobs:
             ./target/
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
@@ -407,12 +407,12 @@ jobs:
           - cmd: cd tests/anchor-cli-idl && ./test.sh
             path: tests/anchor-cli-idl
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache Cargo registry + index
         id: cache-anchor
         with:
@@ -424,13 +424,13 @@ jobs:
             ./target/
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: anchor-binary
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         name: Cache ${{ matrix.node.path }} target
         id: cache-test-target
         with:
