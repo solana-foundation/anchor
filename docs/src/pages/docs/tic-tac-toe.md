@@ -416,7 +416,7 @@ You can create then a new `it` test, setup the game like in the previous test, b
 ```typescript
 it('player one wins', async () => {
   const gameKeypair = anchor.web3.Keypair.generate()
-  const playerOne = program.provider.wallet
+  const playerOne = (program.provider as anchor.AnchorProvider).wallet
   const playerTwo = anchor.web3.Keypair.generate()
   await program.methods
     .setupGame(playerTwo.publicKey)
