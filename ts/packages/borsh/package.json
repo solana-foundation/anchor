@@ -17,8 +17,7 @@
   "scripts": {
     "build": "tsc",
     "test": "",
-    "clean": "rm -rf dist",
-    "prepare": "run-s clean build"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "bn.js": "^5.1.2",
