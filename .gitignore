@@ -22,3 +22,4 @@ cli/npm-package/*.tgz
 docker-target
 .rollup.cache/
 test-keypair.json
+tsconfig.tsbuildinfo
