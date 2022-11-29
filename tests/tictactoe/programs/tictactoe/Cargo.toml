@@ -2,7 +2,7 @@
 name = "tictactoe"
 version = "0.1.0"
 description = "Created with Anchor"
-rust-version = "1.62"
+rust-version = "1.59"
 edition = "2021"
 
 [lib]

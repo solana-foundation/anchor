@@ -2,7 +2,7 @@
 name = "example"
 version = "0.1.0"
 authors = ["Armani Ferrante <armaniferrante@gmail.com>"]
-rust-version = "1.62"
+rust-version = "1.59"
 edition = "2021"
 
 [workspace]
@@ -16,4 +16,4 @@ events = { path = "../../tests/events/programs/events", features = ["no-entrypoi
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
 clap = { version = "4.0.26", features = ["derive"] }
-solana-sdk = "1.13.3"
+solana-sdk = "1.13.5"
