@@ -132,7 +132,8 @@ export class AnchorProvider implements Provider {
       opts = this.opts;
     }
 
-    tx.feePayer = this.wallet.publicKey;
+    tx.feePayer = tx.feePayer || this.wallet.publicKey;
+
     tx.recentBlockhash = (
       await this.connection.getLatestBlockhash(opts.preflightCommitment)
     ).blockhash;
@@ -172,6 +173,9 @@ export class AnchorProvider implements Provider {
 
   /**
    * Similar to `send`, but for an array of transactions and signers.
+   *
+   * @param txWithSigners Array of transactions and signers.
+   * @param opts          Transaction confirmation options.
    */
   async sendAll(
     txWithSigners: { tx: Transaction; signers?: Signer[] }[],
@@ -188,7 +192,8 @@ export class AnchorProvider implements Provider {
       let tx = r.tx;
       let signers = r.signers ?? [];
 
-      tx.feePayer = this.wallet.publicKey;
+      tx.feePayer = tx.feePayer || this.wallet.publicKey;
+
       tx.recentBlockhash = blockhash.blockhash;
 
       signers.forEach((kp) => {
@@ -226,7 +231,8 @@ export class AnchorProvider implements Provider {
     commitment?: Commitment,
     includeAccounts?: boolean | PublicKey[]
   ): Promise<SuccessfulTxSimulationResponse> {
-    tx.feePayer = this.wallet.publicKey;
+    tx.feePayer = tx.feePayer || this.wallet.publicKey;
+
     tx.recentBlockhash = (
       await this.connection.getLatestBlockhash(
         commitment ?? this.connection.commitment
