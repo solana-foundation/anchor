@@ -2916,6 +2916,10 @@ fn publish(
         println!("PACKING: README.md");
         tar.append_path("README.md")?;
     }
+    if Path::new("idl.json").exists() {
+        println!("PACKING: idl.json");
+        tar.append_path("idl.json")?;
+    }
 
     // All workspace programs.
     for path in cfg.get_program_list()? {

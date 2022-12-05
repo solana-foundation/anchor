@@ -588,6 +588,7 @@ fn deser_programs(
                                 path: None,
                                 idl: None,
                             },
+
                             serde_json::Value::Object(_) => {
                                 serde_json::from_value(program_id.clone())
                                     .map_err(|_| anyhow!("Unable to read toml"))?
