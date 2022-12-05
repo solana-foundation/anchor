@@ -24,9 +24,12 @@
     "buffer-layout": "^1.2.0"
   },
   "peerDependencies": {
-    "@solana/web3.js": "^1.2.0"
+    "@solana/web3.js": "^1.68.0"
   },
   "files": [
     "dist"
-  ]
+  ],
+  "devDependencies": {
+    "@types/node": "^18.11.10"
+  }
 }

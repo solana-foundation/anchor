@@ -32,7 +32,7 @@ export default {
     }),
   ],
   external: [
-    "@project-serum/borsh",
+    "@coral-xyz/borsh",
     "@solana/web3.js",
     "assert",
     "base64-js",

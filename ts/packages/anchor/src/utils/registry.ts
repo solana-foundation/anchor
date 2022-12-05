@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import fetch from "cross-fetch";
-import * as borsh from "@project-serum/borsh";
+import * as borsh from "@coral-xyz/borsh";
 import { Connection, PublicKey } from "@solana/web3.js";
 
 /**

@@ -20,6 +20,8 @@ runs:
         path: |
           ./ts/dist/
         key: solana-${{ runner.os }}-v0000-${{ env.NODE_VERSION }}-${{ hashFiles('./ts/**/*.ts') }}
+    - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build && cd ../../../
+      shell: bash
     - run: cd ts/packages/anchor && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../../../
       shell: bash
     - run: cd ts/packages/spl-associated-token-account && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../../../
