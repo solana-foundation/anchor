@@ -121,6 +121,8 @@ export type IdlType =
   | "f64"
   | "u128"
   | "i128"
+  | "u256"
+  | "i256"
   | "bytes"
   | "string"
   | "publicKey"

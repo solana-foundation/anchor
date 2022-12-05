@@ -51,6 +51,12 @@ export class IdlCoder {
       case "i128": {
         return borsh.i128(fieldName);
       }
+      case "u256": {
+        return borsh.u256(fieldName);
+      }
+      case "i256": {
+        return borsh.i256(fieldName);
+      }
       case "bytes": {
         return borsh.vecU8(fieldName);
       }

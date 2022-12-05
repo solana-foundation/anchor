@@ -121,7 +121,7 @@ type TypeMap = {
 } & {
   [K in "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "f32" | "f64"]: number;
 } & {
-  [K in "u64" | "i64" | "u128" | "i128"]: BN;
+  [K in "u64" | "i64" | "u128" | "i128" | "u256" | "i256"]: BN;
 };
 
 export type DecodeType<T extends IdlType, Defined> = T extends keyof TypeMap
