@@ -176,12 +176,16 @@ export class EventParser {
   // its emission, thereby allowing us to know if a given log event was
   // emitted by *this* program. If it was, then we parse the raw string and
   // emit the event if the string matches the event being subscribed to.
-  public *parseLogs(logs: string[]) {
+  public *parseLogs(logs: string[], errorOnDecodeFailure: boolean = false) {
     const logScanner = new LogScanner(logs);
     const execution = new ExecutionContext();
     let log = logScanner.next();
     while (log !== null) {
-      let [event, newProgram, didPop] = this.handleLog(execution, log);
+      let [event, newProgram, didPop] = this.handleLog(
+        execution,
+        log,
+        errorOnDecodeFailure
+      );
       if (event) {
         yield event;
       }
@@ -201,14 +205,15 @@ export class EventParser {
   // execution stack).
   private handleLog(
     execution: ExecutionContext,
-    log: string
+    log: string,
+    errorOnDecodeFailure: boolean
   ): [Event | null, string | null, boolean] {
     // Executing program is this program.
     if (
       execution.stack.length > 0 &&
       execution.program() === this.programId.toString()
     ) {
-      return this.handleProgramLog(log);
+      return this.handleProgramLog(log, errorOnDecodeFailure);
     }
     // Executing program is not this program.
     else {
@@ -218,7 +223,8 @@ export class EventParser {
 
   // Handles logs from *this* program.
   private handleProgramLog(
-    log: string
+    log: string,
+    errorOnDecodeFailure: boolean
   ): [Event | null, string | null, boolean] {
     // This is a `msg!` log or a `sol_log_data` log.
     if (log.startsWith(PROGRAM_LOG) || log.startsWith(PROGRAM_DATA)) {
@@ -226,6 +232,10 @@ export class EventParser {
         ? log.slice(PROGRAM_LOG_START_INDEX)
         : log.slice(PROGRAM_DATA_START_INDEX);
       const event = this.coder.events.decode(logStr);
+
+      if (errorOnDecodeFailure && event === null) {
+        throw new Error(`Unable to decode event ${logStr}`);
+      }
       return [event, null, false];
     }
     // System log.
