@@ -221,9 +221,49 @@ describe("{}", () => {{
     )
 }
 
-pub fn package_json() -> String {
+pub fn jest(name: &str) -> String {
     format!(
-        r#"{{
+        r#"const anchor = require("@project-serum/anchor");
+
+describe("{}", () => {{
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.AnchorProvider.env());
+
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const program = anchor.workspace.{};
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+"#,
+        name,
+        name.to_upper_camel_case(),
+    )
+}
+
+pub fn package_json(jest: bool) -> String {
+    if jest {
+        format!(
+            r#"{{
+        "scripts": {{
+            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+        }},
+        "dependencies": {{
+            "@project-serum/anchor": "^{0}"
+        }},
+        "devDependencies": {{
+            "jest": "^29.0.3",
+            "prettier": "^2.6.2"
+        }}
+    }}
+    "#,
+            VERSION
+        )
+    } else {
+        format!(
+            r#"{{
     "scripts": {{
         "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
         "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
@@ -238,13 +278,37 @@ pub fn package_json() -> String {
     }}
 }}
 "#,
-        VERSION
-    )
+            VERSION
+        )
+    }
 }
 
-pub fn ts_package_json() -> String {
-    format!(
-        r#"{{
+pub fn ts_package_json(jest: bool) -> String {
+    if jest {
+        format!(
+            r#"{{
+        "scripts": {{
+            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+        }},
+        "dependencies": {{
+            "@project-serum/anchor": "^{0}"
+        }},
+        "devDependencies": {{
+            "@types/bn.js": "^5.1.0",
+            "@types/jest": "^29.0.3",
+            "jest": "^29.0.3",
+            "prettier": "^2.6.2",
+            "ts-jest": "^29.0.2",
+            "typescript": "^4.3.5"
+        }}
+    }}
+    "#,
+            VERSION
+        )
+    } else {
+        format!(
+            r#"{{
     "scripts": {{
         "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
         "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
@@ -264,8 +328,9 @@ pub fn ts_package_json() -> String {
     }}
 }}
 "#,
-        VERSION
-    )
+            VERSION
+        )
+    }
 }
 
 pub fn ts_mocha(name: &str) -> String {
@@ -295,18 +360,59 @@ describe("{}", () => {{
     )
 }
 
-pub fn ts_config() -> &'static str {
-    r#"{
-  "compilerOptions": {
-    "types": ["mocha", "chai"],
-    "typeRoots": ["./node_modules/@types"],
-    "lib": ["es2015"],
-    "module": "commonjs",
-    "target": "es6",
-    "esModuleInterop": true
-  }
+pub fn ts_jest(name: &str) -> String {
+    format!(
+        r#"import * as anchor from "@project-serum/anchor";
+import {{ Program }} from "@project-serum/anchor";
+import {{ {} }} from "../target/types/{}";
+
+describe("{}", () => {{
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.AnchorProvider.env());
+
+  const program = anchor.workspace.{} as Program<{}>;
+
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+"#,
+        name.to_upper_camel_case(),
+        name.to_snake_case(),
+        name,
+        name.to_upper_camel_case(),
+        name.to_upper_camel_case(),
+    )
 }
-"#
+
+pub fn ts_config(jest: bool) -> &'static str {
+    if jest {
+        r#"{
+            "compilerOptions": {
+              "types": ["jest"],
+              "typeRoots": ["./node_modules/@types"],
+              "lib": ["es2015"],
+              "module": "commonjs",
+              "target": "es6",
+              "esModuleInterop": true
+            }
+          }
+          "#
+    } else {
+        r#"{
+            "compilerOptions": {
+              "types": ["mocha", "chai"],
+              "typeRoots": ["./node_modules/@types"],
+              "lib": ["es2015"],
+              "module": "commonjs",
+              "target": "es6",
+              "esModuleInterop": true
+            }
+          }
+          "#
+    }
 }
 
 pub fn git_ignore() -> &'static str {
