@@ -3046,12 +3046,13 @@ fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
 }
 
 fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    for program in cfg.read_all_programs()? {
-        let pubkey = program.pubkey()?;
-        println!("{}: {}", program.lib_name, pubkey);
-    }
-    Ok(())
+    with_workspace(cfg_override, |cfg| {
+        for program in cfg.read_all_programs()? {
+            let pubkey = program.pubkey()?;
+            println!("{}: {}", program.lib_name, pubkey);
+        }
+        Ok(())
+    })
 }
 
 fn localnet(
