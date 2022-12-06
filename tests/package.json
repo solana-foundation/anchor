@@ -37,6 +37,7 @@
     "declare-id",
     "cpi-returns",
     "multiple-suites",
+    "multiple-suites-run-single",
     "bpf-upgradeable-state"
   ],
   "dependencies": {

@@ -167,6 +167,9 @@ pub enum Command {
         /// to be able to check the transactions.
         #[clap(long)]
         detach: bool,
+        /// Run the test suites under the specified path
+        #[clap(long)]
+        run: Vec<String>,
         args: Vec<String>,
         /// Arguments to pass to the underlying `cargo build-bpf` command.
         #[clap(required = false, last = true)]
@@ -426,6 +429,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_local_validator,
             skip_build,
             detach,
+            run,
             args,
             cargo_args,
             skip_lint,
@@ -436,6 +440,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_build,
             skip_lint,
             detach,
+            run,
             args,
             cargo_args,
         ),
@@ -1863,9 +1868,19 @@ fn test(
     skip_build: bool,
     skip_lint: bool,
     detach: bool,
+    tests_to_run: Vec<String>,
     extra_args: Vec<String>,
     cargo_args: Vec<String>,
 ) -> Result<()> {
+    let test_paths = tests_to_run
+        .iter()
+        .map(|path| {
+            PathBuf::from(path)
+                .canonicalize()
+                .map_err(|_| anyhow!("Wrong path {}", path))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
     with_workspace(cfg_override, |cfg| {
         // Build if needed.
         if !skip_build {
@@ -1887,7 +1902,7 @@ fn test(
         }
 
         let root = cfg.path().parent().unwrap().to_owned();
-        cfg.add_test_config(root)?;
+        cfg.add_test_config(root, test_paths)?;
 
         // Run the deploy against the cluster in two cases:
         //

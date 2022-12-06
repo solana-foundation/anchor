@@ -341,8 +341,12 @@ pub struct BuildConfig {
 }
 
 impl Config {
-    pub fn add_test_config(&mut self, root: impl AsRef<Path>) -> Result<()> {
-        self.test_config = TestConfig::discover(root)?;
+    pub fn add_test_config(
+        &mut self,
+        root: impl AsRef<Path>,
+        test_paths: Vec<PathBuf>,
+    ) -> Result<()> {
+        self.test_config = TestConfig::discover(root, test_paths)?;
         Ok(())
     }
 
@@ -662,14 +666,17 @@ impl Deref for TestConfig {
 }
 
 impl TestConfig {
-    pub fn discover(root: impl AsRef<Path>) -> Result<Option<Self>> {
+    pub fn discover(root: impl AsRef<Path>, test_paths: Vec<PathBuf>) -> Result<Option<Self>> {
         let walker = WalkDir::new(root).into_iter();
         let mut test_suite_configs = HashMap::new();
         for entry in walker.filter_entry(|e| !is_hidden(e)) {
             let entry = entry?;
             if entry.file_name() == "Test.toml" {
-                let test_toml = TestToml::from_path(entry.path())?;
-                test_suite_configs.insert(entry.path().into(), test_toml);
+                let entry_path = entry.path();
+                let test_toml = TestToml::from_path(entry_path)?;
+                if test_paths.is_empty() || test_paths.iter().any(|p| entry_path.starts_with(p)) {
+                    test_suite_configs.insert(entry.path().into(), test_toml);
+                }
             }
         }
 
