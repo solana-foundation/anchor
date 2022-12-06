@@ -210,9 +210,33 @@ export class AnchorProvider implements Provider {
     for (let k = 0; k < txs.length; k += 1) {
       const tx = signedTxs[k];
       const rawTx = tx.serialize();
-      sigs.push(
-        await sendAndConfirmRawTransaction(this.connection, rawTx, opts)
-      );
+
+      try {
+        sigs.push(
+          await sendAndConfirmRawTransaction(this.connection, rawTx, opts)
+        );
+      } catch (err) {
+        // thrown if the underlying 'confirmTransaction' encounters a failed tx
+        // the 'confirmTransaction' error does not return logs so we make another rpc call to get them
+        if (err instanceof ConfirmError) {
+          // choose the shortest available commitment for 'getTransaction'
+          // (the json RPC does not support any shorter than "confirmed" for 'getTransaction')
+          // because that will see the tx sent with `sendAndConfirmRawTransaction` no matter which
+          // commitment `sendAndConfirmRawTransaction` used
+          const failedTx = await this.connection.getTransaction(
+            bs58.encode(tx.signature!),
+            { commitment: "confirmed" }
+          );
+          if (!failedTx) {
+            throw err;
+          } else {
+            const logs = failedTx.meta?.logMessages;
+            throw !logs ? err : new SendTransactionError(err.message, logs);
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     return sigs;
