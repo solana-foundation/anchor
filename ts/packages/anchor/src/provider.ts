@@ -60,7 +60,7 @@ export class AnchorProvider implements Provider {
     readonly wallet: Wallet,
     readonly opts: ConfirmOptions
   ) {
-    this.publicKey = wallet.publicKey;
+    this.publicKey = wallet?.publicKey;
   }
 
   static defaultOptions(): ConfirmOptions {

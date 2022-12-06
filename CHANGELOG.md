@@ -41,6 +41,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Update seeds inference to allow nested user defined structs within the seeds ([#2198](https://github.com/coral-xyz/anchor/pull/2198))
 - event: Fix multiple event listeners with the same name. ([#2165](https://github.com/coral-xyz/anchor/pull/2165))
 - lang: Prevent the payer account from being initialized as a program account. ([#2284](https://github.com/coral-xyz/anchor/pull/2284))
+- ts: Fixing breaking change where null or undefined wallet throws an error. ([#2303](https://github.com/coral-xyz/anchor/pull/2303))
 
 ### Breaking
 
