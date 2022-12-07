@@ -23,7 +23,7 @@
   },
   "scripts": {
     "build": "rimraf dist/ && yarn build:node && yarn build:browser",
-    "build:node": "tsc && tsc -p tsconfig.cjs.json",
+    "build:node": "cd ../borsh && yarn build && cd ../anchor && tsc && tsc -p tsconfig.cjs.json",
     "build:browser": "rollup --config",
     "lint:fix": "prettier src/** tests/** -w",
     "lint": "prettier src/** tests/** --check",
