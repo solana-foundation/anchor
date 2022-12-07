@@ -787,6 +787,20 @@ describe("misc", () => {
     assert.strictEqual(account2.idata.toNumber(), 3);
   });
 
+  it("Can use fetchNullable() on accounts with only a balance", async () => {
+    const account = anchor.web3.Keypair.generate();
+
+    // Airdrop 1 SOL to the account.
+    const signature = await program.provider.connection.requestAirdrop(
+      account.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL
+    );
+    await program.provider.connection.confirmTransaction(signature);
+
+    const data = await program.account.data.fetchNullable(account.publicKey);
+    assert.isNull(data);
+  });
+
   describe("associated_token constraints", () => {
     let associatedToken = null;
     // apparently cannot await here so doing it in the 'it' statements
