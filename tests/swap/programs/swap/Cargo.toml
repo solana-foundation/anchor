@@ -18,4 +18,4 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl", features = ["dex"] }
-serum_dex = { git = "https://github.com/project-serum/serum-dex", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"] }
+serum_dex = { git = "https://github.com/openbook-dex/program", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"] }

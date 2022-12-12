@@ -6,8 +6,8 @@ wallet = "~/.config/solana/id.json"
 swap = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [[test.genesis]]
-address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
-program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"
+address = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
+program = "./deps/openbook-dex/dex/target/deploy/serum_dex.so"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"

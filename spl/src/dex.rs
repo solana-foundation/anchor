@@ -9,10 +9,10 @@ use std::num::NonZeroU64;
 pub use serum_dex;
 
 #[cfg(not(feature = "devnet"))]
-anchor_lang::solana_program::declare_id!("9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
+anchor_lang::solana_program::declare_id!("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX");
 
 #[cfg(feature = "devnet")]
-anchor_lang::solana_program::declare_id!("DESVgJVGajEgKGXhb6XmqDHGz3VjdgP7rEVESBgxmroY");
+anchor_lang::solana_program::declare_id!("EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj");
 
 #[allow(clippy::too_many_arguments)]
 pub fn new_order_v3<'info>(

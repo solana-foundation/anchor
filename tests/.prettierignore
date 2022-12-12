@@ -1,3 +1,4 @@
 **/target/types/*.ts
 cfo/deps/
+swap/deps/
 auction-house/deps/

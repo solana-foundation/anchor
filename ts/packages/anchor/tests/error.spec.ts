@@ -17,9 +17,9 @@ describe("ProgramErrorStack", () => {
 
   it("basic multiple ix", () => {
     const logs = [
-      "Program 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin invoke [1]",
-      "Program 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin consumed 4308 of 200000 compute units",
-      "Program 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin success",
+      "Program srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX invoke [1]",
+      "Program srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX consumed 4308 of 200000 compute units",
+      "Program srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX success",
       "Program ERRM6YCMsccM22TEaPuu35KVU4iCY3GLCz4qMsKLYReE invoke [1]",
       "Program ERRM6YCMsccM22TEaPuu35KVU4iCY3GLCz4qMsKLYReE consumed 3797 of 200000 compute units",
       "Program ERRM6YCMsccM22TEaPuu35KVU4iCY3GLCz4qMsKLYReE failed: custom program error: 0x29",

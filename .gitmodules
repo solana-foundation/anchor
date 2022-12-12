@@ -1,9 +1,9 @@
-[submodule "examples/swap/deps/serum-dex"]
-	path = tests/swap/deps/serum-dex
-	url = https://github.com/project-serum/serum-dex
-[submodule "examples/cfo/deps/serum-dex"]
-	path = tests/cfo/deps/serum-dex
-	url = https://github.com/project-serum/serum-dex
+[submodule "examples/swap/deps/openbook-dex"]
+	path = tests/swap/deps/openbook-dex
+	url = https://github.com/openbook-dex/program
+[submodule "examples/cfo/deps/openbook-dex"]
+	path = tests/cfo/deps/openbook-dex
+	url = https://github.com/openbook-dex/program
 [submodule "examples/cfo/deps/swap"]
 	path = tests/cfo/deps/swap
 	url = https://github.com/project-serum/swap.git
@@ -12,9 +12,6 @@
 	path = tests/cfo/deps/stake
 	url = https://github.com/project-serum/stake.git
 	branch = armani/cfo
-[submodule "examples/permissioned-markets/deps/serum-dex"]
-	path = tests/permissioned-markets/deps/serum-dex
-	url = https://github.com/project-serum/serum-dex
 [submodule "tests/auction-house"]
 	path = tests/auction-house
 	url = https://github.com/armaniferrante/auction-house

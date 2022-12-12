@@ -3,7 +3,7 @@ members = [
     "programs/*"
 ]
 exclude = [
-    "deps/serum-dex",
+    "deps/openbook-dex",
     "deps/stake",
     "deps/swap"
 ]

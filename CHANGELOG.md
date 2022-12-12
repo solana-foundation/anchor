@@ -19,6 +19,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add `update_primary_sale_happened_via_token` wrapper ([#2173](https://github.com/coral-xyz/anchor/pull/2173)).
 - spl: Add `sign_metadata` and `remove_creator_verification` wrappers ([#2175](https://github.com/coral-xyz/anchor/pull/2175)).
 - spl: Add `initialize_account3` and `initialize_mint2` ([#2265](https://github.com/coral-xyz/anchor/pull/2265)).
+- spl: Change `serum-dex` to `openbook-dex` ([#2308](https://github.com/coral-xyz/anchor/pull/2308)).
 - lang: Add parsing for consts from impl blocks for IDL PDA seeds generation ([#2128](https://github.com/coral-xyz/anchor/pull/2014)).
 - lang: Account closing reassigns to system program and reallocates ([#2169](https://github.com/coral-xyz/anchor/pull/2169)).
 - ts: Add coders for SPL programs ([#2143](https://github.com/coral-xyz/anchor/pull/2143)).

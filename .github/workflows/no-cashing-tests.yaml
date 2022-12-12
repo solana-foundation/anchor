@@ -255,7 +255,7 @@ jobs:
             path: tests/interface
           - cmd: cd tests/lockup && anchor test --skip-lint
             path: tests/lockup
-          - cmd: cd tests/swap/deps/serum-dex/dex && cargo build-bpf -- --locked && cd ../../../ && anchor test --skip-lint
+          - cmd: cd tests/swap/deps/openbook-dex/dex && cargo build-bpf -- --locked && cd ../../../ && anchor test --skip-lint
             path: tests/swap
           - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
             path: tests/escrow
@@ -279,8 +279,8 @@ jobs:
             path: tests/chat
           - cmd: cd tests/ido-pool && anchor test --skip-lint
             path: tests/ido-pool
-          - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
-            path: tests/cfo
+          # - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
+          #   path: tests/cfo
           - cmd: cd tests/auction-house && yarn --frozen-lockfile && anchor test --skip-lint && git checkout Cargo.lock
             path: tests/auction-house
           - cmd: cd tests/floats && yarn --frozen-lockfile && anchor test --skip-lint && npx tsc --noEmit

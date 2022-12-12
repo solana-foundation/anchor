@@ -18,7 +18,7 @@ test-with-build = "anchor run build && anchor test --skip-build --skip-lint"
 #
 build = "anchor run build-deps && anchor build --skip-lint"
 build-deps = "anchor run build-dex && anchor run build-swap && anchor run build-stake"
-build-dex = "pushd deps/serum-dex/dex/ && cargo build-bpf && popd"
+build-dex = "pushd deps/openbook-dex/dex/ && cargo build-bpf && popd"
 build-swap = "cd deps/swap && pwd && anchor build --skip-lint && cd ../../"
 build-stake = "pushd deps/stake && anchor build --skip-lint && popd"
 #
@@ -27,8 +27,8 @@ build-stake = "pushd deps/stake && anchor build --skip-lint && popd"
 localnet = "./scripts/localnet.sh"
 
 [[test.genesis]]
-address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
-program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"
+address = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
+program = "./deps/openbook-dex/dex/target/deploy/serum_dex.so"
 
 [[test.genesis]]
 address = "22Y43yTVxuUkoRKdm9thyRhQ3SdgQS7c7kB6UNCiaczD"

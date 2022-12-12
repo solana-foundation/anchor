@@ -3095,7 +3095,7 @@ dependencies = [
 [[package]]
 name = "serum_dex"
 version = "0.4.0"
-source = "git+https://github.com/project-serum/serum-dex?rev=1be91f2#1be91f2863d8ecede32daaae7e768034e24bbc79"
+source = "git+https://github.com/openbook-dex/program/?rev=1be91f2#1be91f2863d8ecede32daaae7e768034e24bbc79"
 dependencies = [
  "arrayref",
  "bincode",

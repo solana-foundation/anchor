@@ -116,7 +116,7 @@ Example
 
 ```toml
 [[test.genesis]]
-address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
+address = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
 program = "dex.so"
 
 [[test.genesis]]
