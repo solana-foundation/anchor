@@ -46,6 +46,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Prevent the payer account from being initialized as a program account ([#2284](https://github.com/coral-xyz/anchor/pull/2284)).
 - ts: Fixing breaking change where null or undefined wallet throws an error ([#2303](https://github.com/coral-xyz/anchor/pull/2303)).
 - ts: Fixed `.fetchNullable()` to be robust towards accounts only holding a balance ([#2301](https://github.com/coral-xyz/anchor/pull/2301)).
+- lang: Only add public enums to the IDL ([#2309](https://github.com/coral-xyz/anchor/pull/2309)).
 
 ### Breaking
 

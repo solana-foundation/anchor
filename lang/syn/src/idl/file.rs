@@ -484,7 +484,12 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                 ty: IdlTypeDefinitionTy::Struct { fields },
             }))
         })
-        .chain(ctx.enums().map(|enm| {
+        .chain(ctx.enums().filter_map(|enm| {
+            // Only take public types
+            match &enm.vis {
+                syn::Visibility::Public(_) => (),
+                _ => return None,
+            }
             let name = enm.ident.to_string();
             let doc = if !no_docs {
                 docs::parse(&enm.attrs)
@@ -531,11 +536,11 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                     IdlEnumVariant { name, fields }
                 })
                 .collect::<Vec<IdlEnumVariant>>();
-            Ok(IdlTypeDefinition {
+            Some(Ok(IdlTypeDefinition {
                 name,
                 docs: doc,
                 ty: IdlTypeDefinitionTy::Enum { variants },
-            })
+            }))
         }))
         .collect()
 }
