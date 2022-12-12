@@ -240,6 +240,8 @@ impl std::str::FromStr for IdlType {
             "f64" => IdlType::F64,
             "u128" => IdlType::U128,
             "i128" => IdlType::I128,
+            "u256" => IdlType::U256,
+            "i256" => IdlType::I256,
             "Vec<u8>" => IdlType::Bytes,
             "String" | "&str" | "&'staticstr" => IdlType::String,
             "Pubkey" => IdlType::PublicKey,

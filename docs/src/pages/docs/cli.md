@@ -20,6 +20,7 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
+    account    Fetch and deserialize an account using the IDL provided
     build      Builds the workspace
     cluster    Cluster commands
     deploy     Deploys each program in the workspace
@@ -36,6 +37,28 @@ SUBCOMMANDS:
                command inside a program subdirectory, i.e., in the dir containing the program's
                Cargo.toml
 ```
+
+## Account
+
+```
+anchor account <program-name>.<AccountTypeName> <account_pubkey>
+```
+
+Fetches an account with the given public key and deserializes the data to JSON using the type name provided. If this command is run from within a workspace, the workspace's IDL files will be used to get the data types. Otherwise, the path to the IDL file must be provided.
+
+The `program-name` is the name of the program where the account struct resides, usually under `programs/<program-name>`. `program-name` should be provided in a case-sensitive manner exactly as the folder name, usually in kebab-case.
+
+The `AccountTypeName` is the name of the account struct, usually in PascalCase.
+
+The `account_pubkey` refers to the Pubkey of the account to deserialise, in Base58.
+
+Example Usage: `anchor account anchor-escrow.EscrowAccount 3PNkzWKXCsbjijbasnx55NEpJe8DFXvEEbJKdRKpDcfK`, deserializes an account in the given pubkey with the account struct `EscrowAccount` defined in the `anchor-escrow` program.
+
+```
+anchor account <program-name>.<AccountTypeName> <account_pubkey> --idl <path/to/idl.json>
+```
+
+Deserializes the account with the data types provided in the given IDL file even if inside a workspace.
 
 ## Build
 
