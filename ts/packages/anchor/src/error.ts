@@ -337,6 +337,7 @@ export const LangErrorCode = {
   ConstraintMintFreezeAuthority: 2017,
   ConstraintMintDecimals: 2018,
   ConstraintSpace: 2019,
+  ConstraintAccountIsNone: 2020,
 
   // Require.
   RequireViolated: 2500,
@@ -408,7 +409,7 @@ export const LangErrorMessage = new Map([
 
   // Constraints.
   [LangErrorCode.ConstraintMut, "A mut constraint was violated"],
-  [LangErrorCode.ConstraintHasOne, "A has_one constraint was violated"],
+  [LangErrorCode.ConstraintHasOne, "A has one constraint was violated"],
   [LangErrorCode.ConstraintSigner, "A signer constraint was violated"],
   [LangErrorCode.ConstraintRaw, "A raw constraint was violated"],
   [LangErrorCode.ConstraintOwner, "An owner constraint was violated"],
@@ -442,6 +443,10 @@ export const LangErrorMessage = new Map([
     "A mint decimals constraint was violated",
   ],
   [LangErrorCode.ConstraintSpace, "A space constraint was violated"],
+  [
+    LangErrorCode.ConstraintAccountIsNone,
+    "A required account for the constraint is None",
+  ],
 
   // Require.
   [LangErrorCode.RequireViolated, "A require expression was violated"],

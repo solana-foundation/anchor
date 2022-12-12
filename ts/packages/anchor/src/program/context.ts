@@ -1,7 +1,7 @@
 import {
   AccountMeta,
-  Signer,
   ConfirmOptions,
+  Signer,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { Address } from "./common.js";
@@ -67,6 +67,8 @@ export type Accounts<A extends IdlAccountItem = IdlAccountItem> = {
 
 type Account<A extends IdlAccountItem> = A extends IdlAccounts
   ? Accounts<A["accounts"][number]>
+  : A extends { isOptional: true }
+  ? Address | null
   : Address;
 
 export function splitArgsAndCtx(

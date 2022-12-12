@@ -12,10 +12,10 @@ import {
 } from "../../idl.js";
 import { IdlError } from "../../error.js";
 import {
-  toInstruction,
-  validateAccounts,
-  translateAddress,
   Address,
+  toInstruction,
+  translateAddress,
+  validateAccounts,
 } from "../common.js";
 import { Accounts, splitArgsAndCtx } from "../context.js";
 import * as features from "../../utils/features.js";
@@ -66,6 +66,7 @@ export default class InstructionNamespaceFactory {
       return InstructionNamespaceFactory.accountsArray(
         accs,
         idlIx.accounts,
+        programId,
         idlIx.name
       );
     };
@@ -76,6 +77,7 @@ export default class InstructionNamespaceFactory {
   public static accountsArray(
     ctx: Accounts | undefined,
     accounts: readonly IdlAccountItem[],
+    programId: PublicKey,
     ixName?: string
   ): AccountMeta[] {
     if (!ctx) {
@@ -92,11 +94,12 @@ export default class InstructionNamespaceFactory {
           return InstructionNamespaceFactory.accountsArray(
             rpcAccs,
             (acc as IdlAccounts).accounts,
+            programId,
             ixName
           ).flat();
         } else {
           const account: IdlAccount = acc as IdlAccount;
-          let pubkey;
+          let pubkey: PublicKey;
           try {
             pubkey = translateAddress(ctx[acc.name] as Address);
           } catch (err) {
@@ -108,10 +111,14 @@ export default class InstructionNamespaceFactory {
               }. Expected PublicKey or string.`
             );
           }
+
+          const optional = account.isOptional && pubkey.equals(programId);
+          const isWritable = account.isMut && !optional;
+          const isSigner = account.isSigner && !optional;
           return {
             pubkey,
-            isWritable: account.isMut,
-            isSigner: account.isSigner,
+            isWritable,
+            isSigner,
           };
         }
       })

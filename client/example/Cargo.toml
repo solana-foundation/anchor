@@ -12,6 +12,7 @@ anchor-client = { path = "../", features = ["debug"] }
 basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
 basic-4 = { path = "../../examples/tutorial/basic-4/programs/basic-4", features = ["no-entrypoint"] }
 composite = { path = "../../tests/composite/programs/composite", features = ["no-entrypoint"] }
+optional = { path = "../../tests/optional/programs/optional", features = ["no-entrypoint"] }
 events = { path = "../../tests/events/programs/events", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
 anyhow = "1.0.32"

@@ -62,9 +62,16 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 } else {
                     quote!()
                 };
-                quote! {
-                    #docs
-                    pub #name: anchor_lang::solana_program::account_info::AccountInfo<'info>
+                if f.is_optional {
+                    quote! {
+                        #docs
+                        pub #name: Option<anchor_lang::solana_program::account_info::AccountInfo<'info>>
+                    }
+                } else {
+                    quote! {
+                        #docs
+                        pub #name: anchor_lang::solana_program::account_info::AccountInfo<'info>
+                    }
                 }
             }
         })
@@ -94,8 +101,18 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     true => quote! { anchor_lang::solana_program::instruction::AccountMeta::new },
                 };
                 let name = &f.ident;
-                quote! {
-                    account_metas.push(#meta(anchor_lang::Key::key(&self.#name), #is_signer));
+                if f.is_optional {
+                    quote! {
+                        if let Some(#name) = &self.#name {
+                            account_metas.push(#meta(anchor_lang::Key::key(#name), #is_signer));
+                        } else {
+                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(crate::ID, false));
+                        }
+                    }
+                } else {
+                    quote! {
+                        account_metas.push(#meta(anchor_lang::Key::key(&self.#name), #is_signer));
+                    }
                 }
             }
         })
@@ -104,18 +121,10 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let account_struct_infos: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
-        .map(|f: &AccountField| match f {
-            AccountField::CompositeField(s) => {
-                let name = &s.ident;
-                quote! {
-                    account_infos.extend(anchor_lang::ToAccountInfos::to_account_infos(&self.#name));
-                }
-            }
-            AccountField::Field(f) => {
-                let name = &f.ident;
-                quote! {
-                    account_infos.push(anchor_lang::ToAccountInfo::to_account_info(&self.#name));
-                }
+        .map(|f: &AccountField| {
+            let name = &f.ident();
+            quote! {
+                account_infos.extend(anchor_lang::ToAccountInfos::to_account_infos(&self.#name));
             }
         })
         .collect();

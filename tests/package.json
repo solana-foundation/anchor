@@ -21,6 +21,7 @@
     "lockup",
     "misc",
     "multisig",
+    "optional",
     "permissioned-markets",
     "pda-derivation",
     "relations-derivation",
@@ -47,12 +48,16 @@
     "@project-serum/common": "^0.0.1-beta.3",
     "@project-serum/serum": "^0.13.60",
     "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.64.0"
+    "@solana/web3.js": "^1.68.0"
+  },
+  "resolutions": {
+    "@project-serum/anchor/@solana/web3.js": "^1.68.0"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^14.14.37",
+    "@types/bn.js": "^5.1.1",
     "chai": "^4.3.4",
     "mocha": "^10.0.0",
     "prettier": "^2.5.1",

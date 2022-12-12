@@ -1,0 +1,16 @@
+[package]
+name = "allow-missing-optionals"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "allow_missing_optionals"
+
+[features]
+no-entrypoint = []
+cpi = ["no-entrypoint"]
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["allow-missing-optionals"] }

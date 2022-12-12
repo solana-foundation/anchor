@@ -9,6 +9,7 @@ rust-version = "1.59"
 edition = "2021"
 
 [features]
+allow-missing-optionals = []
 init-if-needed = []
 idl = []
 hash = []

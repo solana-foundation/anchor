@@ -26,6 +26,7 @@ main() {
     local basic_2_pid="Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
     local basic_4_pid="CwrqeMj2U8tFr1Rhkgwc84tpAsqbt9pTt2a4taoTADPr"
     local events_pid="2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
+    local optional_pid="FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
 
     #
     # Bootup validator.
@@ -35,13 +36,14 @@ main() {
 				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
 				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
 				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
+				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
 				> test-validator.log &
     sleep 5
 
     #
     # Run Test.
     #
-    cargo run -- --composite-pid $composite_pid --basic-2-pid $basic_2_pid --basic-4-pid $basic_4_pid --events-pid $events_pid
+    cargo run -- --composite-pid $composite_pid --basic-2-pid $basic_2_pid --basic-4-pid $basic_4_pid --events-pid $events_pid --optional-pid $optional_pid
 }
 
 cleanup() {

@@ -32,14 +32,38 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     // `init` and `zero` acccounts are special cased as they are
                     // deserialized by constraints. Here, we just take out the
                     // AccountInfo for later use at constraint validation time.
-                    if is_init(af) || f.constraints.zeroed.is_some() {
+                    if is_init(af) || f.constraints.zeroed.is_some()  {
                         let name = &f.ident;
-                        quote!{
-                            if accounts.is_empty() {
-                                return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
+                        // Optional accounts have slightly different behavior here and
+                        // we can't leverage the try_accounts implementation for zero and init.
+                        if f.is_optional {
+                            // Thus, this block essentially reimplements the try_accounts 
+                            // behavior with optional accounts minus the deserialziation.
+                            let empty_behavior = if cfg!(feature = "allow-missing-optionals") {
+                                quote!{ None }
+                            } else {
+                                quote!{ return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into()); }
+                            };
+                            quote! {
+                                let #name = if accounts.is_empty() {
+                                    #empty_behavior
+                                } else if accounts[0].key == program_id {
+                                    *accounts = &accounts[1..];
+                                    None
+                                } else {
+                                    let account = &accounts[0];
+                                    *accounts = &accounts[1..];
+                                    Some(account)
+                                };
                             }
-                            let #name = &accounts[0];
-                            *accounts = &accounts[1..];
+                        } else {
+                            quote!{
+                                if accounts.is_empty() {
+                                    return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
+                                }
+                                let #name = &accounts[0];
+                                *accounts = &accounts[1..];
+                            }
                         }
                     } else {
                         let name = f.ident.to_string();
@@ -129,14 +153,14 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 true => Some(f),
             },
         })
-        .map(constraints::generate)
+        .map(|f| constraints::generate(f, accs))
         .collect();
 
     // Constraint checks for each account fields.
     let access_checks: Vec<proc_macro2::TokenStream> = non_init_fields
         .iter()
         .map(|af: &&AccountField| match af {
-            AccountField::Field(f) => constraints::generate(f),
+            AccountField::Field(f) => constraints::generate(f, accs),
             AccountField::CompositeField(s) => constraints::generate_composite(s),
         })
         .collect();

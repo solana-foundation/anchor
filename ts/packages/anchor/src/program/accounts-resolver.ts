@@ -14,6 +14,7 @@ import {
   IdlTypeDef,
   IdlTypeDefTyStruct,
   IdlType,
+  isIdlAccounts,
 } from "../idl.js";
 import * as utf8 from "../utils/bytes/utf8.js";
 import { TOKEN_PROGRAM_ID, ASSOCIATED_PROGRAM_ID } from "../utils/token.js";
@@ -22,17 +23,30 @@ import Provider from "../provider.js";
 import { AccountNamespace } from "./namespace/account.js";
 import { BorshAccountsCoder } from "src/coder/index.js";
 import { decodeTokenAccount } from "./token-account-layout";
-import { Program } from "./index.js";
+import { Program, translateAddress } from "./index.js";
+import {
+  flattenPartialAccounts,
+  isPartialAccounts,
+  PartialAccounts,
+} from "./namespace/methods";
 
-type Accounts = { [name: string]: PublicKey | Accounts };
+export type AccountsGeneric = {
+  [name: string]: PublicKey | AccountsGeneric;
+};
+
+export function isAccountsGeneric(
+  accounts: PublicKey | AccountsGeneric
+): accounts is AccountsGeneric {
+  return !(accounts instanceof PublicKey);
+}
 
 export type CustomAccountResolver<IDL extends Idl> = (params: {
   args: Array<any>;
-  accounts: Accounts;
+  accounts: AccountsGeneric;
   provider: Provider;
   programId: PublicKey;
   idlIx: AllInstructions<IDL>;
-}) => Promise<{ accounts: Accounts; resolved: number }>;
+}) => Promise<{ accounts: AccountsGeneric; resolved: number }>;
 
 // Populates a given accounts context with PDAs and common missing accounts.
 export class AccountsResolver<IDL extends Idl> {
@@ -49,7 +63,7 @@ export class AccountsResolver<IDL extends Idl> {
 
   constructor(
     _args: Array<any>,
-    private _accounts: Accounts,
+    private _accounts: AccountsGeneric,
     private _provider: Provider,
     private _programId: PublicKey,
     private _idlIx: AllInstructions<IDL>,
@@ -99,6 +113,51 @@ export class AccountsResolver<IDL extends Idl> {
     return 0;
   }
 
+  private resolveOptionalsHelper(
+    partialAccounts: PartialAccounts,
+    accountItems: IdlAccountItem[]
+  ): AccountsGeneric {
+    const nestedAccountsGeneric: AccountsGeneric = {};
+    // Looping through accountItem array instead of on partialAccounts, so
+    // we only traverse array once
+    for (const accountItem of accountItems) {
+      const accountName = accountItem.name;
+      const partialAccount = partialAccounts[accountName];
+      // Skip if the account isn't included (thus would be undefined)
+      if (partialAccount === undefined) continue;
+      if (isPartialAccounts(partialAccount)) {
+        // is compound accounts, recurse one level deeper
+        if (isIdlAccounts(accountItem)) {
+          nestedAccountsGeneric[accountName] = this.resolveOptionalsHelper(
+            partialAccount,
+            accountItem["accounts"] as IdlAccountItem[]
+          );
+        } else {
+          // Here we try our best to recover gracefully. If there are optionals we can't check, we will fail then.
+          nestedAccountsGeneric[accountName] = flattenPartialAccounts(
+            partialAccount,
+            true
+          );
+        }
+      } else {
+        // if not compound accounts, do null/optional check and proceed
+        if (partialAccount !== null) {
+          nestedAccountsGeneric[accountName] = translateAddress(partialAccount);
+        } else if (accountItem["isOptional"]) {
+          nestedAccountsGeneric[accountName] = this._programId;
+        }
+      }
+    }
+    return nestedAccountsGeneric;
+  }
+
+  public resolveOptionals(accounts: PartialAccounts) {
+    Object.assign(
+      this._accounts,
+      this.resolveOptionalsHelper(accounts, this._idlIx.accounts)
+    );
+  }
+
   private get(path: string[]): PublicKey | undefined {
     // Only return if pubkey
     const ret = path.reduce(
@@ -120,7 +179,7 @@ export class AccountsResolver<IDL extends Idl> {
       }
 
       curr[p] = curr[p] || {};
-      curr = curr[p] as Accounts;
+      curr = curr[p] as AccountsGeneric;
     });
   }
 
@@ -183,6 +242,7 @@ export class AccountsResolver<IDL extends Idl> {
 
       const accountDescCasted: IdlAccount = accountDesc as IdlAccount;
       const accountDescName = camelCase(accountDesc.name);
+
       // PDA derived from IDL seeds.
       if (
         accountDescCasted.pda &&
@@ -380,6 +440,10 @@ export class AccountsResolver<IDL extends Idl> {
 
     const fieldName = pathComponents[0];
     const fieldPubkey = this.get([...path, camelCase(fieldName)]);
+
+    if (fieldPubkey === null) {
+      throw new Error(`fieldPubkey is null`);
+    }
 
     // The seed is a pubkey of the account.
     if (pathComponents.length === 1) {

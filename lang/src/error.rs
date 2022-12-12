@@ -105,6 +105,9 @@ pub enum ErrorCode {
     /// 2019 - A space constraint was violated
     #[msg("A space constraint was violated")]
     ConstraintSpace,
+    /// 2020 - A required account for the constraint is None
+    #[msg("A required account for the constraint is None")]
+    ConstraintAccountIsNone,
 
     // Require
     /// 2500 - A require expression was violated

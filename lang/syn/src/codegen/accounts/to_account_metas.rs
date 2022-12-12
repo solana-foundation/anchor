@@ -9,18 +9,28 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .fields
         .iter()
         .map(|f: &AccountField| {
-            let (name, is_signer) = match f {
-                AccountField::CompositeField(s) => (&s.ident, quote! {None}),
+            let (name, is_signer, is_optional) = match f {
+                AccountField::CompositeField(s) => (&s.ident, quote! {None}, false),
                 AccountField::Field(f) => {
                     let is_signer = match f.constraints.is_signer() {
                         false => quote! {None},
                         true => quote! {Some(true)},
                     };
-                    (&f.ident, is_signer)
+                    (&f.ident, is_signer, f.is_optional)
                 }
             };
-            quote! {
-                account_metas.extend(self.#name.to_account_metas(#is_signer));
+            if is_optional {
+                quote! {
+                    if let Some(#name) = &self.#name {
+                        account_metas.extend(#name.to_account_metas(#is_signer));
+                    } else {
+                        account_metas.push(AccountMeta::new_readonly(crate::ID, false));
+                    }
+                }
+            } else {
+                quote! {
+                    account_metas.extend(self.#name.to_account_metas(#is_signer));
+                }
             }
         })
         .collect();

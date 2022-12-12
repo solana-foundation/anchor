@@ -81,6 +81,8 @@ jobs:
       fail-fast: false
       matrix:
         node:
+          - path: tests/optional/
+            name: optional.so
           - path: tests/events/
             name: events.so
           - path: examples/tutorial/basic-4/
@@ -124,6 +126,10 @@ jobs:
       - run: chmod +x ~/.cargo/bin/anchor
 
       - uses: actions/download-artifact@v3
+        with:
+          name: optional.so
+          path: tests/optional/target/deploy/
+      - uses: actions/download-artifact@v2
         with:
           name: events.so
           path: tests/events/target/deploy/
@@ -289,6 +295,8 @@ jobs:
             path: tests/cpi-returns
           - cmd: cd tests/multiple-suites && anchor test --skip-lint && npx tsc --noEmit
             path: tests/multiple-suites
+          - cmd: cd tests/optional && anchor test --skip-lint && npx tsc --noEmit
+            path: tests/optional
           - cmd: cd tests/multiple-suites-run-single && anchor test --skip-lint --run tests/should-run && npx tsc --noEmit
             path: tests/multiple-suites-run-single
           - cmd: cd tests/pda-derivation && anchor test --skip-lint && npx tsc --noEmit

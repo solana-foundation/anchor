@@ -1,3 +1,4 @@
+use crate::parser::tts_to_string;
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
 use parser::accounts as accounts_parser;
@@ -179,6 +180,29 @@ impl AccountsStruct {
             .map(|field| field.ident().to_string())
             .collect()
     }
+
+    pub fn has_optional(&self) -> bool {
+        for field in &self.fields {
+            if let AccountField::Field(field) = field {
+                if field.is_optional {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn is_field_optional<T: quote::ToTokens>(&self, field: &T) -> bool {
+        let matching_field = self
+            .fields
+            .iter()
+            .find(|f| *f.ident() == tts_to_string(field));
+        if let Some(matching_field) = matching_field {
+            matching_field.is_optional()
+        } else {
+            false
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -193,6 +217,13 @@ impl AccountField {
         match self {
             AccountField::Field(field) => &field.ident,
             AccountField::CompositeField(c_field) => &c_field.ident,
+        }
+    }
+
+    fn is_optional(&self) -> bool {
+        match self {
+            AccountField::Field(field) => field.is_optional,
+            AccountField::CompositeField(_) => false,
         }
     }
 
@@ -220,6 +251,7 @@ pub struct Field {
     pub ident: Ident,
     pub constraints: ConstraintGroup,
     pub ty: Ty,
+    pub is_optional: bool,
     /// IDL Doc comment
     pub docs: Option<Vec<String>>,
 }
@@ -227,16 +259,16 @@ pub struct Field {
 impl Field {
     pub fn typed_ident(&self) -> proc_macro2::TokenStream {
         let name = &self.ident;
-        let ty_decl = self.ty_decl();
+        let ty_decl = self.ty_decl(false);
         quote! {
             #name: #ty_decl
         }
     }
 
-    pub fn ty_decl(&self) -> proc_macro2::TokenStream {
+    pub fn ty_decl(&self, ignore_option: bool) -> proc_macro2::TokenStream {
         let account_ty = self.account_ty();
         let container_ty = self.container_ty();
-        match &self.ty {
+        let inner_ty = match &self.ty {
             Ty::AccountInfo => quote! {
                 AccountInfo
             },
@@ -283,11 +315,22 @@ impl Field {
             _ => quote! {
                 #container_ty<#account_ty>
             },
+        };
+        if self.is_optional && !ignore_option {
+            quote! {
+                Option<#inner_ty>
+            }
+        } else {
+            quote! {
+                #inner_ty
+            }
         }
     }
 
     // TODO: remove the option once `CpiAccount` is completely removed (not
     //       just deprecated).
+    // Ignores optional accounts. Optional account checks and handing should be done prior to this
+    // function being called.
     pub fn from_account_info(
         &self,
         kind: Option<&InitKind>,

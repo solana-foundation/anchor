@@ -118,6 +118,7 @@ export class StateClient<IDL extends Idl> {
               InstructionNamespaceFactory.accountsArray(
                 accounts,
                 m.accounts,
+                programId,
                 m.name
               )
             );

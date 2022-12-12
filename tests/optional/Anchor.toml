@@ -1,0 +1,13 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+optional = "FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
+allow_missing_optionals = "ErjUjtqKE5AGWUsjseSJCVLtddM6rhaMbDqmhzraF9h6"
+
+[workspace]
+members = ["programs/optional", "programs/allow-missing-optionals"]
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 -p ./tsconfig.json -t 1000000 tests/**/*.ts"

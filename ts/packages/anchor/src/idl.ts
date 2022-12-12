@@ -52,10 +52,17 @@ export type IdlStateMethod = IdlInstruction;
 
 export type IdlAccountItem = IdlAccount | IdlAccounts;
 
+export function isIdlAccounts(
+  accountItem: IdlAccountItem
+): accountItem is IdlAccounts {
+  return "accounts" in accountItem;
+}
+
 export type IdlAccount = {
   name: string;
   isMut: boolean;
   isSigner: boolean;
+  isOptional?: boolean;
   docs?: string[];
   relations?: string[];
   pda?: IdlPda;

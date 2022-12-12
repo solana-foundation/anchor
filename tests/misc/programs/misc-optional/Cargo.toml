@@ -1,0 +1,22 @@
+[package]
+name = "misc-optional"
+version = "0.1.0"
+description = "Created with Anchor"
+rust-version = "1.56"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "misc_optional"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
+anchor-spl = { path = "../../../../spl" }
+misc2 = { path = "../misc2", features = ["cpi"] }
+spl-associated-token-account = "1.1.1"

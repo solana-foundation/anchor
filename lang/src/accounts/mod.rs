@@ -13,6 +13,7 @@ pub mod cpi_state;
 #[doc(hidden)]
 #[allow(deprecated)]
 pub mod loader;
+pub mod option;
 pub mod program;
 #[doc(hidden)]
 #[allow(deprecated)]

@@ -16,13 +16,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .fields
         .iter()
         .map(|f: &AccountField| {
-            let name = match f {
-                AccountField::CompositeField(s) => &s.ident,
-                AccountField::Field(f) => &f.ident,
-            };
-            quote! {
-                account_infos.extend(self.#name.to_account_infos());
-            }
+            let name = &f.ident();
+            quote! { account_infos.extend(self.#name.to_account_infos()); }
         })
         .collect();
     quote! {
