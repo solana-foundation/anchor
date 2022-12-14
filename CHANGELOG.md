@@ -58,6 +58,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Remove `rent` from `associated_token::Create` ([#2265](https://github.com/coral-xyz/anchor/pull/2265)).
 - lang: Add `Discriminator` and `Owner` trait implementation for structures representing instructions ([#1997](https://github.com/coral-xyz/anchor/pull/1997)).
 - ts: '@coral-xyz/borsh' package is now part of the yarn monorepo ([#2290](https://github.com/coral-xyz/anchor/pull/2290)). The borsh package needs to be built before the anchor package can be built but this should happen automatically when running `yarn build` in packages/anchor, see [#2299](https://github.com/coral-xyz/anchor/pull/2299) and [#2306](https://github.com/coral-xyz/anchor/pull/2306).
+- lang: Add support for optionally passing in accounts using the syntax `Optional<Account<'info, T>>`. Shouldn't affect existing programs but may be a breaking change to tools that use the anchor generated IDL. [#2010](https://github.com/coral-xyz/anchor/pull/2101).
 
 ## [0.25.0] - 2022-07-05
 
