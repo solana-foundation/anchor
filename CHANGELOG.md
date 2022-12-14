@@ -49,6 +49,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Fixing breaking change where null or undefined wallet throws an error ([#2303](https://github.com/coral-xyz/anchor/pull/2303)).
 - ts: Fixed `.fetchNullable()` to be robust towards accounts only holding a balance ([#2301](https://github.com/coral-xyz/anchor/pull/2301)).
 - lang: Only add public enums to the IDL ([#2309](https://github.com/coral-xyz/anchor/pull/2309)).
+- lang: Fix heap intensive error mapping ([#2313](https://github.com/coral-xyz/anchor/pull/2313)).
 
 ### Breaking
 
