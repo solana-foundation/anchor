@@ -10,6 +10,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+## [0.26.0] - 2022-12-15
+
 ### Features
 
 - cli: Add `--run` to `anchor test` for running a subset of test suites ([#1828](https://github.com/project-serum/anchor/issues/1828)).

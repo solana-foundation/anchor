@@ -8,7 +8,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ---
 
-## [0.25.0] - 2022-07-05
+## [0.26.0] - 2022-07-05
 
 ### Features
 

@@ -1,6 +1,6 @@
 [package]
 name = "anchor-syn"
-version = "0.25.0"
+version = "0.26.0"
 authors = ["Serum Foundation <foundation@projectserum.com>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
