@@ -2,7 +2,7 @@ WORKDIR=$(PWD)
 #
 # Extract anchor version from the Cargo.toml.
 #
-ANCHOR_CLI=v$(shell awk -F ' = ' '$$1 ~ /version/ { gsub(/[\"]/, "", $$2); printf("%s",$$2) }' ../cli/Cargo.toml)
+ANCHOR_CLI=v0.26.0
 #
 # Solana toolchain.
 #
