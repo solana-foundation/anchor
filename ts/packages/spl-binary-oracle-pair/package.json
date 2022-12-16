@@ -1,5 +1,5 @@
 {
-  "name": "@project-serum/spl-binary-oracle-pair",
+  "name": "@coral-xyz/spl-binary-oracle-pair",
   "description": "Anchor client for Solana Program Library Binary Oracle Pair",
   "version": "0.1.0",
   "author": "acheron <acheroncrypto@gmail.com>",
@@ -27,7 +27,7 @@
     "watch": "tsc -p tsconfig.cjs.json --watch"
   },
   "dependencies": {
-    "@project-serum/anchor": "=0.26.0",
+    "@coral-xyz/anchor": "=0.26.0",
     "@native-to-anchor/buffer-layout": "=0.1.0"
   },
   "devDependencies": {

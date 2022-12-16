@@ -28,7 +28,7 @@ runs:
       shell: bash
     - run: cd ts/packages/spl-token && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../../../
       shell: bash
-    - run: cd examples/tutorial && yarn link @project-serum/anchor && yarn --frozen-lockfile && cd ../../
+    - run: cd examples/tutorial && yarn link @coral-xyz/anchor && yarn --frozen-lockfile && cd ../../
       shell: bash
-    - run: cd tests && yarn link @project-serum/anchor && yarn link @project-serum/spl-associated-token-account && yarn link @project-serum/spl-token && yarn --frozen-lockfile && cd ..
+    - run: cd tests && yarn link @coral-xyz/anchor && yarn link @coral-xyz/spl-associated-token-account && yarn link @coral-xyz/spl-token && yarn --frozen-lockfile && cd ..
       shell: bash

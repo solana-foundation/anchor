@@ -1,4 +1,4 @@
-const anchor = require("@project-serum/anchor");
+const anchor = require("@coral-xyz/anchor");
 
 describe("tictactoe", () => {
   anchor.setProvider(anchor.AnchorProvider.env());

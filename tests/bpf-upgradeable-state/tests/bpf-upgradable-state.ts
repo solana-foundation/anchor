@@ -1,6 +1,6 @@
-import * as anchor from "@project-serum/anchor";
-import { AnchorError, Program } from "@project-serum/anchor";
-import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
+import * as anchor from "@coral-xyz/anchor";
+import { AnchorError, Program } from "@coral-xyz/anchor";
+import { findProgramAddressSync } from "@coral-xyz/anchor/dist/cjs/utils/pubkey";
 import { PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { BpfUpgradeableState } from "../target/types/bpf_upgradeable_state";

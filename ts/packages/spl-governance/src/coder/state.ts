@@ -1,4 +1,4 @@
-import { Idl, StateCoder } from "@project-serum/anchor";
+import { Idl, StateCoder } from "@coral-xyz/anchor";
 
 export class SplGovernanceStateCoder implements StateCoder {
   constructor(_idl: Idl) {}

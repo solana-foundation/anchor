@@ -3,7 +3,7 @@
 // Script to infinitely post orders that are immediately filled.
 
 const process = require("process");
-const anchor = require("@project-serum/anchor");
+const anchor = require("@coral-xyz/anchor");
 const PublicKey = anchor.web3.PublicKey;
 const { runTradeBot } = require("../tests/utils");
 

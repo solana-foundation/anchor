@@ -1,5 +1,5 @@
 {
-  "name": "@project-serum/tests",
+  "name": "@coral-xyz/tests",
   "version": "0.1.0",
   "private": true,
   "main": "index.js",
@@ -13,7 +13,7 @@
     "typescript": "*"
   },
   "dependencies": {
-    "@project-serum/anchor": "*",
+    "@coral-xyz/anchor": "*",
     "@solana/web3.js": "*"
   }
 }

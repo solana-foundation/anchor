@@ -1,7 +1,7 @@
 import assert from "assert";
-import { splBinaryOraclePairProgram } from "@project-serum/spl-binary-oracle-pair";
-import { splTokenProgram } from "@project-serum/spl-token";
-import { BN } from "@project-serum/anchor";
+import { splBinaryOraclePairProgram } from "@coral-xyz/spl-binary-oracle-pair";
+import { splTokenProgram } from "@coral-xyz/spl-token";
+import { BN } from "@coral-xyz/anchor";
 import {
   Keypair,
   PublicKey,

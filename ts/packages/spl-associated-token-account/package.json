@@ -1,5 +1,5 @@
 {
-  "name": "@project-serum/spl-associated-token-account",
+  "name": "@coral-xyz/spl-associated-token-account",
   "description": "Anchor client for Solana Program Library Associated Token Account",
   "version": "1.1.1",
   "author": "acheron <acheroncrypto@gmail.com>",
@@ -27,7 +27,7 @@
     "watch": "tsc -p tsconfig.cjs.json --watch"
   },
   "dependencies": {
-    "@project-serum/anchor": "=0.26.0",
+    "@coral-xyz/anchor": "=0.26.0",
     "@native-to-anchor/buffer-layout": "=0.1.0"
   },
   "devDependencies": {

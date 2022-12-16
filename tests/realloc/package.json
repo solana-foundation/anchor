@@ -2,13 +2,13 @@
   "name": "realloc",
   "version": "0.26.0",
   "license": "(MIT OR Apache-2.0)",
-  "homepage": "https://github.com/project-serum/anchor#readme",
+  "homepage": "https://github.com/coral-xyz/anchor#readme",
   "bugs": {
-    "url": "https://github.com/project-serum/anchor/issues"
+    "url": "https://github.com/coral-xyz/anchor/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/project-serum/anchor.git"
+    "url": "https://github.com/coral-xyz/anchor.git"
   },
   "engines": {
     "node": ">=11"

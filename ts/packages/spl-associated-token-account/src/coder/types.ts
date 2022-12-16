@@ -1,4 +1,4 @@
-import { Idl, TypesCoder } from "@project-serum/anchor";
+import { Idl, TypesCoder } from "@coral-xyz/anchor";
 
 export class SplAssociatedTokenAccountTypesCoder implements TypesCoder {
   constructor(_idl: Idl) {}

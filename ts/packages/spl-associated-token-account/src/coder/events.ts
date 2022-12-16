@@ -1,5 +1,5 @@
-import { Idl, Event, EventCoder } from "@project-serum/anchor";
-import { IdlEvent } from "@project-serum/anchor/dist/cjs/idl";
+import { Idl, Event, EventCoder } from "@coral-xyz/anchor";
+import { IdlEvent } from "@coral-xyz/anchor/dist/cjs/idl";
 
 export class SplAssociatedTokenAccountEventsCoder implements EventCoder {
   constructor(_idl: Idl) {}

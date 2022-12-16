@@ -1,5 +1,5 @@
-import * as anchor from "@project-serum/anchor";
-import { Program, Wallet } from "@project-serum/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import { Program, Wallet } from "@coral-xyz/anchor";
 import { IdlDoc } from "../../target/types/idl_doc";
 const { expect } = require("chai");
 const idl_doc_idl = require("../../target/idl/idl_doc.json");

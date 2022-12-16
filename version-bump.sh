@@ -21,10 +21,10 @@ git grep -l $(cat VERSION) -- ':!**/yarn.lock' ':!CHANGELOG.md' ':!Cargo.lock' '
     -e "s/$(cat VERSION)/$1/g"
 
 # Potential for collisions in package.json files, handle those separately
-# Replace only matching "version": "x.xx.x" and "@project-serum/anchor": "x.xx.x"
+# Replace only matching "version": "x.xx.x" and "@coral-xyz/anchor": "x.xx.x"
 git grep -l $(cat VERSION) -- '**/package.json' | \
     xargs sed "${sedi[@]}" \
-    -e "s/@project-serum\/anchor\": \"$(cat VERSION)\"/@project-serum\/anchor\": \"$1\"/g" \
+    -e "s/@coral-xyz\/anchor\": \"$(cat VERSION)\"/@coral-xyz\/anchor\": \"$1\"/g" \
     -e "s/\"version\": \"$(cat VERSION)\"/\"version\": \"$1\"/g"
 
 # Potential for collisions in Cargo.lock, use cargo update to update it

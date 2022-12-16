@@ -1,13 +1,13 @@
 import assert from "assert";
-import { splBinaryOptionProgram } from "@project-serum/spl-binary-option";
+import { splBinaryOptionProgram } from "@coral-xyz/spl-binary-option";
 import {
   Keypair,
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
-import { splTokenProgram } from "@project-serum/spl-token";
-import { BN } from "@project-serum/anchor";
+import { splTokenProgram } from "@coral-xyz/spl-token";
+import { BN } from "@coral-xyz/anchor";
 
 import {
   SPL_BINARY_OPTION_PROGRAM_ID,

@@ -1,5 +1,5 @@
-import { AnchorProvider, setProvider } from "@project-serum/anchor";
-import { splTokenProgram } from "@project-serum/spl-token";
+import { AnchorProvider, setProvider } from "@coral-xyz/anchor";
+import { splTokenProgram } from "@coral-xyz/spl-token";
 import { Keypair, SYSVAR_RENT_PUBKEY, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { assert } from "chai";

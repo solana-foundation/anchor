@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const anchor = require("@project-serum/anchor");
+const anchor = require("@coral-xyz/anchor");
 
 describe("composite", () => {
   const provider = anchor.AnchorProvider.local();

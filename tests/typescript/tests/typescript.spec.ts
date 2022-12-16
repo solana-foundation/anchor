@@ -1,4 +1,4 @@
-import * as anchor from "@project-serum/anchor";
+import * as anchor from "@coral-xyz/anchor";
 
 describe("typescript", () => {
   // Configure the client to use the local cluster.

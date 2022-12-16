@@ -1,5 +1,5 @@
-import * as anchor from "@project-serum/anchor";
-import { Program, BN, IdlAccounts } from "@project-serum/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import { Program, BN, IdlAccounts } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert } from "chai";

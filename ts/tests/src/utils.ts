@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
-import { splTokenProgram } from "@project-serum/spl-token";
-import { splAssociatedTokenAccountProgram } from "@project-serum/spl-associated-token-account";
+import { splTokenProgram } from "@coral-xyz/spl-token";
+import { splAssociatedTokenAccountProgram } from "@coral-xyz/spl-associated-token-account";
 import {
   Connection,
   Keypair,
@@ -12,7 +12,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { AnchorProvider, Wallet } from "@project-serum/anchor";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 
 import { SPL_ATA_PROGRAM_ID, SPL_TOKEN_PROGRAM_ID } from "./constants";
 

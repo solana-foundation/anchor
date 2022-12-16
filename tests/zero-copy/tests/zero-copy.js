@@ -1,4 +1,4 @@
-const anchor = require("@project-serum/anchor");
+const anchor = require("@coral-xyz/anchor");
 const { assert } = require("chai");
 const nativeAssert = require("assert");
 const PublicKey = anchor.web3.PublicKey;

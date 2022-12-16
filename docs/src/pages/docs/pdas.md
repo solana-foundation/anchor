@@ -190,8 +190,8 @@ pub fn change_user_name(ctx: Context<ChangeUserName>, new_name: String) -> Resul
 Finally, let's add a test. Copy this into `game.ts`
 
 ```ts
-import * as anchor from '@project-serum/anchor'
-import { Program } from '@project-serum/anchor'
+import * as anchor from '@coral-xyz/anchor'
+import { Program } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'
 import { Game } from '../target/types/game'
 import { expect } from 'chai'
@@ -306,8 +306,8 @@ The `authority` account is now an `UncheckedAccount` instead of a `Signer`. When
 Finally, this is the new `puppet.ts`:
 
 ```ts
-import * as anchor from '@project-serum/anchor'
-import { Program } from '@project-serum/anchor'
+import * as anchor from '@coral-xyz/anchor'
+import { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from '@solana/web3.js'
 import { Puppet } from '../target/types/puppet'
 import { PuppetMaster } from '../target/types/puppet_master'

@@ -1,4 +1,4 @@
-const anchor = require("@project-serum/anchor");
+const anchor = require("@coral-xyz/anchor");
 const splToken = require("@solana/spl-token");
 const { assert } = require("chai");
 

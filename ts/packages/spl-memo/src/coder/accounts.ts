@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { AccountsCoder, Idl } from "@project-serum/anchor";
-import { IdlTypeDef } from "@project-serum/anchor/dist/cjs/idl";
+import { AccountsCoder, Idl } from "@coral-xyz/anchor";
+import { IdlTypeDef } from "@coral-xyz/anchor/dist/cjs/idl";
 
 export class SplMemoAccountsCoder<A extends string = string>
   implements AccountsCoder

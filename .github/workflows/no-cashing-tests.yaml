@@ -229,7 +229,7 @@ jobs:
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @project-serum/anchor && yarn && anchor test && yarn lint:fix
+      - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
       - uses: ./.github/actions/git-diff/
 
   test-programs:
