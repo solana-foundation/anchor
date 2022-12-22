@@ -7,35 +7,45 @@ describe("basic-4", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.Basic4;
+  const program = anchor.workspace.Basic4,
+    counterSeed = anchor.utils.bytes.utf8.encode("counter");
+
+  let counterPubkey;
+
+  before(async () => {
+    [counterPubkey] = await anchor.web3.PublicKey.findProgramAddress(
+      [counterSeed],
+      program.programId
+    );
+  });
 
   it("Is runs the constructor", async () => {
-    // #region ctor
     // Initialize the program's state struct.
-    await program.state.rpc.new({
-      accounts: {
+    await program.methods
+      .initialize()
+      .accounts({
+        counter: counterPubkey,
         authority: provider.wallet.publicKey,
-      },
-    });
-    // #endregion ctor
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
 
     // Fetch the state struct from the network.
-    // #region accessor
-    const state = await program.state.fetch();
-    // #endregion accessor
+    const counterAccount = await program.account.counter.fetch(counterPubkey);
 
-    assert.ok(state.count.eq(new anchor.BN(0)));
+    assert.ok(counterAccount.count.eq(new anchor.BN(0)));
   });
 
   it("Executes a method on the program", async () => {
-    // #region instruction
-    await program.state.rpc.increment({
-      accounts: {
+    await program.methods
+      .increment()
+      .accounts({
+        counter: counterPubkey,
         authority: provider.wallet.publicKey,
-      },
-    });
-    // #endregion instruction
-    const state = await program.state.fetch();
-    assert.ok(state.count.eq(new anchor.BN(1)));
+      })
+      .rpc();
+
+    const counterAccount = await program.account.counter.fetch(counterPubkey);
+    assert.ok(counterAccount.count.eq(new anchor.BN(1)));
   });
 });

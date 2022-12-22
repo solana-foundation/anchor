@@ -84,7 +84,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         rent_exempt,
         seeds,
         executable,
-        state,
         close,
         address,
         associated_token,
@@ -128,9 +127,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = executable {
         constraints.push(Constraint::Executable(c));
     }
-    if let Some(c) = state {
-        constraints.push(Constraint::State(c));
-    }
     if let Some(c) = close {
         constraints.push(Constraint::Close(c));
     }
@@ -163,7 +159,6 @@ fn generate_constraint(
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
         Constraint::Seeds(c) => generate_constraint_seeds(f, c),
         Constraint::Executable(c) => generate_constraint_executable(f, c),
-        Constraint::State(c) => generate_constraint_state(f, c, accs),
         Constraint::Close(c) => generate_constraint_close(f, c, accs),
         Constraint::Address(c) => generate_constraint_address(f, c),
         Constraint::AssociatedToken(c) => generate_constraint_associated_token(f, c, accs),
@@ -1138,35 +1133,6 @@ pub fn generate_constraint_executable(
     quote! {
         if !#name.to_account_info().executable {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintExecutable).with_account_name(#name_str));
-        }
-    }
-}
-
-pub fn generate_constraint_state(
-    f: &Field,
-    c: &ConstraintState,
-    accs: &AccountsStruct,
-) -> proc_macro2::TokenStream {
-    let program_target = c.program_target.clone();
-    let ident = &f.ident;
-    let name_str = ident.to_string();
-    let account_ty = match &f.ty {
-        Ty::CpiState(ty) => &ty.account_type_path,
-        _ => panic!("Invalid state constraint"),
-    };
-    let program_target_optional_check =
-        OptionalCheckScope::new_with_field(accs, ident).generate_check(quote! {#program_target});
-    quote! {
-        {
-            #program_target_optional_check
-            // Checks the given state account is the canonical state account for
-            // the target program.
-            if #ident.key() != anchor_lang::accounts::cpi_state::CpiState::<#account_ty>::address(&#program_target.key()) {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintState).with_account_name(#name_str));
-            }
-            if AsRef::<AccountInfo>::as_ref(&#ident).owner != &#program_target.key() {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintState).with_account_name(#name_str));
-            }
         }
     }
 }

@@ -4,7 +4,6 @@ wallet = "~/.config/solana/id.json"
 
 [programs.localnet]
 misc = "3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh"
-misc2 = "HmbTLCmaGvZhKnn1Zfa1JVnp7vkMV4DYVxPLWBVoN65L"
 misc_optional = "FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
 idl_doc = "BqmKjZGVa8fqyWuojJzG16zaKSV1GjAisZToNuvEaz6m"
 init_if_needed = "BZoppwWi6jMnydnUBEJzotgEXHwLr3b3NramJgZtWeF2"

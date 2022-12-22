@@ -12,7 +12,6 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 /// - &gt;= 1000 IDL error codes
 /// - &gt;= 2000 constraint error codes
 /// - &gt;= 3000 account error codes
-/// - = 4000 state error code
 /// - &gt;= 4100 misc error codes
 /// - = 5000 deprecated error code
 ///
@@ -67,8 +66,8 @@ pub enum ErrorCode {
     /// 2007 - An executable constraint was violated
     #[msg("An executable constraint was violated")]
     ConstraintExecutable,
-    /// 2008 - A state constraint was violated
-    #[msg("A state constraint was violated")]
+    /// 2008 - Deprecated Error, feel free to replace with something else
+    #[msg("Deprecated Error, feel free to replace with something else")]
     ConstraintState,
     /// 2009 - An associated constraint was violated
     #[msg("An associated constraint was violated")]
@@ -187,11 +186,6 @@ pub enum ErrorCode {
     /// 3017 - The account was duplicated for more than one reallocation
     #[msg("The account was duplicated for more than one reallocation")]
     AccountDuplicateReallocs,
-
-    // State.
-    /// 4000 - The given state account does not have the correct address
-    #[msg("The given state account does not have the correct address")]
-    StateInvalidAddress = 4000,
 
     // Miscellaneous
     /// 4100 - The declared program id does not match actual program id

@@ -3,7 +3,6 @@ import { PublicKey } from "@solana/web3.js";
 import { Coder } from "../../coder/index.js";
 import Provider from "../../provider.js";
 import { Idl, IdlInstruction } from "../../idl.js";
-import StateFactory, { StateClient } from "./state.js";
 import InstructionFactory, { InstructionNamespace } from "./instruction.js";
 import TransactionFactory, { TransactionNamespace } from "./transaction.js";
 import RpcFactory, { RpcNamespace } from "./rpc.js";
@@ -15,7 +14,6 @@ import ViewFactory, { ViewNamespace } from "./views";
 import { CustomAccountResolver } from "../accounts-resolver.js";
 
 // Re-exports.
-export { StateClient } from "./state.js";
 export { InstructionNamespace, InstructionFn } from "./instruction.js";
 export { TransactionNamespace, TransactionFn } from "./transaction.js";
 export { RpcNamespace, RpcFn } from "./rpc.js";
@@ -44,7 +42,6 @@ export default class NamespaceFactory {
     AccountNamespace<IDL>,
     SimulateNamespace<IDL>,
     MethodsNamespace<IDL>,
-    StateClient<IDL> | undefined,
     ViewNamespace<IDL> | undefined
   ] {
     const rpc: RpcNamespace = {};
@@ -59,8 +56,6 @@ export default class NamespaceFactory {
     const account: AccountNamespace<IDL> = idl.accounts
       ? AccountFactory.build(idl, coder, programId, provider)
       : ({} as AccountNamespace<IDL>);
-
-    const state = StateFactory.build(idl, coder, programId, provider);
 
     idl.instructions.forEach((idlIx) => {
       const ixItem = InstructionFactory.build<IDL, typeof idlIx>(
@@ -112,7 +107,6 @@ export default class NamespaceFactory {
       account,
       simulate as SimulateNamespace<IDL>,
       methods as MethodsNamespace<IDL>,
-      state,
       view as ViewNamespace<IDL>,
     ];
   }

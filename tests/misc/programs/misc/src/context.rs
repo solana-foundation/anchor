@@ -1,10 +1,8 @@
 use crate::account::*;
-use anchor_lang::accounts::cpi_state::CpiState;
 use anchor_lang::accounts::loader::Loader;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use misc2::misc2::MyState as Misc2State;
 
 #[derive(Accounts)]
 pub struct TestTokenSeedsInit<'info> {
@@ -158,18 +156,6 @@ pub struct TestExecutable<'info> {
     #[account(executable)]
     /// CHECK:
     pub program: AccountInfo<'info>,
-}
-
-#[derive(Accounts)]
-pub struct TestStateCpi<'info> {
-    #[account(signer)]
-    /// CHECK:
-    pub authority: AccountInfo<'info>,
-    #[account(mut, state = misc2_program)]
-    pub cpi_state: CpiState<'info, Misc2State>,
-    #[account(executable)]
-    /// CHECK:
-    pub misc2_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]

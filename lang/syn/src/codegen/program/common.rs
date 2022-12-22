@@ -1,10 +1,6 @@
-use crate::parser;
-use crate::{IxArg, State};
+use crate::IxArg;
 use heck::CamelCase;
 use quote::quote;
-
-// Namespace for calculating state instruction sighash signatures.
-pub const SIGHASH_STATE_NAMESPACE: &str = "state";
 
 // Namespace for calculating instruction sighash signatures for any instruction
 // not affecting program state.
@@ -20,10 +16,6 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     let mut sighash = [0u8; 8];
     sighash.copy_from_slice(&crate::hash::hash(preimage.as_bytes()).to_bytes()[..8]);
     sighash
-}
-
-pub fn sighash_ctor() -> [u8; 8] {
-    sighash(SIGHASH_STATE_NAMESPACE, "new")
 }
 
 pub fn generate_ix_variant(name: String, args: &[IxArg]) -> proc_macro2::TokenStream {
@@ -44,40 +36,4 @@ pub fn generate_ix_variant(name: String, args: &[IxArg]) -> proc_macro2::TokenSt
             }
         }
     }
-}
-
-pub fn generate_ctor_args(state: &State) -> Vec<syn::Pat> {
-    generate_ctor_typed_args(state)
-        .iter()
-        .map(|pat_ty| *pat_ty.pat.clone())
-        .collect()
-}
-
-pub fn generate_ctor_typed_args(state: &State) -> Vec<syn::PatType> {
-    state
-        .ctor_and_anchor
-        .as_ref()
-        .map(|(ctor, _anchor_ident)| {
-            ctor.sig
-                .inputs
-                .iter()
-                .filter_map(|arg: &syn::FnArg| match arg {
-                    syn::FnArg::Typed(pat_ty) => {
-                        let mut arg_str = parser::tts_to_string(&pat_ty.ty);
-                        arg_str.retain(|c| !c.is_whitespace());
-                        if arg_str.starts_with("Context<") {
-                            return None;
-                        }
-                        Some(pat_ty.clone())
-                    }
-                    _ => {
-                        if !state.is_zero_copy {
-                            panic!("Cannot pass self as parameter")
-                        }
-                        None
-                    }
-                })
-                .collect()
-        })
-        .unwrap_or_default()
 }

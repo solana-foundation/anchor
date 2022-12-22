@@ -16,7 +16,7 @@ pub mod zero_cpi {
             foo: ctx.accounts.foo.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        zero_copy::cpi::update_bar(cpi_ctx, data);
+        zero_copy::cpi::update_bar(cpi_ctx, data)?;
         Ok(())
     }
 }

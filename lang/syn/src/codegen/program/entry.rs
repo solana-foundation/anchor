@@ -17,13 +17,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// code wrapping these user defined methods into something that can be
         /// executed on Solana.
         ///
-        /// These methods fall into one of three categories, each of which
-        /// can be considered a different "namespace" of the program.
+        /// These methods fall into one categorie for now.
         ///
-        /// 1) Global methods - regular methods inside of the `#[program]`.
-        /// 2) State methods - associated methods inside a `#[state]` struct.
-        /// 3) Interface methods - methods inside a strait struct's
-        ///    implementation of an `#[interface]` trait.
+        /// Global methods - regular methods inside of the `#[program]`.
         ///
         /// Care must be taken by the codegen to prevent collisions between
         /// methods in these different namespaces. For this reason, Anchor uses

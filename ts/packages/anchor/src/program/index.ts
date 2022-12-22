@@ -8,7 +8,6 @@ import NamespaceFactory, {
   InstructionNamespace,
   TransactionNamespace,
   AccountNamespace,
-  StateClient,
   SimulateNamespace,
   MethodsNamespace,
   ViewNamespace,
@@ -208,13 +207,6 @@ export class Program<IDL extends Idl = Idl> {
   readonly simulate: SimulateNamespace<IDL>;
 
   /**
-   * A client for the program state. Similar to the base [[Program]] client,
-   * one can use this to send transactions and read accounts for the state
-   * abstraction.
-   */
-  readonly state?: StateClient<IDL>;
-
-  /**
    * The namespace provides a builder API for all APIs on the program.
    * This is an alternative to using namespace the other namespaces..
    */
@@ -291,29 +283,20 @@ export class Program<IDL extends Idl = Idl> {
     this._events = new EventManager(this._programId, provider, this._coder);
 
     // Dynamic namespaces.
-    const [
-      rpc,
-      instruction,
-      transaction,
-      account,
-      simulate,
-      methods,
-      state,
-      views,
-    ] = NamespaceFactory.build(
-      idl,
-      this._coder,
-      programId,
-      provider,
-      getCustomResolver ?? (() => undefined)
-    );
+    const [rpc, instruction, transaction, account, simulate, methods, views] =
+      NamespaceFactory.build(
+        idl,
+        this._coder,
+        programId,
+        provider,
+        getCustomResolver ?? (() => undefined)
+      );
     this.rpc = rpc;
     this.instruction = instruction;
     this.transaction = transaction;
     this.account = account;
     this.simulate = simulate;
     this.methods = methods;
-    this.state = state;
     this.views = views;
   }
 

@@ -5,7 +5,6 @@ use account::MAX_SIZE;
 use anchor_lang::prelude::*;
 use context::*;
 use event::*;
-use misc2::Auth;
 
 mod account;
 mod context;
@@ -27,26 +26,6 @@ pub const NO_IDL: u16 = 55;
 pub mod misc {
     use super::*;
 
-    pub const SIZE: u64 = 99;
-
-    #[state(SIZE)]
-    pub struct MyState {
-        pub v: Vec<u8>,
-    }
-
-    impl MyState {
-        pub fn new(_ctx: Context<Ctor>) -> Result<Self> {
-            Ok(Self { v: vec![] })
-        }
-
-        pub fn remaining_accounts(&mut self, ctx: Context<RemainingAccounts>) -> Result<()> {
-            if ctx.remaining_accounts.len() != 1 {
-                return Err(ProgramError::Custom(1).into()); // Arbitrary error.
-            }
-            Ok(())
-        }
-    }
-
     pub fn initialize(ctx: Context<Initialize>, udata: u128, idata: i128) -> Result<()> {
         ctx.accounts.data.udata = udata;
         ctx.accounts.data.idata = idata;
@@ -67,15 +46,6 @@ pub mod misc {
 
     pub fn test_executable(_ctx: Context<TestExecutable>) -> Result<()> {
         Ok(())
-    }
-
-    pub fn test_state_cpi(ctx: Context<TestStateCpi>, data: u64) -> Result<()> {
-        let cpi_program = ctx.accounts.misc2_program.clone();
-        let cpi_accounts = Auth {
-            authority: ctx.accounts.authority.clone(),
-        };
-        let ctx = ctx.accounts.cpi_state.context(cpi_program, cpi_accounts);
-        misc2::cpi::state::set_data(ctx, data)
     }
 
     pub fn test_u16(ctx: Context<TestU16>, data: u16) -> Result<()> {

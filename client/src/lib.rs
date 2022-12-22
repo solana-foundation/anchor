@@ -5,7 +5,6 @@ use anchor_lang::solana_program::hash::Hash;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::solana_program::system_program;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use regex::Regex;
 use solana_account_decoder::UiAccountEncoding;
@@ -112,18 +111,6 @@ impl Program {
             self.cfg.cluster.url(),
             self.cfg.payer.clone(),
             self.cfg.options,
-            RequestNamespace::Global,
-        )
-    }
-
-    /// Returns a request builder for program state.
-    pub fn state_request(&self) -> RequestBuilder {
-        RequestBuilder::from(
-            self.program_id,
-            self.cfg.cluster.url(),
-            self.cfg.payer.clone(),
-            self.cfg.options,
-            RequestNamespace::State { new: false },
         )
     }
 
@@ -174,10 +161,6 @@ impl Program {
                     Ok((key, T::try_deserialize(&mut (&account.data as &[u8]))?))
                 }),
         })
-    }
-
-    pub fn state<T: AccountDeserialize>(&self) -> Result<T, ClientError> {
-        self.account(anchor_lang::__private::state::address(&self.program_id))
     }
 
     pub fn rpc(&self) -> RpcClient {
@@ -400,18 +383,6 @@ pub struct RequestBuilder<'a> {
     // Serialized instruction data for the target RPC.
     instruction_data: Option<Vec<u8>>,
     signers: Vec<&'a dyn Signer>,
-    // True if the user is sending a state instruction.
-    namespace: RequestNamespace,
-}
-
-#[derive(PartialEq, Eq)]
-pub enum RequestNamespace {
-    Global,
-    State {
-        // True if the request is to the state's new ctor.
-        new: bool,
-    },
-    Interface,
 }
 
 impl<'a> RequestBuilder<'a> {
@@ -420,7 +391,6 @@ impl<'a> RequestBuilder<'a> {
         cluster: &str,
         payer: Rc<dyn Signer>,
         options: Option<CommitmentConfig>,
-        namespace: RequestNamespace,
     ) -> Self {
         Self {
             program_id,
@@ -431,7 +401,6 @@ impl<'a> RequestBuilder<'a> {
             instructions: Vec::new(),
             instruction_data: None,
             signers: Vec::new(),
-            namespace,
         }
     }
 
@@ -478,16 +447,6 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
-    /// Invokes the `#[state]`'s `new` constructor.
-    #[allow(clippy::wrong_self_convention)]
-    #[must_use]
-    pub fn new(mut self, args: impl InstructionData) -> Self {
-        assert!(self.namespace == RequestNamespace::State { new: false });
-        self.namespace = RequestNamespace::State { new: true };
-        self.instruction_data = Some(args.data());
-        self
-    }
-
     #[must_use]
     pub fn signer(mut self, signer: &'a dyn Signer) -> Self {
         self.signers.push(signer);
@@ -495,36 +454,12 @@ impl<'a> RequestBuilder<'a> {
     }
 
     pub fn instructions(&self) -> Result<Vec<Instruction>, ClientError> {
-        let mut accounts = match self.namespace {
-            RequestNamespace::State { new } => match new {
-                false => vec![AccountMeta::new(
-                    anchor_lang::__private::state::address(&self.program_id),
-                    false,
-                )],
-                true => vec![
-                    AccountMeta::new_readonly(self.payer.pubkey(), true),
-                    AccountMeta::new(
-                        anchor_lang::__private::state::address(&self.program_id),
-                        false,
-                    ),
-                    AccountMeta::new_readonly(
-                        Pubkey::find_program_address(&[], &self.program_id).0,
-                        false,
-                    ),
-                    AccountMeta::new_readonly(system_program::ID, false),
-                    AccountMeta::new_readonly(self.program_id, false),
-                ],
-            },
-            _ => Vec::new(),
-        };
-        accounts.extend_from_slice(&self.accounts);
-
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
             instructions.push(Instruction {
                 program_id: self.program_id,
                 data: ix_data.clone(),
-                accounts,
+                accounts: self.accounts.clone(),
             });
         }
 

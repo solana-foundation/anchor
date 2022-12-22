@@ -7,7 +7,6 @@ export type Idl = {
   name: string;
   docs?: string[];
   instructions: IdlInstruction[];
-  state?: IdlState;
   accounts?: IdlAccountDef[];
   types?: IdlTypeDef[];
   events?: IdlEvent[];
@@ -41,11 +40,6 @@ export type IdlInstruction = {
   accounts: IdlAccountItem[];
   args: IdlField[];
   returns?: IdlType;
-};
-
-export type IdlState = {
-  struct: IdlTypeDef;
-  methods: IdlStateMethod[];
 };
 
 export type IdlStateMethod = IdlInstruction;

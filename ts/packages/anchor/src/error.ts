@@ -368,9 +368,6 @@ export const LangErrorCode = {
   AccountReallocExceedsLimit: 3016,
   AccountDuplicateReallocs: 3017,
 
-  // State.
-  StateInvalidAddress: 4000,
-
   // Miscellaneous
   DeclaredProgramIdMismatch: 4100,
 
@@ -419,7 +416,10 @@ export const LangErrorMessage = new Map([
   ],
   [LangErrorCode.ConstraintSeeds, "A seeds constraint was violated"],
   [LangErrorCode.ConstraintExecutable, "An executable constraint was violated"],
-  [LangErrorCode.ConstraintState, "A state constraint was violated"],
+  [
+    LangErrorCode.ConstraintState,
+    "Deprecated Error, feel free to replace with something else",
+  ],
   [LangErrorCode.ConstraintAssociated, "An associated constraint was violated"],
   [
     LangErrorCode.ConstraintAssociatedInit,
@@ -517,12 +517,6 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.AccountDuplicateReallocs,
     "The account was duplicated for more than one reallocation",
-  ],
-
-  // State.
-  [
-    LangErrorCode.StateInvalidAddress,
-    "The given state account does not have the correct address",
   ],
 
   // Miscellaneous

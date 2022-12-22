@@ -2,7 +2,7 @@ use crate::idl::*;
 use crate::parser::context::CrateContext;
 use crate::parser::{self, accounts, docs, error, program};
 use crate::Ty;
-use crate::{AccountField, AccountsStruct, StateIx};
+use crate::{AccountField, AccountsStruct};
 use anyhow::Result;
 use heck::MixedCase;
 use quote::ToTokens;
@@ -45,139 +45,6 @@ pub fn parse(
 
     let accs = parse_account_derives(&ctx);
 
-    let state = match p.state {
-        None => None,
-        Some(state) => match state.ctor_and_anchor {
-            None => None, // State struct defined but no implementation
-            Some((ctor, anchor_ident)) => {
-                let mut methods = state
-                    .impl_block_and_methods
-                    .map(|(_impl_block, methods)| {
-                        methods
-                            .iter()
-                            .map(|method: &StateIx| {
-                                let name = method.ident.to_string().to_mixed_case();
-                                let args = method
-                                    .args
-                                    .iter()
-                                    .map(|arg| {
-                                        let mut tts = proc_macro2::TokenStream::new();
-                                        arg.raw_arg.ty.to_tokens(&mut tts);
-                                        let doc = if !no_docs {
-                                            docs::parse(&arg.raw_arg.attrs)
-                                        } else {
-                                            None
-                                        };
-                                        let ty = tts.to_string().parse().unwrap();
-                                        IdlField {
-                                            name: arg.name.to_string().to_mixed_case(),
-                                            docs: doc,
-                                            ty,
-                                        }
-                                    })
-                                    .collect::<Vec<_>>();
-                                let accounts_strct =
-                                    accs.get(&method.anchor_ident.to_string()).unwrap();
-                                let accounts = idl_accounts(
-                                    &ctx,
-                                    accounts_strct,
-                                    &accs,
-                                    seeds_feature,
-                                    no_docs,
-                                );
-                                IdlInstruction {
-                                    name,
-                                    docs: None,
-                                    accounts,
-                                    args,
-                                    returns: None,
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                let ctor = {
-                    let name = "new".to_string();
-                    let args = ctor
-                        .sig
-                        .inputs
-                        .iter()
-                        .filter(|arg| match arg {
-                            syn::FnArg::Typed(pat_ty) => {
-                                // TODO: this filtering should be done in the parser.
-                                let mut arg_str = parser::tts_to_string(&pat_ty.ty);
-                                arg_str.retain(|c| !c.is_whitespace());
-                                !arg_str.starts_with("Context<")
-                            }
-                            _ => false,
-                        })
-                        .map(|arg: &syn::FnArg| match arg {
-                            syn::FnArg::Typed(arg_typed) => {
-                                let mut tts = proc_macro2::TokenStream::new();
-                                arg_typed.ty.to_tokens(&mut tts);
-                                let doc = if !no_docs {
-                                    docs::parse(&arg_typed.attrs)
-                                } else {
-                                    None
-                                };
-                                let ty = tts.to_string().parse().unwrap();
-                                IdlField {
-                                    name: parser::tts_to_string(&arg_typed.pat).to_mixed_case(),
-                                    docs: doc,
-                                    ty,
-                                }
-                            }
-                            _ => panic!("Invalid syntax"),
-                        })
-                        .collect();
-                    let accounts_strct = accs.get(&anchor_ident.to_string()).unwrap();
-                    let accounts =
-                        idl_accounts(&ctx, accounts_strct, &accs, seeds_feature, no_docs);
-                    IdlInstruction {
-                        name,
-                        docs: None,
-                        accounts,
-                        args,
-                        returns: None,
-                    }
-                };
-
-                methods.insert(0, ctor);
-
-                let strct = {
-                    let fields = match state.strct.fields {
-                        syn::Fields::Named(f_named) => f_named
-                            .named
-                            .iter()
-                            .map(|f: &syn::Field| {
-                                let mut tts = proc_macro2::TokenStream::new();
-                                f.ty.to_tokens(&mut tts);
-                                let doc = if !no_docs {
-                                    docs::parse(&f.attrs)
-                                } else {
-                                    None
-                                };
-                                let ty = tts.to_string().parse().unwrap();
-                                IdlField {
-                                    name: f.ident.as_ref().unwrap().to_string().to_mixed_case(),
-                                    docs: doc,
-                                    ty,
-                                }
-                            })
-                            .collect::<Vec<IdlField>>(),
-                        _ => panic!("State must be a struct"),
-                    };
-                    IdlTypeDefinition {
-                        name: state.name,
-                        docs: None,
-                        ty: IdlTypeDefinitionTy::Struct { fields },
-                    }
-                };
-
-                Some(IdlState { strct, methods })
-            }
-        },
-    };
     let error = parse_error_enum(&ctx).map(|mut e| error::parse(&mut e, None));
     let error_codes = error.as_ref().map(|e| {
         e.codes
@@ -292,7 +159,6 @@ pub fn parse(
         version,
         name: p.name.to_string(),
         docs: p.docs.clone(),
-        state,
         instructions,
         types,
         accounts,

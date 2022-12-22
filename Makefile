@@ -23,11 +23,7 @@ publish:
 	sleep 25
 	cd lang/attribute/error/ && cargo publish && cd ../../../
 	sleep 25
-	cd lang/attribute/interface/ && cargo publish && cd ../../../
-	sleep 25
 	cd lang/attribute/program/ && cargo publish && cd ../../..
-	sleep 25
-	cd lang/attribute/state/ && cargo publish && cd ../../../
 	sleep 25
 	cd lang/attribute/event/ && cargo publish && cd ../../../
 	sleep 25

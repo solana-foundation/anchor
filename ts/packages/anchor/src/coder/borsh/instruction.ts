@@ -9,7 +9,6 @@ import { AccountMeta, PublicKey } from "@solana/web3.js";
 import {
   Idl,
   IdlField,
-  IdlStateMethod,
   IdlType,
   IdlTypeDef,
   IdlAccount,
@@ -23,10 +22,6 @@ import {
 import { IdlCoder } from "./idl.js";
 import { InstructionCoder } from "../index.js";
 
-/**
- * Namespace for state method function signatures.
- */
-export const SIGHASH_STATE_NAMESPACE = "state";
 /**
  * Namespace for global instruction function signatures (i.e. functions
  * that aren't namespaced by the state or any of its trait implementations).
@@ -55,16 +50,6 @@ export class BorshInstructionCoder implements InstructionCoder {
       });
     });
 
-    if (idl.state) {
-      idl.state.methods.map((ix) => {
-        const sh = sighash(SIGHASH_STATE_NAMESPACE, ix.name);
-        sighashLayouts.set(bs58.encode(sh), {
-          layout: this.ixLayout.get(ix.name) as Layout,
-          name: ix.name,
-        });
-      });
-    }
-
     this.sighashLayouts = sighashLayouts;
   }
 
@@ -73,13 +58,6 @@ export class BorshInstructionCoder implements InstructionCoder {
    */
   public encode(ixName: string, ix: any): Buffer {
     return this._encode(SIGHASH_GLOBAL_NAMESPACE, ixName, ix);
-  }
-
-  /**
-   * Encodes a program state instruction.
-   */
-  public encodeState(ixName: string, ix: any): Buffer {
-    return this._encode(SIGHASH_STATE_NAMESPACE, ixName, ix);
   }
 
   private _encode(nameSpace: string, ixName: string, ix: any): Buffer {
@@ -95,31 +73,17 @@ export class BorshInstructionCoder implements InstructionCoder {
   }
 
   private static parseIxLayout(idl: Idl): Map<string, Layout> {
-    const stateMethods = idl.state ? idl.state.methods : [];
-
-    const ixLayouts = stateMethods
-      .map((m: IdlStateMethod): [string, Layout<unknown>] => {
-        let fieldLayouts = m.args.map((arg: IdlField) => {
-          return IdlCoder.fieldLayout(
-            arg,
-            Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
-          );
-        });
-        const name = camelCase(m.name);
-        return [name, borsh.struct(fieldLayouts, name)];
-      })
-      .concat(
-        idl.instructions.map((ix) => {
-          let fieldLayouts = ix.args.map((arg: IdlField) =>
-            IdlCoder.fieldLayout(
-              arg,
-              Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
-            )
-          );
-          const name = camelCase(ix.name);
-          return [name, borsh.struct(fieldLayouts, name)];
-        })
+    const ixLayouts = idl.instructions.map((ix): [string, Layout<unknown>] => {
+      let fieldLayouts = ix.args.map((arg: IdlField) =>
+        IdlCoder.fieldLayout(
+          arg,
+          Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
+        )
       );
+      const name = camelCase(ix.name);
+      return [name, borsh.struct(fieldLayouts, name)];
+    });
+
     return new Map(ixLayouts);
   }
 

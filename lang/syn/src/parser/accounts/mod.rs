@@ -283,13 +283,11 @@ pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
 fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
     let r = matches!(
         ident_string(f)?.0.as_str(),
-        "ProgramState"
-            | "ProgramAccount"
+        "ProgramAccount"
             | "CpiAccount"
             | "Sysvar"
             | "AccountInfo"
             | "UncheckedAccount"
-            | "CpiState"
             | "Loader"
             | "AccountLoader"
             | "Account"
@@ -304,8 +302,6 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
 fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
     let (ident, optional, path) = ident_string(f)?;
     let ty = match ident.as_str() {
-        "ProgramState" => Ty::ProgramState(parse_program_state(&path)?),
-        "CpiState" => Ty::CpiState(parse_cpi_state(&path)?),
         "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)?),
         "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)?),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)?),
@@ -378,20 +374,6 @@ fn ident_string(f: &syn::Field) -> ParseResult<(String, bool, Path)> {
 
     let segments = &path.segments[0];
     Ok((segments.ident.to_string(), optional, path))
-}
-
-fn parse_program_state(path: &syn::Path) -> ParseResult<ProgramStateTy> {
-    let account_ident = parse_account(path)?;
-    Ok(ProgramStateTy {
-        account_type_path: account_ident,
-    })
-}
-
-fn parse_cpi_state(path: &syn::Path) -> ParseResult<CpiStateTy> {
-    let account_ident = parse_account(path)?;
-    Ok(CpiStateTy {
-        account_type_path: account_ident,
-    })
 }
 
 fn parse_cpi_account(path: &syn::Path) -> ParseResult<CpiAccountTy> {

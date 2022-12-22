@@ -271,12 +271,6 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         }
                     },
                 )),
-                "state" => ConstraintToken::State(Context::new(
-                    span,
-                    ConstraintState {
-                        program_target: stream.parse()?,
-                    },
-                )),
                 "payer" => ConstraintToken::Payer(Context::new(
                     span,
                     ConstraintPayer {
@@ -340,7 +334,6 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub rent_exempt: Option<Context<ConstraintRentExempt>>,
     pub seeds: Option<Context<ConstraintSeeds>>,
     pub executable: Option<Context<ConstraintExecutable>>,
-    pub state: Option<Context<ConstraintState>>,
     pub payer: Option<Context<ConstraintPayer>>,
     pub space: Option<Context<ConstraintSpace>>,
     pub close: Option<Context<ConstraintClose>>,
@@ -374,7 +367,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             rent_exempt: None,
             seeds: None,
             executable: None,
-            state: None,
             payer: None,
             space: None,
             close: None,
@@ -575,7 +567,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             rent_exempt,
             seeds,
             executable,
-            state,
             payer,
             space,
             close,
@@ -724,7 +715,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             owner: into_inner!(owner),
             rent_exempt: into_inner!(rent_exempt),
             executable: into_inner!(executable),
-            state: into_inner!(state),
             close: into_inner!(close),
             address: into_inner!(address),
             associated_token: if !is_init { associated_token } else { None },
@@ -747,7 +737,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::RentExempt(c) => self.add_rent_exempt(c),
             ConstraintToken::Seeds(c) => self.add_seeds(c),
             ConstraintToken::Executable(c) => self.add_executable(c),
-            ConstraintToken::State(c) => self.add_state(c),
             ConstraintToken::Payer(c) => self.add_payer(c),
             ConstraintToken::Space(c) => self.add_space(c),
             ConstraintToken::Close(c) => self.add_close(c),
@@ -1112,14 +1101,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "executable already provided"));
         }
         self.executable.replace(c);
-        Ok(())
-    }
-
-    fn add_state(&mut self, c: Context<ConstraintState>) -> ParseResult<()> {
-        if self.state.is_some() {
-            return Err(ParseError::new(c.span(), "state already provided"));
-        }
-        self.state.replace(c);
         Ok(())
     }
 

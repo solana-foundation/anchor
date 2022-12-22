@@ -16,6 +16,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "=0.24.1"
+anchor-lang = "=0.26.0"
 num-traits = "0.2"
 num-derive = "0.3"

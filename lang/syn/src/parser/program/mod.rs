@@ -4,14 +4,11 @@ use syn::parse::{Error as ParseError, Result as ParseResult};
 use syn::spanned::Spanned;
 
 mod instructions;
-mod state;
 
 pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
-    let state = state::parse(&program_mod)?;
     let docs = docs::parse(&program_mod.attrs);
     let (ixs, fallback_fn) = instructions::parse(&program_mod)?;
     Ok(Program {
-        state,
         ixs,
         name: program_mod.ident.clone(),
         docs,
