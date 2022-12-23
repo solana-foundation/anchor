@@ -16,6 +16,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- cli: Don't regenerate idl in read_all_programs(). ([#2332](https://github.com/coral-xyz/anchor/pull/2332))
+
 ### Breaking
 
 - lang: Remove `state` and `interface` attributes ([#2285](https://github.com/coral-xyz/anchor/pull/2285)).
