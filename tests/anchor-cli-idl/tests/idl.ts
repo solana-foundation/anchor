@@ -4,6 +4,7 @@ import { IdlCommandsOne } from "../target/types/idl_commands_one";
 import { IdlCommandsTwo } from "../target/types/idl_commands_two";
 import { assert } from "chai";
 import { execSync } from "child_process";
+import * as fs from "fs";
 
 describe("Test CLI IDL commands", () => {
   // Configure the client to use the local cluster.
@@ -61,5 +62,26 @@ describe("Test CLI IDL commands", () => {
       .trim();
 
     assert.equal(authority, provider.wallet.publicKey.toString());
+  });
+
+  it("Can close IDL account", async () => {
+    execSync(`anchor idl close ${programOne.programId}`, { stdio: "inherit" });
+    const idl = await anchor.Program.fetchIdl(programOne.programId, provider);
+    assert.isNull(idl);
+  });
+
+  it("Can initialize super massive IDL account", async () => {
+    execSync(
+      `anchor idl init --filepath testLargeIdl.json ${programOne.programId}`,
+      { stdio: "inherit" }
+    );
+    const idlActual = await anchor.Program.fetchIdl(
+      programOne.programId,
+      provider
+    );
+    const idlExpected = JSON.parse(
+      fs.readFileSync("testLargeIdl.json", "utf8")
+    );
+    assert.deepEqual(idlActual, idlExpected);
   });
 });

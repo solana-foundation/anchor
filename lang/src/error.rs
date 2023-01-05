@@ -40,6 +40,9 @@ pub enum ErrorCode {
     /// 1001 - Invalid program given to the IDL instruction
     #[msg("Invalid program given to the IDL instruction")]
     IdlInstructionInvalidProgram,
+    /// 1002 - IDL Account must be empty in order to resize
+    #[msg("IDL account must be empty in order to resize, try closing first")]
+    IdlAccountNotEmpty,
 
     // Constraints
     /// 2000 - A mut constraint was violated

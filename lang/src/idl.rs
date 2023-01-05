@@ -45,6 +45,9 @@ pub enum IdlInstruction {
     SetBuffer,
     // Sets a new authority on the IdlAccount.
     SetAuthority { new_authority: Pubkey },
+    Close,
+    // Increases account size for accounts that need over 10kb.
+    Resize { data_len: u64 },
 }
 
 // Accounts for the Create instruction.
@@ -58,6 +61,17 @@ pub struct IdlAccounts<'info> {
     pub idl: ProgramAccount<'info, IdlAccount>,
     #[account(constraint = authority.key != &ERASED_AUTHORITY)]
     pub authority: Signer<'info>,
+}
+
+// Accounts for resize account instruction
+#[derive(Accounts)]
+pub struct IdlResizeAccount<'info> {
+    #[account(mut, has_one = authority)]
+    #[allow(deprecated)]
+    pub idl: ProgramAccount<'info, IdlAccount>,
+    #[account(mut, constraint = authority.key != &ERASED_AUTHORITY)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 // Accounts for creating an idl buffer.
@@ -85,6 +99,18 @@ pub struct IdlSetBuffer<'info> {
     pub authority: Signer<'info>,
 }
 
+// Accounts for closing the canonical Idl buffer.
+#[derive(Accounts)]
+pub struct IdlCloseAccount<'info> {
+    #[account(mut, has_one = authority, close = sol_destination)]
+    #[allow(deprecated)]
+    pub account: ProgramAccount<'info, IdlAccount>,
+    #[account(constraint = authority.key != &ERASED_AUTHORITY)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub sol_destination: AccountInfo<'info>,
+}
+
 // The account holding a program's IDL. This is stored on chain so that clients
 // can fetch it and generate a client with nothing but a program's ID.
 //
@@ -95,8 +121,9 @@ pub struct IdlSetBuffer<'info> {
 pub struct IdlAccount {
     // Address that can modify the IDL.
     pub authority: Pubkey,
-    // Compressed idl bytes.
-    pub data: Vec<u8>,
+    // Length of compressed idl bytes.
+    pub data_len: u32,
+    // Followed by compressed idl bytes.
 }
 
 impl IdlAccount {
@@ -107,5 +134,24 @@ impl IdlAccount {
     }
     pub fn seed() -> &'static str {
         "anchor:idl"
+    }
+}
+
+use std::cell::{Ref, RefMut};
+
+pub trait IdlTrailingData<'info> {
+    fn trailing_data(self) -> Ref<'info, [u8]>;
+    fn trailing_data_mut(self) -> RefMut<'info, [u8]>;
+}
+
+#[allow(deprecated)]
+impl<'a, 'info: 'a> IdlTrailingData<'a> for &'a ProgramAccount<'info, IdlAccount> {
+    fn trailing_data(self) -> Ref<'a, [u8]> {
+        let info = self.as_ref();
+        Ref::map(info.try_borrow_data().unwrap(), |d| &d[44..])
+    }
+    fn trailing_data_mut(self) -> RefMut<'a, [u8]> {
+        let info = self.as_ref();
+        RefMut::map(info.try_borrow_mut_data().unwrap(), |d| &mut d[44..])
     }
 }
