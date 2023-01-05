@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - cli: Add `env` option to verifiable builds ([#2325](https://github.com/coral-xyz/anchor/pull/2325)).
+- spl: Add `transfer_checked` function ([#2353](https://github.com/coral-xyz/anchor/pull/2353)).
 
 ### Fixes
 

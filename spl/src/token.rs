@@ -33,6 +33,34 @@ pub fn transfer<'a, 'b, 'c, 'info>(
     .map_err(Into::into)
 }
 
+pub fn transfer_checked<'a, 'b, 'c, 'info>(
+    ctx: CpiContext<'a, 'b, 'c, 'info, TransferChecked<'info>>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let ix = spl_token::instruction::transfer_checked(
+        &spl_token::ID,
+        ctx.accounts.from.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.to.key,
+        ctx.accounts.authority.key,
+        &[],
+        amount,
+        decimals,
+    )?;
+    solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.from.clone(),
+            ctx.accounts.mint.clone(),
+            ctx.accounts.to.clone(),
+            ctx.accounts.authority.clone(),
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
 pub fn mint_to<'a, 'b, 'c, 'info>(
     ctx: CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>,
     amount: u64,
@@ -303,6 +331,14 @@ pub fn sync_native<'a, 'b, 'c, 'info>(
 #[derive(Accounts)]
 pub struct Transfer<'info> {
     pub from: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TransferChecked<'info> {
+    pub from: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
     pub to: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
 }
