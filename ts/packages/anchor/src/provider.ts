@@ -246,7 +246,10 @@ export class AnchorProvider implements Provider {
    * Simulates the given transaction, returning emitted logs from execution.
    *
    * @param tx      The transaction to send.
-   * @param signers The signers of the transaction.
+   * @param signers The signers of the transaction. If unset, the transaction
+   *                will be simulated with the "sigVerify: false" option. This
+   *                allows for simulation of transactions without asking the
+   *                wallet for a signature.
    * @param opts    Transaction confirmation options.
    */
   async simulate(
@@ -263,7 +266,9 @@ export class AnchorProvider implements Provider {
       )
     ).blockhash;
 
-    tx = await this.wallet.signTransaction(tx);
+    if (signers) {
+      tx = await this.wallet.signTransaction(tx);
+    }
     const result = await simulateTransaction(
       this.connection,
       tx,
