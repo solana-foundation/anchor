@@ -112,8 +112,8 @@ pub fn install_version(version: &Version, force: bool) -> Result<()> {
         ));
     }
     fs::rename(
-        &AVM_HOME.join("bin").join("anchor"),
-        &AVM_HOME.join("bin").join(format!("anchor-{}", version)),
+        AVM_HOME.join("bin").join("anchor"),
+        AVM_HOME.join("bin").join(format!("anchor-{}", version)),
     )?;
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
@@ -219,7 +219,7 @@ pub fn get_latest_version() -> semver::Version {
 pub fn read_installed_versions() -> Vec<semver::Version> {
     let home_dir = AVM_HOME.to_path_buf();
     let mut versions = vec![];
-    for file in fs::read_dir(&home_dir.join("bin")).unwrap() {
+    for file in fs::read_dir(home_dir.join("bin")).unwrap() {
         let file_name = file.unwrap().file_name();
         // Match only things that look like anchor-*
         if file_name.to_str().unwrap().starts_with("anchor-") {

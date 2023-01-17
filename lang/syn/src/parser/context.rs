@@ -29,9 +29,7 @@ impl CrateContext {
     }
 
     pub fn modules(&self) -> impl Iterator<Item = ModuleContext> {
-        self.modules
-            .iter()
-            .map(move |(_, detail)| ModuleContext { detail })
+        self.modules.values().map(|detail| ModuleContext { detail })
     }
 
     pub fn root_module(&self) -> ModuleContext {

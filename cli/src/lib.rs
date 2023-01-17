@@ -613,10 +613,10 @@ fn init(
         package_json.write_all(template::package_json(jest).as_bytes())?;
 
         if jest {
-            let mut test = File::create(&format!("tests/{}.test.js", &project_name))?;
+            let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
             test.write_all(template::jest(&project_name).as_bytes())?;
         } else {
-            let mut test = File::create(&format!("tests/{}.js", &project_name))?;
+            let mut test = File::create(format!("tests/{}.js", &project_name))?;
             test.write_all(template::mocha(&project_name).as_bytes())?;
         }
 
@@ -633,7 +633,7 @@ fn init(
         let mut deploy = File::create("migrations/deploy.ts")?;
         deploy.write_all(template::ts_deploy_script().as_bytes())?;
 
-        let mut mocha = File::create(&format!("tests/{}.ts", &project_name))?;
+        let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
         mocha.write_all(template::ts_mocha(&project_name).as_bytes())?;
     }
 
@@ -697,13 +697,13 @@ fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
 
 // Creates a new program crate in the current directory with `name`.
 fn new_program(name: &str) -> Result<()> {
-    fs::create_dir(&format!("programs/{}", name))?;
-    fs::create_dir(&format!("programs/{}/src/", name))?;
-    let mut cargo_toml = File::create(&format!("programs/{}/Cargo.toml", name))?;
+    fs::create_dir(format!("programs/{}", name))?;
+    fs::create_dir(format!("programs/{}/src/", name))?;
+    let mut cargo_toml = File::create(format!("programs/{}/Cargo.toml", name))?;
     cargo_toml.write_all(template::cargo_toml(name).as_bytes())?;
-    let mut xargo_toml = File::create(&format!("programs/{}/Xargo.toml", name))?;
+    let mut xargo_toml = File::create(format!("programs/{}/Xargo.toml", name))?;
     xargo_toml.write_all(template::xargo_toml().as_bytes())?;
-    let mut lib_rs = File::create(&format!("programs/{}/src/lib.rs", name))?;
+    let mut lib_rs = File::create(format!("programs/{}/src/lib.rs", name))?;
     lib_rs.write_all(template::lib_rs(name).as_bytes())?;
     Ok(())
 }
@@ -1378,7 +1378,7 @@ fn verify(
         cargo_args,
         false,
     )?;
-    std::env::set_current_dir(&cur_dir)?;
+    std::env::set_current_dir(cur_dir)?;
 
     // Verify binary.
     let binary_name = cargo.lib_name()?;
@@ -2553,7 +2553,7 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
     fs::create_dir_all(program_logs_dir)?;
     let mut handles = vec![];
     for program in config.read_all_programs()? {
-        let mut file = File::open(&format!("target/idl/{}.json", program.lib_name))?;
+        let mut file = File::open(format!("target/idl/{}.json", program.lib_name))?;
         let mut contents = vec![];
         file.read_to_end(&mut contents)?;
         let idl: Idl = serde_json::from_slice(&contents)?;
@@ -2970,7 +2970,7 @@ fn create_idl_buffer(
 
     // Creates the new buffer account with the system program.
     let create_account_ix = {
-        let space = 8 + 32 + 4 + serialize_idl(idl)?.len() as usize;
+        let space = 8 + 32 + 4 + serialize_idl(idl)?.len();
         let lamports = client.get_minimum_balance_for_rent_exemption(space)?;
         solana_sdk::system_instruction::create_account(
             &keypair.pubkey(),
@@ -3323,7 +3323,7 @@ fn publish(
 
     // All workspace programs.
     for path in cfg.get_program_list()? {
-        let mut dirs = walkdir::WalkDir::new(&path)
+        let mut dirs = walkdir::WalkDir::new(path)
             .into_iter()
             .filter_entry(|e| !is_hidden(e));
 
@@ -3398,7 +3398,7 @@ fn publish(
         });
     let client = Client::new();
     let resp = client
-        .post(&format!("{}/api/v0/build", cfg.registry.url))
+        .post(format!("{}/api/v0/build", cfg.registry.url))
         .bearer_auth(token)
         .multipart(form)
         .send()?;
