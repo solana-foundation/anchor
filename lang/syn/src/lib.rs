@@ -618,23 +618,23 @@ pub struct ErrorCode {
 // All well formed constraints on a single `Accounts` field.
 #[derive(Debug, Default, Clone)]
 pub struct ConstraintGroup {
-    init: Option<ConstraintInitGroup>,
-    zeroed: Option<ConstraintZeroed>,
-    mutable: Option<ConstraintMut>,
-    signer: Option<ConstraintSigner>,
-    owner: Option<ConstraintOwner>,
-    rent_exempt: Option<ConstraintRentExempt>,
-    seeds: Option<ConstraintSeedsGroup>,
-    executable: Option<ConstraintExecutable>,
-    has_one: Vec<ConstraintHasOne>,
-    literal: Vec<ConstraintLiteral>,
-    raw: Vec<ConstraintRaw>,
-    close: Option<ConstraintClose>,
-    address: Option<ConstraintAddress>,
-    associated_token: Option<ConstraintAssociatedToken>,
-    token_account: Option<ConstraintTokenAccountGroup>,
-    mint: Option<ConstraintTokenMintGroup>,
-    realloc: Option<ConstraintReallocGroup>,
+    pub init: Option<ConstraintInitGroup>,
+    pub zeroed: Option<ConstraintZeroed>,
+    pub mutable: Option<ConstraintMut>,
+    pub signer: Option<ConstraintSigner>,
+    pub owner: Option<ConstraintOwner>,
+    pub rent_exempt: Option<ConstraintRentExempt>,
+    pub seeds: Option<ConstraintSeedsGroup>,
+    pub executable: Option<ConstraintExecutable>,
+    pub has_one: Vec<ConstraintHasOne>,
+    pub literal: Vec<ConstraintLiteral>,
+    pub raw: Vec<ConstraintRaw>,
+    pub close: Option<ConstraintClose>,
+    pub address: Option<ConstraintAddress>,
+    pub associated_token: Option<ConstraintAssociatedToken>,
+    pub token_account: Option<ConstraintTokenAccountGroup>,
+    pub mint: Option<ConstraintTokenMintGroup>,
+    pub realloc: Option<ConstraintReallocGroup>,
 }
 
 impl ConstraintGroup {
@@ -862,37 +862,37 @@ pub struct ConstraintClose {
 
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenMint {
-    mint: Expr,
+    pub mint: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenAuthority {
-    auth: Expr,
+    pub auth: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintMintAuthority {
-    mint_auth: Expr,
+    pub mint_auth: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintMintFreezeAuthority {
-    mint_freeze_auth: Expr,
+    pub mint_freeze_auth: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintMintDecimals {
-    decimals: Expr,
+    pub decimals: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenBump {
-    bump: Option<Expr>,
+    pub bump: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintProgramSeed {
-    program_seed: Expr,
+    pub program_seed: Expr,
 }
 
 #[derive(Debug, Clone)]
