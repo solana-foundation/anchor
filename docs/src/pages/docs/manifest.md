@@ -69,7 +69,7 @@ Sets the paths --relative to the `Anchor.toml`--
    to all programs in the local
    workspace, i.e., the path to the `Cargo.toml` manifest associated with each
    program that can be compiled by the `anchor` CLI. For programs using the
-   standard Anchor workflow, this can be ommitted. For programs not written in Anchor
+   standard Anchor workflow, this can be omitted. For programs not written in Anchor
    but still want to publish, this should be added.
 
 Example:
