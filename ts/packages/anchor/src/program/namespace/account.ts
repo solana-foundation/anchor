@@ -110,6 +110,12 @@ export class AccountClient<
   }
   private _coder: Coder;
 
+  /**
+   * Returns the idl account.
+   */
+  get idlAccount(): A {
+    return this._idlAccount;
+  }
   private _idlAccount: A;
 
   constructor(
