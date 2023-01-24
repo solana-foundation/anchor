@@ -1,6 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, Program } from "@coral-xyz/anchor";
-import { findProgramAddressSync } from "@coral-xyz/anchor/dist/cjs/utils/pubkey";
 import { PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { BpfUpgradeableState } from "../target/types/bpf_upgradeable_state";
@@ -12,7 +11,7 @@ describe("bpf_upgradeable_state", () => {
 
   const program = anchor.workspace
     .BpfUpgradeableState as Program<BpfUpgradeableState>;
-  const programDataAddress = findProgramAddressSync(
+  const programDataAddress = PublicKey.findProgramAddressSync(
     [program.programId.toBytes()],
     new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
   )[0];
@@ -147,7 +146,7 @@ describe("bpf_upgradeable_state", () => {
     const secondProgramAddress = new PublicKey(
       "Fkv67TwmbakfZw2PoW57wYPbqNexAH6vuxpyT8vmrc3B"
     );
-    const secondProgramProgramDataAddress = findProgramAddressSync(
+    const secondProgramProgramDataAddress = PublicKey.findProgramAddressSync(
       [secondProgramAddress.toBytes()],
       new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
     )[0];
@@ -176,7 +175,7 @@ describe("bpf_upgradeable_state", () => {
     const secondProgramAddress = new PublicKey(
       "Fkv67TwmbakfZw2PoW57wYPbqNexAH6vuxpyT8vmrc3B"
     );
-    const secondProgramProgramDataAddress = findProgramAddressSync(
+    const secondProgramProgramDataAddress = PublicKey.findProgramAddressSync(
       [secondProgramAddress.toBytes()],
       new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
     )[0];

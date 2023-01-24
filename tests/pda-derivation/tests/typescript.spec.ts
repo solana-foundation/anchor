@@ -1,7 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { Keypair } from "@solana/web3.js";
-import { findProgramAddressSync } from "@coral-xyz/anchor/dist/cjs/utils/pubkey";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { Program } from "@coral-xyz/anchor";
 import { PdaDerivation } from "../target/types/pda_derivation";
 import { expect } from "chai";
@@ -43,7 +42,7 @@ describe("typescript", () => {
     const MY_SEED_U8 = 1;
     const MY_SEED_U32 = 2;
     const MY_SEED_U64 = 3;
-    const expectedPDAKey = findProgramAddressSync(
+    const expectedPDAKey = PublicKey.findProgramAddressSync(
       [
         Buffer.from([seedA]),
         encode("another-seed"),

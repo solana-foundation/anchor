@@ -1,5 +1,4 @@
 import { Buffer } from "buffer";
-import assert from "assert";
 import {
   AccountInfo,
   AccountMeta,
@@ -17,7 +16,7 @@ import {
 } from "@solana/web3.js";
 import { chunks } from "../utils/common.js";
 import { Address, translateAddress } from "../program/common.js";
-import Provider, { getProvider, Wallet } from "../provider.js";
+import Provider, { getProvider } from "../provider.js";
 import {
   type as pick,
   number,
@@ -25,14 +24,11 @@ import {
   array,
   boolean,
   literal,
-  record,
   union,
   optional,
   nullable,
   coerce,
-  instance,
   create,
-  tuple,
   unknown,
   any,
   Struct,

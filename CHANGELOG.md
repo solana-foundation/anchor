@@ -25,6 +25,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Breaking
 
 - lang: Remove `state` and `interface` attributes ([#2285](https://github.com/coral-xyz/anchor/pull/2285)).
+- ts: Remove `createProgramAddressSync`, `findProgramAddressSync` (now available in `@solana/web3.js`) and update `associatedAddress` to be synchronous ([#2357](https://github.com/coral-xyz/anchor/pull/2357)).
 
 ## [0.26.0] - 2022-12-15
 
