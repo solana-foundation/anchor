@@ -60,7 +60,7 @@ pub struct TestNonAccountStruct {
 #[account(zero_copy)]
 #[derive(InitSpace)]
 pub struct TestZeroCopyStruct {
-    pub test_array: [u8; 10],
+    pub test_array: [u8; 8],
     pub test_u32: u32,
 }
 
@@ -108,7 +108,7 @@ fn test_complexe_struct() {
 
 #[test]
 fn test_zero_copy_struct() {
-    assert_eq!(TestZeroCopyStruct::INIT_SPACE, 10 + 4)
+    assert_eq!(TestZeroCopyStruct::INIT_SPACE, 8 + 4)
 }
 
 #[test]
