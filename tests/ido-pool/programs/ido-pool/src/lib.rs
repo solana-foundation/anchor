@@ -296,7 +296,7 @@ pub struct InitializePool<'info> {
         seeds = [ido_name.as_bytes()],
         bump,
         payer = ido_authority,
-        space = IdoAccount::LEN + 8
+        space = 8 + IdoAccount::INIT_SPACE
     )]
     pub ido_account: Box<Account<'info, IdoAccount>>,
     // TODO Confirm USDC mint address on mainnet or leave open as an option for other stables
@@ -545,6 +545,7 @@ pub struct WithdrawFromEscrow<'info> {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct IdoAccount {
     pub ido_name: [u8; 10], // Setting an arbitrary max of ten characters in the ido name. // 10
     pub bumps: PoolBumps,   // 4
@@ -560,11 +561,7 @@ pub struct IdoAccount {
     pub ido_times: IdoTimes, // 32
 }
 
-impl IdoAccount {
-    pub const LEN: usize = 10 + 4 + 32 + 5 * 32 + 8 + 32;
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Default, Clone, Copy)]
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Default, Clone, Copy)]
 pub struct IdoTimes {
     pub start_ido: i64,    // 8
     pub end_deposits: i64, // 8
@@ -572,7 +569,7 @@ pub struct IdoTimes {
     pub end_escrow: i64,   // 8
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Default, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Default, Clone)]
 pub struct PoolBumps {
     pub ido_account: u8,     // 1
     pub redeemable_mint: u8, // 1

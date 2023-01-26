@@ -51,6 +51,7 @@ pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
+pub use anchor_derive_space::InitSpace;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::{BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
 pub use solana_program;
@@ -209,6 +210,11 @@ pub trait Discriminator {
     }
 }
 
+/// Defines the space of an account for initialization.
+pub trait Space {
+    const INIT_SPACE: usize;
+}
+
 /// Bump seed for program derived addresses.
 pub trait Bump {
     fn seed(&self) -> u8;
@@ -247,8 +253,8 @@ pub mod prelude {
         require, require_eq, require_gt, require_gte, require_keys_eq, require_keys_neq,
         require_neq, solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Id, Key, Owner,
-        ProgramData, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Id, InitSpace, Key, Owner,
+        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     pub use anchor_attribute_error::*;
     pub use borsh;
@@ -287,6 +293,13 @@ pub mod __private {
     pub use bytemuck;
 
     use solana_program::pubkey::Pubkey;
+
+    // Used to calculate the maximum between two expressions.
+    // It is necessary for the calculation of the enum space.
+    #[doc(hidden)]
+    pub const fn max(a: usize, b: usize) -> usize {
+        [a, b][(a < b) as usize]
+    }
 
     // Very experimental trait.
     #[doc(hidden)]

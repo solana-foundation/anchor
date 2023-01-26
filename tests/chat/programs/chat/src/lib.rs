@@ -46,7 +46,7 @@ pub struct CreateUser<'info> {
         seeds = [authority.key().as_ref()],
         bump,
         payer = authority,
-        space = 320,
+        space = 8 + User::INIT_SPACE,
     )]
     user: Account<'info, User>,
     #[account(mut)]
@@ -74,7 +74,9 @@ pub struct SendMessage<'info> {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct User {
+    #[max_len(200)]
     name: String,
     authority: Pubkey,
     bump: u8,
