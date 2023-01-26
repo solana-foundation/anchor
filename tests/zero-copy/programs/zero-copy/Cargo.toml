@@ -18,8 +18,8 @@ test-bpf = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
+bytemuck = {version = "1.4.0", features = ["derive", "min_const_generics"]}
 
 [dev-dependencies]
 anchor-client = { path = "../../../../client", features = ["debug"] }
-bytemuck = "1.4.0"
 solana-program-test = "1.13.5"

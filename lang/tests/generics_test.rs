@@ -22,7 +22,7 @@ where
     pub associated: Account<'info, Associated<U>>,
 }
 
-#[account(zero_copy)]
+#[account(zero_copy(unsafe))]
 pub struct FooAccount<const N: usize> {
     pub data: WrappedU8Array<N>,
 }
