@@ -22,6 +22,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - cli: Don't regenerate idl in read_all_programs(). ([#2332](https://github.com/coral-xyz/anchor/pull/2332)).
 - ts: `provider.simulate` will send the transaction with `sigVerify: false` if no `signers` are present ([#2331](https://github.com/coral-xyz/anchor/pull/2331)).
+- idl: Update the IDL program to use non-deprecated account types ([#2365](https://github.com/coral-xyz/anchor/pull/2365)).
 
 ### Breaking
 

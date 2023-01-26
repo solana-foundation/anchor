@@ -61,21 +61,23 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 sighash
             };
 
-            // If the method identifier is the IDL tag, then execute an IDL
-            // instruction, injected into all Anchor programs.
-            if cfg!(not(feature = "no-idl")) {
-                if sighash == anchor_lang::idl::IDL_IX_TAG.to_le_bytes() {
-                    return __private::__idl::__idl_dispatch(
-                        program_id,
-                        accounts,
-                        &ix_data,
-                    );
-                }
-            }
 
             use anchor_lang::Discriminator;
             match sighash {
                 #(#global_dispatch_arms)*
+                anchor_lang::idl::IDL_IX_TAG_LE => {
+                    // If the method identifier is the IDL tag, then execute an IDL
+                    // instruction, injected into all Anchor programs.
+                    if cfg!(not(feature = "no-idl")) {
+                        __private::__idl::__idl_dispatch(
+                            program_id,
+                            accounts,
+                            &ix_data,
+                        )
+                    } else {
+                        Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into())
+                    }
+                }
                 _ => {
                     #fallback_fn
                 }

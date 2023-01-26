@@ -1,4 +1,5 @@
 use crate::codegen::program::common::*;
+use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
 use heck::CamelCase;
 use quote::{quote, ToTokens};
@@ -8,6 +9,9 @@ use quote::{quote, ToTokens};
 // so.
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let program_name = &program.name;
+    // A constant token stream that stores the accounts and functions, required to live
+    // inside the target program in order to get the program ID.
+    let idl_accounts_and_functions = idl_accounts_and_functions();
     let non_inlined_idl: proc_macro2::TokenStream = {
         quote! {
             // Entry for all IDL related instructions. Use the "no-idl" feature
@@ -28,7 +32,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlCreateAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlCreateAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_create_account(program_id, &mut accounts, data_len)?;
                         accounts.exit(program_id)?;
                     },
@@ -36,7 +40,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlResizeAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlResizeAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_resize_account(program_id, &mut accounts, data_len)?;
                         accounts.exit(program_id)?;
                     },
@@ -44,7 +48,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlCloseAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlCloseAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_close_account(program_id, &mut accounts)?;
                         accounts.exit(program_id)?;
                     },
@@ -52,7 +56,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlCreateBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlCreateBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_create_buffer(program_id, &mut accounts)?;
                         accounts.exit(program_id)?;
                     },
@@ -60,7 +64,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_write(program_id, &mut accounts, data)?;
                         accounts.exit(program_id)?;
                     },
@@ -68,7 +72,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_set_authority(program_id, &mut accounts, new_authority)?;
                         accounts.exit(program_id)?;
                     },
@@ -76,7 +80,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let mut bumps = std::collections::BTreeMap::new();
                         let mut reallocs = std::collections::BTreeSet::new();
                         let mut accounts =
-                            anchor_lang::idl::IdlSetBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
+                            IdlSetBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
                         __idl_set_buffer(program_id, &mut accounts)?;
                         accounts.exit(program_id)?;
                     },
@@ -84,204 +88,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 Ok(())
             }
 
-            #[inline(never)]
-            #[cfg(feature = "no-idl")]
-            pub fn __idl_dispatch(program_id: &Pubkey, accounts: &[AccountInfo], idl_ix_data: &[u8]) -> anchor_lang::Result<()> {
-                Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into())
-            }
-
-            // One time IDL account initializer. Will faill on subsequent
-            // invocations.
-            #[inline(never)]
-            pub fn __idl_create_account(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlCreateAccounts,
-                data_len: u64,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlCreateAccount");
-
-                if program_id != accounts.program.key {
-                    return Err(anchor_lang::error::ErrorCode::IdlInstructionInvalidProgram.into());
-                }
-                // Create the IDL's account.
-                let from = accounts.from.key;
-                let (base, nonce) = Pubkey::find_program_address(&[], program_id);
-                let seed = anchor_lang::idl::IdlAccount::seed();
-                let owner = accounts.program.key;
-                let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
-                // Space: account discriminator || authority pubkey || vec len || vec data
-                let space = std::cmp::min(8 + 32 + 4 + data_len as usize, 10_000);
-                let rent = Rent::get()?;
-                let lamports = rent.minimum_balance(space);
-                let seeds = &[&[nonce][..]];
-                let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
-                    from,
-                    &to,
-                    &base,
-                    seed,
-                    lamports,
-                    space as u64,
-                    owner,
-                );
-                anchor_lang::solana_program::program::invoke_signed(
-                    &ix,
-                    &[
-                        accounts.from.clone(),
-                        accounts.to.clone(),
-                        accounts.base.clone(),
-                        accounts.system_program.clone(),
-                    ],
-                    &[seeds],
-                )?;
-
-                // Deserialize the newly created account.
-                let mut idl_account = {
-                    let mut account_data =  accounts.to.try_borrow_data()?;
-                    let mut account_data_slice: &[u8] = &account_data;
-                    anchor_lang::idl::IdlAccount::try_deserialize_unchecked(
-                        &mut account_data_slice,
-                    )?
-                };
-
-                // Set the authority.
-                idl_account.authority = *accounts.from.key;
-
-                // Store the new account data.
-                let mut data = accounts.to.try_borrow_mut_data()?;
-                let dst: &mut [u8] = &mut data;
-                let mut cursor = std::io::Cursor::new(dst);
-                idl_account.try_serialize(&mut cursor)?;
-
-                Ok(())
-            }
-
-            #[inline(never)]
-            pub fn __idl_resize_account(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlResizeAccount,
-                data_len: u64,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlResizeAccount");
-
-                let data_len: usize = data_len as usize;
-
-                // We're not going to support increasing the size of accounts that already contain data
-                // because that would be messy and possibly dangerous
-                if accounts.idl.data_len != 0 {
-                    return Err(anchor_lang::error::ErrorCode::IdlAccountNotEmpty.into());
-                }
-
-                let new_account_space = accounts.idl.to_account_info().data_len().checked_add(std::cmp::min(
-                    data_len
-                        .checked_sub(accounts.idl.to_account_info().data_len())
-                        .expect("data_len should always be >= the current account space"),
-                    10_000,
-                ))
-                .unwrap();
-
-                if new_account_space > accounts.idl.to_account_info().data_len() {
-                    let sysvar_rent = Rent::get()?;
-                    let new_rent_minimum = sysvar_rent.minimum_balance(new_account_space);
-                    anchor_lang::system_program::transfer(
-                        anchor_lang::context::CpiContext::new(
-                            accounts.system_program.to_account_info(),
-                            anchor_lang::system_program::Transfer {
-                                from: accounts.authority.to_account_info(),
-                                to: accounts.idl.to_account_info().clone(),
-                            },
-                        ),
-                        new_rent_minimum
-                            .checked_sub(accounts.idl.to_account_info().lamports())
-                            .unwrap(),
-                    )?;
-                    accounts.idl.to_account_info().realloc(new_account_space, false)?;
-                }
-
-                Ok(())
-
-            }
-
-            #[inline(never)]
-            pub fn __idl_close_account(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlCloseAccount,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlCloseAccount");
-
-                Ok(())
-            }
-
-            #[inline(never)]
-            pub fn __idl_create_buffer(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlCreateBuffer,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlCreateBuffer");
-
-                let mut buffer = &mut accounts.buffer;
-                buffer.authority = *accounts.authority.key;
-                Ok(())
-            }
-
-            #[inline(never)]
-            pub fn __idl_write(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlAccounts,
-                idl_data: Vec<u8>,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlWrite");
-
-                let prev_len: usize = ::std::convert::TryInto::<usize>::try_into(accounts.idl.data_len).unwrap();
-                let new_len: usize = prev_len + idl_data.len();
-                accounts.idl.data_len = accounts.idl.data_len.checked_add(::std::convert::TryInto::<u32>::try_into(idl_data.len()).unwrap()).unwrap();
-
-                use anchor_lang::idl::IdlTrailingData;
-                let mut idl_bytes = accounts.idl.trailing_data_mut();
-                let idl_expansion = &mut idl_bytes[prev_len..new_len];
-                require_eq!(idl_expansion.len(), idl_data.len());
-                idl_expansion.copy_from_slice(&idl_data[..]);
-
-                Ok(())
-            }
-
-            #[inline(never)]
-            pub fn __idl_set_authority(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlAccounts,
-                new_authority: Pubkey,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlSetAuthority");
-
-                accounts.idl.authority = new_authority;
-                Ok(())
-            }
-
-            #[inline(never)]
-            pub fn __idl_set_buffer(
-                program_id: &Pubkey,
-                accounts: &mut anchor_lang::idl::IdlSetBuffer,
-            ) -> anchor_lang::Result<()> {
-                #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::prelude::msg!("Instruction: IdlSetBuffer");
-
-                accounts.idl.data_len = accounts.buffer.data_len;
-
-                use anchor_lang::idl::IdlTrailingData;
-                let buffer_len = ::std::convert::TryInto::<usize>::try_into(accounts.buffer.data_len).unwrap();
-                let mut target = accounts.idl.trailing_data_mut();
-                let source = &accounts.buffer.trailing_data()[..buffer_len];
-                require_gte!(target.len(), buffer_len);
-                target[..buffer_len].copy_from_slice(source);
-                // zero the remainder of target?
-
-                Ok(())
-            }
         }
     };
 
@@ -364,6 +170,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 use super::*;
 
                 #non_inlined_idl
+                #idl_accounts_and_functions
             }
 
 

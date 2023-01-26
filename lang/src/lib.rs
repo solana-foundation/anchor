@@ -36,7 +36,6 @@ mod bpf_upgradeable_state;
 mod bpf_writer;
 mod common;
 pub mod context;
-mod ctor;
 pub mod error;
 #[doc(hidden)]
 pub mod idl;
@@ -281,8 +280,6 @@ pub mod prelude {
 pub mod __private {
     /// The discriminator anchor uses to mark an account as closed.
     pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255, 255, 255, 255, 255, 255, 255, 255];
-
-    pub use crate::ctor::Ctor;
 
     pub use anchor_attribute_account::ZeroCopyAccessor;
 
