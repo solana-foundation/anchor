@@ -73,3 +73,24 @@ pub struct DataConstCastArraySize {
 pub struct DataMultidimensionalArrayConstSizes {
     pub data: [[u8; MAX_SIZE_U8 as usize]; MAX_SIZE],
 }
+
+#[account]
+pub struct CoolEnumWrapperAccount {
+    pub my_enum: CoolEnum,
+}
+
+#[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+pub enum CoolEnum {
+    Variant1,
+    Variant2 {
+        config: u8,
+        user_1: Pubkey,
+        some_slot: u64,
+    },
+    Variant3 {
+        config: u8,
+        user_1: Pubkey,
+        user_2: Pubkey,
+        some_slot: u64,
+    },
+}

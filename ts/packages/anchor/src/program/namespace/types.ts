@@ -163,6 +163,10 @@ type UnboxToUnion<T> = T extends (infer U)[]
   ? UnboxToUnion<V>
   : T;
 
+type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
+  ? `${T}${Capitalize<SnakeToCamelCase<U>>}`
+  : S;
+
 /**
  * decode single enum.field
  */
@@ -178,7 +182,10 @@ declare type DecodeEnumFields<
   Defined
 > = F extends IdlEnumFieldsNamed
   ? {
-      [F2 in F[number] as F2["name"]]: DecodeEnumField<F2["type"], Defined>;
+      [F2 in F[number] as SnakeToCamelCase<F2["name"]>]: DecodeEnumField<
+        F2["type"],
+        Defined
+      >;
     }
   : F extends IdlEnumFieldsTuple
   ? {

@@ -56,6 +56,7 @@ pub struct SecondInitialize<'info> {
 pub struct Close<'info> {
     #[account(mut, close = receiver)]
     pub acc: Account<'info, MyData>,
+    /// CHECK: ignore
     #[account(mut)]
     pub receiver: UncheckedAccount<'info>,
 }

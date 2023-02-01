@@ -2253,6 +2253,22 @@ const miscTest = (
         );
         assert.isDefined(thisTx);
       });
+      it("Can access enum variant fields using camel case without throwing a type error", async () => {
+        const anotherProgram = new anchor.Program<Misc>(
+          miscIdl,
+          program.programId,
+          provider
+        );
+        const enumWrappers =
+          await anotherProgram.account.coolEnumWrapperAccount.all();
+        for (let enumWrapper of enumWrappers) {
+          // this code never gets run so just putting whatever
+          console.log(enumWrapper.account.myEnum.variant2?.someSlot);
+          console.log(enumWrapper.account.myEnum.variant2?.user1);
+          console.log(enumWrapper.account.myEnum.variant3?.someSlot);
+          console.log(enumWrapper.account.myEnum.variant3?.user2);
+        }
+      });
     });
   };
 };

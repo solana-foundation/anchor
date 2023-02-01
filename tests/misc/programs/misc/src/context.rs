@@ -487,6 +487,7 @@ pub struct TestAuthorityConstraint<'info> {
     )]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub fake_authority: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -516,7 +517,9 @@ pub struct TestMintConstraint<'info> {
         mint::freeze_authority = freeze_authority
     )]
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub mint_authority: AccountInfo<'info>,
+    /// CHECK: ignore
     pub freeze_authority: AccountInfo<'info>,
 }
 
@@ -536,7 +539,9 @@ pub struct TestMintAuthorityConstraint<'info> {
         mint::freeze_authority = freeze_authority
     )]
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub mint_authority: AccountInfo<'info>,
+    /// CHECK: ignore
     pub freeze_authority: AccountInfo<'info>,
 }
 
@@ -546,6 +551,7 @@ pub struct TestMintOneAuthorityConstraint<'info> {
         mint::authority = mint_authority,
     )]
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub mint_authority: AccountInfo<'info>,
 }
 
@@ -557,6 +563,7 @@ pub struct TestMintMissMintAuthConstraint<'info> {
         mint::freeze_authority = freeze_authority,
     )]
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub freeze_authority: AccountInfo<'info>,
 }
 
@@ -568,5 +575,6 @@ pub struct TestAssociatedToken<'info> {
     )]
     pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
+    /// CHECK: ignore
     pub authority: AccountInfo<'info>,
 }
