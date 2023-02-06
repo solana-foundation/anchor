@@ -24,7 +24,9 @@ use composite::accounts::{Bar, CompositeUpdate, Foo, Initialize};
 use composite::instruction as composite_instruction;
 use composite::{DummyA, DummyB};
 use optional::account::{DataAccount, DataPda};
+use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -39,12 +41,15 @@ pub struct Opts {
     events_pid: Pubkey,
     #[clap(long)]
     optional_pid: Pubkey,
+    #[clap(long, default_value = "false")]
+    multithreaded: bool,
 }
+
+type TestFn<C> = &'static (dyn Fn(&Client<C>, Pubkey) -> Result<()> + Send + Sync);
 
 // This example assumes a local validator is running with the programs
 // deployed at the addresses given by the CLI args.
 fn main() -> Result<()> {
-    println!("Starting test...");
     let opts = Opts::parse();
 
     // Wallet and cluster params.
@@ -55,15 +60,48 @@ fn main() -> Result<()> {
         "ws://127.0.0.1:8900".to_string(),
     );
 
-    // Client.
-    let client = Client::new_with_options(url, Rc::new(payer), CommitmentConfig::processed());
+    if !opts.multithreaded {
+        // Client.
+        let payer = Rc::new(payer);
+        let client =
+            Client::new_with_options(url.clone(), payer.clone(), CommitmentConfig::processed());
 
-    // Run tests.
-    composite(&client, opts.composite_pid)?;
-    basic_2(&client, opts.basic_2_pid)?;
-    basic_4(&client, opts.basic_4_pid)?;
-    events(&client, opts.events_pid)?;
-    optional(&client, opts.optional_pid)?;
+        // Run tests on single thread with a single client using an Rc
+        println!("\nStarting single thread test...");
+        composite(&client, opts.composite_pid)?;
+        basic_2(&client, opts.basic_2_pid)?;
+        basic_4(&client, opts.basic_4_pid)?;
+
+        // Can also use references, since they deref to a signer
+        let payer: &Keypair = &payer;
+        let client = Client::new_with_options(url, payer, CommitmentConfig::processed());
+        events(&client, opts.events_pid)?;
+        optional(&client, opts.optional_pid)?;
+    } else {
+        // Client.
+        let payer = Arc::new(payer);
+        let client = Client::new_with_options(url, payer, CommitmentConfig::processed());
+        let client = Arc::new(client);
+
+        // Run tests multithreaded while sharing a client
+        println!("\nStarting multithread test...");
+        let client = Arc::new(client);
+        let tests: Vec<(TestFn<Arc<Keypair>>, Pubkey)> = vec![
+            (&composite, opts.composite_pid),
+            (&basic_2, opts.basic_2_pid),
+            (&basic_4, opts.basic_4_pid),
+            (&events, opts.events_pid),
+            (&optional, opts.optional_pid),
+        ];
+        let mut handles = vec![];
+        for (test, arg) in tests {
+            let local_client = Arc::clone(&client);
+            handles.push(std::thread::spawn(move || test(&local_client, arg)));
+        }
+        for handle in handles {
+            assert!(handle.join().unwrap().is_ok());
+        }
+    }
 
     // Success.
     Ok(())
@@ -72,7 +110,10 @@ fn main() -> Result<()> {
 // Runs a client for examples/tutorial/composite.
 //
 // Make sure to run a localnet with the program deploy to run this example.
-fn composite(client: &Client, pid: Pubkey) -> Result<()> {
+fn composite<C: Deref<Target = impl Signer> + Clone>(
+    client: &Client<C>,
+    pid: Pubkey,
+) -> Result<()> {
     // Program client.
     let program = client.program(pid);
 
@@ -143,7 +184,7 @@ fn composite(client: &Client, pid: Pubkey) -> Result<()> {
 // Runs a client for examples/tutorial/basic-2.
 //
 // Make sure to run a localnet with the program deploy to run this example.
-fn basic_2(client: &Client, pid: Pubkey) -> Result<()> {
+fn basic_2<C: Deref<Target = impl Signer> + Clone>(client: &Client<C>, pid: Pubkey) -> Result<()> {
     let program = client.program(pid);
 
     // `Create` parameters.
@@ -172,7 +213,7 @@ fn basic_2(client: &Client, pid: Pubkey) -> Result<()> {
     Ok(())
 }
 
-fn events(client: &Client, pid: Pubkey) -> Result<()> {
+fn events<C: Deref<Target = impl Signer> + Clone>(client: &Client<C>, pid: Pubkey) -> Result<()> {
     let program = client.program(pid);
 
     let (sender, receiver) = std::sync::mpsc::channel();
@@ -204,7 +245,10 @@ fn events(client: &Client, pid: Pubkey) -> Result<()> {
     Ok(())
 }
 
-pub fn basic_4(client: &Client, pid: Pubkey) -> Result<()> {
+pub fn basic_4<C: Deref<Target = impl Signer> + Clone>(
+    client: &Client<C>,
+    pid: Pubkey,
+) -> Result<()> {
     let program = client.program(pid);
     let authority = program.payer();
     let (counter, _) = Pubkey::find_program_address(&[b"counter"], &pid);
@@ -240,7 +284,7 @@ pub fn basic_4(client: &Client, pid: Pubkey) -> Result<()> {
 // Runs a client for tests/optional.
 //
 // Make sure to run a localnet with the program deploy to run this example.
-fn optional(client: &Client, pid: Pubkey) -> Result<()> {
+fn optional<C: Deref<Target = impl Signer> + Clone>(client: &Client<C>, pid: Pubkey) -> Result<()> {
     // Program client.
     let program = client.program(pid);
 

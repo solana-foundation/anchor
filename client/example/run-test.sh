@@ -41,9 +41,39 @@ main() {
     sleep 5
 
     #
-    # Run Test.
+    # Run single threaded test.
     #
-    cargo run -- --composite-pid $composite_pid --basic-2-pid $basic_2_pid --basic-4-pid $basic_4_pid --events-pid $events_pid --optional-pid $optional_pid
+    cargo run -- \
+        --composite-pid $composite_pid \
+        --basic-2-pid $basic_2_pid \
+        --basic-4-pid $basic_4_pid \
+        --events-pid $events_pid \
+        --optional-pid $optional_pid
+
+    #
+    # Restart validator for multithreaded test
+    #
+    cleanup
+    solana-test-validator -r \
+				--bpf-program $composite_pid ../../tests/composite/target/deploy/composite.so \
+				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
+				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
+				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
+				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
+				> test-validator.log &
+    sleep 5
+
+    #
+    # Run multi threaded test.
+    #
+    cargo run -- \
+        --composite-pid $composite_pid \
+        --basic-2-pid $basic_2_pid \
+        --basic-4-pid $basic_4_pid \
+        --events-pid $events_pid \
+        --optional-pid $optional_pid \
+        --multithreaded
+
 }
 
 cleanup() {
