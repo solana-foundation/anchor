@@ -14,11 +14,15 @@ fn main() -> anyhow::Result<()> {
             version
         );
     }
-    Command::new(binary_path)
+    let exit = Command::new(binary_path)
         .args(args)
         .spawn()?
         .wait_with_output()
         .expect("Failed to run anchor-cli");
+
+    if !exit.status.success() {
+        std::process::exit(exit.status.code().unwrap_or(1));
+    }
 
     Ok(())
 }
