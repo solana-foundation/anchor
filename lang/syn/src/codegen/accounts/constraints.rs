@@ -261,7 +261,6 @@ pub fn generate_constraint_has_one(
     let target = &c.join_target;
     let ident = &f.ident;
     let field = match &f.ty {
-        Ty::Loader(_) => quote! {#ident.load()?},
         Ty::AccountLoader(_) => quote! {#ident.load()?},
         _ => quote! {#ident},
     };
@@ -290,11 +289,8 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
     let ident = &f.ident;
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
-        Ty::ProgramAccount(_) => quote! { #ident.to_account_info() },
         Ty::Account(_) => quote! { #ident.to_account_info() },
-        Ty::Loader(_) => quote! { #ident.to_account_info() },
         Ty::AccountLoader(_) => quote! { #ident.to_account_info() },
-        Ty::CpiAccount(_) => quote! { #ident.to_account_info() },
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintSigner }, &None);

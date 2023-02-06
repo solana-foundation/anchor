@@ -1,5 +1,4 @@
 use crate::account::*;
-use anchor_lang::accounts::loader::Loader;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -218,7 +217,7 @@ pub struct TestInit<'info> {
 #[derive(Accounts)]
 pub struct TestInitZeroCopy<'info> {
     #[account(init, payer = payer, space = DataZeroCopy::LEN + 8)]
-    pub data: Option<Loader<'info, DataZeroCopy>>,
+    pub data: Option<AccountLoader<'info, DataZeroCopy>>,
     #[account(mut)]
     pub payer: Option<Signer<'info>>,
     pub system_program: Option<Program<'info, System>>,

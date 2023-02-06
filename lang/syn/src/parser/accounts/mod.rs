@@ -283,12 +283,9 @@ pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
 fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
     let r = matches!(
         ident_string(f)?.0.as_str(),
-        "ProgramAccount"
-            | "CpiAccount"
-            | "Sysvar"
+        "Sysvar"
             | "AccountInfo"
             | "UncheckedAccount"
-            | "Loader"
             | "AccountLoader"
             | "Account"
             | "Program"
@@ -302,12 +299,9 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
 fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
     let (ident, optional, path) = ident_string(f)?;
     let ty = match ident.as_str() {
-        "ProgramAccount" => Ty::ProgramAccount(parse_program_account(&path)?),
-        "CpiAccount" => Ty::CpiAccount(parse_cpi_account(&path)?),
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)?),
         "AccountInfo" => Ty::AccountInfo,
         "UncheckedAccount" => Ty::UncheckedAccount,
-        "Loader" => Ty::Loader(parse_program_account_zero_copy(&path)?),
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
@@ -376,26 +370,6 @@ fn ident_string(f: &syn::Field) -> ParseResult<(String, bool, Path)> {
     Ok((segments.ident.to_string(), optional, path))
 }
 
-fn parse_cpi_account(path: &syn::Path) -> ParseResult<CpiAccountTy> {
-    let account_ident = parse_account(path)?;
-    Ok(CpiAccountTy {
-        account_type_path: account_ident,
-    })
-}
-
-fn parse_program_account(path: &syn::Path) -> ParseResult<ProgramAccountTy> {
-    let account_ident = parse_account(path)?;
-    Ok(ProgramAccountTy {
-        account_type_path: account_ident,
-    })
-}
-
-fn parse_program_account_zero_copy(path: &syn::Path) -> ParseResult<LoaderTy> {
-    let account_ident = parse_account(path)?;
-    Ok(LoaderTy {
-        account_type_path: account_ident,
-    })
-}
 fn parse_program_account_loader(path: &syn::Path) -> ParseResult<AccountLoaderTy> {
     let account_ident = parse_account(path)?;
     Ok(AccountLoaderTy {

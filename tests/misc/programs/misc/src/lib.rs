@@ -66,7 +66,7 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_input_enum(ctx: Context<TestSimulate>, data: TestEnum) -> Result<()> {
+    pub fn test_input_enum(_ctx: Context<TestSimulate>, data: TestEnum) -> Result<()> {
         emit!(E7 { data: data });
         Ok(())
     }
@@ -247,7 +247,7 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn init_with_space(_ctx: Context<InitWithSpace>, data: u16) -> Result<()> {
+    pub fn init_with_space(_ctx: Context<InitWithSpace>, _data: u16) -> Result<()> {
         Ok(())
     }
 
