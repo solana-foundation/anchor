@@ -1,4 +1,3 @@
-use proc_macro2_diagnostics::SpanDiagnosticExt;
 use quote::quote;
 use std::collections::HashSet;
 use syn::Expr;
@@ -59,7 +58,6 @@ pub fn generate_composite(f: &CompositeField) -> proc_macro2::TokenStream {
         .iter()
         .filter_map(|c| match c {
             Constraint::Raw(_) => Some(c),
-            Constraint::Literal(_) => Some(c),
             _ => panic!("Invariant violation: composite constraints can only be raw or literals"),
         })
         .map(|c| generate_constraint_composite(f, c))
@@ -78,7 +76,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         mutable,
         signer,
         has_one,
-        literal,
         raw,
         owner,
         rent_exempt,
@@ -116,7 +113,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         constraints.push(Constraint::Signer(c));
     }
     constraints.append(&mut has_one.into_iter().map(Constraint::HasOne).collect());
-    constraints.append(&mut literal.into_iter().map(Constraint::Literal).collect());
     constraints.append(&mut raw.into_iter().map(Constraint::Raw).collect());
     if let Some(c) = owner {
         constraints.push(Constraint::Owner(c));
@@ -153,7 +149,6 @@ fn generate_constraint(
         Constraint::Mut(c) => generate_constraint_mut(f, c),
         Constraint::HasOne(c) => generate_constraint_has_one(f, c, accs),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
-        Constraint::Literal(c) => generate_constraint_literal(&f.ident, c),
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
         Constraint::Owner(c) => generate_constraint_owner(f, c),
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
@@ -171,7 +166,6 @@ fn generate_constraint(
 fn generate_constraint_composite(f: &CompositeField, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
-        Constraint::Literal(c) => generate_constraint_literal(&f.ident, c),
         _ => panic!("Invariant violation"),
     }
 }
@@ -297,27 +291,6 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
     quote! {
         if !#info.is_signer {
             return #error;
-        }
-    }
-}
-
-pub fn generate_constraint_literal(
-    ident: &Ident,
-    c: &ConstraintLiteral,
-) -> proc_macro2::TokenStream {
-    let name_str = ident.to_string();
-    let lit: proc_macro2::TokenStream = {
-        let lit = &c.lit;
-        let constraint = lit.value().replace('\"', "");
-        let message = format!(
-            "Deprecated. Should be used with constraint: #[account(constraint = {constraint})]",
-        );
-        lit.span().warning(message).emit_as_item_tokens();
-        constraint.parse().unwrap()
-    };
-    quote! {
-        if !(#lit) {
-            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::Deprecated).with_account_name(#name_str));
         }
     }
 }

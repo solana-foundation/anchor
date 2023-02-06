@@ -4,7 +4,7 @@ use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult}
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{bracketed, Expr, Ident, LitStr, Token};
+use syn::{bracketed, Expr, Ident, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
@@ -26,13 +26,6 @@ pub fn is_account(attr: &&syn::Attribute) -> bool {
 
 // Parses a single constraint from a parse stream for `#[account(<STREAM>)]`.
 pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
-    let is_lit = stream.peek(LitStr);
-    if is_lit {
-        let lit: LitStr = stream.parse()?;
-        let c = ConstraintToken::Literal(Context::new(lit.span(), ConstraintLiteral { lit }));
-        return Ok(c);
-    }
-
     let ident = stream.call(Ident::parse_any)?;
     let kw = ident.to_string();
 
@@ -328,7 +321,6 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub mutable: Option<Context<ConstraintMut>>,
     pub signer: Option<Context<ConstraintSigner>>,
     pub has_one: Vec<Context<ConstraintHasOne>>,
-    pub literal: Vec<Context<ConstraintLiteral>>,
     pub raw: Vec<Context<ConstraintRaw>>,
     pub owner: Option<Context<ConstraintOwner>>,
     pub rent_exempt: Option<Context<ConstraintRentExempt>>,
@@ -361,7 +353,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             mutable: None,
             signer: None,
             has_one: Vec::new(),
-            literal: Vec::new(),
             raw: Vec::new(),
             owner: None,
             rent_exempt: None,
@@ -561,7 +552,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             mutable,
             signer,
             has_one,
-            literal,
             raw,
             owner,
             rent_exempt,
@@ -710,7 +700,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             mutable: into_inner!(mutable),
             signer: into_inner!(signer),
             has_one: into_inner_vec!(has_one),
-            literal: into_inner_vec!(literal),
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
             rent_exempt: into_inner!(rent_exempt),
@@ -731,7 +720,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::Mut(c) => self.add_mut(c),
             ConstraintToken::Signer(c) => self.add_signer(c),
             ConstraintToken::HasOne(c) => self.add_has_one(c),
-            ConstraintToken::Literal(c) => self.add_literal(c),
             ConstraintToken::Raw(c) => self.add_raw(c),
             ConstraintToken::Owner(c) => self.add_owner(c),
             ConstraintToken::RentExempt(c) => self.add_rent_exempt(c),
@@ -1057,11 +1045,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "has_one target already provided"));
         }
         self.has_one.push(c);
-        Ok(())
-    }
-
-    fn add_literal(&mut self, c: Context<ConstraintLiteral>) -> ParseResult<()> {
-        self.literal.push(c);
         Ok(())
     }
 
