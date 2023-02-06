@@ -25,8 +25,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     docs.iter()
                         .map(|docs_line| {
                             proc_macro2::TokenStream::from_str(&format!(
-                                "#[doc = r#\"{}\"#]",
-                                docs_line
+                                "#[doc = r#\"{docs_line}\"#]"
                             ))
                             .unwrap()
                         })
@@ -52,8 +51,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     docs.iter()
                         .map(|docs_line| {
                             proc_macro2::TokenStream::from_str(&format!(
-                                "#[doc = r#\"{}\"#]",
-                                docs_line
+                                "#[doc = r#\"{docs_line}\"#]"
                             ))
                             .unwrap()
                         })
@@ -147,8 +145,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     };
 
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
-        "#[doc = \" Generated client accounts for [`{}`].\"]",
-        name
+        "#[doc = \" Generated client accounts for [`{name}`].\"]"
     ))
     .unwrap();
 

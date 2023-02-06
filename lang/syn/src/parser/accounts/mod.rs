@@ -44,17 +44,17 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
     let message = |constraint: &str, field: &str, required: bool| {
         if required {
             format! {
-                "a non-optional {} constraint requires \
-                a non-optional {} field to exist in the account \
+                "a non-optional {constraint} constraint requires \
+                a non-optional {field} field to exist in the account \
                 validation struct. Use the Program type to add \
-                the {} field to your validation struct.", constraint, field, field
+                the {field} field to your validation struct."
             }
         } else {
             format! {
-                "an optional {} constraint requires \
-                an optional or required {} field to exist \
+                "an optional {constraint} constraint requires \
+                an optional or required {field} field to exist \
                 in the account validation struct. Use the Program type \
-                to add the {} field to your validation struct.", constraint, field, field
+                to add the {field} field to your validation struct."
             }
         }
     };

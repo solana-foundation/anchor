@@ -24,7 +24,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_data_trait = {
                 let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, name);
                 let sighash_tts: proc_macro2::TokenStream =
-                    format!("{:?}", sighash_arr).parse().unwrap();
+                    format!("{sighash_arr:?}").parse().unwrap();
                 quote! {
                     impl anchor_lang::Discriminator for #ix_name_camel {
                         const DISCRIMINATOR: [u8; 8] = #sighash_tts;

@@ -655,7 +655,7 @@ fn init(
         }
     }
 
-    println!("{} initialized", project_name);
+    println!("{project_name} initialized");
 
     Ok(())
 }
@@ -663,7 +663,7 @@ fn init(
 fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
     if cfg!(target_os = "windows") {
         std::process::Command::new("cmd")
-            .arg(format!("/C {} install", cmd))
+            .arg(format!("/C {cmd} install"))
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
@@ -697,13 +697,13 @@ fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
 
 // Creates a new program crate in the current directory with `name`.
 fn new_program(name: &str) -> Result<()> {
-    fs::create_dir(format!("programs/{}", name))?;
-    fs::create_dir(format!("programs/{}/src/", name))?;
-    let mut cargo_toml = File::create(format!("programs/{}/Cargo.toml", name))?;
+    fs::create_dir(format!("programs/{name}"))?;
+    fs::create_dir(format!("programs/{name}/src/"))?;
+    let mut cargo_toml = File::create(format!("programs/{name}/Cargo.toml"))?;
     cargo_toml.write_all(template::cargo_toml(name).as_bytes())?;
-    let mut xargo_toml = File::create(format!("programs/{}/Xargo.toml", name))?;
+    let mut xargo_toml = File::create(format!("programs/{name}/Xargo.toml"))?;
     xargo_toml.write_all(template::xargo_toml().as_bytes())?;
-    let mut lib_rs = File::create(format!("programs/{}/src/lib.rs", name))?;
+    let mut lib_rs = File::create(format!("programs/{name}/src/lib.rs"))?;
     lib_rs.write_all(template::lib_rs(name).as_bytes())?;
     Ok(())
 }
@@ -780,7 +780,7 @@ fn expand_program(
     let exit = std::process::Command::new("cargo")
         .arg("expand")
         .arg(target_dir_arg)
-        .arg(&format!("--package={}", package_name))
+        .arg(&format!("--package={package_name}"))
         .args(cargo_args)
         .stderr(Stdio::inherit())
         .output()
@@ -792,8 +792,7 @@ fn expand_program(
 
     let version = cargo.version();
     let time = chrono::Utc::now().to_string().replace(' ', "_");
-    let file_path =
-        program_expansions_path.join(format!("{}-{}-{}.rs", package_name, version, time));
+    let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
     fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
 
     println!(
@@ -1017,7 +1016,7 @@ fn build_cwd_verifiable(
 
     match &result {
         Err(e) => {
-            eprintln!("Error during Docker build: {:?}", e);
+            eprintln!("Error during Docker build: {e:?}");
         }
         Ok(_) => {
             // Build the idl.
@@ -1149,7 +1148,7 @@ fn docker_prep(container_name: &str, build_config: &BuildConfig) -> Result<()> {
     }
 
     if let Some(solana_version) = &build_config.solana_version {
-        println!("Using solana version: {}", solana_version);
+        println!("Using solana version: {solana_version}");
 
         // Install Solana CLI
         docker_exec(
@@ -1157,7 +1156,7 @@ fn docker_prep(container_name: &str, build_config: &BuildConfig) -> Result<()> {
             &[
                 "curl",
                 "-sSfL",
-                &format!("https://release.solana.com/v{0}/install", solana_version,),
+                &format!("https://release.solana.com/v{solana_version}/install",),
                 "-o",
                 "solana_installer.sh",
             ],
@@ -1227,14 +1226,14 @@ fn docker_build_bpf(
     println!("Copying out the build artifacts");
     let out_file = cfg_parent
         .canonicalize()?
-        .join(format!("target/verifiable/{}.so", binary_name))
+        .join(format!("target/verifiable/{binary_name}.so"))
         .display()
         .to_string();
 
     // This requires the target directory of any built program to be located at
     // the root of the workspace.
     let mut bin_path = target_dir.join("deploy");
-    bin_path.push(format!("{}.so", binary_name));
+    bin_path.push(format!("{binary_name}.so"));
     let bin_artifact = format!(
         "{}:{}",
         container_name,
@@ -1387,7 +1386,7 @@ fn verify(
         .parent()
         .ok_or_else(|| anyhow!("Unable to find workspace root"))?
         .join("target/verifiable/")
-        .join(format!("{}.so", binary_name));
+        .join(format!("{binary_name}.so"));
 
     let url = cluster_url(&cfg, &cfg.test_validator);
     let bin_ver = verify_bin(program_id, &bin_path, &url)?;
@@ -1407,7 +1406,7 @@ fn verify(
         }
     }
 
-    println!("{} is verified.", program_id);
+    println!("{program_id} is verified.");
 
     Ok(())
 }
@@ -1639,7 +1638,7 @@ fn idl_init(cfg_override: &ConfigOverride, program_id: Pubkey, idl_filepath: Str
 
         let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl)?;
 
-        println!("Idl account created: {:?}", idl_address);
+        println!("Idl account created: {idl_address:?}");
         Ok(())
     })
 }
@@ -1649,7 +1648,7 @@ fn idl_close(cfg_override: &ConfigOverride, program_id: Pubkey) -> Result<()> {
         let idl_address = IdlAccount::address(&program_id);
         idl_close_account(cfg, &program_id, idl_address)?;
 
-        println!("Idl account closed: {:?}", idl_address);
+        println!("Idl account closed: {idl_address:?}");
 
         Ok(())
     })
@@ -1669,7 +1668,7 @@ fn idl_write_buffer(
         let idl_buffer = create_idl_buffer(cfg, &keypair, &program_id, &idl)?;
         idl_write(cfg, &program_id, &idl, idl_buffer)?;
 
-        println!("Idl buffer created: {:?}", idl_buffer);
+        println!("Idl buffer created: {idl_buffer:?}");
 
         Ok(idl_buffer)
     })
@@ -1966,7 +1965,7 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
 fn write_idl(idl: &Idl, out: OutFile) -> Result<()> {
     let idl_json = serde_json::to_string_pretty(idl)?;
     match out {
-        OutFile::Stdout => println!("{}", idl_json),
+        OutFile::Stdout => println!("{idl_json}"),
         OutFile::File(out) => fs::write(out, idl_json)?,
     };
 
@@ -1997,7 +1996,7 @@ fn account(
                 .expect("Workspace must contain atleast one program.")
                 .iter()
                 .find(|&p| p.lib_name == *program_name)
-                .unwrap_or_else(|| panic!("Program {} not found in workspace.", program_name))
+                .unwrap_or_else(|| panic!("Program {program_name} not found in workspace."))
                 .idl
                 .as_ref()
                 .expect("IDL not found. Please build the program atleast once to generate the IDL.")
@@ -2008,7 +2007,7 @@ fn account(
             let idl: Idl = serde_json::from_reader(&*bytes).expect("Invalid IDL format.");
 
             if idl.name != program_name {
-                panic!("IDL does not match program {}.", program_name);
+                panic!("IDL does not match program {program_name}.");
             }
 
             idl
@@ -2073,7 +2072,7 @@ fn deserialize_idl_struct_to_json(
 
             let variant = variants
                 .get(repr as usize)
-                .unwrap_or_else(|| panic!("Error while deserializing enum variant {}", repr));
+                .unwrap_or_else(|| panic!("Error while deserializing enum variant {repr}"));
 
             let mut value = json!({});
 
@@ -2402,7 +2401,7 @@ fn run_test_suite(
             }
         }
         Err(err) => {
-            println!("Failed to run test: {:#}", err);
+            println!("Failed to run test: {err:#}");
             return Err(err);
         }
     }
@@ -2678,8 +2677,7 @@ fn start_test_validator(
     }
     if count == ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Test validator does not look started. Check {} for errors. Consider increasing [test.startup_wait] in Anchor.toml.",
-            test_ledger_log_filename
+            "Unable to get latest blockhash. Test validator does not look started. Check {test_ledger_log_filename} for errors. Consider increasing [test.startup_wait] in Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -2713,7 +2711,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> (String,
     if !Path::new(&ledger_directory).is_relative() {
         // Prevent absolute paths to avoid someone using / or similar, as the
         // directory gets removed
-        eprintln!("Ledger directory {} must be relative", ledger_directory);
+        eprintln!("Ledger directory {ledger_directory} must be relative");
         std::process::exit(1);
     }
     if Path::new(&ledger_directory).exists() {
@@ -2724,7 +2722,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> (String,
 
     (
         ledger_directory.to_string(),
-        format!("{}/test-ledger-log.txt", ledger_directory),
+        format!("{ledger_directory}/test-ledger-log.txt"),
     )
 }
 
@@ -2776,8 +2774,8 @@ fn deploy(
         let keypair = cfg.provider.wallet.to_string();
 
         // Deploy the programs.
-        println!("Deploying workspace: {}", url);
-        println!("Upgrade authority: {}", keypair);
+        println!("Deploying workspace: {url}");
+        println!("Upgrade authority: {keypair}");
 
         for mut program in cfg.read_all_programs()? {
             if let Some(single_prog_str) = &program_str {
@@ -2793,7 +2791,7 @@ fn deploy(
                 program.path.file_name().unwrap().to_str().unwrap()
             );
 
-            println!("Program path: {}...", binary_path);
+            println!("Program path: {binary_path}...");
 
             let program_keypair_filepath = match &program_keypair {
                 Some(program_keypair) => program_keypair.clone(),
@@ -2816,7 +2814,7 @@ fn deploy(
                 .output()
                 .expect("Must deploy");
             if !exit.status.success() {
-                println!("There was a problem deploying: {:?}.", exit);
+                println!("There was a problem deploying: {exit:?}.");
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
@@ -2866,7 +2864,7 @@ fn upgrade(
             .output()
             .expect("Must deploy");
         if !exit.status.success() {
-            println!("There was a problem deploying: {:?}.", exit);
+            println!("There was a problem deploying: {exit:?}.");
             std::process::exit(exit.status.code().unwrap_or(1));
         }
         Ok(())
@@ -3085,7 +3083,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
 fn set_workspace_dir_or_exit() {
     let d = match Config::discover(&ConfigOverride::default()) {
         Err(err) => {
-            println!("Workspace configuration error: {}", err);
+            println!("Workspace configuration error: {err}");
             std::process::exit(1);
         }
         Ok(d) => d,
@@ -3292,7 +3290,7 @@ fn publish(
     // Create the workspace tarball.
     let dot_anchor = workspace_dir.join(".anchor");
     fs::create_dir_all(&dot_anchor)?;
-    let tarball_filename = dot_anchor.join(format!("{}.tar.gz", program_name));
+    let tarball_filename = dot_anchor.join(format!("{program_name}.tar.gz"));
     let tar_gz = File::create(&tarball_filename)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = tar::Builder::new(enc);

@@ -119,7 +119,7 @@ impl<'a> PdaParser<'a> {
                 } else if self.is_str_literal(&seed_path) {
                     self.parse_str_literal(&seed_path)
                 } else {
-                    println!("WARNING: unexpected seed category for var: {:?}", seed_path);
+                    println!("WARNING: unexpected seed category for var: {seed_path:?}");
                     None
                 }
             }
@@ -137,7 +137,7 @@ impl<'a> PdaParser<'a> {
             }
             // Unknown type. Please file an issue.
             _ => {
-                println!("WARNING: unexpected seed: {:?}", seed);
+                println!("WARNING: unexpected seed: {seed:?}");
                 None
             }
         }
@@ -305,7 +305,7 @@ fn parse_seed_path(seed: &Expr) -> Option<SeedPath> {
     // Break up the seed into each sub field component.
     let mut components: Vec<&str> = seed_str.split(" . ").collect();
     if components.len() <= 1 {
-        println!("WARNING: seeds are in an unexpected format: {:?}", seed);
+        println!("WARNING: seeds are in an unexpected format: {seed:?}");
         return None;
     }
 

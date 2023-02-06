@@ -19,12 +19,12 @@ pub fn event(
     let event_name = &event_strct.ident;
 
     let discriminator: proc_macro2::TokenStream = {
-        let discriminator_preimage = format!("event:{}", event_name);
+        let discriminator_preimage = format!("event:{event_name}");
         let mut discriminator = [0u8; 8];
         discriminator.copy_from_slice(
             &anchor_syn::hash::hash(discriminator_preimage.as_bytes()).to_bytes()[..8],
         );
-        format!("{:?}", discriminator).parse().unwrap()
+        format!("{discriminator:?}").parse().unwrap()
     };
 
     proc_macro::TokenStream::from(quote! {

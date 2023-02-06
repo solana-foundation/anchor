@@ -32,9 +32,8 @@ codegen-units = 1
 pub fn credentials(token: &str) -> String {
     format!(
         r#"[registry]
-token = "{}"
-"#,
-        token
+token = "{token}"
+"#
     )
 }
 
@@ -90,10 +89,10 @@ pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
 const anchor = require('@coral-xyz/anchor');
 
 // Deploy script defined by the user.
-const userScript = require("{0}");
+const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{1}";
+    const url = "{cluster_url}";
     const preflightCommitment = 'recent';
     const connection = new anchor.web3.Connection(url, preflightCommitment);
     const wallet = anchor.Wallet.local();
@@ -108,7 +107,6 @@ async function main() {{
 }}
 main();
 "#,
-        script_path, cluster_url,
     )
 }
 
@@ -117,10 +115,10 @@ pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
         r#"import * as anchor from '@coral-xyz/anchor';
 
 // Deploy script defined by the user.
-const userScript = require("{0}");
+const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{1}";
+    const url = "{cluster_url}";
     const preflightCommitment = 'recent';
     const connection = new anchor.web3.Connection(url, preflightCommitment);
     const wallet = anchor.Wallet.local();
@@ -135,7 +133,6 @@ async function main() {{
 }}
 main();
 "#,
-        script_path, cluster_url,
     )
 }
 
@@ -251,15 +248,14 @@ pub fn package_json(jest: bool) -> String {
             "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
         }},
         "dependencies": {{
-            "@coral-xyz/anchor": "^{0}"
+            "@coral-xyz/anchor": "^{VERSION}"
         }},
         "devDependencies": {{
             "jest": "^29.0.3",
             "prettier": "^2.6.2"
         }}
     }}
-    "#,
-            VERSION
+    "#
         )
     } else {
         format!(
@@ -269,7 +265,7 @@ pub fn package_json(jest: bool) -> String {
         "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
     }},
     "dependencies": {{
-        "@coral-xyz/anchor": "^{0}"
+        "@coral-xyz/anchor": "^{VERSION}"
     }},
     "devDependencies": {{
         "chai": "^4.3.4",
@@ -277,8 +273,7 @@ pub fn package_json(jest: bool) -> String {
         "prettier": "^2.6.2"
     }}
 }}
-"#,
-            VERSION
+"#
         )
     }
 }
@@ -292,7 +287,7 @@ pub fn ts_package_json(jest: bool) -> String {
             "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
         }},
         "dependencies": {{
-            "@coral-xyz/anchor": "^{0}"
+            "@coral-xyz/anchor": "^{VERSION}"
         }},
         "devDependencies": {{
             "@types/bn.js": "^5.1.0",
@@ -303,8 +298,7 @@ pub fn ts_package_json(jest: bool) -> String {
             "typescript": "^4.3.5"
         }}
     }}
-    "#,
-            VERSION
+    "#
         )
     } else {
         format!(
@@ -314,7 +308,7 @@ pub fn ts_package_json(jest: bool) -> String {
         "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
     }},
     "dependencies": {{
-        "@coral-xyz/anchor": "^{0}"
+        "@coral-xyz/anchor": "^{VERSION}"
     }},
     "devDependencies": {{
         "chai": "^4.3.4",
@@ -327,8 +321,7 @@ pub fn ts_package_json(jest: bool) -> String {
         "prettier": "^2.6.2"
     }}
 }}
-"#,
-            VERSION
+"#
         )
     }
 }
@@ -455,7 +448,7 @@ const __wallet = new anchor.Wallet(
     Buffer.from(
       JSON.parse(
         require('fs').readFileSync(
-          "{}",
+          "{wallet_path}",
           {{
             encoding: "utf-8",
           }},
@@ -464,14 +457,13 @@ const __wallet = new anchor.Wallet(
     ),
   ),
 );
-const __connection = new web3.Connection("{}", "processed");
+const __connection = new web3.Connection("{cluster_url}", "processed");
 const provider = new anchor.AnchorProvider(__connection, __wallet, {{
   commitment: "processed",
   preflightcommitment: "processed",
 }});
 anchor.setProvider(provider);
 "#,
-        wallet_path, cluster_url,
     );
 
     for program in programs {

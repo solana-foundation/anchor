@@ -55,8 +55,8 @@ pub fn access_control(
     let access_control: Vec<proc_macro2::TokenStream> = args
         .split(')')
         .filter(|ac| !ac.is_empty())
-        .map(|ac| format!("{})", ac)) // Put back on the split char.
-        .map(|ac| format!("{}?;", ac)) // Add `?;` syntax.
+        .map(|ac| format!("{ac})")) // Put back on the split char.
+        .map(|ac| format!("{ac}?;")) // Add `?;` syntax.
         .map(|ac| ac.parse().unwrap())
         .collect();
 

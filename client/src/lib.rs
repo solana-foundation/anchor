@@ -203,7 +203,7 @@ impl Program {
                                         if self_program_str == execution.program() {
                                             handle_program_log(&self_program_str, l).unwrap_or_else(
                                                 |e| {
-                                                    println!("Unable to parse log: {}", e);
+                                                    println!("Unable to parse log: {e}");
                                                     std::process::exit(1);
                                                 },
                                             )
@@ -297,7 +297,7 @@ fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 }
 
 fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
-    if log.starts_with(&format!("Program {} log:", this_program_str)) {
+    if log.starts_with(&format!("Program {this_program_str} log:")) {
         (Some(this_program_str.to_string()), false)
     } else if log.contains("invoke") {
         (Some("cpi".to_string()), false) // Any string will do.

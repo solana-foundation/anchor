@@ -142,7 +142,7 @@ fn len_from_type(ty: Type, attrs: &mut Option<IntoIter<LitInt>>) -> TokenStream2
                 }
             }
         }
-        _ => panic!("Type {:?} is not supported", ty),
+        _ => panic!("Type {ty:?} is not supported"),
     }
 }
 

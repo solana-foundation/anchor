@@ -17,7 +17,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let name = &ix.raw_method.sig.ident.to_string();
                 let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, name);
                 let sighash_tts: proc_macro2::TokenStream =
-                    format!("{:?}", sighash_arr).parse().unwrap();
+                    format!("{sighash_arr:?}").parse().unwrap();
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
                     "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),

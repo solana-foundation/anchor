@@ -180,7 +180,7 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = format!("target/idl/{}.json", lib_name);
+            let idl_filepath = format!("target/idl/{lib_name}.json");
             let idl = fs::read(idl_filepath)
                 .ok()
                 .map(|bytes| serde_json::from_reader(&*bytes))
@@ -353,7 +353,7 @@ impl Config {
             .anchor_version
             .clone()
             .unwrap_or_else(|| crate::DOCKER_BUILDER_VERSION.to_string());
-        format!("projectserum/build:v{}", ver)
+        format!("projectserum/build:v{ver}")
     }
 
     pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {
@@ -1101,7 +1101,7 @@ impl Program {
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
         let deploy_dir_path = "target/deploy/";
         fs::create_dir_all(deploy_dir_path)
-            .with_context(|| format!("Error creating directory with path: {}", deploy_dir_path))?;
+            .with_context(|| format!("Error creating directory with path: {deploy_dir_path}"))?;
         let path = std::env::current_dir()
             .expect("Must have current dir")
             .join(format!("target/deploy/{}-keypair.json", self.lib_name));

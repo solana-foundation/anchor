@@ -314,8 +314,7 @@ pub fn generate_constraint_literal(
         let lit = &c.lit;
         let constraint = lit.value().replace('\"', "");
         let message = format!(
-            "Deprecated. Should be used with constraint: #[account(constraint = {})]",
-            constraint,
+            "Deprecated. Should be used with constraint: #[account(constraint = {constraint})]",
         );
         lit.span().warning(message).emit_as_item_tokens();
         constraint.parse().unwrap()

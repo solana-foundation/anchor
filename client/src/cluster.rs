@@ -67,7 +67,7 @@ impl std::fmt::Display for Cluster {
             Cluster::Debug => "debug",
             Cluster::Custom(url, _ws_url) => url,
         };
-        write!(f, "{}", clust_str)
+        write!(f, "{clust_str}")
     }
 }
 

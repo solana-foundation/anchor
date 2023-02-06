@@ -12,8 +12,8 @@ impl anchor_lang::Id for System {
     }
 }
 
-pub fn advance_nonce_account<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, AdvanceNonceAccount<'info>>,
+pub fn advance_nonce_account<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, AdvanceNonceAccount<'info>>,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::advance_nonce_account(
         ctx.accounts.nonce.key,
@@ -38,8 +38,8 @@ pub struct AdvanceNonceAccount<'info> {
     pub recent_blockhashes: AccountInfo<'info>,
 }
 
-pub fn allocate<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, Allocate<'info>>,
+pub fn allocate<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Allocate<'info>>,
     space: u64,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::allocate(
@@ -59,8 +59,8 @@ pub struct Allocate<'info> {
     pub account_to_allocate: AccountInfo<'info>,
 }
 
-pub fn allocate_with_seed<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, AllocateWithSeed<'info>>,
+pub fn allocate_with_seed<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, AllocateWithSeed<'info>>,
     seed: &str,
     space: u64,
     owner: &Pubkey,
@@ -86,8 +86,8 @@ pub struct AllocateWithSeed<'info> {
     pub base: AccountInfo<'info>,
 }
 
-pub fn assign<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, Assign<'info>>,
+pub fn assign<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Assign<'info>>,
     owner: &Pubkey,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::assign(
@@ -107,8 +107,8 @@ pub struct Assign<'info> {
     pub account_to_assign: AccountInfo<'info>,
 }
 
-pub fn assign_with_seed<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, AssignWithSeed<'info>>,
+pub fn assign_with_seed<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, AssignWithSeed<'info>>,
     seed: &str,
     owner: &Pubkey,
 ) -> Result<()> {
@@ -132,8 +132,8 @@ pub struct AssignWithSeed<'info> {
     pub base: AccountInfo<'info>,
 }
 
-pub fn authorize_nonce_account<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, AuthorizeNonceAccount<'info>>,
+pub fn authorize_nonce_account<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, AuthorizeNonceAccount<'info>>,
     new_authority: &Pubkey,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::authorize_nonce_account(
@@ -155,8 +155,8 @@ pub struct AuthorizeNonceAccount<'info> {
     pub authorized: AccountInfo<'info>,
 }
 
-pub fn create_account<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, CreateAccount<'info>>,
+pub fn create_account<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CreateAccount<'info>>,
     lamports: u64,
     space: u64,
     owner: &Pubkey,
@@ -182,8 +182,8 @@ pub struct CreateAccount<'info> {
     pub to: AccountInfo<'info>,
 }
 
-pub fn create_account_with_seed<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, CreateAccountWithSeed<'info>>,
+pub fn create_account_with_seed<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CreateAccountWithSeed<'info>>,
     seed: &str,
     lamports: u64,
     space: u64,
@@ -213,8 +213,8 @@ pub struct CreateAccountWithSeed<'info> {
     pub base: AccountInfo<'info>,
 }
 
-pub fn create_nonce_account<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, CreateNonceAccount<'info>>,
+pub fn create_nonce_account<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CreateNonceAccount<'info>>,
     lamports: u64,
     authority: &Pubkey,
 ) -> Result<()> {
@@ -250,8 +250,8 @@ pub struct CreateNonceAccount<'info> {
     pub rent: AccountInfo<'info>,
 }
 
-pub fn create_nonce_account_with_seed<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, CreateNonceAccountWithSeed<'info>>,
+pub fn create_nonce_account_with_seed<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, CreateNonceAccountWithSeed<'info>>,
     lamports: u64,
     seed: &str,
     authority: &Pubkey,
@@ -295,8 +295,8 @@ pub struct CreateNonceAccountWithSeed<'info> {
     pub rent: AccountInfo<'info>,
 }
 
-pub fn transfer<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>,
+pub fn transfer<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Transfer<'info>>,
     lamports: u64,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::transfer(
@@ -318,8 +318,8 @@ pub struct Transfer<'info> {
     pub to: AccountInfo<'info>,
 }
 
-pub fn transfer_with_seed<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, TransferWithSeed<'info>>,
+pub fn transfer_with_seed<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, TransferWithSeed<'info>>,
     from_seed: String,
     from_owner: &Pubkey,
     lamports: u64,
@@ -347,8 +347,8 @@ pub struct TransferWithSeed<'info> {
     pub to: AccountInfo<'info>,
 }
 
-pub fn withdraw_nonce_account<'a, 'b, 'c, 'info>(
-    ctx: CpiContext<'a, 'b, 'c, 'info, WithdrawNonceAccount<'info>>,
+pub fn withdraw_nonce_account<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, WithdrawNonceAccount<'info>>,
     lamports: u64,
 ) -> Result<()> {
     let ix = crate::solana_program::system_instruction::withdraw_nonce_account(
