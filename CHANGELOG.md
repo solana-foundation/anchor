@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `idl close` command to close a program's IDL account ([#2329](https://github.com/coral-xyz/anchor/pull/2329)).
 - cli: `idl init` now supports very large IDL files ([#2329](https://github.com/coral-xyz/anchor/pull/2329)).
 - spl: Add `transfer_checked` function ([#2353](https://github.com/coral-xyz/anchor/pull/2353)).
+- cli: Add `--skip-build` option to the verify command ([#2387](https://github.com/coral-xyz/anchor/pull/2387)).
 - client: Add support for multithreading to the rust client: use flag `--multithreaded` ([#2321](https://github.com/coral-xyz/anchor/pull/2321)).
 - client: Add `async_rpc` a method which returns a nonblocking solana rpc client ([2322](https://github.com/coral-xyz/anchor/pull/2322)).
 

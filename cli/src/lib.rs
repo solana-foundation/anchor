@@ -150,6 +150,10 @@ pub enum Command {
         /// Arguments to pass to the underlying `cargo build-bpf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
+        /// Flag to skip building the program in the workspace,
+        /// use this to save time when running verify and the program code is already built.
+        #[clap(long, required = false)]
+        skip_build: bool,
     },
     #[clap(name = "test", alias = "t")]
     /// Runs integration tests against a localnetwork.
@@ -432,6 +436,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             bootstrap,
             env,
             cargo_args,
+            skip_build,
         } => verify(
             &opts.cfg_override,
             program_id,
@@ -441,6 +446,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             bootstrap,
             env,
             cargo_args,
+            skip_build,
         ),
         Command::Clean => clean(&opts.cfg_override),
         Command::Deploy {
@@ -1349,6 +1355,7 @@ fn verify(
     bootstrap: BootstrapMode,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
+    skip_build: bool,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1361,22 +1368,24 @@ fn verify(
 
     // Build the program we want to verify.
     let cur_dir = std::env::current_dir()?;
-    build(
-        cfg_override,
-        None,                                                  // idl
-        None,                                                  // idl ts
-        true,                                                  // verifiable
-        true,                                                  // skip lint
-        None,                                                  // program name
-        solana_version.or_else(|| cfg.solana_version.clone()), // solana version
-        docker_image,                                          // docker image
-        bootstrap,                                             // bootstrap docker image
-        None,                                                  // stdout
-        None,                                                  // stderr
-        env_vars,
-        cargo_args,
-        false,
-    )?;
+    if !skip_build {
+        build(
+            cfg_override,
+            None,                                                  // idl
+            None,                                                  // idl ts
+            true,                                                  // verifiable
+            true,                                                  // skip lint
+            None,                                                  // program name
+            solana_version.or_else(|| cfg.solana_version.clone()), // solana version
+            docker_image,                                          // docker image
+            bootstrap,                                             // bootstrap docker image
+            None,                                                  // stdout
+            None,                                                  // stderr
+            env_vars,
+            cargo_args,
+            false,
+        )?;
+    }
     std::env::set_current_dir(cur_dir)?;
 
     // Verify binary.
