@@ -211,7 +211,7 @@ export class AccountClient<
   async fetchMultiple(
     addresses: Address[],
     commitment?: Commitment
-  ): Promise<(Object | null)[]> {
+  ): Promise<(T | null)[]> {
     const accounts = await this.fetchMultipleAndContext(addresses, commitment);
     return accounts.map((account) => (account ? account.data : null));
   }
@@ -225,7 +225,7 @@ export class AccountClient<
   async fetchMultipleAndContext(
     addresses: Address[],
     commitment?: Commitment
-  ): Promise<({ data: Object; context: Context } | null)[]> {
+  ): Promise<({ data: T; context: Context } | null)[]> {
     const accounts = await rpcUtil.getMultipleAccountsAndContext(
       this._provider.connection,
       addresses.map((address) => translateAddress(address)),

@@ -24,6 +24,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- ts: Make the return type of `AccountClient.fetchMultiple` match the account type being fetched ([#2390](https://github.com/coral-xyz/anchor/pull/2390))
 - cli: Don't regenerate idl in read_all_programs(). ([#2332](https://github.com/coral-xyz/anchor/pull/2332)).
 - ts: `provider.simulate` will send the transaction with `sigVerify: false` if no `signers` are present ([#2331](https://github.com/coral-xyz/anchor/pull/2331)).
 - cli: Failing commands will return the correct exit status. ([#2370](https://github.com/coral-xyz/anchor/pull/2370)).
