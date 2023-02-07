@@ -22,7 +22,7 @@ serde = { version = "1.0.136", features = [ "derive" ]}
 serde_json = "1.0.78"
 thiserror = "1.0.30"
 once_cell = { version = "1.8.0" }
-reqwest = { version = "0.11.9", features = ['blocking', 'json'] }
+reqwest = { version = "0.11.9", default-features = false, features = ['blocking', 'json', 'rustls-tls'] }
 tempfile = "3.3.0"
 
 [workspace]
