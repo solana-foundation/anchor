@@ -30,7 +30,7 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
 }
 
 pub fn create_idempotent<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateIdemptotent<'info>>,
+    ctx: CpiContext<'_, '_, '_, 'info, CreateIdempotent<'info>>,
 ) -> Result<()> {
     let ix = spl_associated_token_account::instruction::create_associated_token_account_idempotent(
         ctx.accounts.payer.key,
@@ -63,7 +63,7 @@ pub struct Create<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
-type CreateIdemptotent<'info> = Create<'info>;
+type CreateIdempotent<'info> = Create<'info>;
 
 #[derive(Clone)]
 pub struct AssociatedToken;
