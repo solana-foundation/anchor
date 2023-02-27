@@ -224,9 +224,52 @@ pub trait Owner {
     fn owner() -> Pubkey;
 }
 
+/// Defines a list of addresses expected to own an account.
+pub trait Owners {
+    fn owners() -> &'static [Pubkey];
+}
+
+/// Defines a trait for checking the owner of a program.
+pub trait CheckOwner {
+    fn check_owner(owner: &Pubkey) -> Result<()>;
+}
+
+impl<T: Owners> CheckOwner for T {
+    fn check_owner(owner: &Pubkey) -> Result<()> {
+        if !Self::owners().contains(owner) {
+            Err(
+                error::Error::from(error::ErrorCode::AccountOwnedByWrongProgram)
+                    .with_account_name(*owner),
+            )
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// Defines the id of a program.
 pub trait Id {
     fn id() -> Pubkey;
+}
+
+/// Defines the possible ids of a program.
+pub trait Ids {
+    fn ids() -> &'static [Pubkey];
+}
+
+/// Defines a trait for checking the id of a program.
+pub trait CheckId {
+    fn check_id(id: &Pubkey) -> Result<()>;
+}
+
+impl<T: Ids> CheckId for T {
+    fn check_id(id: &Pubkey) -> Result<()> {
+        if !Self::ids().contains(id) {
+            Err(error::Error::from(error::ErrorCode::InvalidProgramId).with_account_name(*id))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Defines the Pubkey of an account.
@@ -245,7 +288,8 @@ impl Key for Pubkey {
 pub mod prelude {
     pub use super::{
         access_control, account, accounts::account::Account,
-        accounts::account_loader::AccountLoader, accounts::program::Program,
+        accounts::account_loader::AccountLoader, accounts::interface::Interface,
+        accounts::interface_account::InterfaceAccount, accounts::program::Program,
         accounts::signer::Signer, accounts::system_account::SystemAccount,
         accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
         context::Context, context::CpiContext, declare_id, emit, err, error, event, program,

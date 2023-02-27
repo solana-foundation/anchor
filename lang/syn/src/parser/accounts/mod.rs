@@ -91,7 +91,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         let kind = &init_fields[0].constraints.init.as_ref().unwrap().kind;
         // init token/a_token/mint needs token program.
         match kind {
-            InitKind::Program { .. } => (),
+            InitKind::Program { .. } | InitKind::Interface { .. } => (),
             InitKind::Token { .. } | InitKind::AssociatedToken { .. } | InitKind::Mint { .. } => {
                 if !fields
                     .iter()
@@ -289,6 +289,8 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "AccountLoader"
             | "Account"
             | "Program"
+            | "Interface"
+            | "InterfaceAccount"
             | "Signer"
             | "SystemAccount"
             | "ProgramData"
@@ -305,6 +307,8 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
+        "Interface" => Ty::Interface(parse_interface_ty(&path)?),
+        "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
         "Signer" => Ty::Signer,
         "SystemAccount" => Ty::SystemAccount,
         "ProgramData" => Ty::ProgramData,
@@ -358,6 +362,12 @@ fn ident_string(f: &syn::Field) -> ParseResult<(String, bool, Path)> {
     {
         return Ok(("Account".to_string(), optional, path));
     }
+    if parser::tts_to_string(&path)
+        .replace(' ', "")
+        .starts_with("Box<InterfaceAccount<")
+    {
+        return Ok(("InterfaceAccount".to_string(), optional, path));
+    }
     // TODO: allow segmented paths.
     if path.segments.len() != 1 {
         return Err(ParseError::new(
@@ -388,17 +398,31 @@ fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
     })
 }
 
+fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountTy> {
+    let account_type_path = parse_account(path)?;
+    let boxed = parser::tts_to_string(path)
+        .replace(' ', "")
+        .starts_with("Box<InterfaceAccount<");
+    Ok(InterfaceAccountTy {
+        account_type_path,
+        boxed,
+    })
+}
+
 fn parse_program_ty(path: &syn::Path) -> ParseResult<ProgramTy> {
     let account_type_path = parse_account(path)?;
     Ok(ProgramTy { account_type_path })
 }
 
+fn parse_interface_ty(path: &syn::Path) -> ParseResult<InterfaceTy> {
+    let account_type_path = parse_account(path)?;
+    Ok(InterfaceTy { account_type_path })
+}
+
 // TODO: this whole method is a hack. Do something more idiomatic.
 fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
-    if parser::tts_to_string(path)
-        .replace(' ', "")
-        .starts_with("Box<Account<")
-    {
+    let path_str = parser::tts_to_string(path).replace(' ', "");
+    if path_str.starts_with("Box<Account<") || path_str.starts_with("Box<InterfaceAccount<") {
         let segments = &path.segments[0];
         match &segments.arguments {
             syn::PathArguments::AngleBracketed(args) => {

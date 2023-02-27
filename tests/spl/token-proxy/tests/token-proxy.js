@@ -1,86 +1,252 @@
 const anchor = require("@coral-xyz/anchor");
 const { assert } = require("chai");
+const {
+  splTokenProgram,
+  SPL_TOKEN_PROGRAM_ID,
+} = require("@coral-xyz/spl-token");
 
-describe("token", () => {
+describe("program", () => {
   const provider = anchor.AnchorProvider.local();
+
+  const TEST_PROGRAM_IDS = [
+    SPL_TOKEN_PROGRAM_ID,
+    new anchor.web3.PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+  ];
+  const TOKEN_PROGRAMS = TEST_PROGRAM_IDS.map((programId) =>
+    splTokenProgram({
+      provider,
+      programId,
+    })
+  );
 
   // Configure the client to use the local cluster.
   anchor.setProvider(provider);
 
   const program = anchor.workspace.TokenProxy;
 
-  let mint = null;
-  let from = null;
-  let to = null;
+  TOKEN_PROGRAMS.forEach((tokenProgram) => {
+    const name =
+      tokenProgram.programId === SPL_TOKEN_PROGRAM_ID ? "token" : "token-2022";
+    describe(name, () => {
+      let mint = null;
+      let from = null;
+      let to = null;
 
-  it("Initializes test state", async () => {
-    mint = await createMint(provider);
-    from = await createTokenAccount(provider, mint, provider.wallet.publicKey);
-    to = await createTokenAccount(provider, mint, provider.wallet.publicKey);
-  });
+      it("Initializes test state", async () => {
+        mint = await createMint(tokenProgram);
+        from = await createTokenAccount(
+          tokenProgram,
+          mint,
+          provider.wallet.publicKey
+        );
+        to = await createTokenAccount(
+          tokenProgram,
+          mint,
+          provider.wallet.publicKey
+        );
+      });
 
-  it("Mints a token", async () => {
-    await program.rpc.proxyMintTo(new anchor.BN(1000), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        mint,
-        to: from,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
+      it("Creates a token account", async () => {
+        const newMint = await createMint(tokenProgram);
+        const authority = provider.wallet.publicKey;
+        const [tokenAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            authority.toBytes(),
+            newMint.toBytes(),
+            Buffer.from("token-proxy-account"),
+          ],
+          program.programId
+        );
+        await program.rpc.proxyCreateTokenAccount({
+          accounts: {
+            authority,
+            mint: newMint,
+            tokenAccount,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+        const account = await getTokenAccount(provider, tokenAccount);
+        assert.isTrue(account.amount.eq(new anchor.BN(0)));
+      });
+
+      it("Creates an associated token account", async () => {
+        const newMint = await createMint(tokenProgram);
+        const authority = provider.wallet.publicKey;
+        const associatedTokenProgram = new anchor.web3.PublicKey(
+          "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        );
+        const [tokenAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            authority.toBytes(),
+            tokenProgram.programId.toBytes(),
+            newMint.toBytes(),
+          ],
+          associatedTokenProgram
+        );
+
+        await program.rpc.proxyCreateAssociatedTokenAccount({
+          accounts: {
+            tokenAccount,
+            mint: newMint,
+            authority,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: tokenProgram.programId,
+            associatedTokenProgram,
+          },
+        });
+        const account = await getTokenAccount(provider, tokenAccount);
+        assert.isTrue(account.amount.eq(new anchor.BN(0)));
+      });
+
+      it("Creates a mint", async () => {
+        const authority = provider.wallet.publicKey;
+        const [newMint] = anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            authority.toBytes(),
+            Buffer.from(name),
+            Buffer.from("token-proxy-mint"),
+          ],
+          program.programId
+        );
+        await program.rpc.proxyCreateMint(name, {
+          accounts: {
+            authority,
+            mint: newMint,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+      });
+
+      it("Mints a token", async () => {
+        await program.rpc.proxyMintTo(new anchor.BN(1000), {
+          accounts: {
+            authority: provider.wallet.publicKey,
+            mint,
+            to: from,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+
+        const fromAccount = await getTokenAccount(provider, from);
+
+        assert.isTrue(fromAccount.amount.eq(new anchor.BN(1000)));
+      });
+
+      it("Transfers a token", async () => {
+        const preFromAccount = await getTokenAccount(provider, from);
+        const preToAccount = await getTokenAccount(provider, to);
+
+        const transferAmount = new anchor.BN(400);
+
+        await program.rpc.proxyTransfer(transferAmount, {
+          accounts: {
+            authority: provider.wallet.publicKey,
+            to,
+            from,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+
+        const postFromAccount = await getTokenAccount(provider, from);
+        const postToAccount = await getTokenAccount(provider, to);
+
+        assert.isTrue(
+          postFromAccount.amount.eq(preFromAccount.amount.sub(transferAmount))
+        );
+        assert.isTrue(
+          postToAccount.amount.eq(preToAccount.amount.add(transferAmount))
+        );
+      });
+
+      it("Transfers a token with optional accounts", async () => {
+        const preFromAccount = await getTokenAccount(provider, from);
+        const preToAccount = await getTokenAccount(provider, to);
+
+        const transferAmount = new anchor.BN(10);
+
+        await program.rpc.proxyOptionalTransfer(transferAmount, {
+          accounts: {
+            authority: provider.wallet.publicKey,
+            to,
+            from,
+            mint,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+
+        const postFromAccount = await getTokenAccount(provider, from);
+        const postToAccount = await getTokenAccount(provider, to);
+
+        assert.isTrue(
+          postFromAccount.amount.eq(preFromAccount.amount.sub(transferAmount))
+        );
+        assert.isTrue(
+          postToAccount.amount.eq(preToAccount.amount.add(transferAmount))
+        );
+      });
+
+      it("Does not transfer a token without optional accounts", async () => {
+        const preFromAccount = await getTokenAccount(provider, from);
+        const preToAccount = await getTokenAccount(provider, to);
+
+        const optionalTransferIx = await program.methods
+          .proxyOptionalTransfer(new anchor.BN(10))
+          .accounts({
+            authority: provider.wallet.publicKey,
+            to,
+            from,
+            mint: null,
+            tokenProgram: null,
+          })
+          .instruction();
+        const tx = new anchor.web3.Transaction().add(optionalTransferIx);
+        await provider.sendAndConfirm(tx);
+
+        const postFromAccount = await getTokenAccount(provider, from);
+        const postToAccount = await getTokenAccount(provider, to);
+
+        assert.isTrue(postFromAccount.amount.eq(preFromAccount.amount));
+        assert.isTrue(postToAccount.amount.eq(preToAccount.amount));
+      });
+
+      it("Burns a token", async () => {
+        const preAccount = await getTokenAccount(provider, to);
+        const burnAmount = new anchor.BN(300);
+        await program.rpc.proxyBurn(burnAmount, {
+          accounts: {
+            authority: provider.wallet.publicKey,
+            mint,
+            from: to,
+            tokenProgram: tokenProgram.programId,
+          },
+        });
+
+        const postAccount = await getTokenAccount(provider, to);
+        assert.isTrue(postAccount.amount.eq(preAccount.amount.sub(burnAmount)));
+      });
+
+      it("Set new mint authority", async () => {
+        const newMintAuthority = anchor.web3.Keypair.generate();
+        await program.rpc.proxySetAuthority(
+          { mintTokens: {} },
+          newMintAuthority.publicKey,
+          {
+            accounts: {
+              accountOrMint: mint,
+              currentAuthority: provider.wallet.publicKey,
+              tokenProgram: tokenProgram.programId,
+            },
+          }
+        );
+
+        const mintInfo = await getMintInfo(provider, mint);
+        assert.isTrue(
+          mintInfo.mintAuthority.equals(newMintAuthority.publicKey)
+        );
+      });
     });
-
-    const fromAccount = await getTokenAccount(provider, from);
-
-    assert.isTrue(fromAccount.amount.eq(new anchor.BN(1000)));
-  });
-
-  it("Transfers a token", async () => {
-    await program.rpc.proxyTransfer(new anchor.BN(400), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        to,
-        from,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
-    });
-
-    const fromAccount = await getTokenAccount(provider, from);
-    const toAccount = await getTokenAccount(provider, to);
-
-    assert.isTrue(fromAccount.amount.eq(new anchor.BN(600)));
-    assert.isTrue(toAccount.amount.eq(new anchor.BN(400)));
-  });
-
-  it("Burns a token", async () => {
-    await program.rpc.proxyBurn(new anchor.BN(399), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        mint,
-        from: to,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
-    });
-
-    const toAccount = await getTokenAccount(provider, to);
-    assert.isTrue(toAccount.amount.eq(new anchor.BN(1)));
-  });
-
-  it("Set new mint authority", async () => {
-    const newMintAuthority = anchor.web3.Keypair.generate();
-    await program.rpc.proxySetAuthority(
-      { mintTokens: {} },
-      newMintAuthority.publicKey,
-      {
-        accounts: {
-          accountOrMint: mint,
-          currentAuthority: provider.wallet.publicKey,
-          tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-        },
-      }
-    );
-
-    const mintInfo = await getMintInfo(provider, mint);
-    assert.isTrue(mintInfo.mintAuthority.equals(newMintAuthority.publicKey));
   });
 });
 
@@ -88,13 +254,6 @@ describe("token", () => {
 // mostly irrelevant to the point of the example.
 
 const serumCmn = require("@project-serum/common");
-const TokenInstructions = require("@project-serum/serum").TokenInstructions;
-
-// TODO: remove this constant once @project-serum/serum uses the same version
-//       of @solana/web3.js as anchor (or switch packages).
-const TOKEN_PROGRAM_ID = new anchor.web3.PublicKey(
-  TokenInstructions.TOKEN_PROGRAM_ID.toString()
-);
 
 async function getTokenAccount(provider, addr) {
   return await serumCmn.getTokenAccount(provider, addr);
@@ -104,75 +263,33 @@ async function getMintInfo(provider, mintAddr) {
   return await serumCmn.getMintInfo(provider, mintAddr);
 }
 
-async function createMint(provider, authority) {
-  if (authority === undefined) {
-    authority = provider.wallet.publicKey;
-  }
+async function createMint(tokenProgram) {
   const mint = anchor.web3.Keypair.generate();
-  const instructions = await createMintInstructions(
-    provider,
-    authority,
-    mint.publicKey
-  );
+  const authority = tokenProgram.provider.wallet.publicKey;
+  const createMintIx = await tokenProgram.account.mint.createInstruction(mint);
+  const initMintIx = await tokenProgram.methods
+    .initializeMint2(0, authority, null)
+    .accounts({ mint: mint.publicKey })
+    .instruction();
 
   const tx = new anchor.web3.Transaction();
-  tx.add(...instructions);
+  tx.add(createMintIx, initMintIx);
 
-  await provider.sendAndConfirm(tx, [mint]);
+  await tokenProgram.provider.sendAndConfirm(tx, [mint]);
 
   return mint.publicKey;
 }
 
-async function createMintInstructions(provider, authority, mint) {
-  let instructions = [
-    anchor.web3.SystemProgram.createAccount({
-      fromPubkey: provider.wallet.publicKey,
-      newAccountPubkey: mint,
-      space: 82,
-      lamports: await provider.connection.getMinimumBalanceForRentExemption(82),
-      programId: TOKEN_PROGRAM_ID,
-    }),
-    TokenInstructions.initializeMint({
-      mint,
-      decimals: 0,
-      mintAuthority: authority,
-    }),
-  ];
-  return instructions;
-}
-
-async function createTokenAccount(provider, mint, owner) {
+async function createTokenAccount(tokenProgram, mint, owner) {
   const vault = anchor.web3.Keypair.generate();
   const tx = new anchor.web3.Transaction();
-  tx.add(
-    ...(await createTokenAccountInstrs(provider, vault.publicKey, mint, owner))
-  );
-  await provider.sendAndConfirm(tx, [vault]);
+  const createTokenAccountIx =
+    await tokenProgram.account.account.createInstruction(vault);
+  const initTokenAccountIx = await tokenProgram.methods
+    .initializeAccount3(owner)
+    .accounts({ account: vault.publicKey, mint })
+    .instruction();
+  tx.add(createTokenAccountIx, initTokenAccountIx);
+  await tokenProgram.provider.sendAndConfirm(tx, [vault]);
   return vault.publicKey;
-}
-
-async function createTokenAccountInstrs(
-  provider,
-  newAccountPubkey,
-  mint,
-  owner,
-  lamports
-) {
-  if (lamports === undefined) {
-    lamports = await provider.connection.getMinimumBalanceForRentExemption(165);
-  }
-  return [
-    anchor.web3.SystemProgram.createAccount({
-      fromPubkey: provider.wallet.publicKey,
-      newAccountPubkey,
-      space: 165,
-      lamports,
-      programId: TOKEN_PROGRAM_ID,
-    }),
-    TokenInstructions.initializeAccount({
-      account: newAccountPubkey,
-      mint,
-      owner,
-    }),
-  ];
 }

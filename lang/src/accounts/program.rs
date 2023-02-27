@@ -9,6 +9,7 @@ use solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -75,36 +76,23 @@ use std::ops::Deref;
 /// - [`Token`](https://docs.rs/anchor-spl/latest/anchor_spl/token/struct.Token.html)
 ///
 #[derive(Clone)]
-pub struct Program<'info, T: Id + Clone> {
+pub struct Program<'info, T> {
     info: AccountInfo<'info>,
     _phantom: PhantomData<T>,
 }
 
-impl<'info, T: Id + Clone + fmt::Debug> fmt::Debug for Program<'info, T> {
+impl<'info, T: fmt::Debug> fmt::Debug for Program<'info, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Program").field("info", &self.info).finish()
     }
 }
 
-impl<'a, T: Id + Clone> Program<'a, T> {
-    fn new(info: AccountInfo<'a>) -> Program<'a, T> {
+impl<'a, T> Program<'a, T> {
+    pub(crate) fn new(info: AccountInfo<'a>) -> Program<'a, T> {
         Self {
             info,
             _phantom: PhantomData,
         }
-    }
-
-    /// Deserializes the given `info` into a `Program`.
-    #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'a>) -> Result<Program<'a, T>> {
-        if info.key != &T::id() {
-            return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
-        }
-        if !info.executable {
-            return Err(ErrorCode::InvalidProgramExecutable.into());
-        }
-
-        Ok(Program::new(info.clone()))
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
@@ -137,10 +125,22 @@ impl<'a, T: Id + Clone> Program<'a, T> {
     }
 }
 
-impl<'info, T> Accounts<'info> for Program<'info, T>
-where
-    T: Id + Clone,
-{
+impl<'a, T: Id> TryFrom<&AccountInfo<'a>> for Program<'a, T> {
+    type Error = Error;
+    /// Deserializes the given `info` into a `Program`.
+    fn try_from(info: &AccountInfo<'a>) -> Result<Self> {
+        if info.key != &T::id() {
+            return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
+        }
+        if !info.executable {
+            return Err(ErrorCode::InvalidProgramExecutable.into());
+        }
+
+        Ok(Program::new(info.clone()))
+    }
+}
+
+impl<'info, T: Id> Accounts<'info> for Program<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
@@ -158,7 +158,7 @@ where
     }
 }
 
-impl<'info, T: Id + Clone> ToAccountMetas for Program<'info, T> {
+impl<'info, T> ToAccountMetas for Program<'info, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
         let meta = match self.info.is_writable {
@@ -169,19 +169,19 @@ impl<'info, T: Id + Clone> ToAccountMetas for Program<'info, T> {
     }
 }
 
-impl<'info, T: Id + Clone> ToAccountInfos<'info> for Program<'info, T> {
+impl<'info, T> ToAccountInfos<'info> for Program<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.info.clone()]
     }
 }
 
-impl<'info, T: Id + Clone> AsRef<AccountInfo<'info>> for Program<'info, T> {
+impl<'info, T> AsRef<AccountInfo<'info>> for Program<'info, T> {
     fn as_ref(&self) -> &AccountInfo<'info> {
         &self.info
     }
 }
 
-impl<'info, T: Id + Clone> Deref for Program<'info, T> {
+impl<'info, T> Deref for Program<'info, T> {
     type Target = AccountInfo<'info>;
 
     fn deref(&self) -> &Self::Target {
@@ -189,9 +189,9 @@ impl<'info, T: Id + Clone> Deref for Program<'info, T> {
     }
 }
 
-impl<'info, T: AccountDeserialize + Id + Clone> AccountsExit<'info> for Program<'info, T> {}
+impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
 
-impl<'info, T: AccountDeserialize + Id + Clone> Key for Program<'info, T> {
+impl<'info, T: AccountDeserialize> Key for Program<'info, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }

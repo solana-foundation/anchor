@@ -223,58 +223,47 @@ use std::ops::{Deref, DerefMut};
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]
-pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> {
+pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     account: T,
     info: AccountInfo<'info>,
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone + fmt::Debug> fmt::Debug
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
     for Account<'info, T>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Account")
+        self.fmt_with_name("Account", f)
+    }
+}
+
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'info, T> {
+    pub(crate) fn fmt_with_name(&self, name: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct(name)
             .field("account", &self.account)
             .field("info", &self.info)
             .finish()
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + crate::Owner + Clone> Account<'a, T> {
-    fn new(info: AccountInfo<'a>, account: T) -> Account<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
+    pub(crate) fn new(info: AccountInfo<'a>, account: T) -> Account<'a, T> {
         Self { info, account }
     }
 
-    /// Deserializes the given `info` into a `Account`.
-    #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
+    pub(crate) fn exit_with_expected_owner(
+        &self,
+        expected_owner: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<()> {
+        // Only persist if the owner is the current program and the account is not closed.
+        if expected_owner == program_id && !crate::common::is_closed(&self.info) {
+            let info = self.to_account_info();
+            let mut data = info.try_borrow_mut_data()?;
+            let dst: &mut [u8] = &mut data;
+            let mut writer = BpfWriter::new(dst);
+            self.account.try_serialize(&mut writer)?;
         }
-        if info.owner != &T::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, T::owner())));
-        }
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Account::new(info.clone(), T::try_deserialize(&mut data)?))
-    }
-
-    /// Deserializes the given `info` into a `Account` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
-    #[inline(never)]
-    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        if info.owner != &T::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, T::owner())));
-        }
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Account::new(
-            info.clone(),
-            T::try_deserialize_unchecked(&mut data)?,
-        ))
+        Ok(())
     }
 
     /// Reloads the account from storage. This is useful, for example, when
@@ -310,6 +299,41 @@ impl<'a, T: AccountSerialize + AccountDeserialize + crate::Owner + Clone> Accoun
     }
 }
 
+impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T> {
+    /// Deserializes the given `info` into a `Account`.
+    #[inline(never)]
+    pub fn try_from(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        if info.owner != &T::owner() {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, T::owner())));
+        }
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        Ok(Account::new(info.clone(), T::try_deserialize(&mut data)?))
+    }
+
+    /// Deserializes the given `info` into a `Account` without checking
+    /// the account discriminator. Be careful when using this and avoid it if
+    /// possible.
+    #[inline(never)]
+    pub fn try_from_unchecked(info: &AccountInfo<'a>) -> Result<Account<'a, T>> {
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        if info.owner != &T::owner() {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, T::owner())));
+        }
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        Ok(Account::new(
+            info.clone(),
+            T::try_deserialize_unchecked(&mut data)?,
+        ))
+    }
+}
+
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info>
     for Account<'info, T>
 where
@@ -336,19 +360,11 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsEx
     for Account<'info, T>
 {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
-        // Only persist if the owner is the current program and the account is not closed.
-        if &T::owner() == program_id && !crate::common::is_closed(&self.info) {
-            let info = self.to_account_info();
-            let mut data = info.try_borrow_mut_data()?;
-            let dst: &mut [u8] = &mut data;
-            let mut writer = BpfWriter::new(dst);
-            self.account.try_serialize(&mut writer)?;
-        }
-        Ok(())
+        self.exit_with_expected_owner(&T::owner(), program_id)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsClose<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for Account<'info, T>
 {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
@@ -356,9 +372,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsCl
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountMetas
-    for Account<'info, T>
-{
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'info, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
         let meta = match self.info.is_writable {
@@ -369,7 +383,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountM
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountInfos<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
     for Account<'info, T>
 {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
@@ -377,7 +391,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountI
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<AccountInfo<'info>>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
     for Account<'info, T>
 {
     fn as_ref(&self) -> &AccountInfo<'info> {
@@ -385,15 +399,13 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<Acco
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<T>
-    for Account<'info, T>
-{
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'info, T> {
     fn as_ref(&self) -> &T {
         &self.account
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Deref for Account<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -401,7 +413,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Deref for Acc
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> DerefMut for Account<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
@@ -412,7 +424,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> DerefMut for 
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Key for Account<'info, T> {
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'info, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }

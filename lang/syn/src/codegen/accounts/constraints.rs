@@ -284,6 +284,7 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
     let info = match f.ty {
         Ty::AccountInfo => quote! { #ident },
         Ty::Account(_) => quote! { #ident.to_account_info() },
+        Ty::InterfaceAccount(_) => quote! { #ident.to_account_info() },
         Ty::AccountLoader(_) => quote! { #ident.to_account_info() },
         _ => panic!("Invalid syntax: signer cannot be specified."),
     };
@@ -520,9 +521,11 @@ fn generate_constraint_init_group(
 
             let payer_optional_check = check_scope.generate_check(payer);
 
+            let token_account_space = generate_get_token_account_space(mint);
+
             let create_account = generate_create_account(
                 field,
-                quote! {anchor_spl::token::TokenAccount::LEN},
+                quote! {#token_account_space},
                 quote! {&token_program.key()},
                 quote! {#payer},
                 seeds_with_bump,
@@ -544,13 +547,13 @@ fn generate_constraint_init_group(
 
                         // Initialize the token account.
                         let cpi_program = token_program.to_account_info();
-                        let accounts = anchor_spl::token::InitializeAccount3 {
+                        let accounts = ::anchor_spl::token_interface::InitializeAccount3 {
                             account: #field.to_account_info(),
                             mint: #mint.to_account_info(),
                             authority: #owner.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                        anchor_spl::token::initialize_account3(cpi_ctx)?;
+                        ::anchor_spl::token_interface::initialize_account3(cpi_ctx)?;
                     }
 
                     let pa: #ty_decl = #from_account_info_unchecked;
@@ -599,7 +602,7 @@ fn generate_constraint_init_group(
                         #payer_optional_check
 
                         let cpi_program = associated_token_program.to_account_info();
-                        let cpi_accounts = anchor_spl::associated_token::Create {
+                        let cpi_accounts = ::anchor_spl::associated_token::Create {
                             payer: #payer.to_account_info(),
                             associated_token: #field.to_account_info(),
                             authority: #owner.to_account_info(),
@@ -608,7 +611,7 @@ fn generate_constraint_init_group(
                             token_program: token_program.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, cpi_accounts);
-                        anchor_spl::associated_token::create(cpi_ctx)?;
+                        ::anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
@@ -619,7 +622,7 @@ fn generate_constraint_init_group(
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenOwner).with_account_name(#name_str).with_pubkeys((pa.owner, #owner.key())));
                         }
 
-                        if pa.key() != anchor_spl::associated_token::get_associated_token_address(&#owner.key(), &#mint.key()) {
+                        if pa.key() != ::anchor_spl::associated_token::get_associated_token_address(&#owner.key(), &#mint.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountNotAssociatedTokenAccount).with_account_name(#name_str));
                         }
                     }
@@ -654,7 +657,7 @@ fn generate_constraint_init_group(
 
             let create_account = generate_create_account(
                 field,
-                quote! {anchor_spl::token::Mint::LEN},
+                quote! {::anchor_spl::token::Mint::LEN},
                 quote! {&token_program.key()},
                 quote! {#payer},
                 seeds_with_bump,
@@ -682,11 +685,11 @@ fn generate_constraint_init_group(
 
                         // Initialize the mint account.
                         let cpi_program = token_program.to_account_info();
-                        let accounts = anchor_spl::token::InitializeMint2 {
+                        let accounts = ::anchor_spl::token_interface::InitializeMint2 {
                             mint: #field.to_account_info(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                        anchor_spl::token::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
+                        ::anchor_spl::token_interface::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
@@ -707,7 +710,7 @@ fn generate_constraint_init_group(
                 };
             }
         }
-        InitKind::Program { owner } => {
+        InitKind::Program { owner } | InitKind::Interface { owner } => {
             // Define the space variable.
             let space = quote! {let space = #space;};
 
@@ -895,7 +898,7 @@ fn generate_constraint_associated_token(
             if my_owner != wallet_address {
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenOwner).with_account_name(#name_str).with_pubkeys((my_owner, wallet_address)));
             }
-            let __associated_token_address = anchor_spl::associated_token::get_associated_token_address(&wallet_address, &#spl_token_mint_address.key());
+            let __associated_token_address = ::anchor_spl::associated_token::get_associated_token_address(&wallet_address, &#spl_token_mint_address.key());
             let my_key = #name.key();
             if my_key != __associated_token_address {
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintAssociated).with_account_name(#name_str).with_pubkeys((my_key, __associated_token_address)));
@@ -1028,6 +1031,25 @@ impl<'a> OptionalCheckScope<'a> {
     }
 }
 
+fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
+    quote! {
+        {
+            let mint_info = #mint.to_account_info();
+            if *mint_info.owner == ::anchor_spl::token_2022::Token2022::id() {
+                use ::anchor_spl::token_2022::spl_token_2022::extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions};
+                use ::anchor_spl::token_2022::spl_token_2022::state::{Account, Mint};
+                let mint_data = mint_info.try_borrow_data()?;
+                let mint_state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+                let mint_extensions = mint_state.get_extension_types()?;
+                let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
+                ExtensionType::get_account_len::<Account>(&required_extensions)
+            } else {
+                ::anchor_spl::token::TokenAccount::LEN
+            }
+        }
+    }
+}
+
 // Generated code to create an account with with system program with the
 // given `space` amount of data, owned by `owner`.
 //
@@ -1051,13 +1073,14 @@ fn generate_create_account(
         let __current_lamports = #field.lamports();
         if __current_lamports == 0 {
             // Create the token account with right amount of lamports and space, and the correct owner.
-            let lamports = __anchor_rent.minimum_balance(#space);
+            let space = #space;
+            let lamports = __anchor_rent.minimum_balance(space);
             let cpi_accounts = anchor_lang::system_program::CreateAccount {
                 from: #payer.to_account_info(),
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.to_account_info(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, #space as u64, #owner)?;
+            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.

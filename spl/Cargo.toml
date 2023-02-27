@@ -8,9 +8,10 @@ license = "Apache-2.0"
 description = "CPI clients for SPL programs"
 
 [features]
-default = ["mint", "token", "associated_token"]
+default = ["mint", "token", "token_2022", "associated_token"]
 mint = []
 token = ["spl-token"]
+token_2022 = ["spl-token-2022"]
 associated_token = ["spl-associated-token-account"]
 governance = []
 shmem = []
@@ -25,5 +26,6 @@ borsh = { version = "^0.9", optional = true }
 serum_dex = { git = "https://github.com/openbook-dex/program/", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
 solana-program = "1.13.5"
 spl-token = { version = "3.5.0", features = ["no-entrypoint"], optional = true }
+spl-token-2022 = { version = "0.5.0", features = ["no-entrypoint"], optional = true }
 spl-associated-token-account = { version = "1.1.1", features = ["no-entrypoint"], optional = true }
 mpl-token-metadata = { version = "^1.4.3", optional = true, features = ["no-entrypoint"] }
