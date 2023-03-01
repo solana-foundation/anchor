@@ -16,7 +16,7 @@
     "@coral-xyz/anchor": "file:../../ts/packages/anchor"
   },
   "devDependencies": {
-    "mocha": "^9.1.3",
+    "mocha": "9.2.2",
     "prettier": "^2.5.1"
   }
 }
