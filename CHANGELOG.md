@@ -32,6 +32,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Failing commands will return the correct exit status. ([#2370](https://github.com/coral-xyz/anchor/pull/2370)).
 - idl: Update the IDL program to use non-deprecated account types ([#2365](https://github.com/coral-xyz/anchor/pull/2365)).
 - ts: Enum fields weren't being converted from snake_case to camelCase ([#2378](https://github.com/coral-xyz/anchor/pull/2378)).
+- lang/cli: Update to solana-program version 1.14.16 and rust version 1.60, appears to still be incompatible with 1.15 CLI ([#2420](https://github.com/coral-xyz/anchor/pull/2420)).
 
 ### Breaking
 

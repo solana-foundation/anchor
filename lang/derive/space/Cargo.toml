@@ -5,7 +5,7 @@ authors = ["Serum Foundation <foundation@projectserum.com>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
 description = "Anchor Derive macro to automatically calculate the size of a structure or an enum"
-rust-version = "1.59"
+rust-version = "1.60"
 edition = "2021"
 
 [lib]

@@ -352,7 +352,7 @@ pub mod __private {
     #[doc(hidden)]
     impl ZeroCopyAccessor<Pubkey> for [u8; 32] {
         fn get(&self) -> Pubkey {
-            Pubkey::new(self)
+            Pubkey::from(*self)
         }
         fn set(input: &Pubkey) -> [u8; 32] {
             input.to_bytes()
