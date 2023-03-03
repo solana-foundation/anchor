@@ -330,6 +330,20 @@ pub enum BootstrapMode {
     Debian,
 }
 
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+pub enum ProgramArch {
+    Bpf,
+    Sbf,
+}
+impl ProgramArch {
+    pub fn build_subcommand(&self) -> &str {
+        match self {
+            Self::Bpf => "build-bpf",
+            Self::Sbf => "build-sbf",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BuildConfig {
     pub verifiable: bool,

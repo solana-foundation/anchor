@@ -1,6 +1,7 @@
 use crate::config::{
-    AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest, ProgramDeployment,
-    ProgramWorkspace, ScriptsConfig, TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest, ProgramArch,
+    ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator, WithPath, SHUTDOWN_WAIT,
+    STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -110,6 +111,9 @@ pub enum Command {
         /// Suppress doc strings in IDL output
         #[clap(long)]
         no_docs: bool,
+        /// Architecture to use when building the program
+        #[clap(value_enum, long, default_value = "bpf")]
+        arch: ProgramArch,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -144,6 +148,9 @@ pub enum Command {
         /// verifiable builds. Only works for debian-based images.
         #[clap(value_enum, short, long, default_value = "none")]
         bootstrap: BootstrapMode,
+        /// Architecture to use when building the program
+        #[clap(value_enum, long, default_value = "bpf")]
+        arch: ProgramArch,
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
@@ -174,6 +181,9 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
+        /// Architecture to use when building the program
+        #[clap(value_enum, long, default_value = "bpf")]
+        arch: ProgramArch,
         /// Flag to keep the local validator running after tests
         /// to be able to check the transactions.
         #[clap(long)]
@@ -260,6 +270,9 @@ pub enum Command {
         /// use this to save time when publishing the program
         #[clap(long)]
         skip_build: bool,
+        /// Architecture to use when building the program
+        #[clap(value_enum, long, default_value = "bpf")]
+        arch: ProgramArch,
     },
     /// Keypair commands.
     Keys {
@@ -280,6 +293,9 @@ pub enum Command {
         /// no "CHECK" comments where normally required
         #[clap(long)]
         skip_lint: bool,
+        /// Architecture to use when building the program
+        #[clap(value_enum, long, default_value = "bpf")]
+        arch: ProgramArch,
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
@@ -412,6 +428,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             skip_lint,
             no_docs,
+            arch,
         } => build(
             &opts.cfg_override,
             idl,
@@ -427,6 +444,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             no_docs,
+            arch,
         ),
         Command::Verify {
             program_id,
@@ -437,6 +455,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_build,
+            arch,
         } => verify(
             &opts.cfg_override,
             program_id,
@@ -447,6 +466,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_build,
+            arch,
         ),
         Command::Clean => clean(&opts.cfg_override),
         Command::Deploy {
@@ -473,6 +493,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_lint,
+            arch,
         } => test(
             &opts.cfg_override,
             skip_deploy,
@@ -484,6 +505,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             args,
             env,
             cargo_args,
+            arch,
         ),
         #[cfg(feature = "dev")]
         Command::Airdrop { .. } => airdrop(&opts.cfg_override),
@@ -499,7 +521,15 @@ pub fn entry(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_build,
-        } => publish(&opts.cfg_override, program, env, cargo_args, skip_build),
+            arch,
+        } => publish(
+            &opts.cfg_override,
+            program,
+            env,
+            cargo_args,
+            skip_build,
+            arch,
+        ),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
@@ -507,6 +537,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_lint,
             env,
             cargo_args,
+            arch,
         } => localnet(
             &opts.cfg_override,
             skip_build,
@@ -514,6 +545,7 @@ pub fn entry(opts: Opts) -> Result<()> {
             skip_lint,
             env,
             cargo_args,
+            arch,
         ),
         Command::Account {
             account_type,
@@ -825,6 +857,7 @@ pub fn build(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
+    arch: ProgramArch,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -872,6 +905,7 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
+            arch,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -886,6 +920,7 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
+            arch,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_cwd(
@@ -900,6 +935,7 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
+            &arch,
         )?,
     }
 
@@ -921,6 +957,7 @@ fn build_all(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
+    arch: ProgramArch,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -939,6 +976,7 @@ fn build_all(
                     cargo_args.clone(),
                     skip_lint,
                     no_docs,
+                    &arch,
                 )?;
             }
             Ok(())
@@ -962,13 +1000,14 @@ fn build_cwd(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
+    arch: &ProgramArch,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
         Some(p) => std::env::set_current_dir(p)?,
     };
     match build_config.verifiable {
-        false => _build_cwd(cfg, idl_out, idl_ts_out, skip_lint, cargo_args),
+        false => _build_cwd(cfg, idl_out, idl_ts_out, skip_lint, arch, cargo_args),
         true => build_cwd_verifiable(
             cfg,
             cargo_toml,
@@ -979,6 +1018,7 @@ fn build_cwd(
             env_vars,
             cargo_args,
             no_docs,
+            arch,
         ),
     }
 }
@@ -996,6 +1036,7 @@ fn build_cwd_verifiable(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
+    arch: &ProgramArch,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -1018,6 +1059,7 @@ fn build_cwd_verifiable(
         stderr,
         env_vars,
         cargo_args,
+        arch,
     );
 
     match &result {
@@ -1066,6 +1108,7 @@ fn docker_build(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
+    arch: &ProgramArch,
 ) -> Result<()> {
     let binary_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
 
@@ -1120,6 +1163,7 @@ fn docker_build(
             stderr,
             env_vars,
             cargo_args,
+            arch,
         )
     });
 
@@ -1184,6 +1228,7 @@ fn docker_build_bpf(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
+    arch: &ProgramArch,
 ) -> Result<()> {
     let manifest_path =
         pathdiff::diff_paths(cargo_toml.canonicalize()?, cfg_parent.canonicalize()?)
@@ -1193,6 +1238,8 @@ fn docker_build_bpf(
         binary_name,
         manifest_path.display()
     );
+
+    let subcommand = arch.build_subcommand();
 
     // Execute the build.
     let exit = std::process::Command::new("docker")
@@ -1209,7 +1256,7 @@ fn docker_build_bpf(
         .args([
             container_name,
             "cargo",
-            "build-bpf",
+            subcommand,
             "--manifest-path",
             &manifest_path.display().to_string(),
         ])
@@ -1299,10 +1346,12 @@ fn _build_cwd(
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
     skip_lint: bool,
+    arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
+    let subcommand = arch.build_subcommand();
     let exit = std::process::Command::new("cargo")
-        .arg("build-bpf")
+        .arg(subcommand)
         .args(cargo_args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -1356,6 +1405,7 @@ fn verify(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     skip_build: bool,
+    arch: ProgramArch,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1384,6 +1434,7 @@ fn verify(
             env_vars,
             cargo_args,
             false,
+            arch,
         )?;
     }
     std::env::set_current_dir(cur_dir)?;
@@ -2229,6 +2280,7 @@ fn test(
     extra_args: Vec<String>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
+    arch: ProgramArch,
 ) -> Result<()> {
     let test_paths = tests_to_run
         .iter()
@@ -2257,6 +2309,7 @@ fn test(
                 env_vars,
                 cargo_args,
                 false,
+                arch,
             )?;
         }
 
@@ -3261,6 +3314,7 @@ fn publish(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     skip_build: bool,
+    arch: ProgramArch,
 ) -> Result<()> {
     // Discover the various workspace configs.
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
@@ -3392,6 +3446,7 @@ fn publish(
             env_vars,
             cargo_args,
             true,
+            arch,
         )?;
     }
 
@@ -3474,6 +3529,7 @@ fn localnet(
     skip_lint: bool,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
+    arch: ProgramArch,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         // Build if needed.
@@ -3493,6 +3549,7 @@ fn localnet(
                 env_vars,
                 cargo_args,
                 false,
+                arch,
             )?;
         }
 
