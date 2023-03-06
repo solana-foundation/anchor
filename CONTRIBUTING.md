@@ -12,7 +12,7 @@ or issues where [help is wanted](https://github.com/coral-xyz/anchor/issues?q=is
 For simple documentation changes or typos, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue
-and engage with the maintainers in [Discord](https://discord.gg/sxy4zxBckh).
+and engage with the maintainers in [Discord](https://discord.gg/NHHGSXAnXk).
 
 ## Choosing an issue
 
@@ -25,16 +25,19 @@ is working on what issue as to not overlap work.
 Please follow these guidelines:
 
 Before coding:
+
 - choose a branch name that describes the issue you're working on
 - enable [commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
 
 While coding:
+
 - Submit a draft PR asap
 - Only change code directly relevant to your PR. Sometimes you might find some code that could really need some refactoring. However, if it's not relevant to your PR, do not touch it. File an issue instead. This allows the reviewer to focus on a single problem at a time.
 - If you write comments, do not exceed 80 chars per line. This allows contributors who work with multiple open windows to still read the comments without horizontally scrolling.
 - Write adversarial tests. For example, if you're adding a new account type, do not only write tests where the instruction succeeds. Also write tests that test whether the instruction fails, if a check inside the new type is violated.
 
 After coding:
+
 - If you've moved code around, build the docs with `cargo doc --open` and adjust broken links
 - Adjust the cli templates if necessary
 - If you've added a new folder to the `tests` directory, add it to the [CI](./.github/workflows/tests.yaml).

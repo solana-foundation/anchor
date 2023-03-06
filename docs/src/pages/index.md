@@ -36,4 +36,4 @@ Both of these aspects mean that instead of working on the tedious parts of raw S
 
 ### Join the community
 
-[Discord Invitation](http://discord.gg/ZCHmqvXgDw)
+[Discord Invitation](https://discord.gg/NHHGSXAnXk)

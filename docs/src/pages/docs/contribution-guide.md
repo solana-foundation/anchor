@@ -17,7 +17,7 @@ or issues where [help is wanted](https://github.com/coral-xyz/anchor/issues?q=is
 For simple documentation changes or typos, feel free to just open a pull request.
 
 If you're considering larger changes or self motivated features, please file an issue
-and engage with the maintainers in [Discord](https://discord.gg/sxy4zxBckh).
+and engage with the maintainers in [Discord](https://discord.gg/NHHGSXAnXk).
 
 ## Choosing an issue
 

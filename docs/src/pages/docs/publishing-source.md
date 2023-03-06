@@ -12,7 +12,7 @@ practices for security and transparency.
 
 {% callout title="Note" %}
 The Anchor Program Registry is currently in alpha testing. For access to publishing
-please ask on [Discord](http://discord.gg/ZCHmqvXgDw).
+please ask on [Discord](https://discord.gg/NHHGSXAnXk).
 {% /callout %}
 
 ## Getting Started
