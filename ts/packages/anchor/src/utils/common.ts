@@ -1,3 +1,5 @@
+import { Transaction, VersionedTransaction } from "@solana/web3.js";
+
 /**
  * Returns true if being run inside a web browser,
  * false if in a Node process or electron app.
@@ -18,3 +20,15 @@ export function chunks<T>(array: T[], size: number): T[][] {
     (_, index) => array.slice(index * size, (index + 1) * size)
   );
 }
+
+/**
+ * Check if a transaction object is a VersionedTransaction or not
+ *
+ * @param tx
+ * @returns bool
+ */
+export const isVersionedTransaction = (
+  tx: Transaction | VersionedTransaction
+): tx is VersionedTransaction => {
+  return "version" in tx;
+};

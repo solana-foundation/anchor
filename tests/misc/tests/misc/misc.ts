@@ -6,6 +6,8 @@ import {
   SystemProgram,
   Message,
   VersionedTransaction,
+  AddressLookupTableProgram,
+  TransactionMessage,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -59,6 +61,151 @@ const miscTest = (
       });
       const dataAccount = await program.account.dataU16.fetch(data.publicKey);
       assert.strictEqual(dataAccount.data, 99);
+    });
+
+    it("Can send VersionedTransaction", async () => {
+      // Create the lookup table
+      const recentSlot = await provider.connection.getSlot();
+      const [loookupTableInstruction, lookupTableAddress] =
+        AddressLookupTableProgram.createLookupTable({
+          authority: provider.publicKey,
+          payer: provider.publicKey,
+          recentSlot,
+        });
+      const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        payer: provider.publicKey,
+        authority: provider.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: [provider.publicKey, SystemProgram.programId],
+      });
+      let createLookupTableTx = new VersionedTransaction(
+        new TransactionMessage({
+          instructions: [loookupTableInstruction, extendInstruction],
+          payerKey: program.provider.publicKey,
+          recentBlockhash: (await provider.connection.getLatestBlockhash())
+            .blockhash,
+        }).compileToV0Message()
+      );
+      type SendParams = Parameters<typeof provider.sendAndConfirm>;
+      const testThis: SendParams = [
+        new VersionedTransaction(
+          new TransactionMessage({
+            instructions: [loookupTableInstruction, extendInstruction],
+            payerKey: program.provider.publicKey,
+            recentBlockhash: (await provider.connection.getLatestBlockhash())
+              .blockhash,
+          }).compileToV0Message()
+        ),
+      ];
+      await provider.sendAndConfirm(createLookupTableTx, [], {
+        skipPreflight: true,
+      });
+
+      // Use the lookup table in a transaction
+      const transferAmount = 1_000_000;
+      const lookupTableAccount = await provider.connection
+        .getAddressLookupTable(lookupTableAddress)
+        .then((res) => res.value);
+      const target = Keypair.generate();
+      let transferInstruction = SystemProgram.transfer({
+        fromPubkey: provider.publicKey,
+        lamports: transferAmount,
+        toPubkey: target.publicKey,
+      });
+      let transferUsingLookupTx = new VersionedTransaction(
+        new TransactionMessage({
+          instructions: [transferInstruction],
+          payerKey: program.provider.publicKey,
+          recentBlockhash: (await provider.connection.getLatestBlockhash())
+            .blockhash,
+        }).compileToV0Message([lookupTableAccount])
+      );
+      await provider.simulate(transferUsingLookupTx, [], "processed");
+      await provider.sendAndConfirm(transferUsingLookupTx, [], {
+        skipPreflight: true,
+        commitment: "confirmed",
+      });
+      let newBalance = await provider.connection.getBalance(
+        target.publicKey,
+        "confirmed"
+      );
+      assert.strictEqual(newBalance, transferAmount);
+
+      // Test sendAll with versioned transaction
+      let oneTransferUsingLookupTx = new VersionedTransaction(
+        new TransactionMessage({
+          instructions: [
+            SystemProgram.transfer({
+              fromPubkey: provider.publicKey,
+              // Needed to make the transactions distinct
+              lamports: transferAmount + 1,
+              toPubkey: target.publicKey,
+            }),
+          ],
+          payerKey: program.provider.publicKey,
+          recentBlockhash: (await provider.connection.getLatestBlockhash())
+            .blockhash,
+        }).compileToV0Message([lookupTableAccount])
+      );
+      let twoTransferUsingLookupTx = new VersionedTransaction(
+        new TransactionMessage({
+          instructions: [
+            SystemProgram.transfer({
+              fromPubkey: provider.publicKey,
+              lamports: transferAmount,
+              toPubkey: target.publicKey,
+            }),
+          ],
+          payerKey: program.provider.publicKey,
+          recentBlockhash: (await provider.connection.getLatestBlockhash())
+            .blockhash,
+        }).compileToV0Message([lookupTableAccount])
+      );
+      await provider.sendAll(
+        [{ tx: oneTransferUsingLookupTx }, { tx: twoTransferUsingLookupTx }],
+        { skipPreflight: true, commitment: "confirmed" }
+      );
+      newBalance = await provider.connection.getBalance(
+        target.publicKey,
+        "confirmed"
+      );
+      assert.strictEqual(newBalance, transferAmount * 3 + 1);
+    });
+
+    it("Can send VersionedTransaction with extra signatures", async () => {
+      // Test sending with signatures
+      const initSpace = 100;
+      const rentExemptAmount =
+        await provider.connection.getMinimumBalanceForRentExemption(initSpace);
+
+      const newAccount = Keypair.generate();
+      let createAccountIx = SystemProgram.createAccount({
+        fromPubkey: provider.publicKey,
+        lamports: rentExemptAmount,
+        newAccountPubkey: newAccount.publicKey,
+        programId: program.programId,
+        space: initSpace,
+      });
+      let createAccountTx = new VersionedTransaction(
+        new TransactionMessage({
+          instructions: [createAccountIx],
+          payerKey: provider.publicKey,
+          recentBlockhash: (await provider.connection.getLatestBlockhash())
+            .blockhash,
+        }).compileToV0Message()
+      );
+      await provider.simulate(createAccountTx, [], "processed");
+      await provider.sendAndConfirm(createAccountTx, [newAccount], {
+        skipPreflight: false,
+        commitment: "confirmed",
+      });
+      let newAccountInfo = await provider.connection.getAccountInfo(
+        newAccount.publicKey
+      );
+      assert.strictEqual(
+        newAccountInfo.owner.toBase58(),
+        program.programId.toBase58()
+      );
     });
 
     it("Can embed programs into genesis from the Anchor.toml", async () => {
