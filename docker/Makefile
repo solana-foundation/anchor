@@ -1,8 +1,8 @@
 WORKDIR=$(PWD)
 #
-# Extract anchor version from the Cargo.toml.
+# Anchor version.
 #
-ANCHOR_CLI=v0.26.0
+ANCHOR_CLI=v0.27.0
 #
 # Solana toolchain.
 #

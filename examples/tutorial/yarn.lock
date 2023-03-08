@@ -17,9 +17,9 @@
     regenerator-runtime "^0.13.11"
 
 "@coral-xyz/anchor@file:../../ts/packages/anchor":
-  version "0.26.0"
+  version "0.27.0"
   dependencies:
-    "@coral-xyz/borsh" "^0.26.0"
+    "@coral-xyz/borsh" "^0.27.0"
     "@solana/web3.js" "^1.68.0"
     base64-js "^1.5.1"
     bn.js "^5.1.2"
@@ -35,7 +35,7 @@
     superstruct "^0.15.4"
     toml "^3.0.0"
 
-"@coral-xyz/borsh@^0.26.0":
+"@coral-xyz/borsh@^0.27.0":
   version "0.26.0"
   resolved "https://registry.yarnpkg.com/@coral-xyz/borsh/-/borsh-0.26.0.tgz#d054f64536d824634969e74138f9f7c52bbbc0d5"
   integrity sha512-uCZ0xus0CszQPHYfWAqKS5swS1UxvePu83oOF+TWpUkedsNlg6p2p4azxZNSSqwXb9uXMFgxhuMBX9r3Xoi0vQ==

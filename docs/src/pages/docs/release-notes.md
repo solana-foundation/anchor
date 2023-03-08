@@ -8,6 +8,42 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ---
 
+## [0.27.0] - 2023-03-08
+
+### Features
+
+- spl: Add `MasterEditionAccount` account deserialization to spl metadata ([#2393](https://github.com/coral-xyz/anchor/pull/2393)).
+- lang: Add the `InitSpace` derive macro to automatically calculate the space at the initialization of an account ([#2346](https://github.com/coral-xyz/anchor/pull/2346)).
+- cli: Add `env` option to verifiable builds ([#2325](https://github.com/coral-xyz/anchor/pull/2325)).
+- cli: Add `idl close` command to close a program's IDL account ([#2329](https://github.com/coral-xyz/anchor/pull/2329)).
+- cli: `idl init` now supports very large IDL files ([#2329](https://github.com/coral-xyz/anchor/pull/2329)).
+- spl: Add `transfer_checked` function ([#2353](https://github.com/coral-xyz/anchor/pull/2353)).
+- spl: Add `approve_checked` function ([#2401](https://github.com/coral-xyz/anchor/pull/2401)).
+- cli: Add `--skip-build` option to the verify command ([#2387](https://github.com/coral-xyz/anchor/pull/2387)).
+- client: Add support for multithreading to the rust client: use flag `--multithreaded` ([#2321](https://github.com/coral-xyz/anchor/pull/2321)).
+- client: Add `async_rpc` a method which returns a nonblocking solana rpc client ([2322](https://github.com/coral-xyz/anchor/pull/2322)).
+- avm, cli: Use the `rustls-tls` feature of `reqwest` so that users don't need OpenSSL installed ([#2385](https://github.com/coral-xyz/anchor/pull/2385)).
+- ts: Add `VersionedTransaction` support. Methods in the `Provider` class and `Wallet` interface now use the argument `tx: Transaction | VersionedTransaction` ([2427](https://github.com/coral-xyz/anchor/pull/2427)).
+- cli: Add `--arch sbf` option to compile programs using `cargo build-sbf` ([#2398](https://github.com/coral-xyz/anchor/pull/2398)).
+
+### Fixes
+
+- ts: Make the return type of `AccountClient.fetchMultiple` match the account type being fetched ([#2390](https://github.com/coral-xyz/anchor/pull/2390))
+- cli: Don't regenerate idl in read_all_programs(). ([#2332](https://github.com/coral-xyz/anchor/pull/2332)).
+- ts: `provider.simulate` will send the transaction with `sigVerify: false` if no `signers` are present ([#2331](https://github.com/coral-xyz/anchor/pull/2331)).
+- cli: Failing commands will return the correct exit status. ([#2370](https://github.com/coral-xyz/anchor/pull/2370)).
+- idl: Update the IDL program to use non-deprecated account types ([#2365](https://github.com/coral-xyz/anchor/pull/2365)).
+- ts: Enum fields weren't being converted from snake_case to camelCase ([#2378](https://github.com/coral-xyz/anchor/pull/2378)).
+- lang/cli: Update to solana-program version 1.14.16 and rust version 1.60, appears to still be incompatible with 1.15 CLI ([#2420](https://github.com/coral-xyz/anchor/pull/2420)).
+
+### Breaking
+
+- lang: Remove deprecated account types: `CpiAccount`, `Loader` and `ProgramAccount` ([#2375](https://github.com/coral-xyz/anchor/pull/2375)).
+- lang: Remove `state` and `interface` attributes ([#2285](https://github.com/coral-xyz/anchor/pull/2285)).
+- lang: Remove deprecated literal constraint which has been replaced by `#[account(constraint = {})]` ([#2379](https://github.com/coral-xyz/anchor/pull/2379)).
+- lang: `account(zero_copy)` and `zero_copy` attributes now derive the `bytemuck::Pod` and `bytemuck::Zeroable` traits instead of using `unsafe impl` ([#2330](https://github.com/coral-xyz/anchor/pull/2330)). This imposes useful restrictions on the type, like not having padding bytes and all fields being `Pod` themselves. See [bytemuck::Pod](https://docs.rs/bytemuck/latest/bytemuck/trait.Pod.html) for details. This change requires adding `bytemuck = { version = "1.4.0", features = ["derive", "min_const_generics"]}` to your `cargo.toml`. Legacy applications can still use `#[account(zero_copy(unsafe))]` and `#[zero_copy(unsafe)]` for the old behavior.
+- ts: Remove `createProgramAddressSync`, `findProgramAddressSync` (now available in `@solana/web3.js`) and update `associatedAddress` to be synchronous ([#2357](https://github.com/coral-xyz/anchor/pull/2357)).
+
 ## [0.26.0] - 2022-12-15
 
 ### Features

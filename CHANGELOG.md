@@ -12,6 +12,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+### Fixes
+
+### Breaking
+
+## [0.27.0] - 2023-03-08
+
+### Features
+
 - spl: Add `MasterEditionAccount` account deserialization to spl metadata ([#2393](https://github.com/coral-xyz/anchor/pull/2393)).
 - lang: Add the `InitSpace` derive macro to automatically calculate the space at the initialization of an account ([#2346](https://github.com/coral-xyz/anchor/pull/2346)).
 - cli: Add `env` option to verifiable builds ([#2325](https://github.com/coral-xyz/anchor/pull/2325)).
@@ -21,9 +29,9 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add `approve_checked` function ([#2401](https://github.com/coral-xyz/anchor/pull/2401)).
 - cli: Add `--skip-build` option to the verify command ([#2387](https://github.com/coral-xyz/anchor/pull/2387)).
 - client: Add support for multithreading to the rust client: use flag `--multithreaded` ([#2321](https://github.com/coral-xyz/anchor/pull/2321)).
-- client: Add `async_rpc` a method which returns a nonblocking solana rpc client ([2322](https://github.com/coral-xyz/anchor/pull/2322)).
+- client: Add `async_rpc` a method which returns a nonblocking solana rpc client ([#2322](https://github.com/coral-xyz/anchor/pull/2322)).
 - avm, cli: Use the `rustls-tls` feature of `reqwest` so that users don't need OpenSSL installed ([#2385](https://github.com/coral-xyz/anchor/pull/2385)).
-- ts: Add `VersionedTransaction` support. Methods in the `Provider` class and `Wallet` interface now use the argument `tx: Transaction | VersionedTransaction` ([2427](https://github.com/coral-xyz/anchor/pull/2427)).
+- ts: Add `VersionedTransaction` support. Methods in the `Provider` class and `Wallet` interface now use the argument `tx: Transaction | VersionedTransaction` ([#2427](https://github.com/coral-xyz/anchor/pull/2427)).
 - cli: Add `--arch sbf` option to compile programs using `cargo build-sbf` ([#2398](https://github.com/coral-xyz/anchor/pull/2398)).
 
 ### Fixes

@@ -1,6 +1,6 @@
 [package]
 name = "avm"
-version = "0.26.0"
+version = "0.27.0"
 rust-version = "1.60"
 edition = "2021"
 
