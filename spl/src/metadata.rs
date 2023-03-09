@@ -6,6 +6,96 @@ use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 use std::ops::Deref;
 
+pub fn approve_collection_authority<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::approve_collection_authority(
+        ID,
+        *ctx.accounts.collection_authority_record.key,
+        *ctx.accounts.new_collection_authority.key,
+        *ctx.accounts.update_authority.key,
+        *ctx.accounts.payer.key,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.mint.key,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn bubblegum_set_collection_size<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, BubblegumSetCollectionSize<'info>>,
+    collection_authority_record: Option<Pubkey>,
+    size: u64,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::bubblegum_set_collection_size(
+        ID,
+        *ctx.accounts.metadata_account.key,
+        *ctx.accounts.update_authority.key,
+        *ctx.accounts.mint.key,
+        *ctx.accounts.bubblegum_signer.key,
+        collection_authority_record,
+        size,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn burn_edition_nft<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, BurnEditionNft<'info>>,
+    collection_metadata: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::burn_edition_nft(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.owner.key,
+        *ctx.accounts.print_edition_mint.key,
+        *ctx.accounts.master_edition_mint.key,
+        *ctx.accounts.print_edition_token.key,
+        *ctx.accounts.master_edition_token.key,
+        *ctx.accounts.master_edition.key,
+        *ctx.accounts.print_edition.key,
+        *ctx.accounts.edition_marker.key,
+        *ctx.accounts.spl_token.key,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn burn_nft<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, BurnNft<'info>>,
+    collection_metadata: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::burn_nft(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.owner.key,
+        *ctx.accounts.mint.key,
+        *ctx.accounts.token.key,
+        *ctx.accounts.edition.key,
+        *ctx.accounts.spl_token.key,
+        collection_metadata,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+#[deprecated(note = "internal instructions deprecated by Metaplex")]
 pub fn create_metadata_accounts_v2<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV2<'info>>,
     data: DataV2,
@@ -152,6 +242,25 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
         *ctx.accounts.metadata.key,
         *ctx.accounts.metadata_mint.key,
         edition,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn revoke_collection_authority<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, RevokeCollectionAuthority<'info>>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::revoke_collection_authority(
+        ID,
+        *ctx.accounts.collection_authority_record.key,
+        *ctx.accounts.delegate_authority.key,
+        *ctx.accounts.revoke_authority.key,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.mint.key,
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -326,6 +435,25 @@ pub fn update_primary_sale_happened_via_token<'info>(
     Ok(())
 }
 
+pub fn set_token_standard<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, SetTokenStandard<'info>>,
+    edition_account: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::set_token_standard(
+        ID,
+        *ctx.accounts.metadata_account.key,
+        *ctx.accounts.update_authority.key,
+        *ctx.accounts.mint_account.key,
+        edition_account,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
 pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'info>>) -> Result<()> {
     let ix = mpl_token_metadata::instruction::sign_metadata(
         ID,
@@ -349,7 +477,6 @@ pub fn remove_creator_verification<'info>(
         *ctx.accounts.metadata.key,
         *ctx.accounts.creator.key,
     );
-
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -358,6 +485,117 @@ pub fn remove_creator_verification<'info>(
     Ok(())
 }
 
+pub fn utilize<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Utilize<'info>>,
+    use_authority_record_pda: Option<Pubkey>,
+    burner: Option<Pubkey>,
+    number_of_uses: u64,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::utilize(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.token_account.key,
+        *ctx.accounts.mint.key,
+        use_authority_record_pda,
+        *ctx.accounts.use_authority.key,
+        *ctx.accounts.owner.key,
+        burner,
+        number_of_uses,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn unverify_collection<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, UnverifyCollection<'info>>,
+    collection_authority_record: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::unverify_collection(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.collection_authority.key,
+        *ctx.accounts.collection_mint.key,
+        *ctx.accounts.collection.key,
+        *ctx.accounts.collection_master_edition_account.key,
+        collection_authority_record,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn unverify_sized_collection_item<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, UnverifySizedCollectionItem<'info>>,
+    collection_authority_record: Option<Pubkey>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instruction::unverify_sized_collection_item(
+        ID,
+        *ctx.accounts.metadata.key,
+        *ctx.accounts.collection_authority.key,
+        *ctx.accounts.payer.key,
+        *ctx.accounts.collection_mint.key,
+        *ctx.accounts.collection.key,
+        *ctx.accounts.collection_master_edition_account.key,
+        collection_authority_record,
+    );
+    solana_program::program::invoke_signed(
+        &ix,
+        &ToAccountInfos::to_account_infos(&ctx),
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+#[derive(Accounts)]
+pub struct ApproveCollectionAuthority<'info> {
+    pub collection_authority_record: AccountInfo<'info>,
+    pub new_collection_authority: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub payer: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BubblegumSetCollectionSize<'info> {
+    pub metadata_account: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub bubblegum_signer: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BurnEditionNft<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+    pub print_edition_mint: AccountInfo<'info>,
+    pub master_edition_mint: AccountInfo<'info>,
+    pub print_edition_token: AccountInfo<'info>,
+    pub master_edition_token: AccountInfo<'info>,
+    pub master_edition: AccountInfo<'info>,
+    pub print_edition: AccountInfo<'info>,
+    pub edition_marker: AccountInfo<'info>,
+    pub spl_token: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BurnNft<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub token: AccountInfo<'info>,
+    pub edition: AccountInfo<'info>,
+    pub spl_token: AccountInfo<'info>,
+}
+
+#[deprecated(note = "internal instructions deprecated by Metaplex")]
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV2<'info> {
     pub metadata: AccountInfo<'info>,
@@ -426,11 +664,27 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
 }
 
 #[derive(Accounts)]
+pub struct RevokeCollectionAuthority<'info> {
+    pub collection_authority_record: AccountInfo<'info>,
+    pub delegate_authority: AccountInfo<'info>,
+    pub revoke_authority: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct SetCollectionSize<'info> {
     pub metadata: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetTokenStandard<'info> {
+    pub metadata_account: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub mint_account: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -512,6 +766,34 @@ pub struct SignMetadata<'info> {
 pub struct RemoveCreatorVerification<'info> {
     pub creator: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Utilize<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub token_account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub use_authority: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UnverifyCollection<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub collection_authority: AccountInfo<'info>,
+    pub collection_mint: AccountInfo<'info>,
+    pub collection: AccountInfo<'info>,
+    pub collection_master_edition_account: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UnverifySizedCollectionItem<'info> {
+    pub metadata: AccountInfo<'info>,
+    pub collection_authority: AccountInfo<'info>,
+    pub payer: AccountInfo<'info>,
+    pub collection_mint: AccountInfo<'info>,
+    pub collection: AccountInfo<'info>,
+    pub collection_master_edition_account: AccountInfo<'info>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
