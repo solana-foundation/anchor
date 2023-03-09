@@ -33,6 +33,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm, cli: Use the `rustls-tls` feature of `reqwest` so that users don't need OpenSSL installed ([#2385](https://github.com/coral-xyz/anchor/pull/2385)).
 - ts: Add `VersionedTransaction` support. Methods in the `Provider` class and `Wallet` interface now use the argument `tx: Transaction | VersionedTransaction` ([#2427](https://github.com/coral-xyz/anchor/pull/2427)).
 - cli: Add `--arch sbf` option to compile programs using `cargo build-sbf` ([#2398](https://github.com/coral-xyz/anchor/pull/2398)).
+- land: Support multiple programs with the same interface using `Interface` and `InterfaceAccount` types, related to token-2022 ([#2386](https://github.com/coral-xyz/anchor/pull/2386)).
 
 ### Fixes
 
