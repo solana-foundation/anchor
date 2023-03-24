@@ -2536,14 +2536,19 @@ fn validator_flags(
                         flags.push(entry["address"].as_str().unwrap().to_string());
                         flags.push(entry["filename"].as_str().unwrap().to_string());
                     }
+                } else if key == "account_dir" {
+                    for entry in value.as_array().unwrap() {
+                        flags.push("--account-dir".to_string());
+                        flags.push(entry["directory"].as_str().unwrap().to_string());
+                    }
                 } else if key == "clone" {
                     // Client for fetching accounts data
                     let client = if let Some(url) = entries["url"].as_str() {
                         RpcClient::new(url.to_string())
                     } else {
                         return Err(anyhow!(
-                    "Validator url for Solana's JSON RPC should be provided in order to clone accounts from it"
-                ));
+                            "Validator url for Solana's JSON RPC should be provided in order to clone accounts from it"
+                        ));
                     };
 
                     let mut pubkeys = value

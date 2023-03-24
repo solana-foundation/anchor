@@ -36,3 +36,9 @@ address = "mv3ekLzLbnVPNxjSKvqBpU3ZeZXPQdEC3bp5MDEBG68"
 
 [[test.validator.clone]]
 address = "8DKwAVrCEVStDYNPCsmxHtUj8LH9oXNtkVRrBfpNKvhp"
+
+[[test.validator.clone]]
+address = "8DKwAVrCEVStDYNPCsmxHtUj8LH9oXNtkVRrBfpNKvhp"
+
+[[test.validator.account_dir]]
+directory = "accounts-snapshot"

@@ -884,11 +884,20 @@ pub struct AccountEntry {
     pub filename: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccountDirEntry {
+    // Directory containing account JSON files
+    pub directory: String,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct _Validator {
     // Load an account from the provided JSON file
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Vec<AccountEntry>>,
+    // Load all the accounts from the JSON files found in the specified DIRECTORY
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_dir: Option<Vec<AccountDirEntry>>,
     // IP address to bind the validator ports. [default: 0.0.0.0]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bind_address: Option<String>,
@@ -940,6 +949,8 @@ pub struct _Validator {
 pub struct Validator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Vec<AccountEntry>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_dir: Option<Vec<AccountDirEntry>>,
     pub bind_address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clone: Option<Vec<CloneEntry>>,
@@ -973,6 +984,7 @@ impl From<_Validator> for Validator {
     fn from(_validator: _Validator) -> Self {
         Self {
             account: _validator.account,
+            account_dir: _validator.account_dir,
             bind_address: _validator
                 .bind_address
                 .unwrap_or_else(|| DEFAULT_BIND_ADDRESS.to_string()),
@@ -1002,6 +1014,7 @@ impl From<Validator> for _Validator {
     fn from(validator: Validator) -> Self {
         Self {
             account: validator.account,
+            account_dir: validator.account_dir,
             bind_address: Some(validator.bind_address),
             clone: validator.clone,
             dynamic_port_range: validator.dynamic_port_range,
@@ -1039,6 +1052,24 @@ impl Merge for _Validator {
                             match entries
                                 .iter()
                                 .position(|my_entry| *my_entry.address == other_entry.address)
+                            {
+                                None => entries.push(other_entry),
+                                Some(i) => entries[i] = other_entry,
+                            };
+                        }
+                        Some(entries)
+                    }
+                },
+            },
+            account_dir: match self.account_dir.take() {
+                None => other.account_dir,
+                Some(mut entries) => match other.account_dir {
+                    None => Some(entries),
+                    Some(other_entries) => {
+                        for other_entry in other_entries {
+                            match entries
+                                .iter()
+                                .position(|my_entry| *my_entry.directory == other_entry.directory)
                             {
                                 None => entries.push(other_entry),
                                 Some(i) => entries[i] = other_entry,

@@ -67,4 +67,13 @@ describe("validator-clone", () => {
       assert.isNotNull(acc, "Account " + accounts[i] + " not found");
     });
   });
+
+  it("Load accounts from account-dir directory", async () => {
+    // USDC mint
+    const account = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+    const accountInfo = await connection.getAccountInfo(
+      new anchor.web3.PublicKey(account)
+    );
+    assert.isNotNull(accountInfo, "Account " + account + " not found");
+  });
 });
