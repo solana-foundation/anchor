@@ -15,7 +15,7 @@ import Provider, { getProvider } from "../../provider.js";
 import { Idl, IdlAccountDef } from "../../idl.js";
 import { Coder, BorshCoder } from "../../coder/index.js";
 import { Subscription, Address, translateAddress } from "../common.js";
-import { AllAccountsMap, IdlTypes, TypeDef } from "./types.js";
+import { AllAccountsMap, IdlAccounts } from "./types.js";
 import * as pubkeyUtil from "../../utils/pubkey.js";
 import * as rpcUtil from "../../utils/rpc.js";
 
@@ -26,7 +26,7 @@ export default class AccountFactory {
     programId: PublicKey,
     provider?: Provider
   ): AccountNamespace<IDL> {
-    const accountFns: AccountNamespace = {};
+    const accountFns = {} as AccountNamespace<IDL>;
 
     idl.accounts?.forEach((idlAccount) => {
       const name = camelCase(idlAccount.name);
@@ -39,7 +39,7 @@ export default class AccountFactory {
       );
     });
 
-    return accountFns as AccountNamespace<IDL>;
+    return accountFns;
   }
 }
 
@@ -68,15 +68,14 @@ type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
  * For the full API, see the [[AccountClient]] reference.
  */
 export type AccountNamespace<IDL extends Idl = Idl> = {
-  [M in keyof AllAccountsMap<IDL>]: AccountClient<IDL>;
+  [N in keyof AllAccountsMap<IDL>]: AccountClient<IDL, N>;
 };
 
 export class AccountClient<
   IDL extends Idl = Idl,
-  A extends NullableIdlAccount<IDL> = IDL["accounts"] extends undefined
-    ? IdlAccountDef
-    : NonNullable<IDL["accounts"]>[number],
-  T = TypeDef<A, IdlTypes<IDL>>
+  N extends keyof IdlAccounts<IDL> = keyof IdlAccounts<IDL>,
+  A extends NullableIdlAccount<IDL> = NullableIdlAccount<IDL>,
+  T = IdlAccounts<IDL>[N]
 > {
   /**
    * Returns the number of bytes in this account.

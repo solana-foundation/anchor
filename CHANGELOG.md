@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add metadata wrappers `approve_collection_authority`, `bubblegum_set_collection_size`, `burn_edition_nft`, `burn_nft`, `revoke_collection_authority`, `set_token_standard`, `utilize`, `unverify_sized_collection_item`, `unverify_collection` ([#2430](https://github.com/coral-xyz/anchor/pull/2430))
 
 ### Fixes
+- ts: Narrowed `AccountClient` type to it's appropriate account type ([#2440](https://github.com/coral-xyz/anchor/pull/2440))
 
 ### Breaking
 
