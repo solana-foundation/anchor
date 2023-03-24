@@ -1,5 +1,5 @@
 use anchor_lang::context::CpiContext;
-use anchor_lang::{Accounts, Result, ToAccountInfos};
+use anchor_lang::{Accounts, ErrorCode, Result, ToAccountInfos};
 use mpl_token_metadata::state::{CollectionDetails, DataV2, TokenMetadataAccount};
 use mpl_token_metadata::ID;
 use solana_program::account_info::AccountInfo;
@@ -804,9 +804,17 @@ impl MetadataAccount {
 }
 
 impl anchor_lang::AccountDeserialize for MetadataAccount {
+    fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+        let md = Self::try_deserialize_unchecked(buf)?;
+        if md.key != mpl_token_metadata::state::Metadata::key() {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        Ok(md)
+    }
+
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let result = mpl_token_metadata::state::Metadata::safe_deserialize(buf)?;
-        Ok(MetadataAccount(result))
+        let md = mpl_token_metadata::state::Metadata::safe_deserialize(buf)?;
+        Ok(Self(md))
     }
 }
 
@@ -833,9 +841,17 @@ impl MasterEditionAccount {
 }
 
 impl anchor_lang::AccountDeserialize for MasterEditionAccount {
+    fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+        let me = Self::try_deserialize_unchecked(buf)?;
+        if me.key != mpl_token_metadata::state::MasterEditionV2::key() {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        Ok(me)
+    }
+
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         let result = mpl_token_metadata::state::MasterEditionV2::safe_deserialize(buf)?;
-        Ok(MasterEditionAccount(result))
+        Ok(Self(result))
     }
 }
 
