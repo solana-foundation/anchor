@@ -273,7 +273,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             anchor_lang::prelude::msg!("Instruction: IdlWrite");
 
             let prev_len: usize = ::std::convert::TryInto::<usize>::try_into(accounts.idl.data_len).unwrap();
-            let new_len: usize = prev_len + idl_data.len() as usize;
+            let new_len: usize = prev_len.checked_add(idl_data.len()).unwrap() as usize;
             accounts.idl.data_len = accounts.idl.data_len.checked_add(::std::convert::TryInto::<u32>::try_into(idl_data.len()).unwrap()).unwrap();
 
             use IdlTrailingData;
