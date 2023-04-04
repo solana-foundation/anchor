@@ -1,7 +1,7 @@
 use crate::is_hidden;
 use anchor_client::Cluster;
 use anchor_syn::idl::Idl;
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use heck::ToSnakeCase;
 use reqwest::Url;
@@ -10,8 +10,10 @@ use serde::{Deserialize, Deserializer, Serialize};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
+use solang_parser::pt::{ContractTy, SourceUnitPart};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -145,7 +147,7 @@ impl Deref for Manifest {
 }
 
 impl WithPath<Config> {
-    pub fn get_program_list(&self) -> Result<Vec<PathBuf>> {
+    pub fn get_rust_program_list(&self) -> Result<Vec<PathBuf>> {
         // Canonicalize the workspace filepaths to compare with relative paths.
         let (members, exclude) = self.canonicalize_workspace()?;
 
@@ -156,12 +158,16 @@ impl WithPath<Config> {
         let program_paths: Vec<PathBuf> = {
             if members.is_empty() {
                 let path = self.path().parent().unwrap().join("programs");
-                fs::read_dir(path)?
-                    .filter(|entry| entry.as_ref().map(|e| e.path().is_dir()).unwrap_or(false))
-                    .map(|dir| dir.map(|d| d.path().canonicalize().unwrap()))
-                    .collect::<Vec<Result<PathBuf, std::io::Error>>>()
-                    .into_iter()
-                    .collect::<Result<Vec<PathBuf>, std::io::Error>>()?
+                if let Ok(entries) = fs::read_dir(path) {
+                    entries
+                        .filter(|entry| entry.as_ref().map(|e| e.path().is_dir()).unwrap_or(false))
+                        .map(|dir| dir.map(|d| d.path().canonicalize().unwrap()))
+                        .collect::<Vec<Result<PathBuf, std::io::Error>>>()
+                        .into_iter()
+                        .collect::<Result<Vec<PathBuf>, std::io::Error>>()?
+                } else {
+                    Vec::new()
+                }
             } else {
                 members
             }
@@ -174,9 +180,56 @@ impl WithPath<Config> {
             .collect())
     }
 
+    /// Parse all the files with the .sol extension, and get a list of the all
+    /// contracts defined in them along with their path. One Solidity file may
+    /// define multiple contracts.
+    pub fn get_solidity_program_list(&self) -> Result<Vec<(String, PathBuf)>> {
+        let path = self.path().parent().unwrap().join("solidity");
+        let mut res = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries {
+                let path = entry?.path();
+
+                if !path.is_file() || path.extension() != Some(OsStr::new("sol")) {
+                    continue;
+                }
+
+                let source = fs::read_to_string(&path)?;
+
+                let tree = match solang_parser::parse(&source, 0) {
+                    Ok((tree, _)) => tree,
+                    Err(diag) => {
+                        // The parser can return multiple errors, however this is exceedingly rare.
+                        // Just use the first one, else the formatting will be a mess.
+                        bail!(
+                            "{}: {}: {}",
+                            path.display(),
+                            diag[0].level.to_string(),
+                            diag[0].message
+                        );
+                    }
+                };
+
+                tree.0.iter().for_each(|part| {
+                    if let SourceUnitPart::ContractDefinition(contract) = part {
+                        // Must be a contract, not library/interface/abstract contract
+                        if matches!(&contract.ty, ContractTy::Contract(..)) {
+                            if let Some(name) = &contract.name {
+                                res.push((name.name.clone(), path.clone()));
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        Ok(res)
+    }
+
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
         let mut r = vec![];
-        for path in self.get_program_list()? {
+        for path in self.get_rust_program_list()? {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
@@ -188,6 +241,21 @@ impl WithPath<Config> {
 
             r.push(Program {
                 lib_name,
+                solidity: false,
+                path,
+                idl,
+            });
+        }
+        for (lib_name, path) in self.get_solidity_program_list()? {
+            let idl_filepath = format!("target/idl/{lib_name}.json");
+            let idl = fs::read(idl_filepath)
+                .ok()
+                .map(|bytes| serde_json::from_reader(&*bytes))
+                .transpose()?;
+
+            r.push(Program {
+                lib_name,
+                solidity: true,
                 path,
                 idl,
             });
@@ -1126,7 +1194,8 @@ impl Merge for _Validator {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub lib_name: String,
-    // Canonicalized path to the program directory.
+    pub solidity: bool,
+    // Canonicalized path to the program directory or Solidity source file
     pub path: PathBuf,
     pub idl: Option<Idl>,
 }

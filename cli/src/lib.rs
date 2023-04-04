@@ -46,7 +46,8 @@ use tar::Archive;
 
 pub mod config;
 mod path;
-pub mod template;
+pub mod rust_template;
+pub mod solidity_template;
 
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,6 +69,8 @@ pub enum Command {
         name: String,
         #[clap(short, long)]
         javascript: bool,
+        #[clap(short, long)]
+        solidity: bool,
         #[clap(long)]
         no_git: bool,
         #[clap(long)]
@@ -200,7 +203,11 @@ pub enum Command {
         cargo_args: Vec<String>,
     },
     /// Creates a new program.
-    New { name: String },
+    New {
+        #[clap(short, long)]
+        solidity: bool,
+        name: String,
+    },
     /// Commands for interacting with interface definitions.
     Idl {
         #[clap(subcommand)]
@@ -214,7 +221,7 @@ pub enum Command {
         #[clap(short, long)]
         program_name: Option<String>,
         /// Keypair of the program (filepath) (requires program-name)
-        #[clap(long, requires = "program-name")]
+        #[clap(long, requires = "program_name")]
         program_keypair: Option<String>,
     },
     /// Runs the deploy migration script.
@@ -412,10 +419,11 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::Init {
             name,
             javascript,
+            solidity,
             no_git,
             jest,
-        } => init(&opts.cfg_override, name, javascript, no_git, jest),
-        Command::New { name } => new(&opts.cfg_override, name),
+        } => init(&opts.cfg_override, name, javascript, solidity, no_git, jest),
+        Command::New { solidity, name } => new(&opts.cfg_override, solidity, name),
         Command::Build {
             idl,
             idl_ts,
@@ -559,6 +567,7 @@ fn init(
     cfg_override: &ConfigOverride,
     name: String,
     javascript: bool,
+    solidity: bool,
     no_git: bool,
     jest: bool,
 ) -> Result<()> {
@@ -617,7 +626,11 @@ fn init(
     localnet.insert(
         rust_name,
         ProgramDeployment {
-            address: template::default_program_id(),
+            address: if solidity {
+                solidity_template::default_program_id()
+            } else {
+                rust_template::default_program_id()
+            },
             path: None,
             idl: None,
         },
@@ -626,20 +639,25 @@ fn init(
     let toml = cfg.to_string();
     fs::write("Anchor.toml", toml)?;
 
-    // Build virtual manifest.
-    fs::write("Cargo.toml", template::virtual_manifest())?;
-
     // Initialize .gitignore file
-    fs::write(".gitignore", template::git_ignore())?;
+    fs::write(".gitignore", rust_template::git_ignore())?;
 
     // Initialize .prettierignore file
-    fs::write(".prettierignore", template::prettier_ignore())?;
+    fs::write(".prettierignore", rust_template::prettier_ignore())?;
 
     // Build the program.
-    fs::create_dir("programs")?;
+    if solidity {
+        fs::create_dir("solidity")?;
 
-    new_program(&project_name)?;
+        new_solidity_program(&project_name)?;
+    } else {
+        // Build virtual manifest for rust programs
+        fs::write("Cargo.toml", rust_template::virtual_manifest())?;
 
+        fs::create_dir("programs")?;
+
+        new_rust_program(&project_name)?;
+    }
     // Build the test suite.
     fs::create_dir("tests")?;
     // Build the migrations directory.
@@ -648,31 +666,44 @@ fn init(
     if javascript {
         // Build javascript config
         let mut package_json = File::create("package.json")?;
-        package_json.write_all(template::package_json(jest).as_bytes())?;
+        package_json.write_all(rust_template::package_json(jest).as_bytes())?;
 
         if jest {
             let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-            test.write_all(template::jest(&project_name).as_bytes())?;
+            if solidity {
+                test.write_all(solidity_template::jest(&project_name).as_bytes())?;
+            } else {
+                test.write_all(rust_template::jest(&project_name).as_bytes())?;
+            }
         } else {
             let mut test = File::create(format!("tests/{}.js", &project_name))?;
-            test.write_all(template::mocha(&project_name).as_bytes())?;
+            if solidity {
+                test.write_all(solidity_template::mocha(&project_name).as_bytes())?;
+            } else {
+                test.write_all(rust_template::mocha(&project_name).as_bytes())?;
+            }
         }
 
         let mut deploy = File::create("migrations/deploy.js")?;
-        deploy.write_all(template::deploy_script().as_bytes())?;
+
+        deploy.write_all(rust_template::deploy_script().as_bytes())?;
     } else {
         // Build typescript config
         let mut ts_config = File::create("tsconfig.json")?;
-        ts_config.write_all(template::ts_config(jest).as_bytes())?;
+        ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
         let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(template::ts_package_json(jest).as_bytes())?;
+        ts_package_json.write_all(rust_template::ts_package_json(jest).as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.ts")?;
-        deploy.write_all(template::ts_deploy_script().as_bytes())?;
+        deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
 
         let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
-        mocha.write_all(template::ts_mocha(&project_name).as_bytes())?;
+        if solidity {
+            mocha.write_all(solidity_template::ts_mocha(&project_name).as_bytes())?;
+        } else {
+            mocha.write_all(rust_template::ts_mocha(&project_name).as_bytes())?;
+        }
     }
 
     let yarn_result = install_node_modules("yarn")?;
@@ -717,7 +748,7 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
 }
 
 // Creates a new program crate in the `programs/<name>` directory.
-fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
+fn new(cfg_override: &ConfigOverride, solidity: bool, name: String) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         match cfg.path().parent() {
             None => {
@@ -725,7 +756,11 @@ fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
             }
             Some(parent) => {
                 std::env::set_current_dir(parent)?;
-                new_program(&name)?;
+                if solidity {
+                    new_solidity_program(&name)?;
+                } else {
+                    new_rust_program(&name)?;
+                }
                 println!("Created new program.");
             }
         };
@@ -733,16 +768,26 @@ fn new(cfg_override: &ConfigOverride, name: String) -> Result<()> {
     })
 }
 
-// Creates a new program crate in the current directory with `name`.
-fn new_program(name: &str) -> Result<()> {
-    fs::create_dir(format!("programs/{name}"))?;
-    fs::create_dir(format!("programs/{name}/src/"))?;
+// Creates a new rust program crate in the current directory with `name`.
+fn new_rust_program(name: &str) -> Result<()> {
+    if !PathBuf::from("Cargo.toml").exists() {
+        fs::write("Cargo.toml", rust_template::virtual_manifest())?;
+    }
+    fs::create_dir_all(format!("programs/{name}/src/"))?;
     let mut cargo_toml = File::create(format!("programs/{name}/Cargo.toml"))?;
-    cargo_toml.write_all(template::cargo_toml(name).as_bytes())?;
+    cargo_toml.write_all(rust_template::cargo_toml(name).as_bytes())?;
     let mut xargo_toml = File::create(format!("programs/{name}/Xargo.toml"))?;
-    xargo_toml.write_all(template::xargo_toml().as_bytes())?;
+    xargo_toml.write_all(rust_template::xargo_toml().as_bytes())?;
     let mut lib_rs = File::create(format!("programs/{name}/src/lib.rs"))?;
-    lib_rs.write_all(template::lib_rs(name).as_bytes())?;
+    lib_rs.write_all(rust_template::lib_rs(name).as_bytes())?;
+    Ok(())
+}
+
+// Creates a new solidity program in the current directory with `name`.
+fn new_solidity_program(name: &str) -> Result<()> {
+    fs::create_dir_all("solidity")?;
+    let mut lib_rs = File::create(format!("solidity/{name}.sol"))?;
+    lib_rs.write_all(solidity_template::solidity(name).as_bytes())?;
     Ok(())
 }
 
@@ -786,7 +831,7 @@ fn expand_all(
     cargo_args: &[String],
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
-    for p in workspace_cfg.get_program_list()? {
+    for p in workspace_cfg.get_rust_program_list()? {
         expand_program(p, expansions_path.clone(), cargo_args)?;
     }
     std::env::set_current_dir(cur_dir)?;
@@ -923,7 +968,7 @@ pub fn build(
             arch,
         )?,
         // Cargo.toml represents a single package. Build it.
-        Some(cargo) => build_cwd(
+        Some(cargo) => build_rust_cwd(
             &cfg,
             cargo.path().to_path_buf(),
             idl_out,
@@ -963,8 +1008,8 @@ fn build_all(
     let r = match cfg_path.parent() {
         None => Err(anyhow!("Invalid Anchor.toml at {}", cfg_path.display())),
         Some(_parent) => {
-            for p in cfg.get_program_list()? {
-                build_cwd(
+            for p in cfg.get_rust_program_list()? {
+                build_rust_cwd(
                     cfg,
                     p.join("Cargo.toml"),
                     idl_out.clone(),
@@ -979,6 +1024,19 @@ fn build_all(
                     &arch,
                 )?;
             }
+            for (name, path) in cfg.get_solidity_program_list()? {
+                build_solidity_cwd(
+                    cfg,
+                    name,
+                    path,
+                    idl_out.clone(),
+                    idl_ts_out.clone(),
+                    build_config,
+                    stdout.as_ref().map(|f| f.try_clone()).transpose()?,
+                    stderr.as_ref().map(|f| f.try_clone()).transpose()?,
+                    cargo_args.clone(),
+                )?;
+            }
             Ok(())
         }
     };
@@ -988,7 +1046,7 @@ fn build_all(
 
 // Runs the build command outside of a workspace.
 #[allow(clippy::too_many_arguments)]
-fn build_cwd(
+fn build_rust_cwd(
     cfg: &WithPath<Config>,
     cargo_toml: PathBuf,
     idl_out: Option<PathBuf>,
@@ -1007,7 +1065,7 @@ fn build_cwd(
         Some(p) => std::env::set_current_dir(p)?,
     };
     match build_config.verifiable {
-        false => _build_cwd(cfg, idl_out, idl_ts_out, skip_lint, arch, cargo_args),
+        false => _build_rust_cwd(cfg, idl_out, idl_ts_out, skip_lint, arch, cargo_args),
         true => build_cwd_verifiable(
             cfg,
             cargo_toml,
@@ -1020,6 +1078,31 @@ fn build_cwd(
             no_docs,
             arch,
         ),
+    }
+}
+
+// Runs the build command outside of a workspace.
+#[allow(clippy::too_many_arguments)]
+fn build_solidity_cwd(
+    cfg: &WithPath<Config>,
+    name: String,
+    path: PathBuf,
+    idl_out: Option<PathBuf>,
+    idl_ts_out: Option<PathBuf>,
+    build_config: &BuildConfig,
+    stdout: Option<File>,
+    stderr: Option<File>,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    match path.parent() {
+        None => return Err(anyhow!("Unable to find parent")),
+        Some(p) => std::env::set_current_dir(p)?,
+    };
+    match build_config.verifiable {
+        false => _build_solidity_cwd(
+            cfg, &name, &path, idl_out, idl_ts_out, stdout, stderr, cargo_args,
+        ),
+        true => panic!("verifiable solidity not supported"),
     }
 }
 
@@ -1078,7 +1161,7 @@ fn build_cwd_verifiable(
                 // Write out the TypeScript type.
                 println!("Writing the .ts file");
                 let ts_file = workspace_dir.join(format!("target/types/{}.ts", idl.name));
-                fs::write(&ts_file, template::idl_ts(&idl)?)?;
+                fs::write(&ts_file, rust_template::idl_ts(&idl)?)?;
 
                 // Copy out the TypeScript type.
                 if !&cfg.workspace.types.is_empty() {
@@ -1341,7 +1424,7 @@ fn docker_exec(container_name: &str, args: &[&str]) -> Result<()> {
     }
 }
 
-fn _build_cwd(
+fn _build_rust_cwd(
     cfg: &WithPath<Config>,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
@@ -1377,7 +1460,7 @@ fn _build_cwd(
         // Write out the JSON file.
         write_idl(&idl, OutFile::File(out))?;
         // Write out the TypeScript type.
-        fs::write(&ts_out, template::idl_ts(&idl)?)?;
+        fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
         // Copy out the TypeScript type.
         let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
         if !&cfg.workspace.types.is_empty() {
@@ -1389,6 +1472,80 @@ fn _build_cwd(
                     .with_extension("ts"),
             )?;
         }
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn _build_solidity_cwd(
+    cfg: &WithPath<Config>,
+    name: &str,
+    path: &Path,
+    idl_out: Option<PathBuf>,
+    idl_ts_out: Option<PathBuf>,
+    stdout: Option<File>,
+    stderr: Option<File>,
+    solang_args: Vec<String>,
+) -> Result<()> {
+    let mut cmd = std::process::Command::new("solang");
+    let cmd = cmd.args(["compile", "--target", "solana", "--contract", name]);
+
+    if let Some(idl_out) = &idl_out {
+        cmd.arg("--output-meta");
+        cmd.arg(idl_out);
+    }
+
+    let target_bin = cfg.path().parent().unwrap().join("target").join("deploy");
+
+    cmd.arg("--output");
+    cmd.arg(target_bin);
+    cmd.arg("--verbose");
+    cmd.arg(path);
+
+    let exit = cmd
+        .args(solang_args)
+        .stdout(match stdout {
+            None => Stdio::inherit(),
+            Some(f) => f.into(),
+        })
+        .stderr(match stderr {
+            None => Stdio::inherit(),
+            Some(f) => f.into(),
+        })
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        std::process::exit(exit.status.code().unwrap_or(1));
+    }
+
+    // idl is written to idl_out or .
+    let idl_path = idl_out
+        .unwrap_or(PathBuf::from("."))
+        .join(format!("{}.json", name));
+
+    let idl = fs::read_to_string(idl_path)?;
+
+    let idl: Idl = serde_json::from_str(&idl)?;
+
+    // TS out path.
+    let ts_out = match idl_ts_out {
+        None => PathBuf::from(".").join(&idl.name).with_extension("ts"),
+        Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("ts")),
+    };
+
+    // Write out the TypeScript type.
+    fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
+    // Copy out the TypeScript type.
+    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+    if !&cfg.workspace.types.is_empty() {
+        fs::copy(
+            &ts_out,
+            cfg_parent
+                .join(&cfg.workspace.types)
+                .join(&idl.name)
+                .with_extension("ts"),
+        )?;
     }
 
     Ok(())
@@ -1476,17 +1633,24 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
     for program in cfg.read_all_programs()? {
-        let cargo_toml = program.path.join("Cargo.toml");
-        if !cargo_toml.exists() {
-            return Err(anyhow!(
-                "Did not find Cargo.toml at the path: {}",
-                program.path.display()
-            ));
-        }
-        let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
-        if program_name == p_lib_name {
-            std::env::set_current_dir(&program.path)?;
-            return Ok(());
+        if program.solidity {
+            if let Some(path) = program.path.parent() {
+                std::env::set_current_dir(path)?;
+                return Ok(());
+            }
+        } else {
+            let cargo_toml = program.path.join("Cargo.toml");
+            if !cargo_toml.exists() {
+                return Err(anyhow!(
+                    "Did not find Cargo.toml at the path: {}",
+                    program.path.display()
+                ));
+            }
+            let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
+            if program_name == p_lib_name {
+                std::env::set_current_dir(&program.path)?;
+                return Ok(());
+            }
         }
     }
     Err(anyhow!("{} is not part of the workspace", program_name,))
@@ -2007,7 +2171,7 @@ fn idl_parse(
 
     // Write out the TypeScript IDL.
     if let Some(out) = out_ts {
-        fs::write(out, template::idl_ts(&idl)?)?;
+        fs::write(out, rust_template::idl_ts(&idl)?)?;
     }
 
     Ok(())
@@ -3116,7 +3280,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         let exit = if use_ts {
             let module_path = cur_dir.join("migrations/deploy.ts");
             let deploy_script_host_str =
-                template::deploy_ts_script_host(&url, &module_path.display().to_string());
+                rust_template::deploy_ts_script_host(&url, &module_path.display().to_string());
             fs::write("deploy.ts", deploy_script_host_str)?;
             std::process::Command::new("ts-node")
                 .arg("deploy.ts")
@@ -3127,7 +3291,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         } else {
             let module_path = cur_dir.join("migrations/deploy.js");
             let deploy_script_host_str =
-                template::deploy_js_script_host(&url, &module_path.display().to_string());
+                rust_template::deploy_js_script_host(&url, &module_path.display().to_string());
             fs::write("deploy.js", deploy_script_host_str)?;
             std::process::Command::new("node")
                 .arg("deploy.js")
@@ -3259,7 +3423,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
             }
         };
         let url = cluster_url(cfg, &cfg.test_validator);
-        let js_code = template::node_shell(&url, &cfg.provider.wallet.to_string(), programs)?;
+        let js_code = rust_template::node_shell(&url, &cfg.provider.wallet.to_string(), programs)?;
         let mut child = std::process::Command::new("node")
             .args(["-e", &js_code, "-i", "--experimental-repl-await"])
             .stdout(Stdio::inherit())
@@ -3309,7 +3473,7 @@ fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
 
     // Freely overwrite the entire file since it's not used for anything else.
     let mut file = File::create("credentials")?;
-    file.write_all(template::credentials(&token).as_bytes())?;
+    file.write_all(rust_template::credentials(&token).as_bytes())?;
     Ok(())
 }
 
@@ -3388,7 +3552,7 @@ fn publish(
     }
 
     // All workspace programs.
-    for path in cfg.get_program_list()? {
+    for path in cfg.get_rust_program_list()? {
         let mut dirs = walkdir::WalkDir::new(path)
             .into_iter()
             .filter_entry(|e| !is_hidden(e));
@@ -3674,6 +3838,7 @@ mod tests {
             true,
             false,
             false,
+            false,
         )
         .unwrap();
     }
@@ -3690,6 +3855,7 @@ mod tests {
             true,
             false,
             false,
+            false,
         )
         .unwrap();
     }
@@ -3704,6 +3870,7 @@ mod tests {
             },
             "1project".to_string(),
             true,
+            false,
             false,
             false,
         )

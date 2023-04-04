@@ -26,6 +26,7 @@ anchor-syn = { path = "../lang/syn", features = ["idl", "init-if-needed"], versi
 serde_json = "1.0"
 shellexpand = "2.1.0"
 toml = "0.5.8"
+solang-parser = "=0.2.3"
 semver = "1.0.4"
 serde = { version = "1.0.122", features = ["derive"] }
 solana-sdk = "1.14.16"
