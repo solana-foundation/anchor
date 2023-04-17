@@ -10,8 +10,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ARG SOLANA_CLI
 ARG ANCHOR_CLI
+ARG NODE_VERSION="v18.16.0"
 
-ENV NODE_VERSION="v17.0.1"
 ENV HOME="/root"
 ENV PATH="${HOME}/.cargo/bin:${PATH}"
 ENV PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
