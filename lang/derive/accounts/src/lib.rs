@@ -479,6 +479,8 @@ use syn::parse_macro_input;
 ///         <tr>
 ///             <td>
 ///                 <code>#[account(token::mint = &lt;target_account&gt;, token::authority = &lt;target_account&gt;)]</code>
+///             <br><br>
+///                 <code>#[account(token::mint = &lt;target_account&gt;, token::authority = &lt;target_account&gt;, token::token_program = &lt;target_account&gt;)]</code>
 ///             </td>
 ///             <td>
 ///                 Can be used as a check or with <code>init</code> to create a token
@@ -546,6 +548,8 @@ use syn::parse_macro_input;
 ///         <tr>
 ///             <td>
 ///                 <code>#[account(associated_token::mint = &lt;target_account&gt;, associated_token::authority = &lt;target_account&gt;)]</code>
+///                <br><br>
+///                 <code>#[account(associated_token::mint = &lt;target_account&gt;, associated_token::authority = &lt;target_account&gt;, associated_token::token_program = &lt;target_account&gt;)]</code>
 ///             </td>
 ///             <td>
 ///                 Can be used as a standalone as a check or with <code>init</code> to create an associated token
@@ -577,6 +581,48 @@ use syn::parse_macro_input;
 /// pub payer: Signer<'info>,
 /// pub token_program: Program<'info, Token>,
 /// pub associated_token_program: Program<'info, AssociatedToken>,
+/// pub system_program: Program<'info, System>
+///                 </pre>
+///             </td>
+///         </tr><tr>
+///             <td>
+///                 <code>#[account(*::token_program = &lt;target_account&gt;)]</code>
+///             </td>
+///             <td>
+///                 The <code>token_program</code> can optionally be overridden.
+///                 <br><br>
+///                 Example:
+///                 <pre>
+/// use anchor_spl::{mint, token::{TokenAccount, Mint, Token}};
+/// ...&#10;
+/// #[account(
+///     mint::token_program = token_a_token_program,
+/// )]
+/// pub token_a_mint: Box<InterfaceAccount<'info, Mint>>,
+/// #[account(
+///     mint::token_program = token_b_token_program,
+/// )]
+/// pub token_b_mint: Box<InterfaceAccount<'info, Mint>>,
+/// #[account(
+///     init,
+///     payer = payer,
+///     token::mint = token_a_mint,
+///     token::authority = payer,
+///     token::token_program = token_a_token_program,
+/// )]
+/// pub token_a_account: Box<InterfaceAccount<'info, TokenAccount>>,
+/// #[account(
+///     init,
+///     payer = payer,
+///     token::mint = token_b_mint,
+///     token::authority = payer,
+///     token::token_program = token_b_token_program,
+/// )]
+/// pub token_b_account: Box<InterfaceAccount<'info, TokenAccount>>,
+/// pub token_a_token_program: Interface<'info, TokenInterface>,
+/// pub token_b_token_program: Interface<'info, TokenInterface>,
+/// #[account(mut)]
+/// pub payer: Signer<'info>,
 /// pub system_program: Program<'info, System>
 ///                 </pre>
 ///             </td>

@@ -110,6 +110,17 @@ pub enum ErrorCode {
     /// 2020 - A required account for the constraint is None
     #[msg("A required account for the constraint is None")]
     ConstraintAccountIsNone,
+    /// The token token is intentional -> a token program for the token account.
+    ///
+    /// 2021 - A token account token program constraint was violated
+    #[msg("A token account token program constraint was violated")]
+    ConstraintTokenTokenProgram,
+    /// 2022 - A mint token program constraint was violated
+    #[msg("A mint token program constraint was violated")]
+    ConstraintMintTokenProgram,
+    /// 2023 - A mint token program constraint was violated
+    #[msg("An associated token account token program constraint was violated")]
+    ConstraintAssociatedTokenTokenProgram,
 
     // Require
     /// 2500 - A require expression was violated

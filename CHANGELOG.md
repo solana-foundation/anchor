@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - spl: Add metadata wrappers `approve_collection_authority`, `bubblegum_set_collection_size`, `burn_edition_nft`, `burn_nft`, `revoke_collection_authority`, `set_token_standard`, `utilize`, `unverify_sized_collection_item`, `unverify_collection` ([#2430](https://github.com/coral-xyz/anchor/pull/2430))
+- spl: Add `token_program` constraint to `Token`, `Mint`, and `AssociatedToken` accounts in order to override required `token_program` fields and use different token interface implementations in the same instruction ([#2460](https://github.com/coral-xyz/anchor/pull/2460))
 - cli: Add support for Solidity programs. `anchor init` and `anchor new` take an option `--solidity` which creates solidity code rather than rust. `anchor build` and `anchor test` work accordingly ([#2421](https://github.com/coral-xyz/anchor/pull/2421))
 
 ### Fixes

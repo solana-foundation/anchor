@@ -662,11 +662,14 @@ pub enum ConstraintToken {
     Address(Context<ConstraintAddress>),
     TokenMint(Context<ConstraintTokenMint>),
     TokenAuthority(Context<ConstraintTokenAuthority>),
+    TokenTokenProgram(Context<ConstraintTokenProgram>),
     AssociatedTokenMint(Context<ConstraintTokenMint>),
     AssociatedTokenAuthority(Context<ConstraintTokenAuthority>),
+    AssociatedTokenTokenProgram(Context<ConstraintTokenProgram>),
     MintAuthority(Context<ConstraintMintAuthority>),
     MintFreezeAuthority(Context<ConstraintMintFreezeAuthority>),
     MintDecimals(Context<ConstraintMintDecimals>),
+    MintTokenProgram(Context<ConstraintTokenProgram>),
     Bump(Context<ConstraintTokenBump>),
     ProgramSeed(Context<ConstraintProgramSeed>),
     Realloc(Context<ConstraintRealloc>),
@@ -802,15 +805,18 @@ pub enum InitKind {
     Token {
         owner: Expr,
         mint: Expr,
+        token_program: Option<Expr>,
     },
     AssociatedToken {
         owner: Expr,
         mint: Expr,
+        token_program: Option<Expr>,
     },
     Mint {
         owner: Expr,
         freeze_authority: Option<Expr>,
         decimals: Expr,
+        token_program: Option<Expr>,
     },
 }
 
@@ -827,6 +833,11 @@ pub struct ConstraintTokenMint {
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenAuthority {
     pub auth: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintTokenProgram {
+    token_program: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -858,12 +869,14 @@ pub struct ConstraintProgramSeed {
 pub struct ConstraintAssociatedToken {
     pub wallet: Expr,
     pub mint: Expr,
+    pub token_program: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenAccountGroup {
     pub mint: Option<Expr>,
     pub authority: Option<Expr>,
+    pub token_program: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -871,6 +884,7 @@ pub struct ConstraintTokenMintGroup {
     pub decimals: Option<Expr>,
     pub mint_authority: Option<Expr>,
     pub freeze_authority: Option<Expr>,
+    pub token_program: Option<Expr>,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

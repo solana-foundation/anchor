@@ -171,12 +171,21 @@ pub mod misc_optional {
         Ok(())
     }
 
+    pub fn test_init_mint_with_token_program(_ctx: Context<TestInitMintWithTokenProgram>) -> Result<()> {
+        Ok(())
+    }
+
     pub fn test_init_token(ctx: Context<TestInitToken>) -> Result<()> {
         assert!(
             ctx.accounts.token.as_ref().unwrap().mint == ctx.accounts.mint.as_ref().unwrap().key()
         );
         Ok(())
     }
+
+    pub fn test_init_token_with_token_program(_ctx: Context<TestInitTokenWithTokenProgram>) -> Result<()> {
+        Ok(())
+    }
+
 
     pub fn test_composite_payer(ctx: Context<TestCompositePayer>) -> Result<()> {
         ctx.accounts.composite.data.as_mut().unwrap().data = 1;
@@ -189,6 +198,10 @@ pub mod misc_optional {
         assert!(
             ctx.accounts.token.as_ref().unwrap().mint == ctx.accounts.mint.as_ref().unwrap().key()
         );
+        Ok(())
+    }
+
+    pub fn test_init_associated_token_with_token_program(ctx: Context<TestInitAssociatedTokenWithTokenProgram>) -> Result<()> {
         Ok(())
     }
 
@@ -238,12 +251,28 @@ pub mod misc_optional {
         Ok(())
     }
 
+    pub fn test_init_mint_if_needed_with_token_program(
+        _ctx: Context<TestInitMintIfNeededWithTokenProgram>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     pub fn test_init_token_if_needed(_ctx: Context<TestInitTokenIfNeeded>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_init_token_if_needed_with_token_program(_ctx: Context<TestInitTokenIfNeededWithTokenProgram>) -> Result<()> {
         Ok(())
     }
 
     pub fn test_init_associated_token_if_needed(
         _ctx: Context<TestInitAssociatedTokenIfNeeded>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_init_associated_token_if_needed_with_token_program(
+        _ctx: Context<TestInitAssociatedTokenIfNeededWithTokenProgram>,
     ) -> Result<()> {
         Ok(())
     }
@@ -328,6 +357,10 @@ pub mod misc_optional {
         Ok(())
     }
 
+    pub fn test_only_token_program_constraint(_ctx: Context<TestOnlyTokenProgramConstraint>) -> Result<()> {
+        Ok(())
+    }
+
     pub fn test_mint_constraint(_ctx: Context<TestMintConstraint>, _decimals: u8) -> Result<()> {
         Ok(())
     }
@@ -358,7 +391,17 @@ pub mod misc_optional {
         Ok(())
     }
 
+    pub fn test_mint_only_token_program_constraint(
+        _ctx: Context<TestMintOnlyTokenProgramConstraint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     pub fn test_associated_constraint(_ctx: Context<TestAssociatedToken>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_associated_token_with_token_program_constraint(_ctx: Context<TestAssociatedTokenWithTokenProgramConstraint>) -> Result<()> {
         Ok(())
     }
 }

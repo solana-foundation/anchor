@@ -377,6 +377,8 @@ jobs:
             path: tests/errors
           - cmd: cd tests/spl/token-proxy && anchor test --skip-lint
             path: spl/token-proxy
+          - cmd: cd tests/spl/token-wrapper && anchor test --skip-lint
+            path: spl/token-wrapper
           - cmd: cd tests/multisig && anchor test --skip-lint
             path: tests/multisig
           # - cmd: cd tests/lockup && anchor test --skip-lint

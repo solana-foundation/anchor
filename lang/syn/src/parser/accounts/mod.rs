@@ -92,14 +92,23 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         // init token/a_token/mint needs token program.
         match kind {
             InitKind::Program { .. } | InitKind::Interface { .. } => (),
-            InitKind::Token { .. } | InitKind::AssociatedToken { .. } | InitKind::Mint { .. } => {
-                if !fields
-                    .iter()
-                    .any(|f| f.ident() == "token_program" && !(required_init && f.is_optional()))
-                {
+            InitKind::Token { token_program, .. }
+            | InitKind::AssociatedToken { token_program, .. }
+            | InitKind::Mint { token_program, .. } => {
+                // is the token_program constraint specified?
+                let token_program_field = if let Some(token_program_id) = token_program {
+                    // if so, is it present in the struct?
+                    token_program_id.to_token_stream().to_string()
+                } else {
+                    // if not, look for the token_program field
+                    "token_program".to_string()
+                };
+                if !fields.iter().any(|f| {
+                    f.ident() == &token_program_field && !(required_init && f.is_optional())
+                }) {
                     return Err(ParseError::new(
                         init_fields[0].ident.span(),
-                        message("init", "token_program", required_init),
+                        message("init", &token_program_field, required_init),
                     ));
                 }
             }

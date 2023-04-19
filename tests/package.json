@@ -29,6 +29,7 @@
     "pyth",
     "realloc",
     "spl/token-proxy",
+    "spl/token-wrapper",
     "swap",
     "system-accounts",
     "sysvars",
