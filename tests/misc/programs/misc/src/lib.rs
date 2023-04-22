@@ -392,4 +392,15 @@ pub mod misc {
     pub fn test_associated_token_with_token_program_constraint(_ctx: Context<TestAssociatedTokenWithTokenProgramConstraint>) -> Result<()> {
         Ok(())
     }
+
+    #[allow(unused_variables)]
+    pub fn test_used_identifiers(
+        _ctx: Context<TestUsedIdentifiers>,
+        program_id: u8,
+        accounts: u8,
+        ix_data: u8,
+        remaining_accounts: u8
+    ) -> Result<()> {
+        Ok(())
+    }
 }

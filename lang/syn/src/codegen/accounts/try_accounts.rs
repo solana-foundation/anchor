@@ -25,7 +25,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     quote! {
                         #[cfg(feature = "anchor-debug")]
                         ::solana_program::log::sol_log(stringify!(#name));
-                        let #name: #ty = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data, __bumps, __reallocs)?;
+                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)?;
                     }
                 }
                 AccountField::Field(f) => {
@@ -45,24 +45,24 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                 quote!{ return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into()); }
                             };
                             quote! {
-                                let #name = if accounts.is_empty() {
+                                let #name = if __accounts.is_empty() {
                                     #empty_behavior
-                                } else if accounts[0].key == program_id {
-                                    *accounts = &accounts[1..];
+                                } else if __accounts[0].key == __program_id {
+                                    *__accounts = &__accounts[1..];
                                     None
                                 } else {
-                                    let account = &accounts[0];
-                                    *accounts = &accounts[1..];
+                                    let account = &__accounts[0];
+                                    *__accounts = &__accounts[1..];
                                     Some(account)
                                 };
                             }
                         } else {
                             quote!{
-                                if accounts.is_empty() {
+                                if __accounts.is_empty() {
                                     return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                 }
-                                let #name = &accounts[0];
-                                *accounts = &accounts[1..];
+                                let #name = &__accounts[0];
+                                *__accounts = &__accounts[1..];
                             }
                         }
                     } else {
@@ -71,7 +71,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         quote! {
                             #[cfg(feature = "anchor-debug")]
                             ::solana_program::log::sol_log(stringify!(#typed_name));
-                            let #typed_name = anchor_lang::Accounts::try_accounts(program_id, accounts, ix_data, __bumps, __reallocs)
+                            let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                         }
                     }
@@ -100,14 +100,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 })
                 .collect();
             quote! {
-                let mut ix_data = ix_data;
+                let mut __ix_data = __ix_data;
                 #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
                 struct __Args {
                     #strct_inner
                 }
                 let __Args {
                     #(#field_names),*
-                } = __Args::deserialize(&mut ix_data)
+                } = __Args::deserialize(&mut __ix_data)
                     .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
             }
         }
@@ -118,9 +118,9 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics> for #name<#struct_generics> #where_clause {
             #[inline(never)]
             fn try_accounts(
-                program_id: &anchor_lang::solana_program::pubkey::Pubkey,
-                accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>],
-                ix_data: &[u8],
+                __program_id: &anchor_lang::solana_program::pubkey::Pubkey,
+                __accounts: &mut &[anchor_lang::solana_program::account_info::AccountInfo<'info>],
+                __ix_data: &[u8],
                 __bumps: &mut std::collections::BTreeMap<String, u8>,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {

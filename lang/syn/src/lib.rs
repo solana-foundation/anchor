@@ -309,9 +309,9 @@ impl Field {
         let field_str = field.to_string();
         let container_ty = self.container_ty();
         let owner_addr = match &kind {
-            None => quote! { program_id },
+            None => quote! { __program_id },
             Some(InitKind::Program { .. }) => quote! {
-                program_id
+                __program_id
             },
             _ => quote! {
                 &anchor_spl::token::ID

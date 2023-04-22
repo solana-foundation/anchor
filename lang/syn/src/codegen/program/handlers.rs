@@ -111,15 +111,15 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             quote! {
                 #[inline(never)]
                 pub fn #ix_method_name(
-                    program_id: &Pubkey,
-                    accounts: &[AccountInfo],
-                    ix_data: &[u8],
+                    __program_id: &Pubkey,
+                    __accounts: &[AccountInfo],
+                    __ix_data: &[u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
                     // Deserialize data.
-                    let ix = instruction::#ix_name::deserialize(&mut &ix_data[..])
+                    let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                     let instruction::#variant_arm = ix;
 
@@ -129,11 +129,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let mut __reallocs = std::collections::BTreeSet::new();
 
                     // Deserialize accounts.
-                    let mut remaining_accounts: &[AccountInfo] = accounts;
-                    let mut accounts = #anchor::try_accounts(
-                        program_id,
-                        &mut remaining_accounts,
-                        ix_data,
+                    let mut __remaining_accounts: &[AccountInfo] = __accounts;
+                    let mut __accounts = #anchor::try_accounts(
+                        __program_id,
+                        &mut __remaining_accounts,
+                        __ix_data,
                         &mut __bumps,
                         &mut __reallocs,
                     )?;
@@ -141,9 +141,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     // Invoke user defined handler.
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
-                            program_id,
-                            &mut accounts,
-                            remaining_accounts,
+                            __program_id,
+                            &mut __accounts,
+                            __remaining_accounts,
                             __bumps,
                         ),
                         #(#ix_arg_names),*
@@ -153,7 +153,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #maybe_set_return_data
 
                     // Exit routine.
-                    accounts.exit(program_id)
+                    __accounts.exit(__program_id)
                 }
             }
         })

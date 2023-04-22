@@ -725,3 +725,46 @@ pub struct TestAssociatedTokenWithTokenProgramConstraint<'info> {
     /// CHECK: ignore
     pub associated_token_token_program: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+#[instruction(
+    program_id: u8,
+    accounts: u8,
+    ix_data: u8,
+    remaining_accounts: u8
+)]
+pub struct TestUsedIdentifiers<'info> {
+    #[account(
+        constraint = 1 == program_id,
+        constraint = 2 == accounts,
+        constraint = 3 == ix_data,
+        constraint = 4 == remaining_accounts,
+    )]
+    /// CHECK: ignore
+    pub test: AccountInfo<'info>,
+
+    #[account(
+        seeds = [&[program_id], &[accounts], &[ix_data], &[remaining_accounts]],
+        bump = program_id,
+    )]
+    /// CHECK: ignore
+    pub test1: AccountInfo<'info>,
+    #[account(
+        seeds = [&[program_id], &[accounts], &[ix_data], &[remaining_accounts]],
+        bump = accounts,
+    )]
+    /// CHECK: ignore
+    pub test2: AccountInfo<'info>,
+    #[account(
+        seeds = [&[program_id], &[accounts], &[ix_data], &[remaining_accounts]],
+        bump = ix_data,
+    )]
+    /// CHECK: ignore
+    pub test3: AccountInfo<'info>,
+    #[account(
+        seeds = [&[program_id], &[accounts], &[ix_data], &[remaining_accounts]],
+        bump = remaining_accounts,
+    )]
+    /// CHECK: ignore
+    pub test4: AccountInfo<'info>,
+}

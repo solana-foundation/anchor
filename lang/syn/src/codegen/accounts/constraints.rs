@@ -480,7 +480,7 @@ fn generate_constraint_init_group(
                 quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
                         &[#maybe_seeds_plus_comma],
-                        program_id,
+                        __program_id,
                     );
                     __bumps.insert(#name_str.to_string(), __bump);
                     #validate_pda
@@ -754,7 +754,7 @@ fn generate_constraint_init_group(
             let (owner, owner_optional_check) = match owner {
                 None => (
                     quote! {
-                        program_id
+                        __program_id
                     },
                     quote! {},
                 ),
@@ -862,7 +862,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             // If they specified a seeds::program to use when deriving the PDA, use it.
             .map(|program_id| quote! { #program_id.key() })
             // Otherwise fall back to the current program's program_id.
-            .unwrap_or(quote! { program_id });
+            .unwrap_or(quote! { __program_id });
 
         // If the seeds came with a trailing comma, we need to chop it off
         // before we interpolate them below.
