@@ -7,7 +7,9 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-echo "Bumping versions to $1"
+version=$1
+
+echo "Bumping versions to $version"
 
 # GNU/BSD compat
 sedi=(-i)
@@ -16,28 +18,34 @@ case "$(uname)" in
   Darwin*) sedi=(-i "")
 esac
 
-git grep -l $(cat VERSION) -- ':!**/yarn.lock' ':!CHANGELOG.md' ':!Cargo.lock' ':!package.json' | \
+# Don't replace version with the following globs
+skip_globs=":!**/yarn.lock :!Cargo.lock :!package.json :!tests/bench/bench.json :!bench/*.md"
+
+git grep -l $(cat VERSION) -- $skip_globs |
     xargs sed "${sedi[@]}" \
-    -e "s/$(cat VERSION)/$1/g"
+    -e "s/$(cat VERSION)/$version/g"
 
 # Potential for collisions in package.json files, handle those separately
 # Replace only matching "version": "x.xx.x" and "@coral-xyz/anchor": "x.xx.x"
 git grep -l $(cat VERSION) -- '**/package.json' | \
     xargs sed "${sedi[@]}" \
-    -e "s/@coral-xyz\/anchor\": \"$(cat VERSION)\"/@coral-xyz\/anchor\": \"$1\"/g" \
-    -e "s/\"version\": \"$(cat VERSION)\"/\"version\": \"$1\"/g"
+    -e "s/@coral-xyz\/anchor\": \"$(cat VERSION)\"/@coral-xyz\/anchor\": \"$version\"/g" \
+    -e "s/\"version\": \"$(cat VERSION)\"/\"version\": \"$version\"/g"
 
 # Potential for collisions in Cargo.lock, use cargo update to update it
 cargo update --workspace
 
 # Insert version number into CHANGELOG.md
-sed "${sedi[@]}" -e "s/## \[Unreleased\]/## [Unreleased]\n\n## [$1] - $(date '+%Y-%m-%d')/g" CHANGELOG.md
+sed "${sedi[@]}" -e "s/## \[Unreleased\]/## [Unreleased]\n\n## [$version] - $(date '+%Y-%m-%d')/g" CHANGELOG.md
 
 pushd ts && yarn && popd
 pushd tests && yarn && popd
 pushd examples && yarn && pushd tutorial && yarn && popd && popd
 
-echo $1 > VERSION
+# Bump benchmark files
+pushd tests/bench && anchor run bump-version -- $version && popd
+
+echo $version > VERSION
 
 echo "$(git diff --stat | tail -n1) files modified"
 

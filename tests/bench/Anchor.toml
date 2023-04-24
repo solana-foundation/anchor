@@ -1,0 +1,15 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+bench = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+
+[workspace]
+members = ["programs/bench"]
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+update-bench = "yarn run ts-node scripts/update-bench.ts"
+generate-ix = "yarn run ts-node scripts/generate-ix.ts"
+bump-version = "yarn run ts-node scripts/bump-version.ts"
