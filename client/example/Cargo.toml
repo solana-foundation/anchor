@@ -16,5 +16,5 @@ optional = { path = "../../tests/optional/programs/optional", features = ["no-en
 events = { path = "../../tests/events/programs/events", features = ["no-entrypoint"] }
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
-clap = { version = "4.0.26", features = ["derive"] }
+clap = { version = "4.2.4", features = ["derive"] }
 solana-sdk = "1.14.16"
