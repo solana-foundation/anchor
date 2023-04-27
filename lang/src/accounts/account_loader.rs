@@ -21,7 +21,7 @@ use std::ops::DerefMut;
 /// Type facilitating on demand zero copy deserialization.
 ///
 /// Note that using accounts in this way is distinctly different from using,
-/// for example, the [`Account`](./struct.Account.html). Namely,
+/// for example, the [`Account`](crate::accounts::account::Account). Namely,
 /// one must call
 /// - `load_init` after initializing an account (this will ignore the missing
 /// account discriminator that gets added only after the user's instruction code)
@@ -29,7 +29,7 @@ use std::ops::DerefMut;
 /// - `load_mut` when the account is mutable
 ///
 /// For more details on zero-copy-deserialization, see the
-/// [`account`](./attr.account.html) attribute.
+/// [`account`](crate::account) attribute.
 /// <p style=";padding:0.75em;border: 1px solid #ee6868">
 /// <strong>⚠️ </strong> When using this type it's important to be mindful
 /// of any calls to the <code>load</code> functions so as not to
