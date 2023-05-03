@@ -1,4 +1,4 @@
-/** Update Markdown files in /bench */
+/** Sync Markdown files in /bench based on the data from bench.json */
 
 import { BenchData, Markdown } from "./utils";
 
@@ -33,19 +33,27 @@ import { BenchData, Markdown } from "./utils";
         bench.compareComputeUnits(
           newComputeUnitsResult,
           oldComputeUnitsResult,
-          (ixName, newComputeUnits, oldComputeUnits) => {
-            const percentChange = (
-              (newComputeUnits / oldComputeUnits - 1) *
-              100
-            ).toFixed(2);
+          ({ ixName, newComputeUnits, oldComputeUnits }) => {
+            if (newComputeUnits === null) {
+              // Deleted instruction
+              return;
+            }
 
             let changeText;
-            if (isNaN(oldComputeUnits)) {
+            if (oldComputeUnits === null) {
+              // New instruction
               changeText = "N/A";
-            } else if (+percentChange > 0) {
-              changeText = `🔴 **+${percentChange}%**`;
             } else {
-              changeText = `🟢 **${percentChange}%**`;
+              const percentChange = (
+                (newComputeUnits / oldComputeUnits - 1) *
+                100
+              ).toFixed(2);
+
+              if (+percentChange > 0) {
+                changeText = `🔴 **+${percentChange}%**`;
+              } else {
+                changeText = `🟢 **${percentChange}%**`;
+              }
             }
 
             table.insert(ixName, newComputeUnits.toString(), changeText);

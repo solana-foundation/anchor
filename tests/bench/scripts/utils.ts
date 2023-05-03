@@ -2,6 +2,9 @@ import * as fs from "fs/promises";
 import path from "path";
 import { spawnSync } from "child_process";
 
+/** Version that is used in bench data file */
+export type Version = "unreleased" | (`${number}.${number}.${number}` & {});
+
 /** Persistent benchmark data(mapping of `Version -> Data`) */
 type Bench = {
   [key: string]: {
@@ -21,7 +24,10 @@ export type ComputeUnits = { [key: string]: number };
 export const THRESHOLD_PERCENTAGE = 1;
 
 /** Path to the benchmark Markdown files */
-export const BENCH_DIR_PATH = "../../bench";
+export const BENCH_DIR_PATH = path.join("..", "..", "bench");
+
+/** Command line argument for Anchor version */
+export const ANCHOR_VERSION_ARG = "--anchor-version";
 
 /** Utility class to handle benchmark data related operations */
 export class BenchData {
@@ -56,43 +62,74 @@ export class BenchData {
   }
 
   /** Get the stored results based on version */
-  get(version: string) {
+  get(version: Version) {
     return this.#data[version];
-  }
-
-  /** Get unreleased version results */
-  getUnreleased() {
-    return this.get("unreleased");
   }
 
   /** Get all versions */
   getVersions() {
-    return Object.keys(this.#data);
+    return Object.keys(this.#data) as Version[];
   }
 
   /** Compare and update compute units changes */
   compareComputeUnits(
     newComputeUnitsResult: ComputeUnits,
     oldComputeUnitsResult: ComputeUnits,
-    changeCb: (
-      ixName: string,
-      newComputeUnits: number,
-      oldComputeUnits: number
-    ) => void,
+    changeCb: (args: {
+      ixName: string;
+      newComputeUnits: number | null;
+      oldComputeUnits: number | null;
+    }) => void,
     noChangeCb?: (ixName: string, computeUnits: number) => void
   ) {
     let needsUpdate = false;
+
+    const checkIxs = (
+      comparedFrom: ComputeUnits,
+      comparedTo: ComputeUnits,
+      cb: (ixName: string, computeUnits: number) => void
+    ) => {
+      for (const ixName in comparedFrom) {
+        if (comparedTo[ixName] === undefined) {
+          cb(ixName, comparedFrom[ixName]);
+        }
+      }
+    };
+
+    // New instruction
+    checkIxs(
+      newComputeUnitsResult,
+      oldComputeUnitsResult,
+      (ixName, computeUnits) => {
+        console.log(`New instruction '${ixName}'`);
+        changeCb({
+          ixName,
+          newComputeUnits: computeUnits,
+          oldComputeUnits: null,
+        });
+        needsUpdate = true;
+      }
+    );
+
+    // Deleted instruction
+    checkIxs(
+      oldComputeUnitsResult,
+      newComputeUnitsResult,
+      (ixName, computeUnits) => {
+        console.log(`Deleted instruction '${ixName}'`);
+        changeCb({
+          ixName,
+          newComputeUnits: null,
+          oldComputeUnits: computeUnits,
+        });
+        needsUpdate = true;
+      }
+    );
 
     // Compare compute units changes
     for (const ixName in newComputeUnitsResult) {
       const oldComputeUnits = oldComputeUnitsResult[ixName];
       const newComputeUnits = newComputeUnitsResult[ixName];
-      if (!oldComputeUnits) {
-        console.log(`New instruction '${ixName}'`);
-        needsUpdate = true;
-        changeCb(ixName, newComputeUnits, NaN);
-        continue;
-      }
 
       const percentage = THRESHOLD_PERCENTAGE / 100;
       const oldMaximumAllowedDelta = oldComputeUnits * percentage;
@@ -119,8 +156,12 @@ export class BenchData {
           `Compute units change '${ixName}' (${oldComputeUnits} -> ${newComputeUnits})`
         );
 
+        changeCb({
+          ixName,
+          newComputeUnits,
+          oldComputeUnits,
+        });
         needsUpdate = true;
-        changeCb(ixName, newComputeUnits, oldComputeUnits);
       } else {
         noChangeCb?.(ixName, newComputeUnits);
       }
@@ -131,13 +172,13 @@ export class BenchData {
 
   /** Bump benchmark data version to the given version */
   bumpVersion(newVersion: string) {
-    const versions = Object.keys(this.#data);
-    const unreleasedVersion = versions[versions.length - 1];
-
     if (this.#data[newVersion]) {
       console.error(`Version '${newVersion}' already exists!`);
       process.exit(1);
     }
+
+    const versions = this.getVersions();
+    const unreleasedVersion = versions[versions.length - 1];
 
     // Add the new version
     this.#data[newVersion] = this.get(unreleasedVersion);
@@ -296,3 +337,56 @@ class MarkdownTable {
     );
   }
 }
+
+/** Utility class to handle TOML related operations */
+export class Toml {
+  /** TOML filepath */
+  #path: string;
+
+  /** TOML text */
+  #text: string;
+
+  constructor(path: string, text: string) {
+    this.#path = path;
+    this.#text = text;
+  }
+
+  /** Open the TOML file */
+  static async open(tomlPath: string) {
+    tomlPath = path.join(__dirname, tomlPath);
+    const text = await fs.readFile(tomlPath, {
+      encoding: "utf8",
+    });
+    return new Toml(tomlPath, text);
+  }
+
+  /** Save the TOML file */
+  async save() {
+    await fs.writeFile(this.#path, this.#text);
+  }
+
+  /** Replace the value for the given key */
+  replaceValue(
+    key: string,
+    cb: (previous: string) => string,
+    opts?: { insideQuotes: boolean }
+  ) {
+    this.#text = this.#text.replace(
+      new RegExp(`${key}\\s*=\\s*${opts?.insideQuotes ? `"(.*)"` : "(.*)"}`),
+      (line, value) => line.replace(value, cb(value))
+    );
+  }
+}
+
+/**
+ * Get Anchor version from the passed arguments.
+ *
+ * Defaults to `unreleased`.
+ */
+export const getVersionFromArgs = () => {
+  const args = process.argv;
+  const anchorVersionArgIndex = args.indexOf(ANCHOR_VERSION_ARG);
+  return anchorVersionArgIndex === -1
+    ? "unreleased"
+    : (args[anchorVersionArgIndex + 1] as Version);
+};

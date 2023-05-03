@@ -3,7 +3,7 @@ import * as token from "@coral-xyz/spl-token";
 import { spawnSync } from "child_process";
 
 import { Bench, IDL } from "../target/types/bench";
-import { BenchData, ComputeUnits } from "../scripts/utils";
+import { BenchData, ComputeUnits, getVersionFromArgs } from "../scripts/utils";
 
 describe(IDL.name, () => {
   // Configure the client to use the local cluster
@@ -226,12 +226,17 @@ describe(IDL.name, () => {
     const bench = await BenchData.open();
 
     // Compare and update compute units changes
-    const oldComputeUnits = bench.getUnreleased().computeUnits;
+    const version = getVersionFromArgs();
+    const oldComputeUnits = bench.get(version).computeUnits;
     const { needsUpdate } = bench.compareComputeUnits(
       computeUnits,
       oldComputeUnits,
-      (ixName, newComputeUnits) => {
-        oldComputeUnits[ixName] = newComputeUnits;
+      ({ ixName, newComputeUnits: newValue }) => {
+        if (newValue === null) {
+          delete oldComputeUnits[ixName];
+        } else {
+          oldComputeUnits[ixName] = newValue;
+        }
       }
     );
 
@@ -239,10 +244,13 @@ describe(IDL.name, () => {
       console.log("Updating benchmark files...");
 
       // Save bench data file
-      // (needs to happen before running the `update-bench` script)
+      // (needs to happen before running the `sync-markdown` script)
       await bench.save();
 
-      spawnSync("anchor", ["run", "update-bench"]);
+      // Only update markdown files on `unreleased` version
+      if (version === "unreleased") {
+        spawnSync("anchor", ["run", "sync-markdown"]);
+      }
     }
   });
 });

@@ -1,9 +1,11 @@
 //! This program is used to measure the performance of Anchor programs.
+//!
+//! If you are making a change to this program, run `anchor run sync`.
 
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Bench11111111111111111111111111111111111111");
 
 #[program]
 pub mod bench {
