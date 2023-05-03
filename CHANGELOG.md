@@ -25,6 +25,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Breaking
 
 - lang: Identifiers that are intended for internal usage(`program_id`, `accounts`, `ix_data`, `remaining_accounts`) have been renamed with `__` prefix ([#2464](https://github.com/coral-xyz/anchor/pull/2464))
+- spl: Remove the `metadata::create_metadata_account_v2` deprecated wrapper since it was removed from token metadata program ([#2480](https://github.com/coral-xyz/anchor/pull/2480))
 
 ## [0.27.0] - 2023-03-08
 
