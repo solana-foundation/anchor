@@ -126,7 +126,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             }
         }
 
-        for field in init_fields {
+        for (pos, field) in init_fields.iter().enumerate() {
             // Get payer for init-ed account
             let associated_payer_name = match field.constraints.init.clone().unwrap().payer {
                 // composite payer, check not supported
@@ -175,6 +175,24 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                         return Err(ParseError::new(
                             field.ident.span(),
                             "the mint constraint has to be an account field for token initializations (not a public key)",
+                        ));
+                    }
+                }
+
+                // Make sure initialiazed token accounts are always declared after their corresponding mint.
+                InitKind::Mint { .. } => {
+                    if init_fields.iter().enumerate().any(|(f_pos, f)| {
+                        match &f.constraints.init.as_ref().unwrap().kind {
+                            InitKind::Token { mint, .. }
+                            | InitKind::AssociatedToken { mint, .. } => {
+                                field.ident == mint.to_token_stream().to_string() && pos > f_pos
+                            }
+                            _ => false,
+                        }
+                    }) {
+                        return Err(ParseError::new(
+                            field.ident.span(),
+                            "because of the init constraint, the mint has to be declared before the corresponding token account",
                         ));
                     }
                 }
