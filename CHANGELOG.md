@@ -21,6 +21,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - ts: Narrowed `AccountClient` type to it's appropriate account type ([#2440](https://github.com/coral-xyz/anchor/pull/2440))
 - lang: Fix inability to use identifiers `program_id`, `accounts`, `ix_data`, `remaining_accounts` in instruction arguments ([#2464](https://github.com/coral-xyz/anchor/pull/2464))
+- cli: Fix incorrect `metadata.address` generation in IDL after deploying with a custom keypair ([#2485](https://github.com/coral-xyz/anchor/pull/2485))
 
 ### Breaking
 

@@ -3024,9 +3024,17 @@ fn deploy(
 
             println!("Program path: {binary_path}...");
 
-            let program_keypair_filepath = match &program_keypair {
-                Some(program_keypair) => program_keypair.clone(),
-                None => program.keypair_file()?.path().display().to_string(),
+            let (program_keypair_filepath, program_id) = match &program_keypair {
+                Some(path) => (
+                    path.clone(),
+                    solana_sdk::signature::read_keypair_file(path)
+                        .map_err(|_| anyhow!("Unable to read keypair file"))?
+                        .pubkey(),
+                ),
+                None => (
+                    program.keypair_file()?.path().display().to_string(),
+                    program.pubkey()?,
+                ),
             };
 
             // Send deploy transactions.
@@ -3049,11 +3057,10 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
-            let program_pubkey = program.pubkey()?;
             if let Some(mut idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
-                    address: program_pubkey.to_string(),
+                    address: program_id.to_string(),
                 })?);
 
                 // Persist it.
