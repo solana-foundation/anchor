@@ -20,7 +20,6 @@ use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_sdk::account_utils::StateMut;
 use solana_sdk::bpf_loader;
@@ -1931,13 +1930,9 @@ fn idl_set_buffer(cfg_override: &ConfigOverride, program_id: Pubkey, buffer: Pub
         );
 
         // Send the transaction.
-        client.send_and_confirm_transaction_with_spinner_and_config(
+        client.send_and_confirm_transaction_with_spinner_and_commitment(
             &tx,
             CommitmentConfig::confirmed(),
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                ..RpcSendTransactionConfig::default()
-            },
         )?;
 
         Ok(())
@@ -2020,13 +2015,9 @@ fn idl_set_authority(
             &[&keypair],
             latest_hash,
         );
-        client.send_and_confirm_transaction_with_spinner_and_config(
+        client.send_and_confirm_transaction_with_spinner_and_commitment(
             &tx,
             CommitmentConfig::confirmed(),
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                ..RpcSendTransactionConfig::default()
-            },
         )?;
 
         println!("Authority update complete.");
@@ -2077,13 +2068,9 @@ fn idl_close_account(cfg: &Config, program_id: &Pubkey, idl_address: Pubkey) -> 
         &[&keypair],
         latest_hash,
     );
-    client.send_and_confirm_transaction_with_spinner_and_config(
+    client.send_and_confirm_transaction_with_spinner_and_commitment(
         &tx,
         CommitmentConfig::confirmed(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..RpcSendTransactionConfig::default()
-        },
     )?;
 
     Ok(())
@@ -2141,13 +2128,9 @@ fn idl_write(cfg: &Config, program_id: &Pubkey, idl: &Idl, idl_address: Pubkey) 
             &[&keypair],
             latest_hash,
         );
-        client.send_and_confirm_transaction_with_spinner_and_config(
+        client.send_and_confirm_transaction_with_spinner_and_commitment(
             &tx,
             CommitmentConfig::confirmed(),
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                ..RpcSendTransactionConfig::default()
-            },
         )?;
         offset += MAX_WRITE_SIZE;
     }
@@ -3175,13 +3158,9 @@ fn create_idl_account(
             &[&keypair],
             latest_hash,
         );
-        client.send_and_confirm_transaction_with_spinner_and_config(
+        client.send_and_confirm_transaction_with_spinner_and_commitment(
             &tx,
             CommitmentConfig::finalized(),
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                ..RpcSendTransactionConfig::default()
-            },
         )?;
     }
 
@@ -3243,13 +3222,9 @@ fn create_idl_buffer(
     );
 
     // Send the transaction.
-    client.send_and_confirm_transaction_with_spinner_and_config(
+    client.send_and_confirm_transaction_with_spinner_and_commitment(
         &tx,
         CommitmentConfig::confirmed(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..RpcSendTransactionConfig::default()
-        },
     )?;
 
     Ok(buffer.pubkey())
