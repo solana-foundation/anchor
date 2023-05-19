@@ -1,9 +1,13 @@
 //! This example demonstrates the use of the `anchor_spl::token` CPI client.
 
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{
-    self, Burn, Mint, MintTo, SetAuthority, TokenAccount, TokenInterface, Transfer, TransferChecked,
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_2022::spl_token_2022,
+    token_interface::{
+        self, Burn, Mint, MintTo, SetAuthority, TokenAccount, TokenInterface, Transfer,
+        TransferChecked,
+    },
 };
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
