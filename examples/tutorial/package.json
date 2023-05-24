@@ -10,13 +10,17 @@
     "basic-1",
     "basic-2",
     "basic-3",
-    "basic-4"
+    "basic-4",
+    "basic-5"
   ],
   "dependencies": {
     "@coral-xyz/anchor": "file:../../ts/packages/anchor"
   },
   "devDependencies": {
-    "mocha": "9.2.2",
-    "prettier": "^2.5.1"
+    "mocha": "^9.2.2",
+    "prettier": "^2.5.1",
+    "@types/mocha": "^9.1.1",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^4.9.5"
   }
 }
