@@ -16,4 +16,4 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { path = "../../../../lang" }
+anchor-lang = { path = "../../../../lang", features = ["event-cpi"] }

@@ -13,6 +13,7 @@ proc-macro = true
 
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
+event-cpi = ["anchor-syn/event-cpi"]
 
 [dependencies]
 proc-macro2 = "1.0"

@@ -88,6 +88,7 @@ export class AccountsResolver<IDL extends Idl> {
   //       addresses. That is, one PDA can be used as a seed in another.
   public async resolve() {
     await this.resolveConst(this._idlIx.accounts);
+    this._resolveEventCpi(this._idlIx.accounts);
 
     // Auto populate pdas and relations until we stop finding new accounts
     while (
@@ -221,6 +222,56 @@ export class AccountsResolver<IDL extends Idl> {
           [...path, accountDescName],
           AccountsResolver.CONST_ACCOUNTS[accountDescName]
         );
+      }
+    }
+  }
+
+  /**
+   * Resolve event CPI accounts `eventAuthority` and `program`.
+   *
+   * Accounts will only be resolved if they are declared next to each other to
+   * reduce the chance of name collision.
+   */
+  private _resolveEventCpi(
+    accounts: IdlAccountItem[],
+    path: string[] = []
+  ): void {
+    for (const i in accounts) {
+      const accountDescOrAccounts = accounts[i];
+      const subAccounts = (accountDescOrAccounts as IdlAccounts).accounts;
+      if (subAccounts) {
+        this._resolveEventCpi(subAccounts, [
+          ...path,
+          camelCase(accountDescOrAccounts.name),
+        ]);
+      }
+
+      // Validate next index exists
+      const nextIndex = +i + 1;
+      if (nextIndex === accounts.length) return;
+
+      const currentName = camelCase(accounts[i].name);
+      const nextName = camelCase(accounts[nextIndex].name);
+
+      // Populate event CPI accounts if they exist
+      if (currentName === "eventAuthority" && nextName === "program") {
+        const currentPath = [...path, currentName];
+        const nextPath = [...path, nextName];
+
+        if (!this.get(currentPath)) {
+          this.set(
+            currentPath,
+            PublicKey.findProgramAddressSync(
+              [Buffer.from("__event_authority")],
+              this._programId
+            )[0]
+          );
+        }
+        if (!this.get(nextPath)) {
+          this.set(nextPath, this._programId);
+        }
+
+        return;
       }
     }
   }

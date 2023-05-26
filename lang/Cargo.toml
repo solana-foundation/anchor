@@ -13,6 +13,7 @@ allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 derive = []
 default = []
+event-cpi = ["anchor-attribute-event/event-cpi"]
 anchor-debug = [
     "anchor-attribute-access-control/anchor-debug",
     "anchor-attribute-account/anchor-debug",

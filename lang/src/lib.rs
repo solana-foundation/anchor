@@ -38,6 +38,8 @@ mod common;
 pub mod context;
 pub mod error;
 #[doc(hidden)]
+pub mod event;
+#[doc(hidden)]
 pub mod idl;
 pub mod system_program;
 
@@ -48,6 +50,8 @@ pub use anchor_attribute_account::{account, declare_id, zero_copy};
 pub use anchor_attribute_constant::constant;
 pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
+#[cfg(feature = "event-cpi")]
+pub use anchor_attribute_event::{emit_cpi, event_cpi};
 pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_space::InitSpace;
@@ -299,6 +303,8 @@ pub mod prelude {
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Id, InitSpace, Key, Owner,
         ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
+    #[cfg(feature = "event-cpi")]
+    pub use super::{emit_cpi, event_cpi};
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;

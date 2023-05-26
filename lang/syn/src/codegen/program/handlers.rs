@@ -91,6 +91,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
     };
 
+    let event_cpi_mod = generate_event_cpi_mod();
+
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .ixs
         .iter()
@@ -173,14 +175,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #idl_accounts_and_functions
             }
 
-
-
             /// __global mod defines wrapped handlers for global instructions.
             pub mod __global {
                 use super::*;
 
                 #(#non_inlined_handlers)*
             }
+
+            #event_cpi_mod
         }
     }
 }
@@ -188,4 +190,50 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 fn generate_ix_variant_name(name: String) -> proc_macro2::TokenStream {
     let n = name.to_camel_case();
     n.parse().unwrap()
+}
+
+/// Generate the event module based on whether the `event-cpi` feature is enabled.
+fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
+    #[cfg(feature = "event-cpi")]
+    {
+        let authority = crate::parser::accounts::event_cpi::EventAuthority::get();
+        let authority_name = authority.name;
+        let authority_seeds = authority.seeds;
+
+        quote! {
+            /// __events mod defines handler for self-cpi based event logging
+            pub mod __events {
+                use super::*;
+
+                #[inline(never)]
+                pub fn __event_dispatch(
+                    program_id: &Pubkey,
+                    accounts: &[AccountInfo],
+                    event_data: &[u8],
+                ) -> anchor_lang::Result<()> {
+                    let given_event_authority = next_account_info(&mut accounts.iter())?;
+                    if !given_event_authority.is_signer {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintSigner,
+                        )
+                        .with_account_name(#authority_name));
+                    }
+
+                    let (expected_event_authority, _) =
+                        Pubkey::find_program_address(&[#authority_seeds], &program_id);
+                    if given_event_authority.key() != expected_event_authority {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintSeeds,
+                        )
+                        .with_account_name(#authority_name)
+                        .with_pubkeys((given_event_authority.key(), expected_event_authority)));
+                    }
+
+                    Ok(())
+                }
+            }
+        }
+    }
+    #[cfg(not(feature = "event-cpi"))]
+    quote! {}
 }

@@ -24,7 +24,7 @@ bincode = "1.3.3"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 anchor-lang = { path = "../lang", version = "0.27.0" }
 anchor-client = { path = "../client", version = "0.27.0" }
-anchor-syn = { path = "../lang/syn", features = ["idl", "init-if-needed"], version = "0.27.0" }
+anchor-syn = { path = "../lang/syn", features = ["event-cpi", "idl", "init-if-needed"], version = "0.27.0" }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 toml = "0.5.8"
