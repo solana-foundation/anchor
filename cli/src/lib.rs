@@ -3051,23 +3051,31 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     let target_dir = cfg_parent.join("target");
     let deploy_dir = target_dir.join("deploy");
 
-    for entry in fs::read_dir(target_dir)? {
-        let path = entry?.path();
-        if path.is_dir() && path != deploy_dir {
-            fs::remove_dir_all(&path)
-                .map_err(|e| anyhow!("Could not remove directory {}: {}", path.display(), e))?;
-        } else if path.is_file() {
-            fs::remove_file(&path)
-                .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+    if target_dir.exists() {
+        for entry in fs::read_dir(target_dir)? {
+            let path = entry?.path();
+            if path.is_dir() && path != deploy_dir {
+                fs::remove_dir_all(&path)
+                    .map_err(|e| anyhow!("Could not remove directory {}: {}", path.display(), e))?;
+            } else if path.is_file() {
+                fs::remove_file(&path)
+                    .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+            }
         }
+    } else {
+        println!("skipping target directory: not found")
     }
 
-    for file in fs::read_dir(deploy_dir)? {
-        let path = file?.path();
-        if path.extension() != Some(&OsString::from("json")) {
-            fs::remove_file(&path)
-                .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+    if deploy_dir.exists() {
+        for file in fs::read_dir(deploy_dir)? {
+            let path = file?.path();
+            if path.extension() != Some(&OsString::from("json")) {
+                fs::remove_file(&path)
+                    .map_err(|e| anyhow!("Could not remove file {}: {}", path.display(), e))?;
+            }
         }
+    } else {
+        println!("skipping deploy directory: not found")
     }
 
     Ok(())
