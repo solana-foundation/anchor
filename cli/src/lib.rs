@@ -14,6 +14,7 @@ use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use heck::{ToKebabCase, ToSnakeCase};
+use regex::RegexBuilder;
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
 use semver::{Version, VersionReq};
@@ -323,7 +324,14 @@ pub enum Command {
 
 #[derive(Debug, Parser)]
 pub enum KeysCommand {
+    /// List all of the program keys.
     List,
+    /// Sync the program's `declare_id!` pubkey with the program's actual pubkey.
+    Sync {
+        /// Only sync the given program instead of all programs
+        #[clap(short, long)]
+        program_name: Option<String>,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -3763,6 +3771,7 @@ fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
 fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
     match cmd {
         KeysCommand::List => keys_list(cfg_override),
+        KeysCommand::Sync { program_name } => keys_sync(cfg_override, program_name),
     }
 }
 
@@ -3772,6 +3781,81 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
             let pubkey = program.pubkey()?;
             println!("{}: {}", program.lib_name, pubkey);
         }
+        Ok(())
+    })
+}
+
+/// Sync the program's `declare_id!` pubkey with the pubkey from `target/deploy/<KEYPAIR>.json`.
+fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Result<()> {
+    with_workspace(cfg_override, |cfg| {
+        let programs = cfg.read_all_programs()?;
+        let programs = match program_name {
+            Some(program_name) => vec![programs
+                .into_iter()
+                .find(|program| program.lib_name == program_name)
+                .ok_or_else(|| anyhow!("`{program_name}` is not found"))?],
+            None => programs,
+        };
+
+        let declare_id_regex = RegexBuilder::new(r#"^(([\w]+::)*)declare_id!\("(\w*)"\)"#)
+            .multi_line(true)
+            .build()
+            .unwrap();
+
+        for program in programs {
+            // Get the pubkey from the keypair file
+            let actual_program_id = program.pubkey()?.to_string();
+
+            // Handle declaration in program files
+            let src_path = program.path.join("src");
+            let files_to_check = vec![src_path.join("lib.rs"), src_path.join("id.rs")];
+
+            for path in files_to_check {
+                let mut content = match fs::read_to_string(&path) {
+                    Ok(content) => content,
+                    Err(_) => continue,
+                };
+
+                let incorrect_program_id = declare_id_regex
+                    .captures(&content)
+                    .and_then(|captures| captures.get(3))
+                    .filter(|program_id_match| program_id_match.as_str() != actual_program_id);
+                if let Some(program_id_match) = incorrect_program_id {
+                    println!("Found incorrect program id declaration in {path:?}");
+
+                    // Update the program id
+                    content.replace_range(program_id_match.range(), &actual_program_id);
+                    fs::write(&path, content)?;
+
+                    println!("Updated to {actual_program_id}\n");
+                    break;
+                }
+            }
+
+            // Handle declaration in Anchor.toml
+            'outer: for programs in cfg.programs.values_mut() {
+                for (name, mut deployment) in programs {
+                    // Skip other programs
+                    if name != &program.lib_name {
+                        continue;
+                    }
+
+                    if deployment.address.to_string() != actual_program_id {
+                        println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
+
+                        // Update the program id
+                        deployment.address = Pubkey::from_str(&actual_program_id).unwrap();
+                        fs::write(cfg.path(), cfg.to_string())?;
+
+                        println!("Updated to {actual_program_id}\n");
+                        break 'outer;
+                    }
+                }
+            }
+        }
+
+        println!("All program id declarations are synced.");
+
         Ok(())
     })
 }

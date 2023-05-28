@@ -40,6 +40,7 @@ dirs = "4.0"
 heck = "0.4.0"
 flate2 = "1.0.19"
 tar = "0.4.35"
+regex = "1.8.3"
 reqwest = { version = "0.11.4", default-features = false, features = ["multipart", "blocking", "rustls-tls"] }
 tokio = "1.24"
 pathdiff = "0.2.0"
