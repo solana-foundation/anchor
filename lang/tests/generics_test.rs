@@ -47,6 +47,10 @@ impl<const N: usize> BorshDeserialize for WrappedU8Array<N> {
     fn deserialize(_buf: &mut &[u8]) -> borsh::maybestd::io::Result<Self> {
         todo!()
     }
+
+    fn deserialize_reader<R: std::io::Read>(_reader: &mut R) -> std::io::Result<Self> {
+        todo!()
+    }
 }
 impl<const N: usize> Owner for WrappedU8Array<N> {
     fn owner() -> Pubkey {

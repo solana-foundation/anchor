@@ -332,33 +332,34 @@ jobs:
   #     - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
   #     - run: cd tests/misc && anchor test --skip-lint
 
-  test-anchor-init:
-    needs: setup-anchor-cli
-    name: Test Anchor Init
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup/
-      - uses: ./.github/actions/setup-ts/
-      - uses: ./.github/actions/setup-solana/
+  # TODO: Re-enable after releasing `0.28.0`. See https://github.com/coral-xyz/anchor/pull/2512
+  # test-anchor-init:
+  #   needs: setup-anchor-cli
+  #   name: Test Anchor Init
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/setup/
+  #     - uses: ./.github/actions/setup-ts/
+  #     - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: Cache Cargo registry + index
-        id: cache-anchor
-        with:
-          path: ${{ env.CARGO_CACHE_PATH }}
-          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: Cache Cargo registry + index
+  #       id: cache-anchor
+  #       with:
+  #         path: ${{ env.CARGO_CACHE_PATH }}
+  #         key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: ${{ env.ANCHOR_BINARY_NAME }}
-          path: ~/.cargo/bin/
-      - run: chmod +x ~/.cargo/bin/anchor
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: ${{ env.ANCHOR_BINARY_NAME }}
+  #         path: ~/.cargo/bin/
+  #     - run: chmod +x ~/.cargo/bin/anchor
 
-      - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
-      - uses: ./.github/actions/git-diff/
+  #     - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
+  #     - uses: ./.github/actions/git-diff/
 
   test-programs:
     needs: setup-anchor-cli
@@ -383,7 +384,9 @@ jobs:
             path: tests/multisig
           # - cmd: cd tests/lockup && anchor test --skip-lint
           #   path: tests/lockup
-          - cmd: cd tests/swap/deps/openbook-dex/dex && cargo build-bpf -- --locked && cd ../../../ && anchor test --skip-lint
+          # TODO: Remove `1.14.18` installation if/when https://github.com/solana-labs/solana/issues/31960 is solved
+          # `swap` tests don't work with Solana `1.16.0`, downgrade to `1.14.18`
+          - cmd: cd tests/swap/deps/openbook-dex/dex && solana-install init 1.14.18 && cargo build-bpf -- --locked && cd ../../../ && solana-install init $SOLANA_CLI_VERSION && anchor test --skip-lint
             path: tests/swap
           - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
             path: tests/escrow
@@ -411,7 +414,9 @@ jobs:
             path: tests/ido-pool
           # - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
           #   path: tests/cfo
-          - cmd: cd tests/auction-house && yarn --frozen-lockfile && anchor test --skip-lint && git checkout Cargo.lock
+          # TODO: Remove `1.14.18` installation if/when https://github.com/solana-labs/solana/issues/31960 is solved
+          # `auction-house` tests don't work with Solana `1.16.0`, downgrade to `1.14.18`
+          - cmd: cd tests/auction-house && solana-install init 1.14.18 && yarn --frozen-lockfile && anchor test --skip-lint && git checkout Cargo.lock
             path: tests/auction-house
           - cmd: cd tests/floats && yarn --frozen-lockfile && anchor test --skip-lint && npx tsc --noEmit
             path: tests/floats

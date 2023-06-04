@@ -22,16 +22,10 @@ dex = ["serum_dex"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.27.0", features = ["derive"] }
-borsh = { version = "^0.9", optional = true }
+borsh = { version = "<0.11.0", optional = true }
 serum_dex = { git = "https://github.com/openbook-dex/program/", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
-solana-program = "1.14.16"
+solana-program = "<1.17.0"
 spl-token = { version = "3.5.0", features = ["no-entrypoint"], optional = true }
 spl-token-2022 = { version = "0.6.1", features = ["no-entrypoint"], optional = true }
 spl-associated-token-account = { version = "1.1.1", features = ["no-entrypoint"], optional = true }
 mpl-token-metadata = { version = "^1.11.0", optional = true, features = ["no-entrypoint"] }
-
-# TODO: Remove after Solana release v1.16
-# Latest solana version(1.14.17) as of 2023-05-01 comes with rustc 1.62.0-dev but MSRV for latest
-# version of this crate is 1.64.0. See https://github.com/solana-labs/solana/pull/31418
-winnow = "=0.4.1"
-toml_datetime = "=0.6.1"

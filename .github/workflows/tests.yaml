@@ -14,7 +14,7 @@ jobs:
     uses: ./.github/workflows/reusable-tests.yaml
     with:
       cache: true
-      solana_cli_version: 1.14.16
+      solana_cli_version: 1.16.0
       node_version: 17.0.1
       cargo_profile: debug
       anchor_binary_name: anchor-binary
