@@ -35,7 +35,7 @@ use syn::{
 /// }
 /// ```
 #[proc_macro_derive(InitSpace, attributes(max_len))]
-pub fn derive_anchor_deserialize(item: TokenStream) -> TokenStream {
+pub fn derive_init_space(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let name = input.ident;
