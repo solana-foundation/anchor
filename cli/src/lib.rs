@@ -642,14 +642,15 @@ fn init(
     }
 
     let mut localnet = BTreeMap::new();
+    let program_id = if solidity {
+        solidity_template::default_program_id()
+    } else {
+        rust_template::get_or_create_program_id(&rust_name)
+    };
     localnet.insert(
         rust_name,
         ProgramDeployment {
-            address: if solidity {
-                solidity_template::default_program_id()
-            } else {
-                rust_template::default_program_id()
-            },
+            address: program_id,
             path: None,
             idl: None,
         },

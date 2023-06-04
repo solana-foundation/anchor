@@ -3,13 +3,26 @@ use crate::VERSION;
 use anchor_syn::idl::Idl;
 use anyhow::Result;
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
-use solana_sdk::pubkey::Pubkey;
-use std::fmt::Write;
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::{read_keypair_file, write_keypair_file, Keypair},
+    signer::Signer,
+};
+use std::{fmt::Write, path::Path};
 
-pub fn default_program_id() -> Pubkey {
-    "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-        .parse()
-        .unwrap()
+/// Read the program keypair file or create a new one if it doesn't exist.
+pub fn get_or_create_program_id(name: &str) -> Pubkey {
+    let keypair_path = Path::new("target")
+        .join("deploy")
+        .join(format!("{}-keypair.json", name.to_snake_case()));
+
+    read_keypair_file(&keypair_path)
+        .unwrap_or_else(|_| {
+            let keypair = Keypair::new();
+            write_keypair_file(&keypair, keypair_path).expect("Unable to create program keypair");
+            keypair
+        })
+        .pubkey()
 }
 
 pub fn virtual_manifest() -> &'static str {
@@ -192,7 +205,7 @@ pub mod {} {{
 #[derive(Accounts)]
 pub struct Initialize {{}}
 "#,
-        default_program_id(),
+        get_or_create_program_id(name),
         name.to_snake_case(),
     )
 }
