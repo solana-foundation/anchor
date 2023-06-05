@@ -28,6 +28,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Fix inability to use identifiers `program_id`, `accounts`, `ix_data`, `remaining_accounts` in instruction arguments ([#2464](https://github.com/coral-xyz/anchor/pull/2464))
 - cli: Fix incorrect `metadata.address` generation in IDL after deploying with a custom keypair ([#2485](https://github.com/coral-xyz/anchor/pull/2485))
 - cli: IDL commands no longer hang when the payer doesn't have funds to pay for the transaction fee ([#2492](https://github.com/coral-xyz/anchor/pull/2492))
+- cli: Fix `anchor new` not updating `Anchor.toml` ([#2516](https://github.com/coral-xyz/anchor/pull/2516)).
 
 ### Breaking
 
