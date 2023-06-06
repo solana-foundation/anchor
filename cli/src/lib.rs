@@ -3076,7 +3076,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
 
 fn deploy(
     cfg_override: &ConfigOverride,
-    program_str: Option<String>,
+    program_name: Option<String>,
     program_keypair: Option<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3088,91 +3088,62 @@ fn deploy(
         println!("Deploying cluster: {}", url);
         println!("Upgrade authority: {}", keypair);
 
-        let mut program_found = true; // Flag to track if the specified program is found
+        for mut program in cfg.get_programs(program_name)? {
+            let binary_path = program.binary_path().display().to_string();
 
-        for mut program in cfg.read_all_programs()? {
-            // If a program string is provided
-            if let Some(single_prog_str) = &program_str {
-                let program_name = program.path.file_name().unwrap().to_str().unwrap();
+            println!("Deploying program {:?}...", program.lib_name);
+            println!("Program path: {}...", binary_path);
 
-                // Check if the provided program string matches the program name
-                if single_prog_str.as_str() != program_name {
-                    program_found = false;
-                } else {
-                    program_found = true;
-                }
+            let (program_keypair_filepath, program_id) = match &program_keypair {
+                Some(path) => (
+                    path.clone(),
+                    solana_sdk::signature::read_keypair_file(path)
+                        .map_err(|_| anyhow!("Unable to read keypair file"))?
+                        .pubkey(),
+                ),
+                None => (
+                    program.keypair_file()?.path().display().to_string(),
+                    program.pubkey()?,
+                ),
+            };
+
+            // Send deploy transactions using the Solana CLI
+            let exit = std::process::Command::new("solana")
+                .arg("program")
+                .arg("deploy")
+                .arg("--url")
+                .arg(&url)
+                .arg("--keypair")
+                .arg(&keypair)
+                .arg("--program-id")
+                .arg(strip_workspace_prefix(program_keypair_filepath))
+                .arg(strip_workspace_prefix(binary_path))
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()
+                .expect("Must deploy");
+
+            // Check if deployment was successful
+            if !exit.status.success() {
+                println!("There was a problem deploying: {exit:?}.");
+                std::process::exit(exit.status.code().unwrap_or(1));
             }
 
-            if program_found {
-                let binary_path = program.binary_path().display().to_string();
+            if let Some(mut idl) = program.idl.as_mut() {
+                // Add program address to the IDL.
+                idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
+                    address: program_id.to_string(),
+                })?);
 
-                println!(
-                    "Deploying program {:?}...",
-                    program.path.file_name().unwrap().to_str().unwrap()
-                );
-                println!("Program path: {}...", binary_path);
-
-                let (program_keypair_filepath, program_id) = match &program_keypair {
-                    Some(path) => (
-                        path.clone(),
-                        solana_sdk::signature::read_keypair_file(path)
-                            .map_err(|_| anyhow!("Unable to read keypair file"))?
-                            .pubkey(),
-                    ),
-                    None => (
-                        program.keypair_file()?.path().display().to_string(),
-                        program.pubkey()?,
-                    ),
-                };
-
-                // Send deploy transactions using the Solana CLI
-                let exit = std::process::Command::new("solana")
-                    .arg("program")
-                    .arg("deploy")
-                    .arg("--url")
-                    .arg(&url)
-                    .arg("--keypair")
-                    .arg(&keypair)
-                    .arg("--program-id")
-                    .arg(strip_workspace_prefix(program_keypair_filepath))
-                    .arg(strip_workspace_prefix(binary_path))
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .output()
-                    .expect("Must deploy");
-
-                // Check if deployment was successful
-                if !exit.status.success() {
-                    println!("There was a problem deploying: {exit:?}.");
-                    std::process::exit(exit.status.code().unwrap_or(1));
-                }
-
-                if let Some(mut idl) = program.idl.as_mut() {
-                    // Add program address to the IDL.
-                    idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
-                        address: program_id.to_string(),
-                    })?);
-
-                    // Persist it.
-                    let idl_out = PathBuf::from("target/idl")
-                        .join(&idl.name)
-                        .with_extension("json");
-                    write_idl(idl, OutFile::File(idl_out))?;
-                }
-            }
-
-            // Break the loop if a specific programme is discovered and program_str is not None.
-            if program_str.is_some() && program_found {
-                break;
+                // Persist it.
+                let idl_out = PathBuf::from("target/idl")
+                    .join(&idl.name)
+                    .with_extension("json");
+                write_idl(idl, OutFile::File(idl_out))?;
             }
         }
 
-        // If a program string is provided but not found
-        if program_str.is_some() && !program_found {
-            println!("Specified program not found");
-        } else {
-            println!("Deploy success");
-        }
+        println!("Deploy success");
 
         Ok(())
     })
@@ -3582,12 +3553,10 @@ fn publish(
     // Discover the various workspace configs.
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
-    let program = cfg
-        .get_program(&program_name)?
-        .ok_or_else(|| anyhow!("Workspace member not found"))?;
+    let program = cfg.get_program(&program_name)?;
 
     let program_cargo_lock = pathdiff::diff_paths(
-        program.path().join("Cargo.lock"),
+        program.path.join("Cargo.lock"),
         cfg.path().parent().unwrap(),
     )
     .ok_or_else(|| anyhow!("Unable to diff Cargo.lock path"))?;
@@ -3789,21 +3758,12 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
 /// Sync the program's `declare_id!` pubkey with the pubkey from `target/deploy/<KEYPAIR>.json`.
 fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
-        let programs = cfg.read_all_programs()?;
-        let programs = match program_name {
-            Some(program_name) => vec![programs
-                .into_iter()
-                .find(|program| program.lib_name == program_name)
-                .ok_or_else(|| anyhow!("`{program_name}` is not found"))?],
-            None => programs,
-        };
-
         let declare_id_regex = RegexBuilder::new(r#"^(([\w]+::)*)declare_id!\("(\w*)"\)"#)
             .multi_line(true)
             .build()
             .unwrap();
 
-        for program in programs {
+        for program in cfg.get_programs(program_name)? {
             // Get the pubkey from the keypair file
             let actual_program_id = program.pubkey()?.to_string();
 

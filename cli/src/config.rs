@@ -263,6 +263,33 @@ impl WithPath<Config> {
         Ok(r)
     }
 
+    /// Read and get all the programs from the workspace.
+    ///
+    /// This method will only return the given program if `name` exists.
+    pub fn get_programs(&self, name: Option<String>) -> Result<Vec<Program>> {
+        let programs = self.read_all_programs()?;
+        let programs = match name {
+            Some(name) => vec![programs
+                .into_iter()
+                .find(|program| {
+                    name == program.lib_name
+                        || name == program.path.file_name().unwrap().to_str().unwrap()
+                })
+                .ok_or_else(|| anyhow!("Program {name} not found"))?],
+            None => programs,
+        };
+
+        Ok(programs)
+    }
+
+    /// Get the specified program from the workspace.
+    pub fn get_program(&self, name: &str) -> Result<Program> {
+        self.get_programs(Some(name.to_owned()))?
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow!("Expected a program"))
+    }
+
     pub fn canonicalize_workspace(&self) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
         let members = self
             .workspace
@@ -295,29 +322,6 @@ impl WithPath<Config> {
             })
             .collect();
         Ok((members, exclude))
-    }
-
-    pub fn get_program(&self, name: &str) -> Result<Option<WithPath<Program>>> {
-        for program in self.read_all_programs()? {
-            let cargo_toml = program.path.join("Cargo.toml");
-            if !cargo_toml.exists() {
-                return Err(anyhow!(
-                    "Did not find Cargo.toml at the path: {}",
-                    program.path.display()
-                ));
-            }
-            let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
-            if name == p_lib_name {
-                let path = self
-                    .path()
-                    .parent()
-                    .unwrap()
-                    .canonicalize()?
-                    .join(&program.path);
-                return Ok(Some(WithPath::new(program, path)));
-            }
-        }
-        Ok(None)
     }
 }
 
