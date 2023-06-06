@@ -9,6 +9,7 @@ description = "Rust client for Anchor programs"
 
 [features]
 debug = []
+async = []
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.27.0" }
@@ -20,3 +21,5 @@ solana-sdk = "<1.17.0"
 solana-account-decoder = "<1.17.0"
 thiserror = "1.0.20"
 url = "2.2.2"
+tokio = { version = "1", features = ["rt", "sync"] }
+futures = { version = "0.3.28" }

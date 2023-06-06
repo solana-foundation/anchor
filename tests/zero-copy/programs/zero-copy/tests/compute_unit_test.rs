@@ -46,7 +46,7 @@ async fn update_foo() {
         Rc::new(Keypair::new()),
         CommitmentConfig::processed(),
     );
-    let program = client.program(zero_copy::id());
+    let program = client.program(zero_copy::id()).unwrap();
     let update_ix = program
         .request()
         .accounts(zero_copy::accounts::UpdateFoo {

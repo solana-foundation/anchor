@@ -7,6 +7,9 @@ edition = "2021"
 
 [workspace]
 
+[features]
+async = ["anchor-client/async"]
+
 [dependencies]
 anchor-client = { path = "../", features = ["debug"] }
 basic-2 = { path = "../../examples/tutorial/basic-2/programs/basic-2", features = ["no-entrypoint"] }
@@ -17,4 +20,5 @@ events = { path = "../../tests/events/programs/events", features = ["no-entrypoi
 shellexpand = "2.1.0"
 anyhow = "1.0.32"
 clap = { version = "4.2.4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
 solana-sdk = "<1.17.0"
