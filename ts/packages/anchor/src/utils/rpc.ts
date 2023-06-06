@@ -195,7 +195,7 @@ export async function simulateTransaction(
   if ("error" in res) {
     let logs;
     if ("data" in res.error) {
-      logs = res.error.data.logs;
+      logs = res.error.data?.logs;
       if (logs && Array.isArray(logs)) {
         const traceIndent = "\n    ";
         const logTrace = traceIndent + logs.join(traceIndent);
