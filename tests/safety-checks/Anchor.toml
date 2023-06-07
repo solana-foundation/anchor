@@ -2,9 +2,6 @@
 unchecked_account = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 account_info = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
-[registry]
-url = "https://anchor.projectserum.com"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"

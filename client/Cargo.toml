@@ -1,7 +1,7 @@
 [package]
 name = "anchor-client"
 version = "0.27.0"
-authors = ["Serum Foundation <foundation@projectserum.com>"]
+authors = ["Anchor Maintainers <accounts@200ms.io>"]
 rust-version = "1.60"
 edition = "2021"
 license = "Apache-2.0"

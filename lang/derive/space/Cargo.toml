@@ -1,7 +1,7 @@
 [package]
 name = "anchor-derive-space"
 version = "0.27.0"
-authors = ["Serum Foundation <foundation@projectserum.com>"]
+authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
 description = "Anchor Derive macro to automatically calculate the size of a structure or an enum"

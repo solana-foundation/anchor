@@ -1,9 +1,6 @@
 [programs.localnet]
 bpf_upgradeable_state = "Cum9tTyj5HwcEiAmhgaS7Bbj4UczCwsucrCkxRECzM4e"
 
-[registry]
-url = "https://anchor.projectserum.com"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"

@@ -3,9 +3,6 @@ native_system = "9NxAd91hhJ3ZBTHytYP894y4ESRKG7n8VbLgdyYGJFLB"
 spl_associated_token = "4dUGnkre6uBhX1abB4ofkoecGN4aDXdiWSaWLUjVw6bh"
 spl_token = "FmpfPa1LHEYRbueNMnwNVd2JvyQ89GXGWdyZEXNNKV8w"
 
-[registry]
-url = "https://anchor.projectserum.com"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
