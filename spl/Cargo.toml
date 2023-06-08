@@ -22,10 +22,10 @@ dex = ["serum_dex"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.27.0", features = ["derive"] }
-borsh = { version = "<0.11.0", optional = true }
+borsh = { version = ">=0.9, <0.11", optional = true }
+mpl-token-metadata = { version = "1.11", optional = true, features = ["no-entrypoint"] }
 serum_dex = { git = "https://github.com/openbook-dex/program/", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
-solana-program = "<1.17.0"
-spl-token = { version = "3.5.0", features = ["no-entrypoint"], optional = true }
-spl-token-2022 = { version = "0.6.1", features = ["no-entrypoint"], optional = true }
-spl-associated-token-account = { version = "1.1.1", features = ["no-entrypoint"], optional = true }
-mpl-token-metadata = { version = "^1.11.0", optional = true, features = ["no-entrypoint"] }
+solana-program = ">=1.13, <1.17"
+spl-associated-token-account = { version = "1", features = ["no-entrypoint"], optional = true }
+spl-token = { version = "3.5", features = ["no-entrypoint"], optional = true }
+spl-token-2022 = { version = "0.6", features = ["no-entrypoint"], optional = true }

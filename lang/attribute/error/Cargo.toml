@@ -15,7 +15,7 @@ proc-macro = true
 anchor-debug = ["anchor-syn/anchor-debug"]
 
 [dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "1.0.60", features = ["full"] }
 anchor-syn = { path = "../../syn", version = "0.27.0" }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["full"] }

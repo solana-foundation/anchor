@@ -13,13 +13,13 @@ async = []
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.27.0" }
-anyhow = "1.0.32"
-regex = "1.4.5"
-serde = { version = "1.0.122", features = ["derive"] }
-solana-client = "1.14.7"
-solana-sdk = "<1.17.0"
-solana-account-decoder = "<1.17.0"
-thiserror = "1.0.20"
-url = "2.2.2"
+anyhow = "1"
+futures = { version = "0.3" }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+solana-client = ">=1.13, <1.17"
+solana-sdk = ">=1.13, <1.17"
+solana-account-decoder = ">=1.13, <1.17"
+thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
-futures = { version = "0.3.28" }
+url = "2"
