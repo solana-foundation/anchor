@@ -2,7 +2,7 @@ WORKDIR=$(PWD)
 #
 # Anchor version.
 #
-ANCHOR_CLI=v0.27.0
+ANCHOR_CLI=v0.28.0
 #
 # Solana toolchain.
 #

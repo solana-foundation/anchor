@@ -8,7 +8,7 @@ pub use spl_token_2022;
 pub use spl_token_2022::ID;
 
 #[deprecated(
-    since = "0.27.0",
+    since = "0.28.0",
     note = "please use `transfer_checked` or `transfer_checked_with_fee` instead"
 )]
 pub fn transfer<'info>(

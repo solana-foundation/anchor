@@ -1,6 +1,6 @@
 [package]
 name = "anchor-derive-accounts"
-version = "0.27.0"
+version = "0.28.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
@@ -22,4 +22,4 @@ anyhow = "1"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
-anchor-syn = { path = "../../syn", version = "0.27.0" }
+anchor-syn = { path = "../../syn", version = "0.28.0" }

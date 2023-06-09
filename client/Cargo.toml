@@ -1,6 +1,6 @@
 [package]
 name = "anchor-client"
-version = "0.27.0"
+version = "0.28.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 rust-version = "1.60"
 edition = "2021"
@@ -12,14 +12,14 @@ debug = []
 async = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.27.0" }
+anchor-lang = { path = "../lang", version = "0.28.0" }
 anyhow = "1"
 futures = { version = "0.3" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-solana-client = ">=1.13, <1.17"
-solana-sdk = ">=1.13, <1.17"
-solana-account-decoder = ">=1.13, <1.17"
+solana-client = ">=1.14, <1.17"
+solana-sdk = ">=1.14, <1.17"
+solana-account-decoder = ">=1.14, <1.17"
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"

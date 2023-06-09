@@ -20,7 +20,7 @@ runs:
         path: |
           ./ts/dist/
         key: solana-${{ runner.os }}-v0000-${{ env.NODE_VERSION }}-${{ hashFiles('./ts/**/*.ts') }}
-    - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build && cd ../../../
+    - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build && yarn link && cd ../../../
       shell: bash
     - run: cd ts/packages/anchor && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../../../
       shell: bash
@@ -28,7 +28,7 @@ runs:
       shell: bash
     - run: cd ts/packages/spl-token && yarn --frozen-lockfile && yarn build:node && yarn link && cd ../../../
       shell: bash
-    - run: cd examples/tutorial && yarn link @coral-xyz/anchor && yarn --frozen-lockfile && cd ../../
+    - run: cd examples/tutorial && yarn link @coral-xyz/anchor @coral-xyz/borsh && yarn --frozen-lockfile && cd ../../
       shell: bash
-    - run: cd tests && yarn link @coral-xyz/anchor && yarn link @coral-xyz/spl-associated-token-account && yarn link @coral-xyz/spl-token && yarn --frozen-lockfile && cd ..
+    - run: cd tests && yarn link @coral-xyz/anchor @coral-xyz/borsh @coral-xyz/spl-associated-token-account @coral-xyz/spl-token && yarn --frozen-lockfile && cd ..
       shell: bash

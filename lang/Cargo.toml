@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang"
-version = "0.27.0"
+version = "0.28.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 rust-version = "1.60"
@@ -26,20 +26,20 @@ anchor-debug = [
 ]
 
 [dependencies]
-anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.27.0" }
-anchor-attribute-account = { path = "./attribute/account", version = "0.27.0" }
-anchor-attribute-constant = { path = "./attribute/constant", version = "0.27.0" }
-anchor-attribute-error = { path = "./attribute/error", version = "0.27.0" }
-anchor-attribute-event = { path = "./attribute/event", version = "0.27.0" }
-anchor-attribute-program = { path = "./attribute/program", version = "0.27.0" }
-anchor-derive-accounts = { path = "./derive/accounts", version = "0.27.0" }
-anchor-derive-space = { path = "./derive/space", version = "0.27.0" }
+anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.28.0" }
+anchor-attribute-account = { path = "./attribute/account", version = "0.28.0" }
+anchor-attribute-constant = { path = "./attribute/constant", version = "0.28.0" }
+anchor-attribute-error = { path = "./attribute/error", version = "0.28.0" }
+anchor-attribute-event = { path = "./attribute/event", version = "0.28.0" }
+anchor-attribute-program = { path = "./attribute/program", version = "0.28.0" }
+anchor-derive-accounts = { path = "./derive/accounts", version = "0.28.0" }
+anchor-derive-space = { path = "./derive/space", version = "0.28.0" }
 arrayref = "0.3"
 base64 = "0.13"
 bincode = "1"
 borsh = ">=0.9, <0.11"
 bytemuck = "1"
-solana-program = ">=1.13, <1.17"
+solana-program = ">=1.14, <1.17"
 thiserror = "1"
 
 # TODO: Remove. This crate has been added to fix a build error with the 1.16.0 release.

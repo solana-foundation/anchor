@@ -1,9 +1,4 @@
 import * as anchor from "@coral-xyz/anchor";
-import {
-  TransactionInstruction,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
 import { Basic5 } from "../target/types/basic_5";
 
 describe("basic-5", () => {
@@ -64,7 +59,7 @@ describe("basic-5", () => {
       .instruction();
 
     // Array of instructions
-    const instructions: TransactionInstruction[] = [
+    const instructions: anchor.web3.TransactionInstruction[] = [
       createInstruction,
       walkInstruction,
       runInstruction,
@@ -75,7 +70,9 @@ describe("basic-5", () => {
     await createAndSendV0Tx(instructions);
   });
 
-  async function createAndSendV0Tx(txInstructions: TransactionInstruction[]) {
+  async function createAndSendV0Tx(
+    txInstructions: anchor.web3.TransactionInstruction[]
+  ) {
     // Step 1 - Fetch the latest blockhash
     let latestBlockhash = await provider.connection.getLatestBlockhash(
       "confirmed"
@@ -86,13 +83,13 @@ describe("basic-5", () => {
     );
 
     // Step 2 - Generate Transaction Message
-    const messageV0 = new TransactionMessage({
+    const messageV0 = new anchor.web3.TransactionMessage({
       payerKey: user,
       recentBlockhash: latestBlockhash.blockhash,
       instructions: txInstructions,
     }).compileToV0Message();
     console.log("   ✅ - Compiled Transaction Message");
-    const transaction = new VersionedTransaction(messageV0);
+    const transaction = new anchor.web3.VersionedTransaction(messageV0);
 
     // Step 3 - Sign your transaction with the required `Signers`
     provider.wallet.signTransaction(transaction);
