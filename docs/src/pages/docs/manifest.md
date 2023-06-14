@@ -34,7 +34,7 @@ Example:
 
 ```
 [registry]
-url = "https://anchor.projectserum.com"
+url = "https://api.apr.dev"
 ```
 
 ## features

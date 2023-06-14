@@ -10,7 +10,7 @@ SOLANA_CLI=v1.16.0
 #
 # Build version should match the Anchor cli version.
 #
-IMG_ORG ?= projectserum
+IMG_ORG ?= backpackapp
 IMG_VER ?= $(ANCHOR_CLI)
 
 .PHONY: build build-push build-shell publish

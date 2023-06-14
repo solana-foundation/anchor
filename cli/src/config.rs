@@ -439,7 +439,7 @@ impl Config {
             .anchor_version
             .clone()
             .unwrap_or_else(|| crate::DOCKER_BUILDER_VERSION.to_string());
-        format!("projectserum/build:v{ver}")
+        format!("backpackapp/build:v{ver}")
     }
 
     pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {
