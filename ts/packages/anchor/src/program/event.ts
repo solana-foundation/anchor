@@ -1,5 +1,4 @@
 import { PublicKey } from "@solana/web3.js";
-import * as assert from "assert";
 import { IdlEvent, IdlEventField } from "../idl.js";
 import { Coder } from "../coder/index.js";
 import { DecodeType } from "./namespace/types.js";
@@ -144,8 +143,13 @@ export class EventManager {
     }
 
     // Kill the websocket connection if all listeners have been removed.
-    if (this._eventCallbacks.size == 0) {
-      assert.ok(this._eventListeners.size === 0);
+    if (this._eventCallbacks.size === 0) {
+      if (this._eventListeners.size !== 0) {
+        throw new Error(
+          `Expected event listeners size to be 0 but got ${this._eventListeners.size}`
+        );
+      }
+
       if (this._onLogsSubscriptionId !== undefined) {
         await this._provider!.connection.removeOnLogsListener(
           this._onLogsSubscriptionId
@@ -273,7 +277,9 @@ class ExecutionContext {
   stack: string[] = [];
 
   program(): string {
-    assert.ok(this.stack.length > 0);
+    if (!this.stack.length) {
+      throw new Error("Expected the stack to have elements");
+    }
     return this.stack[this.stack.length - 1];
   }
 
@@ -282,7 +288,9 @@ class ExecutionContext {
   }
 
   pop() {
-    assert.ok(this.stack.length > 0);
+    if (!this.stack.length) {
+      throw new Error("Expected the stack to have elements");
+    }
     this.stack.pop();
   }
 }

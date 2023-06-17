@@ -35,7 +35,6 @@ export default {
   external: [
     "@coral-xyz/borsh",
     "@solana/web3.js",
-    "assert",
     "base64-js",
     "bn.js",
     "bs58",
