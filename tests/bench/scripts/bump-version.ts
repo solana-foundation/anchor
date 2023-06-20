@@ -3,15 +3,26 @@
  * version to a new version and adding a new `Unreleased` version.
  */
 
-import { BenchData } from "./utils";
+import {
+  ANCHOR_VERSION_ARG,
+  BenchData,
+  LockFile,
+  getVersionFromArgs,
+} from "./utils";
 
 (async () => {
-  const newVersion = process.argv[2];
+  const newVersion = getVersionFromArgs();
 
-  if (!newVersion) {
-    console.error("Usage: anchor run bump-version -- <VERSION>");
-    process.exit(1);
+  if (newVersion === "unreleased") {
+    console.error(
+      `Usage: anchor run bump-version ${ANCHOR_VERSION_ARG} <VERSION>`
+    );
+    process.exitCode = 1;
+    return;
   }
+
+  // Cache lock file in ./locks
+  await LockFile.cache(newVersion);
 
   // Bump bench data
   const bench = await BenchData.open();

@@ -43,7 +43,7 @@ pushd tests && yarn && popd
 pushd examples && yarn && pushd tutorial && yarn && popd && popd
 
 # Bump benchmark files
-pushd tests/bench && anchor run bump-version -- $version && popd
+pushd tests/bench && anchor run bump-version -- --anchor-version $version && popd
 
 echo $version > VERSION
 

@@ -16,46 +16,46 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | accountInfo1                | 1015          | -   |
 | accountInfo2                | 1475          | -   |
 | accountInfo4                | 1964          | -   |
-| accountInfo8                | 3856          | -   |
+| accountInfo8                | 3841          | -   |
 | accountEmptyInit1           | 5817          | -   |
 | accountEmpty1               | 1149          | -   |
 | accountEmptyInit2           | 10402         | -   |
 | accountEmpty2               | 1754          | -   |
-| accountEmptyInit4           | 19557         | -   |
+| accountEmptyInit4           | 19508         | -   |
 | accountEmpty4               | 2540          | -   |
-| accountEmptyInit8           | 37541         | -   |
-| accountEmpty8               | 5043          | -   |
+| accountEmptyInit8           | 37265         | -   |
+| accountEmpty8               | 5016          | -   |
 | accountSizedInit1           | 5924          | -   |
 | accountSized1               | 1214          | -   |
-| accountSizedInit2           | 10783         | -   |
+| accountSizedInit2           | 10680         | -   |
 | accountSized2               | 1873          | -   |
-| accountSizedInit4           | 19975         | -   |
-| accountSized4               | 2787          | -   |
-| accountSizedInit8           | 38381         | -   |
-| accountSized8               | 5359          | -   |
+| accountSizedInit4           | 19970         | -   |
+| accountSized4               | 2762          | -   |
+| accountSizedInit8           | 38122         | -   |
+| accountSized8               | 5353          | -   |
 | accountUnsizedInit1         | 6052          | -   |
 | accountUnsized1             | 1338          | -   |
 | accountUnsizedInit2         | 10929         | -   |
 | accountUnsized2             | 1778          | -   |
-| accountUnsizedInit4         | 20495         | -   |
+| accountUnsizedInit4         | 20339         | -   |
 | accountUnsized4             | 3136          | -   |
-| accountUnsizedInit8         | 39419         | -   |
+| accountUnsizedInit8         | 39096         | -   |
 | accountUnsized8             | 5952          | -   |
 | boxedAccountEmptyInit1      | 6034          | -   |
 | boxedAccountEmpty1          | 888           | -   |
 | boxedAccountEmptyInit2      | 10633         | -   |
 | boxedAccountEmpty2          | 1401          | -   |
-| boxedAccountEmptyInit4      | 19500         | -   |
+| boxedAccountEmptyInit4      | 19311         | -   |
 | boxedAccountEmpty4          | 2424          | -   |
-| boxedAccountEmptyInit8      | 37415         | -   |
+| boxedAccountEmptyInit8      | 37136         | -   |
 | boxedAccountEmpty8          | 4659          | -   |
 | boxedAccountSizedInit1      | 6130          | -   |
 | boxedAccountSized1          | 917           | -   |
 | boxedAccountSizedInit2      | 10828         | -   |
 | boxedAccountSized2          | 1463          | -   |
-| boxedAccountSizedInit4      | 19884         | -   |
+| boxedAccountSizedInit4      | 19703         | -   |
 | boxedAccountSized4          | 2543          | -   |
-| boxedAccountSizedInit8      | 38182         | -   |
+| boxedAccountSizedInit8      | 37919         | -   |
 | boxedAccountSized8          | 4898          | -   |
 | boxedAccountUnsizedInit1    | 6240          | -   |
 | boxedAccountUnsized1        | 972           | -   |
@@ -63,9 +63,9 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | boxedAccountUnsized2        | 1570          | -   |
 | boxedAccountUnsizedInit4    | 20138         | -   |
 | boxedAccountUnsized4        | 2768          | -   |
-| boxedAccountUnsizedInit8    | 39118         | -   |
+| boxedAccountUnsizedInit8    | 38791         | -   |
 | boxedAccountUnsized8        | 5347          | -   |
-| boxedInterfaceAccountMint1  | 2299          | -   |
+| boxedInterfaceAccountMint1  | 2296          | -   |
 | boxedInterfaceAccountMint2  | 4129          | -   |
 | boxedInterfaceAccountMint4  | 7783          | -   |
 | boxedInterfaceAccountMint8  | 15281         | -   |
@@ -83,7 +83,7 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | interface1                  | 1059          | -   |
 | interface2                  | 1479          | -   |
 | interface4                  | 1900          | -   |
-| interface8                  | 3651          | -   |
+| interface8                  | 3646          | -   |
 | program1                    | 1053          | -   |
 | program2                    | 1467          | -   |
 | program4                    | 1878          | -   |
@@ -91,15 +91,15 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | signer1                     | 1018          | -   |
 | signer2                     | 1484          | -   |
 | signer4                     | 1984          | -   |
-| signer8                     | 3895          | -   |
+| signer8                     | 3880          | -   |
 | systemAccount1              | 1072          | -   |
 | systemAccount2              | 1590          | -   |
 | systemAccount4              | 2195          | -   |
-| systemAccount8              | 4336          | -   |
+| systemAccount8              | 4305          | -   |
 | uncheckedAccount1           | 1014          | -   |
 | uncheckedAccount2           | 1475          | -   |
 | uncheckedAccount4           | 1965          | -   |
-| uncheckedAccount8           | 3855          | -   |
+| uncheckedAccount8           | 3841          | -   |
 
 ### Notable changes
 
@@ -112,46 +112,46 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | accountInfo1                | 1015          | 🔴 **+6.39%**  |
 | accountInfo2                | 1475          | 🟢 **-5.87%**  |
 | accountInfo4                | 1964          | 🟢 **-4.61%**  |
-| accountInfo8                | 3856          | -              |
+| accountInfo8                | 3841          | -              |
 | accountEmptyInit1           | 5817          | 🟢 **-2.37%**  |
 | accountEmpty1               | 1149          | 🔴 **+5.41%**  |
 | accountEmptyInit2           | 10402         | 🟢 **-1.63%**  |
 | accountEmpty2               | 1754          | 🟢 **-5.29%**  |
-| accountEmptyInit4           | 19557         | -              |
+| accountEmptyInit4           | 19508         | -              |
 | accountEmpty4               | 2540          | 🟢 **-4.01%**  |
-| accountEmptyInit8           | 37541         | -              |
-| accountEmpty8               | 5043          | -              |
+| accountEmptyInit8           | 37265         | -              |
+| accountEmpty8               | 5016          | -              |
 | accountSizedInit1           | 5924          | 🟢 **-2.29%**  |
 | accountSized1               | 1214          | 🔴 **+6.96%**  |
-| accountSizedInit2           | 10783         | -              |
+| accountSizedInit2           | 10680         | -              |
 | accountSized2               | 1873          | 🟢 **-4.73%**  |
-| accountSizedInit4           | 19975         | -              |
-| accountSized4               | 2787          | -              |
-| accountSizedInit8           | 38381         | -              |
-| accountSized8               | 5359          | -              |
+| accountSizedInit4           | 19970         | -              |
+| accountSized4               | 2762          | -              |
+| accountSizedInit8           | 38122         | -              |
+| accountSized8               | 5353          | -              |
 | accountUnsizedInit1         | 6052          | 🟢 **-2.28%**  |
 | accountUnsized1             | 1338          | 🔴 **+7.64%**  |
 | accountUnsizedInit2         | 10929         | 🟢 **-1.02%**  |
 | accountUnsized2             | 1778          | 🟢 **-6.08%**  |
-| accountUnsizedInit4         | 20495         | -              |
+| accountUnsizedInit4         | 20339         | -              |
 | accountUnsized4             | 3136          | 🔴 **+1.03%**  |
-| accountUnsizedInit8         | 39419         | -              |
+| accountUnsizedInit8         | 39096         | -              |
 | accountUnsized8             | 5952          | 🟢 **-1.64%**  |
 | boxedAccountEmptyInit1      | 6034          | 🟢 **-2.05%**  |
 | boxedAccountEmpty1          | 888           | 🟢 **-9.02%**  |
 | boxedAccountEmptyInit2      | 10633         | 🟢 **-1.40%**  |
 | boxedAccountEmpty2          | 1401          | 🟢 **-6.54%**  |
-| boxedAccountEmptyInit4      | 19500         | -              |
+| boxedAccountEmptyInit4      | 19311         | -              |
 | boxedAccountEmpty4          | 2424          | 🟢 **-4.19%**  |
-| boxedAccountEmptyInit8      | 37415         | -              |
+| boxedAccountEmptyInit8      | 37136         | -              |
 | boxedAccountEmpty8          | 4659          | 🟢 **-2.53%**  |
 | boxedAccountSizedInit1      | 6130          | 🟢 **-2.01%**  |
 | boxedAccountSized1          | 917           | 🟢 **-8.57%**  |
 | boxedAccountSizedInit2      | 10828         | 🟢 **-1.34%**  |
 | boxedAccountSized2          | 1463          | 🟢 **-5.86%**  |
-| boxedAccountSizedInit4      | 19884         | -              |
+| boxedAccountSizedInit4      | 19703         | -              |
 | boxedAccountSized4          | 2543          | 🟢 **-3.75%**  |
-| boxedAccountSizedInit8      | 38182         | -              |
+| boxedAccountSizedInit8      | 37919         | -              |
 | boxedAccountSized8          | 4898          | 🟢 **-2.10%**  |
 | boxedAccountUnsizedInit1    | 6240          | 🟢 **-2.10%**  |
 | boxedAccountUnsized1        | 972           | 🟢 **-9.07%**  |
@@ -159,9 +159,9 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | boxedAccountUnsized2        | 1570          | 🟢 **-6.49%**  |
 | boxedAccountUnsizedInit4    | 20138         | 🟢 **-1.05%**  |
 | boxedAccountUnsized4        | 2768          | 🟢 **-4.52%**  |
-| boxedAccountUnsizedInit8    | 39118         | -              |
+| boxedAccountUnsizedInit8    | 38800         | -              |
 | boxedAccountUnsized8        | 5347          | 🟢 **-3.08%**  |
-| boxedInterfaceAccountMint1  | 2299          | -              |
+| boxedInterfaceAccountMint1  | 2296          | -              |
 | boxedInterfaceAccountMint2  | 4129          | 🔴 **+1.88%**  |
 | boxedInterfaceAccountMint4  | 7783          | 🔴 **+3.25%**  |
 | boxedInterfaceAccountMint8  | 15281         | 🔴 **+3.96%**  |
@@ -179,7 +179,7 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | interface1                  | 1059          | 🔴 **+6.01%**  |
 | interface2                  | 1479          | 🟢 **-6.04%**  |
 | interface4                  | 1900          | 🟢 **-4.81%**  |
-| interface8                  | 3651          | -              |
+| interface8                  | 3646          | -              |
 | program1                    | 1053          | 🔴 **+5.41%**  |
 | program2                    | 1467          | 🟢 **-6.74%**  |
 | program4                    | 1878          | 🟢 **-6.01%**  |
@@ -187,15 +187,15 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 | signer1                     | 1018          | 🔴 **+6.26%**  |
 | signer2                     | 1484          | 🟢 **-5.84%**  |
 | signer4                     | 1984          | 🟢 **-4.57%**  |
-| signer8                     | 3895          | -              |
+| signer8                     | 3880          | -              |
 | systemAccount1              | 1072          | 🔴 **+5.82%**  |
 | systemAccount2              | 1590          | 🟢 **-5.69%**  |
 | systemAccount4              | 2195          | 🟢 **-4.48%**  |
-| systemAccount8              | 4336          | -              |
+| systemAccount8              | 4305          | -              |
 | uncheckedAccount1           | 1014          | 🔴 **+6.40%**  |
 | uncheckedAccount2           | 1475          | 🟢 **-5.87%**  |
 | uncheckedAccount4           | 1965          | 🟢 **-4.61%**  |
-| uncheckedAccount8           | 3855          | -              |
+| uncheckedAccount8           | 3841          | -              |
 
 ### Notable changes
 

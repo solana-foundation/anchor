@@ -1,9 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as token from "@coral-xyz/spl-token";
-import { spawnSync } from "child_process";
 
 import { Bench, IDL } from "../target/types/bench";
-import { BenchData, ComputeUnits, getVersionFromArgs } from "../scripts/utils";
+import {
+  BenchData,
+  ComputeUnits,
+  getVersionFromArgs,
+  spawn,
+} from "../scripts/utils";
 
 describe(IDL.name, () => {
   // Configure the client to use the local cluster
@@ -111,6 +115,9 @@ describe(IDL.name, () => {
   };
 
   before(async () => {
+    // TODO: Check Solana version
+
+    // Create necessary accounts
     const tokenProgram = token.splTokenProgram({
       provider: anchor.AnchorProvider.local(),
     });
@@ -227,7 +234,7 @@ describe(IDL.name, () => {
 
     // Compare and update compute units changes
     const version = getVersionFromArgs();
-    const oldComputeUnits = bench.get(version).computeUnits;
+    const oldComputeUnits = bench.get(version).result.computeUnits;
     const { needsUpdate } = bench.compareComputeUnits(
       computeUnits,
       oldComputeUnits,
@@ -249,7 +256,7 @@ describe(IDL.name, () => {
 
       // Only update markdown files on `unreleased` version
       if (version === "unreleased") {
-        spawnSync("anchor", ["run", "sync-markdown"]);
+        spawn("anchor", ["run", "sync-markdown"]);
       }
     }
   });

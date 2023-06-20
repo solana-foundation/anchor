@@ -20,8 +20,10 @@ import { BenchData, Markdown } from "./utils";
           return;
         }
 
-        const newComputeUnitsResult = bench.get(nextVersion).computeUnits;
-        const oldComputeUnitsResult = bench.get(currentVersion).computeUnits;
+        const newComputeUnitsResult =
+          bench.get(nextVersion).result.computeUnits;
+        const oldComputeUnitsResult =
+          bench.get(currentVersion).result.computeUnits;
 
         // Create table
         const table = Markdown.createTable(

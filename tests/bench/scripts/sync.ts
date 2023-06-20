@@ -6,9 +6,15 @@
  */
 
 import path from "path";
-import { spawnSync } from "child_process";
 
-import { ANCHOR_VERSION_ARG, BenchData, Toml } from "./utils";
+import {
+  ANCHOR_VERSION_ARG,
+  BenchData,
+  LockFile,
+  Toml,
+  VersionManager,
+  runAnchorTest,
+} from "./utils";
 
 (async () => {
   const bench = await BenchData.open();
@@ -22,6 +28,12 @@ import { ANCHOR_VERSION_ARG, BenchData, Toml } from "./utils";
     console.log(`Updating '${version}'...`);
 
     const isUnreleased = version === "unreleased";
+
+    // Use the lock file from cache
+    await LockFile.replace(version);
+
+    // Set active solana version
+    VersionManager.setSolanaVersion(bench.get(version).solanaVersion);
 
     // Update the anchor dependency versions
     for (const dependency of ["lang", "spl"]) {
@@ -53,10 +65,10 @@ import { ANCHOR_VERSION_ARG, BenchData, Toml } from "./utils";
     await anchorToml.save();
 
     // Run the command to update the current version's results
-    const result = spawnSync("anchor", ["test", "--skip-lint"]);
+    const result = runAnchorTest();
     console.log(result.output.toString());
 
-    // Check for failure
+    // Check failure
     if (result.status !== 0) {
       console.error("Please fix the error and re-run this command.");
       process.exitCode = 1;

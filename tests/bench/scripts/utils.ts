@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import path from "path";
-import { spawnSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 
 /** Version that is used in bench data file */
 export type Version = "unreleased" | (`${number}.${number}.${number}` & {});
@@ -8,8 +8,17 @@ export type Version = "unreleased" | (`${number}.${number}.${number}` & {});
 /** Persistent benchmark data(mapping of `Version -> Data`) */
 type Bench = {
   [key: string]: {
-    /** Benchmark result for compute units consumed */
-    computeUnits: ComputeUnits;
+    /**
+     * Storing Solana version used in the release to:
+     * - Be able to build older versions
+     * - Adjust for the changes in platform-tools
+     */
+    solanaVersion: Version;
+    /** Benchmark results for a version */
+    result: {
+      /** Benchmark result for compute units consumed */
+      computeUnits: ComputeUnits;
+    };
   };
 };
 
@@ -173,8 +182,7 @@ export class BenchData {
   /** Bump benchmark data version to the given version */
   bumpVersion(newVersion: string) {
     if (this.#data[newVersion]) {
-      console.error(`Version '${newVersion}' already exists!`);
-      process.exit(1);
+      throw new Error(`Version '${newVersion}' already exists!`);
     }
 
     const versions = this.getVersions();
@@ -186,7 +194,7 @@ export class BenchData {
     // Delete the unreleased version
     delete this.#data[unreleasedVersion];
 
-    // Add new unreleased version
+    // Add the new unreleased version
     this.#data[unreleasedVersion] = this.#data[newVersion];
   }
 
@@ -207,7 +215,7 @@ export class BenchData {
     }
 
     // Format
-    spawnSync("yarn", [
+    spawn("yarn", [
       "run",
       "prettier",
       "--write",
@@ -268,8 +276,7 @@ export class Markdown {
   bumpVersion(newVersion: string) {
     newVersion = `[${newVersion}]`;
     if (this.#text.includes(newVersion)) {
-      console.error(`Version '${newVersion}' already exists!`);
-      process.exit(1);
+      throw new Error(`Version '${newVersion}' already exists!`);
     }
 
     const startIndex = this.#text.indexOf(`## ${Markdown.#UNRELEASED_VERSION}`);
@@ -378,6 +385,72 @@ export class Toml {
   }
 }
 
+/** Utility class to handle Cargo.lock file related operations */
+export class LockFile {
+  /** Cargo lock file name */
+  static #CARGO_LOCK = "Cargo.lock";
+
+  /** Replace the Cargo.lock with the given version's cached lock file */
+  static async replace(version: Version) {
+    // Remove Cargo.lock
+    try {
+      await fs.rm(this.#CARGO_LOCK);
+    } catch {}
+
+    // `unreleased` version shouldn't have a cached lock file
+    if (version !== "unreleased") {
+      const lockFile = await fs.readFile(this.#getLockPath(version));
+      await fs.writeFile(this.#CARGO_LOCK, lockFile);
+    }
+  }
+
+  /** Cache the current Cargo.lock in ./locks */
+  static async cache(version: Version) {
+    try {
+      await fs.rename(this.#CARGO_LOCK, this.#getLockPath(version));
+    } catch {
+      // Lock file doesn't exist
+      // Run the tests to create the lock file
+      const result = runAnchorTest();
+
+      // Check failure
+      if (result.status !== 0) {
+        throw new Error(`Failed to create ${this.#CARGO_LOCK}`);
+      }
+
+      await this.cache(version);
+    }
+  }
+
+  /** Get the lock file path from the given version */
+  static #getLockPath(version: Version) {
+    return path.join("locks", `${version}.lock`);
+  }
+}
+
+/** Utility class to manage versions */
+export class VersionManager {
+  /** Set the active Solana version with `solana-install init` command */
+  static setSolanaVersion(version: Version) {
+    const activeVersion = this.#getSolanaVersion();
+    if (activeVersion === version) return;
+
+    spawn("solana-install", ["init", version], {
+      logOutput: true,
+      throwOnError: { msg: `Failed to set Solana version to ${version}` },
+    });
+  }
+
+  /** Get the active Solana version */
+  static #getSolanaVersion() {
+    // `solana-cli 1.14.16 (src:0fb2ffda; feat:3488713414)\n`
+    const result = execSync("solana --version");
+    const output = Buffer.from(result.buffer).toString();
+    const solanaVersion = /(\d\.\d{1,3}\.\d{1,3})/.exec(output)![1].trim();
+    return solanaVersion as Version;
+  }
+}
+
 /**
  * Get Anchor version from the passed arguments.
  *
@@ -389,4 +462,27 @@ export const getVersionFromArgs = () => {
   return anchorVersionArgIndex === -1
     ? "unreleased"
     : (args[anchorVersionArgIndex + 1] as Version);
+};
+
+/** Run `anchor test` command */
+export const runAnchorTest = () => {
+  return spawn("anchor", ["test", "--skip-lint"]);
+};
+
+/** Spawn a blocking process */
+export const spawn = (
+  cmd: string,
+  args: string[],
+  opts?: { logOutput?: boolean; throwOnError?: { msg: string } }
+) => {
+  const result = spawnSync(cmd, args);
+  if (opts?.logOutput) {
+    console.log(result.output.toString());
+  }
+
+  if (opts?.throwOnError && result.status !== 0) {
+    throw new Error(opts.throwOnError.msg);
+  }
+
+  return result;
 };
