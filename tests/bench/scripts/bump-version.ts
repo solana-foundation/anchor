@@ -15,7 +15,7 @@ import {
 
   if (newVersion === "unreleased") {
     console.error(
-      `Usage: anchor run bump-version ${ANCHOR_VERSION_ARG} <VERSION>`
+      `Usage: anchor run bump-version -- ${ANCHOR_VERSION_ARG} <VERSION>`
     );
     process.exitCode = 1;
     return;

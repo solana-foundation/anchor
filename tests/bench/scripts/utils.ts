@@ -256,20 +256,32 @@ export class Markdown {
     await fs.writeFile(this.#path, this.#text);
   }
 
-  /** Change version table with the given table */
-  updateTable(version: string, table: MarkdownTable) {
+  /** Change the version's content with the given `solanaVersion` and `table` */
+  updateVersion(params: {
+    version: Version;
+    solanaVersion: string;
+    table: MarkdownTable;
+  }) {
     const md = this.#text;
 
-    let titleStartIndex = md.indexOf(`[${version}]`);
+    const title = `[${params.version}]`;
+    let titleStartIndex = md.indexOf(title);
     if (titleStartIndex === -1) {
       titleStartIndex = md.indexOf(Markdown.#UNRELEASED_VERSION);
     }
 
-    const startIndex = titleStartIndex + md.slice(titleStartIndex).indexOf("|");
-    const endIndex = startIndex + md.slice(startIndex).indexOf("\n\n");
+    const titleContentStartIndex = titleStartIndex + title.length + 1;
+
+    const tableStartIndex =
+      titleStartIndex + md.slice(titleStartIndex).indexOf("|");
+    const tableEndIndex =
+      tableStartIndex + md.slice(tableStartIndex).indexOf("\n\n");
 
     this.#text =
-      md.slice(0, startIndex) + table.toString() + md.slice(endIndex + 1);
+      md.slice(0, titleContentStartIndex) +
+      `Solana version: ${params.solanaVersion}\n\n` +
+      params.table.toString() +
+      md.slice(tableEndIndex + 1);
   }
 
   /** Bump the version to the given version */

@@ -20,10 +20,8 @@ import { BenchData, Markdown } from "./utils";
           return;
         }
 
-        const newComputeUnitsResult =
-          bench.get(nextVersion).result.computeUnits;
-        const oldComputeUnitsResult =
-          bench.get(currentVersion).result.computeUnits;
+        const newData = bench.get(nextVersion);
+        const oldData = bench.get(currentVersion);
 
         // Create table
         const table = Markdown.createTable(
@@ -33,8 +31,8 @@ import { BenchData, Markdown } from "./utils";
         );
 
         bench.compareComputeUnits(
-          newComputeUnitsResult,
-          oldComputeUnitsResult,
+          newData.result.computeUnits,
+          oldData.result.computeUnits,
           ({ ixName, newComputeUnits, oldComputeUnits }) => {
             if (newComputeUnits === null) {
               // Deleted instruction
@@ -69,8 +67,12 @@ import { BenchData, Markdown } from "./utils";
           }
         );
 
-        // Update version's table
-        markdown.updateTable(nextVersion, table);
+        // Update version data
+        markdown.updateVersion({
+          version: nextVersion,
+          solanaVersion: newData.solanaVersion,
+          table,
+        });
       }
     }
   });

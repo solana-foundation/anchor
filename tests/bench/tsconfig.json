@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai", "node"],
-    "typeRoots": ["./node_modules/@types"],
+    "types": ["mocha", "node"],
     "lib": ["ES6"],
     "module": "commonjs",
     "target": "es6",

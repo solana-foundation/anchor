@@ -28,4 +28,4 @@ The following scripts are useful when making changes to how benchmarking works.
 
 The following script is only for the maintainer(s) of Anchor.
 
-`anchor run bump-version -- <VERSION>`: Bump the version in all benchmark files.
+`anchor run bump-version -- --anchor-version <VERSION>`: Bump the version in all benchmark files.
