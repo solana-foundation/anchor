@@ -44,15 +44,16 @@ import { BenchData, Markdown } from "./utils";
               // New instruction
               changeText = "N/A";
             } else {
+              const delta = newComputeUnits - oldComputeUnits;
               const percentChange = (
                 (newComputeUnits / oldComputeUnits - 1) *
                 100
               ).toFixed(2);
 
               if (+percentChange > 0) {
-                changeText = `🔴 **+${percentChange}%**`;
+                changeText = `🔴 **+${delta} (${percentChange}%)**`;
               } else {
-                changeText = `🟢 **${percentChange}%**`;
+                changeText = `🟢 **${delta} (${percentChange.slice(1)}%)**`;
               }
             }
 
