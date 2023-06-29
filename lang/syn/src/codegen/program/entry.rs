@@ -17,7 +17,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// code wrapping these user defined methods into something that can be
         /// executed on Solana.
         ///
-        /// These methods fall into one categorie for now.
+        /// These methods fall into one category for now.
         ///
         /// Global methods - regular methods inside of the `#[program]`.
         ///
