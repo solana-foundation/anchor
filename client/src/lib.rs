@@ -98,6 +98,36 @@ impl<C: Clone + Deref<Target = impl Signer>> Client<C> {
     }
 }
 
+/// Auxiliary data structure to align the types of the Solana CLI utils with Anchor client.
+/// Client<C> implementation requires <C: Clone + Deref<Target = impl Signer>> which does not comply with Box<dyn Signer>
+/// that's used when loaded Signer from keypair file. This struct is used to wrap the usage.
+pub struct DynSigner(pub Arc<dyn Signer>);
+
+impl Signer for DynSigner {
+    fn pubkey(&self) -> Pubkey {
+        self.0.pubkey()
+    }
+
+    fn try_pubkey(&self) -> Result<Pubkey, solana_sdk::signer::SignerError> {
+        self.0.try_pubkey()
+    }
+
+    fn sign_message(&self, message: &[u8]) -> solana_sdk::signature::Signature {
+        self.0.sign_message(message)
+    }
+
+    fn try_sign_message(
+        &self,
+        message: &[u8],
+    ) -> Result<solana_sdk::signature::Signature, solana_sdk::signer::SignerError> {
+        self.0.try_sign_message(message)
+    }
+
+    fn is_interactive(&self) -> bool {
+        self.0.is_interactive()
+    }
+}
+
 // Internal configuration for a client.
 #[derive(Debug)]
 pub struct Config<C> {
