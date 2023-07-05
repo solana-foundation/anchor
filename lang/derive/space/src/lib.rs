@@ -1,10 +1,11 @@
+use std::collections::VecDeque;
+
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenStream as TokenStream2};
+use proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse_macro_input,
-    punctuated::{IntoIter, Punctuated},
-    Attribute, DeriveInput, Fields, GenericArgument, LitInt, PathArguments, Token, Type, TypeArray,
+    parse::ParseStream, parse2, parse_macro_input, Attribute, DeriveInput, Fields, GenericArgument,
+    LitInt, PathArguments, Type, TypeArray,
 };
 
 /// Implements a [`Space`](./trait.Space.html) trait on the given
@@ -93,7 +94,7 @@ fn gen_max<T: Iterator<Item = TokenStream2>>(mut iter: T) -> TokenStream2 {
     }
 }
 
-fn len_from_type(ty: Type, attrs: &mut Option<IntoIter<LitInt>>) -> TokenStream2 {
+fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenStream2 {
     match ty {
         Type::Array(TypeArray { elem, len, .. }) => {
             let array_len = len.to_token_stream();
@@ -156,20 +157,33 @@ fn get_first_ty_arg(args: &PathArguments) -> Option<Type> {
     }
 }
 
-fn get_max_len_args(attributes: &[Attribute]) -> Option<IntoIter<LitInt>> {
+fn parse_len_arg(item: ParseStream) -> Result<VecDeque<TokenStream2>, syn::Error> {
+    let mut result = VecDeque::new();
+    while let Some(token_tree) = item.parse()? {
+        match token_tree {
+            TokenTree::Ident(ident) => result.push_front(quote!((#ident as usize))),
+            TokenTree::Literal(lit) => {
+                if let Ok(lit_int) = parse2::<LitInt>(lit.into_token_stream()) {
+                    result.push_front(quote!(#lit_int))
+                }
+            }
+            _ => (),
+        }
+    }
+
+    Ok(result)
+}
+
+fn get_max_len_args(attributes: &[Attribute]) -> Option<VecDeque<TokenStream2>> {
     attributes
         .iter()
         .find(|a| a.path.is_ident("max_len"))
-        .and_then(|a| {
-            a.parse_args_with(Punctuated::<LitInt, Token![,]>::parse_terminated)
-                .ok()
-        })
-        .map(|p| p.into_iter())
+        .and_then(|a| a.parse_args_with(parse_len_arg).ok())
 }
 
-fn get_next_arg(ident: &Ident, args: &mut Option<IntoIter<LitInt>>) -> TokenStream2 {
+fn get_next_arg(ident: &Ident, args: &mut Option<VecDeque<TokenStream2>>) -> TokenStream2 {
     if let Some(arg_list) = args {
-        if let Some(arg) = arg_list.next() {
+        if let Some(arg) = arg_list.pop_back() {
             quote!(#arg)
         } else {
             quote_spanned!(ident.span() => compile_error!("The number of lengths are invalid."))

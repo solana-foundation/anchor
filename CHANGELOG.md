@@ -18,6 +18,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Fixes
 
 - ts: Packages no longer depend on `assert` ([#2535](https://github.com/coral-xyz/anchor/pull/2535)).
+- lang: Support for `const` in the `InitSpace` macro ([#2555](https://github.com/coral-xyz/anchor/pull/2555)).
 
 ### Breaking
 
