@@ -40,7 +40,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             data.append(&mut ix_data);
                             let accounts = ctx.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
-                                program_id: crate::ID,
+                                program_id: ctx.program.key(),
                                 accounts,
                                 data,
                             }
