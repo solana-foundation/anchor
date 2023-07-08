@@ -443,6 +443,8 @@ jobs:
             path: tests/anchor-cli-account
           - cmd: cd tests/bench && anchor test --skip-lint
             path: tests/bench
+          - cmd: cd tests/idl-build && ./test.sh
+            path: tests/idl-build
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

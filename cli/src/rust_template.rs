@@ -1,6 +1,6 @@
 use crate::config::ProgramWorkspace;
 use crate::VERSION;
-use anchor_syn::idl::Idl;
+use anchor_syn::idl::types::Idl;
 use anyhow::Result;
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 use solana_sdk::{

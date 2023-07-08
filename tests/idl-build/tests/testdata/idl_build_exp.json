@@ -1,0 +1,727 @@
+{
+  "version": "0.1.0",
+  "name": "example_program",
+  "docs": [
+    "This is an example program used for testing"
+  ],
+  "constants": [
+    {
+      "name": "BAR_CONST",
+      "type": "u8",
+      "value": "6"
+    },
+    {
+      "name": "FOO_CONST",
+      "type": "u128",
+      "value": "1000000"
+    }
+  ],
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "State account"
+          ]
+        },
+        {
+          "name": "nested",
+          "accounts": [
+            {
+              "name": "clock",
+              "isMut": false,
+              "isSigner": false,
+              "docs": [
+                "Sysvar clock"
+              ]
+            },
+            {
+              "name": "rent",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "zcAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeWithValues",
+      "docs": [
+        "Initializes an account with specified values"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "State account"
+          ]
+        },
+        {
+          "name": "nested",
+          "accounts": [
+            {
+              "name": "clock",
+              "isMut": false,
+              "isSigner": false,
+              "docs": [
+                "Sysvar clock"
+              ]
+            },
+            {
+              "name": "rent",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "zcAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "boolField",
+          "type": "bool"
+        },
+        {
+          "name": "u8Field",
+          "type": "u8"
+        },
+        {
+          "name": "i8Field",
+          "type": "i8"
+        },
+        {
+          "name": "u16Field",
+          "type": "u16"
+        },
+        {
+          "name": "i16Field",
+          "type": "i16"
+        },
+        {
+          "name": "u32Field",
+          "type": "u32"
+        },
+        {
+          "name": "i32Field",
+          "type": "i32"
+        },
+        {
+          "name": "f32Field",
+          "type": "f32"
+        },
+        {
+          "name": "u64Field",
+          "type": "u64"
+        },
+        {
+          "name": "i64Field",
+          "type": "i64"
+        },
+        {
+          "name": "f64Field",
+          "type": "f64"
+        },
+        {
+          "name": "u128Field",
+          "type": "u128"
+        },
+        {
+          "name": "i128Field",
+          "type": "i128"
+        },
+        {
+          "name": "bytesField",
+          "type": "bytes"
+        },
+        {
+          "name": "stringField",
+          "type": "string"
+        },
+        {
+          "name": "pubkeyField",
+          "type": "publicKey"
+        },
+        {
+          "name": "vecField",
+          "type": {
+            "vec": "u64"
+          }
+        },
+        {
+          "name": "vecStructField",
+          "type": {
+            "vec": {
+              "defined": "idl::FooStruct"
+            }
+          }
+        },
+        {
+          "name": "optionField",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "optionStructField",
+          "type": {
+            "option": {
+              "defined": "idl::FooStruct"
+            }
+          }
+        },
+        {
+          "name": "structField",
+          "type": {
+            "defined": "idl::FooStruct"
+          }
+        },
+        {
+          "name": "arrayField",
+          "type": {
+            "array": [
+              "bool",
+              3
+            ]
+          }
+        },
+        {
+          "name": "enumField1",
+          "type": {
+            "defined": "idl::FooEnum"
+          }
+        },
+        {
+          "name": "enumField2",
+          "type": {
+            "defined": "idl::FooEnum"
+          }
+        },
+        {
+          "name": "enumField3",
+          "type": {
+            "defined": "idl::FooEnum"
+          }
+        },
+        {
+          "name": "enumField4",
+          "type": {
+            "defined": "idl::FooEnum"
+          }
+        }
+      ]
+    },
+    {
+      "name": "initializeWithValues2",
+      "docs": [
+        "a separate instruction due to initialize_with_values having too many arguments",
+        "https://github.com/solana-labs/solana/issues/23978"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vecOfOption",
+          "type": {
+            "vec": {
+              "option": "u64"
+            }
+          }
+        },
+        {
+          "name": "boxField",
+          "type": "bool"
+        }
+      ],
+      "returns": {
+        "defined": "idl::SomeRetStruct"
+      }
+    },
+    {
+      "name": "causeError",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "SomeZcAccount",
+      "path": "idl::SomeZcAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": {
+              "defined": "idl::ZcStruct"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "State",
+      "path": "idl::State",
+      "docs": [
+        "An account containing various fields"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boolField",
+            "docs": [
+              "A boolean field"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "u8Field",
+            "type": "u8"
+          },
+          {
+            "name": "i8Field",
+            "type": "i8"
+          },
+          {
+            "name": "u16Field",
+            "type": "u16"
+          },
+          {
+            "name": "i16Field",
+            "type": "i16"
+          },
+          {
+            "name": "u32Field",
+            "type": "u32"
+          },
+          {
+            "name": "i32Field",
+            "type": "i32"
+          },
+          {
+            "name": "f32Field",
+            "type": "f32"
+          },
+          {
+            "name": "u64Field",
+            "type": "u64"
+          },
+          {
+            "name": "i64Field",
+            "type": "i64"
+          },
+          {
+            "name": "f64Field",
+            "type": "f64"
+          },
+          {
+            "name": "u128Field",
+            "type": "u128"
+          },
+          {
+            "name": "i128Field",
+            "type": "i128"
+          },
+          {
+            "name": "bytesField",
+            "type": "bytes"
+          },
+          {
+            "name": "stringField",
+            "type": "string"
+          },
+          {
+            "name": "pubkeyField",
+            "type": "publicKey"
+          },
+          {
+            "name": "vecField",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "vecStructField",
+            "type": {
+              "vec": {
+                "defined": "idl::FooStruct"
+              }
+            }
+          },
+          {
+            "name": "optionField",
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "optionStructField",
+            "type": {
+              "option": {
+                "defined": "idl::FooStruct"
+              }
+            }
+          },
+          {
+            "name": "structField",
+            "type": {
+              "defined": "idl::FooStruct"
+            }
+          },
+          {
+            "name": "arrayField",
+            "type": {
+              "array": [
+                "bool",
+                3
+              ]
+            }
+          },
+          {
+            "name": "enumField1",
+            "type": {
+              "defined": "idl::FooEnum"
+            }
+          },
+          {
+            "name": "enumField2",
+            "type": {
+              "defined": "idl::FooEnum"
+            }
+          },
+          {
+            "name": "enumField3",
+            "type": {
+              "defined": "idl::FooEnum"
+            }
+          },
+          {
+            "name": "enumField4",
+            "type": {
+              "defined": "idl::FooEnum"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "State2",
+      "path": "idl::State2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vecOfOption",
+            "type": {
+              "vec": {
+                "option": "u64"
+              }
+            }
+          },
+          {
+            "name": "boxField",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "BarStruct",
+      "path": "idl::BarStruct",
+      "docs": [
+        "Bar struct type"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "docs": [
+              "Some field"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "otherField",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FooEnum",
+      "path": "idl::FooEnum",
+      "docs": [
+        "Enum type"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unnamed",
+            "fields": [
+              "bool",
+              "u8",
+              {
+                "defined": "idl::BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "UnnamedSingle",
+            "fields": [
+              {
+                "defined": "idl::BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "Named",
+            "fields": [
+              {
+                "name": "boolField",
+                "docs": [
+                  "A bool field inside a struct tuple kind"
+                ],
+                "type": "bool"
+              },
+              {
+                "name": "u8Field",
+                "type": "u8"
+              },
+              {
+                "name": "nested",
+                "type": {
+                  "defined": "idl::BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Struct",
+            "fields": [
+              {
+                "defined": "idl::BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "OptionStruct",
+            "fields": [
+              {
+                "option": {
+                  "defined": "idl::BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "VecStruct",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "idl::BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "NoFields"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FooStruct",
+      "path": "idl::FooStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field1",
+            "type": "u8"
+          },
+          {
+            "name": "field2",
+            "type": "u16"
+          },
+          {
+            "name": "nested",
+            "type": {
+              "defined": "idl::BarStruct"
+            }
+          },
+          {
+            "name": "vecNested",
+            "type": {
+              "vec": {
+                "defined": "idl::BarStruct"
+              }
+            }
+          },
+          {
+            "name": "optionNested",
+            "type": {
+              "option": {
+                "defined": "idl::BarStruct"
+              }
+            }
+          },
+          {
+            "name": "enumField",
+            "type": {
+              "defined": "idl::FooEnum"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SomeRetStruct",
+      "path": "idl::SomeRetStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZcStruct",
+      "path": "idl::ZcStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Baz",
+      "path": "idl::some_other_module::Baz",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someU8",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Baz",
+      "path": "some_external_program::Baz",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "SomeEvent",
+      "fields": [
+        {
+          "name": "boolField",
+          "type": "bool",
+          "index": false
+        },
+        {
+          "name": "externalBaz",
+          "type": {
+            "defined": "some_external_program::Baz"
+          },
+          "index": false
+        },
+        {
+          "name": "otherModuleBaz",
+          "type": {
+            "defined": "idl::some_other_module::Baz"
+          },
+          "index": false
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "SomeError",
+      "msg": "Example error."
+    },
+    {
+      "code": 6001,
+      "name": "OtherError",
+      "msg": "Another error."
+    },
+    {
+      "code": 6002,
+      "name": "ErrorWithoutMsg"
+    }
+  ]
+}

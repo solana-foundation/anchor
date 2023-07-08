@@ -15,6 +15,7 @@ proc-macro = true
 allow-missing-optionals = ["anchor-syn/allow-missing-optionals"]
 init-if-needed = ["anchor-syn/init-if-needed"]
 default = []
+idl-build = ["anchor-syn/idl-build"]
 anchor-debug = ["anchor-syn/anchor-debug"]
 
 [dependencies]

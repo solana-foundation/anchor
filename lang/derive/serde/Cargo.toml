@@ -1,0 +1,24 @@
+[package]
+name = "anchor-derive-serde"
+version = "0.28.0"
+authors = ["Anchor Maintainers <accounts@200ms.io>"]
+repository = "https://github.com/coral-xyz/anchor"
+license = "Apache-2.0"
+description = "Anchor Derive macro for serialization and deserialization"
+rust-version = "1.60"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[features]
+idl-build = [
+    "anchor-syn/idl-build",
+]
+
+[dependencies]
+anchor-syn = { path = "../../syn", version = "0.28.0" }
+borsh-derive-internal = ">=0.9, <0.11"
+proc-macro2 = "1"
+syn = { version = "1", features = ["full"] }
+quote = "1"

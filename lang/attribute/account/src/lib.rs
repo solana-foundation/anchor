@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+#[cfg(feature = "idl-build")]
+use anchor_syn::idl::build::*;
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -392,13 +394,26 @@ pub fn zero_copy(
         quote! {#[derive(::bytemuck::Zeroable)]}
     };
 
-    proc_macro::TokenStream::from(quote! {
+    let ret = quote! {
         #[derive(anchor_lang::__private::ZeroCopyAccessor, Copy, Clone)]
         #repr
         #pod
         #zeroable
         #account_strct
-    })
+    };
+
+    #[cfg(feature = "idl-build")]
+    {
+        let no_docs = get_no_docs();
+        let idl_gen_impl = gen_idl_gen_impl_for_struct(&account_strct, no_docs);
+        return proc_macro::TokenStream::from(quote! {
+            #ret
+            #idl_gen_impl
+        });
+    }
+
+    #[allow(unreachable_code)]
+    proc_macro::TokenStream::from(ret)
 }
 
 /// Defines the program's ID. This should be used at the root of all Anchor

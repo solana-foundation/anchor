@@ -23,7 +23,6 @@ pub mod codegen;
 pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
-#[cfg(feature = "idl")]
 pub mod idl;
 pub mod parser;
 

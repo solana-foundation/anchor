@@ -62,12 +62,12 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 if f.is_optional {
                     quote! {
                         #docs
-                        pub #name: Option<anchor_lang::solana_program::pubkey::Pubkey>
+                        pub #name: Option<Pubkey>
                     }
                 } else {
                     quote! {
                         #docs
-                        pub #name: anchor_lang::solana_program::pubkey::Pubkey
+                        pub #name: Pubkey
                     }
                 }
             }

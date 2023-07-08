@@ -6,7 +6,10 @@ use crate::config::{
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
-use anchor_syn::idl::{EnumFields, Idl, IdlType, IdlTypeDefinitionTy};
+use anchor_syn::idl::types::{
+    EnumFields, Idl, IdlConst, IdlErrorCode, IdlEvent, IdlType, IdlTypeDefinition,
+    IdlTypeDefinitionTy,
+};
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use flate2::read::GzDecoder;
@@ -414,6 +417,11 @@ pub enum IdlCommand {
         #[clap(short = 't', long)]
         out_ts: Option<String>,
         /// Suppress doc strings in output
+        #[clap(long)]
+        no_docs: bool,
+    },
+    /// Generates the IDL for the program using the compilation method.
+    Build {
         #[clap(long)]
         no_docs: bool,
     },
@@ -1834,7 +1842,7 @@ fn extract_idl(
     let manifest_from_path = std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap());
     let cargo = Manifest::discover_from_path(manifest_from_path)?
         .ok_or_else(|| anyhow!("Cargo.toml not found"))?;
-    anchor_syn::idl::file::parse(
+    anchor_syn::idl::parse::file::parse(
         &*file,
         cargo.version(),
         cfg.features.seeds,
@@ -1880,6 +1888,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             out_ts,
             no_docs,
         } => idl_parse(cfg_override, file, out, out_ts, no_docs),
+        IdlCommand::Build { no_docs } => idl_build(no_docs),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
     }
 }
@@ -2225,6 +2234,165 @@ fn idl_parse(
     Ok(())
 }
 
+fn idl_build(no_docs: bool) -> Result<()> {
+    let no_docs = if no_docs { "TRUE" } else { "FALSE" };
+
+    let cfg = Config::discover(&ConfigOverride::default())?.expect("Not in workspace.");
+    let seeds_feature = if cfg.features.seeds { "TRUE" } else { "FALSE" };
+
+    let exit = std::process::Command::new("cargo")
+        .args([
+            "test",
+            "__anchor_private_print_idl",
+            "--features",
+            "idl-build",
+            "--",
+            "--show-output",
+            "--quiet",
+        ])
+        .env("ANCHOR_IDL_GEN_NO_DOCS", no_docs)
+        .env("ANCHOR_IDL_GEN_SEEDS_FEATURE", seeds_feature)
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    if !exit.status.success() {
+        std::process::exit(exit.status.code().unwrap_or(1));
+    }
+
+    enum State {
+        Pass,
+        ConstLines(Vec<String>),
+        EventLines(Vec<String>),
+        ErrorsLines(Vec<String>),
+        ProgramLines(Vec<String>),
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct IdlGenEventPrint {
+        event: IdlEvent,
+        defined_types: Vec<IdlTypeDefinition>,
+    }
+
+    let mut state = State::Pass;
+
+    let mut events: Vec<IdlEvent> = vec![];
+    let mut error_codes: Option<Vec<IdlErrorCode>> = None;
+    let mut constants: Vec<IdlConst> = vec![];
+    let mut defined_types: BTreeMap<String, IdlTypeDefinition> = BTreeMap::new();
+    let mut curr_idl: Option<Idl> = None;
+
+    let mut idls: Vec<Idl> = vec![];
+
+    let out = String::from_utf8_lossy(&exit.stdout);
+    for line in out.lines() {
+        match &mut state {
+            State::Pass => {
+                if line == "---- IDL begin const ----" {
+                    state = State::ConstLines(vec![]);
+                    continue;
+                } else if line == "---- IDL begin event ----" {
+                    state = State::EventLines(vec![]);
+                    continue;
+                } else if line == "---- IDL begin errors ----" {
+                    state = State::ErrorsLines(vec![]);
+                    continue;
+                } else if line == "---- IDL begin program ----" {
+                    state = State::ProgramLines(vec![]);
+                    continue;
+                } else if line.starts_with("test result: ok") {
+                    let events = std::mem::take(&mut events);
+                    let error_codes = error_codes.take();
+                    let constants = std::mem::take(&mut constants);
+                    let mut defined_types = std::mem::take(&mut defined_types);
+                    let curr_idl = curr_idl.take();
+
+                    let events = if !events.is_empty() {
+                        Some(events)
+                    } else {
+                        None
+                    };
+
+                    let mut idl = match curr_idl {
+                        Some(idl) => idl,
+                        None => continue,
+                    };
+
+                    idl.events = events;
+                    idl.errors = error_codes;
+                    idl.constants = constants;
+
+                    idl.constants.sort_by(|a, b| a.name.cmp(&b.name));
+                    idl.accounts.sort_by(|a, b| a.name.cmp(&b.name));
+                    if let Some(e) = idl.events.as_mut() {
+                        e.sort_by(|a, b| a.name.cmp(&b.name))
+                    }
+
+                    let prog_ty = std::mem::take(&mut idl.types);
+                    defined_types
+                        .extend(prog_ty.into_iter().map(|ty| (ty.path.clone().unwrap(), ty)));
+                    idl.types = defined_types.into_values().collect::<Vec<_>>();
+
+                    idls.push(idl);
+                    continue;
+                }
+            }
+            State::ConstLines(lines) => {
+                if line == "---- IDL end const ----" {
+                    let constant: IdlConst = serde_json::from_str(&lines.join("\n"))?;
+                    constants.push(constant);
+                    state = State::Pass;
+                    continue;
+                }
+                lines.push(line.to_string());
+            }
+            State::EventLines(lines) => {
+                if line == "---- IDL end event ----" {
+                    let event: IdlGenEventPrint = serde_json::from_str(&lines.join("\n"))?;
+                    events.push(event.event);
+                    defined_types.extend(
+                        event
+                            .defined_types
+                            .into_iter()
+                            .map(|ty| (ty.path.clone().unwrap(), ty)),
+                    );
+                    state = State::Pass;
+                    continue;
+                }
+                lines.push(line.to_string());
+            }
+            State::ErrorsLines(lines) => {
+                if line == "---- IDL end errors ----" {
+                    let errs: Vec<IdlErrorCode> = serde_json::from_str(&lines.join("\n"))?;
+                    error_codes = Some(errs);
+                    state = State::Pass;
+                    continue;
+                }
+                lines.push(line.to_string());
+            }
+            State::ProgramLines(lines) => {
+                if line == "---- IDL end program ----" {
+                    let idl: Idl = serde_json::from_str(&lines.join("\n"))?;
+                    curr_idl = Some(idl);
+                    state = State::Pass;
+                    continue;
+                }
+                lines.push(line.to_string());
+            }
+        }
+    }
+
+    if idls.len() == 1 {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&idls.first().unwrap()).unwrap()
+        );
+    } else if idls.len() >= 2 {
+        println!("{}", serde_json::to_string_pretty(&idls).unwrap());
+    };
+
+    Ok(())
+}
+
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {
     let idl = fetch_idl(cfg_override, address)?;
     let out = match out {
@@ -2499,6 +2667,11 @@ fn deserialize_idl_type_to_json(
             }
 
             JsonValue::Array(array_data)
+        }
+        IdlType::GenericLenArray(_, _) => todo!("Generic length arrays are not yet supported"),
+        IdlType::Generic(_) => todo!("Generic types are not yet supported"),
+        IdlType::DefinedWithTypeArgs { path: _, args: _ } => {
+            todo!("Defined types with type args are not yet supported")
         }
     })
 }

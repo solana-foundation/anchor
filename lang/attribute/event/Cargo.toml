@@ -12,6 +12,7 @@ edition = "2021"
 proc-macro = true
 
 [features]
+idl-build = ["anchor-syn/idl-build"]
 anchor-debug = ["anchor-syn/anchor-debug"]
 event-cpi = ["anchor-syn/event-cpi"]
 

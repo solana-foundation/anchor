@@ -1,4 +1,4 @@
-use crate::idl::*;
+use crate::idl::types::*;
 use crate::parser::context::CrateContext;
 use crate::parser::{self, accounts, docs, error, program};
 use crate::Ty;
@@ -12,6 +12,8 @@ use syn::{
     Expr, ExprLit, ItemConst,
     Lit::{Byte, ByteStr},
 };
+
+use super::relations;
 
 const DERIVE_NAME: &str = "Accounts";
 // TODO: share this with `anchor_lang` crate.
@@ -346,6 +348,8 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
 
             Some(fields.map(|fields| IdlTypeDefinition {
                 name,
+                path: None,
+                generics: None,
                 docs: doc,
                 ty: IdlTypeDefinitionTy::Struct { fields },
             }))
@@ -404,6 +408,8 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                 .collect::<Vec<IdlEnumVariant>>();
             Some(Ok(IdlTypeDefinition {
                 name,
+                path: None,
+                generics: None,
                 docs: doc,
                 ty: IdlTypeDefinitionTy::Enum { variants },
             }))
@@ -547,7 +553,7 @@ fn idl_accounts(
                 },
                 is_optional: if acc.is_optional { Some(true) } else { None },
                 docs: if !no_docs { acc.docs.clone() } else { None },
-                pda: pda::parse(ctx, accounts, acc, seeds_feature),
+                pda: super::pda::parse(ctx, accounts, acc, seeds_feature),
                 relations: relations::parse(acc, seeds_feature),
             }),
         })

@@ -138,6 +138,7 @@ version = "0.28.0"
 dependencies = [
  "anchor-syn",
  "proc-macro2 1.0.60",
+ "quote 1.0.28",
  "syn 1.0.109",
 ]
 
@@ -239,6 +240,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-derive-serde"
+version = "0.28.0"
+dependencies = [
+ "anchor-syn",
+ "borsh-derive-internal 0.10.3",
+ "proc-macro2 1.0.60",
+ "quote 1.0.28",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "anchor-derive-space"
 version = "0.28.0"
 dependencies = [
@@ -258,7 +270,9 @@ dependencies = [
  "anchor-attribute-event",
  "anchor-attribute-program",
  "anchor-derive-accounts",
+ "anchor-derive-serde",
  "anchor-derive-space",
+ "anchor-syn",
  "arrayref",
  "base64 0.13.1",
  "bincode",

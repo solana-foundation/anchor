@@ -1,4 +1,4 @@
-use crate::idl::*;
+use crate::idl::types::*;
 use crate::parser;
 use crate::parser::context::CrateContext;
 use crate::ConstraintSeedsGroup;

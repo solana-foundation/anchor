@@ -1,6 +1,6 @@
 use crate::is_hidden;
 use anchor_client::Cluster;
-use anchor_syn::idl::Idl;
+use anchor_syn::idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use heck::ToSnakeCase;
