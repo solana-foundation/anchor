@@ -187,7 +187,7 @@
           "name": "vecStructField",
           "type": {
             "vec": {
-              "defined": "idl::FooStruct"
+              "defined": "FooStruct"
             }
           }
         },
@@ -201,14 +201,14 @@
           "name": "optionStructField",
           "type": {
             "option": {
-              "defined": "idl::FooStruct"
+              "defined": "FooStruct"
             }
           }
         },
         {
           "name": "structField",
           "type": {
-            "defined": "idl::FooStruct"
+            "defined": "FooStruct"
           }
         },
         {
@@ -223,25 +223,25 @@
         {
           "name": "enumField1",
           "type": {
-            "defined": "idl::FooEnum"
+            "defined": "FooEnum"
           }
         },
         {
           "name": "enumField2",
           "type": {
-            "defined": "idl::FooEnum"
+            "defined": "FooEnum"
           }
         },
         {
           "name": "enumField3",
           "type": {
-            "defined": "idl::FooEnum"
+            "defined": "FooEnum"
           }
         },
         {
           "name": "enumField4",
           "type": {
-            "defined": "idl::FooEnum"
+            "defined": "FooEnum"
           }
         }
       ]
@@ -284,7 +284,7 @@
         }
       ],
       "returns": {
-        "defined": "idl::SomeRetStruct"
+        "defined": "SomeRetStruct"
       }
     },
     {
@@ -296,22 +296,20 @@
   "accounts": [
     {
       "name": "SomeZcAccount",
-      "path": "idl::SomeZcAccount",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "field",
             "type": {
-              "defined": "idl::ZcStruct"
+              "defined": "ZcStruct"
             }
           }
         ]
       }
     },
     {
-      "name": "State",
-      "path": "idl::State",
+      "name": "idl::State",
       "docs": [
         "An account containing various fields"
       ],
@@ -395,7 +393,7 @@
             "name": "vecStructField",
             "type": {
               "vec": {
-                "defined": "idl::FooStruct"
+                "defined": "FooStruct"
               }
             }
           },
@@ -409,14 +407,14 @@
             "name": "optionStructField",
             "type": {
               "option": {
-                "defined": "idl::FooStruct"
+                "defined": "FooStruct"
               }
             }
           },
           {
             "name": "structField",
             "type": {
-              "defined": "idl::FooStruct"
+              "defined": "FooStruct"
             }
           },
           {
@@ -431,25 +429,25 @@
           {
             "name": "enumField1",
             "type": {
-              "defined": "idl::FooEnum"
+              "defined": "FooEnum"
             }
           },
           {
             "name": "enumField2",
             "type": {
-              "defined": "idl::FooEnum"
+              "defined": "FooEnum"
             }
           },
           {
             "name": "enumField3",
             "type": {
-              "defined": "idl::FooEnum"
+              "defined": "FooEnum"
             }
           },
           {
             "name": "enumField4",
             "type": {
-              "defined": "idl::FooEnum"
+              "defined": "FooEnum"
             }
           }
         ]
@@ -457,7 +455,6 @@
     },
     {
       "name": "State2",
-      "path": "idl::State2",
       "type": {
         "kind": "struct",
         "fields": [
@@ -480,7 +477,6 @@
   "types": [
     {
       "name": "BarStruct",
-      "path": "idl::BarStruct",
       "docs": [
         "Bar struct type"
       ],
@@ -503,7 +499,6 @@
     },
     {
       "name": "FooEnum",
-      "path": "idl::FooEnum",
       "docs": [
         "Enum type"
       ],
@@ -516,7 +511,7 @@
               "bool",
               "u8",
               {
-                "defined": "idl::BarStruct"
+                "defined": "BarStruct"
               }
             ]
           },
@@ -524,7 +519,7 @@
             "name": "UnnamedSingle",
             "fields": [
               {
-                "defined": "idl::BarStruct"
+                "defined": "BarStruct"
               }
             ]
           },
@@ -545,7 +540,7 @@
               {
                 "name": "nested",
                 "type": {
-                  "defined": "idl::BarStruct"
+                  "defined": "BarStruct"
                 }
               }
             ]
@@ -554,7 +549,7 @@
             "name": "Struct",
             "fields": [
               {
-                "defined": "idl::BarStruct"
+                "defined": "BarStruct"
               }
             ]
           },
@@ -563,7 +558,7 @@
             "fields": [
               {
                 "option": {
-                  "defined": "idl::BarStruct"
+                  "defined": "BarStruct"
                 }
               }
             ]
@@ -573,7 +568,7 @@
             "fields": [
               {
                 "vec": {
-                  "defined": "idl::BarStruct"
+                  "defined": "BarStruct"
                 }
               }
             ]
@@ -586,7 +581,6 @@
     },
     {
       "name": "FooStruct",
-      "path": "idl::FooStruct",
       "type": {
         "kind": "struct",
         "fields": [
@@ -601,14 +595,14 @@
           {
             "name": "nested",
             "type": {
-              "defined": "idl::BarStruct"
+              "defined": "BarStruct"
             }
           },
           {
             "name": "vecNested",
             "type": {
               "vec": {
-                "defined": "idl::BarStruct"
+                "defined": "BarStruct"
               }
             }
           },
@@ -616,14 +610,14 @@
             "name": "optionNested",
             "type": {
               "option": {
-                "defined": "idl::BarStruct"
+                "defined": "BarStruct"
               }
             }
           },
           {
             "name": "enumField",
             "type": {
-              "defined": "idl::FooEnum"
+              "defined": "FooEnum"
             }
           }
         ]
@@ -631,7 +625,6 @@
     },
     {
       "name": "SomeRetStruct",
-      "path": "idl::SomeRetStruct",
       "type": {
         "kind": "struct",
         "fields": [
@@ -644,7 +637,6 @@
     },
     {
       "name": "ZcStruct",
-      "path": "idl::ZcStruct",
       "type": {
         "kind": "struct",
         "fields": [
@@ -656,8 +648,7 @@
       }
     },
     {
-      "name": "Baz",
-      "path": "idl::some_other_module::Baz",
+      "name": "idl::some_other_module::Baz",
       "type": {
         "kind": "struct",
         "fields": [
@@ -669,8 +660,7 @@
       }
     },
     {
-      "name": "Baz",
-      "path": "some_external_program::Baz",
+      "name": "some_external_program::Baz",
       "type": {
         "kind": "struct",
         "fields": [

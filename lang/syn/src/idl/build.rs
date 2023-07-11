@@ -195,7 +195,7 @@ pub fn idl_type_ts_from_syn_type(
                     let params = quote! { vec![#(#params),*] };
                     Ok((
                         quote! { #idl::IdlType::DefinedWithTypeArgs {
-                            path: <#path>::__anchor_private_full_path(),
+                            name: <#path>::__anchor_private_full_path(),
                             args: #params
                         } },
                         defined,
@@ -283,7 +283,6 @@ pub fn idl_type_definition_ts_from_syn_struct(
 ) -> Result<(TokenStream, Vec<syn::TypePath>), ()> {
     let (idl, _) = get_module_paths();
 
-    let name = item_strct.ident.to_string();
     let docs = match docs::parse(&item_strct.attrs) {
         Some(docs) if !no_docs => quote! {Some(vec![#(#docs.into()),*])},
         _ => quote! {None},
@@ -324,8 +323,7 @@ pub fn idl_type_definition_ts_from_syn_struct(
     Ok((
         quote! {
             #idl::IdlTypeDefinition {
-                name: #name.into(),
-                path: Some(Self::__anchor_private_full_path()),
+                name: Self::__anchor_private_full_path(),
                 generics: #generics,
                 docs: #docs,
                 ty: #idl::IdlTypeDefinitionTy::Struct{
@@ -349,7 +347,6 @@ pub fn idl_type_definition_ts_from_syn_enum(
 ) -> Result<(TokenStream, Vec<syn::TypePath>), ()> {
     let (idl, _) = get_module_paths();
 
-    let name = enum_item.ident.to_string();
     let docs = match docs::parse(&enum_item.attrs) {
         Some(docs) if !no_docs => quote! {Some(vec![#(#docs.into()),*])},
         _ => quote! {None},
@@ -421,8 +418,7 @@ pub fn idl_type_definition_ts_from_syn_enum(
     Ok((
         quote! {
             #idl::IdlTypeDefinition {
-                name: #name.into(),
-                path: Some(Self::__anchor_private_full_path()),
+                name: Self::__anchor_private_full_path(),
                 generics: #generics,
                 docs: #docs,
                 ty: #idl::IdlTypeDefinitionTy::Enum{

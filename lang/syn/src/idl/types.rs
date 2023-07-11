@@ -147,13 +147,16 @@ pub struct IdlEventField {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlTypeDefinition {
+    /// - `idl-parse`: always the name of the type
+    /// - `idl-build`: full path if there is a name conflict, otherwise the name of the type
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub generics: Option<Vec<String>>,
+    /// Documentation comments
     #[serde(skip_serializing_if = "Option::is_none")]
     pub docs: Option<Vec<String>>,
+    /// Generics, only supported with `idl-build`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generics: Option<Vec<String>>,
+    /// Type definition, `struct` or `enum`
     #[serde(rename = "type")]
     pub ty: IdlTypeDefinitionTy,
 }
@@ -207,7 +210,7 @@ pub enum IdlType {
     GenericLenArray(Box<IdlType>, String),
     Generic(String),
     DefinedWithTypeArgs {
-        path: String,
+        name: String,
         args: Vec<IdlDefinedTypeArg>,
     },
 }

@@ -29,7 +29,7 @@
           "name": "genericField",
           "type": {
             "definedWithTypeArgs": {
-              "path": "generics::GenericType",
+              "name": "GenericType",
               "args": [
                 {
                   "type": "u32"
@@ -50,7 +50,6 @@
   "accounts": [
     {
       "name": "GenericAccount",
-      "path": "generics::GenericAccount",
       "type": {
         "kind": "struct",
         "fields": [
@@ -58,7 +57,7 @@
             "name": "data",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericType",
+                "name": "GenericType",
                 "args": [
                   {
                     "type": "u32"
@@ -80,7 +79,6 @@
   "types": [
     {
       "name": "GenericEnum",
-      "path": "generics::GenericEnum",
       "generics": [
         "T",
         "U",
@@ -122,7 +120,7 @@
             "fields": [
               {
                 "definedWithTypeArgs": {
-                  "path": "generics::GenericNested",
+                  "name": "GenericNested",
                   "args": [
                     {
                       "type": {
@@ -157,7 +155,6 @@
     },
     {
       "name": "GenericNested",
-      "path": "generics::GenericNested",
       "generics": [
         "V",
         "Z"
@@ -182,7 +179,6 @@
     },
     {
       "name": "GenericType",
-      "path": "generics::GenericType",
       "generics": [
         "T",
         "U",
@@ -207,7 +203,7 @@
             "name": "gen3",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericNested",
+                "name": "GenericNested",
                 "args": [
                   {
                     "type": "u32"
@@ -225,7 +221,7 @@
             "name": "gen4",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericNested",
+                "name": "GenericNested",
                 "args": [
                   {
                     "type": {
@@ -234,7 +230,7 @@
                   },
                   {
                     "type": {
-                      "defined": "some_external_program::Baz"
+                      "defined": "Baz"
                     }
                   }
                 ]
@@ -245,7 +241,7 @@
             "name": "gen5",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericNested",
+                "name": "GenericNested",
                 "args": [
                   {
                     "type": {
@@ -265,7 +261,7 @@
             "name": "gen6",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericNested",
+                "name": "GenericNested",
                 "args": [
                   {
                     "type": "u32"
@@ -281,7 +277,7 @@
             "name": "gen7",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericNested",
+                "name": "GenericNested",
                 "args": [
                   {
                     "type": {
@@ -291,7 +287,7 @@
                   {
                     "type": {
                       "definedWithTypeArgs": {
-                        "path": "generics::GenericNested",
+                        "name": "GenericNested",
                         "args": [
                           {
                             "type": {
@@ -324,7 +320,7 @@
             "name": "warr",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::WrappedU8Array",
+                "name": "WrappedU8Array",
                 "args": [
                   {
                     "type": {
@@ -339,7 +335,7 @@
             "name": "warrval",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::WrappedU8Array",
+                "name": "WrappedU8Array",
                 "args": [
                   {
                     "value": "10"
@@ -352,7 +348,7 @@
             "name": "enm1",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericEnum",
+                "name": "GenericEnum",
                 "args": [
                   {
                     "type": {
@@ -377,12 +373,12 @@
             "name": "enm2",
             "type": {
               "definedWithTypeArgs": {
-                "path": "generics::GenericEnum",
+                "name": "GenericEnum",
                 "args": [
                   {
                     "type": {
                       "definedWithTypeArgs": {
-                        "path": "generics::GenericNested",
+                        "name": "GenericNested",
                         "args": [
                           {
                             "type": {
@@ -411,7 +407,6 @@
     },
     {
       "name": "Baz",
-      "path": "some_external_program::Baz",
       "type": {
         "kind": "struct",
         "fields": [

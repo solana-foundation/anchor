@@ -64,7 +64,6 @@
   "accounts": [
     {
       "name": "MyAccount",
-      "path": "relations_derivation::MyAccount",
       "type": {
         "kind": "struct",
         "fields": [

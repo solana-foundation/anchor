@@ -17,7 +17,7 @@ use flate2::read::ZlibDecoder;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use heck::{ToKebabCase, ToSnakeCase};
-use regex::RegexBuilder;
+use regex::{Regex, RegexBuilder};
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
 use semver::{Version, VersionReq};
@@ -2328,8 +2328,7 @@ fn idl_build(no_docs: bool) -> Result<()> {
                     }
 
                     let prog_ty = std::mem::take(&mut idl.types);
-                    defined_types
-                        .extend(prog_ty.into_iter().map(|ty| (ty.path.clone().unwrap(), ty)));
+                    defined_types.extend(prog_ty.into_iter().map(|ty| (ty.name.clone(), ty)));
                     idl.types = defined_types.into_values().collect::<Vec<_>>();
 
                     idls.push(idl);
@@ -2353,7 +2352,7 @@ fn idl_build(no_docs: bool) -> Result<()> {
                         event
                             .defined_types
                             .into_iter()
-                            .map(|ty| (ty.path.clone().unwrap(), ty)),
+                            .map(|ty| (ty.name.clone(), ty)),
                     );
                     state = State::Pass;
                     continue;
@@ -2381,13 +2380,37 @@ fn idl_build(no_docs: bool) -> Result<()> {
         }
     }
 
+    // Convert path to name if there are no conflicts
+    let path_regex = Regex::new(r#""((\w+::)+)(\w+)""#).unwrap();
+    let idls = idls
+        .into_iter()
+        .map(|idl| {
+            let mut modified_content = serde_json::to_string_pretty(&idl).unwrap();
+
+            // TODO: Remove. False positive https://github.com/rust-lang/rust-clippy/issues/10577
+            #[allow(clippy::redundant_clone)]
+            for captures in path_regex.captures_iter(&modified_content.clone()) {
+                let path = captures.get(0).unwrap().as_str();
+                let name = captures.get(3).unwrap().as_str();
+
+                // Replace path with name
+                let content_with_name = modified_content.replace(path, &format!(r#""{name}""#));
+
+                // Check whether there is a conflict
+                let has_conflict = content_with_name.contains(&format!("::{name}"));
+                if !has_conflict {
+                    modified_content = content_with_name;
+                }
+            }
+
+            modified_content
+        })
+        .collect::<Vec<_>>();
+
     if idls.len() == 1 {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&idls.first().unwrap()).unwrap()
-        );
-    } else if idls.len() >= 2 {
-        println!("{}", serde_json::to_string_pretty(&idls).unwrap());
+        println!("{}", idls[0]);
+    } else {
+        println!("{:?}", idls);
     };
 
     Ok(())
@@ -2670,7 +2693,7 @@ fn deserialize_idl_type_to_json(
         }
         IdlType::GenericLenArray(_, _) => todo!("Generic length arrays are not yet supported"),
         IdlType::Generic(_) => todo!("Generic types are not yet supported"),
-        IdlType::DefinedWithTypeArgs { path: _, args: _ } => {
+        IdlType::DefinedWithTypeArgs { name: _, args: _ } => {
             todo!("Defined types with type args are not yet supported")
         }
     })
