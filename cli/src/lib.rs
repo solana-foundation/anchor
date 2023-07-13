@@ -422,6 +422,13 @@ pub enum IdlCommand {
     },
     /// Generates the IDL for the program using the compilation method.
     Build {
+        /// Output file for the IDL (stdout if not specified)
+        #[clap(short, long)]
+        out: Option<String>,
+        /// Output file for the TypeScript IDL
+        #[clap(short = 't', long)]
+        out_ts: Option<String>,
+        /// Suppress doc strings in output
         #[clap(long)]
         no_docs: bool,
     },
@@ -1888,7 +1895,11 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             out_ts,
             no_docs,
         } => idl_parse(cfg_override, file, out, out_ts, no_docs),
-        IdlCommand::Build { no_docs } => idl_build(no_docs),
+        IdlCommand::Build {
+            out,
+            out_ts,
+            no_docs,
+        } => idl_build(out, out_ts, no_docs),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
     }
 }
@@ -2234,7 +2245,7 @@ fn idl_parse(
     Ok(())
 }
 
-fn idl_build(no_docs: bool) -> Result<()> {
+fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Result<()> {
     let no_docs = if no_docs { "TRUE" } else { "FALSE" };
 
     let cfg = Config::discover(&ConfigOverride::default())?.expect("Not in workspace.");
@@ -2283,8 +2294,8 @@ fn idl_build(no_docs: bool) -> Result<()> {
 
     let mut idls: Vec<Idl> = vec![];
 
-    let out = String::from_utf8_lossy(&exit.stdout);
-    for line in out.lines() {
+    let output = String::from_utf8_lossy(&exit.stdout);
+    for line in output.lines() {
         match &mut state {
             State::Pass => {
                 if line == "---- IDL begin const ----" {
@@ -2384,33 +2395,42 @@ fn idl_build(no_docs: bool) -> Result<()> {
     let path_regex = Regex::new(r#""((\w+::)+)(\w+)""#).unwrap();
     let idls = idls
         .into_iter()
-        .map(|idl| {
-            let mut modified_content = serde_json::to_string_pretty(&idl).unwrap();
+        .filter_map(|idl| {
+            let mut modified_idl = serde_json::to_string(&idl).unwrap();
 
             // TODO: Remove. False positive https://github.com/rust-lang/rust-clippy/issues/10577
             #[allow(clippy::redundant_clone)]
-            for captures in path_regex.captures_iter(&modified_content.clone()) {
+            for captures in path_regex.captures_iter(&modified_idl.clone()) {
                 let path = captures.get(0).unwrap().as_str();
                 let name = captures.get(3).unwrap().as_str();
 
                 // Replace path with name
-                let content_with_name = modified_content.replace(path, &format!(r#""{name}""#));
+                let replaced_idl = modified_idl.replace(path, &format!(r#""{name}""#));
 
                 // Check whether there is a conflict
-                let has_conflict = content_with_name.contains(&format!("::{name}"));
+                let has_conflict = replaced_idl.contains(&format!("::{name}"));
                 if !has_conflict {
-                    modified_content = content_with_name;
+                    modified_idl = replaced_idl;
                 }
             }
 
-            modified_content
+            serde_json::from_str::<Idl>(&modified_idl).ok()
         })
         .collect::<Vec<_>>();
 
     if idls.len() == 1 {
-        println!("{}", idls[0]);
+        let idl = &idls[0];
+        let out = match out {
+            None => OutFile::Stdout,
+            Some(path) => OutFile::File(PathBuf::from(path)),
+        };
+        write_idl(idl, out)?;
+
+        if let Some(path) = out_ts {
+            fs::write(path, rust_template::idl_ts(idl)?)?;
+        }
     } else {
-        println!("{:?}", idls);
+        println!("{}", serde_json::to_string_pretty(&idls)?);
     };
 
     Ok(())

@@ -5,14 +5,14 @@ set -e
 TMPDIR=$(mktemp -d)
 
 cd programs/idl
-anchor idl parse --file src/lib.rs > $TMPDIR/idl_parse_act.json
-anchor idl build > $TMPDIR/idl_build_act.json
+anchor idl parse --file src/lib.rs -o $TMPDIR/idl_parse_act.json
+anchor idl build -o $TMPDIR/idl_build_act.json
 
 cd ../generics
-anchor idl build > $TMPDIR/generics_build_act.json
+anchor idl build -o $TMPDIR/generics_build_act.json
 
 cd ../relations-derivation
-anchor idl build > $TMPDIR/relations_build_act.json
+anchor idl build -o $TMPDIR/relations_build_act.json
 
 cd ../..
 echo "----------------------------------------------------"
