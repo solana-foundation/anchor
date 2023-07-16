@@ -22,6 +22,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Packages no longer depend on `assert` ([#2535](https://github.com/coral-xyz/anchor/pull/2535)).
 - lang: Support for `const` in the `InitSpace` macro ([#2555](https://github.com/coral-xyz/anchor/pull/2555)).
 - cli: Support workspace inheritence ([#2570](https://github.com/coral-xyz/anchor/pull/2570)).
+- client: Compile with Solana `1.14`([#2572](https://github.com/coral-xyz/anchor/pull/2572)).
 
 ### Breaking
 

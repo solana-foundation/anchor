@@ -279,9 +279,10 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
                     client.logs_subscribe(filter, config).await?;
 
                 tx.send(unsubscribe).map_err(|e| {
-                    ClientError::SolanaClientPubsubError(PubsubClientError::UnexpectedMessageError(
-                        e.to_string(),
-                    ))
+                    ClientError::SolanaClientPubsubError(PubsubClientError::RequestFailed {
+                        message: "Unsubscribe failed".to_string(),
+                        reason: e.to_string(),
+                    })
                 })?;
 
                 while let Some(logs) = notifications.next().await {
