@@ -1,12 +1,12 @@
 [package]
-name = "some-external-program"
+name = "external"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "some_external_program"
+name = "external"
 
 [features]
 no-entrypoint = []
@@ -19,4 +19,3 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
-

@@ -1,25 +1,23 @@
 [package]
-name = "generics"
+name = "idl"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "generics"
+name = "idl"
 
 [features]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-idl-build = [
-    "anchor-lang/idl-build",
-    "some-external-program/idl-build",
-]
+idl-build = ["anchor-lang/idl-build", "external/idl-build"]
 default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
-some-external-program = { path = "../some_external_program", features = ["no-entrypoint"] }
+bytemuck = {version = "1.4.0", features = ["derive", "min_const_generics"]}
+external = { path = "../external", features = ["no-entrypoint"] }

@@ -2,24 +2,25 @@
 set -x
 set -e
 
-TMPDIR=$(mktemp -d)
+idls_dir=idls
+tmp_dir=$(mktemp -d)
 
 cd programs/idl
-anchor idl parse --file src/lib.rs -o $TMPDIR/idl_parse_act.json
-anchor idl build -o $TMPDIR/idl_build_act.json
+anchor idl parse --file src/lib.rs -o $tmp_dir/idl_parse_act.json
+anchor idl build -o $tmp_dir/idl_build_act.json
 
 cd ../generics
-anchor idl build -o $TMPDIR/generics_build_act.json
+anchor idl build -o $tmp_dir/generics_build_act.json
 
 cd ../relations-derivation
-anchor idl build -o $TMPDIR/relations_build_act.json
+anchor idl build -o $tmp_dir/relations_build_act.json
 
 cd ../..
 echo "----------------------------------------------------"
 echo "idl parse before > after"
 echo "----------------------------------------------------"
 echo ""
-diff -y --color tests/testdata/idl_parse_exp.json $TMPDIR/idl_parse_act.json
+diff -y --color $idls_dir/idl_parse_exp.json $tmp_dir/idl_parse_act.json
 PARSE_RETCODE=$?
 
 echo ""
@@ -28,7 +29,7 @@ echo "----------------------------------------------------"
 echo "idl build before > after"
 echo "----------------------------------------------------"
 echo ""
-diff -y --color tests/testdata/idl_build_exp.json $TMPDIR/idl_build_act.json
+diff -y --color $idls_dir/idl_build_exp.json $tmp_dir/idl_build_act.json
 GEN_RETCODE=$?
 
 echo ""
@@ -37,7 +38,7 @@ echo "----------------------------------------------------"
 echo "idl generics build before > after"
 echo "----------------------------------------------------"
 echo ""
-diff -y --color tests/testdata/generics_build_exp.json $TMPDIR/generics_build_act.json
+diff -y --color $idls_dir/generics_build_exp.json $tmp_dir/generics_build_act.json
 GEN_GENERICS_RETCODE=$?
 
 echo ""
@@ -46,7 +47,7 @@ echo "----------------------------------------------------"
 echo "idl relations build before > after"
 echo "----------------------------------------------------"
 echo ""
-diff -y --color tests/testdata/relations_build_exp.json $TMPDIR/relations_build_act.json
+diff -y --color $idls_dir/relations_build_exp.json $tmp_dir/relations_build_act.json
 GEN_RELATIONS_RETCODE=$?
 
 # returns 0 when ok, or a positive integer when there are differences

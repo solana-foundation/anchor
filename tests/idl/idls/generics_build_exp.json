@@ -1,9 +1,6 @@
 {
   "version": "0.1.0",
-  "name": "example_program",
-  "docs": [
-    "This is an example program used for testing"
-  ],
+  "name": "generics",
   "instructions": [
     {
       "name": "generic",
@@ -77,6 +74,18 @@
     }
   ],
   "types": [
+    {
+      "name": "Baz",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "GenericEnum",
       "generics": [
@@ -401,18 +410,6 @@
                 ]
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "Baz",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "someField",
-            "type": "u8"
           }
         ]
       }

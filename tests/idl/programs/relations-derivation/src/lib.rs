@@ -1,9 +1,6 @@
-//! The typescript example serves to show how one would setup an Anchor
-//! workspace with TypeScript tests and migrations.
-
 use anchor_lang::prelude::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Re1ationsDerivation111111111111111111111111");
 
 #[program]
 pub mod relations_derivation {
@@ -14,6 +11,7 @@ pub mod relations_derivation {
         ctx.accounts.account.bump = ctx.bumps["account"];
         Ok(())
     }
+
     pub fn test_relation(_ctx: Context<TestRelation>) -> Result<()> {
         Ok(())
     }
@@ -32,7 +30,7 @@ pub struct InitBase<'info> {
       bump,
     )]
     account: Account<'info, MyAccount>,
-    system_program: Program<'info, System>
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -60,9 +58,8 @@ pub struct TestRelation<'info> {
     nested: Nested<'info>,
 }
 
-
 #[account]
 pub struct MyAccount {
     pub my_account: Pubkey,
-    pub bump: u8
+    pub bump: u8,
 }

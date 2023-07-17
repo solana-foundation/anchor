@@ -1,17 +1,16 @@
 use anchor_lang::prelude::*;
-use some_external_program;
 use std::str::FromStr;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("id11111111111111111111111111111111111111111");
 
 #[constant]
 pub const FOO_CONST: u128 = 1_000_000;
 #[constant]
 pub const BAR_CONST: u8 = 6;
 
-/// This is an example program used for testing
+/// IDL test program documentation.
 #[program]
-pub mod example_program {
+pub mod idl {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
@@ -88,8 +87,11 @@ pub mod example_program {
         vec_of_option: Vec<Option<u64>>,
         box_field: Box<bool>,
     ) -> Result<SomeRetStruct> {
-        ctx.accounts.state.set_inner(State2 { vec_of_option, box_field });
-        Ok(SomeRetStruct { some_field: 3})
+        ctx.accounts.state.set_inner(State2 {
+            vec_of_option,
+            box_field,
+        });
+        Ok(SomeRetStruct { some_field: 3 })
     }
 
     pub fn cause_error(_ctx: Context<CauseError>) -> Result<()> {
@@ -306,7 +308,7 @@ mod some_other_module {
 #[event]
 pub struct SomeEvent {
     bool_field: bool,
-    external_baz: some_external_program::Baz,
+    external_baz: external::Baz,
     other_module_baz: some_other_module::Baz,
 }
 
