@@ -1120,7 +1120,9 @@ fn build_rust_cwd(
         Some(p) => std::env::set_current_dir(p)?,
     };
     match build_config.verifiable {
-        false => _build_rust_cwd(cfg, idl_out, idl_ts_out, skip_lint, arch, cargo_args),
+        false => _build_rust_cwd(
+            cfg, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+        ),
         true => build_cwd_verifiable(
             cfg,
             cargo_toml,
@@ -1484,6 +1486,7 @@ fn _build_rust_cwd(
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
     skip_lint: bool,
+    no_docs: bool,
     arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
@@ -1500,7 +1503,7 @@ fn _build_rust_cwd(
     }
 
     // Always assume idl is located at src/lib.rs.
-    if let Some(idl) = extract_idl(cfg, "src/lib.rs", skip_lint, false)? {
+    if let Some(idl) = extract_idl(cfg, "src/lib.rs", skip_lint, no_docs)? {
         // JSON out path.
         let out = match idl_out {
             None => PathBuf::from(".").join(&idl.name).with_extension("json"),
