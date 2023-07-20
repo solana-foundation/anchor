@@ -15,8 +15,8 @@ pub struct Cli {
 pub enum Commands {
     #[clap(about = "Use a specific version of Anchor")]
     Use {
-        #[clap(value_parser = parse_version)]
-        version: Version,
+        #[clap(value_parser = parse_version, required = false)]
+        version: Option<Version>,
     },
     #[clap(about = "Install a version of Anchor")]
     Install {
@@ -48,7 +48,7 @@ fn parse_version(version: &str) -> Result<Version, Error> {
 }
 pub fn entry(opts: Cli) -> Result<()> {
     match opts.command {
-        Commands::Use { version } => avm::use_version(&version),
+        Commands::Use { version } => avm::use_version(version),
         Commands::Install { version, force } => avm::install_version(&version, force),
         Commands::Uninstall { version } => avm::uninstall_version(&version),
         Commands::List {} => avm::list_versions(),

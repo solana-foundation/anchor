@@ -45,10 +45,15 @@ pub fn version_binary_path(version: &Version) -> PathBuf {
 }
 
 /// Update the current version to a new version
-pub fn use_version(version: &Version) -> Result<()> {
+pub fn use_version(opt_version: Option<Version>) -> Result<()> {
+    let version = match opt_version {
+        Some(version) => version,
+        None => read_anchorversion_file()?,
+    };
+
     let installed_versions = read_installed_versions();
     // Make sure the requested version is installed
-    if !installed_versions.contains(version) {
+    if !installed_versions.contains(&version) {
         if let Ok(current) = current_version() {
             println!("Version {version} is not installed, staying on version {current}.");
         } else {
@@ -118,7 +123,7 @@ pub fn install_version(version: &Version, force: bool) -> Result<()> {
         current_version_file.write_all(version.to_string().as_bytes())?;
     }
 
-    use_version(version)
+    use_version(Some(version.clone()))
 }
 
 /// Remove an installed version of anchor-cli
@@ -132,6 +137,14 @@ pub fn uninstall_version(version: &Version) -> Result<()> {
     }
     fs::remove_file(version_path.as_path())?;
     Ok(())
+}
+
+/// Read version from .anchorversion
+pub fn read_anchorversion_file() -> Result<Version> {
+    fs::read_to_string(".anchorversion")
+        .map_err(|e| anyhow!(".anchorversion file not found: {e}"))
+        .map(|content| Version::parse(content.trim()))?
+        .map_err(|e| anyhow!("Unable to parse version: {e}"))
 }
 
 /// Ensure the users home directory is setup with the paths required by AVM.
@@ -237,8 +250,30 @@ pub fn read_installed_versions() -> Vec<semver::Version> {
 mod tests {
     use crate::*;
     use semver::Version;
+    use std::env;
     use std::fs;
     use std::io::Write;
+
+    #[test]
+    fn test_read_anchorversion() {
+        ensure_paths();
+        let mut dir = env::current_dir().unwrap();
+        dir.push(".anchorversion");
+        let mut file_created = fs::File::create(&dir).unwrap();
+        let test_version = "0.26.0";
+        file_created.write(test_version.as_bytes()).unwrap();
+
+        let version = read_anchorversion_file();
+        match version {
+            Ok(v) => {
+                assert_eq!(v.to_string(), test_version);
+            }
+            Err(_e) => {
+                assert!(false);
+            }
+        }
+        fs::remove_file(&dir).unwrap();
+    }
 
     #[test]
     fn test_ensure_paths() {
