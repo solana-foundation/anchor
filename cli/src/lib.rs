@@ -2954,7 +2954,7 @@ fn validator_flags(
         flags.push(address.clone());
         flags.push(binary_path);
 
-        if let Some(mut idl) = program.idl.as_mut() {
+        if let Some(idl) = program.idl.as_mut() {
             // Add program address to the IDL.
             idl.metadata = Some(serde_json::to_value(IdlTestMetadata { address })?);
 
@@ -3348,7 +3348,7 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
-            if let Some(mut idl) = program.idl.as_mut() {
+            if let Some(idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.metadata = Some(serde_json::to_value(IdlTestMetadata {
                     address: program_id.to_string(),
@@ -4013,7 +4013,7 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
 
             // Handle declaration in Anchor.toml
             'outer: for programs in cfg.programs.values_mut() {
-                for (name, mut deployment) in programs {
+                for (name, deployment) in programs {
                     // Skip other programs
                     if name != &program.lib_name {
                         continue;

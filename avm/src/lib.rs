@@ -261,17 +261,12 @@ mod tests {
         dir.push(".anchorversion");
         let mut file_created = fs::File::create(&dir).unwrap();
         let test_version = "0.26.0";
-        file_created.write(test_version.as_bytes()).unwrap();
+        file_created.write_all(test_version.as_bytes()).unwrap();
 
-        let version = read_anchorversion_file();
-        match version {
-            Ok(v) => {
-                assert_eq!(v.to_string(), test_version);
-            }
-            Err(_e) => {
-                assert!(false);
-            }
-        }
+        let version = read_anchorversion_file().unwrap();
+
+        assert_eq!(version.to_string(), test_version);
+
         fs::remove_file(&dir).unwrap();
     }
 
