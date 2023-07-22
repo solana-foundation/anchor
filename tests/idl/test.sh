@@ -2,6 +2,9 @@
 set -x
 set -e
 
+# Run anchor test
+anchor test --skip-lint
+
 idls_dir=idls
 tmp_dir=$(mktemp -d)
 

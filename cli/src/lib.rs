@@ -1209,28 +1209,28 @@ fn build_cwd_verifiable(
         Ok(_) => {
             // Build the idl.
             println!("Extracting the IDL");
-            if let Ok(Some(idl)) = extract_idl(cfg, "src/lib.rs", skip_lint, no_docs) {
-                // Write out the JSON file.
-                println!("Writing the IDL file");
-                let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.name));
-                write_idl(&idl, OutFile::File(out_file))?;
+            let idl = generate_idl(cfg, skip_lint, no_docs)?;
+            // Write out the JSON file.
+            println!("Writing the IDL file");
+            let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.name));
+            write_idl(&idl, OutFile::File(out_file))?;
 
-                // Write out the TypeScript type.
-                println!("Writing the .ts file");
-                let ts_file = workspace_dir.join(format!("target/types/{}.ts", idl.name));
-                fs::write(&ts_file, rust_template::idl_ts(&idl)?)?;
+            // Write out the TypeScript type.
+            println!("Writing the .ts file");
+            let ts_file = workspace_dir.join(format!("target/types/{}.ts", idl.name));
+            fs::write(&ts_file, rust_template::idl_ts(&idl)?)?;
 
-                // Copy out the TypeScript type.
-                if !&cfg.workspace.types.is_empty() {
-                    fs::copy(
-                        ts_file,
-                        workspace_dir
-                            .join(&cfg.workspace.types)
-                            .join(idl.name)
-                            .with_extension("ts"),
-                    )?;
-                }
+            // Copy out the TypeScript type.
+            if !&cfg.workspace.types.is_empty() {
+                fs::copy(
+                    ts_file,
+                    workspace_dir
+                        .join(&cfg.workspace.types)
+                        .join(idl.name)
+                        .with_extension("ts"),
+                )?;
             }
+
             println!("Build success");
         }
     }
@@ -1502,34 +1502,33 @@ fn _build_rust_cwd(
         std::process::exit(exit.status.code().unwrap_or(1));
     }
 
-    // Always assume idl is located at src/lib.rs.
-    if let Some(idl) = extract_idl(cfg, "src/lib.rs", skip_lint, no_docs)? {
-        // JSON out path.
-        let out = match idl_out {
-            None => PathBuf::from(".").join(&idl.name).with_extension("json"),
-            Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("json")),
-        };
-        // TS out path.
-        let ts_out = match idl_ts_out {
-            None => PathBuf::from(".").join(&idl.name).with_extension("ts"),
-            Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("ts")),
-        };
+    // Generate IDL
+    let idl = generate_idl(cfg, skip_lint, no_docs)?;
+    // JSON out path.
+    let out = match idl_out {
+        None => PathBuf::from(".").join(&idl.name).with_extension("json"),
+        Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("json")),
+    };
+    // TS out path.
+    let ts_out = match idl_ts_out {
+        None => PathBuf::from(".").join(&idl.name).with_extension("ts"),
+        Some(o) => PathBuf::from(&o.join(&idl.name).with_extension("ts")),
+    };
 
-        // Write out the JSON file.
-        write_idl(&idl, OutFile::File(out))?;
-        // Write out the TypeScript type.
-        fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
-        // Copy out the TypeScript type.
-        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
-        if !&cfg.workspace.types.is_empty() {
-            fs::copy(
-                &ts_out,
-                cfg_parent
-                    .join(&cfg.workspace.types)
-                    .join(&idl.name)
-                    .with_extension("ts"),
-            )?;
-        }
+    // Write out the JSON file.
+    write_idl(&idl, OutFile::File(out))?;
+    // Write out the TypeScript type.
+    fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
+    // Copy out the TypeScript type.
+    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+    if !&cfg.workspace.types.is_empty() {
+        fs::copy(
+            &ts_out,
+            cfg_parent
+                .join(&cfg.workspace.types)
+                .join(&idl.name)
+                .with_extension("ts"),
+        )?;
     }
 
     Ok(())
@@ -1671,13 +1670,12 @@ fn verify(
     }
 
     // Verify IDL (only if it's not a buffer account).
-    if let Some(local_idl) = extract_idl(&cfg, "src/lib.rs", true, false)? {
-        if bin_ver.state != BinVerificationState::Buffer {
-            let deployed_idl = fetch_idl(cfg_override, program_id)?;
-            if local_idl != deployed_idl {
-                println!("Error: IDLs don't match");
-                std::process::exit(1);
-            }
+    let local_idl = generate_idl(&cfg, true, false)?;
+    if bin_ver.state != BinVerificationState::Buffer {
+        let deployed_idl = fetch_idl(cfg_override, program_id)?;
+        if local_idl != deployed_idl {
+            println!("Error: IDLs don't match");
+            std::process::exit(1);
         }
     }
 
@@ -1805,62 +1803,6 @@ pub enum BinVerificationState {
     },
 }
 
-// Fetches an IDL for the given program_id.
-fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
-    let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
-        None => {
-            // If the command is not run inside a workspace,
-            // cluster_url will be used from default solana config
-            // provider.cluster option can be used to override this
-
-            if let Some(cluster) = cfg_override.cluster.clone() {
-                cluster.url().to_string()
-            } else {
-                config::get_solana_cfg_url()?
-            }
-        }
-    };
-
-    let client = create_client(url);
-
-    let mut account = client.get_account(&idl_addr)?;
-    if account.executable {
-        let idl_addr = IdlAccount::address(&idl_addr);
-        account = client.get_account(&idl_addr)?;
-    }
-
-    // Cut off account discriminator.
-    let mut d: &[u8] = &account.data[8..];
-    let idl_account: IdlAccount = AnchorDeserialize::deserialize(&mut d)?;
-
-    let compressed_len: usize = idl_account.data_len.try_into().unwrap();
-    let compressed_bytes = &account.data[44..44 + compressed_len];
-    let mut z = ZlibDecoder::new(compressed_bytes);
-    let mut s = Vec::new();
-    z.read_to_end(&mut s)?;
-    serde_json::from_slice(&s[..]).map_err(Into::into)
-}
-
-fn extract_idl(
-    cfg: &WithPath<Config>,
-    file: &str,
-    skip_lint: bool,
-    no_docs: bool,
-) -> Result<Option<Idl>> {
-    let file = shellexpand::tilde(file);
-    let manifest_from_path = std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap());
-    let cargo = Manifest::discover_from_path(manifest_from_path)?
-        .ok_or_else(|| anyhow!("Cargo.toml not found"))?;
-    anchor_syn::idl::parse::file::parse(
-        &*file,
-        cargo.version(),
-        cfg.features.seeds,
-        no_docs,
-        !(cfg.features.skip_lint || skip_lint),
-    )
-}
-
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     match subcmd {
         IdlCommand::Init {
@@ -1905,6 +1847,43 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_build(out, out_ts, no_docs),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
     }
+}
+
+/// Fetch an IDL for the given program id.
+fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
+    let url = match Config::discover(cfg_override)? {
+        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
+        None => {
+            // If the command is not run inside a workspace,
+            // cluster_url will be used from default solana config
+            // provider.cluster option can be used to override this
+
+            if let Some(cluster) = cfg_override.cluster.clone() {
+                cluster.url().to_string()
+            } else {
+                config::get_solana_cfg_url()?
+            }
+        }
+    };
+
+    let client = create_client(url);
+
+    let mut account = client.get_account(&idl_addr)?;
+    if account.executable {
+        let idl_addr = IdlAccount::address(&idl_addr);
+        account = client.get_account(&idl_addr)?;
+    }
+
+    // Cut off account discriminator.
+    let mut d: &[u8] = &account.data[8..];
+    let idl_account: IdlAccount = AnchorDeserialize::deserialize(&mut d)?;
+
+    let compressed_len: usize = idl_account.data_len.try_into().unwrap();
+    let compressed_bytes = &account.data[44..44 + compressed_len];
+    let mut z = ZlibDecoder::new(compressed_bytes);
+    let mut s = Vec::new();
+    z.read_to_end(&mut s)?;
+    serde_json::from_slice(&s[..]).map_err(Into::into)
 }
 
 fn get_idl_account(client: &RpcClient, idl_address: &Pubkey) -> Result<IdlAccount> {
@@ -2233,7 +2212,18 @@ fn idl_parse(
     no_docs: bool,
 ) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let idl = extract_idl(&cfg, &file, true, no_docs)?.ok_or_else(|| anyhow!("IDL not parsed"))?;
+    let file = shellexpand::tilde(&file);
+    let manifest_path = std::env::current_dir()?.join(PathBuf::from(&*file).parent().unwrap());
+    let manifest = Manifest::discover_from_path(manifest_path)?
+        .ok_or_else(|| anyhow!("Cargo.toml not found"))?;
+    let idl = generate_idl_parse(
+        &*file,
+        manifest.version(),
+        cfg.features.seeds,
+        no_docs,
+        !cfg.features.skip_lint,
+    )?;
+
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
@@ -2249,6 +2239,64 @@ fn idl_parse(
 }
 
 fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Result<()> {
+    let idls = generate_idl_build(no_docs)?;
+    if idls.len() == 1 {
+        let idl = &idls[0];
+        let out = match out {
+            None => OutFile::Stdout,
+            Some(path) => OutFile::File(PathBuf::from(path)),
+        };
+        write_idl(idl, out)?;
+
+        if let Some(path) = out_ts {
+            fs::write(path, rust_template::idl_ts(idl)?)?;
+        }
+    } else {
+        println!("{}", serde_json::to_string_pretty(&idls)?);
+    };
+
+    Ok(())
+}
+
+/// Generate IDL with method decided by whether manifest file has `idl-build` feature or not.
+fn generate_idl(cfg: &WithPath<Config>, skip_lint: bool, no_docs: bool) -> Result<Idl> {
+    let manifest = Manifest::discover()?.ok_or_else(|| anyhow!("Cargo.toml not found"))?;
+
+    // Check whether the manifest has `idl-build` feature
+    let is_idl_build = manifest
+        .features
+        .iter()
+        .any(|(feature, _)| feature == "idl-build");
+    if is_idl_build {
+        generate_idl_build(no_docs)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow!("Could not build IDL"))
+    } else {
+        generate_idl_parse(
+            "src/lib.rs",
+            manifest.version(),
+            cfg.features.seeds,
+            no_docs,
+            !(cfg.features.skip_lint || skip_lint),
+        )
+    }
+}
+
+/// Generate IDL with the parsing method(default).
+fn generate_idl_parse(
+    path: impl AsRef<Path>,
+    version: String,
+    seeds_feature: bool,
+    no_docs: bool,
+    safety_checks: bool,
+) -> Result<Idl> {
+    anchor_syn::idl::parse::file::parse(path, version, seeds_feature, no_docs, safety_checks)
+        .and_then(|maybe_idl| maybe_idl.ok_or_else(|| anyhow!("Failed to parse IDL")))
+}
+
+/// Generate IDL with the build method.
+fn generate_idl_build(no_docs: bool) -> Result<Vec<Idl>> {
     let no_docs = if no_docs { "TRUE" } else { "FALSE" };
 
     let cfg = Config::discover(&ConfigOverride::default())?.expect("Not in workspace.");
@@ -2264,8 +2312,8 @@ fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Resu
             "--show-output",
             "--quiet",
         ])
-        .env("ANCHOR_IDL_GEN_NO_DOCS", no_docs)
-        .env("ANCHOR_IDL_GEN_SEEDS_FEATURE", seeds_feature)
+        .env("ANCHOR_IDL_BUILD_NO_DOCS", no_docs)
+        .env("ANCHOR_IDL_BUILD_SEEDS_FEATURE", seeds_feature)
         .stderr(Stdio::inherit())
         .output()
         .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
@@ -2282,7 +2330,7 @@ fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Resu
     }
 
     #[derive(Serialize, Deserialize)]
-    struct IdlGenEventPrint {
+    struct IdlBuildEventPrint {
         event: IdlEvent,
         defined_types: Vec<IdlTypeDefinition>,
     }
@@ -2360,7 +2408,7 @@ fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Resu
             }
             State::EventLines(lines) => {
                 if line == "---- IDL end event ----" {
-                    let event: IdlGenEventPrint = serde_json::from_str(&lines.join("\n"))?;
+                    let event: IdlBuildEventPrint = serde_json::from_str(&lines.join("\n"))?;
                     events.push(event.event);
                     defined_types.extend(
                         event
@@ -2421,22 +2469,7 @@ fn idl_build(out: Option<String>, out_ts: Option<String>, no_docs: bool) -> Resu
         })
         .collect::<Vec<_>>();
 
-    if idls.len() == 1 {
-        let idl = &idls[0];
-        let out = match out {
-            None => OutFile::Stdout,
-            Some(path) => OutFile::File(PathBuf::from(path)),
-        };
-        write_idl(idl, out)?;
-
-        if let Some(path) = out_ts {
-            fs::write(path, rust_template::idl_ts(idl)?)?;
-        }
-    } else {
-        println!("{}", serde_json::to_string_pretty(&idls)?);
-    };
-
-    Ok(())
+    Ok(idls)
 }
 
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {

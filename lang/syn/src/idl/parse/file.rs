@@ -21,13 +21,13 @@ const ERROR_CODE_OFFSET: u32 = 6000;
 
 // Parse an entire interface file.
 pub fn parse(
-    filename: impl AsRef<Path>,
+    path: impl AsRef<Path>,
     version: String,
     seeds_feature: bool,
     no_docs: bool,
     safety_checks: bool,
 ) -> Result<Option<Idl>> {
-    let ctx = CrateContext::parse(filename)?;
+    let ctx = CrateContext::parse(path)?;
     if safety_checks {
         ctx.safety_checks()?;
     }

@@ -15,14 +15,14 @@ fn get_module_paths() -> (TokenStream, TokenStream) {
 
 #[inline(always)]
 pub fn get_no_docs() -> bool {
-    std::option_env!("ANCHOR_IDL_GEN_NO_DOCS")
+    std::option_env!("ANCHOR_IDL_BUILD_NO_DOCS")
         .map(|val| val == "TRUE")
         .unwrap_or(false)
 }
 
 #[inline(always)]
 pub fn get_seeds_feature() -> bool {
-    std::option_env!("ANCHOR_IDL_GEN_SEEDS_FEATURE")
+    std::option_env!("ANCHOR_IDL_BUILD_SEEDS_FEATURE")
         .map(|val| val == "TRUE")
         .unwrap_or(false)
 }
