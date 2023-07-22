@@ -17,7 +17,5 @@ anchor-debug = ["anchor-syn/anchor-debug"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.28.0" }
-anyhow = "1"
-proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

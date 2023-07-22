@@ -18,7 +18,6 @@ event-cpi = ["anchor-syn/event-cpi"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.28.0", features = ["hash"] }
-anyhow = "1"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

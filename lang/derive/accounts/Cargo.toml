@@ -19,8 +19,6 @@ idl-build = ["anchor-syn/idl-build"]
 anchor-debug = ["anchor-syn/anchor-debug"]
 
 [dependencies]
-anyhow = "1"
-proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
 anchor-syn = { path = "../../syn", version = "0.28.0" }

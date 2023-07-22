@@ -45,6 +45,5 @@ solana-sdk = ">=1.14, <1.17"
 solang-parser = "=0.3.1"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
-tokio = "~1.14.1"
 toml = "0.7.6"
 walkdir = "2.3.2"
