@@ -1,11 +1,7 @@
-import camelCase from "camelcase";
 import * as toml from "toml";
-import { PublicKey } from "@solana/web3.js";
+import { snakeCase } from "snake-case";
 import { Program } from "./program/index.js";
-import { Idl } from "./idl.js";
 import { isBrowser } from "./utils/common.js";
-
-let _populatedWorkspace = false;
 
 /**
  * The `workspace` namespace provides a convenience API to automatically
@@ -14,95 +10,77 @@ let _populatedWorkspace = false;
  *
  * This API is for Node only.
  */
-const workspace = new Proxy({} as any, {
-  get(workspaceCache: { [key: string]: Program }, programName: string) {
-    if (isBrowser) {
-      throw new Error("Workspaces aren't available in the browser");
-    }
+const workspace = new Proxy(
+  {},
+  {
+    get(workspaceCache: { [key: string]: Program }, programName: string) {
+      if (isBrowser) {
+        throw new Error("Workspaces aren't available in the browser");
+      }
 
-    const fs = require("fs");
-    const process = require("process");
+      // Converting `programName` to snake_case enables the ability to use any
+      // of the following to access the workspace program:
+      // `workspace.myProgram`, `workspace.MyProgram`, `workspace["my-program"]`...
+      programName = snakeCase(programName);
 
-    if (!_populatedWorkspace) {
+      // Check whether the program name contains any digits
+      if (/\d/.test(programName)) {
+        // Numbers cannot be properly converted from camelCase to snake_case,
+        // e.g. if the `programName` is `myProgram2`, the actual program name could
+        // be `my_program2` or `my_program_2`. This implementation assumes the
+        // latter as the default and always converts to `_numbers`.
+        //
+        // A solution to the conversion of program names with numbers in them
+        // would be to always convert the `programName` to camelCase instead of
+        // snake_case. The problem with this approach is that it would require
+        // converting everything else e.g. program names in Anchor.toml and IDL
+        // file names which are both snake_case.
+        programName = programName
+          .replace(/\d+/g, (match) => "_" + match)
+          .replace("__", "_");
+      }
+
+      // Return early if the program is in cache
+      if (workspaceCache[programName]) return workspaceCache[programName];
+
+      const fs = require("fs");
       const path = require("path");
 
-      let projectRoot = process.cwd();
-      while (!fs.existsSync(path.join(projectRoot, "Anchor.toml"))) {
-        const parentDir = path.dirname(projectRoot);
-        if (parentDir === projectRoot) {
-          projectRoot = undefined;
-        }
-        projectRoot = parentDir;
-      }
-
-      if (projectRoot === undefined) {
-        throw new Error("Could not find workspace root.");
-      }
-
-      const idlFolder = `${projectRoot}/target/idl`;
-      if (!fs.existsSync(idlFolder)) {
-        throw new Error(
-          `${idlFolder} doesn't exist. Did you use "anchor build"?`
-        );
-      }
-
-      const idlMap = new Map<string, Idl>();
-      fs.readdirSync(idlFolder)
-        .filter((file) => file.endsWith(".json"))
-        .forEach((file) => {
-          const filePath = `${idlFolder}/${file}`;
-          const idlStr = fs.readFileSync(filePath);
-          const idl = JSON.parse(idlStr);
-          idlMap.set(idl.name, idl);
-          const name = camelCase(idl.name, { pascalCase: true });
-          if (idl.metadata && idl.metadata.address) {
-            workspaceCache[name] = new Program(
-              idl,
-              new PublicKey(idl.metadata.address)
-            );
-          }
-        });
-
       // Override the workspace programs if the user put them in the config.
-      const anchorToml = toml.parse(
-        fs.readFileSync(path.join(projectRoot, "Anchor.toml"), "utf-8")
-      );
+      const anchorToml = toml.parse(fs.readFileSync("Anchor.toml"));
       const clusterId = anchorToml.provider.cluster;
-      if (anchorToml.programs && anchorToml.programs[clusterId]) {
-        attachWorkspaceOverride(
-          workspaceCache,
-          anchorToml.programs[clusterId],
-          idlMap
+      const programEntry = anchorToml.programs?.[clusterId]?.[programName];
+
+      let idlPath: string;
+      let programId;
+      if (typeof programEntry === "object" && programEntry.idl) {
+        idlPath = programEntry.idl;
+        programId = programEntry.address;
+      } else {
+        idlPath = path.join("target", "idl", `${programName}.json`);
+      }
+
+      if (!fs.existsSync(idlPath)) {
+        throw new Error(
+          `${idlPath} doesn't exist. Did you run \`anchor build\`?`
         );
       }
 
-      _populatedWorkspace = true;
-    }
+      const idl = JSON.parse(fs.readFileSync(idlPath));
+      if (!programId) {
+        if (!idl.metadata?.address) {
+          throw new Error(
+            `IDL for program \`${programName}\` does not have \`metadata.address\` field.\n` +
+              "To add the missing field, run `anchor deploy` or `anchor test`."
+          );
+        }
+        programId = idl.metadata.address;
+      }
+      workspaceCache[programName] = new Program(idl, programId);
 
-    return workspaceCache[programName];
-  },
-});
-
-function attachWorkspaceOverride(
-  workspaceCache: { [key: string]: Program },
-  overrideConfig: { [key: string]: string | { address: string; idl?: string } },
-  idlMap: Map<string, Idl>
-) {
-  Object.keys(overrideConfig).forEach((programName) => {
-    const wsProgramName = camelCase(programName, { pascalCase: true });
-    const entry = overrideConfig[programName];
-    const overrideAddress = new PublicKey(
-      typeof entry === "string" ? entry : entry.address
-    );
-    let idl = idlMap.get(programName);
-    if (typeof entry !== "string" && entry.idl) {
-      idl = JSON.parse(require("fs").readFileSync(entry.idl, "utf-8"));
-    }
-    if (!idl) {
-      throw new Error(`Error loading workspace IDL for ${programName}`);
-    }
-    workspaceCache[wsProgramName] = new Program(idl, overrideAddress);
-  });
-}
+      return workspaceCache[programName];
+    },
+  }
+);
 
 export default workspace;
