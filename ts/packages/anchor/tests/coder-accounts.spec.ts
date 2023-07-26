@@ -1,8 +1,7 @@
 import * as assert from "assert";
-import { createNodeArray } from "typescript";
 import { BorshCoder } from "../src";
-import { sha256 } from "js-sha256";
-import { ACCOUNT_DISCRIMINATOR_SIZE } from "../src/coder/borsh/accounts";
+import { DISCRIMINATOR_SIZE } from "../src/coder/borsh/discriminator";
+import { sha256 } from "@noble/hashes/sha256";
 
 describe("coder.accounts", () => {
   test("Can encode and decode user-defined accounts, including those with consecutive capital letters", () => {
@@ -40,11 +39,8 @@ describe("coder.accounts", () => {
     coder.accounts.encode("MemberDAO", memberDAO).then((encoded) => {
       // start of encoded account = account discriminator
       assert.deepEqual(
-        encoded.subarray(0, ACCOUNT_DISCRIMINATOR_SIZE),
-        Buffer.from(sha256.digest("account:MemberDAO")).subarray(
-          0,
-          ACCOUNT_DISCRIMINATOR_SIZE
-        )
+        encoded.subarray(0, DISCRIMINATOR_SIZE),
+        Buffer.from(sha256("account:MemberDAO").slice(0, DISCRIMINATOR_SIZE))
       );
       assert.deepEqual(coder.accounts.decode("MemberDAO", encoded), memberDAO);
     });

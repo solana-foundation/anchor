@@ -1,11 +1,11 @@
 import { Buffer } from "buffer";
 import * as base64 from "base64-js";
 import { Layout } from "buffer-layout";
-import { sha256 } from "js-sha256";
 import { Idl, IdlEvent, IdlTypeDef } from "../../idl.js";
 import { Event, EventData } from "../../program/event.js";
 import { IdlCoder } from "./idl.js";
 import { EventCoder } from "../index.js";
+import { discriminator } from "./discriminator.js";
 
 export class BorshEventCoder implements EventCoder {
   /**
@@ -78,5 +78,5 @@ export class BorshEventCoder implements EventCoder {
 }
 
 export function eventDiscriminator(name: string): Buffer {
-  return Buffer.from(sha256.digest(`event:${name}`)).slice(0, 8);
+  return discriminator(`event:${name}`);
 }

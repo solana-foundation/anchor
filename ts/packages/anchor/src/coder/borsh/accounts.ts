@@ -2,16 +2,11 @@ import bs58 from "bs58";
 import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
 import camelcase from "camelcase";
-import { sha256 } from "js-sha256";
 import { Idl, IdlTypeDef } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { AccountsCoder } from "../index.js";
 import { accountSize } from "../common.js";
-
-/**
- * Number of bytes of the account discriminator.
- */
-export const ACCOUNT_DISCRIMINATOR_SIZE = 8;
+import { DISCRIMINATOR_SIZE, discriminator } from "./discriminator.js";
 
 /**
  * Encodes and decodes account objects.
@@ -77,7 +72,7 @@ export class BorshAccountsCoder<A extends string = string>
 
   public decodeUnchecked<T = any>(accountName: A, ix: Buffer): T {
     // Chop off the discriminator before decoding.
-    const data = ix.slice(ACCOUNT_DISCRIMINATOR_SIZE);
+    const data = ix.subarray(DISCRIMINATOR_SIZE);
     const layout = this.accountLayouts.get(accountName);
     if (!layout) {
       throw new Error(`Unknown account: ${accountName}`);
@@ -96,9 +91,7 @@ export class BorshAccountsCoder<A extends string = string>
   }
 
   public size(idlAccount: IdlTypeDef): number {
-    return (
-      ACCOUNT_DISCRIMINATOR_SIZE + (accountSize(this.idl, idlAccount) ?? 0)
-    );
+    return DISCRIMINATOR_SIZE + (accountSize(this.idl, idlAccount) ?? 0);
   }
 
   /**
@@ -107,13 +100,10 @@ export class BorshAccountsCoder<A extends string = string>
    * @param name The name of the account to calculate the discriminator.
    */
   public static accountDiscriminator(name: string): Buffer {
-    return Buffer.from(
-      sha256.digest(
-        `account:${camelcase(name, {
-          pascalCase: true,
-          preserveConsecutiveUppercase: true,
-        })}`
-      )
-    ).slice(0, ACCOUNT_DISCRIMINATOR_SIZE);
+    const discriminatorPreimage = `account:${camelcase(name, {
+      pascalCase: true,
+      preserveConsecutiveUppercase: true,
+    })}`;
+    return discriminator(discriminatorPreimage);
   }
 }

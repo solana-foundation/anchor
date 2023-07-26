@@ -39,7 +39,7 @@ export default {
     "buffer",
     "camelcase",
     "eventemitter3",
-    "js-sha256",
+    "@noble/hashes/sha256",
     "pako",
     "toml",
   ],

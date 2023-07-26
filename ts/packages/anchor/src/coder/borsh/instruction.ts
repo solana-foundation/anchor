@@ -3,7 +3,6 @@ import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
 import camelCase from "camelcase";
 import { snakeCase } from "snake-case";
-import { sha256 } from "js-sha256";
 import * as borsh from "@coral-xyz/borsh";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
 import {
@@ -21,6 +20,7 @@ import {
 } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { InstructionCoder } from "../index.js";
+import { sha256 } from "@noble/hashes/sha256";
 
 /**
  * Namespace for global instruction function signatures (i.e. functions
@@ -352,5 +352,5 @@ function sentenceCase(field: string): string {
 function sighash(nameSpace: string, ixName: string): Buffer {
   let name = snakeCase(ixName);
   let preimage = `${nameSpace}:${name}`;
-  return Buffer.from(sha256.digest(preimage)).slice(0, 8);
+  return Buffer.from(sha256(preimage).slice(0, 8));
 }

@@ -6,7 +6,8 @@ import { BorshTypesCoder } from "./types.js";
 import { Coder } from "../index.js";
 
 export { BorshInstructionCoder } from "./instruction.js";
-export { BorshAccountsCoder, ACCOUNT_DISCRIMINATOR_SIZE } from "./accounts.js";
+export { BorshAccountsCoder } from "./accounts.js";
+export { DISCRIMINATOR_SIZE } from "./discriminator.js";
 export { BorshEventCoder, eventDiscriminator } from "./event.js";
 
 /**

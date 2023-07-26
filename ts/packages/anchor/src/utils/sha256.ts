@@ -1,5 +1,5 @@
-import { sha256 } from "js-sha256";
+import { sha256 } from "@noble/hashes/sha256";
 
 export function hash(data: string): string {
-  return sha256(data);
+  return new TextDecoder().decode(sha256(data));
 }
