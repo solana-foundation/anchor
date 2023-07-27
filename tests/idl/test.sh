@@ -1,57 +1,35 @@
 #!/usr/bin/env bash
-set -x
 set -e
 
 # Run anchor test
 anchor test --skip-lint
 
-idls_dir=idls
 tmp_dir=$(mktemp -d)
 
-cd programs/idl
-anchor idl parse --file src/lib.rs -o $tmp_dir/idl_parse_act.json
-anchor idl build -o $tmp_dir/idl_build_act.json
+# Generate IDLs
+./generate.sh $tmp_dir
 
-cd ../generics
-anchor idl build -o $tmp_dir/generics_build_act.json
+# Exit status
+ret=0
 
-cd ../relations-derivation
-anchor idl build -o $tmp_dir/relations_build_act.json
+# Compare IDLs. `$ret` will be non-zero in the case of a mismatch.
+compare() {
+    echo "----------------------------------------------------"
+    echo "IDL $1 before > after changes"
+    echo "----------------------------------------------------"
+    diff -y --color=always --suppress-common-lines idls/$1.json $tmp_dir/$1.json
+    ret=$(($ret+$?))
 
-cd ../..
-echo "----------------------------------------------------"
-echo "idl parse before > after"
-echo "----------------------------------------------------"
-echo ""
-diff -y --color $idls_dir/idl_parse_exp.json $tmp_dir/idl_parse_act.json
-PARSE_RETCODE=$?
+    if [ "$ret" = "0" ]; then
+        echo "No changes"
+    fi
 
-echo ""
-echo ""
-echo "----------------------------------------------------"
-echo "idl build before > after"
-echo "----------------------------------------------------"
-echo ""
-diff -y --color $idls_dir/idl_build_exp.json $tmp_dir/idl_build_act.json
-GEN_RETCODE=$?
+    echo ""
+}
 
-echo ""
-echo ""
-echo "----------------------------------------------------"
-echo "idl generics build before > after"
-echo "----------------------------------------------------"
-echo ""
-diff -y --color $idls_dir/generics_build_exp.json $tmp_dir/generics_build_act.json
-GEN_GENERICS_RETCODE=$?
+compare "parse"
+compare "build"
+compare "generics_build"
+compare "relations_build"
 
-echo ""
-echo ""
-echo "----------------------------------------------------"
-echo "idl relations build before > after"
-echo "----------------------------------------------------"
-echo ""
-diff -y --color $idls_dir/relations_build_exp.json $tmp_dir/relations_build_act.json
-GEN_RELATIONS_RETCODE=$?
-
-# returns 0 when ok, or a positive integer when there are differences
-exit $((PARSE_RETCODE+GEN_RETCODE+GEN_GENERICS_RETCODE+GEN_RELATIONS_RETCODE))
+exit $ret
