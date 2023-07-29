@@ -2292,7 +2292,6 @@ fn generate_idl_parse(
     safety_checks: bool,
 ) -> Result<Idl> {
     anchor_syn::idl::parse::file::parse(path, version, seeds_feature, no_docs, safety_checks)
-        .and_then(|maybe_idl| maybe_idl.ok_or_else(|| anyhow!("Failed to parse IDL")))
 }
 
 /// Generate IDL with the build method.

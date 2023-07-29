@@ -9,22 +9,22 @@ rust-version = "1.60"
 edition = "2021"
 
 [features]
-allow-missing-optionals = []
-init-if-needed = []
-idl-build = []
-idl-parse = []
-idl-types = []
-hash = []
 default = []
+allow-missing-optionals = []
 anchor-debug = []
-seeds = []
 event-cpi = []
+hash = []
+idl-build = ["idl-parse", "idl-types"]
+idl-parse = ["idl-types"]
+idl-types = []
+init-if-needed = []
+seeds = []
 
 [dependencies]
 anyhow = "1"
 bs58 = "0.5"
 heck = "0.3"
-proc-macro2 = { version = "1", features=["span-locations"]}
+proc-macro2 = { version = "1", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

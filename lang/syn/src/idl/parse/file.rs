@@ -3,6 +3,7 @@ use crate::parser::context::CrateContext;
 use crate::parser::{self, accounts, docs, error, program};
 use crate::Ty;
 use crate::{AccountField, AccountsStruct};
+use anyhow::anyhow;
 use anyhow::Result;
 use heck::MixedCase;
 use quote::ToTokens;
@@ -19,28 +20,25 @@ const DERIVE_NAME: &str = "Accounts";
 // TODO: share this with `anchor_lang` crate.
 const ERROR_CODE_OFFSET: u32 = 6000;
 
-// Parse an entire interface file.
+/// Parse an entire interface file.
 pub fn parse(
     path: impl AsRef<Path>,
     version: String,
     seeds_feature: bool,
     no_docs: bool,
     safety_checks: bool,
-) -> Result<Option<Idl>> {
+) -> Result<Idl> {
     let ctx = CrateContext::parse(path)?;
     if safety_checks {
         ctx.safety_checks()?;
     }
 
-    let program_mod = match parse_program_mod(&ctx) {
-        None => return Ok(None),
-        Some(m) => m,
-    };
-    let mut p = program::parse(program_mod)?;
+    let program_mod = parse_program_mod(&ctx)?;
+    let mut program = program::parse(program_mod)?;
 
     if no_docs {
-        p.docs = None;
-        for ix in &mut p.ixs {
+        program.docs = None;
+        for ix in &mut program.ixs {
             ix.docs = None;
         }
     }
@@ -59,7 +57,7 @@ pub fn parse(
             .collect::<Vec<IdlErrorCode>>()
     });
 
-    let instructions = p
+    let instructions = program
         .ixs
         .iter()
         .map(|ix| {
@@ -157,10 +155,10 @@ pub fn parse(
         .map(|c: &&syn::ItemConst| to_idl_const(c))
         .collect::<Vec<IdlConst>>();
 
-    Ok(Some(Idl {
+    Ok(Idl {
         version,
-        name: p.name.to_string(),
-        docs: p.docs.clone(),
+        name: program.name.to_string(),
+        docs: program.docs.clone(),
         instructions,
         types,
         accounts,
@@ -172,11 +170,11 @@ pub fn parse(
         errors: error_codes,
         metadata: None,
         constants,
-    }))
+    })
 }
 
-// Parse the main program mod.
-fn parse_program_mod(ctx: &CrateContext) -> Option<syn::ItemMod> {
+/// Parse the main program mod.
+fn parse_program_mod(ctx: &CrateContext) -> Result<syn::ItemMod> {
     let root = ctx.root_module();
     let mods = root
         .items()
@@ -195,10 +193,12 @@ fn parse_program_mod(ctx: &CrateContext) -> Option<syn::ItemMod> {
             _ => None,
         })
         .collect::<Vec<_>>();
-    if mods.len() != 1 {
-        return None;
+
+    match mods.len() {
+        0 => Err(anyhow!("Program module not found")),
+        1 => Ok(mods[0].clone()),
+        _ => Err(anyhow!("Multiple program modules are not allowed")),
     }
-    Some(mods[0].clone())
 }
 
 fn parse_error_enum(ctx: &CrateContext) -> Option<syn::ItemEnum> {
