@@ -2,10 +2,12 @@ use anchor_lang::context::CpiContext;
 use anchor_lang::error::ErrorCode;
 use anchor_lang::{Accounts, Result, ToAccountInfos};
 use mpl_token_metadata::state::{CollectionDetails, DataV2, TokenMetadataAccount};
-use mpl_token_metadata::ID;
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
 use std::ops::Deref;
+
+pub use mpl_token_metadata;
+pub use mpl_token_metadata::ID;
 
 pub fn approve_collection_authority<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,
