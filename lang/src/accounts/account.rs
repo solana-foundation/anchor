@@ -28,7 +28,7 @@ use std::ops::{Deref, DerefMut};
 /// This means that the data type that Accounts wraps around (`=T`) needs to
 /// implement the [Owner trait](crate::Owner).
 /// The `#[account]` attribute implements the Owner trait for
-/// a struct using the `crate::ID` declared by [`declareId`](crate::declare_id)
+/// a struct using the `crate::ID` declared by [`declare_id`](crate::declare_id)
 /// in the same program. It follows that Account can also be used
 /// with a `T` that comes from a different program.
 ///
