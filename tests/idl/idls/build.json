@@ -309,7 +309,7 @@
       }
     },
     {
-      "name": "idl::State",
+      "name": "State",
       "docs": [
         "An account containing various fields"
       ],

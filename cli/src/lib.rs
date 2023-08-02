@@ -2458,7 +2458,7 @@ fn generate_idl_build(no_docs: bool) -> Result<Vec<Idl>> {
                 let replaced_idl = modified_idl.replace(path, &format!(r#""{name}""#));
 
                 // Check whether there is a conflict
-                let has_conflict = replaced_idl.contains(&format!("::{name}"));
+                let has_conflict = replaced_idl.contains(&format!(r#"::{name}""#));
                 if !has_conflict {
                     modified_idl = replaced_idl;
                 }
