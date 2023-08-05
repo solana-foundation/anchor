@@ -13,12 +13,11 @@ proc-macro = true
 
 [features]
 allow-missing-optionals = ["anchor-syn/allow-missing-optionals"]
-init-if-needed = ["anchor-syn/init-if-needed"]
-default = []
-idl-build = ["anchor-syn/idl-build"]
 anchor-debug = ["anchor-syn/anchor-debug"]
+idl-build = ["anchor-syn/idl-build"]
+init-if-needed = ["anchor-syn/init-if-needed"]
 
 [dependencies]
+anchor-syn = { path = "../../syn", version = "0.28.0" }
 quote = "1"
 syn = { version = "1", features = ["full"] }
-anchor-syn = { path = "../../syn", version = "0.28.0" }

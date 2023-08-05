@@ -9,7 +9,6 @@ rust-version = "1.60"
 edition = "2021"
 
 [features]
-default = []
 allow-missing-optionals = []
 anchor-debug = []
 event-cpi = []

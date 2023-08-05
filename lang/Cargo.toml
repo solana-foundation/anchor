@@ -10,20 +10,6 @@ description = "Solana Sealevel eDSL"
 
 [features]
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
-init-if-needed = ["anchor-derive-accounts/init-if-needed"]
-derive = []
-default = []
-event-cpi = ["anchor-attribute-event/event-cpi"]
-idl-build = [
-    "anchor-syn/idl-build",
-    "anchor-derive-accounts/idl-build",
-    "anchor-derive-serde/idl-build",
-    "anchor-attribute-account/idl-build",
-    "anchor-attribute-constant/idl-build",
-    "anchor-attribute-event/idl-build",
-    "anchor-attribute-error/idl-build",
-    "anchor-attribute-program/idl-build",
-]
 anchor-debug = [
     "anchor-attribute-access-control/anchor-debug",
     "anchor-attribute-account/anchor-debug",
@@ -31,9 +17,21 @@ anchor-debug = [
     "anchor-attribute-error/anchor-debug",
     "anchor-attribute-event/anchor-debug",
     "anchor-attribute-program/anchor-debug",
-    "anchor-attribute-program/anchor-debug",
     "anchor-derive-accounts/anchor-debug"
 ]
+derive = []
+event-cpi = ["anchor-attribute-event/event-cpi"]
+idl-build = [
+    "anchor-attribute-account/idl-build",
+    "anchor-attribute-constant/idl-build",
+    "anchor-attribute-event/idl-build",
+    "anchor-attribute-error/idl-build",
+    "anchor-attribute-program/idl-build",
+    "anchor-derive-accounts/idl-build",
+    "anchor-derive-serde/idl-build",
+    "anchor-syn/idl-build",
+]
+init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.28.0" }
@@ -45,8 +43,7 @@ anchor-attribute-program = { path = "./attribute/program", version = "0.28.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.28.0" }
 anchor-derive-serde = { path = "./derive/serde", version = "0.28.0" }
 anchor-derive-space = { path = "./derive/space", version = "0.28.0" }
-# anchor-syn can and should only be included only for idl-build. It won't compile
-# for bpf due to proc-macro2 crate.
+# `anchor-syn` should only be included with `idl-build` feature
 anchor-syn = { path = "./syn", version = "0.28.0", optional = true }
 arrayref = "0.3"
 base64 = "0.13"

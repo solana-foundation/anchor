@@ -12,9 +12,7 @@ edition = "2021"
 proc-macro = true
 
 [features]
-idl-build = [
-    "anchor-syn/idl-build",
-]
+idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.28.0" }

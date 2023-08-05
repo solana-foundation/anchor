@@ -14,7 +14,6 @@ path = "src/bin/main.rs"
 
 [features]
 dev = []
-default = []
 
 [dependencies]
 anchor-client = { path = "../client", version = "0.28.0" }

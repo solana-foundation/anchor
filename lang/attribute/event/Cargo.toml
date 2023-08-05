@@ -12,9 +12,9 @@ edition = "2021"
 proc-macro = true
 
 [features]
-idl-build = ["anchor-syn/idl-build"]
 anchor-debug = ["anchor-syn/anchor-debug"]
 event-cpi = ["anchor-syn/event-cpi"]
+idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.28.0", features = ["hash"] }

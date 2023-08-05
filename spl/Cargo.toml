@@ -8,17 +8,17 @@ license = "Apache-2.0"
 description = "CPI clients for SPL programs"
 
 [features]
-default = ["mint", "token", "token_2022", "associated_token"]
-mint = []
-token = ["spl-token"]
-token_2022 = ["spl-token-2022"]
+default = ["associated_token", "mint", "token", "token_2022"]
 associated_token = ["spl-associated-token-account"]
+dex = ["serum_dex"]
+devnet = []
 governance = []
+metadata = ["mpl-token-metadata"]
+mint = []
 shmem = []
 stake = ["borsh"]
-devnet = []
-metadata = ["mpl-token-metadata"]
-dex = ["serum_dex"]
+token = ["spl-token"]
+token_2022 = ["spl-token-2022"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.28.0", features = ["derive"] }

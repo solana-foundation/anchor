@@ -8,13 +8,13 @@ license = "Apache-2.0"
 description = "Rust client for Anchor programs"
 
 [features]
-debug = []
 async = []
+debug = []
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.28.0" }
 anyhow = "1"
-futures = { version = "0.3" }
+futures = "0.3"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 solana-client = ">=1.14, <1.17"
