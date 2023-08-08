@@ -14,6 +14,7 @@ import {
   Toml,
   VersionManager,
   runAnchorTest,
+  spawn,
 } from "./utils";
 
 (async () => {
@@ -75,4 +76,7 @@ import {
       return;
     }
   }
+
+  // Sync markdown files
+  spawn("anchor", ["run", "sync-markdown"]);
 })();

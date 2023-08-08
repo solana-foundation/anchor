@@ -2,6 +2,9 @@
   "0.27.0": {
     "solanaVersion": "1.14.16",
     "result": {
+      "binarySize": {
+        "bench": 1118736
+      },
       "computeUnits": {
         "accountInfo1": 954,
         "accountInfo2": 1567,
@@ -96,6 +99,9 @@
   "0.28.0": {
     "solanaVersion": "1.16.0",
     "result": {
+      "binarySize": {
+        "bench": 1153736
+      },
       "computeUnits": {
         "accountInfo1": 1015,
         "accountInfo2": 1475,
@@ -190,6 +196,9 @@
   "unreleased": {
     "solanaVersion": "1.16.0",
     "result": {
+      "binarySize": {
+        "bench": 1153736
+      },
       "computeUnits": {
         "accountInfo1": 1015,
         "accountInfo2": 1475,

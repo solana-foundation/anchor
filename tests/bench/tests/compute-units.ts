@@ -9,7 +9,7 @@ import {
   spawn,
 } from "../scripts/utils";
 
-describe(IDL.name, () => {
+describe("Compute units", () => {
   // Configure the client to use the local cluster
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -115,8 +115,6 @@ describe(IDL.name, () => {
   };
 
   before(async () => {
-    // TODO: Check Solana version
-
     // Create necessary accounts
     const tokenProgram = token.splTokenProgram({
       provider: anchor.AnchorProvider.local(),
@@ -229,35 +227,7 @@ describe(IDL.name, () => {
   });
 
   after(async () => {
-    // Read the bench data file
     const bench = await BenchData.open();
-
-    // Compare and update compute units changes
-    const version = getVersionFromArgs();
-    const oldComputeUnits = bench.get(version).result.computeUnits;
-    const { needsUpdate } = bench.compareComputeUnits(
-      computeUnits,
-      oldComputeUnits,
-      ({ ixName, newComputeUnits: newValue }) => {
-        if (newValue === null) {
-          delete oldComputeUnits[ixName];
-        } else {
-          oldComputeUnits[ixName] = newValue;
-        }
-      }
-    );
-
-    if (needsUpdate) {
-      console.log("Updating benchmark files...");
-
-      // Save bench data file
-      // (needs to happen before running the `sync-markdown` script)
-      await bench.save();
-
-      // Only update markdown files on `unreleased` version
-      if (version === "unreleased") {
-        spawn("anchor", ["run", "sync-markdown"]);
-      }
-    }
+    await bench.update({ computeUnits });
   });
 });

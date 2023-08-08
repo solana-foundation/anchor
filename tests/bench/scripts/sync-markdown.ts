@@ -1,80 +1,69 @@
 /** Sync Markdown files in /bench based on the data from bench.json */
 
-import { BenchData, Markdown } from "./utils";
+import { BenchData, BenchResult, Markdown } from "./utils";
 
 (async () => {
   const bench = await BenchData.open();
 
   await BenchData.forEachMarkdown((markdown, fileName) => {
-    if (fileName === "COMPUTE_UNITS.md") {
-      const versions = bench.getVersions();
+    const resultType = fileName
+      .toLowerCase()
+      .replace(".md", "")
+      .replace(/_\w/g, (match) => match[1].toUpperCase()) as keyof BenchResult;
 
-      // On the first version, compare with itself to update it with no changes
-      versions.unshift(versions[0]);
+    const versions = bench.getVersions();
 
-      for (const i in versions) {
-        const currentVersion = versions[i];
-        const nextVersion = versions[+i + 1];
+    // On the first version, compare with itself to update it with no changes
+    versions.unshift(versions[0]);
 
-        if (currentVersion === "unreleased") {
-          return;
-        }
+    for (const i in versions) {
+      const currentVersion = versions[i];
+      if (currentVersion === "unreleased") return;
 
-        const newData = bench.get(nextVersion);
-        const oldData = bench.get(currentVersion);
+      const nextVersion = versions[+i + 1];
+      const newData = bench.get(nextVersion);
+      const oldData = bench.get(currentVersion);
 
-        // Create table
-        const table = Markdown.createTable(
-          "Instruction",
-          "Compute Units",
-          "+/-"
-        );
+      // Create table
+      const table = Markdown.createTable();
 
-        bench.compareComputeUnits(
-          newData.result.computeUnits,
-          oldData.result.computeUnits,
-          ({ ixName, newComputeUnits, oldComputeUnits }) => {
-            if (newComputeUnits === null) {
-              // Deleted instruction
-              return;
-            }
-
-            let changeText;
-            if (oldComputeUnits === null) {
-              // New instruction
-              changeText = "N/A";
-            } else {
-              const delta = newComputeUnits - oldComputeUnits;
-              const percentChange = (
-                (newComputeUnits / oldComputeUnits - 1) *
-                100
-              ).toFixed(2);
-
-              if (+percentChange > 0) {
-                changeText = `🔴 **+${delta} (${percentChange}%)**`;
-              } else {
-                changeText = `🟢 **${delta} (${percentChange.slice(1)}%)**`;
-              }
-            }
-
-            table.insert(ixName, newComputeUnits.toString(), changeText);
-          },
-          (ixName, computeUnits) => {
-            table.insert(
-              ixName,
-              computeUnits.toString(),
-              +i === 0 ? "N/A" : "-"
-            );
+      bench.compare({
+        newResult: newData.result[resultType],
+        oldResult: oldData.result[resultType],
+        changeCb: ({ name, newValue, oldValue }) => {
+          if (newValue === null) {
+            // Deleted key
+            return;
           }
-        );
 
-        // Update version data
-        markdown.updateVersion({
-          version: nextVersion,
-          solanaVersion: newData.solanaVersion,
-          table,
-        });
-      }
+          let changeText: string;
+          if (oldValue === null) {
+            // New key
+            changeText = "N/A";
+          } else {
+            const delta = (newValue - oldValue).toLocaleString();
+            const percentChange = ((newValue / oldValue - 1) * 100).toFixed(2);
+
+            if (+percentChange > 0) {
+              changeText = `🔴 **+${delta} (${percentChange}%)**`;
+            } else {
+              changeText = `🟢 **${delta} (${percentChange.slice(1)}%)**`;
+            }
+          }
+
+          table.insert(name, newValue.toLocaleString(), changeText);
+        },
+        noChangeCb: ({ name, value }) => {
+          table.insert(name, value.toLocaleString(), +i === 0 ? "N/A" : "-");
+        },
+      });
+
+      // Update version data
+      markdown.updateVersion({
+        version: nextVersion,
+        solanaVersion: newData.solanaVersion,
+        table,
+      });
     }
   });
 })();
