@@ -19,6 +19,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm: Add support for the `.anchorversion` file to facilitate switching between different versions of the `anchor-cli` ([#2553](https://github.com/coral-xyz/anchor/pull/2553)).
 - ts: Add ability to access workspace programs independent of the casing used, e.g. `anchor.workspace.myProgram`, `anchor.workspace.MyProgram`... ([#2579](https://github.com/coral-xyz/anchor/pull/2579)).
 - spl: Export `mpl-token-metadata` crate ([#2583](https://github.com/coral-xyz/anchor/pull/2583)).
+- spl: Add `TokenRecordAccount` for pNFTs ([#2597](https://github.com/coral-xyz/anchor/pull/2597)).
+- ts: Add support for unnamed(tuple) enum in accounts([#2601](https://github.com/coral-xyz/anchor/pull/2601)).
 
 ### Fixes
 

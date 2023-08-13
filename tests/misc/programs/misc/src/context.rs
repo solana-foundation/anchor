@@ -216,6 +216,15 @@ pub struct TestI16<'info> {
 pub struct TestSimulate {}
 
 #[derive(Accounts)]
+pub struct TestAccountEnum<'info> {
+    #[account(init, payer = payer, space = 8 + DataEnum::LEN)]
+    pub data: Account<'info, DataEnum>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct TestI8<'info> {
     #[account(zero)]
     pub data: Account<'info, DataI8>,

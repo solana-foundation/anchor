@@ -1,7 +1,7 @@
 //! Misc example is a catchall program for testing unrelated features.
 //! It's not too instructive/coherent by itself, so please see other examples.
 
-use account::MAX_SIZE;
+use account::*;
 use anchor_lang::prelude::*;
 use context::*;
 use event::*;
@@ -68,6 +68,11 @@ pub mod misc {
 
     pub fn test_input_enum(_ctx: Context<TestSimulate>, data: TestEnum) -> Result<()> {
         emit!(E7 { data: data });
+        Ok(())
+    }
+
+    pub fn test_account_enum(ctx: Context<TestAccountEnum>, data: TestEnum) -> Result<()> {
+        ctx.accounts.data.data = data;
         Ok(())
     }
 
@@ -175,7 +180,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_mint_with_token_program(_ctx: Context<TestInitMintWithTokenProgram>) -> Result<()> {
+    pub fn test_init_mint_with_token_program(
+        _ctx: Context<TestInitMintWithTokenProgram>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -184,7 +191,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_token_with_token_program(_ctx: Context<TestInitTokenWithTokenProgram>) -> Result<()> {
+    pub fn test_init_token_with_token_program(
+        _ctx: Context<TestInitTokenWithTokenProgram>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -200,7 +209,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_associated_token_with_token_program(_ctx: Context<TestInitAssociatedTokenWithTokenProgram>) -> Result<()> {
+    pub fn test_init_associated_token_with_token_program(
+        _ctx: Context<TestInitAssociatedTokenWithTokenProgram>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -250,7 +261,7 @@ pub mod misc {
     }
 
     pub fn test_init_mint_if_needed_with_token_program(
-        _ctx: Context<TestInitMintIfNeededWithTokenProgram>
+        _ctx: Context<TestInitMintIfNeededWithTokenProgram>,
     ) -> Result<()> {
         Ok(())
     }
@@ -259,7 +270,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_token_if_needed_with_token_program(_ctx: Context<TestInitTokenIfNeededWithTokenProgram>) -> Result<()> {
+    pub fn test_init_token_if_needed_with_token_program(
+        _ctx: Context<TestInitTokenIfNeededWithTokenProgram>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -345,7 +358,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_only_token_program_constraint(_ctx: Context<TestOnlyTokenProgramConstraint>) -> Result<()> {
+    pub fn test_only_token_program_constraint(
+        _ctx: Context<TestOnlyTokenProgramConstraint>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -389,7 +404,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_associated_token_with_token_program_constraint(_ctx: Context<TestAssociatedTokenWithTokenProgramConstraint>) -> Result<()> {
+    pub fn test_associated_token_with_token_program_constraint(
+        _ctx: Context<TestAssociatedTokenWithTokenProgramConstraint>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -399,7 +416,7 @@ pub mod misc {
         program_id: u8,
         accounts: u8,
         ix_data: u8,
-        remaining_accounts: u8
+        remaining_accounts: u8,
     ) -> Result<()> {
         Ok(())
     }

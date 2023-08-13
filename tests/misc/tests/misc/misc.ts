@@ -336,6 +336,55 @@ const miscTest = (
       assert.strictEqual(event4.data.tupleTest[3], 4);
     });
 
+    it("Can use enum in accounts", async () => {
+      const testAccountEnum = async (
+        ...args: Parameters<typeof program["methods"]["testAccountEnum"]>
+      ) => {
+        const dataKp = anchor.web3.Keypair.generate();
+        const txHash = await program.methods
+          .testAccountEnum(...(args as any))
+          .accounts({
+            data: dataKp.publicKey,
+            payer: program.provider.publicKey,
+          })
+          .signers([dataKp])
+          .rpc();
+        await program.provider.connection.confirmTransaction(txHash);
+        return await program.account.dataEnum.fetch(dataKp.publicKey);
+      };
+
+      // Unit
+      const unit = await testAccountEnum({ first: {} });
+      assert.deepEqual(unit.data.first, {});
+
+      // Named
+      const named = await testAccountEnum({
+        second: { x: new BN(1), y: new BN(2) },
+      });
+      assert.isTrue(new BN(1).eq(named.data.second.x));
+      assert.isTrue(new BN(2).eq(named.data.second.y));
+
+      // Unnamed
+      const unnamed = await testAccountEnum({ tupleTest: [1, 2, 3, 4] });
+      assert.strictEqual(unnamed.data.tupleTest[0], 1);
+      assert.strictEqual(unnamed.data.tupleTest[1], 2);
+      assert.strictEqual(unnamed.data.tupleTest[2], 3);
+      assert.strictEqual(unnamed.data.tupleTest[3], 4);
+
+      // Unnamed struct
+      const unnamedStruct = await testAccountEnum({
+        tupleStructTest: [
+          { data1: 1, data2: 11, data3: 111, data4: new BN(1111) },
+        ],
+      });
+      assert.strictEqual(unnamedStruct.data.tupleStructTest[0].data1, 1);
+      assert.strictEqual(unnamedStruct.data.tupleStructTest[0].data2, 11);
+      assert.strictEqual(unnamedStruct.data.tupleStructTest[0].data3, 111);
+      assert.isTrue(
+        unnamedStruct.data.tupleStructTest[0].data4.eq(new BN(1111))
+      );
+    });
+
     let dataI8;
 
     it("Can use i8 in the idl", async () => {

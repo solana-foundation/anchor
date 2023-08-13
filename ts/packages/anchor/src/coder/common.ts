@@ -1,31 +1,32 @@
-import { Idl, IdlField, IdlTypeDef, IdlEnumVariant, IdlType } from "../idl.js";
+import { Idl, IdlField, IdlTypeDef, IdlType } from "../idl.js";
 import { IdlError } from "../error.js";
 
-export function accountSize(idl: Idl, idlAccount: IdlTypeDef): number {
+export function accountSize(idl: Idl, idlAccount: IdlTypeDef) {
   if (idlAccount.type.kind === "enum") {
-    let variantSizes = idlAccount.type.variants.map(
-      (variant: IdlEnumVariant) => {
-        if (variant.fields === undefined) {
-          return 0;
-        }
-        return variant.fields
-          .map((f: IdlField | IdlType) => {
-            if (!(typeof f === "object" && "name" in f)) {
-              throw new Error("Tuple enum variants not yet implemented.");
-            }
-            return typeSize(idl, f.type);
-          })
-          .reduce((a: number, b: number) => a + b);
+    const variantSizes = idlAccount.type.variants.map((variant) => {
+      if (!variant.fields) {
+        return 0;
       }
-    );
+
+      return variant.fields
+        .map((f: IdlField | IdlType) => {
+          // Unnamed enum variant
+          if (!(typeof f === "object" && "name" in f)) {
+            return typeSize(idl, f);
+          }
+
+          // Named enum variant
+          return typeSize(idl, f.type);
+        })
+        .reduce((acc, size) => acc + size, 0);
+    });
+
     return Math.max(...variantSizes) + 1;
   }
-  if (idlAccount.type.fields === undefined) {
-    return 0;
-  }
+
   return idlAccount.type.fields
     .map((f) => typeSize(idl, f.type))
-    .reduce((a, b) => a + b, 0);
+    .reduce((acc, size) => acc + size, 0);
 }
 
 // Returns the size of the type in bytes. For variable length types, just return
