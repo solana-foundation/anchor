@@ -1,10 +1,20 @@
-use crate::config::ProgramWorkspace;
 use crate::VERSION;
+use crate::{config::ProgramWorkspace, create_files};
 use anchor_syn::idl::types::Idl;
 use anyhow::Result;
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 use solana_sdk::pubkey::Pubkey;
 use std::fmt::Write;
+use std::path::Path;
+
+/// Create a solidity program.
+pub fn create_program(name: &str) -> Result<()> {
+    let files = vec![(
+        Path::new("solidity").join(name).with_extension("sol"),
+        solidity(name),
+    )];
+    create_files(&files)
+}
 
 pub fn default_program_id() -> Pubkey {
     "F1ipperKF9EfD821ZbbYjS319LXYiBmjhzkkf5a26rC"

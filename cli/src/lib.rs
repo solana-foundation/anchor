@@ -20,6 +20,7 @@ use heck::{ToKebabCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
+use rust_template::ProgramTemplate;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as JsonValue};
@@ -69,15 +70,23 @@ pub struct Opts {
 pub enum Command {
     /// Initializes a workspace.
     Init {
+        /// Workspace name
         name: String,
+        /// Use JavaScript instead of TypeScript
         #[clap(short, long)]
         javascript: bool,
+        /// Use Solidity instead of Rust
         #[clap(short, long)]
         solidity: bool,
+        /// Don't initialize git
         #[clap(long)]
         no_git: bool,
+        /// Use `jest` instead of `mocha` for tests
         #[clap(long)]
         jest: bool,
+        /// Rust program template to use
+        #[clap(value_enum, short, long, default_value = "single")]
+        template: ProgramTemplate,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -207,9 +216,14 @@ pub enum Command {
     },
     /// Creates a new program.
     New {
+        /// Program name
+        name: String,
+        /// Use Solidity instead of Rust
         #[clap(short, long)]
         solidity: bool,
-        name: String,
+        /// Rust program template to use
+        #[clap(value_enum, short, long, default_value = "single")]
+        template: ProgramTemplate,
     },
     /// Commands for interacting with interface definitions.
     Idl {
@@ -456,8 +470,21 @@ pub fn entry(opts: Opts) -> Result<()> {
             solidity,
             no_git,
             jest,
-        } => init(&opts.cfg_override, name, javascript, solidity, no_git, jest),
-        Command::New { solidity, name } => new(&opts.cfg_override, solidity, name),
+            template,
+        } => init(
+            &opts.cfg_override,
+            name,
+            javascript,
+            solidity,
+            no_git,
+            jest,
+            template,
+        ),
+        Command::New {
+            solidity,
+            name,
+            template,
+        } => new(&opts.cfg_override, solidity, name, template),
         Command::Build {
             idl,
             idl_ts,
@@ -604,6 +631,7 @@ fn init(
     solidity: bool,
     no_git: bool,
     jest: bool,
+    template: ProgramTemplate,
 ) -> Result<()> {
     if Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -682,17 +710,11 @@ fn init(
 
     // Build the program.
     if solidity {
-        fs::create_dir("solidity")?;
-
-        new_solidity_program(&project_name)?;
+        solidity_template::create_program(&project_name)?;
     } else {
-        // Build virtual manifest for rust programs
-        fs::write("Cargo.toml", rust_template::virtual_manifest())?;
-
-        fs::create_dir("programs")?;
-
-        new_rust_program(&project_name)?;
+        rust_template::create_program(&project_name, template)?;
     }
+
     // Build the test suite.
     fs::create_dir("tests")?;
     // Build the migrations directory.
@@ -783,7 +805,12 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
 }
 
 // Creates a new program crate in the `programs/<name>` directory.
-fn new(cfg_override: &ConfigOverride, solidity: bool, name: String) -> Result<()> {
+fn new(
+    cfg_override: &ConfigOverride,
+    solidity: bool,
+    name: String,
+    template: ProgramTemplate,
+) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         match cfg.path().parent() {
             None => {
@@ -802,10 +829,10 @@ fn new(cfg_override: &ConfigOverride, solidity: bool, name: String) -> Result<()
                     name.clone(),
                     ProgramDeployment {
                         address: if solidity {
-                            new_solidity_program(&name)?;
+                            solidity_template::create_program(&name)?;
                             solidity_template::default_program_id()
                         } else {
-                            new_rust_program(&name)?;
+                            rust_template::create_program(&name, template)?;
                             rust_template::get_or_create_program_id(&name)
                         },
                         path: None,
@@ -823,26 +850,32 @@ fn new(cfg_override: &ConfigOverride, solidity: bool, name: String) -> Result<()
     })
 }
 
-// Creates a new rust program crate in the current directory with `name`.
-fn new_rust_program(name: &str) -> Result<()> {
-    if !PathBuf::from("Cargo.toml").exists() {
-        fs::write("Cargo.toml", rust_template::virtual_manifest())?;
-    }
-    fs::create_dir_all(format!("programs/{name}/src/"))?;
-    let mut cargo_toml = File::create(format!("programs/{name}/Cargo.toml"))?;
-    cargo_toml.write_all(rust_template::cargo_toml(name).as_bytes())?;
-    let mut xargo_toml = File::create(format!("programs/{name}/Xargo.toml"))?;
-    xargo_toml.write_all(rust_template::xargo_toml().as_bytes())?;
-    let mut lib_rs = File::create(format!("programs/{name}/src/lib.rs"))?;
-    lib_rs.write_all(rust_template::lib_rs(name).as_bytes())?;
-    Ok(())
-}
+/// Array of (path, content) tuple.
+pub type Files = Vec<(PathBuf, String)>;
 
-// Creates a new solidity program in the current directory with `name`.
-fn new_solidity_program(name: &str) -> Result<()> {
-    fs::create_dir_all("solidity")?;
-    let mut lib_rs = File::create(format!("solidity/{name}.sol"))?;
-    lib_rs.write_all(solidity_template::solidity(name).as_bytes())?;
+/// Create files from the given (path, content) tuple array.
+///
+/// # Example
+///
+/// ```ignore
+/// crate_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```
+pub fn create_files(files: &Files) -> Result<()> {
+    for (path, content) in files {
+        let path = Path::new(path);
+        if path.exists() {
+            continue;
+        }
+
+        match path.extension() {
+            Some(_) => {
+                fs::create_dir_all(path.parent().unwrap())?;
+                fs::write(path, content)?;
+            }
+            None => fs::create_dir_all(path)?,
+        }
+    }
+
     Ok(())
 }
 
@@ -4224,6 +4257,7 @@ mod tests {
             false,
             false,
             false,
+            ProgramTemplate::default(),
         )
         .unwrap();
     }
@@ -4241,6 +4275,7 @@ mod tests {
             false,
             false,
             false,
+            ProgramTemplate::default(),
         )
         .unwrap();
     }
@@ -4258,6 +4293,7 @@ mod tests {
             false,
             false,
             false,
+            ProgramTemplate::default(),
         )
         .unwrap();
     }

@@ -1,7 +1,8 @@
-use crate::config::ProgramWorkspace;
 use crate::VERSION;
+use crate::{config::ProgramWorkspace, create_files, Files};
 use anchor_syn::idl::types::Idl;
 use anyhow::Result;
+use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
 use solana_sdk::{
     pubkey::Pubkey,
@@ -10,22 +11,140 @@ use solana_sdk::{
 };
 use std::{fmt::Write, path::Path};
 
-/// Read the program keypair file or create a new one if it doesn't exist.
-pub fn get_or_create_program_id(name: &str) -> Pubkey {
-    let keypair_path = Path::new("target")
-        .join("deploy")
-        .join(format!("{}-keypair.json", name.to_snake_case()));
-
-    read_keypair_file(&keypair_path)
-        .unwrap_or_else(|_| {
-            let keypair = Keypair::new();
-            write_keypair_file(&keypair, keypair_path).expect("Unable to create program keypair");
-            keypair
-        })
-        .pubkey()
+/// Program initialization template
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+pub enum ProgramTemplate {
+    /// Program with a single `lib.rs` file
+    #[default]
+    Single,
+    /// Program with multiple files for instructions, state...
+    Multiple,
 }
 
-pub fn virtual_manifest() -> &'static str {
+/// Create a program from the given name and template.
+pub fn create_program(name: &str, template: ProgramTemplate) -> Result<()> {
+    let program_path = Path::new("programs").join(name);
+    let common_files = vec![
+        ("Cargo.toml".into(), workspace_manifest().into()),
+        (program_path.join("Cargo.toml"), cargo_toml(name)),
+        (program_path.join("Xargo.toml"), xargo_toml().into()),
+    ];
+
+    let template_files = match template {
+        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
+    };
+
+    create_files(&[common_files, template_files].concat())
+}
+
+/// Create a program with a single `lib.rs` file.
+fn create_program_template_single(name: &str, program_path: &Path) -> Files {
+    vec![(
+        program_path.join("src").join("lib.rs"),
+        format!(
+            r#"use anchor_lang::prelude::*;
+
+declare_id!("{}");
+
+#[program]
+pub mod {} {{
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
+        Ok(())
+    }}
+}}
+
+#[derive(Accounts)]
+pub struct Initialize {{}}
+"#,
+            get_or_create_program_id(name),
+            name.to_snake_case(),
+        ),
+    )]
+}
+
+/// Create a program with multiple files for instructions, state...
+fn create_program_template_multiple(name: &str, program_path: &Path) -> Files {
+    let src_path = program_path.join("src");
+    vec![
+        (
+            src_path.join("lib.rs"),
+            format!(
+                r#"pub mod constants;
+pub mod error;
+pub mod instructions;
+pub mod state;
+
+use anchor_lang::prelude::*;
+
+pub use constants::*;
+pub use instructions::*;
+pub use state::*;
+
+declare_id!("{}");
+
+#[program]
+pub mod {} {{
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
+        initialize::handler(ctx)
+    }}
+}}
+"#,
+                get_or_create_program_id(name),
+                name.to_snake_case(),
+            ),
+        ),
+        (
+            src_path.join("constants.rs"),
+            r#"use anchor_lang::prelude::*;
+
+#[constant]
+pub const SEED: &str = "anchor";
+"#
+            .into(),
+        ),
+        (
+            src_path.join("error.rs"),
+            r#"use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Custom error message")]
+    CustomError,
+}
+"#
+            .into(),
+        ),
+        (
+            src_path.join("instructions").join("mod.rs"),
+            r#"pub mod initialize;
+
+pub use initialize::*;
+"#
+            .into(),
+        ),
+        (
+            src_path.join("instructions").join("initialize.rs"),
+            r#"use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+pub struct Initialize {}
+
+pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    Ok(())
+}
+"#
+            .into(),
+        ),
+        (src_path.join("state").join("mod.rs"), r#""#.into()),
+    ]
+}
+
+const fn workspace_manifest() -> &'static str {
     r#"[workspace]
 members = [
     "programs/*"
@@ -40,6 +159,55 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+}
+
+fn cargo_toml(name: &str) -> String {
+    format!(
+        r#"[package]
+name = "{0}"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "{1}"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "{2}"
+"#,
+        name,
+        name.to_snake_case(),
+        VERSION,
+    )
+}
+
+fn xargo_toml() -> &'static str {
+    r#"[target.bpfel-unknown-unknown.dependencies.std]
+features = []
+"#
+}
+
+/// Read the program keypair file or create a new one if it doesn't exist.
+pub fn get_or_create_program_id(name: &str) -> Pubkey {
+    let keypair_path = Path::new("target")
+        .join("deploy")
+        .join(format!("{}-keypair.json", name.to_snake_case()));
+
+    read_keypair_file(&keypair_path)
+        .unwrap_or_else(|_| {
+            let keypair = Keypair::new();
+            write_keypair_file(&keypair, keypair_path).expect("Unable to create program keypair");
+            keypair
+        })
+        .pubkey()
 }
 
 pub fn credentials(token: &str) -> String {
@@ -66,34 +234,6 @@ export const IDL: {} = {};
         idl.name.to_upper_camel_case(),
         idl_json
     ))
-}
-
-pub fn cargo_toml(name: &str) -> String {
-    format!(
-        r#"[package]
-name = "{0}"
-version = "0.1.0"
-description = "Created with Anchor"
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib", "lib"]
-name = "{1}"
-
-[features]
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-
-[dependencies]
-anchor-lang = "{2}"
-"#,
-        name,
-        name.to_snake_case(),
-        VERSION,
-    )
 }
 
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
@@ -179,35 +319,6 @@ module.exports = async function (provider) {
   // Add your deploy script here.
 };
 "#
-}
-
-pub fn xargo_toml() -> &'static str {
-    r#"[target.bpfel-unknown-unknown.dependencies.std]
-features = []
-"#
-}
-
-pub fn lib_rs(name: &str) -> String {
-    format!(
-        r#"use anchor_lang::prelude::*;
-
-declare_id!("{}");
-
-#[program]
-pub mod {} {{
-    use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
-        Ok(())
-    }}
-}}
-
-#[derive(Accounts)]
-pub struct Initialize {{}}
-"#,
-        get_or_create_program_id(name),
-        name.to_snake_case(),
-    )
 }
 
 pub fn mocha(name: &str) -> String {
