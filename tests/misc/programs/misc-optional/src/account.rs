@@ -30,18 +30,6 @@ pub struct DataI8 {
 }
 size!(DataI8, 1);
 
-#[account]
-pub struct DataI16 {
-    pub data: i16, // 2
-}
-size!(DataI16, 2);
-
-#[account]
-pub struct DataEnum {
-    pub data: TestEnum, // 1 + 16
-}
-size!(DataEnum, 17);
-
 #[account(zero_copy)]
 pub struct DataZeroCopy {
     pub data: u16,    // 2
@@ -78,20 +66,4 @@ pub struct DataConstCastArraySize {
 #[account]
 pub struct DataMultidimensionalArrayConstSizes {
     pub data: [[u8; MAX_SIZE_U8 as usize]; MAX_SIZE],
-}
-
-#[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize, PartialEq, Eq)]
-pub enum TestEnum {
-    First,
-    Second { x: u64, y: u64 },
-    TupleTest(u8, u8, u16, u16),
-    TupleStructTest(TestStruct),
-}
-
-#[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize, PartialEq, Eq)]
-pub struct TestStruct {
-    pub data1: u8,
-    pub data2: u16,
-    pub data3: u32,
-    pub data4: u64,
 }

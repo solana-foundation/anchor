@@ -201,34 +201,7 @@ pub struct TestCloseMut<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestU16<'info> {
-    #[account(zero)]
-    pub my_account: Account<'info, DataU16>,
-}
-
-#[derive(Accounts)]
-pub struct TestI16<'info> {
-    #[account(zero)]
-    pub data: Account<'info, DataI16>,
-}
-
-#[derive(Accounts)]
 pub struct TestSimulate {}
-
-#[derive(Accounts)]
-pub struct TestAccountEnum<'info> {
-    #[account(init, payer = payer, space = 8 + DataEnum::LEN)]
-    pub data: Account<'info, DataEnum>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct TestI8<'info> {
-    #[account(zero)]
-    pub data: Account<'info, DataI8>,
-}
 
 #[derive(Accounts)]
 pub struct TestInit<'info> {

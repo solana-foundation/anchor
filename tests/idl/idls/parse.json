@@ -14,6 +14,16 @@
       "name": "BAR_CONST",
       "type": "u8",
       "value": "6"
+    },
+    {
+      "name": "BYTES_STR",
+      "type": "bytes",
+      "value": "[116, 101, 115, 116]"
+    },
+    {
+      "name": "BYTE_STR",
+      "type": "u8",
+      "value": "116"
     }
   ],
   "instructions": [

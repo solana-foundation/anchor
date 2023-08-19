@@ -12,16 +12,6 @@ mod event;
 
 declare_id!("3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh");
 
-#[constant]
-pub const BASE: u128 = 1_000_000;
-#[constant]
-pub const DECIMALS: u8 = 6;
-#[constant]
-pub const BYTES_STR: &[u8] = b"test";
-#[constant]
-pub const BYTE_STR: u8 = b't';
-pub const NO_IDL: u16 = 55;
-
 #[program]
 pub mod misc {
     use super::*;
@@ -48,11 +38,6 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_u16(ctx: Context<TestU16>, data: u16) -> Result<()> {
-        ctx.accounts.my_account.data = data;
-        Ok(())
-    }
-
     pub fn test_simulate(_ctx: Context<TestSimulate>, data: u32) -> Result<()> {
         emit!(E1 { data });
         emit!(E2 { data: 1234 });
@@ -63,26 +48,6 @@ pub mod misc {
         emit!(E6 {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         });
-        Ok(())
-    }
-
-    pub fn test_input_enum(_ctx: Context<TestSimulate>, data: TestEnum) -> Result<()> {
-        emit!(E7 { data: data });
-        Ok(())
-    }
-
-    pub fn test_account_enum(ctx: Context<TestAccountEnum>, data: TestEnum) -> Result<()> {
-        ctx.accounts.data.data = data;
-        Ok(())
-    }
-
-    pub fn test_i8(ctx: Context<TestI8>, data: i8) -> Result<()> {
-        ctx.accounts.data.data = data;
-        Ok(())
-    }
-
-    pub fn test_i16(ctx: Context<TestI16>, data: i16) -> Result<()> {
-        ctx.accounts.data.data = data;
         Ok(())
     }
 

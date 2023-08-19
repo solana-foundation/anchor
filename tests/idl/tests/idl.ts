@@ -1,43 +1,32 @@
 import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import { assert } from "chai";
+
+import { Idl } from "../target/types/idl";
 
 describe("IDL", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
+  const program = anchor.workspace.idl as Program<Idl>;
 
-  it("Can lazy load workspace programs", () => {
-    assert.doesNotThrow(() => {
-      // Program exists, should not throw
-      anchor.workspace.relationsDerivation;
-    });
-
-    assert.throws(() => {
-      // IDL path in Anchor.toml doesn't exist but other tests still run
-      // successfully because workspace programs are getting loaded on-demand
-      anchor.workspace.nonExistent;
-    }, /non-existent\.json/);
+  it("Should include `FOO_CONST`", () => {
+    assert.isDefined(
+      program.idl.constants.find(
+        (c) =>
+          c.name === "FOO_CONST" && c.type === "u128" && c.value === "1000000"
+      )
+    );
   });
 
-  it("Can get workspace programs by their name independent of casing", () => {
-    const camel = anchor.workspace.relationsDerivation;
-    const pascal = anchor.workspace.RelationsDerivation;
-    const kebab = anchor.workspace["relations-derivation"];
-    const snake = anchor.workspace["relations_derivation"];
-
-    const compareProgramNames = (...programs: anchor.Program[]) => {
-      return programs.every(
-        (program) => program.idl.name === "relations_derivation"
-      );
-    };
-
-    assert(compareProgramNames(camel, pascal, kebab, snake));
+  it("Should include `BAR_CONST`", () => {
+    assert.isDefined(
+      program.idl.constants.find(
+        (c) => c.name === "BAR_CONST" && c.type === "u8" && c.value === "6"
+      )
+    );
   });
 
-  it("Can use numbers in program names", () => {
-    assert.doesNotThrow(() => {
-      anchor.workspace.numbers123;
-      anchor.workspace.Numbers123;
-      anchor.workspace["numbers-123"];
-      anchor.workspace["numbers_123"];
-    });
+  it("Should not include `NO_IDL` const", () => {
+    // @ts-expect-error
+    assert.isUndefined(program.idl.constants.find((c) => c.name === "NO_IDL"));
   });
 });

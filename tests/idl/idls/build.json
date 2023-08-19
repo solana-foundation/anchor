@@ -11,6 +11,11 @@
       "value": "6"
     },
     {
+      "name": "BYTE_STR",
+      "type": "u8",
+      "value": "116"
+    },
+    {
       "name": "FOO_CONST",
       "type": "u128",
       "value": "1000000"
