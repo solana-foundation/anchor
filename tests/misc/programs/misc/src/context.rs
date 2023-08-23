@@ -2,6 +2,7 @@ use crate::account::*;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint as MintInterface, TokenAccount as TokenAccountInterface};
 
 #[derive(Accounts)]
 pub struct TestTokenSeedsInit<'info> {
@@ -56,8 +57,8 @@ pub struct TestInitAssociatedTokenWithTokenProgram<'info> {
         associated_token::authority = payer,
         associated_token::token_program = associated_token_token_program,
     )]
-    pub token: Account<'info, TokenAccount>,
-    pub mint: Account<'info, Mint>,
+    pub token: InterfaceAccount<'info, TokenAccountInterface>,
+    pub mint: InterfaceAccount<'info, MintInterface>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -240,7 +241,7 @@ pub struct TestInitMintWithTokenProgram<'info> {
         mint::freeze_authority = payer,
         mint::token_program = mint_token_program,
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: InterfaceAccount<'info, MintInterface>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -445,8 +446,8 @@ pub struct TestInitAssociatedTokenIfNeededWithTokenProgram<'info> {
         associated_token::authority = authority,
         associated_token::token_program = associated_token_token_program,
     )]
-    pub token: Account<'info, TokenAccount>,
-    pub mint: Account<'info, Mint>,
+    pub token: InterfaceAccount<'info, TokenAccountInterface>,
+    pub mint: InterfaceAccount<'info, MintInterface>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -700,8 +701,8 @@ pub struct TestAssociatedTokenWithTokenProgramConstraint<'info> {
         associated_token::authority = authority,
         associated_token::token_program = associated_token_token_program,
     )]
-    pub token: Account<'info, TokenAccount>,
-    pub mint: Account<'info, Mint>,
+    pub token: InterfaceAccount<'info, TokenAccountInterface>,
+    pub mint: InterfaceAccount<'info, MintInterface>,
     /// CHECK: ignore
     pub authority: AccountInfo<'info>,
     /// CHECK: ignore
