@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "types": ["mocha", "node"],
-    "lib": ["ES6"],
+    "lib": ["es2020"],
     "module": "commonjs",
     "target": "es6",
     "esModuleInterop": true,

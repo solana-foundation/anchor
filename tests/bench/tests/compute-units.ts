@@ -2,12 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import * as token from "@coral-xyz/spl-token";
 
 import { Bench, IDL } from "../target/types/bench";
-import {
-  BenchData,
-  ComputeUnits,
-  getVersionFromArgs,
-  spawn,
-} from "../scripts/utils";
+import { BenchData, ComputeUnits } from "../scripts/utils";
 
 describe("Compute units", () => {
   // Configure the client to use the local cluster

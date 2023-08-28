@@ -25,6 +25,8 @@ export type BenchResult = {
   binarySize: BinarySize;
   /** Benchmark result for compute units consumed */
   computeUnits: ComputeUnits;
+  /** Benchmark result for stack memory usage */
+  stackMemory: StackMemory;
 };
 
 /** `program name -> binary size` */
@@ -32,6 +34,9 @@ export type BinarySize = { [programName: string]: number };
 
 /** `instruction name -> compute units consumed` */
 export type ComputeUnits = { [ixName: string]: number };
+
+/** `instruction name -> stack memory used` */
+export type StackMemory = { [ixName: string]: number };
 
 /**
  * How much of a percentage difference between the current and the previous data
@@ -124,7 +129,7 @@ export class BenchData {
     ) => {
       for (const name in compareFrom) {
         if (compareTo[name] === undefined) {
-          cb(name, compareTo[name]);
+          cb(name, compareFrom[name]);
         }
       }
     };

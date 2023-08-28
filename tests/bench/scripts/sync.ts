@@ -67,7 +67,6 @@ import {
 
     // Run the command to update the current version's results
     const result = runAnchorTest();
-    console.log(result.output.toString());
 
     // Check failure
     if (result.status !== 0) {
