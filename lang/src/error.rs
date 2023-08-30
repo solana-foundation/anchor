@@ -222,8 +222,8 @@ pub enum ErrorCode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    AnchorError(AnchorError),
-    ProgramError(ProgramErrorWithOrigin),
+    AnchorError(Box<AnchorError>),
+    ProgramError(Box<ProgramErrorWithOrigin>),
 }
 
 impl std::error::Error for Error {}
@@ -239,24 +239,24 @@ impl Display for Error {
 
 impl From<AnchorError> for Error {
     fn from(ae: AnchorError) -> Self {
-        Self::AnchorError(ae)
+        Self::AnchorError(Box::new(ae))
     }
 }
 
 impl From<ProgramError> for Error {
     fn from(program_error: ProgramError) -> Self {
-        Self::ProgramError(program_error.into())
+        Self::ProgramError(Box::new(program_error.into()))
     }
 }
 impl From<BorshIoError> for Error {
     fn from(error: BorshIoError) -> Self {
-        Error::ProgramError(ProgramError::from(error).into())
+        Error::ProgramError(Box::new(ProgramError::from(error).into()))
     }
 }
 
 impl From<ProgramErrorWithOrigin> for Error {
     fn from(pe: ProgramErrorWithOrigin) -> Self {
-        Self::ProgramError(pe)
+        Self::ProgramError(Box::new(pe))
     }
 }
 
@@ -503,10 +503,10 @@ impl Eq for AnchorError {}
 impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
     fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
         match e {
-            Error::AnchorError(AnchorError {
-                error_code_number, ..
-            }) => {
-                anchor_lang::solana_program::program_error::ProgramError::Custom(error_code_number)
+            Error::AnchorError(error) => {
+                anchor_lang::solana_program::program_error::ProgramError::Custom(
+                    error.error_code_number,
+                )
             }
             Error::ProgramError(program_error) => program_error.program_error,
         }
