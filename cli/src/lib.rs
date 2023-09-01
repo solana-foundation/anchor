@@ -2594,11 +2594,12 @@ fn account(
         },
     );
 
-    let mut cluster = &Config::discover(cfg_override)
-        .map(|cfg| cfg.unwrap())
-        .map(|cfg| cfg.provider.cluster.clone())
-        .unwrap_or(Cluster::Localnet);
-    cluster = cfg_override.cluster.as_ref().unwrap_or(cluster);
+    let cluster = match &cfg_override.cluster {
+        Some(cluster) => cluster.clone(),
+        None => Config::discover(cfg_override)?
+            .map(|cfg| cfg.provider.cluster.clone())
+            .unwrap_or(Cluster::Localnet),
+    };
 
     let data = create_client(cluster.url()).get_account_data(&address)?;
     if data.len() < 8 {
