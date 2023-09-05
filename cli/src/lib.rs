@@ -2501,6 +2501,22 @@ fn generate_idl_build(no_docs: bool) -> Result<Vec<Idl>> {
         })
         .collect::<Vec<_>>();
 
+    // Verify IDLs are valid
+    for idl in &idls {
+        let full_path_account = idl
+            .accounts
+            .iter()
+            .find(|account| account.name.contains("::"));
+
+        if let Some(account) = full_path_account {
+            return Err(anyhow!(
+                "Conflicting accounts names are not allowed.\nProgram: {}\nAccount: {}",
+                idl.name,
+                account.name
+            ));
+        }
+    }
+
     Ok(idls)
 }
 
