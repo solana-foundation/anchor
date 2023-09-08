@@ -208,6 +208,13 @@ pub fn idl_type_ts_from_syn_type(
                 }
             }
         }
+        syn::Type::Reference(reference) => match reference.elem.as_ref() {
+            syn::Type::Slice(slice) if matches!(&*slice.elem, syn::Type::Path(path) if the_only_segment_is(path, "u8")) =>
+            {
+                return Ok((quote! {#idl::IdlType::Bytes}, vec![]));
+            }
+            _ => panic!("Reference types other than byte slice(`&[u8]`) are not allowed"),
+        },
         _ => Err(()),
     }
 }
@@ -846,7 +853,7 @@ pub fn gen_idl_print_function_for_constant(item: &syn::ItemConst) -> TokenStream
 
     let impl_ts = match idl_type_ts_from_syn_type(&item.ty, &vec![]) {
         Ok((ty, _)) => quote! {
-            let value = format!("{}", #expr);
+            let value = format!("{:?}", #expr);
 
             let idl = #idl::IdlConst {
                 name: #name.into(),

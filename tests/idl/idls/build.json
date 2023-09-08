@@ -6,9 +6,9 @@
   ],
   "constants": [
     {
-      "name": "BAR_CONST",
-      "type": "u8",
-      "value": "6"
+      "name": "BYTES_STR",
+      "type": "bytes",
+      "value": "[116, 101, 115, 116]"
     },
     {
       "name": "BYTE_STR",
@@ -16,9 +16,14 @@
       "value": "116"
     },
     {
-      "name": "FOO_CONST",
-      "type": "u128",
+      "name": "I128",
+      "type": "i128",
       "value": "1000000"
+    },
+    {
+      "name": "U8",
+      "type": "u8",
+      "value": "6"
     }
   ],
   "instructions": [

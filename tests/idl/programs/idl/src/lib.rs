@@ -4,16 +4,16 @@ use std::str::FromStr;
 declare_id!("id11111111111111111111111111111111111111111");
 
 #[constant]
-pub const FOO_CONST: u128 = 1_000_000;
+pub const U8: u8 = 6;
 
 #[constant]
-pub const BAR_CONST: u8 = 6;
-
-#[constant]
-pub const BYTES_STR: &[u8] = b"test";
+pub const I128: i128 = 1_000_000;
 
 #[constant]
 pub const BYTE_STR: u8 = b't';
+
+#[constant]
+pub const BYTES_STR: &[u8] = b"test";
 
 pub const NO_IDL: u16 = 55;
 
