@@ -1,68 +1,54 @@
-const anchor = require("@coral-xyz/anchor");
-const { assert } = require("chai");
+import * as anchor from "@coral-xyz/anchor";
+import { assert } from "chai";
+
+import { Events } from "../target/types/events";
 
 describe("Events", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
-  const program = anchor.workspace.Events;
+  const program = anchor.workspace.Events as anchor.Program<Events>;
+
+  type Event = anchor.IdlEvents<typeof program["idl"]>;
+  const getEvent = async <E extends keyof Event>(
+    eventName: E,
+    methodName: keyof typeof program["methods"]
+  ) => {
+    let listenerId: number;
+    const event = await new Promise<Event[E]>((res) => {
+      listenerId = program.addEventListener(eventName, (event) => {
+        res(event);
+      });
+      program.methods[methodName]().rpc();
+    });
+    await program.removeEventListener(listenerId);
+
+    return event;
+  };
 
   describe("Normal event", () => {
     it("Single event works", async () => {
-      let listener = null;
+      const event = await getEvent("MyEvent", "initialize");
 
-      let [event, slot] = await new Promise((resolve, _reject) => {
-        listener = program.addEventListener("MyEvent", (event, slot) => {
-          resolve([event, slot]);
-        });
-        program.rpc.initialize();
-      });
-      await program.removeEventListener(listener);
-
-      assert.isAbove(slot, 0);
       assert.strictEqual(event.data.toNumber(), 5);
       assert.strictEqual(event.label, "hello");
     });
 
     it("Multiple events work", async () => {
-      let listenerOne = null;
-      let listenerTwo = null;
+      const eventOne = await getEvent("MyEvent", "initialize");
+      const eventTwo = await getEvent("MyOtherEvent", "testEvent");
 
-      let [eventOne, slotOne] = await new Promise((resolve, _reject) => {
-        listenerOne = program.addEventListener("MyEvent", (event, slot) => {
-          resolve([event, slot]);
-        });
-        program.rpc.initialize();
-      });
-
-      let [eventTwo, slotTwo] = await new Promise((resolve, _reject) => {
-        listenerTwo = program.addEventListener(
-          "MyOtherEvent",
-          (event, slot) => {
-            resolve([event, slot]);
-          }
-        );
-        program.rpc.testEvent();
-      });
-
-      await program.removeEventListener(listenerOne);
-      await program.removeEventListener(listenerTwo);
-
-      assert.isAbove(slotOne, 0);
       assert.strictEqual(eventOne.data.toNumber(), 5);
       assert.strictEqual(eventOne.label, "hello");
 
-      assert.isAbove(slotTwo, 0);
       assert.strictEqual(eventTwo.data.toNumber(), 6);
       assert.strictEqual(eventTwo.label, "bye");
     });
   });
 
-  describe("Self-CPI event", () => {
+  describe("CPI event", () => {
     it("Works without accounts being specified", async () => {
       const tx = await program.methods.testEventCpi().transaction();
-      const config = {
-        commitment: "confirmed",
-      };
+      const config = { commitment: "confirmed" } as const;
       const txHash = await program.provider.sendAndConfirm(tx, [], config);
       const txResult = await program.provider.connection.getTransaction(
         txHash,
@@ -77,10 +63,10 @@ describe("Events", () => {
 
       assert.strictEqual(event.name, "MyOtherEvent");
       assert.strictEqual(event.data.label, "cpi");
-      assert.strictEqual(event.data.data.toNumber(), 7);
+      assert.strictEqual((event.data.data as anchor.BN).toNumber(), 7);
     });
 
-    it("Malicious invocation throws", async () => {
+    it("Throws on unauthorized invocation", async () => {
       const tx = new anchor.web3.Transaction();
       tx.add(
         new anchor.web3.TransactionInstruction({

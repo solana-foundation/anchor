@@ -11,6 +11,7 @@ import NamespaceFactory, {
   SimulateNamespace,
   MethodsNamespace,
   ViewNamespace,
+  IdlEvents,
 } from "./namespace/index.js";
 import { utf8 } from "../utils/bytes/index.js";
 import { EventManager } from "./event.js";
@@ -357,9 +358,13 @@ export class Program<IDL extends Idl = Idl> {
    * @param callback  The function to invoke whenever the event is emitted from
    *                  program logs.
    */
-  public addEventListener(
-    eventName: string,
-    callback: (event: any, slot: number, signature: string) => void
+  public addEventListener<E extends keyof IdlEvents<IDL>>(
+    eventName: E,
+    callback: (
+      event: IdlEvents<IDL>[E],
+      slot: number,
+      signature: string
+    ) => void
   ): number {
     return this._events.addEventListener(eventName, callback);
   }
