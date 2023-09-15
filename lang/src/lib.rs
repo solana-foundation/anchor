@@ -50,19 +50,21 @@ pub use anchor_attribute_account::{account, declare_id, zero_copy};
 pub use anchor_attribute_constant::constant;
 pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
-#[cfg(feature = "event-cpi")]
-pub use anchor_attribute_event::{emit_cpi, event_cpi};
 pub use anchor_attribute_program::program;
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
+
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
 pub use solana_program;
 
+#[cfg(feature = "event-cpi")]
+pub use anchor_attribute_event::{emit_cpi, event_cpi};
+
 #[cfg(feature = "idl-build")]
-pub use anchor_syn;
+pub use anchor_syn::{self, idl::build::IdlBuild};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
@@ -353,8 +355,6 @@ pub mod prelude {
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Id, InitSpace, Key,
         Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
-    #[cfg(feature = "event-cpi")]
-    pub use super::{emit_cpi, event_cpi};
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
@@ -373,6 +373,12 @@ pub mod prelude {
     pub use solana_program::sysvar::stake_history::StakeHistory;
     pub use solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
+
+    #[cfg(feature = "event-cpi")]
+    pub use super::{emit_cpi, event_cpi};
+
+    #[cfg(feature = "idl-build")]
+    pub use super::IdlBuild;
 }
 
 /// Internal module used by macros and unstable apis.

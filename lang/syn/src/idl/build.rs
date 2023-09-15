@@ -1,9 +1,38 @@
+pub use serde_json;
+
 use crate::{parser::docs, AccountField, AccountsStruct, Error, Program};
 use heck::MixedCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-pub use serde_json;
 use syn::{Ident, ItemEnum, ItemStruct};
+
+/// A trait that types must implement in order to generate the IDL via compilation.
+///
+/// This trait is automatically implemented for Anchor all types that use the `AnchorSerialize`
+/// proc macro. Note that manually implementing the `AnchorSerialize` trait will **NOT** have the
+/// same effect.
+///
+/// Types that don't implement this trait will cause a compile error during the IDL generation.
+///
+/// The methods have default implementation that allows the program to compile but the type will
+/// **NOT** be included in the IDL.
+pub trait IdlBuild {
+    /// Returns the full module path of the type.
+    fn __anchor_private_full_path() -> String {
+        String::default()
+    }
+
+    /// Returns the IDL type definition of the type or `None` if it doesn't exist.
+    fn __anchor_private_gen_idl_type() -> Option<super::types::IdlTypeDefinition> {
+        None
+    }
+
+    /// Insert the type definition to the defined types hashmap.
+    fn __anchor_private_insert_idl_defined(
+        _defined_types: &mut std::collections::HashMap<String, super::types::IdlTypeDefinition>,
+    ) {
+    }
+}
 
 #[inline(always)]
 fn get_module_paths() -> (TokenStream, TokenStream) {
@@ -439,7 +468,7 @@ pub fn idl_type_definition_ts_from_syn_enum(
     ))
 }
 
-pub fn idl_gen_impl_skeleton(
+pub fn idl_build_impl_skeleton(
     idl_type_definition_ts: TokenStream,
     insert_defined_ts: TokenStream,
     ident: &Ident,
@@ -448,18 +477,19 @@ pub fn idl_gen_impl_skeleton(
     let (idl, _) = get_module_paths();
     let name = ident.to_string();
     let (impl_generics, ty_generics, where_clause) = input_generics.split_for_impl();
+    let idl_build_trait = quote! {anchor_lang::anchor_syn::idl::build::IdlBuild};
 
     quote! {
-        impl #impl_generics #ident #ty_generics #where_clause {
-            pub fn __anchor_private_full_path() -> String {
+        impl #impl_generics #idl_build_trait for #ident #ty_generics #where_clause {
+            fn __anchor_private_full_path() -> String {
                 format!("{}::{}", std::module_path!(), #name)
             }
 
-            pub fn __anchor_private_gen_idl_type() -> Option<#idl::IdlTypeDefinition> {
+            fn __anchor_private_gen_idl_type() -> Option<#idl::IdlTypeDefinition> {
                 #idl_type_definition_ts
             }
 
-            pub fn __anchor_private_insert_idl_defined(
+            fn __anchor_private_insert_idl_defined(
                 defined_types: &mut std::collections::HashMap<String, #idl::IdlTypeDefinition>
             ) {
                 #insert_defined_ts
@@ -469,7 +499,7 @@ pub fn idl_gen_impl_skeleton(
 }
 
 // generates the IDL generation impl for for a struct
-pub fn gen_idl_gen_impl_for_struct(strct: &ItemStruct, no_docs: bool) -> TokenStream {
+pub fn gen_idl_build_impl_for_struct(strct: &ItemStruct, no_docs: bool) -> TokenStream {
     let idl_type_definition_ts: TokenStream;
     let insert_defined_ts: TokenStream;
 
@@ -492,7 +522,7 @@ pub fn gen_idl_gen_impl_for_struct(strct: &ItemStruct, no_docs: bool) -> TokenSt
     let ident = &strct.ident;
     let input_generics = &strct.generics;
 
-    idl_gen_impl_skeleton(
+    idl_build_impl_skeleton(
         idl_type_definition_ts,
         insert_defined_ts,
         ident,
@@ -501,7 +531,7 @@ pub fn gen_idl_gen_impl_for_struct(strct: &ItemStruct, no_docs: bool) -> TokenSt
 }
 
 // generates the IDL generation impl for for an enum
-pub fn gen_idl_gen_impl_for_enum(enm: ItemEnum, no_docs: bool) -> TokenStream {
+pub fn gen_idl_build_impl_for_enum(enm: ItemEnum, no_docs: bool) -> TokenStream {
     let idl_type_definition_ts: TokenStream;
     let insert_defined_ts: TokenStream;
 
@@ -524,7 +554,7 @@ pub fn gen_idl_gen_impl_for_enum(enm: ItemEnum, no_docs: bool) -> TokenStream {
     let ident = &enm.ident;
     let input_generics = &enm.generics;
 
-    idl_gen_impl_skeleton(
+    idl_build_impl_skeleton(
         idl_type_definition_ts,
         insert_defined_ts,
         ident,
@@ -533,7 +563,7 @@ pub fn gen_idl_gen_impl_for_enum(enm: ItemEnum, no_docs: bool) -> TokenStream {
 }
 
 // generates the IDL generation impl for for an event
-pub fn gen_idl_gen_impl_for_event(event_strct: &ItemStruct) -> TokenStream {
+pub fn gen_idl_build_impl_for_event(event_strct: &ItemStruct) -> TokenStream {
     fn parse_fields(
         fields: &syn::FieldsNamed,
     ) -> Result<(Vec<TokenStream>, Vec<syn::TypePath>), ()> {
@@ -601,7 +631,7 @@ pub fn gen_idl_gen_impl_for_event(event_strct: &ItemStruct) -> TokenStream {
 }
 
 // generates the IDL generation impl for the Accounts struct
-pub fn gen_idl_gen_impl_for_accounts_strct(
+pub fn gen_idl_build_impl_for_accounts_struct(
     accs_strct: &AccountsStruct,
     no_docs: bool,
 ) -> TokenStream {
@@ -817,7 +847,7 @@ pub fn gen_idl_print_function_for_event(event: &ItemStruct) -> TokenStream {
 
     let ident = &event.ident;
     let fn_name = format_ident!("__anchor_private_print_idl_event_{}", ident.to_string());
-    let impl_gen = gen_idl_gen_impl_for_event(event);
+    let impl_gen = gen_idl_build_impl_for_event(event);
 
     quote! {
         #impl_gen

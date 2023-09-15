@@ -103,10 +103,10 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let idl_gen = gen_idl_print_function_for_error(&error);
+        let idl_build = gen_idl_print_function_for_error(&error);
         return quote! {
             #ret
-            #idl_gen
+            #idl_build
         };
     };
 

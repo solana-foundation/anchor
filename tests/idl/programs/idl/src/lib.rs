@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{token, token_interface};
 use std::str::FromStr;
 
 declare_id!("id11111111111111111111111111111111111111111");
@@ -273,6 +274,11 @@ pub struct Initialize<'info> {
 
     nested: NestedAccounts<'info>,
     zc_account: AccountLoader<'info, SomeZcAccount>,
+
+    token_account: Account<'info, token::TokenAccount>,
+    mint_account: Account<'info, token::Mint>,
+    token_interface_account: InterfaceAccount<'info, token_interface::TokenAccount>,
+    mint_interface_account: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(mut)]
     payer: Signer<'info>,

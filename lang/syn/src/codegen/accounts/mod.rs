@@ -36,10 +36,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     {
         #![allow(warnings)]
         let no_docs = crate::idl::build::get_no_docs();
-        let idl_gen_impl = crate::idl::build::gen_idl_gen_impl_for_accounts_strct(&accs, no_docs);
+        let idl_build_impl =
+            crate::idl::build::gen_idl_build_impl_for_accounts_struct(&accs, no_docs);
         return quote! {
             #ret
-            #idl_gen_impl
+            #idl_build_impl
         };
     }
 

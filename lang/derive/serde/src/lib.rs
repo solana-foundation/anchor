@@ -37,12 +37,12 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
     {
         let no_docs = get_no_docs();
 
-        let idl_gen_impl = match syn::parse(input).unwrap() {
-            Item::Struct(item) => gen_idl_gen_impl_for_struct(&item, no_docs),
-            Item::Enum(item) => gen_idl_gen_impl_for_enum(item, no_docs),
+        let idl_build_impl = match syn::parse(input).unwrap() {
+            Item::Struct(item) => gen_idl_build_impl_for_struct(&item, no_docs),
+            Item::Enum(item) => gen_idl_build_impl_for_enum(item, no_docs),
             Item::Union(item) => {
                 // unions are not included in the IDL - TODO print a warning
-                idl_gen_impl_skeleton(quote! {None}, quote! {}, &item.ident, &item.generics)
+                idl_build_impl_skeleton(quote! {None}, quote! {}, &item.ident, &item.generics)
             }
             // Derive macros can only be defined on structs, enums, and unions.
             _ => unreachable!(),
@@ -50,7 +50,7 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
         return TokenStream::from(quote! {
             #ret
-            #idl_gen_impl
+            #idl_build_impl
         });
     };
 

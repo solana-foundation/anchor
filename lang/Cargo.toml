@@ -43,8 +43,10 @@ anchor-attribute-program = { path = "./attribute/program", version = "0.28.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.28.0" }
 anchor-derive-serde = { path = "./derive/serde", version = "0.28.0" }
 anchor-derive-space = { path = "./derive/space", version = "0.28.0" }
+
 # `anchor-syn` should only be included with `idl-build` feature
 anchor-syn = { path = "./syn", version = "0.28.0", optional = true }
+
 arrayref = "0.3"
 base64 = "0.13"
 bincode = "1"

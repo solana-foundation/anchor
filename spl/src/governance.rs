@@ -54,5 +54,8 @@ macro_rules! vote_weight_record {
                 &mut self.0
             }
         }
+
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang::IdlBuild for VoterWeightRecord {}
     };
 }

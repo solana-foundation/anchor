@@ -156,6 +156,9 @@ impl Deref for StakeAccount {
     }
 }
 
+#[cfg(feature = "idl-build")]
+impl anchor_lang::IdlBuild for StakeAccount {}
+
 #[derive(Clone)]
 pub struct Stake;
 
