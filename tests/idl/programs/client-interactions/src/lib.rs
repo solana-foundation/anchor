@@ -81,7 +81,7 @@ pub struct EnumAccount {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MyEnum {
     Unit,
-    Named { x: u64, y: u64 },
+    Named { point_x: u64, point_y: u64 },
     Unnamed(u8, u8, u16, u16),
     UnnamedStruct(MyStruct),
 }

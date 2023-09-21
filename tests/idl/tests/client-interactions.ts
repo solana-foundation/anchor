@@ -81,11 +81,11 @@ describe("Client interactions", () => {
     assert.deepEqual(unit.enumField.unit, {});
 
     // Named
-    const x = new anchor.BN(1);
-    const y = new anchor.BN(2);
-    const named = await testAccountEnum({ named: { x, y } });
-    assert(named.enumField.named.x.eq(x));
-    assert(named.enumField.named.y.eq(y));
+    const pointX = new anchor.BN(1);
+    const pointY = new anchor.BN(2);
+    const named = await testAccountEnum({ named: { pointX, pointY } });
+    assert(named.enumField.named.pointX.eq(pointX));
+    assert(named.enumField.named.pointY.eq(pointY));
 
     // Unnamed
     const tupleArg = [1, 2, 3, 4] as const;

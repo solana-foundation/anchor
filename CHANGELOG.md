@@ -35,6 +35,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Load workspace programs on-demand rather than loading all of them at once ([#2579](https://github.com/coral-xyz/anchor/pull/2579)).
 - lang: Fix `associated_token::token_program` constraint ([#2603](https://github.com/coral-xyz/anchor/pull/2603)).
 - cli: Fix `anchor account` command panicking outside of workspace ([#2620](https://github.com/coral-xyz/anchor/pull/2620)).
+- lang: IDL named enum variant fields are now camelCase as opposed to snake_case, consistent with the other IDL types ([#2633](https://github.com/coral-xyz/anchor/pull/2633)).
 
 ### Breaking
 

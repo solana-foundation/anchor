@@ -384,7 +384,8 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                                 .named
                                 .iter()
                                 .map(|f: &syn::Field| {
-                                    let name = f.ident.as_ref().unwrap().to_string();
+                                    let name =
+                                        f.ident.as_ref().unwrap().to_string().to_mixed_case();
                                     let doc = if !no_docs {
                                         docs::parse(&f.attrs)
                                     } else {
