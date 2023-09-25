@@ -1,6 +1,6 @@
 import { Buffer } from "buffer";
-import * as base64 from "base64-js";
 import { Layout } from "buffer-layout";
+import * as base64 from "../../utils/bytes/base64.js";
 import { Idl, IdlEvent, IdlTypeDef } from "../../idl.js";
 import { Event, EventData } from "../../program/event.js";
 import { IdlCoder } from "./idl.js";
@@ -41,7 +41,7 @@ export class BorshEventCoder implements EventCoder {
       idl.events === undefined
         ? []
         : idl.events.map((e) => [
-            base64.fromByteArray(eventDiscriminator(e.name)),
+            base64.encode(eventDiscriminator(e.name)),
             e.name,
           ])
     );
@@ -53,11 +53,11 @@ export class BorshEventCoder implements EventCoder {
     let logArr: Buffer;
     // This will throw if log length is not a multiple of 4.
     try {
-      logArr = Buffer.from(base64.toByteArray(log));
+      logArr = base64.decode(log);
     } catch (e) {
       return null;
     }
-    const disc = base64.fromByteArray(logArr.slice(0, 8));
+    const disc = base64.encode(logArr.slice(0, 8));
 
     // Only deserialize if the discriminator implies a proper event.
     const eventName = this.discriminators.get(disc);
