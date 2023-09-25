@@ -1,9 +1,9 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::error::ErrorCode;
-use anchor_lang::{Accounts, Result, ToAccountInfos};
-use mpl_token_metadata::state::{CollectionDetails, DataV2, TokenMetadataAccount};
+use anchor_lang::{system_program, Accounts, Result, ToAccountInfos};
 use solana_program::account_info::AccountInfo;
 use solana_program::pubkey::Pubkey;
+use solana_program::sysvar;
 use std::ops::Deref;
 
 pub use mpl_token_metadata;
@@ -12,15 +12,17 @@ pub use mpl_token_metadata::ID;
 pub fn approve_collection_authority<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::approve_collection_authority(
-        ID,
-        *ctx.accounts.collection_authority_record.key,
-        *ctx.accounts.new_collection_authority.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.mint.key,
-    );
+    let ix = mpl_token_metadata::instructions::ApproveCollectionAuthority {
+        collection_authority_record: *ctx.accounts.collection_authority_record.key,
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        new_collection_authority: *ctx.accounts.new_collection_authority.key,
+        payer: *ctx.accounts.payer.key,
+        rent: None,
+        system_program: system_program::ID,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -34,14 +36,17 @@ pub fn bubblegum_set_collection_size<'info>(
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::bubblegum_set_collection_size(
-        ID,
-        *ctx.accounts.metadata_account.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.mint.key,
-        *ctx.accounts.bubblegum_signer.key,
+    let ix = mpl_token_metadata::instructions::BubblegumSetCollectionSize {
+        collection_metadata: *ctx.accounts.metadata_account.key,
+        collection_authority: *ctx.accounts.update_authority.key,
+        collection_mint: *ctx.accounts.mint.key,
+        bubblegum_signer: *ctx.accounts.bubblegum_signer.key,
         collection_authority_record,
-        size,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::BubblegumSetCollectionSizeInstructionArgs {
+            set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
+        },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -54,19 +59,19 @@ pub fn bubblegum_set_collection_size<'info>(
 pub fn burn_edition_nft<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, BurnEditionNft<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::burn_edition_nft(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.owner.key,
-        *ctx.accounts.print_edition_mint.key,
-        *ctx.accounts.master_edition_mint.key,
-        *ctx.accounts.print_edition_token.key,
-        *ctx.accounts.master_edition_token.key,
-        *ctx.accounts.master_edition.key,
-        *ctx.accounts.print_edition.key,
-        *ctx.accounts.edition_marker.key,
-        *ctx.accounts.spl_token.key,
-    );
+    let ix = mpl_token_metadata::instructions::BurnEditionNft {
+        edition_marker_account: *ctx.accounts.edition_marker.key,
+        master_edition_account: *ctx.accounts.master_edition.key,
+        master_edition_mint: *ctx.accounts.master_edition_mint.key,
+        master_edition_token_account: *ctx.accounts.master_edition_token.key,
+        metadata: *ctx.accounts.metadata.key,
+        owner: *ctx.accounts.owner.key,
+        print_edition_account: *ctx.accounts.print_edition.key,
+        print_edition_mint: *ctx.accounts.print_edition_mint.key,
+        print_edition_token_account: *ctx.accounts.print_edition_token.key,
+        spl_token_program: *ctx.accounts.spl_token.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -79,16 +84,16 @@ pub fn burn_nft<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, BurnNft<'info>>,
     collection_metadata: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::burn_nft(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.owner.key,
-        *ctx.accounts.mint.key,
-        *ctx.accounts.token.key,
-        *ctx.accounts.edition.key,
-        *ctx.accounts.spl_token.key,
+    let ix = mpl_token_metadata::instructions::BurnNft {
         collection_metadata,
-    );
+        master_edition_account: *ctx.accounts.edition.key,
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        owner: *ctx.accounts.owner.key,
+        spl_token_program: *ctx.accounts.spl_token.key,
+        token_account: *ctx.accounts.token.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -99,12 +104,12 @@ pub fn burn_nft<'info>(
 
 pub fn create_metadata_accounts_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
-    data: DataV2,
+    data: mpl_token_metadata::types::DataV2,
     is_mutable: bool,
     update_authority_is_signer: bool,
-    details: Option<CollectionDetails>,
+    details: Option<mpl_token_metadata::types::CollectionDetails>,
 ) -> Result<()> {
-    let DataV2 {
+    let mpl_token_metadata::types::DataV2 {
         name,
         symbol,
         uri,
@@ -113,23 +118,21 @@ pub fn create_metadata_accounts_v3<'info>(
         collection,
         uses,
     } = data;
-    let ix = mpl_token_metadata::instruction::create_metadata_accounts_v3(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.mint.key,
-        *ctx.accounts.mint_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.update_authority.key,
-        name,
-        symbol,
-        uri,
-        creators,
-        seller_fee_basis_points,
-        update_authority_is_signer,
-        is_mutable,
-        collection,
-        uses,
-        details,
+    let ix = mpl_token_metadata::instructions::CreateMetadataAccountV3 {
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        mint_authority: *ctx.accounts.mint_authority.key,
+        payer: *ctx.accounts.payer.key,
+        rent: None,
+        system_program: system_program::ID,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::CreateMetadataAccountV3InstructionArgs {
+            collection_details: details,
+            data,
+            is_mutable,
+        },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -142,18 +145,21 @@ pub fn create_metadata_accounts_v3<'info>(
 pub fn update_metadata_accounts_v2<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, UpdateMetadataAccountsV2<'info>>,
     new_update_authority: Option<Pubkey>,
-    data: Option<DataV2>,
+    data: Option<mpl_token_metadata::types::DataV2>,
     primary_sale_happened: Option<bool>,
     is_mutable: Option<bool>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::update_metadata_accounts_v2(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.update_authority.key,
-        new_update_authority,
-        data,
-        primary_sale_happened,
-        is_mutable,
+    let ix = mpl_token_metadata::instructions::UpdateMetadataAccountV2 {
+        metadata: *ctx.accounts.metadata.key,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::UpdateMetadataAccountV2InstructionArgs {
+            new_update_authority,
+            data,
+            primary_sale_happened,
+            is_mutable,
+        },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -167,15 +173,19 @@ pub fn create_master_edition_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMasterEditionV3<'info>>,
     max_supply: Option<u64>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::create_master_edition_v3(
-        ID,
-        *ctx.accounts.edition.key,
-        *ctx.accounts.mint.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.mint_authority.key,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.payer.key,
-        max_supply,
+    let ix = mpl_token_metadata::instructions::CreateMasterEditionV3 {
+        edition: *ctx.accounts.edition.key,
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        mint_authority: *ctx.accounts.mint_authority.key,
+        payer: *ctx.accounts.payer.key,
+        rent: None,
+        system_program: system_program::ID,
+        token_program: spl_token::ID,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::CreateMasterEditionV3InstructionArgs { max_supply },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -189,20 +199,27 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, MintNewEditionFromMasterEditionViaToken<'info>>,
     edition: u64,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::mint_new_edition_from_master_edition_via_token(
-        ID,
-        *ctx.accounts.new_metadata.key,
-        *ctx.accounts.new_edition.key,
-        *ctx.accounts.master_edition.key,
-        *ctx.accounts.new_mint.key,
-        *ctx.accounts.new_mint_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.token_account_owner.key,
-        *ctx.accounts.token_account.key,
-        *ctx.accounts.new_metadata_update_authority.key,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.metadata_mint.key,
-        edition,
+    let ix = mpl_token_metadata::instructions::MintNewEditionFromMasterEditionViaToken {
+        edition_mark_pda: *ctx.accounts.edition_mark_pda.key,
+        master_edition: *ctx.accounts.master_edition.key,
+        metadata: *ctx.accounts.metadata.key,
+        new_edition: *ctx.accounts.new_edition.key,
+        new_metadata: *ctx.accounts.new_metadata.key,
+        new_metadata_update_authority: *ctx.accounts.new_metadata_update_authority.key,
+        new_mint: *ctx.accounts.new_mint.key,
+        new_mint_authority: *ctx.accounts.new_mint_authority.key,
+        payer: *ctx.accounts.payer.key,
+        rent: None,
+        system_program: system_program::ID,
+        token_account: *ctx.accounts.token_account.key,
+        token_account_owner: *ctx.accounts.token_account_owner.key,
+        token_program: spl_token::ID,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::MintNewEditionFromMasterEditionViaTokenInstructionArgs {
+            mint_new_edition_from_master_edition_via_token_args:
+                mpl_token_metadata::types::MintNewEditionFromMasterEditionViaTokenArgs { edition },
+        },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -215,14 +232,14 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
 pub fn revoke_collection_authority<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, RevokeCollectionAuthority<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::revoke_collection_authority(
-        ID,
-        *ctx.accounts.collection_authority_record.key,
-        *ctx.accounts.delegate_authority.key,
-        *ctx.accounts.revoke_authority.key,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.mint.key,
-    );
+    let ix = mpl_token_metadata::instructions::RevokeCollectionAuthority {
+        collection_authority_record: *ctx.accounts.collection_authority_record.key,
+        delegate_authority: *ctx.accounts.delegate_authority.key,
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        revoke_authority: *ctx.accounts.revoke_authority.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -236,13 +253,16 @@ pub fn set_collection_size<'info>(
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::set_collection_size(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.mint.key,
+    let ix = mpl_token_metadata::instructions::SetCollectionSize {
+        collection_authority: *ctx.accounts.update_authority.key,
         collection_authority_record,
-        size,
+        collection_metadata: *ctx.accounts.metadata.key,
+        collection_mint: *ctx.accounts.mint.key,
+    }
+    .instruction(
+        mpl_token_metadata::instructions::SetCollectionSizeInstructionArgs {
+            set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
+        },
     );
     solana_program::program::invoke_signed(
         &ix,
@@ -256,16 +276,16 @@ pub fn verify_collection<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, VerifyCollection<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::verify_collection(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection_metadata.key,
-        *ctx.accounts.collection_master_edition.key,
+    let ix = mpl_token_metadata::instructions::VerifyCollection {
+        collection: *ctx.accounts.collection_metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+        payer: *ctx.accounts.payer.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -278,16 +298,16 @@ pub fn verify_sized_collection_item<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, VerifySizedCollectionItem<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::verify_sized_collection_item(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection_metadata.key,
-        *ctx.accounts.collection_master_edition.key,
+    let ix = mpl_token_metadata::instructions::VerifySizedCollectionItem {
+        collection: *ctx.accounts.collection_metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+        payer: *ctx.accounts.payer.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -300,17 +320,17 @@ pub fn set_and_verify_collection<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifyCollection<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::set_and_verify_collection(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection_metadata.key,
-        *ctx.accounts.collection_master_edition.key,
+    let ix = mpl_token_metadata::instructions::SetAndVerifyCollection {
+        collection: *ctx.accounts.collection_metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+        payer: *ctx.accounts.payer.key,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -323,17 +343,17 @@ pub fn set_and_verify_sized_collection_item<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifySizedCollectionItem<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::set_and_verify_sized_collection_item(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection_metadata.key,
-        *ctx.accounts.collection_master_edition.key,
+    let ix = mpl_token_metadata::instructions::SetAndVerifySizedCollectionItem {
+        collection: *ctx.accounts.collection_metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+        payer: *ctx.accounts.payer.key,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -345,13 +365,14 @@ pub fn set_and_verify_sized_collection_item<'info>(
 pub fn freeze_delegated_account<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, FreezeDelegatedAccount<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::freeze_delegated_account(
-        ID,
-        *ctx.accounts.delegate.key,
-        *ctx.accounts.token_account.key,
-        *ctx.accounts.edition.key,
-        *ctx.accounts.mint.key,
-    );
+    let ix = mpl_token_metadata::instructions::FreezeDelegatedAccount {
+        delegate: *ctx.accounts.delegate.key,
+        edition: *ctx.accounts.edition.key,
+        mint: *ctx.accounts.mint.key,
+        token_account: *ctx.accounts.token_account.key,
+        token_program: *ctx.accounts.token_program.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -363,13 +384,14 @@ pub fn freeze_delegated_account<'info>(
 pub fn thaw_delegated_account<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, ThawDelegatedAccount<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::thaw_delegated_account(
-        ID,
-        *ctx.accounts.delegate.key,
-        *ctx.accounts.token_account.key,
-        *ctx.accounts.edition.key,
-        *ctx.accounts.mint.key,
-    );
+    let ix = mpl_token_metadata::instructions::ThawDelegatedAccount {
+        delegate: *ctx.accounts.delegate.key,
+        edition: *ctx.accounts.edition.key,
+        mint: *ctx.accounts.mint.key,
+        token_account: *ctx.accounts.token_account.key,
+        token_program: *ctx.accounts.token_program.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -381,13 +403,12 @@ pub fn thaw_delegated_account<'info>(
 pub fn update_primary_sale_happened_via_token<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, UpdatePrimarySaleHappenedViaToken<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::update_primary_sale_happened_via_token(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.owner.key,
-        *ctx.accounts.token.key,
-    );
-
+    let ix = mpl_token_metadata::instructions::UpdatePrimarySaleHappenedViaToken {
+        metadata: *ctx.accounts.metadata.key,
+        owner: *ctx.accounts.owner.key,
+        token: *ctx.accounts.token.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -400,13 +421,13 @@ pub fn set_token_standard<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, SetTokenStandard<'info>>,
     edition_account: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::set_token_standard(
-        ID,
-        *ctx.accounts.metadata_account.key,
-        *ctx.accounts.update_authority.key,
-        *ctx.accounts.mint_account.key,
-        edition_account,
-    );
+    let ix = mpl_token_metadata::instructions::SetTokenStandard {
+        edition: edition_account,
+        metadata: *ctx.accounts.metadata_account.key,
+        mint: *ctx.accounts.mint_account.key,
+        update_authority: *ctx.accounts.update_authority.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -416,12 +437,11 @@ pub fn set_token_standard<'info>(
 }
 
 pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'info>>) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::sign_metadata(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.creator.key,
-    );
-
+    let ix = mpl_token_metadata::instructions::SignMetadata {
+        creator: *ctx.accounts.creator.key,
+        metadata: *ctx.accounts.metadata.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -433,11 +453,11 @@ pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'inf
 pub fn remove_creator_verification<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, RemoveCreatorVerification<'info>>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::remove_creator_verification(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.creator.key,
-    );
+    let ix = mpl_token_metadata::instructions::RemoveCreatorVerification {
+        creator: *ctx.accounts.creator.key,
+        metadata: *ctx.accounts.metadata.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -452,17 +472,20 @@ pub fn utilize<'info>(
     burner: Option<Pubkey>,
     number_of_uses: u64,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::utilize(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.token_account.key,
-        *ctx.accounts.mint.key,
-        use_authority_record_pda,
-        *ctx.accounts.use_authority.key,
-        *ctx.accounts.owner.key,
+    let ix = mpl_token_metadata::instructions::Utilize {
+        ata_program: spl_associated_token_account::ID,
         burner,
-        number_of_uses,
-    );
+        metadata: *ctx.accounts.metadata.key,
+        mint: *ctx.accounts.mint.key,
+        owner: *ctx.accounts.owner.key,
+        rent: sysvar::rent::ID,
+        system_program: system_program::ID,
+        token_account: *ctx.accounts.token_account.key,
+        token_program: spl_token::ID,
+        use_authority: *ctx.accounts.use_authority.key,
+        use_authority_record: None,
+    }
+    .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -475,15 +498,15 @@ pub fn unverify_collection<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, UnverifyCollection<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::unverify_collection(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection.key,
-        *ctx.accounts.collection_master_edition_account.key,
+    let ix = mpl_token_metadata::instructions::UnverifyCollection {
+        collection: *ctx.accounts.metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition_account.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -496,16 +519,16 @@ pub fn unverify_sized_collection_item<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, UnverifySizedCollectionItem<'info>>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = mpl_token_metadata::instruction::unverify_sized_collection_item(
-        ID,
-        *ctx.accounts.metadata.key,
-        *ctx.accounts.collection_authority.key,
-        *ctx.accounts.payer.key,
-        *ctx.accounts.collection_mint.key,
-        *ctx.accounts.collection.key,
-        *ctx.accounts.collection_master_edition_account.key,
+    let ix = mpl_token_metadata::instructions::UnverifySizedCollectionItem {
+        collection: *ctx.accounts.metadata.key,
+        collection_authority: *ctx.accounts.collection_authority.key,
         collection_authority_record,
-    );
+        collection_master_edition_account: *ctx.accounts.collection_master_edition_account.key,
+        collection_mint: *ctx.accounts.collection_mint.key,
+        metadata: *ctx.accounts.metadata.key,
+        payer: *ctx.accounts.payer.key,
+    }
+    .instruction();
     solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
@@ -746,23 +769,19 @@ pub struct UnverifySizedCollectionItem<'info> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct MetadataAccount(mpl_token_metadata::state::Metadata);
-
-impl MetadataAccount {
-    pub const LEN: usize = mpl_token_metadata::state::MAX_METADATA_LEN;
-}
+pub struct MetadataAccount(mpl_token_metadata::accounts::Metadata);
 
 impl anchor_lang::AccountDeserialize for MetadataAccount {
     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         let md = Self::try_deserialize_unchecked(buf)?;
-        if md.key != mpl_token_metadata::state::Metadata::key() {
+        if md.key != mpl_token_metadata::types::Key::MetadataV1 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         Ok(md)
     }
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let md = mpl_token_metadata::state::Metadata::safe_deserialize(buf)?;
+        let md = mpl_token_metadata::accounts::Metadata::safe_deserialize(buf)?;
         Ok(Self(md))
     }
 }
@@ -776,7 +795,7 @@ impl anchor_lang::Owner for MetadataAccount {
 }
 
 impl Deref for MetadataAccount {
-    type Target = mpl_token_metadata::state::Metadata;
+    type Target = mpl_token_metadata::accounts::Metadata;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -786,29 +805,25 @@ impl Deref for MetadataAccount {
 impl anchor_lang::IdlBuild for MetadataAccount {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct MasterEditionAccount(mpl_token_metadata::state::MasterEditionV2);
-
-impl MasterEditionAccount {
-    pub const LEN: usize = mpl_token_metadata::state::MAX_MASTER_EDITION_LEN;
-}
+pub struct MasterEditionAccount(mpl_token_metadata::accounts::MasterEdition);
 
 impl anchor_lang::AccountDeserialize for MasterEditionAccount {
     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         let me = Self::try_deserialize_unchecked(buf)?;
-        if me.key != mpl_token_metadata::state::MasterEditionV2::key() {
+        if me.key != mpl_token_metadata::types::Key::MasterEditionV2 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         Ok(me)
     }
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let result = mpl_token_metadata::state::MasterEditionV2::safe_deserialize(buf)?;
+        let result = mpl_token_metadata::accounts::MasterEdition::safe_deserialize(buf)?;
         Ok(Self(result))
     }
 }
 
 impl Deref for MasterEditionAccount {
-    type Target = mpl_token_metadata::state::MasterEditionV2;
+    type Target = mpl_token_metadata::accounts::MasterEdition;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -826,22 +841,22 @@ impl anchor_lang::Owner for MasterEditionAccount {
 impl anchor_lang::IdlBuild for MasterEditionAccount {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TokenRecordAccount(mpl_token_metadata::state::TokenRecord);
+pub struct TokenRecordAccount(mpl_token_metadata::accounts::TokenRecord);
 
 impl TokenRecordAccount {
-    pub const LEN: usize = mpl_token_metadata::state::TOKEN_RECORD_SIZE;
+    pub const LEN: usize = mpl_token_metadata::accounts::TokenRecord::LEN;
 }
 impl anchor_lang::AccountDeserialize for TokenRecordAccount {
     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         let tr = Self::try_deserialize_unchecked(buf)?;
-        if tr.key != mpl_token_metadata::state::TokenRecord::key() {
+        if tr.key != mpl_token_metadata::types::Key::TokenRecord {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         Ok(tr)
     }
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let tr = mpl_token_metadata::state::TokenRecord::safe_deserialize(buf)?;
+        let tr = mpl_token_metadata::accounts::TokenRecord::safe_deserialize(buf)?;
         Ok(Self(tr))
     }
 }
@@ -855,7 +870,7 @@ impl anchor_lang::Owner for TokenRecordAccount {
 }
 
 impl Deref for TokenRecordAccount {
-    type Target = mpl_token_metadata::state::TokenRecord;
+    type Target = mpl_token_metadata::accounts::TokenRecord;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
