@@ -43,7 +43,8 @@
     "cpi-returns",
     "multiple-suites",
     "multiple-suites-run-single",
-    "bpf-upgradeable-state"
+    "bpf-upgradeable-state",
+    "solang"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",

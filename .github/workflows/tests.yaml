@@ -15,6 +15,7 @@ jobs:
     with:
       cache: true
       solana_cli_version: 1.16.0
+      solang_version: 0.3.2
       node_version: 17.0.1
       cargo_profile: debug
       anchor_binary_name: anchor-binary

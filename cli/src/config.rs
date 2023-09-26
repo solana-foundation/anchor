@@ -114,6 +114,8 @@ impl Manifest {
         let mut cwd_opt = Some(start_from.as_path());
 
         while let Some(cwd) = cwd_opt {
+            let mut anchor_toml = false;
+
             for f in fs::read_dir(cwd).with_context(|| {
                 format!("Error reading the directory with path: {}", cwd.display())
             })? {
@@ -127,10 +129,17 @@ impl Manifest {
                         let m = WithPath::new(Manifest::from_path(&p)?, p);
                         return Ok(Some(m));
                     }
+                    if filename.to_str() == Some("Anchor.toml") {
+                        anchor_toml = true;
+                    }
                 }
             }
 
-            // Not found. Go up a directory level.
+            // Not found. Go up a directory level, but don't go up from Anchor.toml
+            if anchor_toml {
+                break;
+            }
+
             cwd_opt = cwd.parent();
         }
 

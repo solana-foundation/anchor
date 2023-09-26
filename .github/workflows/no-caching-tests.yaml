@@ -12,6 +12,7 @@ jobs:
     with:
       cache: false
       solana_cli_version: 1.16.0
+      solang_version: 0.3.2
       node_version: 17.0.1
       cargo_profile: release
       anchor_binary_name: anchor-binary-no-caching

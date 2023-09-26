@@ -133,7 +133,7 @@ contract {} {{
     bool private value = true;
 
     @payer(payer)
-    constructor(address payer) {{
+    constructor() {{
         print("Hello, World!");
     }}
 
@@ -318,22 +318,27 @@ describe("{}", () => {{
 
   it("Is initialized!", async () => {{
     // Add your test here.
-    const tx = await program.methods.new(wallet.publicKey)
+    const tx = await program.methods
+      .new()
       .accounts({{ dataAccount: dataAccount.publicKey }})
-      .signers([dataAccount]).rpc();
+      .signers([dataAccount])
+      .rpc();
     console.log("Your transaction signature", tx);
 
-    const val1 = await program.methods.get()
+    const val1 = await program.methods
+      .get()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .view();
 
     console.log("state", val1);
 
-    await program.methods.flip()
+    await program.methods
+      .flip()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .rpc();
 
-    const val2 = await program.methods.get()
+    const val2 = await program.methods
+      .get()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .view();
 
@@ -366,9 +371,11 @@ describe("{}", () => {{
 
   it("Is initialized!", async () => {{
     // Add your test here.
-    const tx = await program.methods.new(wallet.publicKey)
+    const tx = await program.methods
+      .new()
       .accounts({{ dataAccount: dataAccount.publicKey }})
-      .signers([dataAccount]).rpc();
+      .signers([dataAccount])
+      .rpc();
     console.log("Your transaction signature", tx);
   }});
 }});
