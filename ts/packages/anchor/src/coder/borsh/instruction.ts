@@ -264,56 +264,66 @@ class InstructionFormatter {
     data: Object,
     types: IdlTypeDef[]
   ): string {
-    if (typeDef.type.kind === "struct") {
-      const struct: IdlTypeDefTyStruct = typeDef.type;
-      const fields = Object.keys(data)
-        .map((k) => {
-          const f = struct.fields.filter((f) => f.name === k)[0];
-          if (f === undefined) {
-            throw new Error("Unable to find type");
-          }
-          return (
-            k + ": " + InstructionFormatter.formatIdlData(f, data[k], types)
-          );
-        })
-        .join(", ");
-      return "{ " + fields + " }";
-    } else {
-      if (typeDef.type.variants.length === 0) {
-        return "{}";
-      }
-      // Struct enum.
-      if (typeDef.type.variants[0].name) {
-        const variants = typeDef.type.variants;
-        const variant = Object.keys(data)[0];
-        const enumType = data[variant];
-        const namedFields = Object.keys(enumType)
-          .map((f) => {
-            const fieldData = enumType[f];
-            const idlField = variants[variant]?.filter(
-              (v: IdlField) => v.name === f
-            )[0];
-            if (idlField === undefined) {
-              throw new Error("Unable to find variant");
+    switch (typeDef.type.kind) {
+      case "struct": {
+        const struct: IdlTypeDefTyStruct = typeDef.type;
+        const fields = Object.keys(data)
+          .map((k) => {
+            const field = struct.fields.find((f) => f.name === k);
+            if (!field) {
+              throw new Error("Unable to find type");
             }
             return (
-              f +
+              k +
               ": " +
-              InstructionFormatter.formatIdlData(idlField, fieldData, types)
+              InstructionFormatter.formatIdlData(field, data[k], types)
             );
           })
           .join(", ");
-
-        const variantName = camelCase(variant, { pascalCase: true });
-        if (namedFields.length === 0) {
-          return variantName;
-        }
-        return `${variantName} { ${namedFields} }`;
+        return "{ " + fields + " }";
       }
-      // Tuple enum.
-      else {
-        // TODO.
-        return "Tuple formatting not yet implemented";
+
+      case "enum": {
+        if (typeDef.type.variants.length === 0) {
+          return "{}";
+        }
+        // Struct enum.
+        if (typeDef.type.variants[0].name) {
+          const variants = typeDef.type.variants;
+          const variant = Object.keys(data)[0];
+          const enumType = data[variant];
+          const namedFields = Object.keys(enumType)
+            .map((f) => {
+              const fieldData = enumType[f];
+              const idlField = variants[variant]?.find(
+                (v: IdlField) => v.name === f
+              );
+              if (!idlField) {
+                throw new Error("Unable to find variant");
+              }
+              return (
+                f +
+                ": " +
+                InstructionFormatter.formatIdlData(idlField, fieldData, types)
+              );
+            })
+            .join(", ");
+
+          const variantName = camelCase(variant, { pascalCase: true });
+          if (namedFields.length === 0) {
+            return variantName;
+          }
+          return `${variantName} { ${namedFields} }`;
+        }
+        // Tuple enum.
+        else {
+          // TODO.
+          return "Tuple formatting not yet implemented";
+        }
+      }
+
+      case "alias": {
+        return InstructionFormatter.formatIdlType(typeDef.type.value);
       }
     }
   }

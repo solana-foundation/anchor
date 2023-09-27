@@ -9,6 +9,7 @@ use heck::MixedCase;
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::str::FromStr;
 use syn::{
     Expr, ExprLit, ItemConst,
     Lit::{Byte, ByteStr},
@@ -354,10 +355,10 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
         })
         .chain(ctx.enums().filter_map(|enm| {
             // Only take public types
-            match &enm.vis {
-                syn::Visibility::Public(_) => (),
-                _ => return None,
+            if !matches!(&enm.vis, syn::Visibility::Public(_)) {
+                return None;
             }
+
             let name = enm.ident.to_string();
             let doc = if !no_docs {
                 docs::parse(&enm.attrs)
@@ -405,11 +406,33 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                     IdlEnumVariant { name, fields }
                 })
                 .collect::<Vec<IdlEnumVariant>>();
+
             Some(Ok(IdlTypeDefinition {
                 name,
                 generics: None,
                 docs: doc,
                 ty: IdlTypeDefinitionTy::Enum { variants },
+            }))
+        }))
+        .chain(ctx.type_aliases().filter_map(|alias| {
+            // Only take public types
+            if !matches!(&alias.vis, syn::Visibility::Public(_)) {
+                return None;
+            }
+
+            let name = alias.ident.to_string();
+            let doc = if !no_docs {
+                docs::parse(&alias.attrs)
+            } else {
+                None
+            };
+            let value = IdlType::from_str(&alias.ty.to_token_stream().to_string()).unwrap();
+
+            Some(Ok(IdlTypeDefinition {
+                name,
+                generics: None,
+                docs: doc,
+                ty: IdlTypeDefinitionTy::Alias { value },
             }))
         }))
         .collect()

@@ -2,31 +2,39 @@ import { Idl, IdlField, IdlTypeDef, IdlType } from "../idl.js";
 import { IdlError } from "../error.js";
 
 export function accountSize(idl: Idl, idlAccount: IdlTypeDef) {
-  if (idlAccount.type.kind === "enum") {
-    const variantSizes = idlAccount.type.variants.map((variant) => {
-      if (!variant.fields) {
-        return 0;
-      }
-
-      return variant.fields
-        .map((f: IdlField | IdlType) => {
-          // Unnamed enum variant
-          if (!(typeof f === "object" && "name" in f)) {
-            return typeSize(idl, f);
-          }
-
-          // Named enum variant
-          return typeSize(idl, f.type);
-        })
+  switch (idlAccount.type.kind) {
+    case "struct": {
+      return idlAccount.type.fields
+        .map((f) => typeSize(idl, f.type))
         .reduce((acc, size) => acc + size, 0);
-    });
+    }
 
-    return Math.max(...variantSizes) + 1;
+    case "enum": {
+      const variantSizes = idlAccount.type.variants.map((variant) => {
+        if (!variant.fields) {
+          return 0;
+        }
+
+        return variant.fields
+          .map((f: IdlField | IdlType) => {
+            // Unnamed enum variant
+            if (!(typeof f === "object" && "name" in f)) {
+              return typeSize(idl, f);
+            }
+
+            // Named enum variant
+            return typeSize(idl, f.type);
+          })
+          .reduce((acc, size) => acc + size, 0);
+      });
+
+      return Math.max(...variantSizes) + 1;
+    }
+
+    case "alias": {
+      return typeSize(idl, idlAccount.type.value);
+    }
   }
-
-  return idlAccount.type.fields
-    .map((f) => typeSize(idl, f.type))
-    .reduce((acc, size) => acc + size, 0);
 }
 
 // Returns the size of the type in bytes. For variable length types, just return

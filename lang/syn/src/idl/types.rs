@@ -166,6 +166,7 @@ pub struct IdlTypeDefinition {
 pub enum IdlTypeDefinitionTy {
     Struct { fields: Vec<IdlField> },
     Enum { variants: Vec<IdlEnumVariant> },
+    Alias { value: IdlType },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

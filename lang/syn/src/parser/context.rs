@@ -28,6 +28,10 @@ impl CrateContext {
         self.modules.iter().flat_map(|(_, ctx)| ctx.enums())
     }
 
+    pub fn type_aliases(&self) -> impl Iterator<Item = &syn::ItemType> {
+        self.modules.iter().flat_map(|(_, ctx)| ctx.type_aliases())
+    }
+
     pub fn modules(&self) -> impl Iterator<Item = ModuleContext> {
         self.modules.values().map(|detail| ModuleContext { detail })
     }
@@ -292,5 +296,12 @@ impl ParsedModule {
                 _ => None,
             })
             .flatten()
+    }
+
+    fn type_aliases(&self) -> impl Iterator<Item = &syn::ItemType> {
+        self.items.iter().filter_map(|i| match i {
+            syn::Item::Type(item) => Some(item),
+            _ => None,
+        })
     }
 }

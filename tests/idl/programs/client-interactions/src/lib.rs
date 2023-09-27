@@ -35,6 +35,18 @@ pub mod client_interactions {
         ctx.accounts.account.enum_field = enum_arg;
         Ok(())
     }
+
+    pub fn type_alias(
+        ctx: Context<TypeAlias>,
+        type_alias_u8: TypeAliasU8,
+        type_alias_u8_array: TypeAliasU8Array,
+        type_alias_struct: TypeAliasStruct,
+    ) -> Result<()> {
+        ctx.accounts.account.type_alias_u8 = type_alias_u8;
+        ctx.accounts.account.type_alias_u8_array = type_alias_u8_array;
+        ctx.accounts.account.type_alias_struct = type_alias_struct;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -93,3 +105,20 @@ pub struct MyStruct {
     pub u32: u32,
     pub u64: u64,
 }
+
+#[derive(Accounts)]
+pub struct TypeAlias<'info> {
+    #[account(zero)]
+    pub account: Account<'info, TypeAliasAccount>,
+}
+
+#[account]
+pub struct TypeAliasAccount {
+    pub type_alias_u8: TypeAliasU8,
+    pub type_alias_u8_array: TypeAliasU8Array,
+    pub type_alias_struct: TypeAliasStruct,
+}
+
+pub type TypeAliasU8 = u8;
+pub type TypeAliasU8Array = [TypeAliasU8; 8];
+pub type TypeAliasStruct = MyStruct;

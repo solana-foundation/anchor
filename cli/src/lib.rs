@@ -2626,7 +2626,7 @@ fn account(
     let mut data_view = &data[8..];
 
     let deserialized_json =
-        deserialize_idl_struct_to_json(&idl, account_type_name, &mut data_view)?;
+        deserialize_idl_defined_type_to_json(&idl, account_type_name, &mut data_view)?;
 
     println!(
         "{}",
@@ -2636,26 +2636,25 @@ fn account(
     Ok(())
 }
 
-// Deserializes a user defined IDL struct/enum by munching the account data.
-// Recursively deserializes elements one by one
-fn deserialize_idl_struct_to_json(
+// Deserializes user defined IDL types by munching the account data(recursively).
+fn deserialize_idl_defined_type_to_json(
     idl: &Idl,
-    account_type_name: &str,
+    defined_type_name: &str,
     data: &mut &[u8],
 ) -> Result<JsonValue, anyhow::Error> {
-    let account_type = &idl
-        .accounts
+    let defined_type = &idl
+        .types
         .iter()
-        .chain(idl.types.iter())
-        .find(|account_type| account_type.name == account_type_name)
+        .chain(idl.accounts.iter())
+        .find(|defined_type| defined_type.name == defined_type_name)
         .ok_or_else(|| {
-            anyhow::anyhow!("Struct/Enum named {} not found in IDL.", account_type_name)
+            anyhow::anyhow!("Struct/Enum named {} not found in IDL.", defined_type_name)
         })?
         .ty;
 
     let mut deserialized_fields = Map::new();
 
-    match account_type {
+    match defined_type {
         IdlTypeDefinitionTy::Struct { fields } => {
             for field in fields {
                 deserialized_fields.insert(
@@ -2700,6 +2699,9 @@ fn deserialize_idl_struct_to_json(
             }
 
             deserialized_fields.insert(variant.name.clone(), value);
+        }
+        IdlTypeDefinitionTy::Alias { value } => {
+            return deserialize_idl_type_to_json(value, data, idl);
         }
     }
 
@@ -2764,7 +2766,9 @@ fn deserialize_idl_type_to_json(
         IdlType::PublicKey => {
             json!(<Pubkey as AnchorDeserialize>::deserialize(data)?.to_string())
         }
-        IdlType::Defined(type_name) => deserialize_idl_struct_to_json(parent_idl, type_name, data)?,
+        IdlType::Defined(type_name) => {
+            deserialize_idl_defined_type_to_json(parent_idl, type_name, data)?
+        }
         IdlType::Option(ty) => {
             let is_present = <u8 as AnchorDeserialize>::deserialize(data)?;
 

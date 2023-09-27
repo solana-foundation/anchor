@@ -90,11 +90,12 @@ export class IdlCoder {
             fieldName
           );
         } else if ("defined" in field.type) {
-          const defined = field.type.defined;
           // User defined type.
-          if (types === undefined) {
+          if (!types) {
             throw new IdlError("User defined types not provided");
           }
+
+          const defined = field.type.defined;
           const filtered = types.filter((t) => t.name === defined);
           if (filtered.length !== 1) {
             throw new IdlError(`Type not found: ${JSON.stringify(field)}`);
@@ -123,45 +124,51 @@ export class IdlCoder {
     types: IdlTypeDef[] = [],
     name?: string
   ): Layout {
-    if (typeDef.type.kind === "struct") {
-      const fieldLayouts = typeDef.type.fields.map((field) => {
-        const x = IdlCoder.fieldLayout(field, types);
-        return x;
-      });
-      return borsh.struct(fieldLayouts, name);
-    } else if (typeDef.type.kind === "enum") {
-      let variants = typeDef.type.variants.map((variant: IdlEnumVariant) => {
-        const name = camelCase(variant.name);
-        if (variant.fields === undefined) {
-          return borsh.struct([], name);
-        }
-        const fieldLayouts = variant.fields.map(
-          (f: IdlField | IdlType, i: number) => {
-            if (!f.hasOwnProperty("name")) {
+    switch (typeDef.type.kind) {
+      case "struct": {
+        const fieldLayouts = typeDef.type.fields.map((field) => {
+          return IdlCoder.fieldLayout(field, types);
+        });
+        return borsh.struct(fieldLayouts, name);
+      }
+
+      case "enum": {
+        let variants = typeDef.type.variants.map((variant: IdlEnumVariant) => {
+          const name = camelCase(variant.name);
+          if (!variant.fields) {
+            return borsh.struct([], name);
+          }
+
+          const fieldLayouts = variant.fields.map(
+            (f: IdlField | IdlType, i: number) => {
+              if ((f as IdlField)?.name) {
+                return IdlCoder.fieldLayout(f as IdlField, types);
+              }
+
               return IdlCoder.fieldLayout(
                 { type: f as IdlType, name: i.toString() },
                 types
               );
             }
-            // this typescript conversion is ok
-            // because if f were of type IdlType
-            // (that does not have a name property)
-            // the check before would've errored
-            return IdlCoder.fieldLayout(f as IdlField, types);
-          }
-        );
-        return borsh.struct(fieldLayouts, name);
-      });
+          );
+          return borsh.struct(fieldLayouts, name);
+        });
 
-      if (name !== undefined) {
-        // Buffer-layout lib requires the name to be null (on construction)
-        // when used as a field.
-        return borsh.rustEnum(variants).replicate(name);
+        if (name !== undefined) {
+          // Buffer-layout lib requires the name to be null (on construction)
+          // when used as a field.
+          return borsh.rustEnum(variants).replicate(name);
+        }
+
+        return borsh.rustEnum(variants, name);
       }
 
-      return borsh.rustEnum(variants, name);
-    } else {
-      throw new Error(`Unknown type kint: ${typeDef}`);
+      case "alias": {
+        return IdlCoder.fieldLayout(
+          { type: typeDef.type.value, name: typeDef.name },
+          types
+        );
+      }
     }
   }
 }

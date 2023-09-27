@@ -11,6 +11,7 @@ import {
   IdlInstruction,
   IdlType,
   IdlTypeDef,
+  IdlTypeDefTyAlias,
   IdlTypeDefTyEnum,
   IdlTypeDefTyStruct,
 } from "../../idl";
@@ -214,6 +215,11 @@ type DecodeStruct<I extends IdlTypeDefTyStruct, Defined> = {
   [F in I["fields"][number] as F["name"]]: DecodeType<F["type"], Defined>;
 };
 
+type DecodeAlias<I extends IdlTypeDefTyAlias, Defined> = DecodeType<
+  I["value"],
+  Defined
+>;
+
 export type TypeDef<
   I extends IdlTypeDef,
   Defined
@@ -221,6 +227,8 @@ export type TypeDef<
   ? DecodeEnum<I["type"], Defined>
   : I["type"] extends IdlTypeDefTyStruct
   ? DecodeStruct<I["type"], Defined>
+  : I["type"] extends IdlTypeDefTyAlias
+  ? DecodeAlias<I["type"], Defined>
   : never;
 
 type TypeDefDictionary<T extends IdlTypeDef[], Defined> = {

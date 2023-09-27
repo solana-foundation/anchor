@@ -104,7 +104,15 @@ export type IdlTypeDefTyEnum = {
   variants: IdlEnumVariant[];
 };
 
-export type IdlTypeDefTy = IdlTypeDefTyEnum | IdlTypeDefTyStruct;
+export type IdlTypeDefTyAlias = {
+  kind: "alias";
+  value: IdlType;
+};
+
+export type IdlTypeDefTy =
+  | IdlTypeDefTyEnum
+  | IdlTypeDefTyStruct
+  | IdlTypeDefTyAlias;
 
 export type IdlTypeDefStruct = Array<IdlField>;
 

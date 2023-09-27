@@ -118,4 +118,32 @@ describe("Client interactions", () => {
       unnamedStruct.enumField.unnamedStruct[0].u64.eq(tupleStructArg[0].u64)
     );
   });
+
+  it("Can use type aliases", async () => {
+    const kp = anchor.web3.Keypair.generate();
+
+    const typeAliasU8 = 42;
+    const typeAliasU8Array = [1, 2, 3, 4, 5, 6, 7, 8];
+    const typeAliasStruct = {
+      u8: 1,
+      u16: 2,
+      u32: 3,
+      u64: new anchor.BN(4),
+    };
+
+    await program.methods
+      .typeAlias(typeAliasU8, typeAliasU8Array, typeAliasStruct)
+      .accounts({ account: kp.publicKey })
+      .signers([kp])
+      .preInstructions([await program.account.intAccount.createInstruction(kp)])
+      .rpc();
+
+    const account = await program.account.typeAliasAccount.fetch(kp.publicKey);
+    assert.strictEqual(account.typeAliasU8, typeAliasU8);
+    assert.deepEqual(account.typeAliasU8Array, typeAliasU8Array);
+    assert.strictEqual(typeAliasStruct.u8, 1);
+    assert.strictEqual(typeAliasStruct.u16, 2);
+    assert.strictEqual(typeAliasStruct.u32, 3);
+    assert(typeAliasStruct.u64.eq(typeAliasStruct.u64));
+  });
 });
