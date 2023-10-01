@@ -141,9 +141,9 @@ describe("Client interactions", () => {
     const account = await program.account.typeAliasAccount.fetch(kp.publicKey);
     assert.strictEqual(account.typeAliasU8, typeAliasU8);
     assert.deepEqual(account.typeAliasU8Array, typeAliasU8Array);
-    assert.strictEqual(typeAliasStruct.u8, 1);
-    assert.strictEqual(typeAliasStruct.u16, 2);
-    assert.strictEqual(typeAliasStruct.u32, 3);
-    assert(typeAliasStruct.u64.eq(typeAliasStruct.u64));
+    assert.strictEqual(account.typeAliasStruct.u8, typeAliasStruct.u8);
+    assert.strictEqual(account.typeAliasStruct.u16, typeAliasStruct.u16);
+    assert.strictEqual(account.typeAliasStruct.u32, typeAliasStruct.u32);
+    assert(account.typeAliasStruct.u64.eq(typeAliasStruct.u64));
   });
 });

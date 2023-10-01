@@ -122,3 +122,10 @@ pub struct TypeAliasAccount {
 pub type TypeAliasU8 = u8;
 pub type TypeAliasU8Array = [TypeAliasU8; 8];
 pub type TypeAliasStruct = MyStruct;
+
+/// Generic type aliases should not get included in the IDL
+pub type TypeAliasNotSupported<'a, T> = NotSupported<'a, T>;
+pub struct NotSupported<'a, T> {
+    _t: T,
+    _s: &'a str,
+}

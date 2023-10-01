@@ -296,6 +296,11 @@ fn parse_consts(ctx: &CrateContext) -> Vec<&syn::ItemConst> {
 fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinition>> {
     ctx.structs()
         .filter_map(|item_strct| {
+            // Only take public types
+            if !matches!(&item_strct.vis, syn::Visibility::Public(_)) {
+                return None;
+            }
+
             // Only take serializable types
             let serializable = item_strct.attrs.iter().any(|attr| {
                 let attr_string = attr.tokens.to_string();
@@ -311,12 +316,6 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
 
             if !serializable {
                 return None;
-            }
-
-            // Only take public types
-            match &item_strct.vis {
-                syn::Visibility::Public(_) => (),
-                _ => return None,
             }
 
             let name = item_strct.ident.to_string();
@@ -343,7 +342,7 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
                     })
                     .collect::<Result<Vec<IdlField>>>(),
                 syn::Fields::Unnamed(_) => return None,
-                _ => panic!("Empty structs are allowed."),
+                _ => panic!("Empty structs are not allowed."),
             };
 
             Some(fields.map(|fields| IdlTypeDefinition {
@@ -419,6 +418,10 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
             if !matches!(&alias.vis, syn::Visibility::Public(_)) {
                 return None;
             }
+            // Generic type aliases are not currently supported
+            if alias.generics.lt_token.is_some() {
+                return None;
+            }
 
             let name = alias.ident.to_string();
             let doc = if !no_docs {
@@ -426,14 +429,19 @@ fn parse_ty_defs(ctx: &CrateContext, no_docs: bool) -> Result<Vec<IdlTypeDefinit
             } else {
                 None
             };
-            let value = IdlType::from_str(&alias.ty.to_token_stream().to_string()).unwrap();
+            let result = IdlType::from_str(&alias.ty.to_token_stream().to_string()).map(|value| {
+                IdlTypeDefinition {
+                    name,
+                    generics: None,
+                    docs: doc,
+                    ty: IdlTypeDefinitionTy::Alias { value },
+                }
+            });
 
-            Some(Ok(IdlTypeDefinition {
-                name,
-                generics: None,
-                docs: doc,
-                ty: IdlTypeDefinitionTy::Alias { value },
-            }))
+            match &result {
+                Ok(_) => Some(result),
+                Err(_) => None,
+            }
         }))
         .collect()
 }
