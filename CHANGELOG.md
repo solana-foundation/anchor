@@ -29,6 +29,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - syn: Add `IdlBuild` trait to implement IDL support for custom types ([#2629](https://github.com/coral-xyz/anchor/pull/2629)).
 - spl: Add `idl-build` feature. IDL build method will not work without enabling this feature when using `anchor-spl` ([#2629](https://github.com/coral-xyz/anchor/pull/2629)).
 - lang: Add support for type aliases in IDLs ([#2637](https://github.com/coral-xyz/anchor/pull/2637)).
+- cli: Add `test.upgradeable`, `test.genesis.upgradeable` setting in anchor.toml to support testing upgradeable programs ([#2641](https://github.com/coral-xyz/anchor/pull/2642)).
 
 ### Fixes
 

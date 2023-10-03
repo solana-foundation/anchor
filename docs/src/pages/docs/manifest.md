@@ -122,6 +122,20 @@ program = "dex.so"
 [[test.genesis]]
 address = "22Y43yTVxuUkoRKdm9thyRhQ3SdgQS7c7kB6UNCiaczD"
 program = "swap.so"
+upgradeable = true
+```
+
+#### upgradeable
+
+Deploys the program-to-test using `--upgradeable-program`. This makes it possible to test that certain instructions can only be executed by the program's upgrade authority. The initial upgrade authority will be set to `provider.wallet`.
+
+If unspecified or explicitly set to false, then the test program will be deployed with `--bpf-program`, disabling upgrades to it.
+
+Example:
+
+```toml
+[test]
+upgradeable = true
 ```
 
 ## test.validator

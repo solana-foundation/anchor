@@ -3025,6 +3025,11 @@ fn validator_flags(
 ) -> Result<Vec<String>> {
     let programs = cfg.programs.get(&Cluster::Localnet);
 
+    let test_upgradeable_program = test_validator
+        .as_ref()
+        .map(|test_validator| test_validator.upgradeable)
+        .unwrap_or(false);
+
     let mut flags = Vec::new();
     for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
@@ -3036,9 +3041,16 @@ fn validator_flags(
             .map(|deployment| Ok(deployment.address.to_string()))
             .unwrap_or_else(|| program.pubkey().map(|p| p.to_string()))?;
 
-        flags.push("--bpf-program".to_string());
-        flags.push(address.clone());
-        flags.push(binary_path);
+        if test_upgradeable_program {
+            flags.push("--upgradeable-program".to_string());
+            flags.push(address.clone());
+            flags.push(binary_path);
+            flags.push(cfg.wallet_kp()?.pubkey().to_string());
+        } else {
+            flags.push("--bpf-program".to_string());
+            flags.push(address.clone());
+            flags.push(binary_path);
+        }
 
         if let Some(idl) = program.idl.as_mut() {
             // Add program address to the IDL.
@@ -3062,9 +3074,16 @@ fn validator_flags(
                         program_path.display()
                     ));
                 }
-                flags.push("--bpf-program".to_string());
-                flags.push(entry.address.clone());
-                flags.push(entry.program.clone());
+                if entry.upgradeable.unwrap_or(false) {
+                    flags.push("--upgradeable-program".to_string());
+                    flags.push(entry.address.clone());
+                    flags.push(entry.program.clone());
+                    flags.push(cfg.wallet_kp()?.pubkey().to_string());
+                } else {
+                    flags.push("--bpf-program".to_string());
+                    flags.push(entry.address.clone());
+                    flags.push(entry.program.clone());
+                }
             }
         }
         if let Some(validator) = &test.validator {

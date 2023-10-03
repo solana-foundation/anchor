@@ -706,6 +706,7 @@ pub struct TestValidator {
     pub validator: Option<Validator>,
     pub startup_wait: i32,
     pub shutdown_wait: i32,
+    pub upgradeable: bool,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -718,6 +719,8 @@ pub struct _TestValidator {
     pub startup_wait: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shutdown_wait: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upgradeable: Option<bool>,
 }
 
 pub const STARTUP_WAIT: i32 = 5000;
@@ -730,6 +733,7 @@ impl From<_TestValidator> for TestValidator {
             startup_wait: _test_validator.startup_wait.unwrap_or(STARTUP_WAIT),
             genesis: _test_validator.genesis,
             validator: _test_validator.validator.map(Into::into),
+            upgradeable: _test_validator.upgradeable.unwrap_or(false),
         }
     }
 }
@@ -741,6 +745,7 @@ impl From<TestValidator> for _TestValidator {
             startup_wait: Some(test_validator.startup_wait),
             genesis: test_validator.genesis,
             validator: test_validator.validator.map(Into::into),
+            upgradeable: Some(test_validator.upgradeable),
         }
     }
 }
@@ -949,6 +954,8 @@ pub struct GenesisEntry {
     pub address: String,
     // Filepath to the compiled program to embed into the genesis.
     pub program: String,
+    // Whether the genesis program is upgradeable.
+    pub upgradeable: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
