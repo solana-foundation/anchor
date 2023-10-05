@@ -379,6 +379,8 @@ jobs:
             path: tests/composite
           - cmd: cd tests/errors && anchor test --skip-lint && npx tsc --noEmit
             path: tests/errors
+          - cmd: cd tests/spl/metadata && anchor test --skip-lint
+            path: spl/metadata
           - cmd: cd tests/spl/token-proxy && anchor test --skip-lint
             path: spl/token-proxy
           - cmd: cd tests/spl/token-wrapper && anchor test --skip-lint

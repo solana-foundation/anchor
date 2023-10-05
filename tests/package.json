@@ -30,6 +30,7 @@
     "relations-derivation",
     "pyth",
     "realloc",
+    "spl/metadata",
     "spl/token-proxy",
     "spl/token-wrapper",
     "swap",

@@ -106,18 +106,8 @@ pub fn create_metadata_accounts_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
     data: mpl_token_metadata::types::DataV2,
     is_mutable: bool,
-    update_authority_is_signer: bool,
-    details: Option<mpl_token_metadata::types::CollectionDetails>,
+    collection_details: Option<mpl_token_metadata::types::CollectionDetails>,
 ) -> Result<()> {
-    let mpl_token_metadata::types::DataV2 {
-        name,
-        symbol,
-        uri,
-        creators,
-        seller_fee_basis_points,
-        collection,
-        uses,
-    } = data;
     let ix = mpl_token_metadata::instructions::CreateMetadataAccountV3 {
         metadata: *ctx.accounts.metadata.key,
         mint: *ctx.accounts.mint.key,
@@ -129,7 +119,7 @@ pub fn create_metadata_accounts_v3<'info>(
     }
     .instruction(
         mpl_token_metadata::instructions::CreateMetadataAccountV3InstructionArgs {
-            collection_details: details,
+            collection_details,
             data,
             is_mutable,
         },
@@ -468,7 +458,7 @@ pub fn remove_creator_verification<'info>(
 
 pub fn utilize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Utilize<'info>>,
-    use_authority_record_pda: Option<Pubkey>,
+    use_authority_record: Option<Pubkey>,
     burner: Option<Pubkey>,
     number_of_uses: u64,
 ) -> Result<()> {
@@ -483,7 +473,7 @@ pub fn utilize<'info>(
         token_account: *ctx.accounts.token_account.key,
         token_program: spl_token::ID,
         use_authority: *ctx.accounts.use_authority.key,
-        use_authority_record: None,
+        use_authority_record,
     }
     .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
     solana_program::program::invoke_signed(
