@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Idl {
@@ -19,7 +18,7 @@ pub struct Idl {
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub errors: Option<Vec<IdlErrorCode>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub metadata: Option<JsonValue>,
+    pub metadata: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

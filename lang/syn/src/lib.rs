@@ -1,3 +1,14 @@
+pub mod codegen;
+pub mod parser;
+
+#[cfg(feature = "idl-types")]
+pub mod idl;
+
+#[cfg(feature = "hash")]
+pub mod hash;
+#[cfg(not(feature = "hash"))]
+pub(crate) mod hash;
+
 use crate::parser::tts_to_string;
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
@@ -17,14 +28,6 @@ use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
     TypePath,
 };
-
-pub mod codegen;
-#[cfg(feature = "hash")]
-pub mod hash;
-#[cfg(not(feature = "hash"))]
-pub(crate) mod hash;
-pub mod idl;
-pub mod parser;
 
 #[derive(Debug)]
 pub struct Program {
