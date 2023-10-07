@@ -106,6 +106,7 @@ pub fn create_metadata_accounts_v3<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
     data: mpl_token_metadata::types::DataV2,
     is_mutable: bool,
+    update_authority_is_signer: bool,
     collection_details: Option<mpl_token_metadata::types::CollectionDetails>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::CreateMetadataAccountV3 {
@@ -115,7 +116,10 @@ pub fn create_metadata_accounts_v3<'info>(
         payer: *ctx.accounts.payer.key,
         rent: None,
         system_program: system_program::ID,
-        update_authority: *ctx.accounts.update_authority.key,
+        update_authority: (
+            *ctx.accounts.update_authority.key,
+            update_authority_is_signer,
+        ),
     }
     .instruction(
         mpl_token_metadata::instructions::CreateMetadataAccountV3InstructionArgs {
