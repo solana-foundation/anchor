@@ -30,6 +30,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add `idl-build` feature. IDL build method will not work without enabling this feature when using `anchor-spl` ([#2629](https://github.com/coral-xyz/anchor/pull/2629)).
 - lang: Add support for type aliases in IDLs ([#2637](https://github.com/coral-xyz/anchor/pull/2637)).
 - cli: Add `test.upgradeable`, `test.genesis.upgradeable` setting in anchor.toml to support testing upgradeable programs ([#2641](https://github.com/coral-xyz/anchor/pull/2642)).
+- cli, client, lang, spl: Update Solana toolchain and dependencies to `1.17.0`, `1.16` remains supported ([#2645](https://github.com/coral-xyz/anchor/pull/2645)).
 
 ### Fixes
 
@@ -50,6 +51,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Update `mpl-token-metadata` dependency to use the client SDK instead of the program crate ([#2632](https://github.com/coral-xyz/anchor/pull/2632)).
 - ts: Remove `base64-js` dependency ([#2635](https://github.com/coral-xyz/anchor/pull/2635)).
 - syn: `IdlTypeDefinitionTy` enum has a new variant `Alias` ([#2637](https://github.com/coral-xyz/anchor/pull/2637)).
+- cli, client, lang, spl: Solana `1.14` is no longer supported, minimum required Solana version is `1.16.0` ([#2645](https://github.com/coral-xyz/anchor/pull/2645)).
 
 ## [0.28.0] - 2023-06-09
 
