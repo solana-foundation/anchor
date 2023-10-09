@@ -1,0 +1,22 @@
+[features]
+seeds = true
+
+[programs.localnet]
+auction_house = "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk"
+
+[programs.devnet]
+auction_house = "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk"
+
+[programs.mainnet]
+auction_house = "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = "./prebuilt-programs/metaplex_token_metadata.so"

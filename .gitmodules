@@ -12,7 +12,3 @@
 	path = tests/cfo/deps/stake
 	url = https://github.com/project-serum/stake.git
 	branch = armani/cfo
-[submodule "tests/auction-house"]
-	path = tests/auction-house
-	url = https://github.com/armaniferrante/auction-house
-	branch = armani/pda

@@ -1,0 +1,24 @@
+[package]
+name = "auction-house"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "auction_house"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+anchor-spl = { path = "../../../../spl", features = ["metadata"] }
+spl-token = { version = "3.2",  features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.1.1", features = ["no-entrypoint"] }
+thiserror = "1.0"
+arrayref = "0.3.6"

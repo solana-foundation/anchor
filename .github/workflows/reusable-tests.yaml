@@ -419,9 +419,9 @@ jobs:
             path: tests/ido-pool
           # - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
           #   path: tests/cfo
-          - cmd: cd tests/auction-house && yarn --frozen-lockfile && anchor test --skip-lint && git checkout Cargo.lock
+          - cmd: cd tests/auction-house && anchor test --skip-lint
             path: tests/auction-house
-          - cmd: cd tests/floats && yarn --frozen-lockfile && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/floats && anchor test --skip-lint && npx tsc --noEmit
             path: tests/floats
           - cmd: cd tests/safety-checks && anchor run test
             path: tests/safety-checks
