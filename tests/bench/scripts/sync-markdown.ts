@@ -1,6 +1,6 @@
 /** Sync Markdown files in /bench based on the data from bench.json */
 
-import { BenchData, BenchResult, Markdown } from "./utils";
+import { BenchData, BenchResult, Markdown, formatNumber } from "./utils";
 
 (async () => {
   const bench = await BenchData.open();
@@ -41,7 +41,7 @@ import { BenchData, BenchResult, Markdown } from "./utils";
             // New key
             changeText = "N/A";
           } else {
-            const delta = (newValue - oldValue).toLocaleString();
+            const delta = formatNumber(newValue - oldValue);
             const percentChange = ((newValue / oldValue - 1) * 100).toFixed(2);
 
             if (+percentChange > 0) {
@@ -51,10 +51,10 @@ import { BenchData, BenchResult, Markdown } from "./utils";
             }
           }
 
-          table.insert(name, newValue.toLocaleString(), changeText);
+          table.insert(name, formatNumber(newValue), changeText);
         },
         noChangeCb: ({ name, value }) => {
-          table.insert(name, value.toLocaleString(), +i === 0 ? "N/A" : "-");
+          table.insert(name, formatNumber(value), +i === 0 ? "N/A" : "-");
         },
       });
 

@@ -527,11 +527,6 @@ export const getVersionFromArgs = () => {
     : (args[anchorVersionArgIndex + 1] as Version);
 };
 
-/** Run `anchor test` command. */
-export const runAnchorTest = () => {
-  return spawn("anchor", ["test", "--skip-lint"]);
-};
-
 /** Spawn a blocking process. */
 export const spawn = (
   cmd: string,
@@ -549,3 +544,9 @@ export const spawn = (
 
   return result;
 };
+
+/** Run `anchor test` command. */
+export const runAnchorTest = () => spawn("anchor", ["test", "--skip-lint"]);
+
+/** Format number with `en-US` locale. */
+export const formatNumber = (number: number) => number.toLocaleString("en-US");
