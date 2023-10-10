@@ -9,7 +9,7 @@ pub mod basic_4 {
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         let counter = ctx.accounts.counter.deref_mut();
-        let bump = *ctx.bumps.get("counter").ok_or(ErrorCode::CannotGetBump)?;
+        let bump = ctx.bumps.counter;
 
         *counter = Counter {
             authority: *ctx.accounts.authority.key,
@@ -73,6 +73,4 @@ impl Counter {
 pub enum ErrorCode {
     #[msg("You are not authorized to perform this action.")]
     Unauthorized,
-    #[msg("Cannot get the bump.")]
-    CannotGetBump,
 }

@@ -33,10 +33,10 @@ pub mod ido_pool {
 
         ido_account.ido_name = name_data;
         ido_account.bumps = PoolBumps {
-            ido_account: *ctx.bumps.get("ido_account").unwrap(),
-            redeemable_mint: *ctx.bumps.get("redeemable_mint").unwrap(),
-            pool_watermelon: *ctx.bumps.get("pool_watermelon").unwrap(),
-            pool_usdc: *ctx.bumps.get("pool_usdc").unwrap(),
+            ido_account: ctx.bumps.ido_account,
+            redeemable_mint: ctx.bumps.redeemable_mint,
+            pool_watermelon: ctx.bumps.pool_watermelon,
+            pool_usdc: ctx.bumps.pool_usdc,
         };
         ido_account.ido_authority = ctx.accounts.ido_authority.key();
 

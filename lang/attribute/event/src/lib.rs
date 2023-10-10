@@ -154,13 +154,12 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let authority = EventAuthority::get();
     let authority_name = authority.name_token_stream();
-    let authority_name_str = authority.name;
     let authority_seeds = authority.seeds;
 
     proc_macro::TokenStream::from(quote! {
         {
             let authority_info = ctx.accounts.#authority_name.to_account_info();
-            let authority_bump = *ctx.bumps.get(#authority_name_str).unwrap();
+            let authority_bump = ctx.bumps.#authority_name;
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);

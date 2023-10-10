@@ -8,7 +8,7 @@ pub mod relations_derivation {
 
     pub fn init_base(ctx: Context<InitBase>) -> Result<()> {
         ctx.accounts.account.my_account = ctx.accounts.my_account.key();
-        ctx.accounts.account.bump = ctx.bumps["account"];
+        ctx.accounts.account.bump = ctx.bumps.account;
         Ok(())
     }
 

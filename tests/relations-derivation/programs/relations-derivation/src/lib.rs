@@ -11,7 +11,7 @@ pub mod relations_derivation {
 
     pub fn init_base(ctx: Context<InitBase>) -> Result<()> {
         ctx.accounts.account.my_account = ctx.accounts.my_account.key();
-        ctx.accounts.account.bump = ctx.bumps["account"];
+        ctx.accounts.account.bump = ctx.bumps.account;
         Ok(())
     }
     pub fn test_relation(_ctx: Context<TestRelation>) -> Result<()> {
@@ -32,7 +32,7 @@ pub struct InitBase<'info> {
       bump,
     )]
     account: Account<'info, MyAccount>,
-    system_program: Program<'info, System>
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -60,9 +60,8 @@ pub struct TestRelation<'info> {
     nested: Nested<'info>,
 }
 
-
 #[account]
 pub struct MyAccount {
     pub my_account: Pubkey,
-    pub bump: u8
+    pub bump: u8,
 }

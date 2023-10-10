@@ -51,9 +51,9 @@ pub mod auction_house {
         let associated_token_program = &ctx.accounts.associated_token_program;
         let rent = &ctx.accounts.rent;
 
-        auction_house.treasury_bump = *ctx.bumps.get("auction_house_treasury").unwrap();
-        auction_house.bump = *ctx.bumps.get("auction_house").unwrap();
-        auction_house.fee_payer_bump = *ctx.bumps.get("auction_house_fee_account").unwrap();
+        auction_house.treasury_bump = ctx.bumps.auction_house_treasury;
+        auction_house.bump = ctx.bumps.auction_house;
+        auction_house.fee_payer_bump = ctx.bumps.auction_house_fee_account;
 
         if seller_fee_basis_points > 10000 {
             return err!(ErrorCode::InvalidBasisPoints);
@@ -147,7 +147,7 @@ pub mod auction_house {
         ];
         let wallet_key = wallet.key();
 
-        let escrow_payment_bump = *ctx.bumps.get("escrow_payment_account").unwrap();
+        let escrow_payment_bump = ctx.bumps.escrow_payment_account;
         let escrow_signer_seeds = [
             PREFIX.as_bytes(),
             auction_house_key.as_ref(),
@@ -254,7 +254,7 @@ pub mod auction_house {
             return err!(ErrorCode::NoValidSignerPresent);
         }
 
-        let escrow_payment_bump = *ctx.bumps.get("escrow_payment_account").unwrap();
+        let escrow_payment_bump = ctx.bumps.escrow_payment_account;
 
         let escrow_signer_seeds = [
             PREFIX.as_bytes(),
@@ -419,7 +419,7 @@ pub mod auction_house {
             )?;
         }
 
-        let trade_state_bump = *ctx.bumps.get("seller_trade_state").unwrap();
+        let trade_state_bump = ctx.bumps.seller_trade_state;
 
         let ts_info = seller_trade_state.to_account_info();
         if ts_info.data_is_empty() {
@@ -536,8 +536,8 @@ pub mod auction_house {
         let system_program = &ctx.accounts.system_program;
         let rent = &ctx.accounts.rent;
 
-        let trade_state_bump = *ctx.bumps.get("buyer_trade_state").unwrap();
-        let escrow_payment_bump = *ctx.bumps.get("escrow_payment_account").unwrap();
+        let trade_state_bump = ctx.bumps.buyer_trade_state;
+        let escrow_payment_bump = ctx.bumps.escrow_payment_account;
 
         let auction_house_key = auction_house.key();
         let seeds = [
@@ -671,7 +671,7 @@ pub mod auction_house {
         let token_account = &ctx.accounts.token_account;
         let token_mint = &ctx.accounts.token_mint;
         let metadata = &ctx.accounts.metadata;
-        let treasury_mint = &ctx.accounts.treasury_mint;
+        let treasury_mint = &ctx.accounts.treasury_mint.to_account_info();
         let seller_payment_receipt_account = &ctx.accounts.seller_payment_receipt_account;
         let buyer_receipt_token_account = &ctx.accounts.buyer_receipt_token_account;
         let escrow_payment_account = &ctx.accounts.escrow_payment_account;
@@ -691,8 +691,8 @@ pub mod auction_house {
         let ata_clone = associated_token_program.to_account_info();
         let token_clone = token_program.to_account_info();
 
-        let escrow_payment_bump = *ctx.bumps.get("escrow_payment_account").unwrap();
-        let program_as_signer_bump = *ctx.bumps.get("program_as_signer").unwrap();
+        let escrow_payment_bump = ctx.bumps.escrow_payment_account;
+        let program_as_signer_bump = ctx.bumps.program_as_signer;
 
         let is_native = treasury_mint.key() == spl_token::native_mint::id();
 
@@ -1450,7 +1450,8 @@ pub struct ExecuteSale<'info> {
     token_mint: UncheckedAccount<'info>,
     metadata: UncheckedAccount<'info>,
     // cannot mark these as real Accounts or else we blow stack size limit
-    treasury_mint: UncheckedAccount<'info>,
+    //TODO revert this change in a near future
+    treasury_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     seller_payment_receipt_account: UncheckedAccount<'info>,
     #[account(mut)]
@@ -1461,7 +1462,7 @@ pub struct ExecuteSale<'info> {
         seeds=[
             PREFIX.as_bytes(),
             authority.key.as_ref(),
-            treasury_mint.key.as_ref(),
+            treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
         has_one=authority,

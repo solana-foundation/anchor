@@ -106,7 +106,7 @@ pub mod misc {
     pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> Result<()> {
         let mut acc = ctx.accounts.my_pda.load_init()?;
         acc.data = 9;
-        acc.bump = *ctx.bumps.get("my_pda").unwrap();
+        acc.bump = ctx.bumps.my_pda;
         Ok(())
     }
 

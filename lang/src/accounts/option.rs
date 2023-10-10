@@ -8,7 +8,7 @@
 //! }
 //! ```
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
@@ -18,12 +18,12 @@ use crate::{
     error::ErrorCode, Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
 };
 
-impl<'info, T: Accounts<'info>> Accounts<'info> for Option<T> {
+impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     fn try_accounts(
         program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         ix_data: &[u8],
-        bumps: &mut BTreeMap<String, u8>,
+        bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {

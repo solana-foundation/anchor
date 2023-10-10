@@ -10,7 +10,7 @@ use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
@@ -334,7 +334,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info>
+impl<'info, B, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info, B>
     for Account<'info, T>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
@@ -344,7 +344,7 @@ where
         _program_id: &Pubkey,
         accounts: &mut &[AccountInfo<'info>],
         _ix_data: &[u8],
-        _bumps: &mut BTreeMap<String, u8>,
+        _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {

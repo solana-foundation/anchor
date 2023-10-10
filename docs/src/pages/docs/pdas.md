@@ -128,7 +128,7 @@ pub mod game {
             panic!();
         }
         user_stats.name = name;
-        user_stats.bump = *ctx.bumps.get("user_stats").unwrap();
+        user_stats.bump = ctx.bumps.user_stats;
         Ok(())
     }
 }
@@ -158,7 +158,7 @@ pub struct CreateUserStats<'info> {
 
 In the account validation struct we use `seeds` together with `init` to create a PDA with the desired seeds.
 Additionally, we add an empty `bump` constraint to signal to anchor that it should find the canonical bump itself.
-Then, in the handler, we call `ctx.bumps.get("user_stats")` to get the bump anchor found and save it to the user stats
+Then, in the handler, we call `ctx.bumps.user_stats` to get the bump anchor found and save it to the user stats
 account as an extra property.
 
 If we then want to use the created pda in a different instruction, we can add a new validation struct (This will check that the `user_stats` account is the pda created by running `hash(seeds, user_stats.bump, game_program_id)`):

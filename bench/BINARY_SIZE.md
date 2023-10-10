@@ -16,9 +16,9 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 
 Solana version: 1.17.0
 
-| Program | Binary Size | +/-                    |
-| ------- | ----------- | ---------------------- |
-| bench   | 1,075,688   | 🟢 **-78,048 (6.76%)** |
+| Program | Binary Size | +/-                     |
+| ------- | ----------- | ----------------------- |
+| bench   | 1,049,608   | 🟢 **-104,128 (9.03%)** |
 
 ### Notable changes
 

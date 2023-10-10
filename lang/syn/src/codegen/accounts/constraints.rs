@@ -482,7 +482,7 @@ fn generate_constraint_init_group(
                         &[#maybe_seeds_plus_comma],
                         __program_id,
                     );
-                    __bumps.insert(#name_str.to_string(), __bump);
+                    __bumps.#field = __bump;
                     #validate_pda
                 },
                 quote! {
@@ -882,7 +882,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                     &[#maybe_seeds_plus_comma],
                     &#deriving_program_id,
                 );
-                __bumps.insert(#name_str.to_string(), __bump);
+                __bumps.#name = __bump;
             },
             // Bump target given. Use it.
             Some(b) => quote! {

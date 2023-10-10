@@ -7,6 +7,7 @@ use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
 
 mod __client_accounts;
 mod __cpi_client_accounts;
+mod bumps;
 mod constraints;
 mod exit;
 mod to_account_infos;
@@ -18,6 +19,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_to_account_infos = to_account_infos::generate(accs);
     let impl_to_account_metas = to_account_metas::generate(accs);
     let impl_exit = exit::generate(accs);
+    let bumps_struct = bumps::generate(accs);
 
     let __client_accounts_mod = __client_accounts::generate(accs);
     let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs);
@@ -27,6 +29,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         #impl_to_account_infos
         #impl_to_account_metas
         #impl_exit
+        #bumps_struct
 
         #__client_accounts_mod
         #__cpi_client_accounts_mod

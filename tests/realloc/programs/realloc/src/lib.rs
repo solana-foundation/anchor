@@ -8,7 +8,7 @@ pub mod realloc {
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         ctx.accounts.sample.data = vec![0];
-        ctx.accounts.sample.bump = *ctx.bumps.get("sample").unwrap();
+        ctx.accounts.sample.bump = ctx.bumps.sample;
         Ok(())
     }
 

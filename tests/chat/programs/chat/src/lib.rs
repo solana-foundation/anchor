@@ -11,7 +11,7 @@ pub mod chat {
     pub fn create_user(ctx: Context<CreateUser>, name: String) -> Result<()> {
         ctx.accounts.user.name = name;
         ctx.accounts.user.authority = *ctx.accounts.authority.key;
-        ctx.accounts.user.bump = *ctx.bumps.get("user").unwrap();
+        ctx.accounts.user.bump = ctx.bumps.user;
         Ok(())
     }
     pub fn create_chat_room(ctx: Context<CreateChatRoom>, name: String) -> Result<()> {
