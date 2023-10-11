@@ -671,7 +671,7 @@ pub mod auction_house {
         let token_account = &ctx.accounts.token_account;
         let token_mint = &ctx.accounts.token_mint;
         let metadata = &ctx.accounts.metadata;
-        let treasury_mint = &ctx.accounts.treasury_mint.to_account_info();
+        let treasury_mint = &ctx.accounts.treasury_mint;
         let seller_payment_receipt_account = &ctx.accounts.seller_payment_receipt_account;
         let buyer_receipt_token_account = &ctx.accounts.buyer_receipt_token_account;
         let escrow_payment_account = &ctx.accounts.escrow_payment_account;
@@ -1450,8 +1450,7 @@ pub struct ExecuteSale<'info> {
     token_mint: UncheckedAccount<'info>,
     metadata: UncheckedAccount<'info>,
     // cannot mark these as real Accounts or else we blow stack size limit
-    //TODO revert this change in a near future
-    treasury_mint: Box<Account<'info, Mint>>,
+    treasury_mint: UncheckedAccount<'info>,
     #[account(mut)]
     seller_payment_receipt_account: UncheckedAccount<'info>,
     #[account(mut)]
@@ -1462,7 +1461,7 @@ pub struct ExecuteSale<'info> {
         seeds=[
             PREFIX.as_bytes(),
             authority.key.as_ref(),
-            treasury_mint.key().as_ref(),
+            treasury_mint.key.as_ref(),
         ],
         bump=auction_house.bump,
         has_one=authority,

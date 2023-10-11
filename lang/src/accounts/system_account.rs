@@ -16,20 +16,20 @@ use std::ops::Deref;
 /// - `SystemAccount.info.owner == SystemProgram`
 #[derive(Debug, Clone)]
 pub struct SystemAccount<'info> {
-    info: AccountInfo<'info>,
+    info: &'info AccountInfo<'info>,
 }
 
 impl<'info> SystemAccount<'info> {
-    fn new(info: AccountInfo<'info>) -> SystemAccount<'info> {
+    fn new(info: &'info AccountInfo<'info>) -> SystemAccount<'info> {
         Self { info }
     }
 
     #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'info>) -> Result<SystemAccount<'info>> {
+    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<SystemAccount<'info>> {
         if *info.owner != system_program::ID {
             return Err(ErrorCode::AccountNotSystemOwned.into());
         }
-        Ok(SystemAccount::new(info.clone()))
+        Ok(SystemAccount::new(info))
     }
 }
 
@@ -37,7 +37,7 @@ impl<'info, B> Accounts<'info, B> for SystemAccount<'info> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -72,7 +72,7 @@ impl<'info> ToAccountInfos<'info> for SystemAccount<'info> {
 
 impl<'info> AsRef<AccountInfo<'info>> for SystemAccount<'info> {
     fn as_ref(&self) -> &AccountInfo<'info> {
-        &self.info
+        self.info
     }
 }
 
@@ -80,7 +80,7 @@ impl<'info> Deref for SystemAccount<'info> {
     type Target = AccountInfo<'info>;
 
     fn deref(&self) -> &Self::Target {
-        &self.info
+        self.info
     }
 }
 

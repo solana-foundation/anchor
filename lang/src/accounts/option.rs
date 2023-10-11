@@ -21,7 +21,7 @@ use crate::{
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo<'info>],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,

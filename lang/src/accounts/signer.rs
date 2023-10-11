@@ -36,21 +36,21 @@ use std::ops::Deref;
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
 pub struct Signer<'info> {
-    info: AccountInfo<'info>,
+    info: &'info AccountInfo<'info>,
 }
 
 impl<'info> Signer<'info> {
-    fn new(info: AccountInfo<'info>) -> Signer<'info> {
+    fn new(info: &'info AccountInfo<'info>) -> Signer<'info> {
         Self { info }
     }
 
     /// Deserializes the given `info` into a `Signer`.
     #[inline(never)]
-    pub fn try_from(info: &AccountInfo<'info>) -> Result<Signer<'info>> {
+    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Signer<'info>> {
         if !info.is_signer {
             return Err(ErrorCode::AccountNotSigner.into());
         }
-        Ok(Signer::new(info.clone()))
+        Ok(Signer::new(info))
     }
 }
 
@@ -58,7 +58,7 @@ impl<'info, B> Accounts<'info, B> for Signer<'info> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -93,7 +93,7 @@ impl<'info> ToAccountInfos<'info> for Signer<'info> {
 
 impl<'info> AsRef<AccountInfo<'info>> for Signer<'info> {
     fn as_ref(&self) -> &AccountInfo<'info> {
-        &self.info
+        self.info
     }
 }
 
@@ -101,7 +101,7 @@ impl<'info> Deref for Signer<'info> {
     type Target = AccountInfo<'info>;
 
     fn deref(&self) -> &Self::Target {
-        &self.info
+        self.info
     }
 }
 

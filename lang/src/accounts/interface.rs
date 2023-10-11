@@ -75,22 +75,22 @@ use std::ops::Deref;
 #[derive(Clone)]
 pub struct Interface<'info, T>(Program<'info, T>);
 impl<'a, T> Interface<'a, T> {
-    pub(crate) fn new(info: AccountInfo<'a>) -> Self {
+    pub(crate) fn new(info: &'a AccountInfo<'a>) -> Self {
         Self(Program::new(info))
     }
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
         self.0.programdata_address()
     }
 }
-impl<'a, T: CheckId> TryFrom<&AccountInfo<'a>> for Interface<'a, T> {
+impl<'a, T: CheckId> TryFrom<&'a AccountInfo<'a>> for Interface<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &AccountInfo<'a>) -> Result<Self> {
+    fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
         T::check_id(info.key)?;
         if !info.executable {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
-        Ok(Self::new(info.clone()))
+        Ok(Self::new(info))
     }
 }
 impl<'info, T> Deref for Interface<'info, T> {
@@ -109,7 +109,7 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,

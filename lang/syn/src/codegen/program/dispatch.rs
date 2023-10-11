@@ -50,9 +50,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// With this 8 byte identifier, Anchor performs method dispatch,
         /// matching the given 8 byte identifier to the associated method
         /// handler, which leads to user defined code being eventually invoked.
-        fn dispatch(
+        fn dispatch<'info>(
             program_id: &Pubkey,
-            accounts: &[AccountInfo],
+            accounts: &'info [AccountInfo<'info>],
             data: &[u8],
         ) -> anchor_lang::Result<()> {
             // Split the instruction data into the first 8 byte method

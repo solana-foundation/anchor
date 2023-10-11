@@ -20,7 +20,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             // on chain.
             #[inline(never)]
             #[cfg(not(feature = "no-idl"))]
-            pub fn __idl_dispatch(program_id: &Pubkey, accounts: &[AccountInfo], idl_ix_data: &[u8]) -> anchor_lang::Result<()> {
+            pub fn __idl_dispatch<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], idl_ix_data: &[u8]) -> anchor_lang::Result<()> {
                 let mut accounts = accounts;
                 let mut data: &[u8] = idl_ix_data;
 
@@ -112,9 +112,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             };
             quote! {
                 #[inline(never)]
-                pub fn #ix_method_name(
+                pub fn #ix_method_name<'info>(
                     __program_id: &Pubkey,
-                    __accounts: &[AccountInfo],
+                    __accounts: &'info[AccountInfo<'info>],
                     __ix_data: &[u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
