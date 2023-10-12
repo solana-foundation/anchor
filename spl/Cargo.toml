@@ -20,6 +20,7 @@ shmem = []
 stake = ["borsh"]
 token = ["spl-token"]
 token_2022 = ["spl-token-2022"]
+memo = ["spl-memo"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.28.0", features = ["derive"] }
@@ -30,3 +31,4 @@ solana-program = ">=1.16, <1.18"
 spl-associated-token-account = { version = "2.2", features = ["no-entrypoint"], optional = true }
 spl-token = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token-2022 = { version = "0.9", features = ["no-entrypoint"], optional = true }
+spl-memo = { version = "4", features = ["no-entrypoint"], optional = true }
