@@ -1118,7 +1118,7 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
                 let mint_state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
                 let mint_extensions = mint_state.get_extension_types()?;
                 let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
-                ExtensionType::get_account_len::<Account>(&required_extensions)
+                ExtensionType::try_calculate_account_len::<Account>(&required_extensions)?
             } else {
                 ::anchor_spl::token::TokenAccount::LEN
             }
