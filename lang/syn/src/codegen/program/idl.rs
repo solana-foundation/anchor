@@ -166,7 +166,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                     accounts.from.clone(),
                     accounts.to.clone(),
                     accounts.base.clone(),
-                    accounts.system_program.to_account_info().clone(),
+                    accounts.system_program.to_account_info(),
                 ],
                 &[seeds],
             )?;
@@ -209,15 +209,16 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                 return Err(anchor_lang::error::ErrorCode::IdlAccountNotEmpty.into());
             }
 
-            let new_account_space = accounts.idl.to_account_info().data_len().checked_add(std::cmp::min(
+            let idl_ref = AsRef::<AccountInfo>::as_ref(&accounts.idl);
+            let new_account_space = idl_ref.data_len().checked_add(std::cmp::min(
                 data_len
-                    .checked_sub(accounts.idl.to_account_info().data_len())
+                    .checked_sub(idl_ref.data_len())
                     .expect("data_len should always be >= the current account space"),
                 10_000,
             ))
             .unwrap();
 
-            if new_account_space > accounts.idl.to_account_info().data_len() {
+            if new_account_space > idl_ref.data_len() {
                 let sysvar_rent = Rent::get()?;
                 let new_rent_minimum = sysvar_rent.minimum_balance(new_account_space);
                 anchor_lang::system_program::transfer(
@@ -229,10 +230,10 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                         },
                     ),
                     new_rent_minimum
-                        .checked_sub(accounts.idl.to_account_info().lamports())
+                        .checked_sub(idl_ref.lamports())
                         .unwrap(),
                 )?;
-                accounts.idl.to_account_info().realloc(new_account_space, false)?;
+                idl_ref.realloc(new_account_space, false)?;
             }
 
             Ok(())

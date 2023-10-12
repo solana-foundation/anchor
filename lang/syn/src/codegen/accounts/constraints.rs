@@ -239,9 +239,10 @@ pub fn generate_constraint_close(
 
 pub fn generate_constraint_mut(f: &Field, c: &ConstraintMut) -> proc_macro2::TokenStream {
     let ident = &f.ident;
+    let account_ref = generate_account_ref(f);
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintMut }, &None);
     quote! {
-        if !#ident.to_account_info().is_writable {
+        if !#account_ref.is_writable {
             return #error;
         }
     }
@@ -281,16 +282,11 @@ pub fn generate_constraint_has_one(
 
 pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro2::TokenStream {
     let ident = &f.ident;
-    let info = match f.ty {
-        Ty::AccountInfo => quote! { #ident },
-        Ty::Account(_) => quote! { #ident.to_account_info() },
-        Ty::InterfaceAccount(_) => quote! { #ident.to_account_info() },
-        Ty::AccountLoader(_) => quote! { #ident.to_account_info() },
-        _ => panic!("Invalid syntax: signer cannot be specified."),
-    };
+    let account_ref = generate_account_ref(f);
+
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintSigner }, &None);
     quote! {
-        if !#info.is_signer {
+        if !#account_ref.is_signer {
             return #error;
         }
     }
@@ -403,7 +399,7 @@ fn generate_constraint_realloc(
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
             }
 
-            #field.to_account_info().realloc(#new_space, #zero)?;
+            __field_info.realloc(#new_space, #zero)?;
             __reallocs.insert(#field.key());
         }
     }
@@ -429,6 +425,8 @@ fn generate_constraint_init_group(
     // Convert from account info to account context wrapper type.
     let from_account_info = f.from_account_info(Some(&c.kind), true);
     let from_account_info_unchecked = f.from_account_info(Some(&c.kind), false);
+
+    let account_ref = generate_account_ref(f);
 
     // PDA bump seeds.
     let (find_pda, seeds_with_bump) = match &c.seeds {
@@ -547,7 +545,7 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
+                    let owner_program = #account_ref.owner;
                     if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
                         #payer_optional_check
 
@@ -618,7 +616,7 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
+                    let owner_program = #account_ref.owner;
                     if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
                         #payer_optional_check
 
@@ -796,7 +794,7 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let actual_field = #field.to_account_info();
+                    let actual_field = #account_ref;
                     let actual_owner = actual_field.owner;
 
                     // Define the account space variable.
@@ -911,6 +909,7 @@ fn generate_constraint_associated_token(
 ) -> proc_macro2::TokenStream {
     let name = &f.ident;
     let name_str = name.to_string();
+    let account_ref = generate_account_ref(f);
     let wallet_address = &c.wallet;
     let spl_token_mint_address = &c.mint;
 
@@ -928,7 +927,7 @@ fn generate_constraint_associated_token(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #name.to_account_info().owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintAssociatedTokenTokenProgram.into()); }
+                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintAssociatedTokenTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -967,6 +966,7 @@ fn generate_constraint_token_account(
     accs: &AccountsStruct,
 ) -> proc_macro2::TokenStream {
     let name = &f.ident;
+    let account_ref = generate_account_ref(f);
     let mut optional_check_scope = OptionalCheckScope::new_with_field(accs, name);
     let authority_check = match &c.authority {
         Some(authority) => {
@@ -993,7 +993,7 @@ fn generate_constraint_token_account(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #name.to_account_info().owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram.into()); }
+                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -1013,6 +1013,7 @@ fn generate_constraint_mint(
     accs: &AccountsStruct,
 ) -> proc_macro2::TokenStream {
     let name = &f.ident;
+    let account_ref = generate_account_ref(f);
 
     let decimal_check = match &c.decimals {
         Some(decimals) => quote! {
@@ -1053,7 +1054,7 @@ fn generate_constraint_mint(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #name.to_account_info().owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram.into()); }
+                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -1192,13 +1193,13 @@ pub fn generate_constraint_executable(
     f: &Field,
     _c: &ConstraintExecutable,
 ) -> proc_macro2::TokenStream {
-    let name = &f.ident;
-    let name_str = name.to_string();
+    let name_str = f.ident.to_string();
+    let account_ref = generate_account_ref(f);
 
     // because we are only acting on the field, we know it isnt optional at this point
     // as it was unwrapped in `generate_constraint`
     quote! {
-        if !#name.to_account_info().executable {
+        if !#account_ref.executable {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintExecutable).with_account_name(#name_str));
         }
     }
@@ -1229,5 +1230,18 @@ fn generate_custom_error(
 
     quote! {
         Err(#error)
+    }
+}
+
+fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
+    let name = &field.ident;
+
+    match &field.ty {
+        Ty::AccountInfo => quote!(&#name),
+        Ty::Account(acc) if acc.boxed => quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref())),
+        Ty::InterfaceAccount(acc) if acc.boxed => {
+            quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref()))
+        }
+        _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
     }
 }

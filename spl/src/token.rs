@@ -23,11 +23,7 @@ pub fn transfer<'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.from.clone(),
-            ctx.accounts.to.clone(),
-            ctx.accounts.authority.clone(),
-        ],
+        &[ctx.accounts.from, ctx.accounts.to, ctx.accounts.authority],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -51,10 +47,10 @@ pub fn transfer_checked<'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.from.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.to.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.from,
+            ctx.accounts.mint,
+            ctx.accounts.to,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -75,11 +71,7 @@ pub fn mint_to<'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.to.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.authority.clone(),
-        ],
+        &[ctx.accounts.to, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -96,11 +88,7 @@ pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64)
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.from.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.authority.clone(),
-        ],
+        &[ctx.accounts.from, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -121,9 +109,9 @@ pub fn approve<'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.clone(),
-            ctx.accounts.delegate.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.to,
+            ctx.accounts.delegate,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -148,10 +136,10 @@ pub fn approve_checked<'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.delegate.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.to,
+            ctx.accounts.mint,
+            ctx.accounts.delegate,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -167,7 +155,7 @@ pub fn revoke<'info>(ctx: CpiContext<'_, '_, '_, 'info, Revoke<'info>>) -> Resul
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.source.clone(), ctx.accounts.authority.clone()],
+        &[ctx.accounts.source, ctx.accounts.authority],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -185,10 +173,10 @@ pub fn initialize_account<'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.authority.clone(),
-            ctx.accounts.rent.clone(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
+            ctx.accounts.rent,
         ],
         ctx.signer_seeds,
     )
@@ -206,7 +194,7 @@ pub fn initialize_account3<'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.account.clone(), ctx.accounts.mint.clone()],
+        &[ctx.accounts.account, ctx.accounts.mint],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -223,9 +211,9 @@ pub fn close_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, CloseAccount<'inf
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.clone(),
-            ctx.accounts.destination.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.account,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -245,9 +233,9 @@ pub fn freeze_account<'info>(
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -265,9 +253,9 @@ pub fn thaw_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, ThawAccount<'info>
     solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.clone(),
-            ctx.accounts.mint.clone(),
-            ctx.accounts.authority.clone(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -289,7 +277,7 @@ pub fn initialize_mint<'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.mint.clone(), ctx.accounts.rent.clone()],
+        &[ctx.accounts.mint, ctx.accounts.rent],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -308,7 +296,7 @@ pub fn initialize_mint2<'info>(
         freeze_authority,
         decimals,
     )?;
-    solana_program::program::invoke_signed(&ix, &[ctx.accounts.mint.clone()], ctx.signer_seeds)
+    solana_program::program::invoke_signed(&ix, &[ctx.accounts.mint], ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -332,10 +320,7 @@ pub fn set_authority<'info>(
     )?;
     solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.account_or_mint.clone(),
-            ctx.accounts.current_authority.clone(),
-        ],
+        &[ctx.accounts.account_or_mint, ctx.accounts.current_authority],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -343,7 +328,7 @@ pub fn set_authority<'info>(
 
 pub fn sync_native<'info>(ctx: CpiContext<'_, '_, '_, 'info, SyncNative<'info>>) -> Result<()> {
     let ix = spl_token::instruction::sync_native(&spl_token::ID, ctx.accounts.account.key)?;
-    solana_program::program::invoke_signed(&ix, &[ctx.accounts.account.clone()], ctx.signer_seeds)
+    solana_program::program::invoke_signed(&ix, &[ctx.accounts.account], ctx.signer_seeds)
         .map_err(Into::into)
 }
 
