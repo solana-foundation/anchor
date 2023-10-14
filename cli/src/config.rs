@@ -349,8 +349,7 @@ impl<T> std::ops::DerefMut for WithPath<T> {
 
 #[derive(Debug, Default)]
 pub struct Config {
-    pub anchor_version: Option<String>,
-    pub solana_version: Option<String>,
+    pub toolchain: ToolchainConfig,
     pub features: FeaturesConfig,
     pub registry: RegistryConfig,
     pub provider: ProviderConfig,
@@ -362,6 +361,12 @@ pub struct Config {
     // not the Test.toml files
     pub test_validator: Option<TestValidator>,
     pub test_config: Option<TestConfig>,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct ToolchainConfig {
+    pub anchor_version: Option<String>,
+    pub solana_version: Option<String>,
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -444,11 +449,12 @@ impl Config {
     }
 
     pub fn docker(&self) -> String {
-        let ver = self
+        let version = self
+            .toolchain
             .anchor_version
-            .clone()
-            .unwrap_or_else(|| crate::DOCKER_BUILDER_VERSION.to_string());
-        format!("backpackapp/build:v{ver}")
+            .as_deref()
+            .unwrap_or(crate::DOCKER_BUILDER_VERSION);
+        format!("backpackapp/build:v{version}")
     }
 
     pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {
@@ -507,8 +513,7 @@ impl Config {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct _Config {
-    anchor_version: Option<String>,
-    solana_version: Option<String>,
+    toolchain: Option<ToolchainConfig>,
     features: Option<FeaturesConfig>,
     programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
     registry: Option<RegistryConfig>,
@@ -583,8 +588,7 @@ impl ToString for Config {
             }
         };
         let cfg = _Config {
-            anchor_version: self.anchor_version.clone(),
-            solana_version: self.solana_version.clone(),
+            toolchain: Some(self.toolchain.clone()),
             features: Some(self.features.clone()),
             registry: Some(self.registry.clone()),
             provider: Provider {
@@ -612,8 +616,7 @@ impl FromStr for Config {
         let cfg: _Config = toml::from_str(s)
             .map_err(|e| anyhow::format_err!("Unable to deserialize config: {}", e.to_string()))?;
         Ok(Config {
-            anchor_version: cfg.anchor_version,
-            solana_version: cfg.solana_version,
+            toolchain: cfg.toolchain.unwrap_or_default(),
             features: cfg.features.unwrap_or_default(),
             registry: cfg.registry.unwrap_or_default(),
             provider: ProviderConfig {

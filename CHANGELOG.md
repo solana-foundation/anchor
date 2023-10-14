@@ -33,6 +33,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `test.upgradeable`, `test.genesis.upgradeable` setting in anchor.toml to support testing upgradeable programs ([#2641](https://github.com/coral-xyz/anchor/pull/2642)).
 - cli, client, lang, spl: Update Solana toolchain and dependencies to `1.17.0`, `1.16` remains supported ([#2645](https://github.com/coral-xyz/anchor/pull/2645)).
 - spl: Add support for memo program ([#2661](https://github.com/coral-xyz/anchor/pull/2661)).
+- cli: Add `toolchain` property in `Anchor.toml` to override Anchor and Solana versions ([#2649](https://github.com/coral-xyz/anchor/pull/2649)).
 
 ### Fixes
 
@@ -55,6 +56,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Remove `base64-js` dependency ([#2635](https://github.com/coral-xyz/anchor/pull/2635)).
 - syn: `IdlTypeDefinitionTy` enum has a new variant `Alias` ([#2637](https://github.com/coral-xyz/anchor/pull/2637)).
 - cli, client, lang, spl: Solana `1.14` is no longer supported, minimum required Solana version is `1.16.0` ([#2645](https://github.com/coral-xyz/anchor/pull/2645)).
+- cli: `anchor_version` and `solana_version` property in `Anchor.toml` that was being used in verifiable builds are moved inside `toolchain`. They are now being used for all commands in the workspace, not just verifiable builds ([#2649](https://github.com/coral-xyz/anchor/pull/2649)).
 
 ## [0.28.0] - 2023-06-09
 

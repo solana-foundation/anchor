@@ -66,11 +66,11 @@ types = "app/src/idl/"
 #### members
 
 Sets the paths --relative to the `Anchor.toml`--
-   to all programs in the local
-   workspace, i.e., the path to the `Cargo.toml` manifest associated with each
-   program that can be compiled by the `anchor` CLI. For programs using the
-   standard Anchor workflow, this can be omitted. For programs not written in Anchor
-   but still want to publish, this should be added.
+to all programs in the local
+workspace, i.e., the path to the `Cargo.toml` manifest associated with each
+program that can be compiled by the `anchor` CLI. For programs using the
+standard Anchor workflow, this can be omitted. For programs not written in Anchor
+but still want to publish, this should be added.
 
 Example:
 
@@ -192,4 +192,14 @@ filename = "some_account.json"
 [[test.validator.account]]
 address = "Ev8WSPQsGb4wfjybqff5eZNcS3n6HaMsBkMk9suAiuM"
 filename = "some_other_account.json"
+```
+
+## toolchain
+
+Override toolchain data in the workspace similar to [`rust-toolchain.toml`](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file).
+
+```toml
+[toolchain]
+anchor_version = "0.28.0"    # `anchor-cli` version to use(requires `avm`)
+solana_version = "1.16.0"    # Solana version to use(applies to all Solana tools)
 ```
