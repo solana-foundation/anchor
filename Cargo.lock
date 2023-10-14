@@ -645,6 +645,7 @@ name = "avm"
 version = "0.28.0"
 dependencies = [
  "anyhow",
+ "cargo_toml",
  "cfg-if",
  "clap 4.4.6",
  "dirs",

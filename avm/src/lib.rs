@@ -1,12 +1,14 @@
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
-use semver::Version;
+use reqwest::StatusCode;
+use semver::{Prerelease, Version};
 use serde::{de, Deserialize};
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::str::FromStr;
 
 /// Storage directory for AVM, ~/.avm
 pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
@@ -75,32 +77,97 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
 /// Update to the latest version
 pub fn update() -> Result<()> {
     // Find last stable version
-    let version = &get_latest_version();
+    let version = get_latest_version();
 
-    install_version(version, false)
+    install_anchor(InstallTarget::Version(version), false)
+}
+
+#[derive(Clone)]
+pub enum InstallTarget {
+    Version(Version),
+    Commit(String),
+}
+
+#[derive(Deserialize)]
+struct GetCommitResponse {
+    sha: String,
+}
+
+/// The commit sha provided can be shortened,
+///
+/// returns the full commit sha3 for unique versioning downstream
+pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(format!(
+            "https://api.github.com/repos/coral-xyz/anchor/commits/{commit}"
+        ))
+        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .send()
+        .unwrap();
+    if response.status() != StatusCode::OK {
+        return Err(anyhow!(
+            "Error checking commit {commit}: {}",
+            response.text().unwrap()
+        ));
+    };
+    let get_commit_response: GetCommitResponse = response.json().unwrap();
+    Ok(get_commit_response.sha)
+}
+
+fn get_anchor_version_from_commit(commit: &str) -> Version {
+    // We read the version from cli/Cargo.toml since there is no simpler way to do so
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(format!(
+            "https://raw.githubusercontent.com/coral-xyz/anchor/{}/cli/Cargo.toml",
+            commit
+        ))
+        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .send()
+        .unwrap();
+    if response.status() != StatusCode::OK {
+        panic!("Could not find anchor-cli version for commit: {response:?}");
+    };
+    let anchor_cli_cargo_toml = response.text().unwrap();
+    let anchor_cli_manifest = cargo_toml::Manifest::from_str(&anchor_cli_cargo_toml).unwrap();
+    let anchor_version = anchor_cli_manifest.package().version();
+    let mut version = Version::parse(anchor_version).unwrap();
+    version.pre = Prerelease::from_str(commit).unwrap();
+    version
 }
 
 /// Install a version of anchor-cli
-pub fn install_version(version: &Version, force: bool) -> Result<()> {
+pub fn install_anchor(install_target: InstallTarget, force: bool) -> Result<()> {
     // If version is already installed we ignore the request.
     let installed_versions = read_installed_versions();
-    if installed_versions.contains(version) && !force {
+
+    let mut args: Vec<String> = vec![
+        "install".into(),
+        "--git".into(),
+        "https://github.com/coral-xyz/anchor".into(),
+        "anchor-cli".into(),
+        "--locked".into(),
+        "--root".into(),
+        AVM_HOME.to_str().unwrap().into(),
+    ];
+    let version = match install_target {
+        InstallTarget::Version(version) => {
+            args.extend(["--tag".into(), format!("v{}", version), "anchor-cli".into()]);
+            version
+        }
+        InstallTarget::Commit(commit) => {
+            args.extend(["--rev".into(), commit.clone()]);
+            get_anchor_version_from_commit(&commit)
+        }
+    };
+    if installed_versions.contains(&version) && !force {
         println!("Version {version} is already installed");
         return Ok(());
     }
 
     let exit = std::process::Command::new("cargo")
-        .args([
-            "install",
-            "--git",
-            "https://github.com/coral-xyz/anchor",
-            "--tag",
-            &format!("v{}", &version),
-            "anchor-cli",
-            "--locked",
-            "--root",
-            AVM_HOME.to_str().unwrap(),
-        ])
+        .args(args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -192,30 +259,37 @@ pub fn fetch_versions() -> Vec<semver::Version> {
 
 /// Print available versions and flags indicating installed, current and latest
 pub fn list_versions() -> Result<()> {
-    let installed_versions = read_installed_versions();
+    let mut installed_versions = read_installed_versions();
 
     let mut available_versions = fetch_versions();
     // Reverse version list so latest versions are printed last
     available_versions.reverse();
 
-    available_versions.iter().enumerate().for_each(|(i, v)| {
-        print!("{v}");
-        let mut flags = vec![];
-        if i == available_versions.len() - 1 {
-            flags.push("latest");
-        }
-        if installed_versions.contains(v) {
-            flags.push("installed");
-        }
-        if current_version().is_ok() && current_version().unwrap() == v.clone() {
-            flags.push("current");
-        }
-        if flags.is_empty() {
-            println!();
-        } else {
-            println!("\t({})", flags.join(", "));
-        }
-    });
+    let print_versions =
+        |versions: Vec<Version>, installed_versions: &mut Vec<Version>, show_latest: bool| {
+            versions.iter().enumerate().for_each(|(i, v)| {
+                print!("{v}");
+                let mut flags = vec![];
+                if i == versions.len() - 1 && show_latest {
+                    flags.push("latest");
+                }
+                if let Some(position) = installed_versions.iter().position(|iv| iv == v) {
+                    flags.push("installed");
+                    installed_versions.remove(position);
+                }
+
+                if current_version().is_ok() && current_version().unwrap() == v.clone() {
+                    flags.push("current");
+                }
+                if flags.is_empty() {
+                    println!();
+                } else {
+                    println!("\t({})", flags.join(", "));
+                }
+            })
+        };
+    print_versions(available_versions, &mut installed_versions, true);
+    print_versions(installed_versions.clone(), &mut installed_versions, false);
 
     Ok(())
 }
@@ -339,5 +413,30 @@ mod tests {
         // Should ignore this file because its not anchor- prefixed
         fs::File::create(AVM_HOME.join("bin").join("garbage").as_path()).unwrap();
         assert!(read_installed_versions() == expected);
+    }
+
+    #[test]
+    fn test_get_anchor_version_from_commit() {
+        let version = get_anchor_version_from_commit("e1afcbf71e0f2e10fae14525934a6a68479167b9");
+        assert_eq!(
+            version.to_string(),
+            "0.28.0-e1afcbf71e0f2e10fae14525934a6a68479167b9"
+        )
+    }
+
+    #[test]
+    fn test_check_and_get_full_commit_when_full_commit() {
+        assert_eq!(
+            check_and_get_full_commit("e1afcbf71e0f2e10fae14525934a6a68479167b9").unwrap(),
+            "e1afcbf71e0f2e10fae14525934a6a68479167b9"
+        )
+    }
+
+    #[test]
+    fn test_check_and_get_full_commit_when_partial_commit() {
+        assert_eq!(
+            check_and_get_full_commit("e1afcbf").unwrap(),
+            "e1afcbf71e0f2e10fae14525934a6a68479167b9"
+        )
     }
 }
