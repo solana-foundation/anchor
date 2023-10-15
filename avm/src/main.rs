@@ -43,15 +43,22 @@ pub enum Commands {
 // If `latest` is passed use the latest available version.
 fn parse_version(version: &str) -> Result<Version, Error> {
     if version == "latest" {
-        Ok(avm::get_latest_version())
+        avm::get_latest_version()
     } else {
-        Version::parse(version).map_err(|e| anyhow::anyhow!(e))
+        Version::parse(version).map_err(|e| anyhow!(e))
     }
 }
 
 fn parse_install_target(version_or_commit: &str) -> Result<InstallTarget, Error> {
     parse_version(version_or_commit)
-        .map(InstallTarget::Version)
+        .map(|version| {
+            if version.pre.is_empty() {
+                InstallTarget::Version(version)
+            } else {
+                // Allow `avm install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23`
+                InstallTarget::Commit(version.pre.to_string())
+            }
+        })
         .or_else(|version_error| {
             avm::check_and_get_full_commit(version_or_commit)
                 .map(InstallTarget::Commit)
@@ -67,7 +74,7 @@ pub fn entry(opts: Cli) -> Result<()> {
         Commands::Install {
             version_or_commit,
             force,
-        } => avm::install_anchor(version_or_commit, force),
+        } => avm::install_version(version_or_commit, force),
         Commands::Uninstall { version } => avm::uninstall_version(&version),
         Commands::List {} => avm::list_versions(),
         Commands::Update {} => avm::update(),

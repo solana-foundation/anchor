@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use cargo_toml::Manifest;
 use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
 use reqwest::StatusCode;
@@ -8,7 +9,6 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::str::FromStr;
 
 /// Storage directory for AVM, ~/.avm
 pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
@@ -25,25 +25,44 @@ pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
 });
 
 /// Path to the current version file ~/.avm/.version
-pub fn current_version_file_path() -> PathBuf {
-    let mut current_version_file_path = AVM_HOME.to_path_buf();
-    current_version_file_path.push(".version");
-    current_version_file_path
+fn current_version_file_path() -> PathBuf {
+    AVM_HOME.join(".version")
 }
 
-/// Read the current version from the version file
-pub fn current_version() -> Result<Version> {
-    let v = fs::read_to_string(current_version_file_path().as_path())
-        .map_err(|e| anyhow!("Could not read version file: {}", e))?;
-    Version::parse(v.trim_end_matches('\n').to_string().as_str())
-        .map_err(|e| anyhow!("Could not parse version file: {}", e))
+/// Path to the current version file ~/.avm/bin
+fn get_bin_dir_path() -> PathBuf {
+    AVM_HOME.join("bin")
 }
 
 /// Path to the binary for the given version
 pub fn version_binary_path(version: &Version) -> PathBuf {
-    let mut version_path = AVM_HOME.join("bin");
-    version_path.push(format!("anchor-{version}"));
-    version_path
+    get_bin_dir_path().join(format!("anchor-{version}"))
+}
+
+/// Ensure the users home directory is setup with the paths required by AVM.
+pub fn ensure_paths() {
+    let home_dir = AVM_HOME.to_path_buf();
+    if !home_dir.exists() {
+        fs::create_dir_all(&home_dir).expect("Could not create .avm directory");
+    }
+
+    let bin_dir = get_bin_dir_path();
+    if !bin_dir.exists() {
+        fs::create_dir_all(bin_dir).expect("Could not create .avm/bin directory");
+    }
+
+    if !current_version_file_path().exists() {
+        fs::File::create(current_version_file_path()).expect("Could not create .version file");
+    }
+}
+
+/// Read the current version from the version file
+pub fn current_version() -> Result<Version> {
+    fs::read_to_string(current_version_file_path())
+        .map_err(|e| anyhow!("Could not read version file: {}", e))?
+        .trim_end_matches('\n')
+        .parse::<Version>()
+        .map_err(|e| anyhow!("Could not parse version file: {}", e))
 }
 
 /// Update the current version to a new version
@@ -53,8 +72,8 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
         None => read_anchorversion_file()?,
     };
 
-    let installed_versions = read_installed_versions();
     // Make sure the requested version is installed
+    let installed_versions = read_installed_versions()?;
     if !installed_versions.contains(&version) {
         if let Ok(current) = current_version() {
             println!("Version {version} is not installed, staying on version {current}.");
@@ -68,18 +87,10 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
         ));
     }
 
-    let mut current_version_file = fs::File::create(current_version_file_path().as_path())?;
+    let mut current_version_file = fs::File::create(current_version_file_path())?;
     current_version_file.write_all(version.to_string().as_bytes())?;
     println!("Now using anchor version {}.", current_version()?);
     Ok(())
-}
-
-/// Update to the latest version
-pub fn update() -> Result<()> {
-    // Find last stable version
-    let version = get_latest_version();
-
-    install_anchor(InstallTarget::Version(version), false)
 }
 
 #[derive(Clone)]
@@ -88,9 +99,10 @@ pub enum InstallTarget {
     Commit(String),
 }
 
-#[derive(Deserialize)]
-struct GetCommitResponse {
-    sha: String,
+/// Update to the latest version
+pub fn update() -> Result<()> {
+    let latest_version = get_latest_version()?;
+    install_version(InstallTarget::Version(latest_version), false)
 }
 
 /// The commit sha provided can be shortened,
@@ -103,45 +115,52 @@ pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
             "https://api.github.com/repos/coral-xyz/anchor/commits/{commit}"
         ))
         .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
-        .send()
-        .unwrap();
+        .send()?;
+
     if response.status() != StatusCode::OK {
         return Err(anyhow!(
             "Error checking commit {commit}: {}",
-            response.text().unwrap()
+            response.text()?
         ));
     };
-    let get_commit_response: GetCommitResponse = response.json().unwrap();
-    Ok(get_commit_response.sha)
+
+    #[derive(Deserialize)]
+    struct GetCommitResponse {
+        sha: String,
+    }
+
+    response
+        .json::<GetCommitResponse>()
+        .map(|resp| resp.sha)
+        .map_err(|err| anyhow!("Failed to parse the response to JSON: {err:?}"))
 }
 
-fn get_anchor_version_from_commit(commit: &str) -> Version {
+fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
     // We read the version from cli/Cargo.toml since there is no simpler way to do so
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(format!(
-            "https://raw.githubusercontent.com/coral-xyz/anchor/{}/cli/Cargo.toml",
-            commit
+            "https://raw.githubusercontent.com/coral-xyz/anchor/{commit}/cli/Cargo.toml"
         ))
         .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
-        .send()
-        .unwrap();
+        .send()?;
+
     if response.status() != StatusCode::OK {
-        panic!("Could not find anchor-cli version for commit: {response:?}");
+        return Err(anyhow!(
+            "Could not find anchor-cli version for commit: {response:?}"
+        ));
     };
-    let anchor_cli_cargo_toml = response.text().unwrap();
-    let anchor_cli_manifest = cargo_toml::Manifest::from_str(&anchor_cli_cargo_toml).unwrap();
-    let anchor_version = anchor_cli_manifest.package().version();
-    let mut version = Version::parse(anchor_version).unwrap();
-    version.pre = Prerelease::from_str(commit).unwrap();
-    version
+
+    let anchor_cli_cargo_toml = response.text()?;
+    let anchor_cli_manifest = Manifest::from_str(&anchor_cli_cargo_toml)?;
+    let mut version = anchor_cli_manifest.package().version().parse::<Version>()?;
+    version.pre = Prerelease::new(commit)?;
+
+    Ok(version)
 }
 
 /// Install a version of anchor-cli
-pub fn install_anchor(install_target: InstallTarget, force: bool) -> Result<()> {
-    // If version is already installed we ignore the request.
-    let installed_versions = read_installed_versions();
-
+pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()> {
     let mut args: Vec<String> = vec![
         "install".into(),
         "--git".into(),
@@ -158,9 +177,12 @@ pub fn install_anchor(install_target: InstallTarget, force: bool) -> Result<()> 
         }
         InstallTarget::Commit(commit) => {
             args.extend(["--rev".into(), commit.clone()]);
-            get_anchor_version_from_commit(&commit)
+            get_anchor_version_from_commit(&commit)?
         }
     };
+
+    // If version is already installed we ignore the request.
+    let installed_versions = read_installed_versions()?;
     if installed_versions.contains(&version) && !force {
         println!("Version {version} is already installed");
         return Ok(());
@@ -171,38 +193,40 @@ pub fn install_anchor(install_target: InstallTarget, force: bool) -> Result<()> 
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| {
-            anyhow::format_err!("Cargo install for {} failed: {}", version, e.to_string())
-        })?;
+        .map_err(|e| anyhow!("Cargo install for {} failed: {}", version, e.to_string()))?;
     if !exit.status.success() {
         return Err(anyhow!(
             "Failed to install {}, is it a valid version?",
             version
         ));
     }
+
+    let bin_dir = get_bin_dir_path();
     fs::rename(
-        AVM_HOME.join("bin").join("anchor"),
-        AVM_HOME.join("bin").join(format!("anchor-{version}")),
+        bin_dir.join("anchor"),
+        bin_dir.join(format!("anchor-{version}")),
     )?;
+
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
-        let mut current_version_file = fs::File::create(current_version_file_path().as_path())?;
+        let mut current_version_file = fs::File::create(current_version_file_path())?;
         current_version_file.write_all(version.to_string().as_bytes())?;
     }
 
-    use_version(Some(version.clone()))
+    use_version(Some(version))
 }
 
 /// Remove an installed version of anchor-cli
 pub fn uninstall_version(version: &Version) -> Result<()> {
-    let version_path = AVM_HOME.join("bin").join(format!("anchor-{version}"));
+    let version_path = get_bin_dir_path().join(format!("anchor-{version}"));
     if !version_path.exists() {
         return Err(anyhow!("anchor-cli {} is not installed", version));
     }
-    if version == &current_version().unwrap() {
+    if version == &current_version()? {
         return Err(anyhow!("anchor-cli {} is currently in use", version));
     }
-    fs::remove_file(version_path.as_path())?;
+    fs::remove_file(version_path)?;
+
     Ok(())
 }
 
@@ -214,31 +238,16 @@ pub fn read_anchorversion_file() -> Result<Version> {
         .map_err(|e| anyhow!("Unable to parse version: {e}"))
 }
 
-/// Ensure the users home directory is setup with the paths required by AVM.
-pub fn ensure_paths() {
-    let home_dir = AVM_HOME.to_path_buf();
-    if !home_dir.as_path().exists() {
-        fs::create_dir_all(home_dir.clone()).expect("Could not create .avm directory");
-    }
-    let bin_dir = home_dir.join("bin");
-    if !bin_dir.as_path().exists() {
-        fs::create_dir_all(bin_dir).expect("Could not create .avm/bin directory");
-    }
-    if !current_version_file_path().exists() {
-        fs::File::create(current_version_file_path()).expect("Could not create .version file");
-    }
-}
-
 /// Retrieve a list of installable versions of anchor-cli using the GitHub API and tags on the Anchor
 /// repository.
-pub fn fetch_versions() -> Vec<semver::Version> {
+pub fn fetch_versions() -> Result<Vec<Version>> {
     #[derive(Deserialize)]
     struct Release {
         #[serde(rename = "name", deserialize_with = "version_deserializer")]
-        version: semver::Version,
+        version: Version,
     }
 
-    fn version_deserializer<'de, D>(deserializer: D) -> Result<semver::Version, D::Error>
+    fn version_deserializer<'de, D>(deserializer: D) -> Result<Version, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -246,22 +255,23 @@ pub fn fetch_versions() -> Vec<semver::Version> {
         Version::parse(s.trim_start_matches('v')).map_err(de::Error::custom)
     }
 
-    let client = reqwest::blocking::Client::new();
-    let versions: Vec<Release> = client
+    let versions = reqwest::blocking::Client::new()
         .get("https://api.github.com/repos/coral-xyz/anchor/tags")
         .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
-        .send()
-        .unwrap()
-        .json()
-        .unwrap();
-    versions.into_iter().map(|r| r.version).collect()
+        .send()?
+        .json::<Vec<Release>>()?
+        .into_iter()
+        .map(|release| release.version)
+        .collect();
+
+    Ok(versions)
 }
 
 /// Print available versions and flags indicating installed, current and latest
 pub fn list_versions() -> Result<()> {
-    let mut installed_versions = read_installed_versions();
+    let mut installed_versions = read_installed_versions()?;
 
-    let mut available_versions = fetch_versions();
+    let mut available_versions = fetch_versions()?;
     // Reverse version list so latest versions are printed last
     available_versions.reverse();
 
@@ -277,10 +287,10 @@ pub fn list_versions() -> Result<()> {
                     flags.push("installed");
                     installed_versions.remove(position);
                 }
-
-                if current_version().is_ok() && current_version().unwrap() == v.clone() {
+                if current_version().map(|cv| &cv == v).unwrap_or_default() {
                     flags.push("current");
                 }
+
                 if flags.is_empty() {
                     println!();
                 } else {
@@ -294,90 +304,80 @@ pub fn list_versions() -> Result<()> {
     Ok(())
 }
 
-pub fn get_latest_version() -> semver::Version {
-    let available_versions = fetch_versions();
-    available_versions.first().unwrap().clone()
+pub fn get_latest_version() -> Result<Version> {
+    fetch_versions()?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("First version not found"))
 }
 
 /// Read the installed anchor-cli versions by reading the binaries in the AVM_HOME/bin directory.
-pub fn read_installed_versions() -> Vec<semver::Version> {
-    let home_dir = AVM_HOME.to_path_buf();
-    let mut versions = vec![];
-    for file in fs::read_dir(home_dir.join("bin")).unwrap() {
-        let file_name = file.unwrap().file_name();
-        // Match only things that look like anchor-*
-        if file_name.to_str().unwrap().starts_with("anchor-") {
-            let version = file_name
-                .to_str()
-                .unwrap()
-                .trim_start_matches("anchor-")
-                .parse::<semver::Version>()
-                .unwrap();
-            versions.push(version);
-        }
-    }
+pub fn read_installed_versions() -> Result<Vec<Version>> {
+    const PREFIX: &str = "anchor-";
+    let versions = fs::read_dir(get_bin_dir_path())?
+        .filter_map(|entry_result| entry_result.ok())
+        .filter_map(|entry| entry.file_name().to_str().map(|f| f.to_owned()))
+        .filter(|file_name| file_name.starts_with(PREFIX))
+        .filter_map(|file_name| file_name.trim_start_matches(PREFIX).parse::<Version>().ok())
+        .collect();
 
-    versions
+    Ok(versions)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::*;
     use semver::Version;
-    use std::env;
     use std::fs;
     use std::io::Write;
-
-    #[test]
-    fn test_read_anchorversion() {
-        ensure_paths();
-        let mut dir = env::current_dir().unwrap();
-        dir.push(".anchorversion");
-        let mut file_created = fs::File::create(&dir).unwrap();
-        let test_version = "0.26.0";
-        file_created.write_all(test_version.as_bytes()).unwrap();
-
-        let version = read_anchorversion_file().unwrap();
-
-        assert_eq!(version.to_string(), test_version);
-
-        fs::remove_file(&dir).unwrap();
-    }
+    use std::path::Path;
 
     #[test]
     fn test_ensure_paths() {
         ensure_paths();
         assert!(AVM_HOME.exists());
-        let bin_dir = AVM_HOME.join("bin");
+        let bin_dir = get_bin_dir_path();
         assert!(bin_dir.exists());
-        let current_version_file = AVM_HOME.join(".version");
+        let current_version_file = current_version_file_path();
         assert!(current_version_file.exists());
     }
 
     #[test]
-    fn test_current_version_file_path() {
-        ensure_paths();
-        assert!(current_version_file_path().exists());
+    fn test_version_binary_path() {
+        assert_eq!(
+            version_binary_path(&Version::parse("0.18.2").unwrap()),
+            get_bin_dir_path().join("anchor-0.18.2")
+        );
     }
 
     #[test]
-    fn test_version_binary_path() {
-        assert!(
-            version_binary_path(&Version::parse("0.18.2").unwrap())
-                == AVM_HOME.join("bin/anchor-0.18.2")
-        );
+    fn test_read_anchorversion() -> Result<()> {
+        ensure_paths();
+
+        let anchorversion_path = Path::new(".anchorversion");
+        let test_version = "0.26.0";
+        fs::write(anchorversion_path, test_version)?;
+
+        let version = read_anchorversion_file()?;
+        assert_eq!(version.to_string(), test_version);
+
+        fs::remove_file(anchorversion_path)?;
+
+        Ok(())
     }
 
     #[test]
     fn test_current_version() {
         ensure_paths();
-        let mut current_version_file =
-            fs::File::create(current_version_file_path().as_path()).unwrap();
+        let mut current_version_file = fs::File::create(current_version_file_path()).unwrap();
         current_version_file.write_all("0.18.2".as_bytes()).unwrap();
         // Sync the file to disk before the read in current_version() to
         // mitigate the read not seeing the written version bytes.
         current_version_file.sync_all().unwrap();
-        assert!(current_version().unwrap() == Version::parse("0.18.2").unwrap());
+        assert_eq!(
+            current_version().unwrap(),
+            Version::parse("0.18.2").unwrap()
+        );
     }
 
     #[test]
@@ -391,8 +391,7 @@ mod tests {
     fn test_uninstalled_in_use_version() {
         ensure_paths();
         let version = Version::parse("0.18.2").unwrap();
-        let mut current_version_file =
-            fs::File::create(current_version_file_path().as_path()).unwrap();
+        let mut current_version_file = fs::File::create(current_version_file_path()).unwrap();
         current_version_file.write_all("0.18.2".as_bytes()).unwrap();
         // Sync the file to disk before the read in current_version() to
         // mitigate the read not seeing the written version bytes.
@@ -406,18 +405,21 @@ mod tests {
     fn test_read_installed_versions() {
         ensure_paths();
         let version = Version::parse("0.18.2").unwrap();
+
         // Create a fake binary for anchor-0.18.2 in the bin directory
         fs::File::create(version_binary_path(&version)).unwrap();
         let expected = vec![version];
-        assert!(read_installed_versions() == expected);
+        assert_eq!(read_installed_versions().unwrap(), expected);
+
         // Should ignore this file because its not anchor- prefixed
         fs::File::create(AVM_HOME.join("bin").join("garbage").as_path()).unwrap();
-        assert!(read_installed_versions() == expected);
+        assert_eq!(read_installed_versions().unwrap(), expected);
     }
 
     #[test]
     fn test_get_anchor_version_from_commit() {
-        let version = get_anchor_version_from_commit("e1afcbf71e0f2e10fae14525934a6a68479167b9");
+        let version =
+            get_anchor_version_from_commit("e1afcbf71e0f2e10fae14525934a6a68479167b9").unwrap();
         assert_eq!(
             version.to_string(),
             "0.28.0-e1afcbf71e0f2e10fae14525934a6a68479167b9"

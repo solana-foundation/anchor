@@ -15,6 +15,7 @@ path = "src/anchor/main.rs"
 [dependencies]
 anyhow = "1.0.32"
 cfg-if = "1.0.0"
+cargo_toml = "0.15.3"
 clap = { version = "4.2.4", features = ["derive"] }
 dirs = "4.0.0"
 once_cell = "1.8.0"
@@ -22,4 +23,3 @@ reqwest = { version = "0.11.9", default-features = false, features = ["blocking"
 semver = "1.0.4"
 serde = { version = "1.0.136", features = ["derive"] }
 tempfile = "3.3.0"
-cargo_toml = "0.15.3"

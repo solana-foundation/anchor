@@ -33,6 +33,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `test.upgradeable`, `test.genesis.upgradeable` setting in anchor.toml to support testing upgradeable programs ([#2641](https://github.com/coral-xyz/anchor/pull/2642)).
 - cli, client, lang, spl: Update Solana toolchain and dependencies to `1.17.0`, `1.16` remains supported ([#2645](https://github.com/coral-xyz/anchor/pull/2645)).
 - spl: Add support for memo program ([#2661](https://github.com/coral-xyz/anchor/pull/2661)).
+- avm: Add `anchor-cli` installation from commit ([#2659](https://github.com/coral-xyz/anchor/pull/2659)).
 - cli: Add `toolchain` property in `Anchor.toml` to override Anchor and Solana versions ([#2649](https://github.com/coral-xyz/anchor/pull/2649)).
 
 ### Fixes
