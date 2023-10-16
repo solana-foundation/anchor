@@ -16,6 +16,104 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 
 Solana version: 1.17.0
 
+| Instruction                    | Stack Memory | -   |
+| ------------------------------ | ------------ | --- |
+| account_info1                  | 128          | -   |
+| account_info2                  | 128          | -   |
+| account_info4                  | 128          | -   |
+| account_info8                  | 128          | -   |
+| account_empty_init1            | 176          | -   |
+| account_empty_init2            | 208          | -   |
+| account_empty_init4            | 208          | -   |
+| account_empty_init8            | 240          | -   |
+| account_empty1                 | 128          | -   |
+| account_empty2                 | 128          | -   |
+| account_empty4                 | 128          | -   |
+| account_empty8                 | 128          | -   |
+| account_sized_init1            | 208          | -   |
+| account_sized_init2            | 256          | -   |
+| account_sized_init4            | 240          | -   |
+| account_sized_init8            | 304          | -   |
+| account_sized1                 | 128          | -   |
+| account_sized2                 | 128          | -   |
+| account_sized4                 | 128          | -   |
+| account_sized8                 | 128          | -   |
+| account_unsized_init1          | 224          | -   |
+| account_unsized_init2          | 296          | -   |
+| account_unsized_init4          | 304          | -   |
+| account_unsized_init8          | 432          | -   |
+| account_unsized1               | 128          | -   |
+| account_unsized2               | 144          | -   |
+| account_unsized4               | 128          | -   |
+| account_unsized8               | 128          | -   |
+| boxed_account_empty_init1      | 176          | -   |
+| boxed_account_empty_init2      | 208          | -   |
+| boxed_account_empty_init4      | 208          | -   |
+| boxed_account_empty_init8      | 240          | -   |
+| boxed_account_empty1           | 128          | -   |
+| boxed_account_empty2           | 128          | -   |
+| boxed_account_empty4           | 144          | -   |
+| boxed_account_empty8           | 144          | -   |
+| boxed_account_sized_init1      | 176          | -   |
+| boxed_account_sized_init2      | 208          | -   |
+| boxed_account_sized_init4      | 208          | -   |
+| boxed_account_sized_init8      | 240          | -   |
+| boxed_account_sized1           | 128          | -   |
+| boxed_account_sized2           | 128          | -   |
+| boxed_account_sized4           | 144          | -   |
+| boxed_account_sized8           | 144          | -   |
+| boxed_account_unsized_init1    | 176          | -   |
+| boxed_account_unsized_init2    | 208          | -   |
+| boxed_account_unsized_init4    | 208          | -   |
+| boxed_account_unsized_init8    | 240          | -   |
+| boxed_account_unsized1         | 128          | -   |
+| boxed_account_unsized2         | 144          | -   |
+| boxed_account_unsized4         | 128          | -   |
+| boxed_account_unsized8         | 128          | -   |
+| boxed_interface_account_mint1  | 128          | -   |
+| boxed_interface_account_mint2  | 128          | -   |
+| boxed_interface_account_mint4  | 144          | -   |
+| boxed_interface_account_mint8  | 144          | -   |
+| boxed_interface_account_token1 | 128          | -   |
+| boxed_interface_account_token2 | 128          | -   |
+| boxed_interface_account_token4 | 144          | -   |
+| boxed_interface_account_token8 | 144          | -   |
+| interface_account_mint1        | 128          | -   |
+| interface_account_mint2        | 128          | -   |
+| interface_account_mint4        | 128          | -   |
+| interface_account_mint8        | 128          | -   |
+| interface_account_token1       | 128          | -   |
+| interface_account_token2       | 128          | -   |
+| interface_account_token4       | 128          | -   |
+| interface1                     | 128          | -   |
+| interface2                     | 128          | -   |
+| interface4                     | 128          | -   |
+| interface8                     | 128          | -   |
+| program1                       | 128          | -   |
+| program2                       | 128          | -   |
+| program4                       | 128          | -   |
+| program8                       | 128          | -   |
+| signer1                        | 128          | -   |
+| signer2                        | 128          | -   |
+| signer4                        | 128          | -   |
+| signer8                        | 128          | -   |
+| system_account1                | 128          | -   |
+| system_account2                | 128          | -   |
+| system_account4                | 128          | -   |
+| system_account8                | 128          | -   |
+| unchecked_account1             | 128          | -   |
+| unchecked_account2             | 128          | -   |
+| unchecked_account4             | 128          | -   |
+| unchecked_account8             | 128          | -   |
+
+### Notable changes
+
+---
+
+## [0.29.0]
+
+Solana version: 1.17.0
+
 | Instruction                    | Stack Memory | +/-                    |
 | ------------------------------ | ------------ | ---------------------- |
 | account_info1                  | 128          | 🟢 **-200 (60.98%)**   |
@@ -209,6 +307,7 @@ Solana version: 1.16.0
 ### Notable changes
 
 - Upgrading Solana to `1.16`. The difference in stack memory usage between `0.27.0` and `0.28.0` is the direct result of upgrading Solana version(both build tools and crates) ([#2512](https://github.com/coral-xyz/anchor/pull/2512)).
+- Change all accounts to have a reference to `AccountInfo` instead of cloning ([#2656](https://github.com/coral-xyz/anchor/pull/2656)).
 
 ---
 

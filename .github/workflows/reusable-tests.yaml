@@ -336,33 +336,34 @@ jobs:
   #     - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
   #     - run: cd tests/misc && anchor test --skip-lint
 
-  test-anchor-init:
-    needs: setup-anchor-cli
-    name: Test Anchor Init
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup/
-      - uses: ./.github/actions/setup-ts/
-      - uses: ./.github/actions/setup-solana/
+  # TODO: Re-enable after releasing `0.29.0`.
+  # test-anchor-init:
+  #   needs: setup-anchor-cli
+  #   name: Test Anchor Init
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/setup/
+  #     - uses: ./.github/actions/setup-ts/
+  #     - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: Cache Cargo registry + index
-        id: cache-anchor
-        with:
-          path: ${{ env.CARGO_CACHE_PATH }}
-          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: Cache Cargo registry + index
+  #       id: cache-anchor
+  #       with:
+  #         path: ${{ env.CARGO_CACHE_PATH }}
+  #         key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: ${{ env.ANCHOR_BINARY_NAME }}
-          path: ~/.cargo/bin/
-      - run: chmod +x ~/.cargo/bin/anchor
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: ${{ env.ANCHOR_BINARY_NAME }}
+  #         path: ~/.cargo/bin/
+  #     - run: chmod +x ~/.cargo/bin/anchor
 
-      - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
-      - uses: ./.github/actions/git-diff/
+  #     - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
+  #     - uses: ./.github/actions/git-diff/
 
   test-programs:
     needs: setup-anchor-cli

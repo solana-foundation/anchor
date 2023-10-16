@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl"
-version = "0.28.0"
+version = "0.29.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 rust-version = "1.60"
 edition = "2021"
@@ -23,7 +23,7 @@ token = ["spl-token"]
 token_2022 = ["spl-token-2022"]
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.28.0", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.29.0", features = ["derive"] }
 borsh = { version = ">=0.9, <0.11", optional = true }
 mpl-token-metadata = { version = "3.1.0", optional = true }
 serum_dex = { git = "https://github.com/openbook-dex/program/", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }

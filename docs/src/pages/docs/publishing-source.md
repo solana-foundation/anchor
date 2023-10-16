@@ -34,7 +34,9 @@ have an `Anchor.toml` to define the build.
 An example `Anchor.toml` config looks as follows,
 
 ```toml
-anchor_version = "0.28.0"
+[toolchain]
+anchor_version = "0.29.0"
+solana_version = "1.17.0"
 
 [workspace]
 members = ["programs/multisig"]
@@ -52,7 +54,7 @@ multisig = "A9HAbnCwoD6f2NkZobKFf6buJoN9gUVVvX5PoUnDHS6u"
 
 Here there are four sections.
 
-1. `anchor_version` (optional) - sets the anchor docker image to use. By default, the builder will use the latest version of Anchor.
+1. `[toolchain]` (optional) - sets the Anchor and Solana version to use. By default, the builder will use the current versions.
 2. `[workspace]` (optional) - sets the paths--relative to the `Anchor.toml`--
    to all programs in the local
    workspace, i.e., the path to the `Cargo.toml` manifest associated with each
@@ -66,7 +68,7 @@ Here there are four sections.
 {% callout title="Note" %}
 When defining program in `[programs.mainnet]`, make sure the name provided
 matches the **lib** name for your program, which is defined
-by your program's Cargo.toml.
+by your program's `Cargo.toml`.
 {% /callout %}
 
 ### Examples

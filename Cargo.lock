@@ -118,7 +118,7 @@ checksum = "6b2d54853319fd101b8dd81de382bcbf3e03410a64d8928bbee85a3e7dcde483"
 
 [[package]]
 name = "anchor-attribute-access-control"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-account"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "bs58 0.5.0",
@@ -139,7 +139,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-constant"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-error"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-event"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-program"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-cli"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-lang",
  "anyhow",
@@ -229,7 +229,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-serde"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-syn",
  "borsh-derive-internal 0.10.3",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-space"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-spl"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.3",
@@ -297,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-syn"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anyhow",
  "bs58 0.5.0",
@@ -642,7 +642,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "avm"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "anyhow",
  "cargo_toml",

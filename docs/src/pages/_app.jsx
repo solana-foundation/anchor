@@ -18,6 +18,7 @@ const navigation = [
     title: 'Prologue',
     links: [
       { title: 'Release Notes', href: '/docs/release-notes' },
+      { title: 'CHANGELOG', href: '/docs/changelog' },
       { title: 'Contribution Guide', href: '/docs/contribution-guide' },
     ],
   },
