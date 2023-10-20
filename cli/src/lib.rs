@@ -942,7 +942,7 @@ fn new(
                 std::env::set_current_dir(parent)?;
 
                 let cluster = cfg.provider.cluster.clone();
-                let programs = cfg.programs.entry(cluster).or_insert(BTreeMap::new());
+                let programs = cfg.programs.entry(cluster).or_default();
                 if programs.contains_key(&name) {
                     return Err(anyhow!("Program already exists"));
                 }

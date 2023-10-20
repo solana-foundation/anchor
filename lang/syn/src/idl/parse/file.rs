@@ -137,7 +137,7 @@ pub fn parse(
         .map(|a| a.ident.to_string())
         .collect::<HashSet<_>>();
 
-    let error_name = error.map(|e| e.name).unwrap_or_else(|| "".to_string());
+    let error_name = error.map(|e| e.name).unwrap_or_default();
 
     // All types that aren't in the accounts section, are in the types section.
     for ty_def in ty_defs {
