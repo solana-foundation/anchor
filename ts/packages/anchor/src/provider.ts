@@ -295,7 +295,7 @@ export class AnchorProvider implements Provider {
 
     let result: RpcResponseAndContext<SimulatedTransactionResponse>;
     if (isVersionedTransaction(tx)) {
-      if (signers) {
+      if (signers && signers.length > 0) {
         tx.sign(signers);
         tx = await this.wallet.signTransaction(tx);
       }
@@ -307,7 +307,7 @@ export class AnchorProvider implements Provider {
       tx.feePayer = tx.feePayer || this.wallet.publicKey;
       tx.recentBlockhash = recentBlockhash;
 
-      if (signers) {
+      if (signers && signers.length > 0) {
         tx = await this.wallet.signTransaction(tx);
       }
       result = await simulateTransaction(

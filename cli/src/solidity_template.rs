@@ -3,7 +3,6 @@ use crate::{config::ProgramWorkspace, create_files};
 use anchor_syn::idl::types::Idl;
 use anyhow::Result;
 use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
-use solana_sdk::pubkey::Pubkey;
 use std::fmt::Write;
 use std::path::Path;
 
@@ -14,12 +13,6 @@ pub fn create_program(name: &str) -> Result<()> {
         solidity(name),
     )];
     create_files(&files)
-}
-
-pub fn default_program_id() -> Pubkey {
-    "F1ipperKF9EfD821ZbbYjS319LXYiBmjhzkkf5a26rC"
-        .parse()
-        .unwrap()
 }
 
 pub fn idl_ts(idl: &Idl) -> Result<String> {
@@ -128,7 +121,6 @@ module.exports = async function (provider) {
 pub fn solidity(name: &str) -> String {
     format!(
         r#"
-@program_id("{}")
 contract {} {{
     bool private value = true;
 
@@ -150,7 +142,6 @@ contract {} {{
     }}
 }}
 "#,
-        default_program_id(),
         name.to_snake_case(),
     )
 }
@@ -166,20 +157,30 @@ describe("{}", () => {{
   it("Is initialized!", async () => {{
     // Add your test here.
     const program = anchor.workspace.{};
-    const tx = await program.methods.initialize().rpc();
+    const dataAccount = anchor.web3.Keypair.generate();
+
+    const tx = await program.methods
+       .new()
+       .accounts({{ dataAccount: dataAccount.publicKey }})
+       .signers([dataAccount])
+       .rpc();
+
     console.log("Your transaction signature", tx);
 
-    const val1 = await program.methods.get()
+    const val1 = await program.methods
+      .get()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .view();
 
     console.log("state", val1);
 
-    await program.methods.flip()
+    await program.methods
+      .flip()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .rpc();
 
-    const val2 = await program.methods.get()
+    const val2 = await program.methods
+      .get()
       .accounts({{ dataAccount: dataAccount.publicKey }})
       .view();
 
@@ -312,7 +313,6 @@ describe("{}", () => {{
   anchor.setProvider(provider);
 
   const dataAccount = anchor.web3.Keypair.generate();
-  const wallet = provider.wallet;
 
   const program = anchor.workspace.{} as Program<{}>;
 

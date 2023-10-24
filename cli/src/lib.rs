@@ -807,11 +807,7 @@ fn init(
     }
 
     let mut localnet = BTreeMap::new();
-    let program_id = if solidity {
-        solidity_template::default_program_id()
-    } else {
-        rust_template::get_or_create_program_id(&rust_name)
-    };
+    let program_id = rust_template::get_or_create_program_id(&rust_name);
     localnet.insert(
         rust_name,
         ProgramDeployment {
@@ -947,16 +943,16 @@ fn new(
                     return Err(anyhow!("Program already exists"));
                 }
 
+                if solidity {
+                    solidity_template::create_program(&name)?;
+                } else {
+                    rust_template::create_program(&name, template)?;
+                }
+
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: if solidity {
-                            solidity_template::create_program(&name)?;
-                            solidity_template::default_program_id()
-                        } else {
-                            rust_template::create_program(&name, template)?;
-                            rust_template::get_or_create_program_id(&name)
-                        },
+                        address: rust_template::get_or_create_program_id(&name),
                         path: None,
                         idl: None,
                     },
