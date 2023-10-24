@@ -78,6 +78,10 @@ impl Hash {
         Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap())
     }
 
+    pub const fn new_from_array(hash_array: [u8; HASH_BYTES]) -> Self {
+        Self(hash_array)
+    }
+
     pub fn to_bytes(self) -> [u8; HASH_BYTES] {
         self.0
     }
