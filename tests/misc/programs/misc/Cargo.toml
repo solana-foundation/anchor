@@ -18,5 +18,5 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
 anchor-spl = { path = "../../../../spl" }
-spl-associated-token-account = "1.1.1"
-bytemuck = {version = "1.4.0", features = ["derive", "min_const_generics"]}
+spl-associated-token-account = { version = "1.1.1", features = ["no-entrypoint"] }
+bytemuck = { version = "1.4.0", features = ["derive", "min_const_generics"] }
