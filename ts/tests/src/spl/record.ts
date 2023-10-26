@@ -20,7 +20,7 @@ export async function recordTests() {
   });
   const kp = await loadKp();
 
-  const RECORD_DATA = new Uint8Array(8).fill(1);
+  const RECORD_DATA = Buffer.alloc(8).fill(1);
   const newAuthorityKp = new Keypair();
   let recordPk: PublicKey;
 

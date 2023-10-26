@@ -86,9 +86,9 @@ export async function featureProposalTests() {
   }
 
   async function fetchFeatureProposal() {
-    const featureProposal: { expired?: Buffer } =
-      await program.account.featureProposal.fetch(featureProposalPk);
-
+    const featureProposal = await program.account.featureProposal.fetch(
+      featureProposalPk
+    );
     if (!featureProposal.expired) {
       throw new Error("Feature should be expired.");
     }

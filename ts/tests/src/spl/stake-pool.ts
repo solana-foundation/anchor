@@ -454,7 +454,7 @@ export async function stakePoolTests() {
 
   async function setFee() {
     await program.methods
-      .setFee({ solReferral: 5 })
+      .setFee({ solReferral: [5] })
       .accounts({
         stakePool: stakePoolPk,
         manager: kp.publicKey,
