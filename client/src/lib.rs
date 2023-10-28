@@ -324,12 +324,16 @@ fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {
+    use anchor_lang::__private::base64;
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine;
+
     // Log emitted from the current program.
     if let Some(log) = l
         .strip_prefix(PROGRAM_LOG)
         .or_else(|| l.strip_prefix(PROGRAM_DATA))
     {
-        let borsh_bytes = match anchor_lang::__private::base64::decode(log) {
+        let borsh_bytes = match STANDARD.decode(log) {
             Ok(borsh_bytes) => borsh_bytes,
             _ => {
                 #[cfg(feature = "debug")]
