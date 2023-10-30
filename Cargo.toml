@@ -19,3 +19,4 @@ exclude = [
     "tests/swap/deps/openbook-dex",
     "tests/cfo/deps/openbook-dex",
 ]
+resolver = "2"

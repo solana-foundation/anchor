@@ -149,6 +149,7 @@ const fn workspace_manifest() -> &'static str {
 members = [
     "programs/*"
 ]
+resolver = "2"
 
 [profile.release]
 overflow-checks = true

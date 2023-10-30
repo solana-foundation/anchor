@@ -7,3 +7,4 @@ exclude = [
     "deps/stake",
     "deps/swap"
 ]
+resolver = "2"

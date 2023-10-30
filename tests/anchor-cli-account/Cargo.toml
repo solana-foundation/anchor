@@ -5,3 +5,4 @@ overflow-checks = true
 members = [
     "programs/*"
 ]
+resolver = "2"

@@ -14,6 +14,9 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- syn: Add missing `new_from_array` method to `Hash` ([#2682](https://github.com/coral-xyz/anchor/pull/2682)).
+- cli: Switch to Cargo feature resolver(`resolver = "2"`) ([#2676](https://github.com/coral-xyz/anchor/pull/2676)).
+
 ### Breaking
 
 ## [0.29.0] - 2023-10-16
