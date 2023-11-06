@@ -14,7 +14,7 @@ no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
 default = []
-test-bpf = []
+test-sbf = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }

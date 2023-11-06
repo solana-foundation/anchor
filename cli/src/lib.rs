@@ -122,14 +122,14 @@ pub enum Command {
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-bpf` command
+        /// Arguments to pass to the underlying `cargo build-sbf` command
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
         /// Suppress doc strings in IDL output
         #[clap(long)]
         no_docs: bool,
         /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "bpf")]
+        #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
     },
     /// Expands macros (wrapper around cargo expand)
@@ -166,12 +166,12 @@ pub enum Command {
         #[clap(value_enum, short, long, default_value = "none")]
         bootstrap: BootstrapMode,
         /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "bpf")]
+        #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
         /// Flag to skip building the program in the workspace,
@@ -199,7 +199,7 @@ pub enum Command {
         #[clap(long)]
         skip_build: bool,
         /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "bpf")]
+        #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
         /// Flag to keep the local validator running after tests
         /// to be able to check the transactions.
@@ -212,7 +212,7 @@ pub enum Command {
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
     },
@@ -289,7 +289,7 @@ pub enum Command {
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
         /// Flag to skip building the program in the workspace,
@@ -297,7 +297,7 @@ pub enum Command {
         #[clap(long)]
         skip_build: bool,
         /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "bpf")]
+        #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
     },
     /// Keypair commands.
@@ -320,12 +320,12 @@ pub enum Command {
         #[clap(long)]
         skip_lint: bool,
         /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "bpf")]
+        #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
         env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-bpf` command.
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
     },
