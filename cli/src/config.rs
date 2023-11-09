@@ -3,6 +3,7 @@ use anchor_client::Cluster;
 use anchor_syn::idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
+use dirs::home_dir;
 use heck::ToSnakeCase;
 use reqwest::Url;
 use serde::de::{self, MapAccess, Visitor};
@@ -593,7 +594,7 @@ impl ToString for Config {
             registry: Some(self.registry.clone()),
             provider: Provider {
                 cluster: self.provider.cluster.clone(),
-                wallet: self.provider.wallet.to_string(),
+                wallet: self.provider.wallet.stringify_with_tilde(),
             },
             test: self.test_validator.clone().map(Into::into),
             scripts: match self.scripts.is_empty() {
@@ -1329,7 +1330,42 @@ impl AnchorPackage {
     }
 }
 
-crate::home_path!(WalletPath, ".config/solana/id.json");
+#[macro_export]
+macro_rules! home_path {
+    ($my_struct:ident, $path:literal) => {
+        #[derive(Clone, Debug)]
+        pub struct $my_struct(String);
+
+        impl Default for $my_struct {
+            fn default() -> Self {
+                $my_struct(home_dir().unwrap().join($path).display().to_string())
+            }
+        }
+
+        impl $my_struct {
+            fn stringify_with_tilde(&self) -> String {
+                self.0
+                    .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
+            }
+        }
+
+        impl FromStr for $my_struct {
+            type Err = anyhow::Error;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self(s.to_owned()))
+            }
+        }
+
+        impl ToString for $my_struct {
+            fn to_string(&self) -> String {
+                self.0.clone()
+            }
+        }
+    };
+}
+
+home_path!(WalletPath, ".config/solana/id.json");
 
 #[cfg(test)]
 mod tests {

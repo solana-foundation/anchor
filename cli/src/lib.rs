@@ -51,7 +51,6 @@ use std::string::ToString;
 use tar::Archive;
 
 pub mod config;
-mod path;
 pub mod rust_template;
 pub mod solidity_template;
 
