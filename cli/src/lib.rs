@@ -88,6 +88,9 @@ pub enum Command {
         /// Rust program template to use
         #[clap(value_enum, short, long, default_value = "single")]
         template: ProgramTemplate,
+        /// Initialize even if there are files
+        #[clap(long, action)]
+        force: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -225,6 +228,9 @@ pub enum Command {
         /// Rust program template to use
         #[clap(value_enum, short, long, default_value = "single")]
         template: ProgramTemplate,
+        /// Create new program even if there is already one
+        #[clap(long, action)]
+        force: bool,
     },
     /// Commands for interacting with interface definitions.
     Idl {
@@ -592,6 +598,7 @@ fn process_command(opts: Opts) -> Result<()> {
             no_git,
             jest,
             template,
+            force,
         } => init(
             &opts.cfg_override,
             name,
@@ -600,12 +607,14 @@ fn process_command(opts: Opts) -> Result<()> {
             no_git,
             jest,
             template,
+            force,
         ),
         Command::New {
             solidity,
             name,
             template,
-        } => new(&opts.cfg_override, solidity, name, template),
+            force,
+        } => new(&opts.cfg_override, solidity, name, template, force),
         Command::Build {
             idl,
             idl_ts,
@@ -745,6 +754,7 @@ fn process_command(opts: Opts) -> Result<()> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn init(
     cfg_override: &ConfigOverride,
     name: String,
@@ -753,8 +763,9 @@ fn init(
     no_git: bool,
     jest: bool,
     template: ProgramTemplate,
+    force: bool,
 ) -> Result<()> {
-    if Config::discover(cfg_override)?.is_some() {
+    if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
 
@@ -778,9 +789,13 @@ fn init(
         ));
     }
 
-    fs::create_dir(&project_name)?;
+    if force {
+        fs::create_dir_all(&project_name)?;
+    } else {
+        fs::create_dir(&project_name)?;
+    }
     std::env::set_current_dir(&project_name)?;
-    fs::create_dir("app")?;
+    fs::create_dir_all("app")?;
 
     let mut cfg = Config::default();
     if jest {
@@ -825,6 +840,15 @@ fn init(
     // Initialize .prettierignore file
     fs::write(".prettierignore", rust_template::prettier_ignore())?;
 
+    // Remove the default program if `--force` is passed
+    if force {
+        fs::remove_dir_all(
+            std::env::current_dir()?
+                .join(if solidity { "solidity" } else { "programs" })
+                .join(&project_name),
+        )?;
+    }
+
     // Build the program.
     if solidity {
         solidity_template::create_program(&project_name)?;
@@ -833,9 +857,9 @@ fn init(
     }
 
     // Build the test suite.
-    fs::create_dir("tests")?;
+    fs::create_dir_all("tests")?;
     // Build the migrations directory.
-    fs::create_dir("migrations")?;
+    fs::create_dir_all("migrations")?;
 
     if javascript {
         // Build javascript config
@@ -927,6 +951,7 @@ fn new(
     solidity: bool,
     name: String,
     template: ProgramTemplate,
+    force: bool,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         match cfg.path().parent() {
@@ -939,7 +964,16 @@ fn new(
                 let cluster = cfg.provider.cluster.clone();
                 let programs = cfg.programs.entry(cluster).or_default();
                 if programs.contains_key(&name) {
-                    return Err(anyhow!("Program already exists"));
+                    if !force {
+                        return Err(anyhow!("Program already exists"));
+                    }
+
+                    // Delete all files within the program folder
+                    fs::remove_dir_all(
+                        std::env::current_dir()?
+                            .join(if solidity { "solidity" } else { "programs" })
+                            .join(&name),
+                    )?;
                 }
 
                 if solidity {
@@ -4416,6 +4450,7 @@ mod tests {
             false,
             false,
             ProgramTemplate::default(),
+            false,
         )
         .unwrap();
     }
@@ -4434,6 +4469,7 @@ mod tests {
             false,
             false,
             ProgramTemplate::default(),
+            false,
         )
         .unwrap();
     }
@@ -4452,6 +4488,7 @@ mod tests {
             false,
             false,
             ProgramTemplate::default(),
+            false,
         )
         .unwrap();
     }
