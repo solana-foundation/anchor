@@ -12,7 +12,6 @@ use anchor_syn::idl::types::{
 };
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use config::ToolchainConfig;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
@@ -45,7 +44,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Stdio};
+use std::process::{Child, ExitStatus, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
 use tar::Archive;
@@ -470,18 +469,21 @@ pub enum ClusterCommand {
 }
 
 pub fn entry(opts: Opts) -> Result<()> {
-    let toolchain_config = override_toolchain(&opts.cfg_override)?;
+    let restore_cbs = override_toolchain(&opts.cfg_override)?;
     let result = process_command(opts);
-    restore_toolchain(&toolchain_config)?;
+    restore_toolchain(restore_cbs)?;
 
     result
 }
 
+/// Functions to restore toolchain entries
+type RestoreToolchainCallbacks = Vec<Box<dyn FnOnce() -> Result<()>>>;
+
 /// Override the toolchain from `Anchor.toml`.
 ///
 /// Returns the previous versions to restore back to.
-fn override_toolchain(cfg_override: &ConfigOverride) -> Result<ToolchainConfig> {
-    let mut previous_versions = ToolchainConfig::default();
+fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainCallbacks> {
+    let mut restore_cbs: RestoreToolchainCallbacks = vec![];
 
     let cfg = Config::discover(cfg_override)?;
     if let Some(cfg) = cfg {
@@ -509,21 +511,29 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<ToolchainConfig> 
                 // We are overriding with `solana-install` command instead of using the binaries
                 // from `~/.local/share/solana/install/releases` because we use multiple Solana
                 // binaries in various commands.
-                let exit_status = std::process::Command::new("solana-install")
-                    .arg("init")
-                    .arg(solana_version)
-                    .stderr(Stdio::null())
-                    .stdout(Stdio::null())
-                    .spawn()?
-                    .wait()?;
+                fn override_solana_version(version: String) -> std::io::Result<ExitStatus> {
+                    std::process::Command::new("solana-install")
+                        .arg("init")
+                        .arg(&version)
+                        .stderr(Stdio::null())
+                        .stdout(Stdio::null())
+                        .spawn()?
+                        .wait()
+                }
 
-                if !exit_status.success() {
-                    println!(
-                        "Failed to override `solana` version to {solana_version}, \
-                    using {current_version} instead"
-                    );
-                } else {
-                    previous_versions.solana_version = Some(current_version);
+                match override_solana_version(solana_version.to_owned()) {
+                    Ok(_) => restore_cbs.push(Box::new(|| {
+                        match override_solana_version(current_version)?.success() {
+                            true => Ok(()),
+                            false => Err(anyhow!("Failed to restore `solana` version")),
+                        }
+                    })),
+                    Err(_) => {
+                        eprintln!(
+                            "Failed to override `solana` version to {solana_version}, \
+                        using {current_version} instead"
+                        );
+                    }
                 }
             }
         }
@@ -548,14 +558,13 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<ToolchainConfig> 
                         .arg(anchor_version)
                         .spawn()?
                         .wait()?;
-
                     if !exit_status.success() {
                         println!(
                             "Failed to install `anchor` {anchor_version}, \
                             using {current_version} instead"
                         );
 
-                        return Ok(previous_versions);
+                        return Ok(restore_cbs);
                     }
                 }
 
@@ -565,25 +574,21 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<ToolchainConfig> 
                     .wait()?
                     .code()
                     .unwrap_or(1);
-                restore_toolchain(&previous_versions)?;
+                restore_toolchain(restore_cbs)?;
                 std::process::exit(exit_code);
             }
         }
     }
 
-    Ok(previous_versions)
+    Ok(restore_cbs)
 }
 
 /// Restore toolchain to how it was before the command was run.
-fn restore_toolchain(toolchain_config: &ToolchainConfig) -> Result<()> {
-    if let Some(solana_version) = &toolchain_config.solana_version {
-        std::process::Command::new("solana-install")
-            .arg("init")
-            .arg(solana_version)
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
-            .spawn()?
-            .wait()?;
+fn restore_toolchain(restore_cbs: RestoreToolchainCallbacks) -> Result<()> {
+    for restore_toolchain in restore_cbs {
+        if let Err(e) = restore_toolchain() {
+            eprintln!("Toolchain error: {e}");
+        }
     }
 
     Ok(())
