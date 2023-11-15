@@ -40,4 +40,8 @@ describe("typescript", () => {
 
     await tx.rpc();
   });
+
+  it("Can use relations derivation with seed constant", async () => {
+    await program.methods.testSeedConstant().accounts({}).rpc();
+  });
 });

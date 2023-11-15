@@ -5,7 +5,7 @@ use crate::ConstraintSeedsGroup;
 use crate::{AccountsStruct, Field};
 use std::collections::HashMap;
 use std::str::FromStr;
-use syn::{Expr, ExprLit, Lit};
+use syn::{Expr, ExprLit, Lit, Path};
 
 // Parses a seeds constraint, extracting the IdlSeed types.
 //
@@ -135,6 +135,7 @@ impl<'a> PdaParser<'a> {
                 let seed_path: SeedPath = SeedPath(lit_byte_str.token().to_string(), Vec::new());
                 self.parse_str_literal(&seed_path)
             }
+            Expr::Path(expr_path) => self.parse_const_path(&expr_path.path),
             // Unknown type. Please file an issue.
             _ => {
                 println!("WARNING: unexpected seed: {seed:?}");
@@ -149,6 +150,25 @@ impl<'a> PdaParser<'a> {
             ty: idl_ty,
             path: seed_path.path(),
         }))
+    }
+
+    fn parse_const_path(&self, path: &Path) -> Option<IdlSeed> {
+        let ident = &path.segments.first().unwrap().ident;
+
+        let const_item = self.ctx.consts().find(|c| c.ident == *ident).unwrap();
+        let idl_ty = IdlType::from_str(&parser::tts_to_string(&const_item.ty)).ok()?;
+
+        let idl_ty_value = parser::tts_to_string(&const_item.expr);
+        let idl_ty_value: String = str_lit_to_array(&idl_ty, &idl_ty_value);
+
+        let seed_path: SeedPath = SeedPath(idl_ty_value, Vec::new());
+
+        if self.is_str_literal(&seed_path) {
+            self.parse_str_literal(&seed_path)
+        } else {
+            println!("WARNING: unexpected constant path value: {seed_path:?}");
+            None
+        }
     }
 
     fn parse_const(&self, seed_path: &SeedPath) -> Option<IdlSeed> {
