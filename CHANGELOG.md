@@ -21,6 +21,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix using user specific path for `provider.wallet` in `Anchor.toml` ([#2696](https://github.com/coral-xyz/anchor/pull/2696)).
 - syn: Fix IDL constant seeds parsing ([#2699](https://github.com/coral-xyz/anchor/pull/2699)).
 - cli: Display errors if toolchain override restoration fails ([#2700](https://github.com/coral-xyz/anchor/pull/2700)).
+- cli: Fix commit based `anchor_version` override ([#2704](https://github.com/coral-xyz/anchor/pull/2704)).
 
 ### Breaking
 

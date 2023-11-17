@@ -488,7 +488,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
     let cfg = Config::discover(cfg_override)?;
     if let Some(cfg) = cfg {
         fn get_current_version(cmd_name: &str) -> Result<String> {
-            let output: std::process::Output = std::process::Command::new(cmd_name)
+            let output = std::process::Command::new(cmd_name)
                 .arg("--version")
                 .output()?;
             let output_version = std::str::from_utf8(&output.stdout)?;
@@ -540,16 +540,31 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
 
         // Anchor version override should be handled last
         if let Some(anchor_version) = &cfg.toolchain.anchor_version {
-            let current_version = VERSION;
-            if anchor_version != current_version {
+            // Anchor binary name prefix(applies to binaries that are installed via `avm`)
+            const ANCHOR_BINARY_PREFIX: &str = "anchor-";
+
+            // Get the current version from the executing binary name if possible because commit
+            // based toolchain overrides do not have version information.
+            let current_version = std::env::args()
+                .next()
+                .expect("First arg should exist")
+                .parse::<PathBuf>()?
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("File name should be valid Unicode")
+                .split_once(ANCHOR_BINARY_PREFIX)
+                .map(|(_, version)| version)
+                .unwrap_or(VERSION)
+                .to_owned();
+            if anchor_version != &current_version {
                 let binary_path = home_dir()
                     .unwrap()
                     .join(".avm")
                     .join("bin")
-                    .join(format!("anchor-{anchor_version}"));
+                    .join(format!("{ANCHOR_BINARY_PREFIX}{anchor_version}"));
 
                 if !binary_path.exists() {
-                    println!(
+                    eprintln!(
                         "`anchor` {anchor_version} is not installed with `avm`. Installing...\n"
                     );
 
@@ -559,7 +574,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         .spawn()?
                         .wait()?;
                     if !exit_status.success() {
-                        println!(
+                        eprintln!(
                             "Failed to install `anchor` {anchor_version}, \
                             using {current_version} instead"
                         );
