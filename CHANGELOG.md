@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - cli: Allow force `init` and `new` ([#2698](https://github.com/coral-xyz/anchor/pull/2698)).
+- cli: Add verifiable option when `deploy` ([#2705](https://github.com/coral-xyz/anchor/pull/2705)).
 
 ### Fixes
 

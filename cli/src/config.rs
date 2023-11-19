@@ -1257,10 +1257,16 @@ impl Program {
         Ok(WithPath::new(file, path))
     }
 
-    pub fn binary_path(&self) -> PathBuf {
+    pub fn binary_path(&self, verifiable: bool) -> PathBuf {
+        let path = if verifiable {
+            format!("target/verifiable/{}.so", self.lib_name)
+        } else {
+            format!("target/deploy/{}.so", self.lib_name)
+        };
+
         std::env::current_dir()
             .expect("Must have current dir")
-            .join(format!("target/deploy/{}.so", self.lib_name))
+            .join(path)
     }
 }
 
