@@ -26,6 +26,7 @@ const navigation = [
     title: 'Getting Started',
     links: [
       { title: 'Introduction', href: '/' },
+      { title: 'Quickstart', href: '/docs/solana-playground' },
       { title: 'Installation', href: '/docs/installation' },
       { title: 'Hello World', href: '/docs/hello-world' },
       { title: 'Intro to Solana', href: '/docs/intro-to-solana' },
@@ -67,6 +68,8 @@ const navigation = [
   {
     title: 'References',
     links: [
+      { title: 'Account Constraints', href: '/docs/account-constraints' },
+      { title: 'Account Types', href: '/docs/account-types' },
       { title: 'Anchor.toml', href: '/docs/manifest' },
       { title: 'CLI', href: '/docs/cli' },
       { title: 'AVM', href: '/docs/avm' },
