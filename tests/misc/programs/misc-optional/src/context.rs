@@ -143,18 +143,6 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitializeSkipRentExempt<'info> {
-    #[account(zero, rent_exempt = skip)]
-    pub data: Option<Account<'info, Data>>,
-}
-
-#[derive(Accounts)]
-pub struct InitializeNoRentExempt<'info> {
-    /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
-}
-
-#[derive(Accounts)]
 pub struct TestOwner<'info> {
     #[account(owner = *misc.key)]
     /// CHECK:
@@ -477,31 +465,8 @@ pub struct TestMultidimensionalArrayConstSizes<'info> {
 }
 
 #[derive(Accounts)]
-pub struct NoRentExempt<'info> {
-    /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
-}
-
-#[derive(Accounts)]
-pub struct EnforceRentExempt<'info> {
-    #[account(rent_exempt = enforce)]
-    /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
-}
-
-#[derive(Accounts)]
 pub struct InitDecreaseLamports<'info> {
     #[account(init, payer = user, space = 1000)]
-    /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
-    #[account(mut)]
-    pub user: Option<Signer<'info>>,
-    pub system_program: Option<Program<'info, System>>,
-}
-
-#[derive(Accounts)]
-pub struct InitIfNeededChecksRentExemption<'info> {
-    #[account(init_if_needed, payer = user, space = 1000)]
     /// CHECK:
     pub data: Option<AccountInfo<'info>>,
     #[account(mut)]

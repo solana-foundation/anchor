@@ -22,14 +22,6 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn initialize_no_rent_exempt(_ctx: Context<InitializeNoRentExempt>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn initialize_skip_rent_exempt(_ctx: Context<InitializeSkipRentExempt>) -> Result<()> {
-        Ok(())
-    }
-
     pub fn test_owner(_ctx: Context<TestOwner>) -> Result<()> {
         Ok(())
     }
@@ -273,23 +265,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_no_rent_exempt(_ctx: Context<NoRentExempt>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn test_enforce_rent_exempt(_ctx: Context<EnforceRentExempt>) -> Result<()> {
-        Ok(())
-    }
-
     pub fn init_decrease_lamports(ctx: Context<InitDecreaseLamports>) -> Result<()> {
         **ctx.accounts.data.try_borrow_mut_lamports()? -= 1;
         **ctx.accounts.user.try_borrow_mut_lamports()? += 1;
-        Ok(())
-    }
-
-    pub fn init_if_needed_checks_rent_exemption(
-        _ctx: Context<InitIfNeededChecksRentExemption>,
-    ) -> Result<()> {
         Ok(())
     }
 
