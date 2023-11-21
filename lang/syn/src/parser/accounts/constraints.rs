@@ -436,19 +436,6 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         error: parse_optional_custom_error(&stream)?,
                     },
                 )),
-                "rent_exempt" => ConstraintToken::RentExempt(Context::new(
-                    span,
-                    match stream.parse::<Ident>()?.to_string().as_str() {
-                        "skip" => ConstraintRentExempt::Skip,
-                        "enforce" => ConstraintRentExempt::Enforce,
-                        _ => {
-                            return Err(ParseError::new(
-                                span,
-                                "rent_exempt must be either skip or enforce",
-                            ))
-                        }
-                    },
-                )),
                 "payer" => ConstraintToken::Payer(Context::new(
                     span,
                     ConstraintPayer {
@@ -508,7 +495,6 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub has_one: Vec<Context<ConstraintHasOne>>,
     pub raw: Vec<Context<ConstraintRaw>>,
     pub owner: Option<Context<ConstraintOwner>>,
-    pub rent_exempt: Option<Context<ConstraintRentExempt>>,
     pub seeds: Option<Context<ConstraintSeeds>>,
     pub executable: Option<Context<ConstraintExecutable>>,
     pub payer: Option<Context<ConstraintPayer>>,
@@ -556,7 +542,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one: Vec::new(),
             raw: Vec::new(),
             owner: None,
-            rent_exempt: None,
             seeds: None,
             executable: None,
             payer: None,
@@ -616,11 +601,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .mutable
                     .replace(Context::new(i.span(), ConstraintMut { error: None })),
             };
-            // Rent exempt if not explicitly skipped.
-            if self.rent_exempt.is_none() {
-                self.rent_exempt
-                    .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
-            }
             if self.payer.is_none() {
                 return Err(ParseError::new(
                     i.span(),
@@ -712,11 +692,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .mutable
                     .replace(Context::new(z.span(), ConstraintMut { error: None })),
             };
-            // Rent exempt if not explicitly skipped.
-            if self.rent_exempt.is_none() {
-                self.rent_exempt
-                    .replace(Context::new(z.span(), ConstraintRentExempt::Enforce));
-            }
         }
 
         // Seeds.
@@ -768,7 +743,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one,
             raw,
             owner,
-            rent_exempt,
             seeds,
             executable,
             payer,
@@ -1023,7 +997,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one: into_inner_vec!(has_one),
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
-            rent_exempt: into_inner!(rent_exempt),
             executable: into_inner!(executable),
             close: into_inner!(close),
             address: into_inner!(address),
@@ -1043,7 +1016,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::HasOne(c) => self.add_has_one(c),
             ConstraintToken::Raw(c) => self.add_raw(c),
             ConstraintToken::Owner(c) => self.add_owner(c),
-            ConstraintToken::RentExempt(c) => self.add_rent_exempt(c),
             ConstraintToken::Seeds(c) => self.add_seeds(c),
             ConstraintToken::Executable(c) => self.add_executable(c),
             ConstraintToken::Payer(c) => self.add_payer(c),
@@ -1478,14 +1450,6 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "owner already provided"));
         }
         self.owner.replace(c);
-        Ok(())
-    }
-
-    fn add_rent_exempt(&mut self, c: Context<ConstraintRentExempt>) -> ParseResult<()> {
-        if self.rent_exempt.is_some() {
-            return Err(ParseError::new(c.span(), "rent already provided"));
-        }
-        self.rent_exempt.replace(c);
         Ok(())
     }
 

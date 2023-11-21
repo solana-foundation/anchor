@@ -66,12 +66,10 @@ pub enum ErrorCode {
     /// 2004 - An owner constraint was violated
     #[msg("An owner constraint was violated")]
     ConstraintOwner,
-    /// 2005 - A rent exemption constraint was violated
-    #[msg("A rent exemption constraint was violated")]
-    ConstraintRentExempt,
+    /// 2005(DELETED) - A rent exemption constraint was violated
     /// 2006 - A seeds constraint was violated
     #[msg("A seeds constraint was violated")]
-    ConstraintSeeds,
+    ConstraintSeeds = 2006,
     /// 2007 - An executable constraint was violated
     #[msg("An executable constraint was violated")]
     ConstraintExecutable,
