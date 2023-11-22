@@ -249,6 +249,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
+        /// Arguments to pass to the underlying `solana program deploy` command.
+        #[clap(required = false, last = true)]
+        solana_args: Vec<String>,
     },
     /// Runs the deploy migration script.
     Migrate,
@@ -695,11 +698,13 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
+            solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
+            solana_args,
         ),
         Command::Expand {
             program_name,
@@ -3051,7 +3056,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false)?;
+            deploy(cfg_override, None, None, false, vec![])?;
         }
         let mut is_first_suite = true;
         if cfg.scripts.get("test").is_some() {
@@ -3585,6 +3590,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
+    solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
     with_workspace(cfg_override, |cfg| {
@@ -3625,6 +3631,7 @@ fn deploy(
                 .arg("--program-id")
                 .arg(strip_workspace_prefix(program_keypair_filepath))
                 .arg(strip_workspace_prefix(binary_path))
+                .args(&solana_args)
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()
