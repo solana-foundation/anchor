@@ -320,7 +320,7 @@ impl<T> Iterator for ProgramAccountsIterator<T> {
     }
 }
 
-fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
+pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {
@@ -364,7 +364,7 @@ fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     }
 }
 
-fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
+pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
     if log.starts_with(&format!("Program {this_program_str} log:")) {
         (Some(this_program_str.to_string()), false)
     } else if log.contains("invoke") {
@@ -379,7 +379,7 @@ fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool
     }
 }
 
-struct Execution {
+pub struct Execution {
     stack: Vec<String>,
 }
 
