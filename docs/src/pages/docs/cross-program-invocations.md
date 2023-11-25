@@ -61,7 +61,7 @@ pub struct Data {
 
 There's nothing special happening here. It's a pretty simple program! The interesting part is how it interacts with the next program we are going to create.
 
-Run
+Still inside the project, initialize a new `puppet-master` program using,
 
 ```shell
 anchor new puppet-master
