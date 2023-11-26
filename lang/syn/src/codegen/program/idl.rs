@@ -226,7 +226,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                         accounts.system_program.to_account_info(),
                         anchor_lang::system_program::Transfer {
                             from: accounts.authority.to_account_info(),
-                            to: accounts.idl.to_account_info().clone(),
+                            to: accounts.idl.to_account_info(),
                         },
                     ),
                     new_rent_minimum

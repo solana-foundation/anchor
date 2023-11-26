@@ -1248,7 +1248,7 @@ impl<'a, 'b, 'c, 'info> From<&mut DepositLocked<'info>>
         let cpi_accounts = Transfer {
             from: accounts.vesting_vault.clone(),
             to: accounts.member_vault.to_account_info(),
-            authority: accounts.depositor_authority.to_account_info().clone(),
+            authority: accounts.depositor_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.clone();
         CpiContext::new(cpi_program, cpi_accounts)

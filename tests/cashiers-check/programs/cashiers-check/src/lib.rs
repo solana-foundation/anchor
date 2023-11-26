@@ -22,8 +22,8 @@ pub mod cashiers_check {
     ) -> Result<()> {
         // Transfer funds to the check.
         let cpi_accounts = Transfer {
-            from: ctx.accounts.from.to_account_info().clone(),
-            to: ctx.accounts.vault.to_account_info().clone(),
+            from: ctx.accounts.from.to_account_info(),
+            to: ctx.accounts.vault.to_account_info(),
             authority: ctx.accounts.owner.clone(),
         };
         let cpi_program = ctx.accounts.token_program.clone();
@@ -50,8 +50,8 @@ pub mod cashiers_check {
         ];
         let signer = &[&seeds[..]];
         let cpi_accounts = Transfer {
-            from: ctx.accounts.vault.to_account_info().clone(),
-            to: ctx.accounts.to.to_account_info().clone(),
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.to.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
         let cpi_program = ctx.accounts.token_program.clone();
@@ -70,8 +70,8 @@ pub mod cashiers_check {
         ];
         let signer = &[&seeds[..]];
         let cpi_accounts = Transfer {
-            from: ctx.accounts.vault.to_account_info().clone(),
-            to: ctx.accounts.from.to_account_info().clone(),
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.from.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
         let cpi_program = ctx.accounts.token_program.clone();
