@@ -11,6 +11,7 @@ use anchor_syn::idl::types::{
     IdlTypeDefinitionTy,
 };
 use anyhow::{anyhow, Context, Result};
+use checks::check_overflow;
 use clap::Parser;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
@@ -49,6 +50,7 @@ use std::str::FromStr;
 use std::string::ToString;
 use tar::Archive;
 
+mod checks;
 pub mod config;
 pub mod rust_template;
 pub mod solidity_template;
@@ -1183,15 +1185,13 @@ pub fn build(
     }
 
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let build_config = BuildConfig {
-        verifiable,
-        solana_version: solana_version.or_else(|| cfg.toolchain.solana_version.clone()),
-        docker_image: docker_image.unwrap_or_else(|| cfg.docker()),
-        bootstrap,
-    };
     let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
 
-    let cargo = Manifest::discover()?;
+    // Require overflow checks
+    let workspace_cargo_toml_path = cfg_parent.join("Cargo.toml");
+    if workspace_cargo_toml_path.exists() {
+        check_overflow(workspace_cargo_toml_path)?;
+    }
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
@@ -1205,10 +1205,17 @@ pub fn build(
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
-    if !&cfg.workspace.types.is_empty() {
+    if !cfg.workspace.types.is_empty() {
         fs::create_dir_all(cfg_parent.join(&cfg.workspace.types))?;
     };
 
+    let cargo = Manifest::discover()?;
+    let build_config = BuildConfig {
+        verifiable,
+        solana_version: solana_version.or_else(|| cfg.toolchain.solana_version.clone()),
+        docker_image: docker_image.unwrap_or_else(|| cfg.docker()),
+        bootstrap,
+    };
     match cargo {
         // No Cargo.toml so build the entire workspace.
         None => build_all(

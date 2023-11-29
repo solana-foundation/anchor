@@ -8,3 +8,6 @@ exclude = [
     "deps/swap"
 ]
 resolver = "2"
+
+[profile.release]
+overflow-checks = true

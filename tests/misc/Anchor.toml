@@ -7,6 +7,7 @@ init_if_needed = "BZoppwWi6jMnydnUBEJzotgEXHwLr3b3NramJgZtWeF2"
 lamports = "Lamports11111111111111111111111111111111111"
 misc = "3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh"
 misc_optional = "FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
+overflow_checks = "overf1owChecks11111111111111111111111111111"
 remaining_accounts = "RemainingAccounts11111111111111111111111111"
 
 [workspace]
