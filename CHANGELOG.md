@@ -29,6 +29,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - cli: Make `cargo build-sbf` the default build command ([#2694](https://github.com/coral-xyz/anchor/pull/2694)).
 - cli: Require explicit `overflow-checks` flag ([#2716](https://github.com/coral-xyz/anchor/pull/2716)).
+- ts: Remove `anchor-deprecated-state` feature ([#2717](https://github.com/coral-xyz/anchor/pull/2717)).
 
 ## [0.29.0] - 2023-10-16
 

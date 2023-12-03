@@ -2,10 +2,8 @@ const anchor = require("@coral-xyz/anchor");
 const serumCmn = require("@project-serum/common");
 const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
 const utils = require("./utils");
-const { assert, expect } = require("chai");
+const { assert } = require("chai");
 const nativeAssert = require("assert");
-
-anchor.utils.features.set("anchor-deprecated-state");
 
 describe("Lockup and Registry", () => {
   // Read the provider from the configured environmnet.
