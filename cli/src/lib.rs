@@ -45,7 +45,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Child, ExitStatus, Stdio};
+use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
 use tar::Archive;
@@ -519,7 +519,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                 // We are overriding with `solana-install` command instead of using the binaries
                 // from `~/.local/share/solana/install/releases` because we use multiple Solana
                 // binaries in various commands.
-                fn override_solana_version(version: String) -> std::io::Result<ExitStatus> {
+                fn override_solana_version(version: String) -> std::io::Result<bool> {
                     std::process::Command::new("solana-install")
                         .arg("init")
                         .arg(&version)
@@ -527,16 +527,17 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         .stdout(Stdio::null())
                         .spawn()?
                         .wait()
+                        .map(|status| status.success())
                 }
 
-                match override_solana_version(solana_version.to_owned()) {
-                    Ok(_) => restore_cbs.push(Box::new(|| {
-                        match override_solana_version(current_version)?.success() {
+                match override_solana_version(solana_version.to_owned())? {
+                    true => restore_cbs.push(Box::new(|| {
+                        match override_solana_version(current_version)? {
                             true => Ok(()),
                             false => Err(anyhow!("Failed to restore `solana` version")),
                         }
                     })),
-                    Err(_) => {
+                    false => {
                         eprintln!(
                             "Failed to override `solana` version to {solana_version}, \
                         using {current_version} instead"
