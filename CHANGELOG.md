@@ -25,6 +25,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Display errors if toolchain override restoration fails ([#2700](https://github.com/coral-xyz/anchor/pull/2700)).
 - cli: Fix commit based `anchor_version` override ([#2704](https://github.com/coral-xyz/anchor/pull/2704)).
 - spl: Fix compilation with `shmem` feature enabled ([#2722](https://github.com/coral-xyz/anchor/pull/2722)).
+- cli: Localhost default test validator address changes from `localhost` to `127.0.0.1`, NodeJS 17 IP resolution changes for IPv6 ([#2725](https://github.com/coral-xyz/anchor/pull/2725)).
 
 ### Breaking
 

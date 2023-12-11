@@ -3514,7 +3514,7 @@ fn test_validator_rpc_url(test_validator: &Option<TestValidator>) -> String {
             validator: Some(validator),
             ..
         }) => format!("http://{}:{}", validator.bind_address, validator.rpc_port),
-        _ => "http://localhost:8899".to_string(),
+        _ => "http://127.0.0.1:8899".to_string(),
     }
 }
 

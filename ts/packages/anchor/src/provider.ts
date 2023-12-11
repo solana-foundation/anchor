@@ -89,7 +89,7 @@ export class AnchorProvider implements Provider {
     }
     opts = opts ?? AnchorProvider.defaultOptions();
     const connection = new Connection(
-      url ?? "http://localhost:8899",
+      url ?? "http://127.0.0.1:8899",
       opts.preflightCommitment
     );
     const NodeWallet = require("./nodewallet.js").default;
