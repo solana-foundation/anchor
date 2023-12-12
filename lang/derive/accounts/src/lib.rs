@@ -386,12 +386,10 @@ use syn::parse_macro_input;
 ///                 <code>#[account(close = &lt;target_account&gt;)]</code>
 ///             </td>
 ///             <td>
-///                 Marks the account as closed at the end of the instruction’s execution
-///                 (sets its discriminator to the <code>CLOSED_ACCOUNT_DISCRIMINATOR</code>)
-///                 and sends its lamports to the specified account.<br>
-///                 Setting the discriminator to a special variant
-///                 makes account revival attacks (where a subsequent instruction
-///                 adds the rent exemption lamports again) impossible.<br>
+///                 Closes the account by:<br>
+///                 &nbsp;&nbsp;&nbsp;&nbsp;- Sending the lamports to the specified account<br>
+///                 &nbsp;&nbsp;&nbsp;&nbsp;- Assigning the owner to the System Program<br>
+///                 &nbsp;&nbsp;&nbsp;&nbsp;- Resetting the data of the account<br><br>
 ///                 Requires <code>mut</code> to exist on the account.
 ///                 <br><br>
 ///                 Example:

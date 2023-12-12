@@ -214,9 +214,11 @@ Minimal reference examples for Anchor account [constraints](https://docs.rs/anch
 
 - [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/close)
   [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/close)
-- Marks the account as closed at the end of the instruction’s execution (sets its discriminator to the CLOSED_ACCOUNT_DISCRIMINATOR) and sends its lamports to the specified account.
+- Closes the account by:
 
-  Setting the discriminator to a special variant makes account revival attacks (where a subsequent instruction adds the rent exemption lamports again) impossible.
+  - Sending the lamports to the specified account
+  - Assigning the owner to the System Program
+  - Resetting the data of the account
 
   Requires mut to exist on the account.
 

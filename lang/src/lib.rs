@@ -412,9 +412,6 @@ pub mod prelude {
 /// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
-    /// The discriminator anchor uses to mark an account as closed.
-    pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255, 255, 255, 255, 255, 255, 255, 255];
-
     pub use anchor_attribute_account::ZeroCopyAccessor;
 
     pub use anchor_attribute_event::EventIndex;
