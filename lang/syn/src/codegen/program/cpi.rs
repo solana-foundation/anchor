@@ -34,10 +34,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     ) -> #method_ret {
                         let ix = {
                             let ix = instruction::#ix_variant;
-                            let mut ix_data = AnchorSerialize::try_to_vec(&ix)
+                            let mut data = Vec::with_capacity(256);
+                            data.extend_from_slice(&#sighash_tts);
+                            AnchorSerialize::serialize(&ix, &mut data)
                                 .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
-                            let mut data = #sighash_tts.to_vec();
-                            data.append(&mut ix_data);
                             let accounts = ctx.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
                                 program_id: ctx.program.key(),
