@@ -112,7 +112,7 @@ pub mod misc_optional {
     pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> Result<()> {
         let mut acc = ctx.accounts.my_pda.as_ref().unwrap().load_init()?;
         acc.data = 9;
-        acc.bump = ctx.bumps.my_pda;
+        acc.bump = ctx.bumps.my_pda.unwrap();
         Ok(())
     }
 

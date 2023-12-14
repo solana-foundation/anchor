@@ -32,8 +32,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             match af {
                 AccountField::Field(f) => {
                     let constraints = constraints::linearize(&f.constraints);
-                    let bump_field = quote!(pub #ident: u8);
-                    let bump_default_field = quote!(#ident: u8::MAX);
+                    let (bump_field, bump_default_field) = if f.is_optional {
+                        (quote!(pub #ident: Option<u8>), quote!(#ident: None))
+                    } else {
+                        (quote!(pub #ident: u8), quote!(#ident: u8::MAX))
+                    };
 
                     for c in constraints.iter() {
                         // Verify this in super::constraints

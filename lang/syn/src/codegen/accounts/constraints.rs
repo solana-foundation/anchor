@@ -473,6 +473,11 @@ fn generate_constraint_init_group(
                     }
                 }
             };
+            let bump = if f.is_optional {
+                quote!(Some(__bump))
+            } else {
+                quote!(__bump)
+            };
 
             (
                 quote! {
@@ -480,7 +485,7 @@ fn generate_constraint_init_group(
                         &[#maybe_seeds_plus_comma],
                         __program_id,
                     );
-                    __bumps.#field = __bump;
+                    __bumps.#field = #bump;
                     #validate_pda
                 },
                 quote! {
@@ -871,6 +876,11 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
             quote! { #s, }
         });
+        let bump = if f.is_optional {
+            quote!(Some(__bump))
+        } else {
+            quote!(__bump)
+        };
 
         // Not init here, so do all the checks.
         let define_pda = match c.bump.as_ref() {
@@ -880,7 +890,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                     &[#maybe_seeds_plus_comma],
                     &#deriving_program_id,
                 );
-                __bumps.#name = __bump;
+                __bumps.#name = #bump;
             },
             // Bump target given. Use it.
             Some(b) => quote! {
