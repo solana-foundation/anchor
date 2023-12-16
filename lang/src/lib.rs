@@ -271,6 +271,16 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
         self.serialize(&mut data).unwrap();
         data
     }
+
+    /// Clears `data` and writes instruction data to it.
+    ///
+    /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
+    /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
+    fn write_to(&self, mut data: &mut Vec<u8>) {
+        data.clear();
+        data.extend_from_slice(&Self::DISCRIMINATOR);
+        self.serialize(&mut data).unwrap()
+    }
 }
 
 /// An event that can be emitted via a Solana log. See [`emit!`](crate::prelude::emit) for an example.
