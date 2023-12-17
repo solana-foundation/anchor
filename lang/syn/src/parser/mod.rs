@@ -3,6 +3,7 @@ pub mod context;
 pub mod docs;
 pub mod error;
 pub mod program;
+pub mod spl_interface;
 
 pub fn tts_to_string<T: quote::ToTokens>(item: T) -> String {
     let mut tts = proc_macro2::TokenStream::new();

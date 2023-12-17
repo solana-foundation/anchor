@@ -16,6 +16,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add verifiable option when `deploy` ([#2705](https://github.com/coral-xyz/anchor/pull/2705)).
 - cli: Add support for passing arguments to the underlying `solana program deploy` command with `anchor deploy` ([#2709](https://github.com/coral-xyz/anchor/pull/2709)).
 - lang: Add `InstructionData::write_to` implementation ([#2733](https://github.com/coral-xyz/anchor/pull/2733)).
+- lang: Add `#[interface(..)]` attribute for instruction discriminator overrides ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
+- ts: Add `.interface(..)` method for instruction discriminator overrides ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
 
 ### Fixes
 

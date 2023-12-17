@@ -50,6 +50,11 @@ export type Context<A extends Accounts = Accounts> = {
    * Commitment parameters to use for a transaction.
    */
   options?: ConfirmOptions;
+
+  /**
+   * An optional override for the default instruction discriminator.
+   */
+  discriminator?: Buffer;
 };
 
 /**

@@ -60,7 +60,8 @@ export default class NamespaceFactory {
     idl.instructions.forEach((idlIx) => {
       const ixItem = InstructionFactory.build<IDL, typeof idlIx>(
         idlIx,
-        (ixName, ix) => coder.instruction.encode(ixName, ix),
+        (ixName, ix, discriminator) =>
+          coder.instruction.encode(ixName, ix, discriminator),
         programId
       );
       const txItem = TransactionFactory.build(idlIx, ixItem);

@@ -43,7 +43,7 @@ export interface AccountsCoder<A extends string = string> {
 }
 
 export interface InstructionCoder {
-  encode(ixName: string, ix: any): Buffer;
+  encode(ixName: string, ix: any, discriminator?: Buffer): Buffer;
 }
 
 export interface EventCoder {

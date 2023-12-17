@@ -108,6 +108,10 @@ export function flattenPartialAccounts<A extends IdlAccountItem>(
   return toReturn;
 }
 
+type SplInterface =
+  | "spl_transfer_hook_interface::initialize_extra_account_metas"
+  | "spl_transfer_hook_interface::execute";
+
 export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   private readonly _accounts: AccountsGeneric = {};
   private _remainingAccounts: Array<AccountMeta> = [];
@@ -117,6 +121,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
   private _accountsResolver: AccountsResolver<IDL>;
   private _autoResolveAccounts: boolean = true;
   private _args: Array<any>;
+  private _discriminator?: Buffer;
 
   constructor(
     _args: Array<any>,
@@ -159,6 +164,20 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
     return this._accounts as unknown as Partial<
       InstructionAccountAddresses<IDL, I>
     >;
+  }
+
+  public interface(splInterface: SplInterface): MethodsBuilder<IDL, I> {
+    if (
+      splInterface ===
+      "spl_transfer_hook_interface::initialize_extra_account_metas"
+    ) {
+      this._discriminator = Buffer.from([43, 34, 13, 49, 167, 88, 235, 235]);
+    } else if (splInterface === "spl_transfer_hook_interface::execute") {
+      this._discriminator = Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]);
+    } else {
+      throw new Error(`Unsupported interface: ${splInterface}`);
+    }
+    return this;
   }
 
   public accounts(
@@ -216,6 +235,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
       preInstructions: this._preInstructions,
       postInstructions: this._postInstructions,
       options: options,
+      discriminator: this._discriminator,
     });
   }
 
@@ -280,6 +300,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
       remainingAccounts: this._remainingAccounts,
       preInstructions: this._preInstructions,
       postInstructions: this._postInstructions,
+      discriminator: this._discriminator,
     });
   }
 
@@ -311,6 +332,7 @@ export class MethodsBuilder<IDL extends Idl, I extends AllInstructions<IDL>> {
       remainingAccounts: this._remainingAccounts,
       preInstructions: this._preInstructions,
       postInstructions: this._postInstructions,
+      discriminator: this._discriminator,
     });
   }
 }

@@ -14,6 +14,7 @@ proc-macro = true
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
+interface-instructions = ["anchor-syn/interface-instructions"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.29.0" }

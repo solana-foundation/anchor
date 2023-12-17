@@ -66,6 +66,8 @@ pub struct Ix {
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
+    // The discriminator based on the `#[interface]` attribute.
+    pub interface_discriminator: Option<[u8; 8]>,
 }
 
 #[derive(Debug)]

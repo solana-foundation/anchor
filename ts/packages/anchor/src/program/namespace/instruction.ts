@@ -41,6 +41,7 @@ export default class InstructionNamespaceFactory {
       ...args: InstructionContextFnArgs<IDL, I>
     ): TransactionInstruction => {
       const [ixArgs, ctx] = splitArgsAndCtx(idlIx, [...args]);
+      const { discriminator } = ctx;
       validateAccounts(idlIx.accounts, ctx.accounts);
       validateInstruction(idlIx, ...args);
 
@@ -57,7 +58,11 @@ export default class InstructionNamespaceFactory {
       return new TransactionInstruction({
         keys,
         programId,
-        data: encodeFn(idlIx.name, toInstruction(idlIx, ...ixArgs)),
+        data: encodeFn(
+          idlIx.name,
+          toInstruction(idlIx, ...ixArgs),
+          discriminator
+        ),
       });
     };
 
@@ -191,7 +196,8 @@ type IxProps<A extends Accounts> = {
 
 export type InstructionEncodeFn<I extends IdlInstruction = IdlInstruction> = (
   ixName: I["name"],
-  ix: any
+  ix: any,
+  discriminator?: Buffer
 ) => Buffer;
 
 // Throws error if any argument required for the `ix` is not given.

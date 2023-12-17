@@ -17,6 +17,7 @@ idl-build = ["idl-parse", "idl-types"]
 idl-parse = ["idl-types"]
 idl-types = []
 init-if-needed = []
+interface-instructions = []
 seeds = []
 
 [dependencies]

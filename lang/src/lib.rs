@@ -65,6 +65,9 @@ pub use anchor_attribute_event::{emit_cpi, event_cpi};
 #[cfg(feature = "idl-build")]
 pub use anchor_syn::{self, idl::build::IdlBuild};
 
+#[cfg(feature = "interface-instructions")]
+pub use anchor_attribute_program::interface;
+
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 /// A data structure of validated accounts that can be deserialized from the
@@ -418,6 +421,9 @@ pub mod prelude {
 
     #[cfg(feature = "idl-build")]
     pub use super::IdlBuild;
+
+    #[cfg(feature = "interface-instructions")]
+    pub use super::interface;
 }
 
 /// Internal module used by macros and unstable apis.
