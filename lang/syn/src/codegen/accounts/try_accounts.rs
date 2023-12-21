@@ -120,7 +120,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             #[inline(never)]
             fn try_accounts(
                 __program_id: &anchor_lang::solana_program::pubkey::Pubkey,
-                __accounts: &mut &'info [anchor_lang::solana_program::account_info::AccountInfo<'info>],
+                __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,

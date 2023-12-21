@@ -9,6 +9,11 @@ use solana_program::pubkey::Pubkey;
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[derive(Accounts)]
+pub struct CustomLifetime<'a> {
+    pub non_generic: UncheckedAccount<'a>,
+}
+
+#[derive(Accounts)]
 pub struct GenericsTest<'info, T, U, const N: usize>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
