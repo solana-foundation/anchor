@@ -17,7 +17,6 @@ idl-build = ["anchor-lang/idl-build"]
 memo = ["spl-memo"]
 metadata = ["mpl-token-metadata"]
 mint = []
-shmem = []
 stake = ["borsh"]
 token = ["spl-token"]
 token_2022 = ["spl-token-2022"]
@@ -32,3 +31,4 @@ spl-associated-token-account = { version = "2.2", features = ["no-entrypoint"], 
 spl-memo = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token-2022 = { version = "0.9", features = ["no-entrypoint"], optional = true }
+
