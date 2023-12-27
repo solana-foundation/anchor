@@ -16,7 +16,6 @@ import { Idl, IdlAccountDef } from "../../idl.js";
 import { Coder, BorshCoder } from "../../coder/index.js";
 import { Subscription, Address, translateAddress } from "../common.js";
 import { AllAccountsMap, IdlAccounts } from "./types.js";
-import * as pubkeyUtil from "../../utils/pubkey.js";
 import * as rpcUtil from "../../utils/rpc.js";
 
 export default class AccountFactory {
@@ -370,29 +369,6 @@ export class AccountClient<
         ),
       programId: this._programId,
     });
-  }
-
-  /**
-   * @deprecated since version 14.0.
-   *
-   * Function returning the associated account. Args are keys to associate.
-   * Order matters.
-   */
-  async associated(...args: Array<PublicKey | Buffer>): Promise<T> {
-    const addr = await this.associatedAddress(...args);
-    return await this.fetch(addr);
-  }
-
-  /**
-   * @deprecated since version 14.0.
-   *
-   * Function returning the associated address. Args are keys to associate.
-   * Order matters.
-   */
-  async associatedAddress(
-    ...args: Array<PublicKey | Buffer>
-  ): Promise<PublicKey> {
-    return await pubkeyUtil.associated(this._programId, ...args);
   }
 
   async getAccountInfo(
