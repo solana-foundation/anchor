@@ -58,3 +58,6 @@ thiserror = "1"
 
 # TODO: Remove. This crate has been added to fix a build error with the 1.16.0 release.
 getrandom = { version = "0.2", features = ["custom"] }
+
+# TODO: Remove once https://github.com/solana-labs/solana/issues/33504 is resolved.
+ahash = "=0.8.6"
