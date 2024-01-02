@@ -11,7 +11,7 @@ use anchor_syn::idl::types::{
     IdlTypeDefinitionTy,
 };
 use anyhow::{anyhow, Context, Result};
-use checks::check_overflow;
+use checks::{check_anchor_version, check_overflow};
 use clap::Parser;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
@@ -1193,6 +1193,9 @@ pub fn build(
     if workspace_cargo_toml_path.exists() {
         check_overflow(workspace_cargo_toml_path)?;
     }
+
+    // Check whether there is a mismatch between CLI and lang crate versions
+    check_anchor_version(&cfg).ok();
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
