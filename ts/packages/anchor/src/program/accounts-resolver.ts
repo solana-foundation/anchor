@@ -15,6 +15,9 @@ import {
   IdlTypeDefTyStruct,
   IdlType,
   isIdlAccounts,
+  IdlSeedConst,
+  IdlSeedArg,
+  IdlSeedAccount,
 } from "../idl.js";
 import * as utf8 from "../utils/bytes/utf8.js";
 import { TOKEN_PROGRAM_ID, ASSOCIATED_PROGRAM_ID } from "../utils/token.js";
@@ -385,6 +388,7 @@ export class AccountsResolver<IDL extends Idl> {
     if (!accountDesc.pda?.programId) {
       return this._programId;
     }
+
     switch (accountDesc.pda.programId.kind) {
       case "const":
         return new PublicKey(
@@ -396,7 +400,7 @@ export class AccountsResolver<IDL extends Idl> {
         return await this.accountValue(accountDesc.pda.programId, path);
       default:
         throw new Error(
-          `Unexpected program seed kind: ${accountDesc.pda.programId.kind}`
+          `Unexpected program seed: ${accountDesc.pda.programId}`
         );
     }
   }
@@ -413,7 +417,7 @@ export class AccountsResolver<IDL extends Idl> {
       case "account":
         return await this.toBufferAccount(seedDesc, path);
       default:
-        throw new Error(`Unexpected seed kind: ${seedDesc.kind}`);
+        throw new Error(`Unexpected seed: ${seedDesc}`);
     }
   }
 
@@ -438,14 +442,11 @@ export class AccountsResolver<IDL extends Idl> {
     return type as string;
   }
 
-  private toBufferConst(seedDesc: IdlSeed): Buffer {
-    return this.toBufferValue(
-      this.getType(seedDesc.type, (seedDesc.path || "").split(".").slice(1)),
-      seedDesc.value
-    );
+  private toBufferConst(seedDesc: IdlSeedConst): Buffer {
+    return this.toBufferValue(this.getType(seedDesc.type), seedDesc.value);
   }
 
-  private async toBufferArg(seedDesc: IdlSeed): Promise<Buffer | undefined> {
+  private async toBufferArg(seedDesc: IdlSeedArg): Promise<Buffer | undefined> {
     const argValue = this.argValue(seedDesc);
     if (typeof argValue === "undefined") {
       return;
@@ -456,7 +457,7 @@ export class AccountsResolver<IDL extends Idl> {
     );
   }
 
-  private argValue(seedDesc: IdlSeed): any {
+  private argValue(seedDesc: IdlSeedArg): any {
     const split = seedDesc.path.split(".");
     const seedArgName = camelCase(split[0]);
 
@@ -473,7 +474,7 @@ export class AccountsResolver<IDL extends Idl> {
   }
 
   private async toBufferAccount(
-    seedDesc: IdlSeed,
+    seedDesc: IdlSeedAccount,
     path: string[] = []
   ): Promise<Buffer | undefined> {
     const accountValue = await this.accountValue(seedDesc, path);
@@ -484,7 +485,7 @@ export class AccountsResolver<IDL extends Idl> {
   }
 
   private async accountValue(
-    seedDesc: IdlSeed,
+    seedDesc: IdlSeedAccount,
     path: string[] = []
   ): Promise<any> {
     const pathComponents = seedDesc.path.split(".");
