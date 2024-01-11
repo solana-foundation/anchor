@@ -3882,9 +3882,10 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
 
         let url = cluster_url(cfg, &cfg.test_validator);
         let cur_dir = std::env::current_dir()?;
+        let migrations_dir = cur_dir.join("migrations");
+        let deploy_ts = Path::new("deploy.ts");
 
-        let use_ts =
-            Path::new("tsconfig.json").exists() && Path::new("migrations/deploy.ts").exists();
+        let use_ts = Path::new("tsconfig.json").exists() && migrations_dir.join(deploy_ts).exists();
 
         if !Path::new(".anchor").exists() {
             fs::create_dir(".anchor")?;
@@ -3892,23 +3893,30 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         std::env::set_current_dir(".anchor")?;
 
         let exit = if use_ts {
-            let module_path = cur_dir.join("migrations/deploy.ts");
+            let module_path = migrations_dir.join(deploy_ts);
             let deploy_script_host_str =
                 rust_template::deploy_ts_script_host(&url, &module_path.display().to_string());
-            fs::write("deploy.ts", deploy_script_host_str)?;
-            std::process::Command::new("ts-node")
-                .arg("deploy.ts")
+            fs::write(deploy_ts, deploy_script_host_str)?;
+
+            std::process::Command::new("yarn")
+                .args([
+                    "run",
+                    "ts-node",
+                    &fs::canonicalize(deploy_ts)?.to_string_lossy(),
+                ])
                 .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .output()?
         } else {
-            let module_path = cur_dir.join("migrations/deploy.js");
+            let deploy_js = deploy_ts.with_extension("js");
+            let module_path = migrations_dir.join(&deploy_js);
             let deploy_script_host_str =
                 rust_template::deploy_js_script_host(&url, &module_path.display().to_string());
-            fs::write("deploy.js", deploy_script_host_str)?;
+            fs::write(&deploy_js, deploy_script_host_str)?;
+
             std::process::Command::new("node")
-                .arg("deploy.js")
+                .arg(&deploy_js)
                 .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
@@ -3916,7 +3924,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         };
 
         if !exit.status.success() {
-            println!("Deploy failed.");
+            eprintln!("Deploy failed.");
             std::process::exit(exit.status.code().unwrap());
         }
 

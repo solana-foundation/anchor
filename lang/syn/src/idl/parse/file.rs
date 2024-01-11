@@ -107,7 +107,7 @@ pub fn parse(
                 .named
                 .iter()
                 .map(|f: &syn::Field| {
-                    let index = match f.attrs.get(0) {
+                    let index = match f.attrs.first() {
                         None => false,
                         Some(i) => parser::tts_to_string(&i.path) == "index",
                     };

@@ -36,6 +36,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Remove `try_to_vec` usage while setting the return data in order to reduce heap memory usage ([#2744](https://github.com/coral-xyz/anchor/pull/2744))
 - cli: Show installation progress if Solana tools are not installed when using toolchain overrides ([#2757](https://github.com/coral-xyz/anchor/pull/2757)).
 - ts: Fix formatting enums ([#2763](https://github.com/coral-xyz/anchor/pull/2763)).
+- cli: Fix `migrate` command not working without global `ts-node` installation ([#2767](https://github.com/coral-xyz/anchor/pull/2767)).
 
 ### Breaking
 
