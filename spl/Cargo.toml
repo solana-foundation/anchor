@@ -7,6 +7,10 @@ edition = "2021"
 license = "Apache-2.0"
 description = "CPI clients for SPL programs"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["associated_token", "mint", "token", "token_2022"]
 associated_token = ["spl-associated-token-account"]

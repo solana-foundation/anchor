@@ -8,6 +8,10 @@ description = "Anchor syntax parsing and code generation tools"
 rust-version = "1.60"
 edition = "2021"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 allow-missing-optionals = []
 anchor-debug = []

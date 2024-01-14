@@ -7,6 +7,10 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Rust client for Anchor programs"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 async = []
 debug = []

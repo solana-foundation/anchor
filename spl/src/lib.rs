@@ -1,3 +1,7 @@
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+
+//! Anchor CPI wrappers for popular programs in the Solana ecosystem.
+
 #[cfg(feature = "associated_token")]
 pub mod associated_token;
 
