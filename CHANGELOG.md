@@ -20,6 +20,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Add `.interface(..)` method for instruction discriminator overrides ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
 - cli: Check `anchor-lang` and CLI version compatibility ([#2753](https://github.com/coral-xyz/anchor/pull/2753)).
 - ts: Add IdlSeed Type for IDL PDA seeds ([#2752](https://github.com/coral-xyz/anchor/pull/2752)).
+- cli: `idl close` accepts optional `--idl-address` parameter ([#2760](https://github.com/coral-xyz/anchor/pull/2760)).
 
 ### Fixes
 
@@ -48,6 +49,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Make bumps of optional accounts `Option<u8>` rather than `u8` ([#2730](https://github.com/coral-xyz/anchor/pull/2730)).
 - spl: Remove `shared-memory` program ([#2747](https://github.com/coral-xyz/anchor/pull/2747)).
 - ts: Remove `associated`, `account.associated` and `account.associatedAddress` methods ([#2749](https://github.com/coral-xyz/anchor/pull/2749)).
+- cli: `idl upgrade` command closes the IDL buffer account ([#2760](https://github.com/coral-xyz/anchor/pull/2760)).
 
 ## [0.29.0] - 2023-10-16
 
