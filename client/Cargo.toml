@@ -5,7 +5,7 @@ authors = ["Anchor Maintainers <accounts@200ms.io>"]
 rust-version = "1.60"
 edition = "2021"
 license = "Apache-2.0"
-description = "Rust client for Anchor programs"
+description = "An RPC client to interact with Anchor programs"
 
 [package.metadata.docs.rs]
 all-features = true
