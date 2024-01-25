@@ -21,6 +21,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Check `anchor-lang` and CLI version compatibility ([#2753](https://github.com/coral-xyz/anchor/pull/2753)).
 - ts: Add IdlSeed Type for IDL PDA seeds ([#2752](https://github.com/coral-xyz/anchor/pull/2752)).
 - cli: `idl close` accepts optional `--idl-address` parameter ([#2760](https://github.com/coral-xyz/anchor/pull/2760)).
+- cli: Add support for simple wildcard patterns in Anchor.toml's `workspace.members` and `workspace.exclude`. ([#2785](https://github.com/coral-xyz/anchor/pull/2785)).
 
 ### Fixes
 
