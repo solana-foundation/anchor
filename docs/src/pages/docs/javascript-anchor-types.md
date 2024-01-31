@@ -3,18 +3,18 @@ title: Javascript Anchor Types Reference
 description: Anchor - Javascript Anchor Types Reference
 ---
 
-This reference shows you how anchor maps rust types to javascript/typescript types in the client.
+This reference shows you how Anchor maps Rust types to JavaScript/TypeScript types in the client.
 
 ---
 
 {% table %}
 * Rust Type
-* Javascript Type
+* JavaScript Type
 * Example
 * Note
 ---
 * `bool`
-* `bool`
+* `boolean`
 * ```javascript
   await program
     .methods
@@ -72,7 +72,7 @@ This reference shows you how anchor maps rust types to javascript/typescript typ
     .init({ two: { val: 99 } })
     .rpc();
 
-  // Unnamed(tuple) variant
+  // Unnamed (tuple) variant
   await program
     .methods
     .init({ three: [12, -34] })
@@ -94,7 +94,7 @@ This reference shows you how anchor maps rust types to javascript/typescript typ
   ```
 ---
 * `[T; N]`
-* `[ T ]`
+* `Array<T>`
 * ```javascript
   await program
     .methods
@@ -112,7 +112,7 @@ This reference shows you how anchor maps rust types to javascript/typescript typ
   ```
 ---
 * `Vec<T>`
-* `[ T ]`
+* `Array<T>`
 * ```javascript
   await program
     .methods
