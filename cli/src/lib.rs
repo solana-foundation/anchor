@@ -3201,14 +3201,10 @@ fn run_test_suite(
             .get("test")
             .expect("Not able to find script for `test`")
             .clone();
-        let mut args: Vec<&str> = cmd
-            .split(' ')
-            .chain(extra_args.iter().map(|arg| arg.as_str()))
-            .collect();
-        let program = args.remove(0);
-
-        std::process::Command::new(program)
-            .args(args)
+        let script_args = format!("{cmd} {}", extra_args.join(" "));
+        std::process::Command::new("bash")
+            .arg("-c")
+            .arg(script_args)
             .env("ANCHOR_PROVIDER_URL", url)
             .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
             .env("NODE_OPTIONS", node_options)
