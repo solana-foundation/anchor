@@ -134,7 +134,7 @@ In `Anchor.toml`:
 upgradeable = true
 ```
 
-or for an individiual program:
+or for an individual program:
 
 ```toml
 [[test.genesis]]
@@ -145,7 +145,7 @@ upgradeable = true
 
 ### Lamport utilities
 
-Transfering lamports from a PDA is quite complicated due to the types that are being used.
+Transferring lamports from a PDA is quite complicated due to the types that are being used.
 
 Instead of
 
@@ -331,7 +331,7 @@ docker pull backpackapp/build:v0.29.0
 
 ### Enhanced performance
 
-`0.29.0` performance is noticably improved in all areas, the biggest one being [binary size](https://github.com/coral-xyz/anchor/blob/master/bench/BINARY_SIZE.md#0290) which is reduced ~36% compared to `0.28.0`!
+`0.29.0` performance is noticeably improved in all areas, the biggest one being [binary size](https://github.com/coral-xyz/anchor/blob/master/bench/BINARY_SIZE.md#0290) which is reduced ~36% compared to `0.28.0`!
 
 Similar benchmarks can be found for [compute units](https://github.com/coral-xyz/anchor/blob/master/bench/COMPUTE_UNITS.md#0290) and [stack memory](https://github.com/coral-xyz/anchor/blob/master/bench/STACK_MEMORY.md#0290).
 

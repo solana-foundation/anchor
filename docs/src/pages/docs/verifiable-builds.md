@@ -3,7 +3,7 @@ title: Verifiable Builds
 description: Anchor - Verifiable Builds
 ---
 
-Building programs with the Solana CLI may embed machine specfic
+Building programs with the Solana CLI may embed machine specific
 code into the resulting binary. As a result, building the same program
 on different machines may produce different executables. To get around this
 problem, one can build inside a docker image with pinned dependencies to produce
