@@ -1220,7 +1220,7 @@ pub fn build(
         check_overflow(workspace_cargo_toml_path)?;
     }
 
-    // Check whether there is a mismatch between CLI and lang crate versions
+    // Check whether there is a mismatch between CLI and crate/package versions
     check_anchor_version(&cfg).ok();
 
     let idl_out = match idl {
