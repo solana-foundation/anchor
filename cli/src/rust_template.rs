@@ -1,5 +1,7 @@
-use crate::VERSION;
-use crate::{config::ProgramWorkspace, create_files, Files};
+use crate::{
+    config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
+    VERSION,
+};
 use anchor_syn::idl::types::Idl;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -9,7 +11,13 @@ use solana_sdk::{
     signature::{read_keypair_file, write_keypair_file, Keypair},
     signer::Signer,
 };
-use std::{fmt::Write, path::Path};
+use std::{
+    fmt::Write as _,
+    fs::{self, File},
+    io::Write as _,
+    path::Path,
+    process::Stdio,
+};
 
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
@@ -605,4 +613,177 @@ anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
     }
 
     Ok(eval_string)
+}
+
+/// Test initialization template
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+pub enum TestTemplate {
+    /// Generate template for Mocha unit-test
+    #[default]
+    Mocha,
+    /// Generate template for Jest unit-test    
+    Jest,
+    /// Generate template for Rust unit-test
+    Rust,
+}
+
+impl TestTemplate {
+    pub fn get_test_script(&self, js: bool) -> &str {
+        match &self {
+            Self::Mocha => {
+                if js {
+                    "yarn run mocha -t 1000000 tests/"
+                } else {
+                    "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+                }
+            }
+            Self::Jest => {
+                if js {
+                    "yarn run jest"
+                } else {
+                    "yarn run jest --preset ts-jest"
+                }
+            }
+            Self::Rust => "cargo test",
+        }
+    }
+
+    pub fn create_test_files(
+        &self,
+        project_name: &str,
+        js: bool,
+        solidity: bool,
+        program_id: &str,
+    ) -> Result<()> {
+        match self {
+            Self::Mocha => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                if js {
+                    let mut test = File::create(format!("tests/{}.js", &project_name))?;
+                    if solidity {
+                        test.write_all(solidity_template::mocha(project_name).as_bytes())?;
+                    } else {
+                        test.write_all(mocha(project_name).as_bytes())?;
+                    }
+                } else {
+                    let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
+                    if solidity {
+                        mocha.write_all(solidity_template::ts_mocha(project_name).as_bytes())?;
+                    } else {
+                        mocha.write_all(ts_mocha(project_name).as_bytes())?;
+                    }
+                }
+            }
+            Self::Jest => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                if solidity {
+                    test.write_all(solidity_template::jest(project_name).as_bytes())?;
+                } else {
+                    test.write_all(jest(project_name).as_bytes())?;
+                }
+            }
+            Self::Rust => {
+                // Do not initilize git repo
+                let exit = std::process::Command::new("cargo")
+                    .arg("new")
+                    .arg("--vcs")
+                    .arg("none")
+                    .arg("--lib")
+                    .arg("tests")
+                    .stderr(Stdio::inherit())
+                    .output()
+                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                if !exit.status.success() {
+                    eprintln!("'cargo new --lib tests' failed");
+                    std::process::exit(exit.status.code().unwrap_or(1));
+                }
+
+                let mut files = Vec::new();
+                let tests_path = Path::new("tests");
+                files.extend(vec![(
+                    tests_path.join("Cargo.toml"),
+                    tests_cargo_toml(project_name),
+                )]);
+                files.extend(create_program_template_rust_test(
+                    project_name,
+                    tests_path,
+                    program_id,
+                ));
+                override_or_create_files(&files)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub fn tests_cargo_toml(name: &str) -> String {
+    format!(
+        r#"[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-client = "{0}"
+{1} = {{ version = "0.1.0", path = "../programs/{1}" }}
+"#,
+        VERSION, name,
+    )
+}
+
+/// Generate template for Rust unit-test
+fn create_program_template_rust_test(name: &str, tests_path: &Path, program_id: &str) -> Files {
+    let src_path = tests_path.join("src");
+    vec![
+        (
+            src_path.join("lib.rs"),
+            r#"#[cfg(test)]
+mod test_initialize;
+"#
+            .into(),
+        ),
+        (
+            src_path.join("test_initialize.rs"),
+            format!(
+                r#"use std::str::FromStr;
+
+use anchor_client::{{
+    solana_sdk::{{
+        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
+    }},
+    Client, Cluster,
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = "{0}";
+    let anchor_wallet = std::env::var("ANCHOR_WALLET").unwrap();
+    let payer = read_keypair_file(&anchor_wallet).unwrap();
+
+    let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
+    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program = client.program(program_id).unwrap();
+
+    let tx = program
+        .request()
+        .accounts({1}::accounts::Initialize {{}})
+        .args({1}::instruction::Initialize {{}})
+        .send()
+        .expect("");
+
+    println!("Your transaction signature {{}}", tx);
+}}
+"#,
+                program_id,
+                name.to_snake_case(),
+            ),
+        ),
+    ]
 }

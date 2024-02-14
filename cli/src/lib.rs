@@ -22,7 +22,7 @@ use heck::{ToKebabCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
-use rust_template::ProgramTemplate;
+use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as JsonValue};
@@ -83,12 +83,12 @@ pub enum Command {
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
-        /// Use `jest` instead of `mocha` for tests
-        #[clap(long)]
-        jest: bool,
         /// Rust program template to use
         #[clap(value_enum, short, long, default_value = "single")]
         template: ProgramTemplate,
+        /// Test template to use
+        #[clap(value_enum, long, default_value = "mocha")]
+        test_template: TestTemplate,
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
@@ -651,8 +651,8 @@ fn process_command(opts: Opts) -> Result<()> {
             javascript,
             solidity,
             no_git,
-            jest,
             template,
+            test_template,
             force,
         } => init(
             &opts.cfg_override,
@@ -660,8 +660,8 @@ fn process_command(opts: Opts) -> Result<()> {
             javascript,
             solidity,
             no_git,
-            jest,
             template,
+            test_template,
             force,
         ),
         Command::New {
@@ -824,8 +824,8 @@ fn init(
     javascript: bool,
     solidity: bool,
     no_git: bool,
-    jest: bool,
     template: ProgramTemplate,
+    test_template: TestTemplate,
     force: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
@@ -861,27 +861,9 @@ fn init(
     fs::create_dir_all("app")?;
 
     let mut cfg = Config::default();
-    if jest {
-        cfg.scripts.insert(
-            "test".to_owned(),
-            if javascript {
-                "yarn run jest"
-            } else {
-                "yarn run jest --preset ts-jest"
-            }
-            .to_owned(),
-        );
-    } else {
-        cfg.scripts.insert(
-            "test".to_owned(),
-            if javascript {
-                "yarn run mocha -t 1000000 tests/"
-            } else {
-                "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-            }
-            .to_owned(),
-        );
-    }
+    let test_script = test_template.get_test_script(javascript);
+    cfg.scripts
+        .insert("test".to_owned(), test_script.to_owned());
 
     let mut localnet = BTreeMap::new();
     let program_id = rust_template::get_or_create_program_id(&rust_name);
@@ -919,31 +901,14 @@ fn init(
         rust_template::create_program(&project_name, template)?;
     }
 
-    // Build the test suite.
-    fs::create_dir_all("tests")?;
     // Build the migrations directory.
     fs::create_dir_all("migrations")?;
 
+    let jest = TestTemplate::Jest == test_template;
     if javascript {
         // Build javascript config
         let mut package_json = File::create("package.json")?;
         package_json.write_all(rust_template::package_json(jest).as_bytes())?;
-
-        if jest {
-            let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-            if solidity {
-                test.write_all(solidity_template::jest(&project_name).as_bytes())?;
-            } else {
-                test.write_all(rust_template::jest(&project_name).as_bytes())?;
-            }
-        } else {
-            let mut test = File::create(format!("tests/{}.js", &project_name))?;
-            if solidity {
-                test.write_all(solidity_template::mocha(&project_name).as_bytes())?;
-            } else {
-                test.write_all(rust_template::mocha(&project_name).as_bytes())?;
-            }
-        }
 
         let mut deploy = File::create("migrations/deploy.js")?;
 
@@ -958,14 +923,14 @@ fn init(
 
         let mut deploy = File::create("migrations/deploy.ts")?;
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
-
-        let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
-        if solidity {
-            mocha.write_all(solidity_template::ts_mocha(&project_name).as_bytes())?;
-        } else {
-            mocha.write_all(rust_template::ts_mocha(&project_name).as_bytes())?;
-        }
     }
+
+    test_template.create_test_files(
+        &project_name,
+        javascript,
+        solidity,
+        &program_id.to_string(),
+    )?;
 
     let yarn_result = install_node_modules("yarn")?;
     if !yarn_result.status.success() {
@@ -1087,6 +1052,32 @@ pub fn create_files(files: &Files) -> Result<()> {
                 fs::write(path, content)?;
             }
             None => fs::create_dir_all(path)?,
+        }
+    }
+
+    Ok(())
+}
+
+/// Override or create files from the given (path, content) tuple array.
+///
+/// # Example
+///
+/// ```ignore
+/// override_or_create_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```
+pub fn override_or_create_files(files: &Files) -> Result<()> {
+    for (path, content) in files {
+        let path = Path::new(path);
+        if path.exists() {
+            let mut f = fs::OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(path)?;
+            f.write_all(content.as_bytes())?;
+            f.flush()?;
+        } else {
+            fs::create_dir_all(path.parent().unwrap())?;
+            fs::write(path, content)?;
         }
     }
 
@@ -4541,8 +4532,8 @@ mod tests {
             true,
             false,
             false,
-            false,
             ProgramTemplate::default(),
+            TestTemplate::default(),
             false,
         )
         .unwrap();
@@ -4560,8 +4551,8 @@ mod tests {
             true,
             false,
             false,
-            false,
             ProgramTemplate::default(),
+            TestTemplate::default(),
             false,
         )
         .unwrap();
@@ -4579,8 +4570,8 @@ mod tests {
             true,
             false,
             false,
-            false,
             ProgramTemplate::default(),
+            TestTemplate::default(),
             false,
         )
         .unwrap();
