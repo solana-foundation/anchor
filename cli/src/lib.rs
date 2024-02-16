@@ -1948,13 +1948,17 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
                     program.path.display()
                 ));
             }
-            let p_lib_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
-            if program_name == p_lib_name {
+
+            let manifest = Manifest::from_path(&cargo_toml)?;
+            let pkg_name = manifest.package().name();
+            let lib_name = manifest.lib_name()?;
+            if program_name == pkg_name || program_name == lib_name {
                 std::env::set_current_dir(&program.path)?;
                 return Ok(());
             }
         }
     }
+
     Err(anyhow!("{} is not part of the workspace", program_name,))
 }
 
