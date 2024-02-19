@@ -44,6 +44,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Fix formatting enums ([#2763](https://github.com/coral-xyz/anchor/pull/2763)).
 - cli: Fix `migrate` command not working without global `ts-node` installation ([#2767](https://github.com/coral-xyz/anchor/pull/2767)).
 - client, lang, spl, syn: Enable all features for docs.rs build ([#2774](https://github.com/coral-xyz/anchor/pull/2774)).
+- ts: Fix construction of field layouts for type aliased instruction arguments ([#2821](https://github.com/coral-xyz/anchor/pull/2821))
 
 ### Breaking
 

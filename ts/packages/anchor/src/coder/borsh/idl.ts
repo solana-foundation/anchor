@@ -164,10 +164,7 @@ export class IdlCoder {
       }
 
       case "alias": {
-        return IdlCoder.fieldLayout(
-          { type: typeDef.type.value, name: typeDef.name },
-          types
-        );
+        return IdlCoder.fieldLayout({ type: typeDef.type.value, name }, types);
       }
     }
   }
