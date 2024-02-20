@@ -541,6 +541,36 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
         self
     }
 
+    /// Set the accounts to pass to the instruction.
+    ///
+    /// `accounts` argument can be:
+    ///
+    /// - Any type that implements [`ToAccountMetas`] trait
+    /// - A vector of [`AccountMeta`]s (for remaining accounts)
+    ///
+    /// Note that the given accounts are appended to the previous list of accounts instead of
+    /// overriding the existing ones (if any).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// program
+    ///     .request()
+    ///     // Regular accounts
+    ///     .accounts(accounts::Initialize {
+    ///         my_account: my_account_kp.pubkey(),
+    ///         payer: program.payer(),
+    ///         system_program: system_program::ID,
+    ///     })
+    ///     // Remaining accounts
+    ///     .accounts(vec![AccountMeta {
+    ///         pubkey: remaining,
+    ///         is_signer: true,
+    ///         is_writable: true,
+    ///     }])
+    ///     .args(instruction::Initialize { field: 42 })
+    ///     .send()?;
+    /// ```
     #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
         let mut metas = accounts.to_account_metas(None);
