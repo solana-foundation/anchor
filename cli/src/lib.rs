@@ -1,7 +1,7 @@
 use crate::config::{
     AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest, ProgramArch,
-    ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator, WithPath, SHUTDOWN_WAIT,
-    STARTUP_WAIT,
+    ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator, WithPath,
+    DEFAULT_LEDGER_PATH, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -3274,6 +3274,7 @@ fn run_test_suite(
 
     Ok(())
 }
+
 // Returns the solana-test-validator flags. This will embed the workspace
 // programs in the genesis block so we don't have to deploy every time. It also
 // allows control of other solana-test-validator features.
@@ -3496,7 +3497,7 @@ fn start_test_validator(
     test_log_stdout: bool,
 ) -> Result<Child> {
     let (test_ledger_directory, test_ledger_log_filename) =
-        test_validator_file_paths(test_validator);
+        test_validator_file_paths(test_validator)?;
 
     // Start a validator for testing.
     let (test_validator_stdout, test_validator_stderr) = match test_log_stdout {
@@ -3543,7 +3544,7 @@ fn start_test_validator(
         .stdout(test_validator_stdout)
         .stderr(test_validator_stderr)
         .spawn()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow!("Failed to spawn `solana-test-validator`: {e}"))?;
 
     // Wait for the validator to be ready.
     let client = create_client(rpc_url);
@@ -3557,12 +3558,13 @@ fn start_test_validator(
         if r.is_ok() {
             break;
         }
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        count += 1;
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        count += 100;
     }
-    if count == ms_wait {
+    if count >= ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Test validator does not look started. Check {test_ledger_log_filename} for errors. Consider increasing [test.startup_wait] in Anchor.toml."
+            "Unable to get latest blockhash. Test validator does not look started. \
+            Check {test_ledger_log_filename:?} for errors. Consider increasing [test.startup_wait] in Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -3584,31 +3586,32 @@ fn test_validator_rpc_url(test_validator: &Option<TestValidator>) -> String {
 
 // Setup and return paths to the solana-test-validator ledger directory and log
 // files given the configuration
-fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> (String, String) {
-    let ledger_directory = match test_validator {
+fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(PathBuf, PathBuf)> {
+    let ledger_path = match test_validator {
         Some(TestValidator {
             validator: Some(validator),
             ..
         }) => &validator.ledger,
-        _ => ".anchor/test-ledger",
+        _ => DEFAULT_LEDGER_PATH,
     };
+    let ledger_path = Path::new(ledger_path);
 
-    if !Path::new(&ledger_directory).is_relative() {
+    if !ledger_path.is_relative() {
         // Prevent absolute paths to avoid someone using / or similar, as the
         // directory gets removed
-        eprintln!("Ledger directory {ledger_directory} must be relative");
+        eprintln!("Ledger directory {ledger_path:?} must be relative");
         std::process::exit(1);
     }
-    if Path::new(&ledger_directory).exists() {
-        fs::remove_dir_all(ledger_directory).unwrap();
+    if ledger_path.exists() {
+        fs::remove_dir_all(ledger_path)?;
     }
 
-    fs::create_dir_all(ledger_directory).unwrap();
+    fs::create_dir_all(ledger_path)?;
 
-    (
-        ledger_directory.to_string(),
-        format!("{ledger_directory}/test-ledger-log.txt"),
-    )
+    Ok((
+        ledger_path.to_owned(),
+        ledger_path.join("test-ledger-log.txt"),
+    ))
 }
 
 fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {

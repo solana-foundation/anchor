@@ -1131,7 +1131,7 @@ impl From<Validator> for _Validator {
     }
 }
 
-const DEFAULT_LEDGER_PATH: &str = ".anchor/test-ledger";
+pub const DEFAULT_LEDGER_PATH: &str = ".anchor/test-ledger";
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
 
 impl Merge for _Validator {
