@@ -2814,7 +2814,7 @@ fn account(
     idl_filepath: Option<String>,
 ) -> Result<()> {
     let (program_name, account_type_name) = account_type
-        .split_once('.') // Split at first occurance of dot
+        .split_once('.') // Split at first occurrence of dot
         .and_then(|(x, y)| y.find('.').map_or_else(|| Some((x, y)), |_| None)) // ensures no dots in second substring
         .ok_or_else(|| {
             anyhow!(

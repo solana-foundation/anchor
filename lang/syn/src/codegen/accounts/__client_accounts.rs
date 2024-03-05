@@ -117,7 +117,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     // Re-export all composite account structs (i.e. other structs deriving
     // accounts embedded into this struct. Required because, these embedded
     // structs are *not* visible from the #[program] macro, which is responsible
-    // for generating the `accounts` mod, which aggregates all the the generated
+    // for generating the `accounts` mod, which aggregates all the generated
     // accounts used for structs.
     let re_exports: Vec<proc_macro2::TokenStream> = {
         // First, dedup the exports.

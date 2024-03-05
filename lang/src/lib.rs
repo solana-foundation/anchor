@@ -186,7 +186,7 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
 
     /// Add lamports to the account.
     ///
-    /// This method is useful for transfering lamports from a PDA.
+    /// This method is useful for transferring lamports from a PDA.
     ///
     /// # Requirements
     ///
@@ -203,7 +203,7 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
 
     /// Subtract lamports from the account.
     ///
-    /// This method is useful for transfering lamports from a PDA.
+    /// This method is useful for transferring lamports from a PDA.
     ///
     /// # Requirements
     ///

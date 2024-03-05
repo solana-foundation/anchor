@@ -143,7 +143,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         accs.fields.iter().filter(|af| !is_init(af)).collect();
 
     // Deserialization for each pda init field. This must be after
-    // the inital extraction from the accounts slice and before access_checks.
+    // the initial extraction from the accounts slice and before access_checks.
     let init_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
