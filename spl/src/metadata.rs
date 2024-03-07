@@ -80,6 +80,21 @@ pub fn burn_edition_nft<'info>(
     .map_err(Into::into)
 }
 
+/// Burn an NFT by closing its token, metadata and edition accounts.
+///
+/// The lamports of the closed accounts will be transferred to the owner.
+///
+/// # Note
+///
+/// This instruction takes an optional `collection_metadata` argument, if this argument is
+/// `Some`, the `ctx` argument should also include the `collection_metadata` account in its
+/// remaining accounts, otherwise the CPI will fail because [`BurnNft`] only includes required
+/// accounts.
+///
+/// ```ignore
+/// CpiContext::new(program, BurnNft { .. })
+///     .with_remaining_accounts(vec![ctx.accounts.collection_metadata]);
+/// ```
 pub fn burn_nft<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, BurnNft<'info>>,
     collection_metadata: Option<Pubkey>,
