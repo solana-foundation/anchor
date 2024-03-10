@@ -13,40 +13,38 @@ export class BorshTypesCoder<N extends string = string> implements TypesCoder {
    */
   private typeLayouts: Map<N, Layout>;
 
-  /**
-   * IDL whose types will be coded.
-   */
-  private idl: Idl;
-
   public constructor(idl: Idl) {
-    if (idl.types === undefined) {
+    const types = idl.types;
+    if (!types) {
       this.typeLayouts = new Map();
       return;
     }
-    const layouts: [N, Layout][] = idl.types.map((acc) => {
-      return [acc.name as N, IdlCoder.typeDefLayout(acc, idl.types)];
-    });
 
+    const layouts: [N, Layout][] = types
+      .filter((ty) => !ty.generics)
+      .map((ty) => [
+        ty.name as N,
+        IdlCoder.typeDefLayout({ typeDef: ty, types }),
+      ]);
     this.typeLayouts = new Map(layouts);
-    this.idl = idl;
   }
 
-  public encode<T = any>(typeName: N, type: T): Buffer {
+  public encode<T = any>(name: N, type: T): Buffer {
     const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
-    const layout = this.typeLayouts.get(typeName);
+    const layout = this.typeLayouts.get(name);
     if (!layout) {
-      throw new Error(`Unknown type: ${typeName}`);
+      throw new Error(`Unknown type: ${name}`);
     }
     const len = layout.encode(type, buffer);
 
     return buffer.slice(0, len);
   }
 
-  public decode<T = any>(typeName: N, typeData: Buffer): T {
-    const layout = this.typeLayouts.get(typeName);
+  public decode<T = any>(name: N, data: Buffer): T {
+    const layout = this.typeLayouts.get(name);
     if (!layout) {
-      throw new Error(`Unknown type: ${typeName}`);
+      throw new Error(`Unknown type: ${name}`);
     }
-    return layout.decode(typeData);
+    return layout.decode(data);
   }
 }

@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { Idl, IdlAccount } from "../../idl.js";
+import { Idl, IdlInstructionAccount } from "../../idl.js";
 import { SimulateFn } from "./simulate.js";
 import {
   AllInstructions,
@@ -16,9 +16,11 @@ export default class ViewFactory {
     simulateFn: SimulateFn<IDL>,
     idl: IDL
   ): ViewFn<IDL, I> | undefined {
-    const isMut = idlIx.accounts.find((a: IdlAccount) => a.isMut);
+    const isWritable = idlIx.accounts.find(
+      (a: IdlInstructionAccount) => a.writable
+    );
     const hasReturn = !!idlIx.returns;
-    if (isMut || !hasReturn) return;
+    if (isWritable || !hasReturn) return;
 
     const view: ViewFn<IDL> = async (...args) => {
       let simulationResult = await simulateFn(...args);
@@ -29,15 +31,14 @@ export default class ViewFactory {
       if (!returnLog) {
         throw new Error("View expected return log");
       }
+
       let returnData = decode(returnLog.slice(returnPrefix.length));
       let returnType = idlIx.returns;
       if (!returnType) {
         throw new Error("View expected return type");
       }
-      const coder = IdlCoder.fieldLayout(
-        { type: returnType },
-        Array.from([...(idl.accounts ?? []), ...(idl.types ?? [])])
-      );
+
+      const coder = IdlCoder.fieldLayout({ type: returnType }, idl.types);
       return coder.decode(returnData);
     };
     return view;

@@ -1,11 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 
 import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert } from "chai";
-import { RemainingAccounts, IDL } from "../../target/types/remaining_accounts";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import { RemainingAccounts } from "../../target/types/remaining_accounts";
 
-describe(IDL.name, () => {
+describe("remaining-accounts", () => {
   // Configure the client to use the local cluster
   anchor.setProvider(anchor.AnchorProvider.env());
   const payer = NodeWallet.local().payer;

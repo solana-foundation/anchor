@@ -27,6 +27,13 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Check `@coral-xyz/anchor` package and CLI version compatibility ([#2813](https://github.com/coral-xyz/anchor/pull/2813)).
 - cli: Accept package name as program name ([#2816](https://github.com/coral-xyz/anchor/pull/2816)).
 - cli: Add ability to build and test only a specified program ([#2823](https://github.com/coral-xyz/anchor/pull/2823)).
+- idl: Add new IDL spec ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl: Add support for `repr`s ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl: Add support for expression evaluation ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl: Add support for using external types when generating the IDL ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl, ts: Add unit and tuple struct support ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl, ts: Add generics support ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Add `accountsPartial` method to keep the old `accounts` method behavior ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 
 ### Fixes
 
@@ -46,6 +53,9 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix `migrate` command not working without global `ts-node` installation ([#2767](https://github.com/coral-xyz/anchor/pull/2767)).
 - client, lang, spl, syn: Enable all features for docs.rs build ([#2774](https://github.com/coral-xyz/anchor/pull/2774)).
 - ts: Fix construction of field layouts for type aliased instruction arguments ([#2821](https://github.com/coral-xyz/anchor/pull/2821))
+- idl: Fix IDL ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl, ts: Make casing consistent ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Fix not being able to use numbers in instruction, account, or event names in some cases due to case conversion ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 
 ### Breaking
 
@@ -58,6 +68,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Remove `associated`, `account.associated` and `account.associatedAddress` methods ([#2749](https://github.com/coral-xyz/anchor/pull/2749)).
 - cli: `idl upgrade` command closes the IDL buffer account ([#2760](https://github.com/coral-xyz/anchor/pull/2760)).
 - cli: Remove `--jest` option from the `init` command ([#2805](https://github.com/coral-xyz/anchor/pull/2805)).
+- cli: Require `idl-build` feature in program `Cargo.toml` ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- cli: Rename `seeds` feature to `resolution` and make it enabled by default ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- cli: Remove `idl parse` command ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- idl: Change IDL spec ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- syn: Remove `idl-parse` and `seeds` features ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Change `accounts` method to no longer accept resolvable accounts ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: `Program` instances use camelCase for everything ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Remove discriminator functions ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 
 ## [0.29.0] - 2023-10-16
 

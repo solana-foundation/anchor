@@ -1,6 +1,6 @@
 use crate::is_hidden;
 use anchor_client::Cluster;
-use anchor_syn::idl::types::Idl;
+use anchor_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;
@@ -375,12 +375,31 @@ pub struct ToolchainConfig {
     pub solana_version: Option<String>,
 }
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FeaturesConfig {
-    #[serde(default)]
-    pub seeds: bool,
+    /// Enable account resolution.
+    ///
+    /// Not able to specify default bool value: https://github.com/serde-rs/serde/issues/368
+    #[serde(default = "FeaturesConfig::get_default_resolution")]
+    pub resolution: bool,
+    /// Disable safety comment checks
     #[serde(default, rename = "skip-lint")]
     pub skip_lint: bool,
+}
+
+impl FeaturesConfig {
+    fn get_default_resolution() -> bool {
+        true
+    }
+}
+
+impl Default for FeaturesConfig {
+    fn default() -> Self {
+        Self {
+            resolution: Self::get_default_resolution(),
+            skip_lint: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -619,8 +638,8 @@ impl FromStr for Config {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cfg: _Config = toml::from_str(s)
-            .map_err(|e| anyhow::format_err!("Unable to deserialize config: {}", e.to_string()))?;
+        let cfg: _Config =
+            toml::from_str(s).map_err(|e| anyhow!("Unable to deserialize config: {e}"))?;
         Ok(Config {
             toolchain: cfg.toolchain.unwrap_or_default(),
             features: cfg.features.unwrap_or_default(),

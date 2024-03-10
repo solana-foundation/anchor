@@ -159,7 +159,7 @@ describe("CPI return", () => {
       (f) => f.name == "returnStruct"
     );
     assert.deepStrictEqual(returnStructInstruction.returns, {
-      defined: "StructReturn",
+      defined: { name: "structReturn" },
     });
   });
 

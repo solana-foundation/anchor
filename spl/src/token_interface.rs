@@ -1,6 +1,8 @@
 use anchor_lang::solana_program::pubkey::Pubkey;
 use std::ops::Deref;
 
+pub use crate::token_2022::*;
+
 static IDS: [Pubkey; 2] = [spl_token::ID, spl_token_2022::ID];
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -32,9 +34,6 @@ impl Deref for TokenAccount {
     }
 }
 
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for TokenAccount {}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Mint(spl_token_2022::state::Mint);
 
@@ -62,9 +61,6 @@ impl Deref for Mint {
     }
 }
 
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for Mint {}
-
 #[derive(Clone)]
 pub struct TokenInterface;
 
@@ -73,5 +69,3 @@ impl anchor_lang::Ids for TokenInterface {
         &IDS
     }
 }
-
-pub use crate::token_2022::*;

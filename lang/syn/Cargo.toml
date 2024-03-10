@@ -17,12 +17,10 @@ allow-missing-optionals = []
 anchor-debug = []
 event-cpi = []
 hash = []
-idl-build = ["idl-parse", "idl-types"]
-idl-parse = ["idl-types"]
+idl-build = ["idl-types", "cargo_toml"]
 idl-types = []
 init-if-needed = []
 interface-instructions = []
-seeds = []
 
 [dependencies]
 anyhow = "1"
@@ -35,3 +33,6 @@ serde_json = "1"
 sha2 = "0.10"
 syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"
+
+# `idl-build` feature only
+cargo_toml = { version = "0.15", optional = true }

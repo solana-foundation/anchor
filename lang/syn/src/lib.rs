@@ -11,7 +11,6 @@ pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
 
-use crate::parser::tts_to_string;
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
 use parser::accounts as accounts_parser;
@@ -175,7 +174,7 @@ impl AccountsStruct {
         let matching_field = self
             .fields
             .iter()
-            .find(|f| *f.ident() == tts_to_string(field));
+            .find(|f| *f.ident() == parser::tts_to_string(field));
         if let Some(matching_field) = matching_field {
             matching_field.is_optional()
         } else {

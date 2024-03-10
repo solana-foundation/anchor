@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { IdlEvent, IdlEventField } from "../idl.js";
+import { IdlEvent, IdlField } from "../idl.js";
 import { Coder } from "../coder/index.js";
 import { DecodeType } from "./namespace/types.js";
 import Provider from "../provider.js";
@@ -15,10 +15,12 @@ export type Event<
   Defined = Record<string, never>
 > = {
   name: E["name"];
-  data: EventData<E["fields"][number], Defined>;
+  // TODO:
+  // data: EventData<E["type"]["fields"][number], Defined>;
+  data: any;
 };
 
-export type EventData<T extends IdlEventField, Defined> = {
+export type EventData<T extends IdlField, Defined> = {
   [N in T["name"]]: DecodeType<(T & { name: N })["type"], Defined>;
 };
 

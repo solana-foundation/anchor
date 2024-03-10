@@ -258,7 +258,7 @@ describe("errors", () => {
             },
           ],
           programId: program.programId,
-          data: program.coder.instruction.encode("signer_error", {}),
+          data: program.coder.instruction.encode("signerError", {}),
         })
       );
       await program.provider.sendAndConfirm(tx);

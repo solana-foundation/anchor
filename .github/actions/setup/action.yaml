@@ -3,9 +3,18 @@ description: "Setup"
 runs:
   using: "composite"
   steps:
-      - run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
-        shell: bash
-      - run: echo "ANCHOR_VERSION=$(cat ./VERSION)" >> $GITHUB_ENV
-        shell: bash
-      - run: git submodule update --init --recursive --depth 1
-        shell: bash
+    - run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
+      shell: bash
+    - run: echo "ANCHOR_VERSION=$(cat ./VERSION)" >> $GITHUB_ENV
+      shell: bash
+    - run: git submodule update --init --recursive --depth 1
+      shell: bash
+    # `nightly` toolchain is currently required for building the IDL.
+    #
+    # Pinning the toolchain to an older date in order to fix
+    # `error[E0635]: unknown feature stdsimd` error from `ahash`.
+    # See: https://github.com/tkaitchuck/aHash/issues/200
+    #
+    # TODO: Unpin `nightly` release after upgrading Solana to `1.18`.
+    - run: rustup toolchain install nightly-2024-01-30
+      shell: bash

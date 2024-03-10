@@ -1,40 +1,55 @@
 {
-  "version": "0.1.0",
-  "name": "generics",
+  "address": "Generics111111111111111111111111111111111111",
+  "metadata": {
+    "name": "generics",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
   "instructions": [
     {
       "name": "generic",
+      "discriminator": [
+        63,
+        235,
+        150,
+        148,
+        7,
+        255,
+        185,
+        159
+      ],
       "accounts": [
         {
-          "name": "genericAcc",
-          "isMut": false,
-          "isSigner": false
+          "name": "generic_acc"
         },
         {
           "name": "payer",
-          "isMut": true,
-          "isSigner": true
+          "writable": true,
+          "signer": true
         },
         {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "genericField",
+          "name": "generic_field",
           "type": {
-            "definedWithTypeArgs": {
+            "defined": {
               "name": "GenericType",
-              "args": [
+              "generics": [
                 {
+                  "kind": "type",
                   "type": "u32"
                 },
                 {
+                  "kind": "type",
                   "type": "u64"
                 },
                 {
+                  "kind": "const",
                   "value": "10"
                 }
               ]
@@ -47,22 +62,40 @@
   "accounts": [
     {
       "name": "GenericAccount",
+      "discriminator": [
+        10,
+        71,
+        68,
+        49,
+        51,
+        72,
+        147,
+        245
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "GenericAccount",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "data",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericType",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": "u32"
                   },
                   {
+                    "kind": "type",
                     "type": "u64"
                   },
                   {
+                    "kind": "const",
                     "value": "10"
                   }
                 ]
@@ -71,27 +104,23 @@
           }
         ]
       }
-    }
-  ],
-  "types": [
-    {
-      "name": "Baz",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "someField",
-            "type": "u8"
-          }
-        ]
-      }
     },
     {
       "name": "GenericEnum",
       "generics": [
-        "T",
-        "U",
-        "N"
+        {
+          "kind": "type",
+          "name": "T"
+        },
+        {
+          "kind": "type",
+          "name": "U"
+        },
+        {
+          "kind": "const",
+          "name": "N",
+          "type": "usize"
+        }
       ],
       "type": {
         "kind": "enum",
@@ -128,15 +157,17 @@
             "name": "Struct",
             "fields": [
               {
-                "definedWithTypeArgs": {
+                "defined": {
                   "name": "GenericNested",
-                  "args": [
+                  "generics": [
                     {
+                      "kind": "type",
                       "type": {
                         "generic": "T"
                       }
                     },
                     {
+                      "kind": "type",
                       "type": {
                         "generic": "U"
                       }
@@ -150,11 +181,13 @@
             "name": "Arr",
             "fields": [
               {
-                "genericLenArray": [
+                "array": [
                   {
                     "generic": "T"
                   },
-                  "N"
+                  {
+                    "generic": "N"
+                  }
                 ]
               }
             ]
@@ -165,8 +198,14 @@
     {
       "name": "GenericNested",
       "generics": [
-        "V",
-        "Z"
+        {
+          "kind": "type",
+          "name": "V"
+        },
+        {
+          "kind": "type",
+          "name": "Z"
+        }
       ],
       "type": {
         "kind": "struct",
@@ -189,9 +228,19 @@
     {
       "name": "GenericType",
       "generics": [
-        "T",
-        "U",
-        "N"
+        {
+          "kind": "type",
+          "name": "T"
+        },
+        {
+          "kind": "type",
+          "name": "U"
+        },
+        {
+          "kind": "const",
+          "name": "N",
+          "type": "usize"
+        }
       ],
       "type": {
         "kind": "struct",
@@ -211,13 +260,15 @@
           {
             "name": "gen3",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericNested",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": "u32"
                   },
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "U"
                     }
@@ -229,17 +280,21 @@
           {
             "name": "gen4",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericNested",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "T"
                     }
                   },
                   {
+                    "kind": "type",
                     "type": {
-                      "defined": "Baz"
+                      "defined": {
+                        "name": "MyStruct"
+                      }
                     }
                   }
                 ]
@@ -249,15 +304,17 @@
           {
             "name": "gen5",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericNested",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "T"
                     }
                   },
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "U"
                     }
@@ -269,13 +326,15 @@
           {
             "name": "gen6",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericNested",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": "u32"
                   },
                   {
+                    "kind": "type",
                     "type": "u64"
                   }
                 ]
@@ -285,25 +344,29 @@
           {
             "name": "gen7",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericNested",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "T"
                     }
                   },
                   {
+                    "kind": "type",
                     "type": {
-                      "definedWithTypeArgs": {
+                      "defined": {
                         "name": "GenericNested",
-                        "args": [
+                        "generics": [
                           {
+                            "kind": "type",
                             "type": {
                               "generic": "T"
                             }
                           },
                           {
+                            "kind": "type",
                             "type": {
                               "generic": "U"
                             }
@@ -319,19 +382,22 @@
           {
             "name": "arr",
             "type": {
-              "genericLenArray": [
+              "array": [
                 "u8",
-                "N"
+                {
+                  "generic": "N"
+                }
               ]
             }
           },
           {
             "name": "warr",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "WrappedU8Array",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "N"
                     }
@@ -343,10 +409,11 @@
           {
             "name": "warrval",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "WrappedU8Array",
-                "args": [
+                "generics": [
                   {
+                    "kind": "const",
                     "value": "10"
                   }
                 ]
@@ -356,20 +423,23 @@
           {
             "name": "enm1",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericEnum",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "T"
                     }
                   },
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "U"
                     }
                   },
                   {
+                    "kind": "type",
                     "type": {
                       "generic": "N"
                     }
@@ -381,20 +451,23 @@
           {
             "name": "enm2",
             "type": {
-              "definedWithTypeArgs": {
+              "defined": {
                 "name": "GenericEnum",
-                "args": [
+                "generics": [
                   {
+                    "kind": "type",
                     "type": {
-                      "definedWithTypeArgs": {
+                      "defined": {
                         "name": "GenericNested",
-                        "args": [
+                        "generics": [
                           {
+                            "kind": "type",
                             "type": {
                               "generic": "T"
                             }
                           },
                           {
+                            "kind": "type",
                             "type": "u64"
                           }
                         ]
@@ -402,15 +475,45 @@
                     }
                   },
                   {
+                    "kind": "type",
                     "type": "u32"
                   },
                   {
+                    "kind": "const",
                     "value": "30"
                   }
                 ]
               }
             }
           }
+        ]
+      }
+    },
+    {
+      "name": "MyStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "some_field",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WrappedU8Array",
+      "generics": [
+        {
+          "kind": "const",
+          "name": "N",
+          "type": "usize"
+        }
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          "u8"
         ]
       }
     }

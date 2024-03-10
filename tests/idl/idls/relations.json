@@ -1,0 +1,151 @@
+{
+  "address": "Re1ationsDerivation111111111111111111111111",
+  "metadata": {
+    "name": "relations_derivation",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "init_base",
+      "discriminator": [
+        85,
+        87,
+        185,
+        141,
+        241,
+        191,
+        213,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "my_account",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  101,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "test_relation",
+      "discriminator": [
+        247,
+        199,
+        255,
+        202,
+        7,
+        0,
+        197,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "my_account",
+          "relations": [
+            "account"
+          ]
+        },
+        {
+          "name": "account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  101,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "nested",
+          "accounts": [
+            {
+              "name": "my_account",
+              "relations": [
+                "account"
+              ]
+            },
+            {
+              "name": "account",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      101,
+                      101,
+                      100
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MyAccount",
+      "discriminator": [
+        246,
+        28,
+        6,
+        87,
+        251,
+        45,
+        50,
+        42
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "MyAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "my_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

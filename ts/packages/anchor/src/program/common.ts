@@ -1,6 +1,11 @@
 import EventEmitter from "eventemitter3";
 import { PublicKey } from "@solana/web3.js";
-import { Idl, IdlInstruction, IdlAccountItem, IdlStateMethod } from "../idl.js";
+import {
+  Idl,
+  IdlInstruction,
+  IdlInstructionAccountItem,
+  isCompositeAccounts,
+} from "../idl.js";
 import { Accounts } from "./context.js";
 
 export type Subscription = {
@@ -19,11 +24,7 @@ export function parseIdlErrors(idl: Idl): Map<number, string> {
   return errors;
 }
 
-// Allow either IdLInstruction or IdlStateMethod since the types share fields.
-export function toInstruction(
-  idlIx: IdlInstruction | IdlStateMethod,
-  ...args: any[]
-) {
+export function toInstruction(idlIx: IdlInstruction, ...args: any[]) {
   if (idlIx.args.length != args.length) {
     throw new Error("Invalid argument length");
   }
@@ -39,15 +40,15 @@ export function toInstruction(
 
 // Throws error if any account required for the `ix` is not given.
 export function validateAccounts(
-  ixAccounts: IdlAccountItem[],
+  ixAccounts: IdlInstructionAccountItem[],
   accounts: Accounts = {}
 ) {
   ixAccounts.forEach((acc) => {
-    if ("accounts" in acc) {
+    if (isCompositeAccounts(acc)) {
       validateAccounts(acc.accounts, accounts[acc.name] as Accounts);
     } else {
-      if (accounts[acc.name] === undefined) {
-        throw new Error(`Invalid arguments: ${acc.name} not provided.`);
+      if (!accounts[acc.name]) {
+        throw new Error(`Account \`${acc.name}\` not provided.`);
       }
     }
   });

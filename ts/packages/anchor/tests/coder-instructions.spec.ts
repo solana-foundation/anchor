@@ -1,22 +1,29 @@
 import * as assert from "assert";
 import { BorshCoder } from "../src";
-import { IdlType } from "../src/idl";
+import { Idl, IdlType } from "../src/idl";
 import { toInstruction } from "../src/program/common";
 
 describe("coder.instructions", () => {
   test("Can encode and decode type aliased instruction arguments (byte array)", () => {
-    const idl = {
-      version: "0.1.0",
-      name: "test",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "test",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
+          discriminator: [0, 1, 2, 3, 4, 5, 6, 7],
           accounts: [],
           args: [
             {
               name: "arg",
               type: {
-                defined: "AliasTest",
+                defined: {
+                  name: "AliasTest",
+                },
               },
             },
           ],
@@ -26,8 +33,8 @@ describe("coder.instructions", () => {
         {
           name: "AliasTest",
           type: {
-            kind: "alias" as const,
-            value: {
+            kind: "type",
+            alias: {
               array: ["u8", 3] as [IdlType, number],
             },
           },
@@ -42,7 +49,7 @@ describe("coder.instructions", () => {
     const ix = toInstruction(idlIx, expected);
 
     const encoded = coder.instruction.encode(idlIx.name, ix);
-    const decoded = coder.instruction.decode(encoded, "hex", idlIx.name);
+    const decoded = coder.instruction.decode(encoded);
 
     assert.deepStrictEqual(decoded?.data[idlIx.args[0].name], expected);
   });

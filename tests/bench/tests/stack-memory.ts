@@ -2,7 +2,8 @@ import path from "path";
 import fs from "fs/promises";
 
 import { BenchData, StackMemory, spawn } from "../scripts/utils";
-import { IDL } from "../target/types/bench";
+
+const IDL = require("../target/idl/bench.json");
 
 describe("Stack memory", () => {
   const stackMemory: StackMemory = {};
@@ -15,7 +16,7 @@ describe("Stack memory", () => {
   ].join("\n\t\t");
 
   it("Measure stack memory usage", async () => {
-    const libPath = path.join("programs", IDL.name, "src", "lib.rs");
+    const libPath = path.join("programs", IDL.metadata.name, "src", "lib.rs");
     const lib = await fs.readFile(libPath, "utf8");
     const indices = [...lib.matchAll(/fn\s[\w\d]+\(/g)]
       .map((match) => match.index)

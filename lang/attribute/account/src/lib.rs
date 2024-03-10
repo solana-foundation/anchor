@@ -1,7 +1,5 @@
 extern crate proc_macro;
 
-#[cfg(feature = "idl-build")]
-use anchor_syn::idl::build::*;
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -404,8 +402,18 @@ pub fn zero_copy(
 
     #[cfg(feature = "idl-build")]
     {
-        let no_docs = get_no_docs();
-        let idl_build_impl = gen_idl_build_impl_for_struct(&account_strct, no_docs);
+        let derive_unsafe = if is_unsafe {
+            // Not a real proc-macro but exists in order to pass the serialization info
+            quote! { #[derive(bytemuck::Unsafe)] }
+        } else {
+            quote! {}
+        };
+        let zc_struct = syn::parse2(quote! {
+            #derive_unsafe
+            #ret
+        })
+        .unwrap();
+        let idl_build_impl = anchor_syn::idl::build::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
             #idl_build_impl
@@ -420,6 +428,21 @@ pub fn zero_copy(
 /// based programs.
 #[proc_macro]
 pub fn declare_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    #[cfg(feature = "idl-build")]
+    let address = input.clone().to_string();
+
     let id = parse_macro_input!(input as id::Id);
-    proc_macro::TokenStream::from(quote! {#id})
+    let ret = quote! { #id };
+
+    #[cfg(feature = "idl-build")]
+    {
+        let idl_print = anchor_syn::idl::build::gen_idl_print_fn_address(address);
+        return proc_macro::TokenStream::from(quote! {
+            #ret
+            #idl_print
+        });
+    }
+
+    #[allow(unreachable_code)]
+    proc_macro::TokenStream::from(ret)
 }

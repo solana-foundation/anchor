@@ -628,7 +628,7 @@ use syn::parse_macro_input;
 ///     <tbody>
 /// </table>
 #[proc_macro_derive(Accounts, attributes(account, instruction))]
-pub fn derive_anchor_deserialize(item: TokenStream) -> TokenStream {
+pub fn derive_accounts(item: TokenStream) -> TokenStream {
     parse_macro_input!(item as anchor_syn::AccountsStruct)
         .to_token_stream()
         .into()

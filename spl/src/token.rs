@@ -471,9 +471,6 @@ impl Deref for TokenAccount {
     }
 }
 
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for TokenAccount {}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Mint(spl_token::state::Mint);
 
@@ -504,9 +501,6 @@ impl Deref for Mint {
         &self.0
     }
 }
-
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for Mint {}
 
 #[derive(Clone)]
 pub struct Token;

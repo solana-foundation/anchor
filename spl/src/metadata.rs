@@ -810,9 +810,6 @@ impl Deref for MetadataAccount {
     }
 }
 
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for MetadataAccount {}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct MasterEditionAccount(mpl_token_metadata::accounts::MasterEdition);
 
@@ -845,9 +842,6 @@ impl anchor_lang::Owner for MasterEditionAccount {
         ID
     }
 }
-
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for MasterEditionAccount {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TokenRecordAccount(mpl_token_metadata::accounts::TokenRecord);
@@ -884,9 +878,6 @@ impl Deref for TokenRecordAccount {
         &self.0
     }
 }
-
-#[cfg(feature = "idl-build")]
-impl anchor_lang::IdlBuild for TokenRecordAccount {}
 
 #[derive(Clone)]
 pub struct Metadata;

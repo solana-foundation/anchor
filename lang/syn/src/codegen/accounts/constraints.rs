@@ -1098,7 +1098,7 @@ impl<'a> OptionalCheckScope<'a> {
         check_scope
     }
     pub fn generate_check(&mut self, field: impl ToTokens) -> TokenStream {
-        let field_name = tts_to_string(&field);
+        let field_name = parser::tts_to_string(&field);
         if self.seen.contains(&field_name) {
             quote! {}
         } else {

@@ -25,7 +25,7 @@ describe("Workspace", () => {
 
     const compareProgramNames = (...programs: anchor.Program[]) => {
       return programs.every(
-        (program) => program.idl.name === "relations_derivation"
+        (program) => program.rawIdl.metadata.name === "relations_derivation"
       );
     };
 

@@ -1,16 +1,21 @@
 import * as assert from "assert";
-import { BorshCoder } from "../src";
+import { BorshCoder, Idl } from "../src";
 import { DISCRIMINATOR_SIZE } from "../src/coder/borsh/discriminator";
 import { sha256 } from "@noble/hashes/sha256";
 
 describe("coder.accounts", () => {
   test("Can encode and decode user-defined accounts, including those with consecutive capital letters", () => {
-    const idl = {
-      version: "0.0.0",
-      name: "basic_0",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
+          discriminator: [],
           accounts: [],
           args: [],
         },
@@ -18,12 +23,18 @@ describe("coder.accounts", () => {
       accounts: [
         {
           name: "MemberDAO",
+          discriminator: [0, 1, 2, 3, 4, 5, 6, 7],
+        },
+      ],
+      types: [
+        {
+          name: "MemberDAO",
           type: {
-            kind: "struct" as const,
+            kind: "struct",
             fields: [
               {
                 name: "name",
-                type: "string" as const,
+                type: "string",
               },
             ],
           },
@@ -37,11 +48,6 @@ describe("coder.accounts", () => {
     };
 
     coder.accounts.encode("MemberDAO", memberDAO).then((encoded) => {
-      // start of encoded account = account discriminator
-      assert.deepEqual(
-        encoded.subarray(0, DISCRIMINATOR_SIZE),
-        Buffer.from(sha256("account:MemberDAO").slice(0, DISCRIMINATOR_SIZE))
-      );
       assert.deepEqual(coder.accounts.decode("MemberDAO", encoded), memberDAO);
     });
   });

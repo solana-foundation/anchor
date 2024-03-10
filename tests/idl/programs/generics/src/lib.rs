@@ -38,7 +38,7 @@ where
     pub gen1: T,
     pub gen2: U,
     pub gen3: GenericNested<u32, U>,
-    pub gen4: GenericNested<T, external::Baz>,
+    pub gen4: GenericNested<T, external::MyStruct>,
     pub gen5: GenericNested<T, U>,
     pub gen6: GenericNested<u32, u64>,
     pub gen7: GenericNested<T, GenericNested<T, U>>,

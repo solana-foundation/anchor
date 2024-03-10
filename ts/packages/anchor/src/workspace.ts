@@ -2,6 +2,7 @@ import * as toml from "toml";
 import { snakeCase } from "snake-case";
 import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
+import { Idl } from "./idl.js";
 
 /**
  * The `workspace` namespace provides a convenience API to automatically
@@ -66,15 +67,14 @@ const workspace = new Proxy(
         );
       }
 
-      const idl = JSON.parse(fs.readFileSync(idlPath));
+      const idl: Idl = JSON.parse(fs.readFileSync(idlPath));
       if (!programId) {
-        if (!idl.metadata?.address) {
+        if (!idl.address) {
           throw new Error(
-            `IDL for program \`${programName}\` does not have \`metadata.address\` field.\n` +
-              "To add the missing field, run `anchor deploy` or `anchor test`."
+            `IDL for program \`${programName}\` does not have \`address\` field.`
           );
         }
-        programId = idl.metadata.address;
+        programId = idl.address;
       }
       workspaceCache[programName] = new Program(idl, programId);
 

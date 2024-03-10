@@ -5,9 +5,6 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use syn::{Ident, Item};
 
-#[cfg(feature = "idl-build")]
-use {anchor_syn::idl::build::*, quote::quote};
-
 fn gen_borsh_serialize(input: TokenStream) -> TokenStream2 {
     let cratename = Ident::new("borsh", Span::call_site());
 
@@ -35,15 +32,13 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let no_docs = get_no_docs();
+        use anchor_syn::idl::build::*;
+        use quote::quote;
 
         let idl_build_impl = match syn::parse(input).unwrap() {
-            Item::Struct(item) => gen_idl_build_impl_for_struct(&item, no_docs),
-            Item::Enum(item) => gen_idl_build_impl_for_enum(item, no_docs),
-            Item::Union(item) => {
-                // unions are not included in the IDL - TODO print a warning
-                idl_build_impl_skeleton(quote! {None}, quote! {}, &item.ident, &item.generics)
-            }
+            Item::Struct(item) => impl_idl_build_struct(&item),
+            Item::Enum(item) => impl_idl_build_enum(&item),
+            Item::Union(item) => impl_idl_build_union(&item),
             // Derive macros can only be defined on structs, enums, and unions.
             _ => unreachable!(),
         };

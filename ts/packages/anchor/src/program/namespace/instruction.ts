@@ -5,10 +5,10 @@ import {
 } from "@solana/web3.js";
 import {
   Idl,
-  IdlAccount,
-  IdlAccountItem,
-  IdlAccounts,
+  IdlInstructionAccountItem,
+  IdlInstructionAccounts,
   IdlInstruction,
+  isCompositeAccounts,
 } from "../../idl.js";
 import { IdlError } from "../../error.js";
 import {
@@ -41,7 +41,6 @@ export default class InstructionNamespaceFactory {
       ...args: InstructionContextFnArgs<IDL, I>
     ): TransactionInstruction => {
       const [ixArgs, ctx] = splitArgsAndCtx(idlIx, [...args]);
-      const { discriminator } = ctx;
       validateAccounts(idlIx.accounts, ctx.accounts);
       validateInstruction(idlIx, ...args);
 
@@ -58,11 +57,7 @@ export default class InstructionNamespaceFactory {
       return new TransactionInstruction({
         keys,
         programId,
-        data: encodeFn(
-          idlIx.name,
-          toInstruction(idlIx, ...ixArgs),
-          discriminator
-        ),
+        data: encodeFn(idlIx.name, toInstruction(idlIx, ...ixArgs)),
       });
     };
 
@@ -81,7 +76,7 @@ export default class InstructionNamespaceFactory {
 
   public static accountsArray(
     ctx: Accounts | undefined,
-    accounts: readonly IdlAccountItem[],
+    accounts: readonly IdlInstructionAccountItem[],
     programId: PublicKey,
     ixName?: string
   ): AccountMeta[] {
@@ -90,42 +85,38 @@ export default class InstructionNamespaceFactory {
     }
 
     return accounts
-      .map((acc: IdlAccountItem) => {
-        // Nested accounts.
-        const nestedAccounts: IdlAccountItem[] | undefined =
-          "accounts" in acc ? acc.accounts : undefined;
-        if (nestedAccounts !== undefined) {
+      .map((acc) => {
+        if (isCompositeAccounts(acc)) {
           const rpcAccs = ctx[acc.name] as Accounts;
           return InstructionNamespaceFactory.accountsArray(
             rpcAccs,
-            (acc as IdlAccounts).accounts,
+            (acc as IdlInstructionAccounts).accounts,
             programId,
             ixName
           ).flat();
-        } else {
-          const account: IdlAccount = acc as IdlAccount;
-          let pubkey: PublicKey;
-          try {
-            pubkey = translateAddress(ctx[acc.name] as Address);
-          } catch (err) {
-            throw new Error(
-              `Wrong input type for account "${
-                acc.name
-              }" in the instruction accounts object${
-                ixName !== undefined ? ' for instruction "' + ixName + '"' : ""
-              }. Expected PublicKey or string.`
-            );
-          }
-
-          const optional = account.isOptional && pubkey.equals(programId);
-          const isWritable = account.isMut && !optional;
-          const isSigner = account.isSigner && !optional;
-          return {
-            pubkey,
-            isWritable,
-            isSigner,
-          };
         }
+
+        let pubkey: PublicKey;
+        try {
+          pubkey = translateAddress(ctx[acc.name] as Address);
+        } catch (err) {
+          throw new Error(
+            `Wrong input type for account "${
+              acc.name
+            }" in the instruction accounts object${
+              ixName !== undefined ? ' for instruction "' + ixName + '"' : ""
+            }. Expected PublicKey or string.`
+          );
+        }
+
+        const isOptional = acc.optional && pubkey.equals(programId);
+        const isWritable = Boolean(acc.writable && !isOptional);
+        const isSigner = Boolean(acc.signer && !isOptional);
+        return {
+          pubkey,
+          isWritable,
+          isSigner,
+        };
       })
       .flat();
   }
@@ -162,7 +153,7 @@ export default class InstructionNamespaceFactory {
  */
 export type InstructionNamespace<
   IDL extends Idl = Idl,
-  I extends IdlInstruction = IDL["instructions"][number]
+  I extends IdlInstruction = AllInstructions<IDL>
 > = MakeInstructionsNamespace<
   IDL,
   I,
@@ -196,8 +187,7 @@ type IxProps<A extends Accounts> = {
 
 export type InstructionEncodeFn<I extends IdlInstruction = IdlInstruction> = (
   ixName: I["name"],
-  ix: any,
-  discriminator?: Buffer
+  ix: any
 ) => Buffer;
 
 // Throws error if any argument required for the `ix` is not given.

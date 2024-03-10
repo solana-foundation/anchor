@@ -15,6 +15,7 @@ no-idl = []
 cpi = ["no-entrypoint"]
 default = []
 test-sbf = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }

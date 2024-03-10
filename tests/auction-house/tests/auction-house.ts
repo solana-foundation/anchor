@@ -15,7 +15,9 @@ import {
 import { u64, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import * as metaplex from "@metaplex/js";
 import * as assert from "assert";
-import { IDL, AuctionHouse } from "../target/types/auction_house";
+import { AuctionHouse } from "../target/types/auction_house";
+
+const IDL = require("../target/idl/auction_house.json");
 
 const MetadataDataData = metaplex.programs.metadata.MetadataDataData;
 const CreateMetadata = metaplex.programs.metadata.CreateMetadata;

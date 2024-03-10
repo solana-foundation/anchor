@@ -1,32 +1,37 @@
 import * as assert from "assert";
-import { BorshCoder } from "../src";
+import { BorshCoder, Idl } from "../src";
 import BN from "bn.js";
 
 describe("coder.types", () => {
   test("Can encode and decode user-defined types", () => {
-    const idl = {
-      version: "0.0.0",
-      name: "basic_0",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
           accounts: [],
           args: [],
+          discriminator: [],
         },
       ],
       types: [
         {
           name: "MintInfo",
           type: {
-            kind: "struct" as const,
+            kind: "struct",
             fields: [
               {
                 name: "minted",
-                type: "bool" as const,
+                type: "bool",
               },
               {
                 name: "metadataUrl",
-                type: "string" as const,
+                type: "string",
               },
             ],
           },
@@ -45,29 +50,34 @@ describe("coder.types", () => {
   });
 
   test("Can encode and decode 256-bit integers", () => {
-    const idl = {
-      version: "0.0.0",
-      name: "basic_0",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
           accounts: [],
           args: [],
+          discriminator: [],
         },
       ],
       types: [
         {
           name: "IntegerTest",
           type: {
-            kind: "struct" as const,
+            kind: "struct",
             fields: [
               {
                 name: "unsigned",
-                type: "u256" as const,
+                type: "u256",
               },
               {
                 name: "signed",
-                type: "i256" as const,
+                type: "i256",
               },
             ],
           },

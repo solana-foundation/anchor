@@ -1,8 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 
-import { Lamports, IDL } from "../../target/types/lamports";
+import { Lamports } from "../../target/types/lamports";
 
-describe(IDL.name, () => {
+describe("lamports", () => {
   // Configure the client to use the local cluster
   anchor.setProvider(anchor.AnchorProvider.env());
 

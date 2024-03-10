@@ -2,10 +2,11 @@ use crate::{
     config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
     VERSION,
 };
-use anchor_syn::idl::types::Idl;
+use anchor_idl::types::Idl;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
+use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
+use regex::Regex;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
@@ -17,6 +18,7 @@ use std::{
     io::Write as _,
     path::Path,
     process::Stdio,
+    str::FromStr,
 };
 
 /// Program initialization template
@@ -183,11 +185,12 @@ crate-type = ["cdylib", "lib"]
 name = "{1}"
 
 [features]
+default = []
+cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = "{2}"
@@ -228,20 +231,37 @@ token = "{token}"
 }
 
 pub fn idl_ts(idl: &Idl) -> Result<String> {
-    let mut idl = idl.clone();
-    for acc in idl.accounts.iter_mut() {
-        acc.name = acc.name.to_lower_camel_case();
-    }
-    let idl_json = serde_json::to_string_pretty(&idl)?;
-    Ok(format!(
-        r#"export type {} = {};
+    let idl_name = &idl.metadata.name;
+    let type_name = idl_name.to_pascal_case();
+    let idl = serde_json::to_string(idl)?;
 
-export const IDL: {} = {};
-"#,
-        idl.name.to_upper_camel_case(),
-        idl_json,
-        idl.name.to_upper_camel_case(),
-        idl_json
+    // Convert every field of the IDL to camelCase
+    let camel_idl = Regex::new(r#""\w+":"([\w\d]+)""#)?
+        .captures_iter(&idl)
+        .fold(idl.clone(), |acc, cur| {
+            let name = cur.get(1).unwrap().as_str();
+
+            // Do not modify pubkeys
+            if Pubkey::from_str(name).is_ok() {
+                return acc;
+            }
+
+            let camel_name = name.to_lower_camel_case();
+            acc.replace(&format!(r#""{name}""#), &format!(r#""{camel_name}""#))
+        });
+
+    // Pretty format
+    let camel_idl = serde_json::to_string_pretty(&serde_json::from_str::<Idl>(&camel_idl)?)?;
+
+    Ok(format!(
+        r#"/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/{idl_name}.json`.
+ */
+export type {type_name} = {camel_idl};
+"#
     ))
 }
 
@@ -347,7 +367,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -368,7 +388,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -478,11 +498,11 @@ describe("{}", () => {{
   }});
 }});
 "#,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_upper_camel_case(),
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -505,11 +525,11 @@ describe("{}", () => {{
   }});
 }});
 "#,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_upper_camel_case(),
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -606,7 +626,7 @@ anchor.setProvider(provider);
             r#"
 anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
 "#,
-            program.name.to_upper_camel_case(),
+            program.name.to_pascal_case(),
             serde_json::to_string(&program.idl)?,
             program.program_id
         )?;
