@@ -63,7 +63,7 @@ export class AnchorProvider implements Provider {
   constructor(
     readonly connection: Connection,
     readonly wallet: Wallet,
-    readonly opts: ConfirmOptions
+    readonly opts: ConfirmOptions = AnchorProvider.defaultOptions()
   ) {
     this.publicKey = wallet?.publicKey;
   }
@@ -83,11 +83,14 @@ export class AnchorProvider implements Provider {
    *
    * (This api is for Node only.)
    */
-  static local(url?: string, opts?: ConfirmOptions): AnchorProvider {
+  static local(
+    url?: string,
+    opts: ConfirmOptions = AnchorProvider.defaultOptions()
+  ): AnchorProvider {
     if (isBrowser) {
       throw new Error(`Provider local is not available on browser.`);
     }
-    opts = opts ?? AnchorProvider.defaultOptions();
+
     const connection = new Connection(
       url ?? "http://127.0.0.1:8899",
       opts.preflightCommitment

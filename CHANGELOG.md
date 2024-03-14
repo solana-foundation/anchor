@@ -34,6 +34,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl, ts: Add unit and tuple struct support ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - idl, ts: Add generics support ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: Add `accountsPartial` method to keep the old `accounts` method behavior ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Make `opts` parameter of `AnchorProvider` constructor optional ([#2843](https://github.com/coral-xyz/anchor/pull/2843)).
 
 ### Fixes
 
@@ -56,6 +57,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix IDL ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - idl, ts: Make casing consistent ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: Fix not being able to use numbers in instruction, account, or event names in some cases due to case conversion ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- cli: Fix excessive test validator requests ([#2828](https://github.com/coral-xyz/anchor/pull/2828)).
 
 ### Breaking
 
