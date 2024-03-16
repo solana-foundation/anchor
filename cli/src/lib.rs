@@ -95,13 +95,15 @@ pub enum Command {
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
     Build {
+        /// True if the build should not fail even if there are no "CHECK" comments
+        #[clap(long)]
+        skip_lint: bool,
+        /// Do not build the IDL
+        #[clap(long)]
+        no_idl: bool,
         /// Output directory for the IDL.
         #[clap(short, long)]
         idl: Option<String>,
-        /// True if the build should not fail even if there are
-        /// no "CHECK" comments where normally required
-        #[clap(long)]
-        skip_lint: bool,
         /// Output directory for the TypeScript IDL.
         #[clap(short = 't', long)]
         idl_ts: Option<String>,
@@ -665,6 +667,7 @@ fn process_command(opts: Opts) -> Result<()> {
             force,
         } => new(&opts.cfg_override, solidity, name, template, force),
         Command::Build {
+            no_idl,
             idl,
             idl_ts,
             verifiable,
@@ -679,6 +682,7 @@ fn process_command(opts: Opts) -> Result<()> {
             arch,
         } => build(
             &opts.cfg_override,
+            no_idl,
             idl,
             idl_ts,
             verifiable,
@@ -1178,6 +1182,7 @@ fn expand_program(
 #[allow(clippy::too_many_arguments)]
 pub fn build(
     cfg_override: &ConfigOverride,
+    no_idl: bool,
     idl: Option<String>,
     idl_ts: Option<String>,
     verifiable: bool,
@@ -1238,6 +1243,7 @@ pub fn build(
         None => build_all(
             &cfg,
             cfg.path(),
+            no_idl,
             idl_out,
             idl_ts_out,
             &build_config,
@@ -1253,6 +1259,7 @@ pub fn build(
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
             &cfg,
             cfg.path(),
+            no_idl,
             idl_out,
             idl_ts_out,
             &build_config,
@@ -1268,6 +1275,7 @@ pub fn build(
         Some(cargo) => build_rust_cwd(
             &cfg,
             cargo.path().to_path_buf(),
+            no_idl,
             idl_out,
             idl_ts_out,
             &build_config,
@@ -1290,6 +1298,7 @@ pub fn build(
 fn build_all(
     cfg: &WithPath<Config>,
     cfg_path: &Path,
+    no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
     build_config: &BuildConfig,
@@ -1309,6 +1318,7 @@ fn build_all(
                 build_rust_cwd(
                     cfg,
                     p.join("Cargo.toml"),
+                    no_idl,
                     idl_out.clone(),
                     idl_ts_out.clone(),
                     build_config,
@@ -1346,6 +1356,7 @@ fn build_all(
 fn build_rust_cwd(
     cfg: &WithPath<Config>,
     cargo_toml: PathBuf,
+    no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
     build_config: &BuildConfig,
@@ -1363,7 +1374,7 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1723,8 +1734,10 @@ fn docker_exec(container_name: &str, args: &[&str]) -> Result<()> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn _build_rust_cwd(
     cfg: &WithPath<Config>,
+    no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
     skip_lint: bool,
@@ -1745,36 +1758,40 @@ fn _build_rust_cwd(
     }
 
     // Generate IDL
-    let idl = generate_idl(cfg, skip_lint, no_docs)?;
-    // JSON out path.
-    let out = match idl_out {
-        None => PathBuf::from(".")
-            .join(&idl.metadata.name)
-            .with_extension("json"),
-        Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("json")),
-    };
-    // TS out path.
-    let ts_out = match idl_ts_out {
-        None => PathBuf::from(".")
-            .join(&idl.metadata.name)
-            .with_extension("ts"),
-        Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("ts")),
-    };
+    if !no_idl {
+        let idl = generate_idl(cfg, skip_lint, no_docs)?;
 
-    // Write out the JSON file.
-    write_idl(&idl, OutFile::File(out))?;
-    // Write out the TypeScript type.
-    fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
-    // Copy out the TypeScript type.
-    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
-    if !&cfg.workspace.types.is_empty() {
-        fs::copy(
-            &ts_out,
-            cfg_parent
-                .join(&cfg.workspace.types)
+        // JSON out path.
+        let out = match idl_out {
+            None => PathBuf::from(".")
+                .join(&idl.metadata.name)
+                .with_extension("json"),
+            Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("json")),
+        };
+        // TS out path.
+        let ts_out = match idl_ts_out {
+            None => PathBuf::from(".")
                 .join(&idl.metadata.name)
                 .with_extension("ts"),
-        )?;
+            Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("ts")),
+        };
+
+        // Write out the JSON file.
+        write_idl(&idl, OutFile::File(out))?;
+        // Write out the TypeScript type.
+        fs::write(&ts_out, rust_template::idl_ts(&idl)?)?;
+
+        // Copy out the TypeScript type.
+        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+        if !&cfg.workspace.types.is_empty() {
+            fs::copy(
+                &ts_out,
+                cfg_parent
+                    .join(&cfg.workspace.types)
+                    .join(&idl.metadata.name)
+                    .with_extension("ts"),
+            )?;
+        }
     }
 
     Ok(())
@@ -1883,16 +1900,17 @@ fn verify(
     if !skip_build {
         build(
             cfg_override,
-            None,                                                            // idl
-            None,                                                            // idl ts
-            true,                                                            // verifiable
-            true,                                                            // skip lint
-            None,                                                            // program name
-            solana_version.or_else(|| cfg.toolchain.solana_version.clone()), // solana version
-            docker_image,                                                    // docker image
-            bootstrap, // bootstrap docker image
-            None,      // stdout
-            None,      // stderr
+            false,
+            None,
+            None,
+            true,
+            true,
+            None,
+            solana_version.or_else(|| cfg.toolchain.solana_version.clone()),
+            docker_image,
+            bootstrap,
+            None,
+            None,
             env_vars,
             cargo_args,
             false,
@@ -2874,6 +2892,7 @@ fn test(
         if !skip_build {
             build(
                 cfg_override,
+                false,
                 None,
                 None,
                 false,
@@ -4042,6 +4061,7 @@ fn publish(
     if !skip_build {
         build(
             cfg_override,
+            false,
             None,
             None,
             true,
@@ -4212,6 +4232,7 @@ fn localnet(
         if !skip_build {
             build(
                 cfg_override,
+                false,
                 None,
                 None,
                 false,
