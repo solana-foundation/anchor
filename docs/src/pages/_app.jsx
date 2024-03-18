@@ -15,14 +15,6 @@ import '@/styles/tailwind.css'
 
 const navigation = [
   {
-    title: 'Prologue',
-    links: [
-      { title: 'Release Notes', href: '/docs/release-notes' },
-      { title: 'CHANGELOG', href: '/docs/changelog' },
-      { title: 'Contribution Guide', href: '/docs/contribution-guide' },
-    ],
-  },
-  {
     title: 'Getting Started',
     links: [
       { title: 'Introduction', href: '/' },
@@ -30,6 +22,13 @@ const navigation = [
       { title: 'Installation', href: '/docs/installation' },
       { title: 'Hello World', href: '/docs/hello-world' },
       { title: 'Intro to Solana', href: '/docs/intro-to-solana' },
+    ],
+  },
+  {
+    title: 'Release Notes',
+    links: [
+      { title: '0.29.0', href: '/release-notes/0.29.0' },
+      { title: 'CHANGELOG', href: '/release-notes/changelog' },
     ],
   },
   {
@@ -58,6 +57,7 @@ const navigation = [
   {
     title: 'Guides',
     links: [
+      { title: 'Contribution Guide', href: '/docs/contribution-guide' },
       { title: 'Publishing Source', href: '/docs/publishing-source' },
       {
         title: 'Verifiable Builds',
