@@ -35,4 +35,4 @@ syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"
 
 # `idl-build` feature only
-cargo_toml = { version = "0.15", optional = true }
+cargo_toml = { version = "0.19", optional = true }

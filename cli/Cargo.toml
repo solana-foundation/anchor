@@ -22,7 +22,7 @@ anchor-lang = { path = "../lang", version = "0.29.0" }
 anyhow = "1.0.32"
 base64 = "0.21"
 bincode = "1.3.3"
-cargo_toml = "0.15.3"
+cargo_toml = "0.19.2"
 chrono = "0.4.19"
 clap = { version = "4.2.4", features = ["derive"] }
 dirs = "4.0"
