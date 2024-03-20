@@ -60,6 +60,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl, ts: Make casing consistent ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: Fix not being able to use numbers in instruction, account, or event names in some cases due to case conversion ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - cli: Fix excessive test validator requests ([#2828](https://github.com/coral-xyz/anchor/pull/2828)).
+- client: Fix `parse_logs_response` to prevent panics when more than 1 outer instruction exists in logs ([#2856](https://github.com/coral-xyz/anchor/pull/2856)).
 
 ### Breaking
 
