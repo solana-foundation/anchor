@@ -29,7 +29,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     }
                 }
                 AccountField::Field(f) => {
-                    // `init` and `zero` acccounts are special cased as they are
+                    // `init` and `zero` accounts are special cased as they are
                     // deserialized by constraints. Here, we just take out the
                     // AccountInfo for later use at constraint validation time.
                     if is_init(af) || f.constraints.zeroed.is_some()  {

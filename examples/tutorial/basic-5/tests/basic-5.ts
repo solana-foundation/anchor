@@ -113,7 +113,7 @@ describe("basic-5", () => {
       );
     }
 
-    console.log("🎉 Transaction Succesfully Confirmed!");
+    console.log("🎉 Transaction Successfully Confirmed!");
     let result = await program.account.actionState.fetch(actionState);
     console.log("Robot action state details: ", result);
   }

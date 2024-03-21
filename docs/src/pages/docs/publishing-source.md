@@ -62,7 +62,7 @@ Here there are four sections.
    standard Anchor workflow, this can be omitted. For programs not written in Anchor
    but still want to publish, this should be added.
 3. `[provider]` - configures the wallet and cluster settings. Here, `mainnet` is used because the registry only supports `mainnet` binary verification at the moment.
-4. `[programs.mainnet]` - configures each program in the workpace, providing
+4. `[programs.mainnet]` - configures each program in the workspace, providing
    the `address` of the program to verify.
 
 {% callout title="Note" %}
