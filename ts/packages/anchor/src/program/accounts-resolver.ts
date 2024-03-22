@@ -558,7 +558,7 @@ class AccountStore<IDL extends Idl> {
     if (!this._idls[programIdStr]) {
       const idl = await Program.fetchIdl(programId, this._provider);
       if (idl) {
-        const program = new Program(idl, programId, this._provider);
+        const program = new Program(idl, this._provider);
         this._idls[programIdStr] = program.account;
       }
     }

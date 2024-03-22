@@ -81,7 +81,6 @@ describe("typescript", () => {
     let called = false;
     const customProgram = new Program<PdaDerivation>(
       program.idl,
-      program.programId,
       program.provider,
       program.coder,
       (instruction) => {

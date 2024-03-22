@@ -129,14 +129,9 @@ describe("auction-house", () => {
   });
 
   it("Creates auction house program clients representing the buyer and seller", async () => {
-    authorityClient = new Program<AuctionHouse>(
-      IDL,
-      AUCTION_HOUSE_PROGRAM_ID,
-      getProvider()
-    );
+    authorityClient = new Program<AuctionHouse>(IDL, getProvider());
     sellerClient = new Program<AuctionHouse>(
       IDL,
-      AUCTION_HOUSE_PROGRAM_ID,
       new AnchorProvider(
         getProvider().connection,
         new Wallet(sellerWallet),
@@ -145,7 +140,6 @@ describe("auction-house", () => {
     );
     buyerClient = new Program<AuctionHouse>(
       IDL,
-      AUCTION_HOUSE_PROGRAM_ID,
       new AnchorProvider(
         getProvider().connection,
         new Wallet(buyerWallet),

@@ -3,10 +3,12 @@ import { Program } from "../program/index.js";
 import Provider from "../provider.js";
 import { SystemCoder } from "../coder/system/index.js";
 
-const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
+export const SYSTEM_PROGRAM_ID = new PublicKey(
+  "11111111111111111111111111111111"
+);
 
 export function program(provider?: Provider): Program<SystemProgram> {
-  return new Program<SystemProgram>(IDL, SYSTEM_PROGRAM_ID, provider, coder());
+  return new Program<SystemProgram>(IDL, provider, coder());
 }
 
 export function coder(): SystemCoder {

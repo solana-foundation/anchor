@@ -16,15 +16,14 @@ export function splAssociatedTokenAccountProgram(
   params?: GetProgramParams
 ): Program<SplAssociatedTokenAccount> {
   return new Program<SplAssociatedTokenAccount>(
-    IDL,
-    params?.programId ?? SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+    params?.programId ? { ...IDL, address: params.programId.toString() } : IDL,
     params?.provider,
     new SplAssociatedTokenAccountCoder(IDL)
   );
 }
 
 type SplAssociatedTokenAccount = {
-  address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+  address: string;
   metadata: {
     name: "splAssociatedTokenAccount";
     version: "1.1.1";

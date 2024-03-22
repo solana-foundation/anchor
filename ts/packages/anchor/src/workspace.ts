@@ -68,15 +68,10 @@ const workspace = new Proxy(
       }
 
       const idl: Idl = JSON.parse(fs.readFileSync(idlPath));
-      if (!programId) {
-        if (!idl.address) {
-          throw new Error(
-            `IDL for program \`${programName}\` does not have \`address\` field.`
-          );
-        }
-        programId = idl.address;
+      if (programId) {
+        idl.address = programId;
       }
-      workspaceCache[programName] = new Program(idl, programId);
+      workspaceCache[programName] = new Program(idl);
 
       return workspaceCache[programName];
     },

@@ -81,6 +81,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Change `accounts` method to no longer accept resolvable accounts ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: `Program` instances use camelCase for everything ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: Remove discriminator functions ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
+- ts: Remove `programId` parameter of the `Program` constructor ([#2864](https://github.com/coral-xyz/anchor/pull/2864)).
 
 ## [0.29.0] - 2023-10-16
 

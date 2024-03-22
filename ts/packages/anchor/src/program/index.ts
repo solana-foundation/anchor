@@ -272,7 +272,6 @@ export class Program<IDL extends Idl = Idl> {
 
   /**
    * @param idl       The interface definition.
-   * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    * @param getCustomResolver A function that returns a custom account resolver
@@ -281,22 +280,19 @@ export class Program<IDL extends Idl = Idl> {
    */
   public constructor(
     idl: IDL,
-    programId: Address,
     provider: Provider = getProvider(),
     coder?: Coder,
     getCustomResolver?: (
       instruction: IdlInstruction
     ) => CustomAccountResolver<IDL> | undefined
   ) {
-    programId = translateAddress(programId);
-
     const camelCasedIdl = convertIdlToCamelCase(idl);
 
     // Fields.
     this._idl = camelCasedIdl;
     this._rawIdl = idl;
     this._provider = provider;
-    this._programId = programId;
+    this._programId = translateAddress(idl.address);
     this._coder = coder ?? new BorshCoder(camelCasedIdl);
     this._events = new EventManager(this._programId, provider, this._coder);
 
@@ -305,7 +301,7 @@ export class Program<IDL extends Idl = Idl> {
       NamespaceFactory.build(
         camelCasedIdl,
         this._coder,
-        programId,
+        this._programId,
         provider,
         getCustomResolver
       );
@@ -338,7 +334,7 @@ export class Program<IDL extends Idl = Idl> {
       throw new Error(`IDL not found for program: ${address.toString()}`);
     }
 
-    return new Program(idl, programId, provider);
+    return new Program(idl, provider);
   }
 
   /**
