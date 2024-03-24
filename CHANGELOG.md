@@ -37,6 +37,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Make `opts` parameter of `AnchorProvider` constructor optional ([#2843](https://github.com/coral-xyz/anchor/pull/2843)).
 - cli: Add `--no-idl` flag to the `build` command ([#2847](https://github.com/coral-xyz/anchor/pull/2847)).
 - cli: Add priority fees to idl commands ([#2845](https://github.com/coral-xyz/anchor/pull/2845)).
+- ts: Add `prepend` option to MethodBuilder `preInstructions` method ([#2863](https://github.com/coral-xyz/anchor/pull/2863)).
 
 ### Fixes
 

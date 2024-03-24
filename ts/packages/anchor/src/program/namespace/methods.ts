@@ -247,8 +247,12 @@ export class MethodsBuilder<
     return this;
   }
 
-  public preInstructions(ixs: Array<TransactionInstruction>) {
-    this._preInstructions = this._preInstructions.concat(ixs);
+  public preInstructions(ixs: Array<TransactionInstruction>, prepend = false) {
+    if (prepend) {
+      this._preInstructions = ixs.concat(this._preInstructions);
+    } else {
+      this._preInstructions = this._preInstructions.concat(ixs);
+    }
     return this;
   }
 
