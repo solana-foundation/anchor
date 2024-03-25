@@ -5,8 +5,8 @@ use syn::punctuated::Punctuated;
 use syn::{ConstParam, LifetimeDef, Token, TypeParam};
 use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
 
-mod __client_accounts;
-mod __cpi_client_accounts;
+pub mod __client_accounts;
+pub mod __cpi_client_accounts;
 mod bumps;
 mod constraints;
 mod exit;

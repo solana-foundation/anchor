@@ -1,5 +1,8 @@
 extern crate proc_macro;
 
+mod declare_program;
+
+use declare_program::DeclareProgram;
 use quote::ToTokens;
 use syn::parse_macro_input;
 
@@ -11,6 +14,40 @@ pub fn program(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     parse_macro_input!(input as anchor_syn::Program)
+        .to_token_stream()
+        .into()
+}
+
+/// Declare an external program based on its IDL.
+///
+/// The IDL of the program must exist in a directory named `idls`. This directory can be at any
+/// depth, e.g. both inside the program's directory (`<PROGRAM_DIR>/idls`) and inside Anchor
+/// workspace root directory (`<PROGRAM_DIR>/../../idls`) are valid.
+///
+/// # Usage
+///
+/// ```rs
+/// declare_program!(program_name);
+/// ```
+///
+/// This generates a module named `external_program` that can be used to interact with the program
+/// without having to add the program's crate as a dependency.
+///
+/// Both on-chain and off-chain usage is supported.
+///
+/// Use `cargo doc --open` to see the generated modules and their documentation.
+///
+/// # Note
+///
+/// Re-defining the same program to use the same definitions should be avoided since this results
+/// in larger binary size.
+///
+/// A program should only be defined once. If you have multiple programs that depend on the same
+/// definition, you should consider creating a separate crate for the external program definition
+/// and reuse it in your programs.
+#[proc_macro]
+pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    parse_macro_input!(input as DeclareProgram)
         .to_token_stream()
         .into()
 }

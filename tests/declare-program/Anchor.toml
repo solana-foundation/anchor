@@ -1,0 +1,10 @@
+[programs.localnet]
+declare_program = "Dec1areProgram11111111111111111111111111111"
+external = "Externa111111111111111111111111111111111111"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
