@@ -501,7 +501,7 @@ export class AccountsResolver<IDL extends Idl> {
   }
 }
 
-// TODO: this should be configureable to avoid unnecessary requests.
+// TODO: this should be configurable to avoid unnecessary requests.
 class AccountStore<IDL extends Idl> {
   private _cache = new Map<string, any>();
   private _idls: Record<string, AccountNamespace<any>> = {};

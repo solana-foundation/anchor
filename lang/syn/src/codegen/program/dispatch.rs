@@ -39,7 +39,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// Each method in an anchor program is uniquely defined by a namespace
         /// and a rust identifier (i.e., the name given to the method). These
-        /// two pieces can be combined to creater a method identifier,
+        /// two pieces can be combined to create a method identifier,
         /// specifically, Anchor uses
         ///
         /// Sha256("<namespace>:<rust-identifier>")[..8],

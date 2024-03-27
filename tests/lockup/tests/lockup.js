@@ -6,7 +6,7 @@ const { assert } = require("chai");
 const nativeAssert = require("assert");
 
 describe("Lockup and Registry", () => {
-  // Read the provider from the configured environmnet.
+  // Read the provider from the configured environments.
   const provider = anchor.AnchorProvider.env();
   // hack so we don't have to update serum-common library
   // to the new AnchorProvider class and Provider interface
@@ -934,7 +934,7 @@ describe("Lockup and Registry", () => {
     assert.isTrue(tokenAccount.amount.eq(withdrawAmount));
   });
 
-  it("Should succesfully unlock a locked reward after unstaking", async () => {
+  it("Should successfully unlock a locked reward after unstaking", async () => {
     const token = await serumCmn.createTokenAccount(
       provider,
       mint,
