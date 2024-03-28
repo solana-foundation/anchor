@@ -14,13 +14,15 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 
 ## [Unreleased]
 
-Solana version: 1.17.0
+Solana version: 1.18.8
 
-| Program | Binary Size | -                   |
-| ------- | ----------- | ------------------- |
-| bench   | 743,208     | 🔴 **+152 (0.02%)** |
+| Program | Binary Size | -                      |
+| ------- | ----------- | ---------------------- |
+| bench   | 791,008     | 🔴 **+47,952 (6.45%)** |
 
 ### Notable changes
+
+- Upgrade Solana to `1.18.8` ([#2867](https://github.com/coral-xyz/anchor/pull/2867)).
 
 ---
 

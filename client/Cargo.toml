@@ -21,9 +21,9 @@ anyhow = "1"
 futures = "0.3"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-solana-account-decoder = ">=1.16, <1.18"
-solana-client = ">=1.16, <1.18"
-solana-sdk = ">=1.16, <1.18"
+solana-account-decoder = "1.16"
+solana-client = "1.16"
+solana-sdk = "1.16"
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"

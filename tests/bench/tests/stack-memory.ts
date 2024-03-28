@@ -11,7 +11,7 @@ describe("Stack memory", () => {
   const STACK_CONTENT = [
     "",
     `let stack_limit: [u16; 2048] = [1; 2048];`,
-    `msg!("{}", stack_limit.len());`,
+    `msg!("{}", stack_limit[2047]);`,
     "",
   ].join("\n\t\t");
 

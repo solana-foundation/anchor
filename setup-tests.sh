@@ -1,8 +1,8 @@
 #!/bin/bash
 
 active_version=$(solana -V | awk '{print $2}')
-if [ "$active_version" != "1.17.0" ]; then
-  solana-install init 1.17.0
+if [ "$active_version" != "1.18.8" ]; then
+  solana-install init 1.18.8
 fi
 
 git submodule update --init --recursive --depth 1
