@@ -3338,6 +3338,24 @@ fn validator_flags(
                         flags.push("--clone".to_string());
                         flags.push(pubkey.to_string());
                     }
+                } else if key == "deactivate_feature" {
+                    // Verify that the feature flags are valid pubkeys
+                    let pubkeys_result: Result<Vec<Pubkey>, _> = value
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|entry| {
+                            let feature_flag = entry.as_str().unwrap();
+                            Pubkey::from_str(feature_flag).map_err(|_| {
+                                anyhow!("Invalid pubkey (feature flag) {}", feature_flag)
+                            })
+                        })
+                        .collect();
+                    let features = pubkeys_result?;
+                    for feature in features {
+                        flags.push("--deactivate-feature".to_string());
+                        flags.push(feature.to_string());
+                    }
                 } else {
                     // Remaining validator flags are non-array types
                     flags.push(format!("--{}", key.replace('_', "-")));

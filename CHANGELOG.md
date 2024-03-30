@@ -39,6 +39,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add priority fees to idl commands ([#2845](https://github.com/coral-xyz/anchor/pull/2845)).
 - ts: Add `prepend` option to MethodBuilder `preInstructions` method ([#2863](https://github.com/coral-xyz/anchor/pull/2863)).
 - lang: Add `declare_program!` macro ([#2857](https://github.com/coral-xyz/anchor/pull/2857)).
+- cli: Add `deactivate_feature` flag to `solana-test-validator` config in Anchor.toml ([#2872](https://github.com/coral-xyz/anchor/pull/2872)).
 
 ### Fixes
 
