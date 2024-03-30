@@ -396,35 +396,35 @@ pub fn package_json(jest: bool) -> String {
     if jest {
         format!(
             r#"{{
-        "scripts": {{
-            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-        }},
-        "dependencies": {{
-            "@coral-xyz/anchor": "^{VERSION}"
-        }},
-        "devDependencies": {{
-            "jest": "^29.0.3",
-            "prettier": "^2.6.2"
-        }}
-    }}
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "jest": "^29.0.3",
+    "prettier": "^2.6.2"
+  }}
+}}
     "#
         )
     } else {
         format!(
             r#"{{
-    "scripts": {{
-        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-    }},
-    "dependencies": {{
-        "@coral-xyz/anchor": "^{VERSION}"
-    }},
-    "devDependencies": {{
-        "chai": "^4.3.4",
-        "mocha": "^9.0.3",
-        "prettier": "^2.6.2"
-    }}
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "prettier": "^2.6.2"
+  }}
 }}
 "#
         )
@@ -435,44 +435,44 @@ pub fn ts_package_json(jest: bool) -> String {
     if jest {
         format!(
             r#"{{
-        "scripts": {{
-            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-        }},
-        "dependencies": {{
-            "@coral-xyz/anchor": "^{VERSION}"
-        }},
-        "devDependencies": {{
-            "@types/bn.js": "^5.1.0",
-            "@types/jest": "^29.0.3",
-            "jest": "^29.0.3",
-            "prettier": "^2.6.2",
-            "ts-jest": "^29.0.2",
-            "typescript": "^4.3.5"
-        }}
-    }}
-    "#
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "@types/bn.js": "^5.1.0",
+    "@types/jest": "^29.0.3",
+    "jest": "^29.0.3",
+    "prettier": "^2.6.2",
+    "ts-jest": "^29.0.2",
+    "typescript": "^4.3.5"
+  }}
+}}
+"#
         )
     } else {
         format!(
             r#"{{
-    "scripts": {{
-        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-    }},
-    "dependencies": {{
-        "@coral-xyz/anchor": "^{VERSION}"
-    }},
-    "devDependencies": {{
-        "chai": "^4.3.4",
-        "mocha": "^9.0.3",
-        "ts-mocha": "^10.0.0",
-        "@types/bn.js": "^5.1.0",
-        "@types/chai": "^4.3.0",
-        "@types/mocha": "^9.0.0",
-        "typescript": "^4.3.5",
-        "prettier": "^2.6.2"
-    }}
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "typescript": "^4.3.5",
+    "prettier": "^2.6.2"
+  }}
 }}
 "#
         )
@@ -536,34 +536,33 @@ describe("{}", () => {{
 pub fn ts_config(jest: bool) -> &'static str {
     if jest {
         r#"{
-            "compilerOptions": {
-              "types": ["jest"],
-              "typeRoots": ["./node_modules/@types"],
-              "lib": ["es2015"],
-              "module": "commonjs",
-              "target": "es6",
-              "esModuleInterop": true
-            }
-          }
-          "#
+  "compilerOptions": {
+    "types": ["jest"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
     } else {
         r#"{
-            "compilerOptions": {
-              "types": ["mocha", "chai"],
-              "typeRoots": ["./node_modules/@types"],
-              "lib": ["es2015"],
-              "module": "commonjs",
-              "target": "es6",
-              "esModuleInterop": true
-            }
-          }
-          "#
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
     }
 }
 
 pub fn git_ignore() -> &'static str {
-    r#"
-.anchor
+    r#".anchor
 .DS_Store
 target
 **/*.rs.bk
@@ -574,8 +573,7 @@ test-ledger
 }
 
 pub fn prettier_ignore() -> &'static str {
-    r#"
-.anchor
+    r#".anchor
 .DS_Store
 target
 node_modules
