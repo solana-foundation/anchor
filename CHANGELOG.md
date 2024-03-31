@@ -65,6 +65,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix excessive test validator requests ([#2828](https://github.com/coral-xyz/anchor/pull/2828)).
 - client: Fix `parse_logs_response` to prevent panics when more than 1 outer instruction exists in logs ([#2856](https://github.com/coral-xyz/anchor/pull/2856)).
 - avm, cli: Fix `stdsimd` feature compilation error from `ahash` when installing the CLI using newer Rust versions ([#2867](https://github.com/coral-xyz/anchor/pull/2867)).
+- spl: Fix not being able to deserialize newer token 2022 extensions ([#2876](https://github.com/coral-xyz/anchor/pull/2876)).
 
 ### Breaking
 
