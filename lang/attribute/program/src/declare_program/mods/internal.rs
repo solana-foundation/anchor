@@ -1,6 +1,6 @@
+use anchor_idl::types::{Idl, IdlInstructionAccountItem};
 use anchor_syn::{
     codegen::accounts::{__client_accounts, __cpi_client_accounts},
-    idl::types::{Idl, IdlInstructionAccountItem},
     parser::accounts,
     AccountsStruct,
 };

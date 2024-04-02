@@ -12,6 +12,38 @@ use serde::Deserialize;
 
 use crate::types::{Idl, IdlEvent, IdlTypeDef};
 
+/// A trait that types must implement in order to include the type in the IDL definition.
+///
+/// This trait is automatically implemented for Anchor all types that use the `AnchorSerialize`
+/// proc macro. Note that manually implementing the `AnchorSerialize` trait does **NOT** have the
+/// same effect.
+///
+/// Types that don't implement this trait will cause a compile error during the IDL generation.
+///
+/// The default implementation of the trait allows the program to compile but the type does **NOT**
+/// get included in the IDL.
+pub trait IdlBuild {
+    /// Create an IDL type definition for the type.
+    ///
+    /// The type is only included in the IDL if this method returns `Some`.
+    fn create_type() -> Option<IdlTypeDef> {
+        None
+    }
+
+    /// Insert all types that are included in the current type definition to the given map.
+    fn insert_types(_types: &mut BTreeMap<String, IdlTypeDef>) {}
+
+    /// Get the full module path of the type.
+    ///
+    /// The full path will be used in the case of a conflicting type definition, e.g. when there
+    /// are multiple structs with the same name.
+    ///
+    /// The default implementation covers most cases.
+    fn get_full_path() -> String {
+        std::any::type_name::<Self>().into()
+    }
+}
+
 /// Generate IDL via compilation.
 pub fn build_idl(
     program_path: impl AsRef<Path>,

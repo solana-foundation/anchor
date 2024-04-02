@@ -3,7 +3,7 @@
 pub mod codegen;
 pub mod parser;
 
-#[cfg(feature = "idl-types")]
+#[cfg(feature = "idl-build")]
 pub mod idl;
 
 #[cfg(feature = "hash")]

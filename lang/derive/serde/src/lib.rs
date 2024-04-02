@@ -32,7 +32,7 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        use anchor_syn::idl::build::*;
+        use anchor_syn::idl::*;
         use quote::quote;
 
         let idl_build_impl = match syn::parse(input).unwrap() {

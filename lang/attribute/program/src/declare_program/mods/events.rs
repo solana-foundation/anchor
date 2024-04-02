@@ -1,4 +1,4 @@
-use anchor_syn::idl::types::Idl;
+use anchor_idl::types::Idl;
 use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_def_to_ts, gen_discriminator};

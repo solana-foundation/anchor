@@ -26,11 +26,11 @@ pub fn get_no_docs() -> bool {
 }
 
 pub fn get_idl_module_path() -> TokenStream {
-    quote!(anchor_lang::anchor_syn::idl::types)
+    quote!(anchor_lang::idl::types)
 }
 
 pub fn get_serde_json_module_path() -> TokenStream {
-    quote!(anchor_lang::anchor_syn::idl::build::serde_json)
+    quote!(anchor_lang::idl::serde_json)
 }
 
 pub fn gen_print_section(name: &str, value: impl ToTokens) -> TokenStream {

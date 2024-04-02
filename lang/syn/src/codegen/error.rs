@@ -100,7 +100,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let idl_print = crate::idl::build::gen_idl_print_fn_error(&error);
+        let idl_print = crate::idl::gen_idl_print_fn_error(&error);
         return quote! {
             #ret
             #idl_print

@@ -13,7 +13,7 @@ pub fn constant(
 
         let ts = match syn::parse(input).unwrap() {
             syn::Item::Const(item) => {
-                let idl_print = anchor_syn::idl::build::gen_idl_print_fn_constant(&item);
+                let idl_print = anchor_syn::idl::gen_idl_print_fn_constant(&item);
                 quote! {
                     #item
                     #idl_print

@@ -170,6 +170,7 @@ dependencies = [
 name = "anchor-attribute-program"
 version = "0.29.0"
 dependencies = [
+ "anchor-idl",
  "anchor-syn",
  "anyhow",
  "bs58 0.5.0",
@@ -286,7 +287,7 @@ dependencies = [
  "anchor-derive-accounts",
  "anchor-derive-serde",
  "anchor-derive-space",
- "anchor-syn",
+ "anchor-idl",
  "arrayref",
  "base64 0.21.7",
  "bincode",

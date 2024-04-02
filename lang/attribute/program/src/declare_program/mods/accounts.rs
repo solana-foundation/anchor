@@ -1,4 +1,4 @@
-use anchor_syn::idl::types::{Idl, IdlSerialization};
+use anchor_idl::types::{Idl, IdlSerialization};
 use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_def_to_ts, gen_discriminator, get_canonical_program_id};

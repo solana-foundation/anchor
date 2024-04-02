@@ -37,7 +37,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let idl_build_impl = crate::idl::build::gen_idl_build_impl_accounts_struct(accs);
+        let idl_build_impl = crate::idl::gen_idl_build_impl_accounts_struct(accs);
         return quote! {
             #ret
             #idl_build_impl

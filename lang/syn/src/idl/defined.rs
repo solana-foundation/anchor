@@ -1,55 +1,21 @@
-use std::collections::BTreeMap;
-
 use anyhow::{anyhow, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::common::{get_idl_module_path, get_no_docs};
-use crate::{idl::types::IdlTypeDef, parser::docs};
+use crate::parser::docs;
 
-/// A trait that types must implement in order to include the type in the IDL definition.
-///
-/// This trait is automatically implemented for Anchor all types that use the `AnchorSerialize`
-/// proc macro. Note that manually implementing the `AnchorSerialize` trait does **NOT** have the
-/// same effect.
-///
-/// Types that don't implement this trait will cause a compile error during the IDL generation.
-///
-/// The default implementation of the trait allows the program to compile but the type does **NOT**
-/// get included in the IDL.
-pub trait IdlBuild {
-    /// Create an IDL type definition for the type.
-    ///
-    /// The type is only included in the IDL if this method returns `Some`.
-    fn create_type() -> Option<IdlTypeDef> {
-        None
-    }
-
-    /// Insert all types that are included in the current type definition to the given map.
-    fn insert_types(_types: &mut BTreeMap<String, IdlTypeDef>) {}
-
-    /// Get the full module path of the type.
-    ///
-    /// The full path will be used in the case of a conflicting type definition, e.g. when there
-    /// are multiple structs with the same name.
-    ///
-    /// The default implementation covers most cases.
-    fn get_full_path() -> String {
-        std::any::type_name::<Self>().into()
-    }
-}
-
-/// Generate [`IdlBuild`] impl for a struct.
+/// Generate `IdlBuild` impl for a struct.
 pub fn impl_idl_build_struct(item: &syn::ItemStruct) -> TokenStream {
     impl_idl_build(&item.ident, &item.generics, gen_idl_type_def_struct(item))
 }
 
-/// Generate [`IdlBuild`] impl for an enum.
+/// Generate `IdlBuild` impl for an enum.
 pub fn impl_idl_build_enum(item: &syn::ItemEnum) -> TokenStream {
     impl_idl_build(&item.ident, &item.generics, gen_idl_type_def_enum(item))
 }
 
-/// Generate [`IdlBuild`] impl for a union.
+/// Generate `IdlBuild` impl for a union.
 ///
 /// Unions are not currently supported in the IDL.
 pub fn impl_idl_build_union(item: &syn::ItemUnion) -> TokenStream {
@@ -60,7 +26,7 @@ pub fn impl_idl_build_union(item: &syn::ItemUnion) -> TokenStream {
     )
 }
 
-/// Generate [`IdlBuild`] implementation.
+/// Generate `IdlBuild` implementation.
 fn impl_idl_build(
     ident: &syn::Ident,
     generics: &syn::Generics,
@@ -68,7 +34,7 @@ fn impl_idl_build(
 ) -> TokenStream {
     let idl = get_idl_module_path();
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let idl_build_trait = quote!(anchor_lang::anchor_syn::idl::build::IdlBuild);
+    let idl_build_trait = quote!(anchor_lang::idl::build::IdlBuild);
 
     let (idl_type_def, insert_defined) = match type_def {
         Ok((ts, defined)) => (

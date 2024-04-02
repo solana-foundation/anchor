@@ -79,3 +79,6 @@ impl IdlAccount {
         "anchor:idl"
     }
 }
+
+#[cfg(feature = "idl-build")]
+pub use anchor_idl::{build::IdlBuild, *};

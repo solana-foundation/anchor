@@ -366,7 +366,7 @@ mod wrapped {
     use super::*;
 
     #[cfg(feature = "idl-build")]
-    use anchor_lang::anchor_syn::idl::types::*;
+    use anchor_lang::idl::types::*;
 
     pub struct Feature(anchor_lang::solana_program::feature::Feature);
 

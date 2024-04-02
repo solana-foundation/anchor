@@ -413,7 +413,7 @@ pub fn zero_copy(
             #ret
         })
         .unwrap();
-        let idl_build_impl = anchor_syn::idl::build::impl_idl_build_struct(&zc_struct);
+        let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
             #idl_build_impl
@@ -436,7 +436,7 @@ pub fn declare_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let idl_print = anchor_syn::idl::build::gen_idl_print_fn_address(address);
+        let idl_print = anchor_syn::idl::gen_idl_print_fn_address(address);
         return proc_macro::TokenStream::from(quote! {
             #ret
             #idl_print

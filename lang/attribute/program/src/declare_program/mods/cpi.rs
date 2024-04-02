@@ -1,4 +1,4 @@
-use anchor_syn::idl::types::Idl;
+use anchor_idl::types::Idl;
 use heck::CamelCase;
 use quote::{format_ident, quote};
 

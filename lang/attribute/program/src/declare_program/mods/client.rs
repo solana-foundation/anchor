@@ -1,4 +1,4 @@
-use anchor_syn::idl::types::Idl;
+use anchor_idl::types::Idl;
 use quote::quote;
 
 use super::common::gen_accounts_common;
