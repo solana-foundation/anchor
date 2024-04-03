@@ -137,6 +137,8 @@ pub struct IdlEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlConst {
     pub name: String,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub docs: Vec<String>,
     #[serde(rename = "type")]
     pub ty: IdlType,
     pub value: String,

@@ -42,4 +42,9 @@ describe("Docs", () => {
       "Account attribute doc comment should appear in the IDL",
     ]);
   });
+
+  it("includes constant doc comment", () => {
+    const myConst = program.idl.constants.find((c) => c.name === "myConst")!;
+    assert.deepEqual(myConst.docs, ["Documentation comment for constant"]);
+  });
 });
