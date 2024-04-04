@@ -178,6 +178,7 @@ pub struct IdlTypeDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum IdlSerialization {
     #[default]
     Borsh,
@@ -188,6 +189,7 @@ pub enum IdlSerialization {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum IdlRepr {
     Rust(IdlReprModifier),
     C(IdlReprModifier),
@@ -266,6 +268,7 @@ pub enum IdlGenericArg {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum IdlType {
     Bool,
     U8,

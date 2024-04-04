@@ -88,6 +88,7 @@ pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
             .map(|generics| format!("{name}<{generics}>"))
             .unwrap_or(name.into()),
         IdlType::Generic(ty) => ty.into(),
+        _ => unimplemented!("{ty:?}"),
     }
 }
 
@@ -151,6 +152,7 @@ pub fn convert_idl_type_def_to_ts(
             IdlRepr::Rust(_) => "Rust",
             IdlRepr::C(_) => "C",
             IdlRepr::Transparent => "transparent",
+            _ => unimplemented!("{repr:?}"),
         };
         let kind = format_ident!("{kind}");
 

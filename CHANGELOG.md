@@ -89,6 +89,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Remove discriminator functions ([#2824](https://github.com/coral-xyz/anchor/pull/2824)).
 - ts: Remove `programId` parameter of the `Program` constructor ([#2864](https://github.com/coral-xyz/anchor/pull/2864)).
 - idl, syn: Move IDL types from the `anchor-syn` crate to the new IDL crate ([#2882](https://github.com/coral-xyz/anchor/pull/2882)).
+- idl: Add `#[non_exhaustive]` to IDL enums ([#2890](https://github.com/coral-xyz/anchor/pull/2890)).
 
 ## [0.29.0] - 2023-10-16
 

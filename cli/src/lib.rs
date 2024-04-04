@@ -2964,6 +2964,7 @@ fn deserialize_idl_type_to_json(
             deserialize_idl_defined_type_to_json(parent_idl, name, data)?
         }
         IdlType::Generic(generic) => json!(generic),
+        _ => unimplemented!("{idl_type:?}"),
     })
 }
 
