@@ -38,12 +38,22 @@ pub struct IdlMetadata {
     pub dependencies: Vec<IdlDependency>,
     #[serde(skip_serializing_if = "is_default")]
     pub contact: Option<String>,
+    #[serde(skip_serializing_if = "is_default")]
+    pub deployments: Option<IdlDeployments>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlDependency {
     pub name: String,
     pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IdlDeployments {
+    pub mainnet: Option<String>,
+    pub testnet: Option<String>,
+    pub devnet: Option<String>,
+    pub localnet: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

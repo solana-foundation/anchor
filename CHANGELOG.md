@@ -41,6 +41,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `declare_program!` macro ([#2857](https://github.com/coral-xyz/anchor/pull/2857)).
 - cli: Add `deactivate_feature` flag to `solana-test-validator` config in Anchor.toml ([#2872](https://github.com/coral-xyz/anchor/pull/2872)).
 - idl: Add `docs` field for constants ([#2887](https://github.com/coral-xyz/anchor/pull/2887)).
+- idl: Store deployment addresses for other clusters ([#2892](https://github.com/coral-xyz/anchor/pull/2892)).
 
 ### Fixes
 

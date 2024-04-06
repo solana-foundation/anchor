@@ -119,6 +119,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                         .map(|r| r.into()),
                     dependencies: Default::default(),
                     contact: Default::default(),
+                    deployments: Default::default(),
                 },
                 docs: #docs,
                 instructions: vec![#(#instructions),*],
