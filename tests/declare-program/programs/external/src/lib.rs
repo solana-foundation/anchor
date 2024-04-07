@@ -14,6 +14,11 @@ pub mod external {
         ctx.accounts.my_account.field = value;
         Ok(())
     }
+
+    pub fn update_composite(ctx: Context<UpdateComposite>, value: u32) -> Result<()> {
+        ctx.accounts.update.my_account.field = value;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -36,6 +41,11 @@ pub struct Update<'info> {
     pub authority: Signer<'info>,
     #[account(mut, seeds = [authority.key.as_ref()], bump)]
     pub my_account: Account<'info, MyAccount>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateComposite<'info> {
+    pub update: Update<'info>,
 }
 
 #[account]

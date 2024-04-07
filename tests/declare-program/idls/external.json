@@ -80,6 +80,48 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "update_composite",
+      "discriminator": [
+        26,
+        42,
+        201,
+        224,
+        121,
+        60,
+        188,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "update",
+          "accounts": [
+            {
+              "name": "authority",
+              "signer": true
+            },
+            {
+              "name": "my_account",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "authority"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [

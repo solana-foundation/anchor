@@ -28,6 +28,26 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    pub fn cpi_composite(ctx: Context<Cpi>, value: u32) -> Result<()> {
+        let cpi_my_account = &mut ctx.accounts.cpi_my_account;
+
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.external_program.to_account_info(),
+            external::cpi::accounts::UpdateComposite {
+                update: external::cpi::accounts::Update {
+                    authority: ctx.accounts.authority.to_account_info(),
+                    my_account: cpi_my_account.to_account_info(),
+                },
+            },
+        );
+        external::cpi::update_composite(cpi_ctx, value)?;
+
+        cpi_my_account.reload()?;
+        require_eq!(cpi_my_account.field, value);
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]

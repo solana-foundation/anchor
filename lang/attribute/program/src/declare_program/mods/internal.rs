@@ -145,7 +145,19 @@ fn gen_internal_accounts_common(
                         pub #name: #acc_expr
                     }
                 }
-                IdlInstructionAccountItem::Composite(_accs) => todo!("Composite"),
+                IdlInstructionAccountItem::Composite(accs) => {
+                    let name = format_ident!("{}", accs.name);
+                    let ty_name = idl
+                        .instructions
+                        .iter()
+                        .find(|ix| ix.accounts == accs.accounts)
+                        .map(|ix| format_ident!("{}", ix.name.to_camel_case()))
+                        .expect("Instruction must exist");
+
+                    quote! {
+                        pub #name: #ty_name #generics
+                    }
+                }
             });
 
             quote! {
