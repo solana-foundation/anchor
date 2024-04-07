@@ -67,19 +67,10 @@ pub fn build_idl(
     Ok(idl)
 }
 
-// Build IDL.
+/// Build IDL.
 fn build(program_path: &Path, resolution: bool, no_docs: bool) -> Result<Idl> {
     // `nightly` toolchain is currently required for building the IDL.
-    //
-    // Pinning the toolchain to an older date in order to fix
-    // `error[E0635]: unknown feature stdsimd` error from `ahash`.
-    // See: https://github.com/tkaitchuck/aHash/issues/200
-    //
-    // There is also another error when using a date after 2024-01-30
-    // `error[E0412]: cannot find type `T` in this scope``
-    //
-    // TODO: Unpin `nightly` release after upgrading Solana to `1.18`.
-    const TOOLCHAIN: &str = "+nightly-2024-01-30";
+    const TOOLCHAIN: &str = "+nightly";
     install_toolchain_if_needed(TOOLCHAIN)?;
 
     let output = Command::new("cargo")

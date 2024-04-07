@@ -543,9 +543,12 @@ pub fn gen_idl_type(
                                     .enumerate()
                                     .fold(outer, |acc, (i, cur)| {
                                         let inner = &inners[i];
-                                        acc.replace(&format!(" {cur}"), &format!(" {inner} "))
+                                        // The spacing of the `outer` variable can differ between
+                                        // versions, e.g. `[T; N]` and `[T ; N]`
+                                        acc.replace(&format!(" {cur} "), &format!(" {inner} "))
                                             .replace(&format!(" {cur},"), &format!(" {inner},"))
-                                            .replace(&format!("[{cur} "), &format!("[{inner} ",))
+                                            .replace(&format!("[{cur} "), &format!("[{inner} "))
+                                            .replace(&format!("[{cur};"), &format!("[{inner};"))
                                             .replace(&format!(" {cur}]"), &format!(" {inner}]"))
                                     });
                                 if let Ok(ty) = syn::parse_str(&resolved_alias) {
