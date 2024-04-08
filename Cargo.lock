@@ -311,7 +311,6 @@ dependencies = [
  "spl-memo",
  "spl-token 4.0.0",
  "spl-token-2022 3.0.2",
- "toml_edit 0.21.0",
 ]
 
 [[package]]

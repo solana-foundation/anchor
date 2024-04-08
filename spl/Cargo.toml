@@ -35,7 +35,3 @@ spl-associated-token-account = { version = "3", features = ["no-entrypoint"], op
 spl-memo = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token-2022 = { version = "3", features = ["no-entrypoint"], optional = true }
-
-# TODO: Remove after https://github.com/coral-xyz/anchor/pull/2795 is merged.
-# `toml_edit 0.21.1` has MSRV of `1.69.0` which is above `1.68.0` that comes from `solana-cli 1.17`.
-toml_edit = "=0.21.0"
