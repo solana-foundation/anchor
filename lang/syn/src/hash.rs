@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{convert::TryFrom, fmt, mem, str::FromStr};
+use std::{fmt, mem, str::FromStr};
 use thiserror::Error;
 
 pub const HASH_BYTES: usize = 32;

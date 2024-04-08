@@ -10,7 +10,6 @@ extern crate proc_macro;
 
 use proc_macro2::{Delimiter, Span, TokenTree};
 use quote::{quote, ToTokens};
-use std::convert::TryFrom;
 use syn::{
     bracketed,
     parse::{Parse, ParseStream, Result},

@@ -1,8 +1,7 @@
 use anchor_lang::solana_program::account_info::AccountInfo;
-
 use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{solana_program, Result};
 
 pub use spl_token_2022;
 pub use spl_token_2022::ID;

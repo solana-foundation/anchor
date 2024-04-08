@@ -1,10 +1,6 @@
 use crate::*;
-use syn::ext::IdentExt;
-use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::{bracketed, Expr, Ident, Token};
+use syn::parse::{Error as ParseError, Result as ParseResult};
+use syn::{bracketed, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);

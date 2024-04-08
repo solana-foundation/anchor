@@ -5,10 +5,6 @@ pub mod event_cpi;
 use crate::parser::docs;
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::Expr;
 use syn::Path;
 
 pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {

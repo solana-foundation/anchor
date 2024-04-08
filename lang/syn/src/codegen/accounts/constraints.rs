@@ -1,6 +1,5 @@
 use quote::quote;
 use std::collections::HashSet;
-use syn::Expr;
 
 use crate::*;
 

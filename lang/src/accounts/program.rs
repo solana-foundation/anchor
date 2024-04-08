@@ -9,7 +9,6 @@ use solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
-use std::convert::TryFrom;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
