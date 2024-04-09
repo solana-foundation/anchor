@@ -6,5 +6,6 @@ pub mod events;
 pub mod internal;
 pub mod program;
 pub mod types;
+pub mod utils;
 
 use super::common;

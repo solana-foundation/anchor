@@ -52,3 +52,8 @@ pub struct UpdateComposite<'info> {
 pub struct MyAccount {
     pub field: u32,
 }
+
+#[event]
+pub struct MyEvent {
+    pub value: u32,
+}

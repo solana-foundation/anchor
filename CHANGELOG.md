@@ -42,6 +42,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `deactivate_feature` flag to `solana-test-validator` config in Anchor.toml ([#2872](https://github.com/coral-xyz/anchor/pull/2872)).
 - idl: Add `docs` field for constants ([#2887](https://github.com/coral-xyz/anchor/pull/2887)).
 - idl: Store deployment addresses for other clusters ([#2892](https://github.com/coral-xyz/anchor/pull/2892)).
+- lang: Add `Event` utility type to get events from bytes ([#2897](https://github.com/coral-xyz/anchor/pull/2897)).
 
 ### Fixes
 

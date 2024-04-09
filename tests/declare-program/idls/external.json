@@ -139,6 +139,21 @@
       ]
     }
   ],
+  "events": [
+    {
+      "name": "MyEvent",
+      "discriminator": [
+        96,
+        184,
+        197,
+        243,
+        139,
+        2,
+        90,
+        148
+      ]
+    }
+  ],
   "types": [
     {
       "name": "MyAccount",
@@ -147,6 +162,18 @@
         "fields": [
           {
             "name": "field",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MyEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "value",
             "type": "u32"
           }
         ]
