@@ -1,5 +1,5 @@
+use anchor_lang::solana_program::program_pack::Pack;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use solana_program::program_pack::Pack;
 use spl_token_2022::extension::ExtensionType;
 use spl_token_2022::{
     extension::{BaseStateWithExtensions, Extension, StateWithExtensions},
@@ -91,7 +91,7 @@ pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang
 }
 
 pub fn get_mint_extension_data<T: Extension + Pod>(
-    account: &solana_program::account_info::AccountInfo,
+    account: &anchor_lang::solana_program::account_info::AccountInfo,
 ) -> anchor_lang::Result<T> {
     let mint_data = account.data.borrow();
     let mint_with_extension =

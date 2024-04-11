@@ -14,7 +14,7 @@ pub fn transfer_hook_initialize<'info>(
         authority,
         transfer_hook_program_id,
     )?;
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -39,7 +39,7 @@ pub fn transfer_hook_update<'info>(
         &[],
         transfer_hook_program_id,
     )?;
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

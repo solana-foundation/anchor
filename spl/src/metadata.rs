@@ -1,9 +1,9 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::error::ErrorCode;
+use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::solana_program::sysvar;
 use anchor_lang::{system_program, Accounts, Result, ToAccountInfos};
-use solana_program::account_info::AccountInfo;
-use solana_program::pubkey::Pubkey;
-use solana_program::sysvar;
 use std::ops::Deref;
 
 pub use mpl_token_metadata;
@@ -23,7 +23,7 @@ pub fn approve_collection_authority<'info>(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -48,7 +48,7 @@ pub fn bubblegum_set_collection_size<'info>(
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -72,7 +72,7 @@ pub fn burn_edition_nft<'info>(
         spl_token_program: *ctx.accounts.spl_token.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -109,7 +109,7 @@ pub fn burn_nft<'info>(
         token_account: *ctx.accounts.token.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -143,7 +143,7 @@ pub fn create_metadata_accounts_v3<'info>(
             is_mutable,
         },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -170,7 +170,7 @@ pub fn update_metadata_accounts_v2<'info>(
             is_mutable,
         },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -196,7 +196,7 @@ pub fn create_master_edition_v3<'info>(
     .instruction(
         mpl_token_metadata::instructions::CreateMasterEditionV3InstructionArgs { max_supply },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -230,7 +230,7 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
                 mpl_token_metadata::types::MintNewEditionFromMasterEditionViaTokenArgs { edition },
         },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -249,7 +249,7 @@ pub fn revoke_collection_authority<'info>(
         revoke_authority: *ctx.accounts.revoke_authority.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -273,7 +273,7 @@ pub fn set_collection_size<'info>(
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -295,7 +295,7 @@ pub fn verify_collection<'info>(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -317,7 +317,7 @@ pub fn verify_sized_collection_item<'info>(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -340,7 +340,7 @@ pub fn set_and_verify_collection<'info>(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -363,7 +363,7 @@ pub fn set_and_verify_sized_collection_item<'info>(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -382,7 +382,7 @@ pub fn freeze_delegated_account<'info>(
         token_program: *ctx.accounts.token_program.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -401,7 +401,7 @@ pub fn thaw_delegated_account<'info>(
         token_program: *ctx.accounts.token_program.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -418,7 +418,7 @@ pub fn update_primary_sale_happened_via_token<'info>(
         token: *ctx.accounts.token.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -437,7 +437,7 @@ pub fn set_token_standard<'info>(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -451,7 +451,7 @@ pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'inf
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -467,7 +467,7 @@ pub fn remove_creator_verification<'info>(
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -495,7 +495,7 @@ pub fn utilize<'info>(
         use_authority_record,
     }
     .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -516,7 +516,7 @@ pub fn unverify_collection<'info>(
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
@@ -538,7 +538,7 @@ pub fn unverify_sized_collection_item<'info>(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,

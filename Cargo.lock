@@ -306,7 +306,6 @@ dependencies = [
  "borsh 0.10.3",
  "mpl-token-metadata",
  "serum_dex",
- "solana-program",
  "spl-associated-token-account 3.0.2",
  "spl-memo",
  "spl-pod 0.2.2",

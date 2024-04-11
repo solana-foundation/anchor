@@ -12,7 +12,7 @@ pub fn memo_transfer_initialize<'info>(
         ctx.accounts.owner.key,
         &[],
     )?;
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -34,7 +34,7 @@ pub fn memo_transfer_disable<'info>(
             ctx.accounts.owner.key,
             &[],
         )?;
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

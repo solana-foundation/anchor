@@ -22,7 +22,7 @@ pub fn token_metadata_initialize<'info>(
         symbol,
         uri,
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -55,7 +55,7 @@ pub fn token_metadata_update_authority<'info>(
         ctx.accounts.current_authority.key,
         new_authority,
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -87,7 +87,7 @@ pub fn token_metadata_update_field<'info>(
         field,
         value,
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

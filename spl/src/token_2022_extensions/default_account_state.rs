@@ -1,7 +1,7 @@
+use anchor_lang::solana_program::account_info::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
-use solana_program::account_info::AccountInfo;
 use spl_token_2022::state::AccountState;
 
 pub fn default_account_state_initialize<'info>(
@@ -13,7 +13,7 @@ pub fn default_account_state_initialize<'info>(
         ctx.accounts.mint.key,
         state
     )?;
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -39,7 +39,7 @@ pub fn default_account_state_update<'info>(
         state
     )?;
 
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
