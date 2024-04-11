@@ -43,6 +43,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Add `docs` field for constants ([#2887](https://github.com/coral-xyz/anchor/pull/2887)).
 - idl: Store deployment addresses for other clusters ([#2892](https://github.com/coral-xyz/anchor/pull/2892)).
 - lang: Add `Event` utility type to get events from bytes ([#2897](https://github.com/coral-xyz/anchor/pull/2897)).
+- spl: Add support for [token extensions](https://solana.com/solutions/token-extensions) ([#2789](https://github.com/coral-xyz/anchor/pull/2789)).
 
 ### Fixes
 

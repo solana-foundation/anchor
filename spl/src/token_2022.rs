@@ -522,7 +522,3 @@ impl anchor_lang::Id for Token2022 {
         ID
     }
 }
-
-// Field parsers to save compute. All account validation is assumed to be done
-// outside of these methods.
-pub use crate::token::accessor;

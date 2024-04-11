@@ -34,6 +34,7 @@
     "pyth",
     "realloc",
     "spl/metadata",
+    "spl/token-extensions",
     "spl/token-proxy",
     "spl/token-wrapper",
     "spl/transfer-hook",

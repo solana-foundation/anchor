@@ -12,7 +12,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["associated_token", "mint", "token", "token_2022"]
+default = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"]
 associated_token = ["spl-associated-token-account"]
 dex = ["serum_dex"]
 devnet = []
@@ -24,6 +24,7 @@ mint = []
 stake = ["borsh"]
 token = ["spl-token"]
 token_2022 = ["spl-token-2022"]
+token_2022_extensions = ["spl-token-2022", "spl-token-group-interface", "spl-token-metadata-interface", "spl-pod"]
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.29.0", features = ["derive"] }
@@ -35,3 +36,6 @@ spl-associated-token-account = { version = "3", features = ["no-entrypoint"], op
 spl-memo = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token = { version = "4", features = ["no-entrypoint"], optional = true }
 spl-token-2022 = { version = "3", features = ["no-entrypoint"], optional = true }
+spl-token-group-interface = { version = "0.2.3", optional = true }
+spl-token-metadata-interface = { version = "0.3.3", optional = true }
+spl-pod = { version = "0.2.2", optional = true }

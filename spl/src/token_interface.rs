@@ -1,7 +1,15 @@
 use anchor_lang::solana_program::pubkey::Pubkey;
+use solana_program::program_pack::Pack;
+use spl_token_2022::extension::ExtensionType;
+use spl_token_2022::{
+    extension::{BaseStateWithExtensions, Extension, StateWithExtensions},
+    solana_zk_token_sdk::instruction::Pod,
+};
 use std::ops::Deref;
 
 pub use crate::token_2022::*;
+#[cfg(feature = "token_2022_extensions")]
+pub use crate::token_2022_extensions::*;
 
 static IDS: [Pubkey; 2] = [spl_token::ID, spl_token_2022::ID];
 
@@ -68,4 +76,26 @@ impl anchor_lang::Ids for TokenInterface {
     fn ids() -> &'static [Pubkey] {
         &IDS
     }
+}
+
+pub type ExtensionsVec = Vec<ExtensionType>;
+
+pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang::Result<usize> {
+    if let Some(extensions) = extensions {
+        Ok(ExtensionType::try_calculate_account_len::<
+            spl_token_2022::state::Mint,
+        >(extensions)?)
+    } else {
+        Ok(spl_token_2022::state::Mint::LEN)
+    }
+}
+
+pub fn get_mint_extension_data<T: Extension + Pod>(
+    account: &solana_program::account_info::AccountInfo,
+) -> anchor_lang::Result<T> {
+    let mint_data = account.data.borrow();
+    let mint_with_extension =
+        StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data)?;
+    let extension_data = *mint_with_extension.get_extension::<T>()?;
+    Ok(extension_data)
 }

@@ -388,6 +388,8 @@ jobs:
             path: spl/token-wrapper
           - cmd: cd tests/spl/transfer-hook && anchor test --skip-lint
             path: spl/transfer-hook
+          - cmd: cd tests/spl/token-extensions && anchor test --skip-lint
+            path: spl/token-extensions
           - cmd: cd tests/multisig && anchor test --skip-lint
             path: tests/multisig
           # - cmd: cd tests/lockup && anchor test --skip-lint

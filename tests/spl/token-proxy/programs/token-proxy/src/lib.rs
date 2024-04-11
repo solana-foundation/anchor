@@ -191,7 +191,8 @@ pub struct ProxyCreateAssociatedTokenAccount<'info> {
 pub struct ProxyCreateMint<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
-    #[account(init,
+    #[account(
+        init,
         mint::decimals = 9,
         mint::authority = authority,
         seeds = [authority.key().as_ref(), name.as_bytes(), b"token-proxy-mint"],
