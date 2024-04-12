@@ -153,6 +153,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Upload IDL by default with an option to skip ((#3863)[https://github.com/solana-foundation/anchor/pull/3863]).
 - lang: remove Solang ([#3824](https://github.com/solana-foundation/anchor/pull/3824)).
 - cli: remove `anchor publish` command ([#3795](https://github.com/solana-foundation/anchor/pull/3795)).
+- lang: Remove `rent_exempt` constraint ([#3870](https://github.com/coral-xyz/anchor/pull/3870)).
 
 ## [0.31.1] - 2025-04-19
 
