@@ -17,7 +17,7 @@ dev = []
 
 [dependencies]
 anchor-client = { path = "../client", version = "0.29.0" }
-anchor-idl = { path = "../idl", features = ["build"], version = "0.29.0" }
+anchor-idl = { path = "../idl", features = ["build"], version = "0.1.0" }
 anchor-lang = { path = "../lang", version = "0.29.0" }
 anyhow = "1.0.32"
 base64 = "0.21"

@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 /// IDL specification Semantic Version
-pub const IDL_SPEC: &str = "0.1.0";
+pub const IDL_SPEC: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Idl {
