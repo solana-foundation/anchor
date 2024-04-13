@@ -71,6 +71,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm, cli: Fix `stdsimd` feature compilation error from `ahash` when installing the CLI using newer Rust versions ([#2867](https://github.com/coral-xyz/anchor/pull/2867)).
 - spl: Fix not being able to deserialize newer token 2022 extensions ([#2876](https://github.com/coral-xyz/anchor/pull/2876)).
 - spl: Remove `solana-program` dependency ([#2900](https://github.com/coral-xyz/anchor/pull/2900)).
+- spl: Make TokenAccount and Mint Copy ([#2904])(https://github.com/coral-xyz/anchor/pull/2904)
 
 ### Breaking
 

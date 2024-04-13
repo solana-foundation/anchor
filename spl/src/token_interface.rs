@@ -13,7 +13,7 @@ pub use crate::token_2022_extensions::*;
 
 static IDS: [Pubkey; 2] = [spl_token::ID, spl_token_2022::ID];
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct TokenAccount(spl_token_2022::state::Account);
 
 impl anchor_lang::AccountDeserialize for TokenAccount {
@@ -42,7 +42,7 @@ impl Deref for TokenAccount {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct Mint(spl_token_2022::state::Mint);
 
 impl anchor_lang::AccountDeserialize for Mint {

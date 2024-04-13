@@ -443,7 +443,7 @@ pub struct SyncNative<'info> {
     pub account: AccountInfo<'info>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct TokenAccount(spl_token::state::Account);
 
 impl TokenAccount {
@@ -474,7 +474,7 @@ impl Deref for TokenAccount {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct Mint(spl_token::state::Mint);
 
 impl Mint {
