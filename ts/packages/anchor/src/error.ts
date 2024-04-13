@@ -315,6 +315,10 @@ export const LangErrorCode = {
   // IDL instructions.
   IdlInstructionStub: 1000,
   IdlInstructionInvalidProgram: 1001,
+  IdlAccountNotEmpty: 1002,
+
+  // Event instructions.
+  EventInstructionStub: 1500,
 
   // Constraints.
   ConstraintMut: 2000,
@@ -338,6 +342,25 @@ export const LangErrorCode = {
   ConstraintMintDecimals: 2018,
   ConstraintSpace: 2019,
   ConstraintAccountIsNone: 2020,
+  ConstraintTokenTokenProgram: 2021,
+  ConstraintMintTokenProgram: 2022,
+  ConstraintAssociatedTokenTokenProgram: 2023,
+  ConstraintMintGroupPointerExtension: 2024,
+  ConstraintMintGroupPointerExtensionAuthority: 2025,
+  ConstraintMintGroupPointerExtensionGroupAddress: 2026,
+  ConstraintMintGroupMemberPointerExtension: 2027,
+  ConstraintMintGroupMemberPointerExtensionAuthority: 2028,
+  ConstraintMintGroupMemberPointerExtensionMemberAddress: 2029,
+  ConstraintMintMetadataPointerExtension: 2030,
+  ConstraintMintMetadataPointerExtensionAuthority: 2031,
+  ConstraintMintMetadataPointerExtensionMetadataAddress: 2032,
+  ConstraintMintCloseAuthorityExtension: 2033,
+  ConstraintMintCloseAuthorityExtensionAuthority: 2034,
+  ConstraintMintPermanentDelegateExtension: 2035,
+  ConstraintMintPermanentDelegateExtensionDelegate: 2036,
+  ConstraintMintTransferHookExtension: 2037,
+  ConstraintMintTransferHookExtensionAuthority: 2038,
+  ConstraintMintTransferHookExtensionProgramId: 2039,
 
   // Require.
   RequireViolated: 2500,
@@ -370,6 +393,7 @@ export const LangErrorCode = {
 
   // Miscellaneous
   DeclaredProgramIdMismatch: 4100,
+  TryingToInitPayerAsProgramAccount: 4101,
 
   // Used for APIs that shouldn't be used anymore.
   Deprecated: 5000,
@@ -402,6 +426,16 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.IdlInstructionInvalidProgram,
     "The transaction was given an invalid program for the IDL instruction",
+  ],
+  [
+    LangErrorCode.IdlAccountNotEmpty,
+    "IDL account must be empty in order to resize, try closing first",
+  ],
+
+  // Event instructions.
+  [
+    LangErrorCode.EventInstructionStub,
+    "The program was compiled without `event-cpi` feature",
   ],
 
   // Constraints.
@@ -446,6 +480,82 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.ConstraintAccountIsNone,
     "A required account for the constraint is None",
+  ],
+  [
+    LangErrorCode.ConstraintTokenTokenProgram,
+    "A token account token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTokenProgram,
+    "A mint token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintAssociatedTokenTokenProgram,
+    "An associated token account token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtension,
+    "A group pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtensionAuthority,
+    "A group pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtensionGroupAddress,
+    "A group pointer extension group address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtension,
+    "A group member pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtensionAuthority,
+    "A group member pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtensionMemberAddress,
+    "A group member pointer extension group address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtension,
+    "A metadata pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtensionAuthority,
+    "A metadata pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtensionMetadataAddress,
+    "A metadata pointer extension metadata address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintCloseAuthorityExtension,
+    "A close authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintCloseAuthorityExtensionAuthority,
+    "A close authority extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintPermanentDelegateExtension,
+    "A permanent delegate extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintPermanentDelegateExtensionDelegate,
+    "A permanent delegate extension delegate constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtension,
+    "A transfer hook extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtensionAuthority,
+    "A transfer hook extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtensionProgramId,
+    "A transfer hook extension transfer hook program id constraint was violated",
   ],
 
   // Require.
@@ -523,6 +633,10 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.DeclaredProgramIdMismatch,
     "The declared program id does not match the actual program id",
+  ],
+  [
+    LangErrorCode.TryingToInitPayerAsProgramAccount,
+    "You cannot/should not initialize the payer account as a program account",
   ],
 
   // Deprecated
