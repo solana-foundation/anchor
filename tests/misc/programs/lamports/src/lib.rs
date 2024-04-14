@@ -6,7 +6,7 @@ declare_id!("Lamports11111111111111111111111111111111111");
 pub mod lamports {
     use super::*;
 
-    pub fn test_lamports_trait(ctx: Context<TestLamportsTrait>, amount: u64) -> Result<()> {
+    pub fn transfer(ctx: Context<Transfer>, amount: u64) -> Result<()> {
         let pda = &ctx.accounts.pda;
         let signer = &ctx.accounts.signer;
 
@@ -52,13 +52,29 @@ pub mod lamports {
 
         Ok(())
     }
+
+    // Return overflow error in the case of overflow (instead of panicking)
+    pub fn overflow(ctx: Context<Overflow>) -> Result<()> {
+        let pda = &ctx.accounts.pda;
+
+        match pda.add_lamports(u64::MAX) {
+            Err(e) => assert_eq!(e, ProgramError::ArithmeticOverflow.into()),
+            _ => unreachable!(),
+        }
+
+        match pda.sub_lamports(u64::MAX) {
+            Err(e) => assert_eq!(e, ProgramError::ArithmeticOverflow.into()),
+            _ => unreachable!(),
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
-pub struct TestLamportsTrait<'info> {
+pub struct Transfer<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
-
     #[account(
         init,
         payer = signer,
@@ -67,8 +83,13 @@ pub struct TestLamportsTrait<'info> {
         bump
     )]
     pub pda: Account<'info, LamportsPda>,
-
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Overflow<'info> {
+    #[account(seeds = [b"lamports"], bump)]
+    pub pda: Account<'info, LamportsPda>,
 }
 
 #[account]

@@ -28,6 +28,7 @@ extern crate self as anchor_lang;
 use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
+use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
@@ -197,7 +198,10 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     ///
     /// See [`Lamports::sub_lamports`] for subtracting lamports.
     fn add_lamports(&self, amount: u64) -> Result<&Self> {
-        **self.as_ref().try_borrow_mut_lamports()? += amount;
+        **self.as_ref().try_borrow_mut_lamports()? = self
+            .get_lamports()
+            .checked_add(amount)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
         Ok(self)
     }
 
@@ -215,7 +219,10 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     ///
     /// See [`Lamports::add_lamports`] for adding lamports.
     fn sub_lamports(&self, amount: u64) -> Result<&Self> {
-        **self.as_ref().try_borrow_mut_lamports()? -= amount;
+        **self.as_ref().try_borrow_mut_lamports()? = self
+            .get_lamports()
+            .checked_sub(amount)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
         Ok(self)
     }
 }
