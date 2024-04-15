@@ -1,4 +1,4 @@
-use anchor_idl::types::{
+use anchor_lang_idl::types::{
     Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlRepr, IdlSerialization,
     IdlType, IdlTypeDef, IdlTypeDefGeneric, IdlTypeDefTy,
 };

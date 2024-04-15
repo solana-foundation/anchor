@@ -80,4 +80,4 @@ impl IdlAccount {
 }
 
 #[cfg(feature = "idl-build")]
-pub use anchor_idl::{build::IdlBuild, *};
+pub use anchor_lang_idl::{build::IdlBuild, *};

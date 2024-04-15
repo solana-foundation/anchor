@@ -1,6 +1,6 @@
 use crate::is_hidden;
 use anchor_client::Cluster;
-use anchor_idl::types::Idl;
+use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;

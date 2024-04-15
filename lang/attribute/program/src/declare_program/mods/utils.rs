@@ -1,4 +1,4 @@
-use anchor_idl::types::Idl;
+use anchor_lang_idl::types::Idl;
 use quote::{format_ident, quote};
 
 use super::common::gen_discriminator;

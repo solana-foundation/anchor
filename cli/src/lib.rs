@@ -6,9 +6,9 @@ use crate::config::{
     DEFAULT_LEDGER_PATH, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
-use anchor_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
+use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, Context, Result};
 use checks::{check_anchor_version, check_overflow};
 use clap::Parser;
@@ -2609,7 +2609,7 @@ fn idl_build(
                 .path
         }
     };
-    let idl = anchor_idl::build::build_idl(
+    let idl = anchor_lang_idl::build::build_idl(
         program_path,
         cfg.features.resolution,
         cfg.features.skip_lint || skip_lint,
@@ -2655,7 +2655,7 @@ in `{path}`."#
         ));
     }
 
-    anchor_idl::build::build_idl(
+    anchor_lang_idl::build::build_idl(
         std::env::current_dir()?,
         cfg.features.resolution,
         cfg.features.skip_lint || skip_lint,

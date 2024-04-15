@@ -2,7 +2,7 @@ use crate::{
     config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
     VERSION,
 };
-use anchor_idl::types::Idl;
+use anchor_lang_idl::types::Idl;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};

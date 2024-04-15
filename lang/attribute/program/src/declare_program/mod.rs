@@ -1,7 +1,7 @@
 mod common;
 mod mods;
 
-use anchor_idl::types::Idl;
+use anchor_lang_idl::types::Idl;
 use anyhow::anyhow;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};

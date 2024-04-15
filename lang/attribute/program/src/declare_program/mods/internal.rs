@@ -1,4 +1,4 @@
-use anchor_idl::types::{Idl, IdlInstructionAccountItem};
+use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem};
 use anchor_syn::{
     codegen::accounts::{__client_accounts, __cpi_client_accounts},
     parser::accounts,
