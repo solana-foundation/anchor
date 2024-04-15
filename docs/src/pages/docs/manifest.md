@@ -200,6 +200,6 @@ Override toolchain data in the workspace similar to [`rust-toolchain.toml`](http
 
 ```toml
 [toolchain]
-anchor_version = "0.29.0"    # `anchor-cli` version to use(requires `avm`)
-solana_version = "1.17.0"    # Solana version to use(applies to all Solana tools)
+anchor_version = "0.30.0"    # `anchor-cli` version to use(requires `avm`)
+solana_version = "1.18.8"    # Solana version to use(applies to all Solana tools)
 ```
