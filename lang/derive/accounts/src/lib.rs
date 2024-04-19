@@ -591,16 +591,16 @@ use syn::parse_macro_input;
 ///                 <br><br>
 ///                 Example:
 ///                 <pre>
-/// use anchor_spl::{mint, token::{TokenAccount, Mint, Token}};
+/// use anchor_spl::token_interface::{TokenInterface, TokenAccount, Mint};
 /// ...&#10;
 /// #[account(
 ///     mint::token_program = token_a_token_program,
 /// )]
-/// pub token_a_mint: Box<InterfaceAccount<'info, Mint>>,
+/// pub token_a_mint: InterfaceAccount<'info, Mint>,
 /// #[account(
 ///     mint::token_program = token_b_token_program,
 /// )]
-/// pub token_b_mint: Box<InterfaceAccount<'info, Mint>>,
+/// pub token_b_mint: InterfaceAccount<'info, Mint>,
 /// #[account(
 ///     init,
 ///     payer = payer,
@@ -608,7 +608,7 @@ use syn::parse_macro_input;
 ///     token::authority = payer,
 ///     token::token_program = token_a_token_program,
 /// )]
-/// pub token_a_account: Box<InterfaceAccount<'info, TokenAccount>>,
+/// pub token_a_account: InterfaceAccount<'info, TokenAccount>,
 /// #[account(
 ///     init,
 ///     payer = payer,
@@ -616,7 +616,7 @@ use syn::parse_macro_input;
 ///     token::authority = payer,
 ///     token::token_program = token_b_token_program,
 /// )]
-/// pub token_b_account: Box<InterfaceAccount<'info, TokenAccount>>,
+/// pub token_b_account: InterfaceAccount<'info, TokenAccount>,
 /// pub token_a_token_program: Interface<'info, TokenInterface>,
 /// pub token_b_token_program: Interface<'info, TokenInterface>,
 /// #[account(mut)]
