@@ -10,26 +10,30 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
 
-/// Storage directory for AVM, ~/.avm
+/// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
     cfg_if::cfg_if! {
         if #[cfg(test)] {
             let dir = tempfile::tempdir().expect("Could not create temporary directory");
             dir.path().join(".avm")
         } else {
-            let mut user_home = dirs::home_dir().expect("Could not find home directory");
-            user_home.push(".avm");
-            user_home
+            if let Ok(avm_home) = std::env::var("AVM_HOME") {
+                PathBuf::from(avm_home)
+            } else {
+                let mut user_home = dirs::home_dir().expect("Could not find home directory");
+                user_home.push(".avm");
+                user_home
+            }
         }
     }
 });
 
-/// Path to the current version file ~/.avm/.version
+/// Path to the current version file $AVM_HOME/.version
 fn current_version_file_path() -> PathBuf {
     AVM_HOME.join(".version")
 }
 
-/// Path to the current version file ~/.avm/bin
+/// Path to the current version file $AVM_HOME/bin
 fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
 }
