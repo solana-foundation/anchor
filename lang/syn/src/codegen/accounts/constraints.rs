@@ -886,67 +886,46 @@ fn generate_constraint_init_group(
                             for e in extensions {
                                 match e {
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupPointer => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::GroupPointerInitialize {
+                                        ::anchor_spl::token_interface::group_pointer_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::GroupPointerInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::group_pointer_initialize(cpi_ctx, #group_pointer_authority, #group_pointer_group_address)?;
+                                        }), #group_pointer_authority, #group_pointer_group_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupMemberPointer => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::GroupMemberPointerInitialize {
+                                        ::anchor_spl::token_interface::group_member_pointer_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::GroupMemberPointerInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::group_member_pointer_initialize(cpi_ctx, #group_member_pointer_authority, #group_member_pointer_member_address)?;
+                                        }), #group_member_pointer_authority, #group_member_pointer_member_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MetadataPointer => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::MetadataPointerInitialize {
+                                        ::anchor_spl::token_interface::metadata_pointer_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::MetadataPointerInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::metadata_pointer_initialize(cpi_ctx, #metadata_pointer_authority, #metadata_pointer_metadata_address)?;
+                                        }), #metadata_pointer_authority, #metadata_pointer_metadata_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MintCloseAuthority => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::MintCloseAuthorityInitialize {
+                                        ::anchor_spl::token_interface::mint_close_authority_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::MintCloseAuthorityInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::mint_close_authority_initialize(cpi_ctx, #close_authority)?;
+                                        }), #close_authority)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferHook => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::TransferHookInitialize {
+                                        ::anchor_spl::token_interface::transfer_hook_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::TransferHookInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::transfer_hook_initialize(cpi_ctx, #transfer_hook_authority, #transfer_hook_program_id)?;
+                                        }), #transfer_hook_authority, #transfer_hook_program_id)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::NonTransferableMintInitialize {
+                                        ::anchor_spl::token_interface::non_transferable_mint_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::NonTransferableMintInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::non_transferable_mint_initialize(cpi_ctx)?;
+                                        }))?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate => {
-                                        let cpi_program = #token_program.to_account_info();
-                                        let accounts = ::anchor_spl::token_interface::PermanentDelegateInitialize {
+                                        ::anchor_spl::token_interface::permanent_delegate_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::PermanentDelegateInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        };
-                                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, accounts);
-                                        ::anchor_spl::token_interface::permanent_delegate_initialize(cpi_ctx, #permanent_delegate.unwrap())?;
+                                        }), #permanent_delegate.unwrap())?;
                                     },
                                     _ => {} // do nothing
                                 }
