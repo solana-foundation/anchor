@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
 use super::common::{get_idl_module_path, get_no_docs};
-use crate::{AccountField, AccountsStruct, Field, Ty};
+use crate::{AccountField, AccountsStruct, Field, InitKind, Ty};
 
 /// Generate the IDL build impl for the Accounts struct.
 pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStream {
@@ -168,26 +168,87 @@ fn get_address(acc: &Field) -> TokenStream {
 
 fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let idl = get_idl_module_path();
+    let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
+
+    // Seeds
     let seed_constraints = acc.constraints.seeds.as_ref();
-    let seeds = seed_constraints
-        .map(|seed| seed.seeds.iter().map(|seed| parse_seed(seed, accounts)))
-        .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok());
-    let program = seed_constraints
-        .and_then(|seed| seed.program_seed.as_ref())
-        .and_then(|program| parse_seed(program, accounts).ok())
-        .map(|program| quote! { Some(#program) })
-        .unwrap_or_else(|| quote! { None });
-    match seeds {
-        Some(seeds) => quote! {
-            Some(
-                #idl::IdlPda {
-                    seeds: vec![#(#seeds),*],
-                    program: #program,
-                }
-            )
-        },
-        _ => quote! { None },
+    let pda = seed_constraints
+        .map(|seed| seed.seeds.iter().map(parse_default))
+        .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
+        .map(|seeds| {
+            let program = seed_constraints
+                .and_then(|seed| seed.program_seed.as_ref())
+                .and_then(|program| parse_default(program).ok())
+                .map(|program| quote! { Some(#program) })
+                .unwrap_or_else(|| quote! { None });
+
+            quote! {
+                Some(
+                    #idl::IdlPda {
+                        seeds: vec![#(#seeds),*],
+                        program: #program,
+                    }
+                )
+            }
+        });
+    if let Some(pda) = pda {
+        return pda;
     }
+
+    // Associated token
+    let pda = acc
+        .constraints
+        .init
+        .as_ref()
+        .and_then(|init| match &init.kind {
+            InitKind::AssociatedToken {
+                owner,
+                mint,
+                token_program,
+            } => Some((owner, mint, token_program)),
+            _ => None,
+        })
+        .or_else(|| {
+            acc.constraints
+                .associated_token
+                .as_ref()
+                .map(|ata| (&ata.wallet, &ata.mint, &ata.token_program))
+        })
+        .and_then(|(wallet, mint, token_program)| {
+            // ATA constraints have implicit `.key()` call
+            let parse_expr = |ts| parse_default(&syn::parse2(ts).unwrap()).ok();
+            let parse_ata = |expr| parse_expr(quote! { #expr.key().as_ref() });
+
+            let wallet = parse_ata(wallet);
+            let mint = parse_ata(mint);
+            let token_program = token_program
+                .as_ref()
+                .and_then(parse_ata)
+                .or_else(|| parse_expr(quote!(anchor_spl::token::ID)));
+
+            let seeds = match (wallet, mint, token_program) {
+                (Some(w), Some(m), Some(tp)) => quote! { vec![#w, #tp, #m] },
+                _ => return None,
+            };
+
+            let program = parse_expr(quote!(anchor_spl::associated_token::ID))
+                .map(|program| quote! { Some(#program) })
+                .unwrap();
+
+            Some(quote! {
+                Some(
+                    #idl::IdlPda {
+                        seeds: #seeds,
+                        program: #program,
+                    }
+                )
+            })
+        });
+    if let Some(pda) = pda {
+        return pda;
+    }
+
+    quote! { None }
 }
 
 /// Parse a seeds constraint, extracting the `IdlSeed` types.

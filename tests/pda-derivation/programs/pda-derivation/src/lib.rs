@@ -4,6 +4,10 @@
 mod other;
 
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{Mint, Token, TokenAccount},
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -32,6 +36,10 @@ pub mod pda_derivation {
 
     pub fn init_my_account(ctx: Context<InitMyAccount>, _seed_a: u8) -> Result<()> {
         ctx.accounts.account.data = 1337;
+        Ok(())
+    }
+
+    pub fn associated_token_resolution(_ctx: Context<AssociatedTokenResolution>) -> Result<()> {
         Ok(())
     }
 }
@@ -113,6 +121,29 @@ pub struct Nested<'info> {
     )]
     /// CHECK: Not needed
     account_nested: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct AssociatedTokenResolution<'info> {
+    #[account(
+        init,
+        payer = payer,
+        mint::authority = payer,
+        mint::decimals = 9,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = payer,
+        associated_token::authority = payer,
+        associated_token::mint = mint,
+    )]
+    pub ata: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[account]
