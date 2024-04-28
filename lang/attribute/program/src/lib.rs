@@ -30,7 +30,7 @@ pub fn program(
 /// declare_program!(program_name);
 /// ```
 ///
-/// This generates a module named `external_program` that can be used to interact with the program
+/// This generates a module named `program_name` that can be used to interact with the program
 /// without having to add the program's crate as a dependency.
 ///
 /// Both on-chain and off-chain usage is supported.
@@ -40,11 +40,17 @@ pub fn program(
 /// # Note
 ///
 /// Re-defining the same program to use the same definitions should be avoided since this results
-/// in larger binary size.
+/// in a larger binary size.
 ///
 /// A program should only be defined once. If you have multiple programs that depend on the same
 /// definition, you should consider creating a separate crate for the external program definition
-/// and reuse it in your programs.
+/// and reusing it in your programs.
+///
+/// # Example
+///
+/// A full on-chain CPI usage example can be found [here].
+///
+/// [here]: https://github.com/coral-xyz/anchor/tree/v0.30.0/tests/declare-program
 #[proc_macro]
 pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as DeclareProgram)
