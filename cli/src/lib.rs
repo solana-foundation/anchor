@@ -655,6 +655,22 @@ fn restore_toolchain(restore_cbs: RestoreToolchainCallbacks) -> Result<()> {
     Ok(())
 }
 
+/// Get the system's default license - what 'npm init' would use.
+fn get_npm_init_license() -> Result<String> {
+    let npm_init_license_output = std::process::Command::new("npm")
+        .arg("config")
+        .arg("get")
+        .arg("init-license")
+        .output()?;
+
+    if !npm_init_license_output.status.success() {
+        return Err(anyhow!("Failed to get npm init license"));
+    }
+
+    let license = String::from_utf8(npm_init_license_output.stdout)?;
+    Ok(license.trim().to_string())
+}
+
 fn process_command(opts: Opts) -> Result<()> {
     match opts.command {
         Command::Init {
@@ -919,11 +935,13 @@ fn init(
     // Build the migrations directory.
     fs::create_dir_all("migrations")?;
 
+    let license = get_npm_init_license()?;
+
     let jest = TestTemplate::Jest == test_template;
     if javascript {
         // Build javascript config
         let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest).as_bytes())?;
+        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.js")?;
 
@@ -934,7 +952,7 @@ fn init(
         ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
         let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(jest).as_bytes())?;
+        ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
         let mut deploy = File::create("migrations/deploy.ts")?;
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
