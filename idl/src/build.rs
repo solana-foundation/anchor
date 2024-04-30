@@ -70,12 +70,15 @@ pub fn build_idl(
 /// Build IDL.
 fn build(program_path: &Path, resolution: bool, no_docs: bool) -> Result<Idl> {
     // `nightly` toolchain is currently required for building the IDL.
-    const TOOLCHAIN: &str = "+nightly";
-    install_toolchain_if_needed(TOOLCHAIN)?;
+    let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
+        .map(|toolchain| format!("+{}", toolchain))
+        .unwrap_or_else(|_| "+nightly".to_string());
+
+    install_toolchain_if_needed(&toolchain)?;
 
     let output = Command::new("cargo")
         .args([
-            TOOLCHAIN,
+            &toolchain,
             "test",
             "__anchor_private_print_idl",
             "--features",
