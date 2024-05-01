@@ -490,6 +490,11 @@ pub enum ClusterCommand {
     List,
 }
 
+fn get_keypair(path: &str) -> Result<Keypair> {
+    solana_sdk::signature::read_keypair_file(path)
+        .map_err(|_| anyhow!("Unable to read keypair file ({path})"))
+}
+
 pub fn entry(opts: Opts) -> Result<()> {
     let restore_cbs = override_toolchain(&opts.cfg_override)?;
     let result = process_command(opts);
@@ -2285,8 +2290,7 @@ fn idl_set_buffer(
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
     with_workspace(cfg_override, |cfg| {
-        let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
-            .map_err(|_| anyhow!("Unable to read keypair file"))?;
+        let keypair = get_keypair(&cfg.provider.wallet.to_string())?;
         let url = cluster_url(cfg, &cfg.test_validator);
         let client = create_client(url);
 
@@ -2404,8 +2408,7 @@ fn idl_set_authority(
             None => IdlAccount::address(&program_id),
             Some(addr) => addr,
         };
-        let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
-            .map_err(|_| anyhow!("Unable to read keypair file"))?;
+        let keypair = get_keypair(&cfg.provider.wallet.to_string())?;
         let url = cluster_url(cfg, &cfg.test_validator);
         let client = create_client(url);
 
@@ -2488,8 +2491,7 @@ fn idl_close_account(
     print_only: bool,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
-        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let keypair = get_keypair(&cfg.provider.wallet.to_string())?;
     let url = cluster_url(cfg, &cfg.test_validator);
     let client = create_client(url);
 
@@ -2541,8 +2543,7 @@ fn idl_write(
     priority_fee: Option<u64>,
 ) -> Result<()> {
     // Misc.
-    let keypair = solana_sdk::signature::read_keypair_file(&cfg.provider.wallet.to_string())
-        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let keypair = get_keypair(&cfg.provider.wallet.to_string())?;
     let url = cluster_url(cfg, &cfg.test_validator);
     let client = create_client(url);
 
@@ -3631,12 +3632,7 @@ fn deploy(
             println!("Program path: {}...", binary_path);
 
             let (program_keypair_filepath, program_id) = match &program_keypair {
-                Some(path) => (
-                    path.clone(),
-                    solana_sdk::signature::read_keypair_file(path)
-                        .map_err(|_| anyhow!("Unable to read keypair file"))?
-                        .pubkey(),
-                ),
+                Some(path) => (path.clone(), get_keypair(path)?.pubkey()),
                 None => (
                     program.keypair_file()?.path().display().to_string(),
                     program.pubkey()?,
@@ -3725,8 +3721,7 @@ fn create_idl_account(
 ) -> Result<Pubkey> {
     // Misc.
     let idl_address = IdlAccount::address(program_id);
-    let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
-        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let keypair = get_keypair(keypair_path)?;
     let url = cluster_url(cfg, &cfg.test_validator);
     let client = create_client(url);
     let idl_data = serialize_idl(idl)?;
@@ -3807,8 +3802,7 @@ fn create_idl_buffer(
     idl: &Idl,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
-    let keypair = solana_sdk::signature::read_keypair_file(keypair_path)
-        .map_err(|_| anyhow!("Unable to read keypair file"))?;
+    let keypair = get_keypair(keypair_path)?;
     let url = cluster_url(cfg, &cfg.test_validator);
     let client = create_client(url);
 

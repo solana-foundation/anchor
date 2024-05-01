@@ -1,4 +1,4 @@
-use crate::is_hidden;
+use crate::{get_keypair, is_hidden};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -531,8 +531,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        solana_sdk::signature::read_keypair_file(&self.provider.wallet.to_string())
-            .map_err(|_| anyhow!("Unable to read keypair file"))
+        get_keypair(&self.provider.wallet.to_string())
     }
 }
 
@@ -1265,8 +1264,7 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        solana_sdk::signature::read_keypair_file(file.path())
-            .map_err(|_| anyhow!("failed to read keypair for program: {}", self.lib_name))
+        get_keypair(file.path().to_str().unwrap())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.

@@ -20,7 +20,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - lang: Eliminate variable allocations that build up stack space for token extension code generation ([#2913](https://github.com/coral-xyz/anchor/pull/2913)).
 - ts: Fix incorrect `maxSupportedTransactionVersion` in `AnchorProvider.send*()` methods ([#2922](https://github.com/coral-xyz/anchor/pull/2922)).
-- cli: Use npm's configured default license for new projects make with `anchor init` ([#2929](https://github.com/coral-xyz/anchor/pull/2929)).
+- cli: Use npm's configured default license for new projects made with `anchor init` ([#2929](https://github.com/coral-xyz/anchor/pull/2929)).
+- cli: add filename to 'Unable to read keypair file' errors ([#2932](https://github.com/coral-xyz/anchor/pull/2932)).
 
 ### Breaking
 
