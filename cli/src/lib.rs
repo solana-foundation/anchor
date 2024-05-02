@@ -80,6 +80,9 @@ pub enum Command {
         /// Use Solidity instead of Rust
         #[clap(short, long)]
         solidity: bool,
+        /// Don't install JavaScript dependencies
+        #[clap(long)]
+        no_install: bool,
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
@@ -682,6 +685,7 @@ fn process_command(opts: Opts) -> Result<()> {
             name,
             javascript,
             solidity,
+            no_install,
             no_git,
             template,
             test_template,
@@ -691,6 +695,7 @@ fn process_command(opts: Opts) -> Result<()> {
             name,
             javascript,
             solidity,
+            no_install,
             no_git,
             template,
             test_template,
@@ -859,6 +864,7 @@ fn init(
     name: String,
     javascript: bool,
     solidity: bool,
+    no_install: bool,
     no_git: bool,
     template: ProgramTemplate,
     test_template: TestTemplate,
@@ -970,10 +976,12 @@ fn init(
         &program_id.to_string(),
     )?;
 
-    let yarn_result = install_node_modules("yarn")?;
-    if !yarn_result.status.success() {
-        println!("Failed yarn install will attempt to npm install");
-        install_node_modules("npm")?;
+    if !no_install {
+        let yarn_result = install_node_modules("yarn")?;
+        if !yarn_result.status.success() {
+            println!("Failed yarn install will attempt to npm install");
+            install_node_modules("npm")?;
+        }
     }
 
     if !no_git {
@@ -4573,6 +4581,7 @@ mod tests {
             "await".to_string(),
             true,
             false,
+            true,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -4592,6 +4601,7 @@ mod tests {
             "fn".to_string(),
             true,
             false,
+            true,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -4611,6 +4621,7 @@ mod tests {
             "1project".to_string(),
             true,
             false,
+            true,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
