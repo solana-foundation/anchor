@@ -2560,7 +2560,7 @@ fn idl_write(
     const MAX_WRITE_SIZE: usize = 600;
     let mut offset = 0;
     while offset < idl_data.len() {
-        println!("Step {offset} ");
+        println!("Step {offset}/{} ", idl_data.len());
         // Instruction data.
         let data = {
             let start = offset;
