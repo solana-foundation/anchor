@@ -95,6 +95,7 @@ fn build(program_path: &Path, resolution: bool, no_docs: bool) -> Result<Idl> {
             "ANCHOR_IDL_BUILD_RESOLUTION",
             if resolution { "TRUE" } else { "FALSE" },
         )
+        .env("ANCHOR_IDL_BUILD_PROGRAM_PATH", program_path)
         .env("RUSTFLAGS", "--cfg procmacro2_semver_exempt")
         .current_dir(program_path)
         .stderr(Stdio::inherit())
