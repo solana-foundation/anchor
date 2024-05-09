@@ -1,22 +1,19 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
 pub fn find_path(name: &str, path: impl AsRef<Path>) -> Result<PathBuf> {
-    let parent_path = path.as_ref().parent().unwrap();
-    for entry in fs::read_dir(parent_path)? {
-        let entry = entry?;
-        if entry.file_name().to_string_lossy() == name {
-            return entry.path().canonicalize().map_err(Into::into);
+    let path = path.as_ref();
+    for ancestor in path.ancestors() {
+        let file_path = ancestor.join(name);
+        if file_path.exists() {
+            return file_path.canonicalize().map_err(Into::into);
         }
     }
 
-    find_path(name, parent_path)
+    Err(anyhow!("Path ({path:?}) not found"))
 }
 
 pub fn get_no_docs() -> bool {
