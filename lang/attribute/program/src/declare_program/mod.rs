@@ -73,6 +73,9 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
         #docs
         pub mod #name {
             use anchor_lang::prelude::*;
+            use accounts::*;
+            use events::*;
+            use types::*;
 
             #id
             #program_mod

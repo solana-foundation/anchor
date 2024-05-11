@@ -32,7 +32,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
     });
 
     quote! {
-        use super::{*, events::*};
+        use super::*;
 
         /// An enum that includes all events of the declared program as a tuple variant.
         ///

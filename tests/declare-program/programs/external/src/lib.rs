@@ -19,6 +19,12 @@ pub mod external {
         ctx.accounts.update.my_account.field = value;
         Ok(())
     }
+
+    // Compilation test for whether a defined type (an account in this case) can be used in `cpi` client.
+    pub fn update_all(ctx: Context<Update>, my_account: MyAccount) -> Result<()> {
+        *ctx.accounts.my_account = my_account;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]

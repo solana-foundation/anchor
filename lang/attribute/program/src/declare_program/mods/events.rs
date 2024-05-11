@@ -37,7 +37,7 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// Program event type definitions.
         pub mod events {
-            use super::{*, types::*};
+            use super::*;
 
             #(#events)*
         }

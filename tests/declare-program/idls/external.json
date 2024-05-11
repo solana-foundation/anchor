@@ -82,6 +82,47 @@
       ]
     },
     {
+      "name": "update_all",
+      "discriminator": [
+        205,
+        139,
+        239,
+        66,
+        134,
+        131,
+        110,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "my_account",
+          "type": {
+            "defined": {
+              "name": "MyAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "update_composite",
       "discriminator": [
         26,
