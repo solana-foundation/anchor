@@ -30,6 +30,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [0.30.0] - 2024-04-15
 
+See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.30.0) for a high-level overview of how to update.
+
 ### Features
 
 - cli: Allow force `init` and `new` ([#2698](https://github.com/coral-xyz/anchor/pull/2698)).
@@ -119,6 +121,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Add `#[non_exhaustive]` to IDL enums ([#2890](https://github.com/coral-xyz/anchor/pull/2890)).
 
 ## [0.29.0] - 2023-10-16
+
+See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.29.0) for a high-level overview of how to update.
 
 ### Features
 
