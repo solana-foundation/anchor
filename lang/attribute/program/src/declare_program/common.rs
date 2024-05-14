@@ -104,8 +104,15 @@ pub fn convert_idl_type_def_to_ts(
             .generics
             .iter()
             .map(|generic| match generic {
-                IdlTypeDefGeneric::Type { name } => format_ident!("{name}"),
-                IdlTypeDefGeneric::Const { name, ty } => format_ident!("{name}: {ty}"),
+                IdlTypeDefGeneric::Type { name } => {
+                    let name = format_ident!("{}", name);
+                    quote! { #name }
+                }
+                IdlTypeDefGeneric::Const { name, ty } => {
+                    let name = format_ident!("{}", name);
+                    let ty = format_ident!("{}", ty);
+                    quote! { const #name: #ty }
+                }
             })
             .collect::<Vec<_>>();
         if generics.is_empty() {
