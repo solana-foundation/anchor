@@ -668,6 +668,7 @@ dependencies = [
  "anyhow",
  "cargo_toml",
  "cfg-if",
+ "chrono",
  "clap 4.4.6",
  "dirs",
  "once_cell",
