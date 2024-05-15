@@ -394,6 +394,7 @@ export const LangErrorCode = {
   // Miscellaneous
   DeclaredProgramIdMismatch: 4100,
   TryingToInitPayerAsProgramAccount: 4101,
+  InvalidNumericConversion: 4102,
 
   // Used for APIs that shouldn't be used anymore.
   Deprecated: 5000,
@@ -637,6 +638,10 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.TryingToInitPayerAsProgramAccount,
     "You cannot/should not initialize the payer account as a program account",
+  ],
+  [
+    LangErrorCode.InvalidNumericConversion,
+    "The program could not perform the numeric conversion, out of range integral type conversion attempted",
   ],
 
   // Deprecated

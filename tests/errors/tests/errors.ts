@@ -604,4 +604,21 @@ describe("errors", () => {
       "Program log: Right: 10",
     ]);
   });
+
+  it("Emits a InvalidNumericConversion error via try_into", async () => {
+    await withLogTest(async () => {
+      try {
+        const tx = await program.methods.tryIntoInteger().rpc();
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `InvalidNumericConversion` error"
+        );
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 4102);
+      }
+    }, [
+      "Program log: AnchorError occurred. Error Code: InvalidNumericConversion. Error Number: 4102. Error Message: out of range integral type conversion attempted.",
+    ]);
+  });
 });

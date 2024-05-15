@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm: Optimize `avm list` when GitHub API rate limits are reached ([#2962](https://github.com/coral-xyz/anchor/pull/2962))
 - idl, ts: Add accounts resolution for associated token accounts ([#2927](https://github.com/coral-xyz/anchor/pull/2927)).
 - cli: Add `--no-install` option to the `init` command ([#2945](https://github.com/coral-xyz/anchor/pull/2945)).
+- lang: Implement `TryFromIntError` for `Error` to be able to propagate integer conversion errors ([#2950](https://github.com/coral-xyz/anchor/pull/2950)).
 
 ### Fixes
 

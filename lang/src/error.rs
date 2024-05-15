@@ -2,6 +2,7 @@ use anchor_lang::error_code;
 use borsh::maybestd::io::Error as BorshIoError;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::fmt::{Debug, Display};
+use std::num::TryFromIntError;
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -263,6 +264,9 @@ pub enum ErrorCode {
     /// 4101 - You cannot/should not initialize the payer account as a program account
     #[msg("You cannot/should not initialize the payer account as a program account")]
     TryingToInitPayerAsProgramAccount = 4101,
+    /// 4102 - Invalid numeric conversion error
+    #[msg("Error during numeric conversion")]
+    InvalidNumericConversion = 4102,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
@@ -307,6 +311,18 @@ impl From<BorshIoError> for Error {
 impl From<ProgramErrorWithOrigin> for Error {
     fn from(pe: ProgramErrorWithOrigin) -> Self {
         Self::ProgramError(Box::new(pe))
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        Self::AnchorError(Box::new(AnchorError {
+            error_name: ErrorCode::InvalidNumericConversion.name(),
+            error_code_number: ErrorCode::InvalidNumericConversion.into(),
+            error_msg: format!("{}", e),
+            error_origin: None,
+            compared_values: None,
+        }))
     }
 }
 
