@@ -601,8 +601,8 @@ where
     deserializer.deserialize_any(StringOrCustomCluster(PhantomData))
 }
 
-impl ToString for Config {
-    fn to_string(&self) -> String {
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let programs = {
             let c = ser_programs(&self.programs);
             if c.is_empty() {
@@ -629,7 +629,8 @@ impl ToString for Config {
                 .then(|| self.workspace.clone()),
         };
 
-        toml::to_string(&cfg).expect("Must be well formed")
+        let cfg = toml::to_string(&cfg).expect("Must be well formed");
+        write!(f, "{}", cfg)
     }
 }
 
@@ -1395,9 +1396,9 @@ macro_rules! home_path {
             }
         }
 
-        impl ToString for $my_struct {
-            fn to_string(&self) -> String {
-                self.0.clone()
+        impl fmt::Display for $my_struct {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.0)
             }
         }
     };
