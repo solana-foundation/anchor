@@ -23,4 +23,4 @@ bytemuck = {version = "1.4.0", features = ["derive", "min_const_generics"]}
 
 [dev-dependencies]
 anchor-client = { path = "../../../../client", features = ["debug", "async"] }
-solana-program-test = "1.16"
+solana-program-test = "1.17.3"
