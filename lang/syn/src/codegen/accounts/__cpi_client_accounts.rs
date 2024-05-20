@@ -7,7 +7,10 @@ use quote::quote;
 // Generates the private `__cpi_client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
 // `AccountInfo`s as the types. This is generated for CPI clients.
-pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+pub fn generate(
+    accs: &AccountsStruct,
+    program_id: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     let name = &accs.ident;
     let account_mod_name: proc_macro2::TokenStream = format!(
         "__cpi_client_accounts_{}",
@@ -104,7 +107,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         if let Some(#name) = &self.#name {
                             account_metas.push(#meta(anchor_lang::Key::key(#name), #is_signer));
                         } else {
-                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(crate::ID, false));
+                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(#program_id, false));
                         }
                     }
                 } else {

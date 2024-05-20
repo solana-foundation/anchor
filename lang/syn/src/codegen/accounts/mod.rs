@@ -21,8 +21,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_exit = exit::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
-    let __client_accounts_mod = __client_accounts::generate(accs);
-    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs);
+    let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, quote!(crate::ID));
 
     let ret = quote! {
         #impl_try_accounts

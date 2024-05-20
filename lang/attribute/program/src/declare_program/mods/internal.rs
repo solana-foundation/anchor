@@ -107,7 +107,7 @@ fn gen_internal_accounts(idl: &Idl) -> proc_macro2::TokenStream {
 
 fn gen_internal_accounts_common(
     idl: &Idl,
-    gen_accounts: impl Fn(&AccountsStruct) -> proc_macro2::TokenStream,
+    gen_accounts: impl Fn(&AccountsStruct, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let accounts = idl
         .instructions
@@ -171,7 +171,7 @@ fn gen_internal_accounts_common(
             let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
             let accs_struct =
                 accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
-            gen_accounts(&accs_struct)
+            gen_accounts(&accs_struct, get_canonical_program_id())
         });
 
     quote! { #(#accounts)* }
