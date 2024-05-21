@@ -50,7 +50,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 let ty = convert_idl_type_to_syn_type(ty);
                 (
                     quote! { anchor_lang::Result<Return::<#ty>> },
-                    quote! { Ok(Return::<#ty> { phantom:: std::marker::PhantomData }) },
+                    quote! { Ok(Return::<#ty> { phantom: std::marker::PhantomData }) },
                 )
             },
             None => (

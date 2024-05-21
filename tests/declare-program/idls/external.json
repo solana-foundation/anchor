@@ -45,6 +45,56 @@
       "args": []
     },
     {
+      "name": "test_compilation_defined_type_param",
+      "discriminator": [
+        61,
+        118,
+        87,
+        242,
+        137,
+        97,
+        90,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "_my_account",
+          "type": {
+            "defined": {
+              "name": "MyAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "test_compilation_return_type",
+      "discriminator": [
+        174,
+        51,
+        51,
+        121,
+        52,
+        61,
+        38,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [],
+      "returns": "bool"
+    },
+    {
       "name": "update",
       "discriminator": [
         219,
@@ -78,47 +128,6 @@
         {
           "name": "value",
           "type": "u32"
-        }
-      ]
-    },
-    {
-      "name": "update_all",
-      "discriminator": [
-        205,
-        139,
-        239,
-        66,
-        134,
-        131,
-        110,
-        182
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "signer": true
-        },
-        {
-          "name": "my_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
-        }
-      ],
-      "args": [
-        {
-          "name": "my_account",
-          "type": {
-            "defined": {
-              "name": "MyAccount"
-            }
-          }
         }
       ]
     },

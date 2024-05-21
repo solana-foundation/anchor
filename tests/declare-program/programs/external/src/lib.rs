@@ -21,10 +21,22 @@ pub mod external {
     }
 
     // Compilation test for whether a defined type (an account in this case) can be used in `cpi` client.
-    pub fn update_all(ctx: Context<Update>, my_account: MyAccount) -> Result<()> {
-        *ctx.accounts.my_account = my_account;
+    pub fn test_compilation_defined_type_param(
+        _ctx: Context<TestCompilation>,
+        _my_account: MyAccount,
+    ) -> Result<()> {
         Ok(())
     }
+
+    // Compilation test for whether a custom return type can be specified in `cpi` client
+    pub fn test_compilation_return_type(_ctx: Context<TestCompilation>) -> Result<bool> {
+        Ok(true)
+    }
+}
+
+#[derive(Accounts)]
+pub struct TestCompilation<'info> {
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
