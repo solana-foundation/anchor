@@ -35,3 +35,7 @@ thiserror = "1"
 
 # `idl-build` feature only
 cargo_toml = { version = "0.19", optional = true }
+
+# https://blog.rust-lang.org/2024/05/06/check-cfg.html#expecting-custom-cfgs
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ["cfg(procmacro2_semver_exempt)"] }
