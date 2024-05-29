@@ -61,6 +61,7 @@ jobs:
       - run: cd avm && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test -- --test-threads=1
       # Init local borsh package
       - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build
+      - run: cd ts/packages/anchor-errors && yarn --frozen-lockfile && yarn build
       - run: cd ts/packages/anchor && yarn --frozen-lockfile
       - run: cd ts/packages/anchor && yarn test
       - run: cd ts/packages/anchor && yarn lint
