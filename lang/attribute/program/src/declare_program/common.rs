@@ -211,7 +211,11 @@ pub fn convert_idl_type_def_to_ts(
                     }
                 },
                 |tys| {
-                    let tys = tys.iter().map(convert_idl_type_to_syn_type);
+                    let tys = tys
+                        .iter()
+                        .map(convert_idl_type_to_syn_type)
+                        .map(|ty| quote! { pub #ty });
+
                     quote! {
                         #declare_struct (#(#tys,)*);
                     }
