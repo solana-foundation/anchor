@@ -1,7 +1,6 @@
 [package]
 name = "shared"
 version = "0.1.0"
-rust-version = "1.60"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

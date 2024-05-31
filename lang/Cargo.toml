@@ -3,7 +3,6 @@ name = "anchor-lang"
 version = "0.30.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
-rust-version = "1.60"
 edition = "2021"
 license = "Apache-2.0"
 description = "Solana Sealevel eDSL"

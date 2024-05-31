@@ -2,7 +2,6 @@
 name = "anchor-client"
 version = "0.30.0"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-rust-version = "1.60"
 edition = "2021"
 license = "Apache-2.0"
 description = "An RPC client to interact with Anchor programs"

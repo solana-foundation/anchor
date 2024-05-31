@@ -2,7 +2,6 @@
 name = "example"
 version = "0.1.0"
 authors = ["Armani Ferrante <armaniferrante@gmail.com>"]
-rust-version = "1.60"
 edition = "2021"
 
 [workspace]

@@ -3,20 +3,15 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use url::Url;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Cluster {
     Testnet,
     Mainnet,
     Devnet,
+    #[default]
     Localnet,
     Debug,
     Custom(String, String),
-}
-
-impl Default for Cluster {
-    fn default() -> Self {
-        Cluster::Localnet
-    }
 }
 
 impl FromStr for Cluster {
