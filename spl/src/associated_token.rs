@@ -3,6 +3,7 @@ use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 
+pub use spl_associated_token_account;
 pub use spl_associated_token_account::{
     get_associated_token_address, get_associated_token_address_with_program_id, ID,
 };
