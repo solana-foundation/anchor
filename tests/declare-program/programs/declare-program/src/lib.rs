@@ -5,6 +5,9 @@ declare_id!("Dec1areProgram11111111111111111111111111111");
 declare_program!(external);
 use external::program::External;
 
+// Compilation check for legacy IDL (pre Anchor `0.30`)
+declare_program!(external_legacy);
+
 #[program]
 pub mod declare_program {
     use super::*;

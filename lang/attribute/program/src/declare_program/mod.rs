@@ -35,19 +35,17 @@ impl ToTokens for DeclareProgram {
 
 fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("Failed to get manifest dir");
-    let path = std::path::Path::new(&manifest_dir)
+    std::path::Path::new(&manifest_dir)
         .ancestors()
         .find_map(|ancestor| {
             let idl_dir = ancestor.join("idls");
-            std::fs::metadata(&idl_dir).map(|_| idl_dir).ok()
+            idl_dir.exists().then_some(idl_dir)
         })
         .ok_or_else(|| anyhow!("`idls` directory not found"))
-        .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))?;
-
-    std::fs::read(path)
-        .map_err(|e| anyhow!("Failed to read IDL: {e}"))
-        .map(|idl| serde_json::from_slice(&idl))?
-        .map_err(|e| anyhow!("Failed to parse IDL: {e}"))
+        .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))
+        .map(std::fs::read)?
+        .map_err(|e| anyhow!("Failed to read IDL `{name}`: {e}"))
+        .map(|buf| Idl::from_slice_with_conversion(&buf))?
 }
 
 fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
