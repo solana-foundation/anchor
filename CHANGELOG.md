@@ -23,6 +23,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add additional solana arguments to the `upgrade` command ([#2998](https://github.com/coral-xyz/anchor/pull/2998)).
 - spl: Export `spl-associated-token-account` crate ([#2999](https://github.com/coral-xyz/anchor/pull/2999)).
 - lang: Support legacy IDLs with `declare_program!` ([#2997](https://github.com/coral-xyz/anchor/pull/2997)).
+- cli: Add `idl convert` command ([#3009](https://github.com/coral-xyz/anchor/pull/3009)).
 
 ### Fixes
 

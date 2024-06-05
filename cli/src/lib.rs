@@ -488,6 +488,14 @@ pub enum IdlCommand {
         #[clap(short, long)]
         out: Option<String>,
     },
+    /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
+    Convert {
+        /// Path to the IDL file
+        path: String,
+        /// Output file for the idl (stdout if not specified)
+        #[clap(short, long)]
+        out: Option<String>,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -2200,6 +2208,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             skip_lint,
         } => idl_build(cfg_override, program_name, out, out_ts, no_docs, skip_lint),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
+        IdlCommand::Convert { path, out } => idl_convert(path, out),
     }
 }
 
@@ -2707,6 +2716,16 @@ in `{path}`."#
 
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {
     let idl = fetch_idl(cfg_override, address)?;
+    let out = match out {
+        None => OutFile::Stdout,
+        Some(out) => OutFile::File(PathBuf::from(out)),
+    };
+    write_idl(&idl, out)
+}
+
+fn idl_convert(path: String, out: Option<String>) -> Result<()> {
+    let idl = fs::read(path)?;
+    let idl = Idl::from_slice_with_conversion(&idl)?;
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
