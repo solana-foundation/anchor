@@ -43,6 +43,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix `unexpected_cfgs` build warning ([#2992](https://github.com/coral-xyz/anchor/pull/2992)).
 - lang: Make tuple struct fields public in `declare_program!` ([#2994](https://github.com/coral-xyz/anchor/pull/2994)).
 - Remove `rust-version` from crate manifests ([#3000](https://github.com/coral-xyz/anchor/pull/3000)).
+- cli: Fix upgradeable program clones ([#3010](https://github.com/coral-xyz/anchor/pull/3010)).
 
 ### Breaking
 
