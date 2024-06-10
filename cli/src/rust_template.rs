@@ -2,11 +2,9 @@ use crate::{
     config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
     VERSION,
 };
-use anchor_lang_idl::types::Idl;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use regex::Regex;
+use heck::{ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
@@ -18,7 +16,6 @@ use std::{
     io::Write as _,
     path::Path,
     process::Stdio,
-    str::FromStr,
 };
 
 /// Program initialization template
@@ -230,41 +227,6 @@ pub fn credentials(token: &str) -> String {
 token = "{token}"
 "#
     )
-}
-
-pub fn idl_ts(idl: &Idl) -> Result<String> {
-    let idl_name = &idl.metadata.name;
-    let type_name = idl_name.to_pascal_case();
-    let idl = serde_json::to_string(idl)?;
-
-    // Convert every field of the IDL to camelCase
-    let camel_idl = Regex::new(r#""\w+":"([\w\d]+)""#)?
-        .captures_iter(&idl)
-        .fold(idl.clone(), |acc, cur| {
-            let name = cur.get(1).unwrap().as_str();
-
-            // Do not modify pubkeys
-            if Pubkey::from_str(name).is_ok() {
-                return acc;
-            }
-
-            let camel_name = name.to_lower_camel_case();
-            acc.replace(&format!(r#""{name}""#), &format!(r#""{camel_name}""#))
-        });
-
-    // Pretty format
-    let camel_idl = serde_json::to_string_pretty(&serde_json::from_str::<Idl>(&camel_idl)?)?;
-
-    Ok(format!(
-        r#"/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/{idl_name}.json`.
- */
-export type {type_name} = {camel_idl};
-"#
-    ))
 }
 
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
