@@ -347,6 +347,28 @@ describe("New IDL", () => {
       assert.deepEqual(myAccount.field, arg);
     });
 
+    it("Can use generics populated with custom struct", async () => {
+      const arg = {
+        arr: [{ field: 1 }, { field: 2 }, { field: 3 }, { field: 4 }],
+        subField: {
+          subArr: new Array(8).fill(null).map((_, i) => ({ field: i })),
+          another: [
+            { field: 42 },
+            { field: 420 },
+            { field: 4_200 },
+            { field: 42_000 },
+          ],
+        },
+      };
+      const { pubkeys } = await program.methods
+        .genericCustomStruct(arg)
+        .rpcAndKeys();
+      const myAccount = await program.account.genericAccountCustomStruct.fetch(
+        pubkeys.myAccount
+      );
+      assert.deepEqual(myAccount.field, arg);
+    });
+
     it("Can use full module path types", async () => {
       const kp = anchor.web3.Keypair.generate();
 

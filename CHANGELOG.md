@@ -44,6 +44,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Make tuple struct fields public in `declare_program!` ([#2994](https://github.com/coral-xyz/anchor/pull/2994)).
 - Remove `rust-version` from crate manifests ([#3000](https://github.com/coral-xyz/anchor/pull/3000)).
 - cli: Fix upgradeable program clones ([#3010](https://github.com/coral-xyz/anchor/pull/3010)).
+- ts: Fix using IDLs that have defined types as generic arguments ([#3016](https://github.com/coral-xyz/anchor/pull/3016)).
 
 ### Breaking
 

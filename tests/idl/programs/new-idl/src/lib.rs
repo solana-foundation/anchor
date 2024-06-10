@@ -112,6 +112,14 @@ pub mod new_idl {
         Ok(())
     }
 
+    pub fn generic_custom_struct(
+        ctx: Context<GenericCustomStruct>,
+        generic_arg: GenericStruct<SomeStruct, 4>,
+    ) -> Result<()> {
+        ctx.accounts.my_account.field = generic_arg;
+        Ok(())
+    }
+
     pub fn full_path(
         ctx: Context<FullPath>,
         named_struct: NamedStruct,
@@ -315,9 +323,34 @@ pub struct Generic<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct GenericCustomStruct<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    #[account(
+        init,
+        payer = signer,
+        space = 1024,
+        seeds = [b"genericCustomStruct", signer.key.as_ref()],
+        bump
+    )]
+    pub my_account: Account<'info, GenericAccountCustomStruct>,
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct GenericAccount {
     pub field: GenericStruct<u16, 4>,
+}
+
+#[account]
+pub struct GenericAccountCustomStruct {
+    pub field: GenericStruct<SomeStruct, 4>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SomeStruct {
+    pub field: u16,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]

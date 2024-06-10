@@ -126,7 +126,10 @@ export class IdlCoder {
             throw new IdlError(`Invalid generic field: ${field.name}`);
           }
 
-          return IdlCoder.fieldLayout({ ...field, type: genericArg.type });
+          return IdlCoder.fieldLayout(
+            { ...field, type: genericArg.type },
+            types
+          );
         }
 
         throw new IdlError(
