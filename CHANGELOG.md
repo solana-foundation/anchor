@@ -25,6 +25,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Support legacy IDLs with `declare_program!` ([#2997](https://github.com/coral-xyz/anchor/pull/2997)).
 - cli: Add `idl convert` command ([#3009](https://github.com/coral-xyz/anchor/pull/3009)).
 - cli: Add `idl type` command ([#3017](https://github.com/coral-xyz/anchor/pull/3017)).
+- cli: Sync program ids on the initial build ([#3023](https://github.com/coral-xyz/anchor/pull/3023)).
 
 ### Fixes
 
