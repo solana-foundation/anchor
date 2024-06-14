@@ -94,6 +94,25 @@ fn deprecated_id_to_tokens(
     });
 }
 
+pub struct Pubkey(proc_macro2::TokenStream);
+
+impl Parse for Pubkey {
+    fn parse(input: ParseStream) -> Result<Self> {
+        parse_id(
+            input,
+            quote! { anchor_lang::solana_program::pubkey::Pubkey },
+        )
+        .map(Self)
+    }
+}
+
+impl ToTokens for Pubkey {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let id = &self.0;
+        tokens.extend(quote! {#id})
+    }
+}
+
 pub struct Id(proc_macro2::TokenStream);
 
 impl Parse for Id {

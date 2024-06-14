@@ -424,6 +424,15 @@ pub fn zero_copy(
     proc_macro::TokenStream::from(ret)
 }
 
+/// Convenience macro to define a static public key.
+///
+/// Input: a single literal base58 string representation of a Pubkey.
+#[proc_macro]
+pub fn pubkey(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let pk = parse_macro_input!(input as id::Pubkey);
+    proc_macro::TokenStream::from(quote! {#pk})
+}
+
 /// Defines the program's ID. This should be used at the root of all Anchor
 /// based programs.
 #[proc_macro]

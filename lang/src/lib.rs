@@ -48,7 +48,7 @@ pub mod system_program;
 mod vec;
 pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
-pub use anchor_attribute_account::{account, declare_id, zero_copy};
+pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
 pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
