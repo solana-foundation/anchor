@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{token, token_interface};
-use std::str::FromStr;
 
 declare_id!("id11111111111111111111111111111111111111111");
 
@@ -221,7 +220,7 @@ impl Default for State {
             i128_field: i128::MIN / 2 - 10,
             bytes_field: vec![1, 2, 255, 254],
             string_field: String::from("hello"),
-            pubkey_field: Pubkey::from_str("EPZP2wrcRtMxrAPJCXVEQaYD9eH7fH7h12YqKDcd4aS7").unwrap(),
+            pubkey_field: pubkey!("EPZP2wrcRtMxrAPJCXVEQaYD9eH7fH7h12YqKDcd4aS7"),
             vec_field: vec![1, 2, 100, 1000, u64::MAX],
             vec_struct_field: vec![FooStruct::default()],
             option_field: None,
