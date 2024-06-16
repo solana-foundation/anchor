@@ -12,7 +12,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-build = ["anchor-syn", "regex"]
+build = ["regex"]
 convert = ["heck", "sha2"]
 
 [dependencies]
@@ -21,7 +21,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # `build` feature only
-anchor-syn = { path = "../lang/syn", version = "0.30.0", optional = true }
 regex = { version = "1", optional = true }
 
 # `convert` feature only

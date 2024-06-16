@@ -5,7 +5,6 @@ use std::{
     process::{Command, Stdio},
 };
 
-use anchor_syn::parser::context::CrateContext;
 use anyhow::{anyhow, Result};
 use regex::Regex;
 use serde::Deserialize;
@@ -51,15 +50,7 @@ pub fn build_idl(
     skip_lint: bool,
     no_docs: bool,
 ) -> Result<Idl> {
-    // Check safety comments
-    let program_path = program_path.as_ref();
-    let lib_path = program_path.join("src").join("lib.rs");
-    let ctx = CrateContext::parse(lib_path)?;
-    if !skip_lint {
-        ctx.safety_checks()?;
-    }
-
-    let idl = build(program_path, resolution, no_docs)?;
+    let idl = build(program_path.as_ref(), resolution, skip_lint, no_docs)?;
     let idl = convert_module_paths(idl);
     let idl = sort(idl);
     verify(&idl)?;
@@ -68,7 +59,7 @@ pub fn build_idl(
 }
 
 /// Build IDL.
-fn build(program_path: &Path, resolution: bool, no_docs: bool) -> Result<Idl> {
+fn build(program_path: &Path, resolution: bool, skip_lint: bool, no_docs: bool) -> Result<Idl> {
     // `nightly` toolchain is currently required for building the IDL.
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
         .map(|toolchain| format!("+{}", toolchain))
@@ -94,6 +85,10 @@ fn build(program_path: &Path, resolution: bool, no_docs: bool) -> Result<Idl> {
         .env(
             "ANCHOR_IDL_BUILD_RESOLUTION",
             if resolution { "TRUE" } else { "FALSE" },
+        )
+        .env(
+            "ANCHOR_IDL_BUILD_SKIP_LINT",
+            if skip_lint { "TRUE" } else { "FALSE" },
         )
         .env("ANCHOR_IDL_BUILD_PROGRAM_PATH", program_path)
         .env("RUSTFLAGS", "--cfg procmacro2_semver_exempt")

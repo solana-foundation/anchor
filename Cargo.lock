@@ -291,7 +291,6 @@ dependencies = [
 name = "anchor-lang-idl"
 version = "0.1.0"
 dependencies = [
- "anchor-syn",
  "anyhow",
  "heck 0.3.3",
  "regex",

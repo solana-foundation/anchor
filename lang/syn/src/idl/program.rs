@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::path::PathBuf;
+
+use anyhow::{anyhow, Result};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -7,10 +9,15 @@ use super::{
     common::{gen_print_section, get_idl_module_path, get_no_docs},
     defined::gen_idl_type,
 };
-use crate::{parser::docs, Program};
+use crate::{
+    parser::{context::CrateContext, docs},
+    Program,
+};
 
 /// Generate the IDL build print function for the program module.
 pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
+    check_safety_comments().unwrap_or_else(|e| panic!("Safety checks failed: {e}"));
+
     let idl = get_idl_module_path();
     let no_docs = get_no_docs();
 
@@ -138,4 +145,22 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
             #fn_body
         }
     }
+}
+
+/// Check safety comments.
+fn check_safety_comments() -> Result<()> {
+    let skip_lint = option_env!("ANCHOR_IDL_BUILD_SKIP_LINT")
+        .map(|val| val == "TRUE")
+        .unwrap_or_default();
+    if skip_lint {
+        return Ok(());
+    }
+
+    std::env::var("ANCHOR_IDL_BUILD_PROGRAM_PATH")
+        .map(PathBuf::from)
+        .map(|path| path.join("src").join("lib.rs"))
+        .map_err(|_| anyhow!("Failed to get program path"))
+        .map(CrateContext::parse)?
+        .map_err(|e| anyhow!("Failed to parse crate: {e}"))?
+        .safety_checks()
 }

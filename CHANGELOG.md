@@ -27,6 +27,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `idl type` command ([#3017](https://github.com/coral-xyz/anchor/pull/3017)).
 - lang: Add `anchor_lang::pubkey` macro for declaring `Pubkey` const values ([#3021](https://github.com/coral-xyz/anchor/pull/3021)).
 - cli: Sync program ids on the initial build ([#3023](https://github.com/coral-xyz/anchor/pull/3023)).
+- idl: Remove `anchor-syn` dependency ([#3030](https://github.com/coral-xyz/anchor/pull/3030)).
 
 ### Fixes
 
