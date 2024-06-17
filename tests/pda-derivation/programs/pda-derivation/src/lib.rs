@@ -42,6 +42,10 @@ pub mod pda_derivation {
     pub fn associated_token_resolution(_ctx: Context<AssociatedTokenResolution>) -> Result<()> {
         Ok(())
     }
+
+    pub fn seed_math_expr(_ctx: Context<SeedMathExpr>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -144,6 +148,14 @@ pub struct AssociatedTokenResolution<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct SeedMathExpr<'info> {
+    #[account(seeds = [b"const"], bump)]
+    pub my_account: Account<'info, MyAccount>,
+    #[account(seeds = [&(my_account.data + 1).to_le_bytes()], bump)]
+    pub math_expr_account: UncheckedAccount<'info>,
 }
 
 #[account]
