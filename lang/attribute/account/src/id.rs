@@ -46,6 +46,9 @@ fn id_to_tokens(
         /// The static program ID
         pub static ID: #pubkey_type = #id;
 
+        /// Const version of `ID`
+        pub const ID_CONST: #pubkey_type = #id;
+
         /// Confirms that a given pubkey is equivalent to the program ID
         pub fn check_id(id: &#pubkey_type) -> bool {
             id == &ID
@@ -54,6 +57,11 @@ fn id_to_tokens(
         /// Returns the program ID
         pub fn id() -> #pubkey_type {
             ID
+        }
+
+        /// Const version of `ID`
+        pub const fn id_const() -> #pubkey_type {
+            ID_CONST
         }
 
         #[cfg(test)]

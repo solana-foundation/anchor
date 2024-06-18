@@ -28,6 +28,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `anchor_lang::pubkey` macro for declaring `Pubkey` const values ([#3021](https://github.com/coral-xyz/anchor/pull/3021)).
 - cli: Sync program ids on the initial build ([#3023](https://github.com/coral-xyz/anchor/pull/3023)).
 - idl: Remove `anchor-syn` dependency ([#3030](https://github.com/coral-xyz/anchor/pull/3030)).
+- lang: Add `const` of program ID to `declare_id!` and `declare_program!` ([#3019](https://github.com/coral-xyz/anchor/pull/3019)).
 
 ### Fixes
 
