@@ -161,6 +161,7 @@ fn get_address(acc: &Field) -> TokenStream {
             .address
             .as_ref()
             .map(|constraint| &constraint.address)
+            .filter(|address| !matches!(address, syn::Expr::Field(_)))
             .map(|address| quote! { Some(#address.to_string()) })
             .unwrap_or_else(|| quote! { None }),
     }

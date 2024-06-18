@@ -44,4 +44,9 @@ describe("typescript", () => {
   it("Can use relations derivation with seed constant", async () => {
     await program.methods.testSeedConstant().accounts({}).rpc();
   });
+
+  it("Can use relations derivation with `address` constraint", () => {
+    // Only compile test for now since the IDL spec doesn't currently support field access
+    // expressions for the `address` constraint
+  });
 });
