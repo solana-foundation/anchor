@@ -1,7 +1,7 @@
 mod common;
 mod mods;
 
-use anchor_lang_idl::types::Idl;
+use anchor_lang_idl::{convert::convert_idl, types::Idl};
 use anyhow::anyhow;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
@@ -45,7 +45,7 @@ fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
         .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))
         .map(std::fs::read)?
         .map_err(|e| anyhow!("Failed to read IDL `{name}`: {e}"))
-        .map(|buf| Idl::from_slice_with_conversion(&buf))?
+        .map(|buf| convert_idl(&buf))?
 }
 
 fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {

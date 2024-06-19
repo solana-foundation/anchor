@@ -8,6 +8,7 @@ use crate::config::{
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
+use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, Context, Result};
 use checks::{check_anchor_version, check_overflow};
@@ -2734,7 +2735,7 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
 
 fn idl_convert(path: String, out: Option<String>) -> Result<()> {
     let idl = fs::read(path)?;
-    let idl = Idl::from_slice_with_conversion(&idl)?;
+    let idl = convert_idl(&idl)?;
     let out = match out {
         None => OutFile::Stdout,
         Some(out) => OutFile::File(PathBuf::from(out)),
@@ -2744,7 +2745,7 @@ fn idl_convert(path: String, out: Option<String>) -> Result<()> {
 
 fn idl_type(path: String, out: Option<String>) -> Result<()> {
     let idl = fs::read(path)?;
-    let idl = Idl::from_slice_with_conversion(&idl)?;
+    let idl = convert_idl(&idl)?;
     let types = idl_ts(&idl)?;
     match out {
         Some(out) => fs::write(out, types)?,

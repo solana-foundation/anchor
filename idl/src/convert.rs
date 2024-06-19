@@ -2,30 +2,28 @@ use anyhow::{anyhow, Result};
 
 use crate::types::Idl;
 
-impl Idl {
-    /// Create an [`Idl`] value with additional support for older specs based on the
-    /// `idl.metadata.spec` field.
-    ///
-    /// If `spec` field is not specified, the conversion will fallback to the legacy IDL spec
-    /// (pre Anchor v0.30.0).
-    ///
-    /// **Note:** For legacy IDLs, `idl.metadata.address` field is required to be populated with
-    /// program's address otherwise an error will be returned.
-    pub fn from_slice_with_conversion(idl: &[u8]) -> Result<Self> {
-        let value = serde_json::from_slice::<serde_json::Value>(idl)?;
-        let spec = value
-            .get("metadata")
-            .and_then(|m| m.get("spec"))
-            .and_then(|spec| spec.as_str());
-        match spec {
-            // New standard
-            Some(spec) => match spec {
-                "0.1.0" => serde_json::from_value(value).map_err(Into::into),
-                _ => Err(anyhow!("IDL spec not supported: `{spec}`")),
-            },
-            // Legacy
-            None => serde_json::from_value::<legacy::Idl>(value).map(TryInto::try_into)?,
-        }
+/// Create an [`Idl`] value with additional support for older specs based on the
+/// `idl.metadata.spec` field.
+///
+/// If `spec` field is not specified, the conversion will fallback to the legacy IDL spec
+/// (pre Anchor v0.30.0).
+///
+/// **Note:** For legacy IDLs, `idl.metadata.address` field is required to be populated with
+/// program's address otherwise an error will be returned.
+pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
+    let value = serde_json::from_slice::<serde_json::Value>(idl)?;
+    let spec = value
+        .get("metadata")
+        .and_then(|m| m.get("spec"))
+        .and_then(|spec| spec.as_str());
+    match spec {
+        // New standard
+        Some(spec) => match spec {
+            "0.1.0" => serde_json::from_value(value).map_err(Into::into),
+            _ => Err(anyhow!("IDL spec not supported: `{spec}`")),
+        },
+        // Legacy
+        None => serde_json::from_value::<legacy::Idl>(value).map(TryInto::try_into)?,
     }
 }
 
@@ -433,10 +431,11 @@ mod legacy {
         fn from(value: IdlTypeDefinitionTy) -> Self {
             match value {
                 IdlTypeDefinitionTy::Struct { fields } => Self::Struct {
-                    fields: fields
-                        .is_empty()
-                        .then(|| None)
-                        .unwrap_or_else(|| Some(fields.into())),
+                    fields: fields.is_empty().then(|| None).unwrap_or_else(|| {
+                        Some(t::IdlDefinedFields::Named(
+                            fields.into_iter().map(Into::into).collect(),
+                        ))
+                    }),
                 },
                 IdlTypeDefinitionTy::Enum { variants } => Self::Enum {
                     variants: variants
@@ -444,7 +443,9 @@ mod legacy {
                         .map(|variant| t::IdlEnumVariant {
                             name: variant.name,
                             fields: variant.fields.map(|fields| match fields {
-                                EnumFields::Named(fields) => fields.into(),
+                                EnumFields::Named(fields) => t::IdlDefinedFields::Named(
+                                    fields.into_iter().map(Into::into).collect(),
+                                ),
                                 EnumFields::Tuple(tys) => t::IdlDefinedFields::Tuple(
                                     tys.into_iter().map(Into::into).collect(),
                                 ),
@@ -466,12 +467,6 @@ mod legacy {
                 docs: value.docs.unwrap_or_default(),
                 ty: value.ty.into(),
             }
-        }
-    }
-
-    impl From<Vec<IdlField>> for t::IdlDefinedFields {
-        fn from(value: Vec<IdlField>) -> Self {
-            Self::Named(value.into_iter().map(Into::into).collect())
         }
     }
 

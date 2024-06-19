@@ -309,6 +309,7 @@ pub enum IdlType {
     Generic(String),
 }
 
+// TODO: Move to utils crate
 impl FromStr for IdlType {
     type Err = anyhow::Error;
 
