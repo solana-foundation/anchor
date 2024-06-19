@@ -62,8 +62,8 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
                         matches!(ty_def.serialization, IdlSerialization::BytemuckUnsafe)
                             .then(|| {
                                 quote! {
-                                    unsafe impl anchor_lang::__private::Pod for #name {}
-                                    unsafe impl anchor_lang::__private::Zeroable for #name {}
+                                    unsafe impl anchor_lang::__private::bytemuck::Pod for #name {}
+                                    unsafe impl anchor_lang::__private::bytemuck::Zeroable for #name {}
                                 }
                             })
                             .unwrap_or_default();

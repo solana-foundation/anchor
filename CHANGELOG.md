@@ -52,6 +52,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Fix using IDLs that have defined types as generic arguments ([#3016](https://github.com/coral-xyz/anchor/pull/3016)).
 - idl: Fix generation with unsupported expressions ([#3033](https://github.com/coral-xyz/anchor/pull/3033)).
 - idl: Fix using `address` constraint with field expressions ([#3034](https://github.com/coral-xyz/anchor/pull/3034)).
+- lang: Fix using `bytemuckunsafe` account serialization with `declare_program!` ([#3037](https://github.com/coral-xyz/anchor/pull/3037)).
 
 ### Breaking
 
