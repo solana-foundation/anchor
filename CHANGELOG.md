@@ -12,9 +12,11 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- ts: Add optional `commitment` parameter to `Program.addEventListener` ([#3052](https://github.com/coral-xyz/anchor/pull/3052)).
+
 ### Fixes
 
-- ts: add optional `commitment` parameter to `Program.addEventListener` ([#3052](https://github.com/coral-xyz/anchor/pull/3052))
+- idl: Make safety comment checks fail silently when program path env is not set ([#3045](https://github.com/coral-xyz/anchor/pull/3045])).
 
 ### Breaking
 

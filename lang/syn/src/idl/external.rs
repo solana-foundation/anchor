@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use cargo_toml::Manifest;
 use quote::ToTokens;
 
-use super::common::find_path;
+use super::common::{find_path, get_program_path};
 use crate::parser::context::CrateContext;
 
 pub fn get_external_type(name: &str, path: impl AsRef<Path>) -> Result<Option<syn::Type>> {
@@ -17,8 +17,7 @@ pub fn get_external_type(name: &str, path: impl AsRef<Path>) -> Result<Option<sy
         .ok_or_else(|| anyhow!("`{name}` not found in use statements"))?;
 
     // Get crate name and version from lock file
-    let program_path =
-        std::env::var("ANCHOR_IDL_BUILD_PROGRAM_PATH").expect("Failed to get program path");
+    let program_path = get_program_path()?;
     let lock_path = find_path("Cargo.lock", program_path)?;
     let lock_file = parse_lock_file(lock_path)?;
     let registry_path = get_registry_path()?;
