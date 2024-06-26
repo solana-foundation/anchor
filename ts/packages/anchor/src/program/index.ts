@@ -1,28 +1,28 @@
+import { Commitment, PublicKey } from "@solana/web3.js";
 import { inflate } from "pako";
-import { PublicKey } from "@solana/web3.js";
-import Provider, { getProvider } from "../provider.js";
+import { BorshCoder, Coder } from "../coder/index.js";
 import {
   Idl,
-  idlAddress,
-  decodeIdlAccount,
   IdlInstruction,
   convertIdlToCamelCase,
+  decodeIdlAccount,
+  idlAddress,
 } from "../idl.js";
-import { Coder, BorshCoder } from "../coder/index.js";
-import NamespaceFactory, {
-  RpcNamespace,
-  InstructionNamespace,
-  TransactionNamespace,
-  AccountNamespace,
-  SimulateNamespace,
-  MethodsNamespace,
-  ViewNamespace,
-  IdlEvents,
-} from "./namespace/index.js";
+import Provider, { getProvider } from "../provider.js";
 import { utf8 } from "../utils/bytes/index.js";
-import { EventManager } from "./event.js";
-import { Address, translateAddress } from "./common.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
+import { Address, translateAddress } from "./common.js";
+import { EventManager } from "./event.js";
+import NamespaceFactory, {
+  AccountNamespace,
+  IdlEvents,
+  InstructionNamespace,
+  MethodsNamespace,
+  RpcNamespace,
+  SimulateNamespace,
+  TransactionNamespace,
+  ViewNamespace,
+} from "./namespace/index.js";
 
 export * from "./common.js";
 export * from "./context.js";
@@ -377,9 +377,10 @@ export class Program<IDL extends Idl = Idl> {
       event: IdlEvents<IDL>[E],
       slot: number,
       signature: string
-    ) => void
+    ) => void,
+    commitment?: Commitment
   ): number {
-    return this._events.addEventListener(eventName, callback);
+    return this._events.addEventListener(eventName, callback, commitment);
   }
 
   /**
