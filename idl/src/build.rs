@@ -130,7 +130,9 @@ fn build(program_path: &Path, resolution: bool, skip_lint: bool, no_docs: bool) 
                 "--- IDL begin errors ---" => state = State::Errors(vec![]),
                 "--- IDL begin program ---" => state = State::Program(vec![]),
                 _ => {
-                    if line.starts_with("test result: ok") {
+                    if line.starts_with("test result: ok")
+                        && !line.starts_with("test result: ok. 0 passed; 0 failed; 0")
+                    {
                         if let Some(idl) = idl.as_mut() {
                             idl.address = mem::take(&mut address);
                             idl.constants = mem::take(&mut constants);
