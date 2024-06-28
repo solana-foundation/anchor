@@ -11,7 +11,7 @@ use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, Context, Result};
-use checks::{check_anchor_version, check_overflow};
+use checks::{check_anchor_version, check_idl_build_feature, check_overflow};
 use clap::Parser;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
@@ -1819,9 +1819,10 @@ fn _build_rust_cwd(
     arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
-    let subcommand = arch.build_subcommand();
+    check_idl_build_feature().ok();
+
     let exit = std::process::Command::new("cargo")
-        .arg(subcommand)
+        .arg(arch.build_subcommand())
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -1830,6 +1831,7 @@ fn _build_rust_cwd(
     if !exit.status.success() {
         std::process::exit(exit.status.code().unwrap_or(1));
     }
+
     // Generate IDL
     if !no_idl {
         let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;

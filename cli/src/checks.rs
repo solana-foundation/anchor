@@ -80,3 +80,25 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 
     Ok(())
 }
+
+/// Check whether the `idl-build` feature is being used correctly.
+///
+/// **Note:** The check expects the current directory to be a program directory.
+pub fn check_idl_build_feature() -> Result<()> {
+    Manifest::from_path("Cargo.toml")?
+        .dependencies
+        .iter()
+        .filter(|(_, dep)| dep.req_features().contains(&"idl-build".into()))
+        .for_each(|(name, _)| {
+            eprintln!(
+                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. \
+                    This is not the intended usage.\n\n\t\
+                    To solve, do not enable the `idl-build` feature and include crates that have \
+                    `idl-build` feature in the `idl-build` feature list:\n\n\t\
+                    [features]\n\t\
+                    idl-build = [\"{name}/idl-build\", ...]\n"
+            )
+        });
+
+    Ok(())
+}
