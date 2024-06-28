@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - ts: Add optional `commitment` parameter to `Program.addEventListener` ([#3052](https://github.com/coral-xyz/anchor/pull/3052)).
+- cli: Pass "cargo args" to idl generation when building program or idl ([#3059](https://github.com/coral-xyz/anchor/pull/3059)).
 
 ### Fixes
 

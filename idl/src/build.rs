@@ -50,7 +50,24 @@ pub fn build_idl(
     skip_lint: bool,
     no_docs: bool,
 ) -> Result<Idl> {
-    let idl = build(program_path.as_ref(), resolution, skip_lint, no_docs)?;
+    build_idl_with_cargo_args(program_path, resolution, skip_lint, no_docs, &[])
+}
+
+/// Generate IDL via compilation with passing cargo arguments.
+pub fn build_idl_with_cargo_args(
+    program_path: impl AsRef<Path>,
+    resolution: bool,
+    skip_lint: bool,
+    no_docs: bool,
+    cargo_args: &[String],
+) -> Result<Idl> {
+    let idl = build(
+        program_path.as_ref(),
+        resolution,
+        skip_lint,
+        no_docs,
+        cargo_args,
+    )?;
     let idl = convert_module_paths(idl);
     let idl = sort(idl);
     verify(&idl)?;
@@ -59,14 +76,19 @@ pub fn build_idl(
 }
 
 /// Build IDL.
-fn build(program_path: &Path, resolution: bool, skip_lint: bool, no_docs: bool) -> Result<Idl> {
+fn build(
+    program_path: &Path,
+    resolution: bool,
+    skip_lint: bool,
+    no_docs: bool,
+    cargo_args: &[String],
+) -> Result<Idl> {
     // `nightly` toolchain is currently required for building the IDL.
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
         .map(|toolchain| format!("+{}", toolchain))
         .unwrap_or_else(|_| "+nightly".to_string());
 
     install_toolchain_if_needed(&toolchain)?;
-
     let output = Command::new("cargo")
         .args([
             &toolchain,
@@ -74,10 +96,9 @@ fn build(program_path: &Path, resolution: bool, skip_lint: bool, no_docs: bool) 
             "__anchor_private_print_idl",
             "--features",
             "idl-build",
-            "--",
-            "--show-output",
-            "--quiet",
         ])
+        .args(cargo_args)
+        .args(["--", "--show-output", "--quiet"])
         .env(
             "ANCHOR_IDL_BUILD_NO_DOCS",
             if no_docs { "TRUE" } else { "FALSE" },

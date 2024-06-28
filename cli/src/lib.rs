@@ -480,6 +480,9 @@ pub enum IdlCommand {
         /// Do not check for safety comments
         #[clap(long)]
         skip_lint: bool,
+        /// Arguments to pass to the underlying `cargo test` command
+        #[clap(required = false, last = true)]
+        cargo_args: Vec<String>,
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
@@ -1274,7 +1277,6 @@ pub fn build(
     if let Some(program_name) = program_name.as_ref() {
         cd_member(cfg_override, program_name)?;
     }
-
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
     let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
 
@@ -1523,7 +1525,7 @@ fn build_cwd_verifiable(
         stdout,
         stderr,
         env_vars,
-        cargo_args,
+        cargo_args.clone(),
         arch,
     );
 
@@ -1534,7 +1536,7 @@ fn build_cwd_verifiable(
         Ok(_) => {
             // Build the idl.
             println!("Extracting the IDL");
-            let idl = generate_idl(cfg, skip_lint, no_docs)?;
+            let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
             // Write out the JSON file.
             println!("Writing the IDL file");
             let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.metadata.name));
@@ -1820,7 +1822,7 @@ fn _build_rust_cwd(
     let subcommand = arch.build_subcommand();
     let exit = std::process::Command::new("cargo")
         .arg(subcommand)
-        .args(cargo_args)
+        .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
@@ -1828,10 +1830,9 @@ fn _build_rust_cwd(
     if !exit.status.success() {
         std::process::exit(exit.status.code().unwrap_or(1));
     }
-
     // Generate IDL
     if !no_idl {
-        let idl = generate_idl(cfg, skip_lint, no_docs)?;
+        let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
 
         // JSON out path.
         let out = match idl_out {
@@ -1984,7 +1985,7 @@ fn verify(
             None,
             None,
             env_vars,
-            cargo_args,
+            cargo_args.clone(),
             false,
             arch,
         )?;
@@ -2008,7 +2009,7 @@ fn verify(
     }
 
     // Verify IDL (only if it's not a buffer account).
-    let local_idl = generate_idl(&cfg, true, false)?;
+    let local_idl = generate_idl(&cfg, true, false, &cargo_args)?;
     if bin_ver.state != BinVerificationState::Buffer {
         let deployed_idl = fetch_idl(cfg_override, program_id)?;
         if local_idl != deployed_idl {
@@ -2215,7 +2216,16 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             out_ts,
             no_docs,
             skip_lint,
-        } => idl_build(cfg_override, program_name, out, out_ts, no_docs, skip_lint),
+            cargo_args,
+        } => idl_build(
+            cfg_override,
+            program_name,
+            out,
+            out_ts,
+            no_docs,
+            skip_lint,
+            cargo_args,
+        ),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
         IdlCommand::Convert { path, out } => idl_convert(path, out),
         IdlCommand::Type { path, out } => idl_type(path, out),
@@ -2657,6 +2667,7 @@ fn idl_build(
     out_ts: Option<String>,
     no_docs: bool,
     skip_lint: bool,
+    cargo_args: Vec<String>,
 ) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
     let program_path = match program_name {
@@ -2670,11 +2681,12 @@ fn idl_build(
                 .path
         }
     };
-    let idl = anchor_lang_idl::build::build_idl(
+    let idl = anchor_lang_idl::build::build_idl_with_cargo_args(
         program_path,
         cfg.features.resolution,
         cfg.features.skip_lint || skip_lint,
         no_docs,
+        &cargo_args,
     )?;
     let out = match out {
         Some(path) => OutFile::File(PathBuf::from(path)),
@@ -2690,7 +2702,12 @@ fn idl_build(
 }
 
 /// Generate IDL with method decided by whether manifest file has `idl-build` feature or not.
-fn generate_idl(cfg: &WithPath<Config>, skip_lint: bool, no_docs: bool) -> Result<Idl> {
+fn generate_idl(
+    cfg: &WithPath<Config>,
+    skip_lint: bool,
+    no_docs: bool,
+    cargo_args: &[String],
+) -> Result<Idl> {
     // Check whether the manifest has `idl-build` feature
     let manifest = Manifest::discover()?.ok_or_else(|| anyhow!("Cargo.toml not found"))?;
     let is_idl_build = manifest
@@ -2716,11 +2733,12 @@ in `{path}`."#
         ));
     }
 
-    anchor_lang_idl::build::build_idl(
+    anchor_lang_idl::build::build_idl_with_cargo_args(
         std::env::current_dir()?,
         cfg.features.resolution,
         cfg.features.skip_lint || skip_lint,
         no_docs,
+        cargo_args,
     )
 }
 
