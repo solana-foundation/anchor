@@ -2,6 +2,7 @@ use anchor_lang_idl::types::{
     Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlRepr, IdlSerialization,
     IdlType, IdlTypeDef, IdlTypeDefGeneric, IdlTypeDefTy,
 };
+use proc_macro2::Literal;
 use quote::{format_ident, quote};
 
 /// This function should ideally return the absolute path to the declared program's id but because
@@ -168,6 +169,7 @@ pub fn convert_idl_type_def_to_ts(
                 let packed = modifier.packed.then(|| quote!(packed)).unwrap_or_default();
                 let align = modifier
                     .align
+                    .map(Literal::usize_unsuffixed)
                     .map(|align| quote!(align(#align)))
                     .unwrap_or_default();
 
