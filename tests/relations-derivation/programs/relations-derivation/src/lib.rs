@@ -5,8 +5,6 @@ use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
-pub const SEED: &[u8] = b"contant-seed";
-
 #[program]
 pub mod relations_derivation {
     use super::*;
@@ -18,10 +16,6 @@ pub mod relations_derivation {
     }
 
     pub fn test_relation(_ctx: Context<TestRelation>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn test_seed_constant(_ctx: Context<TestSeedConstant>) -> Result<()> {
         Ok(())
     }
 
@@ -69,21 +63,6 @@ pub struct TestRelation<'info> {
     )]
     account: Account<'info, MyAccount>,
     nested: Nested<'info>,
-}
-
-#[derive(Accounts)]
-pub struct TestSeedConstant<'info> {
-    #[account(mut)]
-    my_account: Signer<'info>,
-    #[account(
-      init,
-      payer = my_account,
-      seeds = [SEED],
-      space = 100,
-      bump,
-    )]
-    account: Account<'info, MyAccount>,
-    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

@@ -12,6 +12,7 @@ use anchor_spl::{
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 pub const MY_SEED: [u8; 2] = *b"hi";
+pub const MY_SEED_BYTES: &[u8] = b"hi";
 pub const MY_SEED_STR: &str = "hi";
 pub const MY_SEED_U8: u8 = 1;
 pub const MY_SEED_U32: u32 = 2;
@@ -36,6 +37,10 @@ pub mod pda_derivation {
 
     pub fn init_my_account(ctx: Context<InitMyAccount>, _seed_a: u8) -> Result<()> {
         ctx.accounts.account.data = 1337;
+        Ok(())
+    }
+
+    pub fn test_seed_constant(_ctx: Context<TestSeedConstant>) -> Result<()> {
         Ok(())
     }
 
@@ -125,6 +130,21 @@ pub struct Nested<'info> {
     )]
     /// CHECK: Not needed
     account_nested: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestSeedConstant<'info> {
+    #[account(mut)]
+    my_account: Signer<'info>,
+    #[account(
+      init,
+      payer = my_account,
+      seeds = [MY_SEED_BYTES],
+      space = 100,
+      bump,
+    )]
+    account: Account<'info, MyAccount>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

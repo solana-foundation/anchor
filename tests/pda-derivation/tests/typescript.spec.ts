@@ -104,6 +104,10 @@ describe("typescript", () => {
     expect(called).is.true;
   });
 
+  it("Can use constant seed ref", async () => {
+    await program.methods.testSeedConstant().rpc();
+  });
+
   it("Can resolve associated token accounts", async () => {
     const mintKp = anchor.web3.Keypair.generate();
     await program.methods
