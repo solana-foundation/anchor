@@ -601,6 +601,7 @@ pub struct TestOnlyTokenProgramConstraint<'info> {
         token::token_program = token_token_program
     )]
     pub token: Account<'info, TokenAccount>,
+    /// CHECK: ignore
     pub token_token_program: AccountInfo<'info>,
 }
 
@@ -750,4 +751,55 @@ pub struct TestUsedIdentifiers<'info> {
     )]
     /// CHECK: ignore
     pub test4: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitManyAssociatedTokenAccounts<'info> {
+    #[account(
+        init,
+        payer = user,
+        mint::authority = user,
+        mint::decimals = 9,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = user,
+        associated_token::mint = mint,
+    )]
+    pub ata1: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = system_program,
+        associated_token::mint = mint,
+    )]
+    pub ata2: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = token_program,
+        associated_token::mint = mint,
+    )]
+    pub ata3: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = associated_token_program,
+        associated_token::mint = mint,
+    )]
+    pub ata4: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = mint,
+        associated_token::mint = mint,
+    )]
+    pub ata5: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }

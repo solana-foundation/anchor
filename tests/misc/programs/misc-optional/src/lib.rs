@@ -395,4 +395,11 @@ pub mod misc_optional {
     ) -> Result<()> {
         Ok(())
     }
+
+    #[allow(unused_variables)]
+    pub fn test_init_many_associated_token_accounts(
+        _ctx: Context<InitManyAssociatedTokenAccounts>,
+    ) -> Result<()> {
+        Ok(())
+    }
 }

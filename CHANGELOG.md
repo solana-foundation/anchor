@@ -21,6 +21,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Make safety comment checks fail silently when program path env is not set ([#3045](https://github.com/coral-xyz/anchor/pull/3045)).
 - idl: Avoid interference from rust tests during IDL generation ([#3058](https://github.com/coral-xyz/anchor/pull/3058)).
 - lang: Fix `align` repr support in `declare-program!` ([#3056](https://github.com/coral-xyz/anchor/pull/3056)).
+- lang: Make stack frames slimmer on ATA creation ([#3065](https://github.com/coral-xyz/anchor/pull/3065)).
 
 ### Breaking
 

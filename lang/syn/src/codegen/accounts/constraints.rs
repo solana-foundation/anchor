@@ -624,17 +624,19 @@ fn generate_constraint_init_group(
                     if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
                         #payer_optional_check
 
-                        let cpi_program = associated_token_program.to_account_info();
-                        let cpi_accounts = ::anchor_spl::associated_token::Create {
-                            payer: #payer.to_account_info(),
-                            associated_token: #field.to_account_info(),
-                            authority: #owner.to_account_info(),
-                            mint: #mint.to_account_info(),
-                            system_program: system_program.to_account_info(),
-                            token_program: #token_program.to_account_info(),
-                        };
-                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program, cpi_accounts);
-                        ::anchor_spl::associated_token::create(cpi_ctx)?;
+                        ::anchor_spl::associated_token::create(
+                            anchor_lang::context::CpiContext::new(
+                                associated_token_program.to_account_info(),
+                                ::anchor_spl::associated_token::Create {
+                                    payer: #payer.to_account_info(),
+                                    associated_token: #field.to_account_info(),
+                                    authority: #owner.to_account_info(),
+                                    mint: #mint.to_account_info(),
+                                    system_program: system_program.to_account_info(),
+                                    token_program: #token_program.to_account_info(),
+                                }
+                            )
+                        )?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {

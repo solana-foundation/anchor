@@ -2451,6 +2451,15 @@ const miscTest = (
       assert.deepStrictEqual(dataAccount.data, array2d);
     });
 
+    it("Can initialize 5 associated token accounts in one instruction", async () => {
+      const mint = anchor.web3.Keypair.generate();
+      await program.methods
+        .testInitManyAssociatedTokenAccounts()
+        .accounts({ mint: mint.publicKey, user: provider.wallet.publicKey })
+        .signers([mint])
+        .rpc();
+    });
+
     describe("Can validate PDAs derived from other program ids", () => {
       it("With bumps using create_program_address", async () => {
         const [firstPDA, firstBump] =
