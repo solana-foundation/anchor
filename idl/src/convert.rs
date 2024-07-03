@@ -6,7 +6,7 @@ use crate::types::Idl;
 /// `idl.metadata.spec` field.
 ///
 /// If `spec` field is not specified, the conversion will fallback to the legacy IDL spec
-/// (pre Anchor v0.30.1).
+/// (pre Anchor v0.30).
 ///
 /// **Note:** For legacy IDLs, `idl.metadata.address` field is required to be populated with
 /// program's address otherwise an error will be returned.
@@ -27,7 +27,7 @@ pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
     }
 }
 
-/// Legacy IDL spec (pre Anchor v0.30.1)
+/// Legacy IDL spec (pre Anchor v0.30)
 mod legacy {
     use crate::types as t;
     use anyhow::{anyhow, Result};
