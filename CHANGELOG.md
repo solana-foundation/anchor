@@ -22,6 +22,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Avoid interference from rust tests during IDL generation ([#3058](https://github.com/coral-xyz/anchor/pull/3058)).
 - lang: Fix `align` repr support in `declare-program!` ([#3056](https://github.com/coral-xyz/anchor/pull/3056)).
 - lang: Make stack frames slimmer on ATA creation ([#3065](https://github.com/coral-xyz/anchor/pull/3065)).
+- lang: Remove `getrandom` dependency ([#3072](https://github.com/coral-xyz/anchor/pull/3072)).
 
 ### Breaking
 

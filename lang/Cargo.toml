@@ -58,5 +58,3 @@ borsh = ">=0.9, <0.11"
 bytemuck = "1"
 solana-program = "1.17.3"
 thiserror = "1"
-# TODO: Remove. This crate has been added to fix a build error with the 1.16.0 release.
-getrandom = { version = "0.2", features = ["custom"] }

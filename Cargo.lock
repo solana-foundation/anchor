@@ -282,7 +282,6 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "bytemuck",
- "getrandom 0.2.10",
  "solana-program",
  "thiserror",
 ]
