@@ -65,8 +65,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 sighash
             };
 
-
-            use anchor_lang::Discriminator;
             match sighash {
                 #(#global_dispatch_arms)*
                 anchor_lang::idl::IDL_IX_TAG_LE => {

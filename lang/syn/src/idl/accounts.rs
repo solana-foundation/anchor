@@ -127,7 +127,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     if let Some(ty) = <#defined>::create_type() {
                         let account = #idl::IdlAccount {
                             name: ty.name.clone(),
-                            discriminator: <#defined as anchor_lang::Discriminator>::DISCRIMINATOR.into(),
+                            discriminator: #defined::DISCRIMINATOR.into(),
                         };
                         accounts.insert(account.name.clone(), account);
                         types.insert(ty.name.clone(), ty);
