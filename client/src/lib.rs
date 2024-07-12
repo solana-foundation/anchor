@@ -60,8 +60,6 @@
 //! anchor-client = { version = "0.30.1 ", features = ["async"] }
 //! ````
 
-use anchor_lang::solana_program::hash::Hash;
-use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
@@ -84,6 +82,8 @@ use solana_client::{
 };
 use solana_sdk::account::Account;
 use solana_sdk::commitment_config::CommitmentConfig;
+use solana_sdk::hash::Hash;
+use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::signature::{Signature, Signer};
 use solana_sdk::transaction::Transaction;
 use std::iter::Map;
@@ -225,18 +225,6 @@ pub struct Program<C> {
 impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     pub fn payer(&self) -> Pubkey {
         self.cfg.payer.pubkey()
-    }
-
-    /// Returns a request builder.
-    pub fn request(&self) -> RequestBuilder<C> {
-        RequestBuilder::from(
-            self.program_id,
-            self.cfg.cluster.url(),
-            self.cfg.payer.clone(),
-            self.cfg.options,
-            #[cfg(not(feature = "async"))]
-            self.rt.handle(),
-        )
     }
 
     pub fn id(&self) -> Pubkey {
@@ -503,23 +491,34 @@ pub enum ClientError {
     IOError(#[from] std::io::Error),
 }
 
+pub trait AsSigner {
+    fn as_signer(&self) -> &dyn Signer;
+}
+
+impl<'a> AsSigner for Box<dyn Signer + 'a> {
+    fn as_signer(&self) -> &dyn Signer {
+        self.as_ref()
+    }
+}
+
 /// `RequestBuilder` provides a builder interface to create and send
 /// transactions to a cluster.
-pub struct RequestBuilder<'a, C> {
+pub struct RequestBuilder<'a, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
     accounts: Vec<AccountMeta>,
     options: CommitmentConfig,
     instructions: Vec<Instruction>,
     payer: C,
-    // Serialized instruction data for the target RPC.
     instruction_data: Option<Vec<u8>>,
-    signers: Vec<&'a dyn Signer>,
+    signers: Vec<S>,
     #[cfg(not(feature = "async"))]
     handle: &'a Handle,
+    _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
+// Shared implementation for all RequestBuilders
+impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -593,12 +592,6 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
         self
     }
 
-    #[must_use]
-    pub fn signer(mut self, signer: &'a dyn Signer) -> Self {
-        self.signers.push(signer);
-        self
-    }
-
     pub fn instructions(&self) -> Result<Vec<Instruction>, ClientError> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
@@ -617,13 +610,14 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
         latest_hash: Hash,
     ) -> Result<Transaction, ClientError> {
         let instructions = self.instructions()?;
-        let mut signers = self.signers.clone();
-        signers.push(&*self.payer);
+        let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
+        let mut all_signers = signers;
+        all_signers.push(&*self.payer);
 
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&self.payer.pubkey()),
-            &signers,
+            &all_signers,
             latest_hash,
         );
 

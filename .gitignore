@@ -10,6 +10,7 @@ target/
 test-ledger
 examples/*/Cargo.lock
 examples/**/Cargo.lock
+*/example/Cargo.lock
 tests/*/Cargo.lock
 tests/**/Cargo.lock
 tests/*/yarn.lock

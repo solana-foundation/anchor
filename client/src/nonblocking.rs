@@ -1,6 +1,6 @@
 use crate::{
-    ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
-    RequestBuilder,
+    AsSigner, ClientError, Config, EventContext, EventUnsubscriber, Program,
+    ProgramAccountsIterator, RequestBuilder,
 };
 use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
 use solana_client::{rpc_config::RpcSendTransactionConfig, rpc_filter::RpcFilterType};
@@ -18,6 +18,22 @@ impl<'a> EventUnsubscriber<'a> {
     }
 }
 
+pub trait ThreadSafeSigner: Signer + Send + Sync + 'static {
+    fn to_signer(&self) -> &dyn Signer;
+}
+
+impl<T: Signer + Send + Sync + 'static> ThreadSafeSigner for T {
+    fn to_signer(&self) -> &dyn Signer {
+        self
+    }
+}
+
+impl AsSigner for Arc<dyn ThreadSafeSigner> {
+    fn as_signer(&self) -> &dyn Signer {
+        self.to_signer()
+    }
+}
+
 impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     pub fn new(program_id: Pubkey, cfg: Config<C>) -> Result<Self, ClientError> {
         Ok(Self {
@@ -25,6 +41,16 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
             cfg,
             sub_client: Arc::new(RwLock::new(None)),
         })
+    }
+
+    /// Returns a threadsafe request builder
+    pub fn request(&self) -> RequestBuilder<'_, C, Arc<dyn ThreadSafeSigner>> {
+        RequestBuilder::from(
+            self.program_id,
+            self.cfg.cluster.url(),
+            self.cfg.payer.clone(),
+            self.cfg.options,
+        )
     }
 
     /// Returns the account at the given address.
@@ -66,7 +92,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     }
 }
 
-impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
+impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn ThreadSafeSigner>> {
     pub fn from(
         program_id: Pubkey,
         cluster: &str,
@@ -82,7 +108,14 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
             instructions: Vec::new(),
             instruction_data: None,
             signers: Vec::new(),
+            _phantom: PhantomData,
         }
+    }
+
+    #[must_use]
+    pub fn signer<T: ThreadSafeSigner>(mut self, signer: T) -> Self {
+        self.signers.push(Arc::new(signer));
+        self
     }
 
     pub async fn signed_transaction(&self) -> Result<Transaction, ClientError> {

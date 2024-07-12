@@ -33,6 +33,18 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         })
     }
 
+    /// Returns a request builder.
+    pub fn request(&self) -> RequestBuilder<'_, C, Box<dyn Signer + '_>> {
+        RequestBuilder::from(
+            self.program_id,
+            self.cfg.cluster.url(),
+            self.cfg.payer.clone(),
+            self.cfg.options,
+            #[cfg(not(feature = "async"))]
+            self.rt.handle(),
+        )
+    }
+
     /// Returns the account at the given address.
     pub fn account<T: AccountDeserialize>(&self, address: Pubkey) -> Result<T, ClientError> {
         self.rt.block_on(self.account_internal(address))
@@ -70,7 +82,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     }
 }
 
-impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
+impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Box<dyn Signer + 'a>> {
     pub fn from(
         program_id: Pubkey,
         cluster: &str,
@@ -88,7 +100,14 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C> {
             instruction_data: None,
             signers: Vec::new(),
             handle,
+            _phantom: PhantomData,
         }
+    }
+
+    #[must_use]
+    pub fn signer<T: Signer + 'a>(mut self, signer: T) -> Self {
+        self.signers.push(Box::new(signer));
+        self
     }
 
     pub fn signed_transaction(&self) -> Result<Transaction, ClientError> {
