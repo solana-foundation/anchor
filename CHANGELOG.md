@@ -29,6 +29,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - syn: Remove `bpf` target support in `hash` feature ([#3078](https://github.com/coral-xyz/anchor/pull/3078)).
 - client: Add `tokio` support to `RequestBuilder` with `async` feature ([#3057](https://github.com/coral-xyz/anchor/pull/3057])).
+- lang: Remove `EventData` trait ([#3083](https://github.com/coral-xyz/anchor/pull/3083])).
 
 ## [0.30.1] - 2024-06-20
 

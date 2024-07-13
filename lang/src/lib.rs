@@ -300,14 +300,6 @@ pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
     fn data(&self) -> Vec<u8>;
 }
 
-// The serialized event data to be emitted via a Solana log.
-// TODO: remove this on the next major version upgrade.
-#[doc(hidden)]
-#[deprecated(since = "0.4.2", note = "Please use Event instead")]
-pub trait EventData: AnchorSerialize + Discriminator {
-    fn data(&self) -> Vec<u8>;
-}
-
 /// 8 byte unique identifier for a type.
 pub trait Discriminator {
     const DISCRIMINATOR: [u8; 8];
