@@ -43,7 +43,7 @@ pub struct TestBasicVarAccount {
 
 #[account]
 #[derive(InitSpace)]
-pub struct TestComplexeVarAccount {
+pub struct TestComplexVarAccount {
     pub test_key: Pubkey,
     #[max_len(10)]
     pub test_vec: Vec<u8>,
@@ -97,6 +97,18 @@ pub struct TestConst {
     pub test_array: [u8; MAX_LEN as usize],
 }
 
+#[derive(InitSpace)]
+pub struct TestUnnamedStruct(
+    pub u8,
+    #[max_len(4)] pub Vec<u32>,
+    #[max_len(10)] pub String,
+    pub ChildStruct,
+    pub TestBasicEnum,
+);
+
+#[derive(InitSpace)]
+pub struct TestUnitStruct;
+
 #[test]
 fn test_empty_struct() {
     assert_eq!(TestEmptyAccount::INIT_SPACE, 0);
@@ -108,9 +120,9 @@ fn test_basic_struct() {
 }
 
 #[test]
-fn test_complexe_struct() {
+fn test_complex_struct() {
     assert_eq!(
-        TestComplexeVarAccount::INIT_SPACE,
+        TestComplexVarAccount::INIT_SPACE,
         32 + 4 + 10 + (4 + 10) + 3
     )
 }
@@ -146,4 +158,17 @@ fn test_full_path() {
 #[test]
 fn test_const() {
     assert_eq!(TestConst::INIT_SPACE, (4 + 10) + 10)
+}
+
+#[test]
+fn test_unnamed_struct() {
+    assert_eq!(
+        TestUnnamedStruct::INIT_SPACE,
+        1 + 4 + 4 * 4 + 4 + 10 + ChildStruct::INIT_SPACE + TestBasicEnum::INIT_SPACE
+    )
+}
+
+#[test]
+fn test_unit_struct() {
+    assert_eq!(TestUnitStruct::INIT_SPACE, 0)
 }

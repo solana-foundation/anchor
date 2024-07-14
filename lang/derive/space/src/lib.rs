@@ -4,8 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse::ParseStream, parse2, parse_macro_input, Attribute, DeriveInput, Fields, GenericArgument,
-    LitInt, PathArguments, Type, TypeArray,
+    parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
+    DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type, TypeArray,
 };
 
 /// Implements a [`Space`](./trait.Space.html) trait on the given
@@ -41,22 +41,30 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let name = input.ident;
 
+    let process_struct_fields = |fields: Punctuated<Field, Comma>| {
+        let recurse = fields.into_iter().map(|f| {
+            let mut max_len_args = get_max_len_args(&f.attrs);
+            len_from_type(f.ty, &mut max_len_args)
+        });
+
+        quote! {
+            #[automatically_derived]
+            impl #impl_generics anchor_lang::Space for #name #ty_generics #where_clause {
+                const INIT_SPACE: usize = 0 #(+ #recurse)*;
+            }
+        }
+    };
+
     let expanded: TokenStream2 = match input.data {
         syn::Data::Struct(strct) => match strct.fields {
-            Fields::Named(named) => {
-                let recurse = named.named.into_iter().map(|f| {
-                    let mut max_len_args = get_max_len_args(&f.attrs);
-                    len_from_type(f.ty, &mut max_len_args)
-                });
-
-                quote! {
-                    #[automatically_derived]
-                    impl #impl_generics anchor_lang::Space for #name #ty_generics #where_clause {
-                        const INIT_SPACE: usize = 0 #(+ #recurse)*;
-                    }
+            Fields::Named(named) => process_struct_fields(named.named),
+            Fields::Unnamed(unnamed) => process_struct_fields(unnamed.unnamed),
+            Fields::Unit => quote! {
+                #[automatically_derived]
+                impl #impl_generics anchor_lang::Space for #name #ty_generics #where_clause {
+                    const INIT_SPACE: usize = 0;
                 }
-            }
-            _ => panic!("Please use named fields in account structure"),
+            },
         },
         syn::Data::Enum(enm) => {
             let variants = enm.variants.into_iter().map(|v| {
