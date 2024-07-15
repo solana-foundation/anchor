@@ -1,4 +1,5 @@
 use crate::account::*;
+use crate::program::Misc;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -802,4 +803,12 @@ pub struct InitManyAssociatedTokenAccounts<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct TestBoxedOwnerConstraint<'info> {
+    // Redundant check to test compilation
+    #[account(owner = program.key())]
+    pub my_account: Box<Account<'info, Data>>,
+    pub program: Program<'info, Misc>,
 }

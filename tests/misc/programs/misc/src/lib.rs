@@ -386,10 +386,14 @@ pub mod misc {
         Ok(())
     }
 
-    #[allow(unused_variables)]
     pub fn test_init_many_associated_token_accounts(
         _ctx: Context<InitManyAssociatedTokenAccounts>,
     ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Compilation test for https://github.com/coral-xyz/anchor/issues/3074
+    pub fn test_boxed_owner_constraint(_ctx: Context<TestBoxedOwnerConstraint>) -> Result<()> {
         Ok(())
     }
 }
