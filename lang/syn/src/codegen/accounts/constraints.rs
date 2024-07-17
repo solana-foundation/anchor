@@ -937,7 +937,9 @@ fn generate_constraint_init_group(
                                             mint: #field.to_account_info(),
                                         }), #permanent_delegate.unwrap())?;
                                     },
-                                    _ => {} // do nothing
+                                    // All extensions specified by the user should be implemented.
+                                    // If this line runs, it means there is a bug in the codegen.
+                                    _ => unimplemented!("{e:?}"),
                                 }
                             };
                         }
