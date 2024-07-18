@@ -4,12 +4,68 @@ use quote::{format_ident, quote};
 use super::common::gen_discriminator;
 
 pub fn gen_utils_mod(idl: &Idl) -> proc_macro2::TokenStream {
+    let account = gen_account(idl);
     let event = gen_event(idl);
 
     quote! {
         /// Program utilities.
         pub mod utils {
+            use super::*;
+
+            #account
             #event
+        }
+    }
+}
+
+fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
+    let variants = idl
+        .accounts
+        .iter()
+        .map(|acc| format_ident!("{}", acc.name))
+        .map(|name| quote! { #name(#name) });
+    let match_arms = idl.accounts.iter().map(|acc| {
+        let disc = gen_discriminator(&acc.discriminator);
+        let name = format_ident!("{}", acc.name);
+        let account = quote! {
+            #name::try_from_slice(&value[8..])
+                .map(Self::#name)
+                .map_err(Into::into)
+        };
+        quote! { #disc => #account }
+    });
+
+    quote! {
+        /// An enum that includes all accounts of the declared program as a tuple variant.
+        ///
+        /// See [`Self::try_from_bytes`] to create an instance from bytes.
+        pub enum Account {
+            #(#variants,)*
+        }
+
+        impl Account {
+            /// Try to create an account based on the given bytes.
+            ///
+            /// This method returns an error if the discriminator of the given bytes don't match
+            /// with any of the existing accounts, or if the deserialization fails.
+            pub fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
+                Self::try_from(bytes)
+            }
+        }
+
+        impl TryFrom<&[u8]> for Account {
+            type Error = anchor_lang::error::Error;
+
+            fn try_from(value: &[u8]) -> Result<Self> {
+                if value.len() < 8 {
+                    return Err(ProgramError::InvalidArgument.into());
+                }
+
+                match &value[..8] {
+                    #(#match_arms,)*
+                    _ => Err(ProgramError::InvalidArgument.into()),
+                }
+            }
         }
     }
 }
@@ -32,8 +88,6 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
     });
 
     quote! {
-        use super::*;
-
         /// An enum that includes all events of the declared program as a tuple variant.
         ///
         /// See [`Self::try_from_bytes`] to create an instance from bytes.

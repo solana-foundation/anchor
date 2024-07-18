@@ -16,6 +16,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli, idl: Pass `cargo` args to IDL generation when building program or IDL ([#3059](https://github.com/coral-xyz/anchor/pull/3059)).
 - cli: Add checks for incorrect usage of `idl-build` feature ([#3061](https://github.com/coral-xyz/anchor/pull/3061)).
 - lang: Export `Discriminator` trait from `prelude` ([#3075](https://github.com/coral-xyz/anchor/pull/3075)).
+- lang: Add `Account` utility type to get accounts from bytes ([#3091](https://github.com/coral-xyz/anchor/pull/3091)).
 
 ### Fixes
 
