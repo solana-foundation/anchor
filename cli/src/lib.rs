@@ -1819,8 +1819,6 @@ fn _build_rust_cwd(
     arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
-    check_idl_build_feature().ok();
-
     let exit = std::process::Command::new("cargo")
         .arg(arch.build_subcommand())
         .args(cargo_args.clone())
@@ -2683,6 +2681,7 @@ fn idl_build(
                 .path
         }
     };
+    check_idl_build_feature().ok();
     let idl = anchor_lang_idl::build::build_idl_with_cargo_args(
         program_path,
         cfg.features.resolution,
@@ -2734,6 +2733,8 @@ idl-build = ["anchor-lang/idl-build"{anchor_spl_idl_build}]
 in `{path}`."#
         ));
     }
+
+    check_idl_build_feature().ok();
 
     anchor_lang_idl::build::build_idl_with_cargo_args(
         std::env::current_dir()?,
