@@ -116,7 +116,7 @@ pub async fn composite<C: Deref<Target = impl Signer> + Clone>(
             &program.payer(),
             &dummy_a.pubkey(),
             program
-                .async_rpc()
+                .rpc()
                 .get_minimum_balance_for_rent_exemption(500)
                 .await?,
             500,
@@ -126,7 +126,7 @@ pub async fn composite<C: Deref<Target = impl Signer> + Clone>(
             &program.payer(),
             &dummy_b.pubkey(),
             program
-                .async_rpc()
+                .rpc()
                 .get_minimum_balance_for_rent_exemption(500)
                 .await?,
             500,
@@ -307,7 +307,7 @@ pub async fn optional<C: Deref<Target = impl Signer> + Clone>(
             &program.payer(),
             &required_keypair.pubkey(),
             program
-                .async_rpc()
+                .rpc()
                 .get_minimum_balance_for_rent_exemption(DataAccount::LEN)
                 .await?,
             DataAccount::LEN as u64,

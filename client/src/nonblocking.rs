@@ -3,6 +3,7 @@ use crate::{
     ProgramAccountsIterator, RequestBuilder,
 };
 use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
+use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_client::{rpc_config::RpcSendTransactionConfig, rpc_filter::RpcFilterType};
 use solana_sdk::{
     commitment_config::CommitmentConfig, signature::Signature, signer::Signer,
@@ -35,12 +36,37 @@ impl AsSigner for Arc<dyn ThreadSafeSigner> {
 }
 
 impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
-    pub fn new(program_id: Pubkey, cfg: Config<C>) -> Result<Self, ClientError> {
+    pub fn new(
+        program_id: Pubkey,
+        cfg: Config<C>,
+        #[cfg(feature = "mock")] rpc_client: AsyncRpcClient,
+    ) -> Result<Self, ClientError> {
+        #[cfg(not(feature = "mock"))]
+        let rpc_client = {
+            let comm_config = cfg.options.unwrap_or_default();
+            let cluster_url = cfg.cluster.url().to_string();
+            AsyncRpcClient::new_with_commitment(cluster_url.clone(), comm_config)
+        };
+
         Ok(Self {
             program_id,
             cfg,
             sub_client: Arc::new(RwLock::new(None)),
+            internal_rpc_client: rpc_client,
         })
+    }
+
+    // We disable the `rpc` method for `mock` feature because otherwise we'd either have to
+    // return a new `RpcClient` instance (which is different to the one used internally)
+    // or require the user to pass another one in for blocking (since we use the non-blocking one under the hood).
+    // The former of these would be confusing and the latter would be very annoying, especially since a user
+    // using the mock feature likely already has a `RpcClient` instance at hand anyway.
+    #[cfg(not(feature = "mock"))]
+    pub fn rpc(&self) -> AsyncRpcClient {
+        AsyncRpcClient::new_with_commitment(
+            self.cfg.cluster.url().to_string(),
+            self.cfg.options.unwrap_or_default(),
+        )
     }
 
     /// Returns a threadsafe request builder
@@ -50,6 +76,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
             self.cfg.cluster.url(),
             self.cfg.payer.clone(),
             self.cfg.options,
+            &self.internal_rpc_client,
         )
     }
 
@@ -98,6 +125,7 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
         cluster: &str,
         payer: C,
         options: Option<CommitmentConfig>,
+        rpc_client: &'a AsyncRpcClient,
     ) -> Self {
         Self {
             program_id,
@@ -108,6 +136,7 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
             instructions: Vec::new(),
             instruction_data: None,
             signers: Vec::new(),
+            internal_rpc_client: rpc_client,
             _phantom: PhantomData,
         }
     }

@@ -66,6 +66,7 @@ use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountM
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::UiAccountEncoding;
+use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_client::rpc_config::{
     RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
     RpcTransactionLogsConfig, RpcTransactionLogsFilter,
@@ -73,11 +74,7 @@ use solana_client::rpc_config::{
 use solana_client::rpc_filter::{Memcmp, RpcFilterType};
 use solana_client::{
     client_error::ClientError as SolanaClientError,
-    nonblocking::{
-        pubsub_client::{PubsubClient, PubsubClientError},
-        rpc_client::RpcClient as AsyncRpcClient,
-    },
-    rpc_client::RpcClient,
+    nonblocking::pubsub_client::{PubsubClient, PubsubClientError},
     rpc_response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_sdk::account::Account;
@@ -146,14 +143,23 @@ impl<C: Clone + Deref<Target = impl Signer>> Client<C> {
         }
     }
 
-    pub fn program(&self, program_id: Pubkey) -> Result<Program<C>, ClientError> {
+    pub fn program(
+        &self,
+        program_id: Pubkey,
+        #[cfg(feature = "mock")] rpc_client: AsyncRpcClient,
+    ) -> Result<Program<C>, ClientError> {
         let cfg = Config {
             cluster: self.cfg.cluster.clone(),
             options: self.cfg.options,
             payer: self.cfg.payer.clone(),
         };
 
-        Program::new(program_id, cfg)
+        Program::new(
+            program_id,
+            cfg,
+            #[cfg(feature = "mock")]
+            rpc_client,
+        )
     }
 }
 
@@ -220,6 +226,7 @@ pub struct Program<C> {
     sub_client: Arc<RwLock<Option<PubsubClient>>>,
     #[cfg(not(feature = "async"))]
     rt: tokio::runtime::Runtime,
+    internal_rpc_client: AsyncRpcClient,
 }
 
 impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
@@ -231,29 +238,12 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         self.program_id
     }
 
-    pub fn rpc(&self) -> RpcClient {
-        RpcClient::new_with_commitment(
-            self.cfg.cluster.url().to_string(),
-            self.cfg.options.unwrap_or_default(),
-        )
-    }
-
-    pub fn async_rpc(&self) -> AsyncRpcClient {
-        AsyncRpcClient::new_with_commitment(
-            self.cfg.cluster.url().to_string(),
-            self.cfg.options.unwrap_or_default(),
-        )
-    }
-
     async fn account_internal<T: AccountDeserialize>(
         &self,
         address: Pubkey,
     ) -> Result<T, ClientError> {
-        let rpc_client = AsyncRpcClient::new_with_commitment(
-            self.cfg.cluster.url().to_string(),
-            self.cfg.options.unwrap_or_default(),
-        );
-        let account = rpc_client
+        let account = self
+            .internal_rpc_client
             .get_account_with_commitment(&address, CommitmentConfig::processed())
             .await?
             .value
@@ -276,9 +266,10 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
             },
             ..RpcProgramAccountsConfig::default()
         };
+
         Ok(ProgramAccountsIterator {
             inner: self
-                .async_rpc()
+                .internal_rpc_client
                 .get_program_accounts_with_config(&self.id(), config)
                 .await?
                 .into_iter()
@@ -514,6 +505,7 @@ pub struct RequestBuilder<'a, C, S: 'a> {
     signers: Vec<S>,
     #[cfg(not(feature = "async"))]
     handle: &'a Handle,
+    internal_rpc_client: &'a AsyncRpcClient,
     _phantom: PhantomData<&'a ()>,
 }
 
@@ -631,21 +623,17 @@ impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a,
     }
 
     async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
-        let latest_hash =
-            AsyncRpcClient::new_with_commitment(self.cluster.to_owned(), self.options)
-                .get_latest_blockhash()
-                .await?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await?;
 
+        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
         Ok(tx)
     }
 
     async fn send_internal(&self) -> Result<Signature, ClientError> {
-        let rpc_client = AsyncRpcClient::new_with_commitment(self.cluster.to_owned(), self.options);
-        let latest_hash = rpc_client.get_latest_blockhash().await?;
+        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await?;
         let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
-        rpc_client
+        self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
             .await
             .map_err(Into::into)
@@ -655,14 +643,13 @@ impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a,
         &self,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
-        let rpc_client = AsyncRpcClient::new_with_commitment(self.cluster.to_owned(), self.options);
-        let latest_hash = rpc_client.get_latest_blockhash().await?;
+        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await?;
         let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
-        rpc_client
+        self.internal_rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
                 &tx,
-                rpc_client.commitment(),
+                self.internal_rpc_client.commitment(),
                 config,
             )
             .await
