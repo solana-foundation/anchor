@@ -6,7 +6,6 @@ use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
     ToAccountMetas, ZeroCopy,
 };
-use arrayref::array_ref;
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
@@ -123,13 +122,15 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner, T::owner())));
         }
-        let data: &[u8] = &acc_info.try_borrow_data()?;
-        if data.len() < T::discriminator().len() {
+
+        let data = &acc_info.try_borrow_data()?;
+        let disc = T::DISCRIMINATOR;
+        if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
-        // Discriminator must match.
-        let disc_bytes = array_ref![data, 0, 8];
-        if disc_bytes != &T::discriminator() {
+
+        let given_disc = &data[..8];
+        if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
@@ -152,12 +153,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     /// Returns a Ref to the account data structure for reading.
     pub fn load(&self) -> Result<Ref<T>> {
         let data = self.acc_info.try_borrow_data()?;
-        if data.len() < T::discriminator().len() {
+        let disc = T::DISCRIMINATOR;
+        if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
 
-        let disc_bytes = array_ref![data, 0, 8];
-        if disc_bytes != &T::discriminator() {
+        let given_disc = &data[..8];
+        if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
@@ -175,12 +177,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
 
         let data = self.acc_info.try_borrow_mut_data()?;
-        if data.len() < T::discriminator().len() {
+        let disc = T::DISCRIMINATOR;
+        if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
 
-        let disc_bytes = array_ref![data, 0, 8];
-        if disc_bytes != &T::discriminator() {
+        let given_disc = &data[..8];
+        if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
@@ -241,7 +244,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
             let mut data = self.acc_info.try_borrow_mut_data()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
-            writer.write_all(&T::discriminator()).unwrap();
+            writer.write_all(T::DISCRIMINATOR).unwrap();
         }
         Ok(())
     }

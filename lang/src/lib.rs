@@ -279,7 +279,7 @@ pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 pub trait InstructionData: Discriminator + AnchorSerialize {
     fn data(&self) -> Vec<u8> {
         let mut data = Vec::with_capacity(256);
-        data.extend_from_slice(&Self::discriminator());
+        data.extend_from_slice(Self::DISCRIMINATOR);
         self.serialize(&mut data).unwrap();
         data
     }
@@ -290,7 +290,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
         data.clear();
-        data.extend_from_slice(&Self::DISCRIMINATOR);
+        data.extend_from_slice(Self::DISCRIMINATOR);
         self.serialize(&mut data).unwrap()
     }
 }
@@ -302,8 +302,8 @@ pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
 
 /// 8 byte unique identifier for a type.
 pub trait Discriminator {
-    const DISCRIMINATOR: [u8; 8];
-    fn discriminator() -> [u8; 8] {
+    const DISCRIMINATOR: &'static [u8];
+    fn discriminator() -> &'static [u8] {
         Self::DISCRIMINATOR
     }
 }

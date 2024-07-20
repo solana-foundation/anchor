@@ -96,7 +96,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
             #impls
 
             impl anchor_lang::Discriminator for #name {
-                const DISCRIMINATOR: [u8; 8] = #discriminator;
+                const DISCRIMINATOR: &'static [u8] = &#discriminator;
             }
 
             impl anchor_lang::Owner for #name {

@@ -22,14 +22,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 })
                 .collect();
             let ix_data_trait = {
-                let sighash_arr = ix
+                let discriminator = ix
                     .interface_discriminator
-                    .unwrap_or(sighash(SIGHASH_GLOBAL_NAMESPACE, name));
-                let sighash_tts: proc_macro2::TokenStream =
-                    format!("{sighash_arr:?}").parse().unwrap();
+                    .unwrap_or_else(|| sighash(SIGHASH_GLOBAL_NAMESPACE, name));
+                let discriminator: proc_macro2::TokenStream =
+                    format!("{discriminator:?}").parse().unwrap();
                 quote! {
                     impl anchor_lang::Discriminator for #ix_name_camel {
-                        const DISCRIMINATOR: [u8; 8] = #sighash_tts;
+                        const DISCRIMINATOR: &'static [u8] = &#discriminator;
                     }
                     impl anchor_lang::InstructionData for #ix_name_camel {}
                     impl anchor_lang::Owner for #ix_name_camel {
@@ -71,7 +71,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// instructions on a client.
         pub mod instruction {
             use super::*;
-
 
             #(#variants)*
         }

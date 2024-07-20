@@ -10,7 +10,7 @@ macro_rules! impl_idl_build {
         //
         // TODO: Find a better way to handle discriminators of wrapped external accounts.
         impl anchor_lang::Discriminator for $ty {
-            const DISCRIMINATOR: [u8; 8] = [0; 8];
+            const DISCRIMINATOR: &[u8] = &[];
         }
     };
 }

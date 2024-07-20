@@ -40,7 +40,7 @@ pub fn event(
         }
 
         impl anchor_lang::Discriminator for #event_name {
-            const DISCRIMINATOR: [u8; 8] = #discriminator;
+            const DISCRIMINATOR: &'static [u8] = &#discriminator;
         }
     };
 
@@ -161,7 +161,11 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);
-            let ix_data: Vec<u8> = disc.into_iter().chain(inner_data.into_iter()).collect();
+            let ix_data: Vec<u8> = disc
+                .into_iter()
+                .map(|b| *b)
+                .chain(inner_data.into_iter())
+                .collect();
 
             let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
                 crate::ID,

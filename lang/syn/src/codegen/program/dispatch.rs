@@ -11,7 +11,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_name_camel: proc_macro2::TokenStream = ix_method_name
                 .to_string()
-                .as_str()
                 .to_camel_case()
                 .parse()
                 .expect("Failed to parse ix method name in camel as `TokenStream`");
@@ -65,7 +64,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 sighash
             };
 
-            match sighash {
+            match sighash.as_slice() {
                 #(#global_dispatch_arms)*
                 anchor_lang::idl::IDL_IX_TAG_LE => {
                     // If the method identifier is the IDL tag, then execute an IDL

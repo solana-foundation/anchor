@@ -50,7 +50,7 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
             let discriminator = gen_discriminator(&ix.discriminator);
             quote! {
                 impl anchor_lang::Discriminator for #ix_struct_name {
-                    const DISCRIMINATOR: [u8; 8] = #discriminator;
+                    const DISCRIMINATOR: &'static [u8] = &#discriminator;
                 }
             }
         } else {
