@@ -129,7 +129,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
 
-        let given_disc = &data[..8];
+        let given_disc = &data[..disc.len()];
         if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
@@ -158,13 +158,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
 
-        let given_disc = &data[..8];
+        let given_disc = &data[..disc.len()];
         if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
         Ok(Ref::map(data, |data| {
-            bytemuck::from_bytes(&data[8..mem::size_of::<T>() + 8])
+            bytemuck::from_bytes(&data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
     }
 
@@ -182,13 +182,15 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
 
-        let given_disc = &data[..8];
+        let given_disc = &data[..disc.len()];
         if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..mem::size_of::<T>() + 8])
+            bytemuck::from_bytes_mut(
+                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
+            )
         }))
     }
 
@@ -204,15 +206,17 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         let data = self.acc_info.try_borrow_mut_data()?;
 
         // The discriminator should be zero, since we're initializing.
-        let mut disc_bytes = [0u8; 8];
-        disc_bytes.copy_from_slice(&data[..8]);
-        let discriminator = u64::from_le_bytes(disc_bytes);
-        if discriminator != 0 {
+        let disc = T::DISCRIMINATOR;
+        let given_disc = &data[..disc.len()];
+        let has_disc = given_disc.iter().any(|b| *b != 0);
+        if has_disc {
             return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
         }
 
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(&mut data.deref_mut()[8..mem::size_of::<T>() + 8])
+            bytemuck::from_bytes_mut(
+                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
+            )
         }))
     }
 }

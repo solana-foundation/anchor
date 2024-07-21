@@ -180,7 +180,7 @@ pub fn account(
                         if buf.len() < #discriminator.len() {
                             return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
-                        let given_disc = &buf[..8];
+                        let given_disc = &buf[..#discriminator.len()];
                         if &#discriminator != given_disc {
                             return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
@@ -188,7 +188,7 @@ pub fn account(
                     }
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        let data: &[u8] = &buf[8..];
+                        let data: &[u8] = &buf[#discriminator.len()..];
                         // Re-interpret raw bytes into the POD data structure.
                         let account = anchor_lang::__private::bytemuck::from_bytes(data);
                         // Copy out the bytes into a new, owned data structure.
@@ -223,7 +223,7 @@ pub fn account(
                         if buf.len() < #discriminator.len() {
                             return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
-                        let given_disc = &buf[..8];
+                        let given_disc = &buf[..#discriminator.len()];
                         if &#discriminator != given_disc {
                             return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
@@ -231,7 +231,7 @@ pub fn account(
                     }
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        let mut data: &[u8] = &buf[8..];
+                        let mut data: &[u8] = &buf[#discriminator.len()..];
                         AnchorDeserialize::deserialize(&mut data)
                             .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize.into())
                     }
