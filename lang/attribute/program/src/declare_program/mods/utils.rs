@@ -24,15 +24,17 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
         .iter()
         .map(|acc| format_ident!("{}", acc.name))
         .map(|name| quote! { #name(#name) });
-    let match_arms = idl.accounts.iter().map(|acc| {
-        let disc = gen_discriminator(&acc.discriminator);
+    let if_statements = idl.accounts.iter().map(|acc| {
         let name = format_ident!("{}", acc.name);
-        let account = quote! {
-            #name::try_from_slice(&value[8..])
-                .map(Self::#name)
-                .map_err(Into::into)
-        };
-        quote! { #disc => #account }
+        let disc = gen_discriminator(&acc.discriminator);
+        let disc_len = acc.discriminator.len();
+        quote! {
+            if value.starts_with(&#disc) {
+                return #name::try_from_slice(&value[#disc_len..])
+                    .map(Self::#name)
+                    .map_err(Into::into)
+            }
+        }
     });
 
     quote! {
@@ -57,14 +59,8 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
             type Error = anchor_lang::error::Error;
 
             fn try_from(value: &[u8]) -> Result<Self> {
-                if value.len() < 8 {
-                    return Err(ProgramError::InvalidArgument.into());
-                }
-
-                match &value[..8] {
-                    #(#match_arms,)*
-                    _ => Err(ProgramError::InvalidArgument.into()),
-                }
+                #(#if_statements)*
+                Err(ProgramError::InvalidArgument.into())
             }
         }
     }
@@ -76,15 +72,17 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
         .iter()
         .map(|ev| format_ident!("{}", ev.name))
         .map(|name| quote! { #name(#name) });
-    let match_arms = idl.events.iter().map(|ev| {
-        let disc = gen_discriminator(&ev.discriminator);
+    let if_statements = idl.events.iter().map(|ev| {
         let name = format_ident!("{}", ev.name);
-        let event = quote! {
-            #name::try_from_slice(&value[8..])
-                .map(Self::#name)
-                .map_err(Into::into)
-        };
-        quote! { #disc => #event }
+        let disc = gen_discriminator(&ev.discriminator);
+        let disc_len = ev.discriminator.len();
+        quote! {
+            if value.starts_with(&#disc) {
+                return #name::try_from_slice(&value[#disc_len..])
+                    .map(Self::#name)
+                    .map_err(Into::into)
+            }
+        }
     });
 
     quote! {
@@ -109,14 +107,8 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
             type Error = anchor_lang::error::Error;
 
             fn try_from(value: &[u8]) -> Result<Self> {
-                if value.len() < 8 {
-                    return Err(ProgramError::InvalidArgument.into());
-                }
-
-                match &value[..8] {
-                    #(#match_arms,)*
-                    _ => Err(ProgramError::InvalidArgument.into()),
-                }
+                #(#if_statements)*
+                Err(ProgramError::InvalidArgument.into())
             }
         }
     }
