@@ -4,28 +4,25 @@ use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
-    let global_dispatch_arms: Vec<proc_macro2::TokenStream> = program
-        .ixs
-        .iter()
-        .map(|ix| {
-            let ix_method_name = &ix.raw_method.sig.ident;
-            let ix_name_camel: proc_macro2::TokenStream = ix_method_name
-                .to_string()
-                .to_camel_case()
-                .parse()
-                .expect("Failed to parse ix method name in camel as `TokenStream`");
+    let global_ixs = program.ixs.iter().map(|ix| {
+        let ix_method_name = &ix.raw_method.sig.ident;
+        let ix_name_camel: proc_macro2::TokenStream = ix_method_name
+            .to_string()
+            .to_camel_case()
+            .parse()
+            .expect("Failed to parse ix method name in camel as `TokenStream`");
+        let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
 
-            quote! {
-                instruction::#ix_name_camel::DISCRIMINATOR => {
-                    __private::__global::#ix_method_name(
-                        program_id,
-                        accounts,
-                        ix_data,
-                    )
-                }
+        quote! {
+            if data.starts_with(#discriminator) {
+                return __private::__global::#ix_method_name(
+                    program_id,
+                    accounts,
+                    &data[#discriminator.len()..],
+                )
             }
-        })
-        .collect();
+        }
+    });
 
     let fallback_fn = gen_fallback(program).unwrap_or(quote! {
         Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into())
@@ -54,42 +51,29 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             accounts: &'info [AccountInfo<'info>],
             data: &[u8],
         ) -> anchor_lang::Result<()> {
-            // Split the instruction data into the first 8 byte method
-            // identifier (sighash) and the serialized instruction data.
-            let mut ix_data: &[u8] = data;
-            let sighash: [u8; 8] = {
-                let mut sighash: [u8; 8] = [0; 8];
-                sighash.copy_from_slice(&ix_data[..8]);
-                ix_data = &ix_data[8..];
-                sighash
-            };
+            #(#global_ixs)*
 
-            match sighash.as_slice() {
-                #(#global_dispatch_arms)*
-                anchor_lang::idl::IDL_IX_TAG_LE => {
-                    // If the method identifier is the IDL tag, then execute an IDL
-                    // instruction, injected into all Anchor programs unless they have
-                    // no-idl enabled
-                    #[cfg(not(feature = "no-idl"))]
-                    {
-                        __private::__idl::__idl_dispatch(
-                            program_id,
-                            accounts,
-                            &ix_data,
-                        )
-                    }
-                    #[cfg(feature = "no-idl")]
-                    {
-                        Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into())
-                    }
-                }
-                anchor_lang::event::EVENT_IX_TAG_LE => {
-                    #event_cpi_handler
-                }
-                _ => {
-                    #fallback_fn
-                }
+            // Dispatch IDL instructions
+            if data.starts_with(anchor_lang::idl::IDL_IX_TAG_LE) {
+                // If the method identifier is the IDL tag, then execute an IDL
+                // instruction, injected into all Anchor programs unless they have
+                // `no-idl` feature enabled
+                #[cfg(not(feature = "no-idl"))]
+                return __private::__idl::__idl_dispatch(
+                    program_id,
+                    accounts,
+                    &data[anchor_lang::idl::IDL_IX_TAG_LE.len()..],
+                );
+                #[cfg(feature = "no-idl")]
+                return Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into());
             }
+
+            // Dispatch Event CPI instruction
+            if data.starts_with(anchor_lang::event::EVENT_IX_TAG_LE) {
+                return #event_cpi_handler;
+            }
+
+            #fallback_fn
         }
     }
 }
@@ -110,7 +94,11 @@ pub fn generate_event_cpi_handler() -> proc_macro2::TokenStream {
     #[cfg(feature = "event-cpi")]
     quote! {
         // `event-cpi` feature is enabled, dispatch self-cpi instruction
-        __private::__events::__event_dispatch(program_id, accounts, &ix_data)
+        __private::__events::__event_dispatch(
+            program_id,
+            accounts,
+            &data[anchor_lang::event::EVENT_IX_TAG_LE.len()..]
+        )
     }
     #[cfg(not(feature = "event-cpi"))]
     quote! {
