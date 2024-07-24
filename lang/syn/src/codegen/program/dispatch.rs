@@ -24,11 +24,39 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
     });
 
-    let fallback_fn = gen_fallback(program).unwrap_or(quote! {
-        Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into())
-    });
+    // Generate the event-cpi instruction handler based on whether the `event-cpi` feature is enabled.
+    let event_cpi_handler = {
+        #[cfg(feature = "event-cpi")]
+        quote! {
+            // `event-cpi` feature is enabled, dispatch self-cpi instruction
+            __private::__events::__event_dispatch(
+                program_id,
+                accounts,
+                &data[anchor_lang::event::EVENT_IX_TAG_LE.len()..]
+            )
+        }
+        #[cfg(not(feature = "event-cpi"))]
+        quote! {
+            // `event-cpi` feature is not enabled
+            Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
+        }
+    };
 
-    let event_cpi_handler = generate_event_cpi_handler();
+    let fallback_fn = program
+        .fallback_fn
+        .as_ref()
+        .map(|fallback_fn| {
+            let program_name = &program.name;
+            let fn_name = &fallback_fn.raw_method.sig.ident;
+            quote! {
+                #program_name::#fn_name(program_id, accounts, data)
+            }
+        })
+        .unwrap_or_else(|| {
+            quote! {
+                Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into())
+            }
+        });
 
     quote! {
         /// Performs method dispatch.
@@ -75,34 +103,5 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             #fallback_fn
         }
-    }
-}
-
-pub fn gen_fallback(program: &Program) -> Option<proc_macro2::TokenStream> {
-    program.fallback_fn.as_ref().map(|fallback_fn| {
-        let program_name = &program.name;
-        let method = &fallback_fn.raw_method;
-        let fn_name = &method.sig.ident;
-        quote! {
-            #program_name::#fn_name(program_id, accounts, data)
-        }
-    })
-}
-
-/// Generate the event-cpi instruction handler based on whether the `event-cpi` feature is enabled.
-pub fn generate_event_cpi_handler() -> proc_macro2::TokenStream {
-    #[cfg(feature = "event-cpi")]
-    quote! {
-        // `event-cpi` feature is enabled, dispatch self-cpi instruction
-        __private::__events::__event_dispatch(
-            program_id,
-            accounts,
-            &data[anchor_lang::event::EVENT_IX_TAG_LE.len()..]
-        )
-    }
-    #[cfg(not(feature = "event-cpi"))]
-    quote! {
-        // `event-cpi` feature is not enabled
-        Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
     }
 }
