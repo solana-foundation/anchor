@@ -43,6 +43,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Remove `EventData` trait ([#3083](https://github.com/coral-xyz/anchor/pull/3083)).
 - client: Remove `async_rpc` method ([#3053](https://github.com/coral-xyz/anchor/pull/3053)).
 - lang: Make discriminator type unsized ([#3098](https://github.com/coral-xyz/anchor/pull/3098)).
+- lang: Require `Discriminator` trait impl when using the `zero` constraint ([#3118](https://github.com/coral-xyz/anchor/pull/3118)).
 
 ## [0.30.1] - 2024-06-20
 

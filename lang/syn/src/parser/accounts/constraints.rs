@@ -1174,6 +1174,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.init.is_some() {
             return Err(ParseError::new(c.span(), "init already provided"));
         }
+
+        // Require a known account type that implements the `Discriminator` trait so that we can
+        // get the discriminator length dynamically
+        if !matches!(&self.f_ty, Some(Ty::Account(_) | Ty::AccountLoader(_))) {
+            return Err(ParseError::new(
+                c.span(),
+                "`zero` constraint requires the type to implement the `Discriminator` trait",
+            ));
+        }
         self.zeroed.replace(c);
         Ok(())
     }
