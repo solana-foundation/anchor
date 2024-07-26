@@ -16,7 +16,7 @@ import {
   IdlDiscriminator,
 } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
-import { DISCRIMINATOR_SIZE, InstructionCoder } from "../index.js";
+import { InstructionCoder } from "../index.js";
 
 /**
  * Encodes and decodes program instructions.
@@ -28,9 +28,6 @@ export class BorshInstructionCoder implements InstructionCoder {
     { discriminator: IdlDiscriminator; layout: Layout }
   >;
 
-  // Base58 encoded sighash to instruction layout.
-  private sighashLayouts: Map<string, { name: string; layout: Layout }>;
-
   public constructor(private idl: Idl) {
     const ixLayouts = idl.instructions.map((ix) => {
       const name = ix.name;
@@ -41,13 +38,6 @@ export class BorshInstructionCoder implements InstructionCoder {
       return [name, { discriminator: ix.discriminator, layout }] as const;
     });
     this.ixLayouts = new Map(ixLayouts);
-
-    const sighashLayouts = ixLayouts.map(
-      ([name, { discriminator, layout }]) => {
-        return [bs58.encode(discriminator), { name, layout }] as const;
-      }
-    );
-    this.sighashLayouts = new Map(sighashLayouts);
   }
 
   /**
@@ -77,17 +67,18 @@ export class BorshInstructionCoder implements InstructionCoder {
       ix = encoding === "hex" ? Buffer.from(ix, "hex") : bs58.decode(ix);
     }
 
-    const disc = ix.slice(0, DISCRIMINATOR_SIZE);
-    const data = ix.slice(DISCRIMINATOR_SIZE);
-    const decoder = this.sighashLayouts.get(bs58.encode(disc));
-    if (!decoder) {
-      return null;
+    for (const [name, layout] of this.ixLayouts) {
+      const givenDisc = ix.subarray(0, layout.discriminator.length);
+      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      if (matches) {
+        return {
+          name,
+          data: layout.layout.decode(ix.subarray(givenDisc.length)),
+        };
+      }
     }
 
-    return {
-      name: decoder.name,
-      data: decoder.layout.decode(data),
-    };
+    return null;
   }
 
   /**

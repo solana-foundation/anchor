@@ -1,10 +1,9 @@
 import bs58 from "bs58";
 import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
-import { Idl } from "../../idl.js";
+import { Idl, IdlDiscriminator } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { AccountsCoder } from "../index.js";
-import { DISCRIMINATOR_SIZE } from "./discriminator.js";
 
 /**
  * Encodes and decodes account objects.
@@ -15,7 +14,10 @@ export class BorshAccountsCoder<A extends string = string>
   /**
    * Maps account type identifier to a layout.
    */
-  private accountLayouts: Map<A, Layout>;
+  private accountLayouts: Map<
+    A,
+    { discriminator: IdlDiscriminator; layout: Layout }
+  >;
 
   public constructor(private idl: Idl) {
     if (!idl.accounts) {
@@ -28,12 +30,18 @@ export class BorshAccountsCoder<A extends string = string>
       throw new Error("Accounts require `idl.types`");
     }
 
-    const layouts: [A, Layout][] = idl.accounts.map((acc) => {
+    const layouts = idl.accounts.map((acc) => {
       const typeDef = types.find((ty) => ty.name === acc.name);
       if (!typeDef) {
         throw new Error(`Account not found: ${acc.name}`);
       }
-      return [acc.name as A, IdlCoder.typeDefLayout({ typeDef, types })];
+      return [
+        acc.name as A,
+        {
+          discriminator: acc.discriminator,
+          layout: IdlCoder.typeDefLayout({ typeDef, types }),
+        },
+      ] as const;
     });
 
     this.accountLayouts = new Map(layouts);
@@ -45,7 +53,7 @@ export class BorshAccountsCoder<A extends string = string>
     if (!layout) {
       throw new Error(`Unknown account: ${accountName}`);
     }
-    const len = layout.encode(account, buffer);
+    const len = layout.layout.encode(account, buffer);
     const accountData = buffer.slice(0, len);
     const discriminator = this.accountDiscriminator(accountName);
     return Buffer.concat([discriminator, accountData]);
@@ -54,32 +62,31 @@ export class BorshAccountsCoder<A extends string = string>
   public decode<T = any>(accountName: A, data: Buffer): T {
     // Assert the account discriminator is correct.
     const discriminator = this.accountDiscriminator(accountName);
-    if (discriminator.compare(data.slice(0, DISCRIMINATOR_SIZE))) {
+    if (discriminator.compare(data.slice(0, discriminator.length))) {
       throw new Error("Invalid account discriminator");
     }
     return this.decodeUnchecked(accountName, data);
   }
 
   public decodeAny<T = any>(data: Buffer): T {
-    const discriminator = data.slice(0, DISCRIMINATOR_SIZE);
-    const accountName = Array.from(this.accountLayouts.keys()).find((key) =>
-      this.accountDiscriminator(key).equals(discriminator)
-    );
-    if (!accountName) {
-      throw new Error("Account not found");
+    for (const [name, layout] of this.accountLayouts) {
+      const givenDisc = data.subarray(0, layout.discriminator.length);
+      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      if (matches) return this.decodeUnchecked(name, data);
     }
 
-    return this.decodeUnchecked<T>(accountName, data);
+    throw new Error("Account not found");
   }
 
   public decodeUnchecked<T = any>(accountName: A, acc: Buffer): T {
     // Chop off the discriminator before decoding.
-    const data = acc.subarray(DISCRIMINATOR_SIZE);
+    const discriminator = this.accountDiscriminator(accountName);
+    const data = acc.subarray(discriminator.length);
     const layout = this.accountLayouts.get(accountName);
     if (!layout) {
       throw new Error(`Unknown account: ${accountName}`);
     }
-    return layout.decode(data);
+    return layout.layout.decode(data);
   }
 
   public memcmp(accountName: A, appendData?: Buffer): any {
@@ -94,7 +101,7 @@ export class BorshAccountsCoder<A extends string = string>
 
   public size(accountName: A): number {
     return (
-      DISCRIMINATOR_SIZE +
+      this.accountDiscriminator(accountName).length +
       IdlCoder.typeSize({ defined: { name: accountName } }, this.idl)
     );
   }

@@ -1,7 +1,5 @@
 import * as assert from "assert";
 import { BorshCoder, Idl } from "../src";
-import { DISCRIMINATOR_SIZE } from "../src/coder/borsh/discriminator";
-import { sha256 } from "@noble/hashes/sha256";
 
 describe("coder.accounts", () => {
   test("Can encode and decode user-defined accounts, including those with consecutive capital letters", () => {
