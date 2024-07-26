@@ -765,7 +765,7 @@ describe("Optional", () => {
           .signers([dataAccountKeypair3])
           .rpc();
         assert.fail(
-          "Unexpected success in creating a transaction that should have failed with `ConstraintRaw` error"
+          "Unexpected success in creating a transaction that should have failed with `ConstraintAccountIsNone` error"
         );
       } catch (e) {
         // @ts-ignore
