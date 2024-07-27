@@ -24,6 +24,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Update `dispatch` function to support dynamic discriminators ([#3104](https://github.com/coral-xyz/anchor/pull/3104)).
 - lang: Remove the fallback function shortcut in `try_entry` function ([#3109](https://github.com/coral-xyz/anchor/pull/3109)).
 - ts: Get discriminator lengths dynamically ([#3120](https://github.com/coral-xyz/anchor/pull/3120)).
+- client: Support non-8-byte discriminators ([#3125](https://github.com/coral-xyz/anchor/pull/3125)).
 
 ### Fixes
 

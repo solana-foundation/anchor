@@ -373,8 +373,8 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
         .strip_prefix(PROGRAM_LOG)
         .or_else(|| l.strip_prefix(PROGRAM_DATA))
     {
-        let borsh_bytes = match STANDARD.decode(log) {
-            Ok(borsh_bytes) => borsh_bytes,
+        let log_bytes = match STANDARD.decode(log) {
+            Ok(log_bytes) => log_bytes,
             _ => {
                 #[cfg(feature = "debug")]
                 println!("Could not base64 decode log: {}", log);
@@ -382,19 +382,14 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
             }
         };
 
-        let mut slice: &[u8] = &borsh_bytes[..];
-        let disc: [u8; 8] = {
-            let mut disc = [0; 8];
-            disc.copy_from_slice(&borsh_bytes[..8]);
-            slice = &slice[8..];
-            disc
-        };
-        let mut event = None;
-        if disc == T::discriminator() {
-            let e: T = anchor_lang::AnchorDeserialize::deserialize(&mut slice)
-                .map_err(|e| ClientError::LogParseError(e.to_string()))?;
-            event = Some(e);
-        }
+        let event = log_bytes
+            .starts_with(T::DISCRIMINATOR)
+            .then(|| {
+                let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
+                T::deserialize(&mut data).map_err(|e| ClientError::LogParseError(e.to_string()))
+            })
+            .transpose()?;
+
         Ok((event, None, false))
     }
     // System log.
