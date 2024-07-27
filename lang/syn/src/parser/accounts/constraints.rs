@@ -235,6 +235,35 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "interest_bearing_mint" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "rate" => ConstraintToken::ExtensionInterestBearingMintRate(Context::new(
+                            span,
+                            ConstraintExtensionInterestBearingMintRate {
+                                rate: stream.parse()?,
+                            },
+                        )),
+                        "authority" => {
+                            ConstraintToken::ExtensionInterestBearingMintAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 "transfer_hook" => {
                     stream.parse::<Token![:]>()?;
                     stream.parse::<Token![:]>()?;
@@ -566,6 +595,9 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
     pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
     pub extension_pausable_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_interest_bearing_mint_rate:
+        Option<Context<ConstraintExtensionInterestBearingMintRate>>,
+    pub extension_interest_bearing_mint_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -613,6 +645,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_program_id: None,
             extension_permanent_delegate: None,
             extension_pausable_authority: None,
+            extension_interest_bearing_mint_rate: None,
+            extension_interest_bearing_mint_authority: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -831,6 +865,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_program_id,
             extension_permanent_delegate,
             extension_pausable_authority,
+            extension_interest_bearing_mint_rate,
+            extension_interest_bearing_mint_authority,
             bump,
             program_seed,
             realloc,
@@ -1087,6 +1123,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                     .map(|thpid| thpid.into_inner().program_id),
                                 pausable_authority: extension_pausable_authority
                                     .map(|ca| ca.into_inner().authority),
+                                interest_bearing_mint_rate: extension_interest_bearing_mint_rate
+                                    .map(|ibmr| ibmr.into_inner().rate),
+                                interest_bearing_mint_authority:
+                                    extension_interest_bearing_mint_authority
+                                        .map(|ibma| ibma.into_inner().authority),
                             }
                         } else {
                             InitKind::Program {
@@ -1189,6 +1230,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::Dup(c) => self.add_dup(c),
             ConstraintToken::ExtensionPausableAuthority(c) => {
                 self.add_extension_pausable_authority(c)
+            }
+            ConstraintToken::ExtensionInterestBearingMintRate(c) => {
+                self.add_extension_interest_bearing_mint_rate(c)
+            }
+            ConstraintToken::ExtensionInterestBearingMintAuthority(c) => {
+                self.add_extension_interest_bearing_mint_authority(c)
             }
         }
     }
@@ -1793,6 +1840,34 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_pausable_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_mint_rate(
+        &mut self,
+        c: Context<ConstraintExtensionInterestBearingMintRate>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_mint_rate.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing mint rate already provided",
+            ));
+        }
+        self.extension_interest_bearing_mint_rate.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_mint_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_mint_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing mint rate authority already provided",
+            ));
+        }
+        self.extension_interest_bearing_mint_authority.replace(c);
         Ok(())
     }
 }
