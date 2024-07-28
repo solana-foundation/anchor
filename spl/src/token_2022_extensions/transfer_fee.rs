@@ -158,3 +158,36 @@ pub struct WithdrawWithheldTokensFromMint<'info> {
     pub destination: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
 }
+
+pub fn withdraw_withheld_tokens_from_accounts<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, WithdrawWithheldTokensFromAccounts<'info>>,
+    sources: Vec<AccountInfo<'info>>,
+) -> Result<()> {
+    let ix = spl_token_2022::extension::transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.destination.key,
+        ctx.accounts.authority.key,
+        &[],
+        sources.iter().map(|a| a.key).collect::<Vec<_>>().as_slice(),
+    )?;
+
+    let mut account_infos = vec![
+        ctx.accounts.token_program_id,
+        ctx.accounts.mint,
+        ctx.accounts.destination,
+        ctx.accounts.authority,
+    ];
+    account_infos.extend_from_slice(&sources);
+
+    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+        .map_err(Into::into)
+}
+
+#[derive(Accounts)]
+pub struct WithdrawWithheldTokensFromAccounts<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
