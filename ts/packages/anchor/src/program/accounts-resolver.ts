@@ -243,13 +243,11 @@ export class AccountsResolver<IDL extends Idl> {
         if ((account.signer || account.address) && !this.get([...path, name])) {
           // Default signers to the provider
           if (account.signer) {
-            // @ts-expect-error
             if (!this._provider.wallet) {
               throw new Error(
                 "This function requires the `Provider` interface implementor to have a `wallet` field."
               );
             }
-            // @ts-expect-error
             this.set([...path, name], this._provider.wallet.publicKey);
           }
 

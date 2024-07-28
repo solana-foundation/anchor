@@ -11,6 +11,7 @@ import {
   SendOptions,
   VersionedTransaction,
   RpcResponseAndContext,
+  Keypair,
 } from "@solana/web3.js";
 import { bs58 } from "./utils/bytes/index.js";
 import { isBrowser, isVersionedTransaction } from "./utils/common.js";
@@ -22,6 +23,7 @@ import {
 export default interface Provider {
   readonly connection: Connection;
   readonly publicKey?: PublicKey;
+  readonly wallet?: Wallet;
 
   send?(
     tx: Transaction | VersionedTransaction,
@@ -360,6 +362,8 @@ export interface Wallet {
     txs: T[]
   ): Promise<T[]>;
   publicKey: PublicKey;
+  /** Keypair of the configured payer (Node only) */
+  payer?: Keypair;
 }
 
 // Copy of Connection.sendAndConfirmRawTransaction that throws
