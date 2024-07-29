@@ -85,7 +85,10 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 ///
 /// **Note:** The check expects the current directory to be a program directory.
 pub fn check_idl_build_feature() -> Result<()> {
-    Manifest::from_path("Cargo.toml")?
+    let manifest = Manifest::from_path("Cargo.toml")?;
+
+    // Check if `idl-build` is enabled by default
+    manifest
         .dependencies
         .iter()
         .filter(|(_, dep)| dep.req_features().contains(&"idl-build".into()))
@@ -97,6 +100,23 @@ pub fn check_idl_build_feature() -> Result<()> {
                     `idl-build` feature in the `idl-build` feature list:\n\n\t\
                     [features]\n\t\
                     idl-build = [\"{name}/idl-build\", ...]\n"
+            )
+        });
+
+    // Check `anchor-spl`'s `idl-build` feature
+    manifest
+        .dependencies
+        .get("anchor-spl")
+        .and_then(|_| manifest.features.get("idl-build"))
+        .map(|feature_list| !feature_list.contains(&"anchor-spl/idl-build".into()))
+        .unwrap_or_default()
+        .then(|| {
+            eprintln!(
+                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. \
+                This is likely to result in cryptic compile errors.\n\n\t\
+                To solve, add `anchor-spl/idl-build` to the `idl-build` feature list:\n\n\t\
+                [features]\n\t\
+                idl-build = [\"anchor-spl/idl-build\", ...]\n"
             )
         });
 
