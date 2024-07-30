@@ -103,3 +103,53 @@ pub fn interface(
     // discriminator.
     input
 }
+
+/// This attribute is used to override the Anchor defaults of program instructions.
+///
+/// # Args
+///
+/// - `discriminator`: Override the default 8-byte discriminator
+///
+///     **Usage:** `discriminator = <CONST_EXPR>`
+///
+///     All constant expressions are supported.
+///
+///     **Examples:**
+///
+///     - `discriminator = 0` (shortcut for `[0]`)
+///     - `discriminator = [1, 2, 3, 4]`
+///     - `discriminator = b"hi"`
+///     - `discriminator = MY_DISC`
+///     - `discriminator = get_disc(...)`
+///
+/// # Example
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
+/// declare_id!("CustomDiscriminator111111111111111111111111");
+///
+/// #[program]
+/// pub mod custom_discriminator {
+///     use super::*;
+///
+///     #[instruction(discriminator = [1, 2, 3, 4])]
+///     pub fn my_ix(_ctx: Context<MyIx>) -> Result<()> {
+///         Ok(())
+///     }
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct MyIx<'info> {
+///     pub signer: Signer<'info>,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn instruction(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    // This macro itself is a no-op, but the `#[program]` macro will detect this attribute and use
+    // the arguments to transform the instruction.
+    input
+}

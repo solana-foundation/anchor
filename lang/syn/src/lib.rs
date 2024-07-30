@@ -25,6 +25,7 @@ use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult}
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
     TypePath,
@@ -68,7 +69,58 @@ pub struct Ix {
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
     // The discriminator based on the `#[interface]` attribute.
+    // TODO: Remove and use `ix_attr`
     pub interface_discriminator: Option<[u8; 8]>,
+    /// `#[instruction]` attribute
+    pub ix_attr: Option<IxAttr>,
+}
+
+/// `#[instruction]` attribute proc-macro
+#[derive(Debug, Default)]
+pub struct IxAttr {
+    /// Discriminator override
+    pub discriminator: Option<TokenStream>,
+}
+
+impl Parse for IxAttr {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        let mut attr = Self::default();
+        let args = input.parse_terminated::<_, Comma>(AttrArg::parse)?;
+        for arg in args {
+            match arg.name.to_string().as_str() {
+                "discriminator" => {
+                    let value = match &arg.value {
+                        // Allow `discriminator = 42`
+                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        // Allow `discriminator = [0, 1, 2, 3]`
+                        Expr::Array(arr) => quote! { &#arr },
+                        expr => expr.to_token_stream(),
+                    };
+                    attr.discriminator.replace(value)
+                }
+                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+            };
+        }
+
+        Ok(attr)
+    }
+}
+
+struct AttrArg {
+    name: Ident,
+    #[allow(dead_code)]
+    eq_token: Token!(=),
+    value: Expr,
+}
+
+impl Parse for AttrArg {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        Ok(Self {
+            name: input.parse()?,
+            eq_token: input.parse()?,
+            value: input.parse()?,
+        })
+    }
 }
 
 #[derive(Debug)]

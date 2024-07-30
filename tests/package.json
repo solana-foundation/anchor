@@ -15,6 +15,7 @@
     "chat",
     "composite",
     "custom-coder",
+    "custom-discriminator",
     "declare-id",
     "declare-program",
     "errors",

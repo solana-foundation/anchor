@@ -21,15 +21,25 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         .unwrap()
                 })
                 .collect();
-            let ix_data_trait = {
-                let discriminator = ix
-                    .interface_discriminator
-                    .unwrap_or_else(|| sighash(SIGHASH_GLOBAL_NAMESPACE, name));
-                let discriminator: proc_macro2::TokenStream =
-                    format!("{discriminator:?}").parse().unwrap();
+            let impls = {
+                let discriminator = match ix.ix_attr.as_ref() {
+                    Some(ix_attr) if ix_attr.discriminator.is_some() => {
+                        ix_attr.discriminator.as_ref().unwrap().to_owned()
+                    }
+                    _ => {
+                        // TODO: Remove `interface_discriminator`
+                        let discriminator = ix
+                            .interface_discriminator
+                            .unwrap_or_else(|| sighash(SIGHASH_GLOBAL_NAMESPACE, name));
+                        let discriminator: proc_macro2::TokenStream =
+                            format!("{discriminator:?}").parse().unwrap();
+                        quote! { &#discriminator }
+                    }
+                };
+
                 quote! {
                     impl anchor_lang::Discriminator for #ix_name_camel {
-                        const DISCRIMINATOR: &'static [u8] = &#discriminator;
+                        const DISCRIMINATOR: &'static [u8] = #discriminator;
                     }
                     impl anchor_lang::InstructionData for #ix_name_camel {}
                     impl anchor_lang::Owner for #ix_name_camel {
@@ -46,7 +56,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct #ix_name_camel;
 
-                    #ix_data_trait
+                    #impls
                 }
             } else {
                 quote! {
@@ -56,7 +66,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         #(#raw_args),*
                     }
 
-                    #ix_data_trait
+                    #impls
                 }
             }
         })

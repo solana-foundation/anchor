@@ -1,7 +1,7 @@
 use crate::parser::docs;
 use crate::parser::program::ctx_accounts_ident;
 use crate::parser::spl_interface;
-use crate::{FallbackFn, Ix, IxArg, IxReturn};
+use crate::{FallbackFn, Ix, IxArg, IxAttr, IxReturn};
 use syn::parse::{Error as ParseError, Result as ParseResult};
 use syn::spanned::Spanned;
 
@@ -25,6 +25,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
         })
         .map(|method: &syn::ItemFn| {
             let (ctx, args) = parse_args(method)?;
+            let ix_attr = parse_ix_attr(&method.attrs)?;
             let interface_discriminator = spl_interface::parse(&method.attrs);
             let docs = docs::parse(&method.attrs);
             let returns = parse_return(method)?;
@@ -37,6 +38,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
                 anchor_ident,
                 returns,
                 interface_discriminator,
+                ix_attr,
             })
         })
         .collect::<ParseResult<Vec<Ix>>>()?;
@@ -69,6 +71,18 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
     };
 
     Ok((ixs, fallback_fn))
+}
+
+/// Parse `#[instruction]` attribute proc-macro.
+fn parse_ix_attr(attrs: &[syn::Attribute]) -> ParseResult<Option<IxAttr>> {
+    attrs
+        .iter()
+        .find(|attr| match attr.path.segments.last() {
+            Some(seg) => seg.ident == "instruction",
+            _ => false,
+        })
+        .map(|attr| attr.parse_args())
+        .transpose()
 }
 
 pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
