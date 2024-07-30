@@ -240,6 +240,11 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         self.program_id
     }
 
+    #[cfg(feature = "mock")]
+    pub fn internal_rpc(&self) -> &AsyncRpcClient {
+        &self.internal_rpc_client
+    }
+
     async fn account_internal<T: AccountDeserialize>(
         &self,
         address: Pubkey,
