@@ -53,6 +53,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Make discriminator type unsized ([#3098](https://github.com/coral-xyz/anchor/pull/3098)).
 - lang: Require `Discriminator` trait impl when using the `zero` constraint ([#3118](https://github.com/coral-xyz/anchor/pull/3118)).
 - ts: Remove `DISCRIMINATOR_SIZE` constant ([#3120](https://github.com/coral-xyz/anchor/pull/3120)).
+- lang: `#[account]` attribute arguments no longer parses identifiers as namespaces ([#3140](https://github.com/coral-xyz/anchor/pull/3140)).
 
 ## [0.30.1] - 2024-06-20
 

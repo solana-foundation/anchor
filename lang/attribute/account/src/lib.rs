@@ -1,7 +1,13 @@
 extern crate proc_macro;
 
-use quote::quote;
-use syn::parse_macro_input;
+use quote::{quote, ToTokens};
+use syn::{
+    parenthesized,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    token::{Comma, Paren},
+    Ident, LitStr,
+};
 
 mod id;
 
@@ -67,31 +73,10 @@ pub fn account(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let mut namespace = "".to_string();
-    let mut is_zero_copy = false;
-    let mut unsafe_bytemuck = false;
-    let args_str = args.to_string();
-    let args: Vec<&str> = args_str.split(',').collect();
-    if args.len() > 2 {
-        panic!("Only two args are allowed to the account attribute.")
-    }
-    for arg in args {
-        let ns = arg
-            .to_string()
-            .replace('\"', "")
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect();
-        if ns == "zero_copy" {
-            is_zero_copy = true;
-            unsafe_bytemuck = false;
-        } else if ns == "zero_copy(unsafe)" {
-            is_zero_copy = true;
-            unsafe_bytemuck = true;
-        } else {
-            namespace = ns;
-        }
-    }
+    let args = parse_macro_input!(args as AccountArgs);
+    let namespace = args.namespace.unwrap_or_default();
+    let is_zero_copy = args.zero_copy.is_some();
+    let unsafe_bytemuck = args.zero_copy.unwrap_or_default();
 
     let account_strct = parse_macro_input!(input as syn::ItemStruct);
     let account_name = &account_strct.ident;
@@ -246,6 +231,72 @@ pub fn account(
             }
         }
     })
+}
+
+#[derive(Debug, Default)]
+struct AccountArgs {
+    /// `bool` is for deciding whether to use `unsafe` e.g. `Some(true)` for `zero_copy(unsafe)`
+    zero_copy: Option<bool>,
+    namespace: Option<String>,
+}
+
+impl Parse for AccountArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut parsed = Self::default();
+        let args = input.parse_terminated::<_, Comma>(AccountArg::parse)?;
+        for arg in args {
+            match arg {
+                AccountArg::ZeroCopy { is_unsafe } => {
+                    parsed.zero_copy.replace(is_unsafe);
+                }
+                AccountArg::Namespace(ns) => {
+                    parsed.namespace.replace(ns);
+                }
+            }
+        }
+
+        Ok(parsed)
+    }
+}
+
+enum AccountArg {
+    ZeroCopy { is_unsafe: bool },
+    Namespace(String),
+}
+
+impl Parse for AccountArg {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        // Namespace
+        if let Ok(ns) = input.parse::<LitStr>() {
+            return Ok(Self::Namespace(
+                ns.to_token_stream().to_string().replace('\"', ""),
+            ));
+        }
+
+        // Zero copy
+        let ident = input.parse::<Ident>()?;
+        if ident == "zero_copy" {
+            let is_unsafe = if input.peek(Paren) {
+                let content;
+                parenthesized!(content in input);
+                let content = content.parse::<proc_macro2::TokenStream>()?;
+                if content.to_string().as_str().trim() != "unsafe" {
+                    return Err(syn::Error::new(
+                        syn::spanned::Spanned::span(&content),
+                        "Expected `unsafe`",
+                    ));
+                }
+
+                true
+            } else {
+                false
+            };
+
+            return Ok(Self::ZeroCopy { is_unsafe });
+        };
+
+        Err(syn::Error::new(ident.span(), "Unexpected argument"))
+    }
 }
 
 #[proc_macro_derive(ZeroCopyAccessor, attributes(accessor))]
