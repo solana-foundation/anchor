@@ -832,6 +832,8 @@ pub struct _TestToml {
 }
 
 impl _TestToml {
+    // TODO: Remove if/when false positive gets fixed
+    #[allow(clippy::needless_borrows_for_generic_args)]
     fn from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let s = fs::read_to_string(&path)?;
         let parsed_toml: Self = toml::from_str(&s)?;

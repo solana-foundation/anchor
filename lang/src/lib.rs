@@ -193,7 +193,7 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     ///
     /// 1. The account must be marked `mut`.
     /// 2. The total lamports **before** the transaction must equal to total lamports **after**
-    /// the transaction.
+    ///    the transaction.
     /// 3. `lamports` field of the account info should not currently be borrowed.
     ///
     /// See [`Lamports::sub_lamports`] for subtracting lamports.
@@ -214,7 +214,7 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     /// 1. The account must be owned by the executing program.
     /// 2. The account must be marked `mut`.
     /// 3. The total lamports **before** the transaction must equal to total lamports **after**
-    /// the transaction.
+    ///    the transaction.
     /// 4. `lamports` field of the account info should not currently be borrowed.
     ///
     /// See [`Lamports::add_lamports`] for adding lamports.
