@@ -100,7 +100,11 @@ pub fn account(
         );
         format!("{discriminator:?}").parse().unwrap()
     };
-    let disc = quote! { #account_name::DISCRIMINATOR };
+    let disc = if account_strct.generics.lt_token.is_some() {
+        quote! { #account_name::#type_gen::DISCRIMINATOR }
+    } else {
+        quote! { #account_name::DISCRIMINATOR }
+    };
 
     let owner_impl = {
         if namespace.is_empty() {
