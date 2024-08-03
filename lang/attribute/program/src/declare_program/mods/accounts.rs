@@ -7,6 +7,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let accounts = idl.accounts.iter().map(|acc| {
         let name = format_ident!("{}", acc.name);
         let discriminator = gen_discriminator(&acc.discriminator);
+        let disc = quote! { #name::DISCRIMINATOR };
 
         let ty_def = idl
             .types
@@ -17,12 +18,12 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let impls = {
             let try_deserialize = quote! {
                 fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                    if buf.len() < #discriminator.len() {
+                    if buf.len() < #disc.len() {
                         return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                     }
 
-                    let given_disc = &buf[..#discriminator.len()];
-                    if &#discriminator != given_disc {
+                    let given_disc = &buf[..#disc.len()];
+                    if #disc != given_disc {
                         return Err(
                             anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch)
                             .with_account_name(stringify!(#name))
@@ -36,7 +37,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
                 IdlSerialization::Borsh => quote! {
                     impl anchor_lang::AccountSerialize for #name {
                         fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
-                            if writer.write_all(&#discriminator).is_err() {
+                            if writer.write_all(#disc).is_err() {
                                 return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                             }
                             if AnchorSerialize::serialize(self, writer).is_err() {
@@ -51,7 +52,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
                         #try_deserialize
 
                         fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                            let mut data: &[u8] = &buf[#discriminator.len()..];
+                            let mut data: &[u8] = &buf[#disc.len()..];
                             AnchorDeserialize::deserialize(&mut data)
                                 .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize.into())
                         }
@@ -75,7 +76,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
                             #try_deserialize
 
                             fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                                let data: &[u8] = &buf[#discriminator.len()..];
+                                let data: &[u8] = &buf[#disc.len()..];
                                 let account = anchor_lang::__private::bytemuck::from_bytes(data);
                                 Ok(*account)
                             }

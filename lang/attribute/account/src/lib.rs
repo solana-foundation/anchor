@@ -100,6 +100,7 @@ pub fn account(
         );
         format!("{discriminator:?}").parse().unwrap()
     };
+    let disc = quote! { #account_name::DISCRIMINATOR };
 
     let owner_impl = {
         if namespace.is_empty() {
@@ -162,18 +163,18 @@ pub fn account(
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::AccountDeserialize for #account_name #type_gen #where_clause {
                     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        if buf.len() < #discriminator.len() {
+                        if buf.len() < #disc.len() {
                             return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
-                        let given_disc = &buf[..#discriminator.len()];
-                        if &#discriminator != given_disc {
+                        let given_disc = &buf[..#disc.len()];
+                        if #disc != given_disc {
                             return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
                         Self::try_deserialize_unchecked(buf)
                     }
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        let data: &[u8] = &buf[#discriminator.len()..];
+                        let data: &[u8] = &buf[#disc.len()..];
                         // Re-interpret raw bytes into the POD data structure.
                         let account = anchor_lang::__private::bytemuck::from_bytes(data);
                         // Copy out the bytes into a new, owned data structure.
@@ -191,7 +192,7 @@ pub fn account(
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::AccountSerialize for #account_name #type_gen #where_clause {
                     fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
-                        if writer.write_all(&#discriminator).is_err() {
+                        if writer.write_all(#disc).is_err() {
                             return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                         }
 
@@ -205,18 +206,18 @@ pub fn account(
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::AccountDeserialize for #account_name #type_gen #where_clause {
                     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        if buf.len() < #discriminator.len() {
+                        if buf.len() < #disc.len() {
                             return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
-                        let given_disc = &buf[..#discriminator.len()];
-                        if &#discriminator != given_disc {
+                        let given_disc = &buf[..#disc.len()];
+                        if #disc != given_disc {
                             return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
                         Self::try_deserialize_unchecked(buf)
                     }
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                        let mut data: &[u8] = &buf[#discriminator.len()..];
+                        let mut data: &[u8] = &buf[#disc.len()..];
                         AnchorDeserialize::deserialize(&mut data)
                             .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize.into())
                     }
