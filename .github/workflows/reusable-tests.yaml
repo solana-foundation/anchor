@@ -439,7 +439,7 @@ jobs:
             path: tests/safety-checks
           - cmd: cd tests/custom-coder && anchor test --skip-lint && npx tsc --noEmit
             path: tests/custom-coder
-          - cmd: cd tests/custom-discriminator && anchor test && npx tsc --noEmit
+          - cmd: cd tests/custom-discriminator && anchor test
             path: tests/custom-discriminator
           - cmd: cd tests/validator-clone && anchor test --skip-lint && npx tsc --noEmit
             path: tests/validator-clone

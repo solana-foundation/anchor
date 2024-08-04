@@ -8,7 +8,7 @@ describe("custom-discriminator", () => {
   const program: anchor.Program<CustomDiscriminator> =
     anchor.workspace.customDiscriminator;
 
-  describe("Can use custom instruction discriminators", () => {
+  describe("Instructions", () => {
     const testCommon = async (ixName: keyof typeof program["methods"]) => {
       const tx = await program.methods[ixName]().transaction();
 
@@ -27,5 +27,27 @@ describe("custom-discriminator", () => {
     it("Byte string", () => testCommon("byteStr"));
     it("Constant", () => testCommon("constant"));
     it("Const Fn", () => testCommon("constFn"));
+  });
+
+  describe("Accounts", () => {
+    it("Works", async () => {
+      // Verify discriminator
+      const acc = program.idl.accounts.find((acc) => acc.name === "myAccount")!;
+      assert(acc.discriminator.length < 8);
+
+      // Verify regular `init` ix works
+      const field = 5;
+      const { pubkeys, signature } = await program.methods
+        .account(field)
+        .rpcAndKeys();
+      await program.provider.connection.confirmTransaction(
+        signature,
+        "confirmed"
+      );
+      const myAccount = await program.account.myAccount.fetch(
+        pubkeys.myAccount
+      );
+      assert.strictEqual(field, myAccount.field);
+    });
   });
 });

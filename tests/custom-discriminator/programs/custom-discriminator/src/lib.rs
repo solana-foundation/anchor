@@ -39,9 +39,34 @@ pub mod custom_discriminator {
     pub fn const_fn(_ctx: Context<DefaultIx>) -> Result<()> {
         Ok(())
     }
+
+    pub fn account(ctx: Context<CustomAccountIx>, field: u8) -> Result<()> {
+        ctx.accounts.my_account.field = field;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
 pub struct DefaultIx<'info> {
     pub signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CustomAccountIx<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    #[account(
+        init,
+        payer = signer,
+        space = MyAccount::DISCRIMINATOR.len() + core::mem::size_of::<MyAccount>(),
+        seeds = [b"my_account"],
+        bump
+    )]
+    pub my_account: Account<'info, MyAccount>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account(discriminator = 1)]
+pub struct MyAccount {
+    pub field: u8,
 }
