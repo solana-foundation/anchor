@@ -44,6 +44,11 @@ pub mod custom_discriminator {
         ctx.accounts.my_account.field = field;
         Ok(())
     }
+
+    pub fn event(_ctx: Context<DefaultIx>, field: u8) -> Result<()> {
+        emit!(MyEvent { field });
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -69,4 +74,9 @@ pub struct CustomAccountIx<'info> {
 #[account(discriminator = 1)]
 pub struct MyAccount {
     pub field: u8,
+}
+
+#[event(discriminator = 1)]
+pub struct MyEvent {
+    field: u8,
 }

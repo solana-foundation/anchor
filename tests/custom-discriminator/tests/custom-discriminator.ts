@@ -47,7 +47,26 @@ describe("custom-discriminator", () => {
       const myAccount = await program.account.myAccount.fetch(
         pubkeys.myAccount
       );
-      assert.strictEqual(field, myAccount.field);
+      assert.strictEqual(myAccount.field, field);
+    });
+  });
+
+  describe("Events", () => {
+    it("Works", async () => {
+      // Verify discriminator
+      const event = program.idl.events.find((acc) => acc.name === "myEvent")!;
+      assert(event.discriminator.length < 8);
+
+      // Verify regular event works
+      await new Promise<void>((res) => {
+        const field = 5;
+        const id = program.addEventListener("myEvent", (ev) => {
+          assert.strictEqual(ev.field, field);
+          program.removeEventListener(id);
+          res();
+        });
+        program.methods.event(field).rpc();
+      });
     });
   });
 });
