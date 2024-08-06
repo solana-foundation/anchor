@@ -85,7 +85,7 @@ impl<'info> CreateMintAccount<'info> {
         uri: String,
     ) -> ProgramResult {
         let cpi_accounts = TokenMetadataInitialize {
-            token_program_id: self.token_program.to_account_info(),
+            program_id: self.token_program.to_account_info(),
             mint: self.mint.to_account_info(),
             metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
             mint_authority: self.authority.to_account_info(),
