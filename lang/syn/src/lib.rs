@@ -69,23 +69,23 @@ pub struct Ix {
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
     // The discriminator based on the `#[interface]` attribute.
-    // TODO: Remove and use `ix_attr`
+    // TODO: Remove and use `overrides`
     pub interface_discriminator: Option<[u8; 8]>,
-    /// `#[instruction]` attribute
-    pub ix_attr: Option<IxAttr>,
+    /// Overrides coming from the `#[instruction]` attribute
+    pub overrides: Option<Overrides>,
 }
 
-/// `#[instruction]` attribute proc-macro
+/// Common overrides for the `#[instruction]`, `#[account]` and `#[event]` attributes
 #[derive(Debug, Default)]
-pub struct IxAttr {
-    /// Discriminator override
+pub struct Overrides {
+    /// Override the default 8-byte discriminator
     pub discriminator: Option<TokenStream>,
 }
 
-impl Parse for IxAttr {
+impl Parse for Overrides {
     fn parse(input: ParseStream) -> ParseResult<Self> {
         let mut attr = Self::default();
-        let args = input.parse_terminated::<_, Comma>(AttrArg::parse)?;
+        let args = input.parse_terminated::<_, Comma>(NamedArg::parse)?;
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
@@ -106,14 +106,14 @@ impl Parse for IxAttr {
     }
 }
 
-struct AttrArg {
+struct NamedArg {
     name: Ident,
     #[allow(dead_code)]
-    eq_token: Token!(=),
+    eq_token: Token![=],
     value: Expr,
 }
 
-impl Parse for AttrArg {
+impl Parse for NamedArg {
     fn parse(input: ParseStream) -> ParseResult<Self> {
         Ok(Self {
             name: input.parse()?,

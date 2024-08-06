@@ -2,13 +2,9 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
-use quote::{quote, ToTokens};
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    token::Comma,
-    Expr, Ident, Lit, Token,
-};
+use anchor_syn::Overrides;
+use quote::quote;
+use syn::parse_macro_input;
 
 /// The event attribute allows a struct to be used with
 /// [emit!](./macro.emit.html) so that programs can log significant events in
@@ -37,7 +33,7 @@ pub fn event(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let args = parse_macro_input!(args as EventArgs);
+    let args = parse_macro_input!(args as Overrides);
     let event_strct = parse_macro_input!(input as syn::ItemStruct);
     let event_name = &event_strct.ident;
 
@@ -78,54 +74,6 @@ pub fn event(
 
     #[allow(unreachable_code)]
     proc_macro::TokenStream::from(ret)
-}
-
-#[derive(Debug, Default)]
-struct EventArgs {
-    /// Discriminator override
-    discriminator: Option<proc_macro2::TokenStream>,
-}
-
-impl Parse for EventArgs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        // TODO: Share impl with `#[instruction]`
-        let mut parsed = Self::default();
-        let args = input.parse_terminated::<_, Comma>(EventArg::parse)?;
-        for arg in args {
-            match arg.name.to_string().as_str() {
-                "discriminator" => {
-                    let value = match &arg.value {
-                        // Allow `discriminator = 42`
-                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
-                        // Allow `discriminator = [0, 1, 2, 3]`
-                        Expr::Array(arr) => quote! { &#arr },
-                        expr => expr.to_token_stream(),
-                    };
-                    parsed.discriminator.replace(value);
-                }
-                _ => return Err(syn::Error::new(arg.name.span(), "Invalid argument")),
-            }
-        }
-
-        Ok(parsed)
-    }
-}
-
-struct EventArg {
-    name: Ident,
-    #[allow(dead_code)]
-    eq_token: Token![=],
-    value: Expr,
-}
-
-impl Parse for EventArg {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Self {
-            name: input.parse()?,
-            eq_token: input.parse()?,
-            value: input.parse()?,
-        })
-    }
 }
 
 // EventIndex is a marker macro. It functionally does nothing other than

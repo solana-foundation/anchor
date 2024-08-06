@@ -22,9 +22,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 })
                 .collect();
             let impls = {
-                let discriminator = match ix.ix_attr.as_ref() {
-                    Some(ix_attr) if ix_attr.discriminator.is_some() => {
-                        ix_attr.discriminator.as_ref().unwrap().to_owned()
+                let discriminator = match ix.overrides.as_ref() {
+                    Some(overrides) if overrides.discriminator.is_some() => {
+                        overrides.discriminator.as_ref().unwrap().to_owned()
                     }
                     _ => {
                         // TODO: Remove `interface_discriminator`
