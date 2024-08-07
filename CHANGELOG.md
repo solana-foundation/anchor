@@ -33,6 +33,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Use associated discriminator constants instead of hardcoding in `#[account]` ([#3144](https://github.com/coral-xyz/anchor/pull/3144)).
 - lang: Add `discriminator` argument to `#[account]` attribute ([#3149](https://github.com/coral-xyz/anchor/pull/3149)).
 - lang: Add `discriminator` argument to `#[event]` attribute ([#3152](https://github.com/coral-xyz/anchor/pull/3152)).
+- idl: Check ambiguous discriminators ([#3157](https://github.com/coral-xyz/anchor/pull/3157)).
 
 ### Fixes
 

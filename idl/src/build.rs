@@ -293,5 +293,29 @@ fn verify(idl: &Idl) -> Result<()> {
         ));
     }
 
+    // Check potential discriminator collisions
+    macro_rules! check_discriminator_collision {
+        ($field:ident) => {
+            if let Some((outer, inner)) = idl.$field.iter().find_map(|outer| {
+                idl.$field
+                    .iter()
+                    .filter(|inner| inner.name != outer.name)
+                    .find(|inner| outer.discriminator.starts_with(&inner.discriminator))
+                    .map(|inner| (outer, inner))
+            }) {
+                return Err(anyhow!(
+                    "Ambiguous discriminators for {} `{}` and `{}`",
+                    stringify!($field),
+                    outer.name,
+                    inner.name
+                ));
+            }
+        };
+    }
+
+    check_discriminator_collision!(accounts);
+    check_discriminator_collision!(events);
+    check_discriminator_collision!(instructions);
+
     Ok(())
 }
