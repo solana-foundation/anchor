@@ -21,7 +21,7 @@ use syn::parse_macro_input;
 ///
 ///     **Examples:**
 ///
-///     - `discriminator = 0` (shortcut for `[0]`)
+///     - `discriminator = 1` (shortcut for `[1]`)
 ///     - `discriminator = [1, 2, 3, 4]`
 ///     - `discriminator = b"hi"`
 ///     - `discriminator = MY_DISC`

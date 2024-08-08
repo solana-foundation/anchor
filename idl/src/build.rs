@@ -317,5 +317,17 @@ fn verify(idl: &Idl) -> Result<()> {
     check_discriminator_collision!(events);
     check_discriminator_collision!(instructions);
 
+    // Disallow all zero account discriminators
+    if let Some(account) = idl
+        .accounts
+        .iter()
+        .find(|acc| acc.discriminator.iter().all(|b| *b == 0))
+    {
+        return Err(anyhow!(
+            "All zero account discriminators are not allowed (account: `{}`)",
+            account.name
+        ));
+    }
+
     Ok(())
 }
