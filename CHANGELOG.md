@@ -60,7 +60,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Require `Discriminator` trait impl when using the `zero` constraint ([#3118](https://github.com/coral-xyz/anchor/pull/3118)).
 - ts: Remove `DISCRIMINATOR_SIZE` constant ([#3120](https://github.com/coral-xyz/anchor/pull/3120)).
 - lang: `#[account]` attribute arguments no longer parses identifiers as namespaces ([#3140](https://github.com/coral-xyz/anchor/pull/3140)).
-- spl: Rename metadata interface instruction fields from `token_program_id` to `program_id` ([3076](https://github.com/coral-xyz/anchor/pull/3076)).
+- spl: Rename metadata interface instruction fields from `token_program_id` to `program_id` ([#3076](https://github.com/coral-xyz/anchor/pull/3076)).
+- lang, ts: Remove "8 byte" requirement from discriminator error messages ([#3161](https://github.com/coral-xyz/anchor/pull/3161)).
 
 ## [0.30.1] - 2024-06-20
 

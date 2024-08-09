@@ -21,8 +21,8 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 #[error_code(offset = 0)]
 pub enum ErrorCode {
     // Instructions
-    /// 100 - 8 byte instruction identifier not provided
-    #[msg("8 byte instruction identifier not provided")]
+    /// 100 - Instruction discriminator not provided
+    #[msg("Instruction discriminator not provided")]
     InstructionMissing = 100,
     /// 101 - Fallback functions are not supported
     #[msg("Fallback functions are not supported")]
@@ -205,11 +205,11 @@ pub enum ErrorCode {
     /// 3000 - The account discriminator was already set on this account
     #[msg("The account discriminator was already set on this account")]
     AccountDiscriminatorAlreadySet = 3000,
-    /// 3001 - No 8 byte discriminator was found on the account
-    #[msg("No 8 byte discriminator was found on the account")]
+    /// 3001 - No discriminator was found on the account
+    #[msg("No discriminator was found on the account")]
     AccountDiscriminatorNotFound,
-    /// 3002 - 8 byte discriminator did not match what was expected
-    #[msg("8 byte discriminator did not match what was expected")]
+    /// 3002 - Account discriminator did not match what was expected
+    #[msg("Account discriminator did not match what was expected")]
     AccountDiscriminatorMismatch,
     /// 3003 - Failed to deserialize the account
     #[msg("Failed to deserialize the account")]
