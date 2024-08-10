@@ -303,9 +303,6 @@ pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
 /// 8 byte unique identifier for a type.
 pub trait Discriminator {
     const DISCRIMINATOR: &'static [u8];
-    fn discriminator() -> &'static [u8] {
-        Self::DISCRIMINATOR
-    }
 }
 
 /// Defines the space of an account for initialization.
