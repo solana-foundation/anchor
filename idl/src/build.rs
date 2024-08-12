@@ -293,6 +293,22 @@ fn verify(idl: &Idl) -> Result<()> {
         ));
     }
 
+    // Check empty discriminators
+    macro_rules! check_empty_discriminators {
+        ($field:ident) => {
+            if let Some(item) = idl.$field.iter().find(|it| it.discriminator.is_empty()) {
+                return Err(anyhow!(
+                    "Empty discriminators are not allowed for {}: `{}`",
+                    stringify!($field),
+                    item.name
+                ));
+            }
+        };
+    }
+    check_empty_discriminators!(accounts);
+    check_empty_discriminators!(events);
+    check_empty_discriminators!(instructions);
+
     // Check potential discriminator collisions
     macro_rules! check_discriminator_collision {
         ($field:ident) => {
@@ -312,7 +328,6 @@ fn verify(idl: &Idl) -> Result<()> {
             }
         };
     }
-
     check_discriminator_collision!(accounts);
     check_discriminator_collision!(events);
     check_discriminator_collision!(instructions);
