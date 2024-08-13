@@ -2,7 +2,6 @@
 name = "native-system"
 version = "0.1.0"
 description = "Created with Anchor"
-rust-version = "1.60"
 edition = "2021"
 
 [lib]
@@ -15,6 +14,7 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }

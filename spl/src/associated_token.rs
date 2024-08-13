@@ -3,6 +3,7 @@ use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 
+pub use spl_associated_token_account;
 pub use spl_associated_token_account::{
     get_associated_token_address, get_associated_token_address_with_program_id, ID,
 };
@@ -14,7 +15,7 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
         ctx.accounts.mint.key,
         ctx.accounts.token_program.key,
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,
@@ -38,7 +39,7 @@ pub fn create_idempotent<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.token_program.key,
     );
-    solana_program::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,

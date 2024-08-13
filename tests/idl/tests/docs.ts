@@ -10,7 +10,7 @@ describe("Docs", () => {
 
   const instruction = program.idl.instructions.find(
     (i) => i.name === "testIdlDocParse"
-  );
+  )!;
 
   it("includes instruction doc comment", () => {
     assert.deepEqual(instruction.docs, [
@@ -19,28 +19,32 @@ describe("Docs", () => {
   });
 
   it("includes account doc comment", () => {
-    const act = instruction.accounts.find((i) => i.name === "act");
+    const act = instruction.accounts.find((i) => i.name === "act")!;
     assert.deepEqual(act.docs, [
       "This account doc comment should appear in the IDL",
       "This is a multi-line comment",
     ]);
   });
 
-  const dataWithDoc = program.idl.accounts.find(
-    // @ts-expect-error
-    (acc) => acc.name === "DataWithDoc"
-  );
+  const dataWithDoc = program.idl.types.find(
+    (ty) => ty.name === "dataWithDoc"
+  )!;
 
-  it("includes accounts doc comment", () => {
+  it("includes type doc comment", () => {
     assert.deepEqual(dataWithDoc.docs, [
       "Custom account doc comment should appear in the IDL",
     ]);
   });
 
   it("includes account attribute doc comment", () => {
-    const dataField = dataWithDoc.type.fields.find((i) => i.name === "data");
+    const dataField = dataWithDoc.type.fields.find((i) => i.name === "data")!;
     assert.deepEqual(dataField.docs, [
       "Account attribute doc comment should appear in the IDL",
     ]);
+  });
+
+  it("includes constant doc comment", () => {
+    const myConst = program.idl.constants.find((c) => c.name === "myConst")!;
+    assert.deepEqual(myConst.docs, ["Documentation comment for constant"]);
   });
 });

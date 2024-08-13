@@ -27,15 +27,15 @@ describe("Events", () => {
 
   describe("Normal event", () => {
     it("Single event works", async () => {
-      const event = await getEvent("MyEvent", "initialize");
+      const event = await getEvent("myEvent", "initialize");
 
       assert.strictEqual(event.data.toNumber(), 5);
       assert.strictEqual(event.label, "hello");
     });
 
     it("Multiple events work", async () => {
-      const eventOne = await getEvent("MyEvent", "initialize");
-      const eventTwo = await getEvent("MyOtherEvent", "testEvent");
+      const eventOne = await getEvent("myEvent", "initialize");
+      const eventTwo = await getEvent("myOtherEvent", "testEvent");
 
       assert.strictEqual(eventOne.data.toNumber(), 5);
       assert.strictEqual(eventOne.label, "hello");
@@ -61,7 +61,7 @@ describe("Events", () => {
       const eventData = anchor.utils.bytes.base64.encode(ixData.slice(8));
       const event = program.coder.events.decode(eventData);
 
-      assert.strictEqual(event.name, "MyOtherEvent");
+      assert.strictEqual(event.name, "myOtherEvent");
       assert.strictEqual(event.data.label, "cpi");
       assert.strictEqual((event.data.data as anchor.BN).toNumber(), 7);
     });

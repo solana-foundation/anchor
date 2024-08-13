@@ -1,8 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 
-import { OverflowChecks, IDL } from "../../target/types/overflow_checks";
+import { OverflowChecks } from "../../target/types/overflow_checks";
 
-describe(IDL.name, () => {
+describe("overflow-checks", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace

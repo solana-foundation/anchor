@@ -29,7 +29,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     }
                 }
                 AccountField::Field(f) => {
-                    // `init` and `zero` acccounts are special cased as they are
+                    // `init` and `zero` accounts are special cased as they are
                     // deserialized by constraints. Here, we just take out the
                     // AccountInfo for later use at constraint validation time.
                     if is_init(af) || f.constraints.zeroed.is_some()  {
@@ -143,7 +143,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         accs.fields.iter().filter(|af| !is_init(af)).collect();
 
     // Deserialization for each pda init field. This must be after
-    // the inital extraction from the accounts slice and before access_checks.
+    // the initial extraction from the accounts slice and before access_checks.
     let init_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()

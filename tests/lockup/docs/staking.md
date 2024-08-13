@@ -31,7 +31,7 @@ to understand, contribute to, or modify the code.
 Accounts are the pieces of state owned by a Solana program. For reference while reading, here are all
 accounts used by the **Registry** program.
 
-* `Registrar` - Analagous to an SPL token `Mint`, the `Registrar` defines a staking instance. It has its own pool, and it's own set of rewards distributed amongst its own set of stakers.
+* `Registrar` - Analogous to an SPL token `Mint`, the `Registrar` defines a staking instance. It has its own pool, and it's own set of rewards distributed amongst its own set of stakers.
 * `Member` - Analogous to an SPL token `Account`, `Member` accounts represent a **beneficiary**'s (i.e. a wallet's) stake state. This account has several vaults, all of which represent the funds belonging to an individual user.
 * `PendingWithdrawal` - A transfer out of the staking pool (poorly named since it's not a withdrawal out of the program. But a withdrawal out of the staking pool and into a `Member`'s freely available balances).
 * `RewardVendor` - A reward that has been dropped onto stakers and is distributed pro rata to staked `Member` beneficiaries.
@@ -118,7 +118,7 @@ recreating a BFT system off chain.
 
 Another solution considerered was to use a uniswap-style AMM pool (without the swapping).
 This has a lot of advantages. First it's easy to reason about and implement in a single transaction.
-To drop rewards gloablly onto the pool, one can deposit funds directly into the pool, in which case
+To drop rewards globally onto the pool, one can deposit funds directly into the pool, in which case
 the reward is automatically received by owners of the staking pool token upon redemption, a process
 known as "gulping"--since dropping rewards increases the total value of the pool
 while their proportion of the pool remained constant.

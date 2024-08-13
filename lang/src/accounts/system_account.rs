@@ -2,11 +2,7 @@
 
 use crate::error::ErrorCode;
 use crate::*;
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
 use solana_program::system_program;
-use std::collections::BTreeSet;
 use std::ops::Deref;
 
 /// Type validating that the account is owned by the system program

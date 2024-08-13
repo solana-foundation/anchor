@@ -25,8 +25,9 @@ describe("program", () => {
   const program = anchor.workspace.TokenProxy;
 
   TOKEN_PROGRAMS.forEach((tokenProgram) => {
-    const name =
-      tokenProgram.programId === SPL_TOKEN_PROGRAM_ID ? "token" : "token-2022";
+    const name = tokenProgram.programId.equals(SPL_TOKEN_PROGRAM_ID)
+      ? "token"
+      : "token-2022";
     describe(name, () => {
       let mint = null;
       let from = null;

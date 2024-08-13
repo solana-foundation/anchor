@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as token from "@coral-xyz/spl-token";
 
-import { Bench, IDL } from "../target/types/bench";
+import { Bench } from "../target/types/bench";
 import { BenchData, ComputeUnits } from "../scripts/utils";
 
 describe("Compute units", () => {
@@ -31,7 +31,7 @@ describe("Compute units", () => {
     for (const accountCount of options.accountCounts) {
       // Check whether the init version of the instruction exists
       const ixNameInit = `${ixName}Init`;
-      const hasInitVersion = IDL.instructions.some((ix) =>
+      const hasInitVersion = program.idl.instructions.some((ix) =>
         ix.name.startsWith(ixNameInit)
       );
 
@@ -53,7 +53,7 @@ describe("Compute units", () => {
           signers.splice(0);
         }
 
-        for (const ix of IDL.instructions) {
+        for (const ix of program.idl.instructions) {
           if (ix.name !== method) continue;
 
           for (const account of ix.accounts) {
@@ -80,7 +80,7 @@ describe("Compute units", () => {
             const keypair = options.generateKeypair(account.name);
             accounts[account.name] = keypair.publicKey;
 
-            if (account.isSigner) {
+            if (account.signer) {
               signers.push(keypair);
             }
           }

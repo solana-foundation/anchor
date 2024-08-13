@@ -1,11 +1,10 @@
 [package]
 name = "anchor-syn"
-version = "0.29.0"
+version = "0.30.1"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
 description = "Anchor syntax parsing and code generation tools"
-rust-version = "1.60"
 edition = "2021"
 
 [package.metadata.docs.rs]
@@ -17,12 +16,9 @@ allow-missing-optionals = []
 anchor-debug = []
 event-cpi = []
 hash = []
-idl-build = ["idl-parse", "idl-types"]
-idl-parse = ["idl-types"]
-idl-types = []
+idl-build = ["cargo_toml"]
 init-if-needed = []
 interface-instructions = []
-seeds = []
 
 [dependencies]
 anyhow = "1"
@@ -35,3 +31,10 @@ serde_json = "1"
 sha2 = "0.10"
 syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"
+
+# `idl-build` feature only
+cargo_toml = { version = "0.19", optional = true }
+
+# https://blog.rust-lang.org/2024/05/06/check-cfg.html#expecting-custom-cfgs
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ["cfg(procmacro2_semver_exempt)"] }

@@ -1,4 +1,3 @@
-import camelCase from "camelcase";
 import { PublicKey } from "@solana/web3.js";
 import { Coder } from "../../coder/index.js";
 import Provider from "../../provider.js";
@@ -60,8 +59,7 @@ export default class NamespaceFactory {
     idl.instructions.forEach((idlIx) => {
       const ixItem = InstructionFactory.build<IDL, typeof idlIx>(
         idlIx,
-        (ixName, ix, discriminator) =>
-          coder.instruction.encode(ixName, ix, discriminator),
+        (ixName, ix) => coder.instruction.encode(ixName, ix),
         programId
       );
       const txItem = TransactionFactory.build(idlIx, ixItem);
@@ -87,9 +85,9 @@ export default class NamespaceFactory {
         viewItem,
         account,
         idl.types || [],
-        getCustomResolver && getCustomResolver(idlIx)
+        getCustomResolver?.(idlIx)
       );
-      const name = camelCase(idlIx.name);
+      const name = idlIx.name;
 
       instruction[name] = ixItem;
       transaction[name] = txItem;

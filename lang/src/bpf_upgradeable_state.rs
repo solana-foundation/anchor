@@ -72,3 +72,13 @@ impl AccountDeserialize for UpgradeableLoaderState {
         bincode::deserialize(buf).map_err(|_| ProgramError::InvalidAccountData.into())
     }
 }
+
+#[cfg(feature = "idl-build")]
+mod idl_build {
+    use super::*;
+
+    impl crate::IdlBuild for ProgramData {}
+    impl crate::Discriminator for ProgramData {
+        const DISCRIMINATOR: &'static [u8] = &[];
+    }
+}

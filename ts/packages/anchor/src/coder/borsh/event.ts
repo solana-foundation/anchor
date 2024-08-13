@@ -1,55 +1,50 @@
 import { Buffer } from "buffer";
 import { Layout } from "buffer-layout";
 import * as base64 from "../../utils/bytes/base64.js";
-import { Idl, IdlEvent, IdlTypeDef } from "../../idl.js";
-import { Event, EventData } from "../../program/event.js";
+import { Idl, IdlDiscriminator } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { EventCoder } from "../index.js";
-import { discriminator } from "./discriminator.js";
 
 export class BorshEventCoder implements EventCoder {
   /**
    * Maps account type identifier to a layout.
    */
-  private layouts: Map<string, Layout>;
-
-  /**
-   * Maps base64 encoded event discriminator to event name.
-   */
-  private discriminators: Map<string, string>;
+  private layouts: Map<
+    string,
+    { discriminator: IdlDiscriminator; layout: Layout }
+  >;
 
   public constructor(idl: Idl) {
-    if (idl.events === undefined) {
+    if (!idl.events) {
       this.layouts = new Map();
       return;
     }
-    const layouts: [string, Layout<any>][] = idl.events.map((event) => {
-      let eventTypeDef: IdlTypeDef = {
-        name: event.name,
-        type: {
-          kind: "struct",
-          fields: event.fields.map((f) => {
-            return { name: f.name, type: f.type };
-          }),
+
+    const types = idl.types;
+    if (!types) {
+      throw new Error("Events require `idl.types`");
+    }
+
+    const layouts = idl.events.map((ev) => {
+      const typeDef = types.find((ty) => ty.name === ev.name);
+      if (!typeDef) {
+        throw new Error(`Event not found: ${ev.name}`);
+      }
+      return [
+        ev.name,
+        {
+          discriminator: ev.discriminator,
+          layout: IdlCoder.typeDefLayout({ typeDef, types }),
         },
-      };
-      return [event.name, IdlCoder.typeDefLayout(eventTypeDef, idl.types)];
+      ] as const;
     });
     this.layouts = new Map(layouts);
-
-    this.discriminators = new Map<string, string>(
-      idl.events === undefined
-        ? []
-        : idl.events.map((e) => [
-            base64.encode(eventDiscriminator(e.name)),
-            e.name,
-          ])
-    );
   }
 
-  public decode<E extends IdlEvent = IdlEvent, T = Record<string, never>>(
-    log: string
-  ): Event<E, T> | null {
+  public decode(log: string): {
+    name: string;
+    data: any;
+  } | null {
     let logArr: Buffer;
     // This will throw if log length is not a multiple of 4.
     try {
@@ -57,26 +52,18 @@ export class BorshEventCoder implements EventCoder {
     } catch (e) {
       return null;
     }
-    const disc = base64.encode(logArr.slice(0, 8));
 
-    // Only deserialize if the discriminator implies a proper event.
-    const eventName = this.discriminators.get(disc);
-    if (eventName === undefined) {
-      return null;
+    for (const [name, layout] of this.layouts) {
+      const givenDisc = logArr.subarray(0, layout.discriminator.length);
+      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      if (matches) {
+        return {
+          name,
+          data: layout.layout.decode(logArr.subarray(givenDisc.length)),
+        };
+      }
     }
 
-    const layout = this.layouts.get(eventName);
-    if (!layout) {
-      throw new Error(`Unknown event: ${eventName}`);
-    }
-    const data = layout.decode(logArr.slice(8)) as EventData<
-      E["fields"][number],
-      T
-    >;
-    return { data, name: eventName };
+    return null;
   }
-}
-
-export function eventDiscriminator(name: string): Buffer {
-  return discriminator(`event:${name}`);
 }

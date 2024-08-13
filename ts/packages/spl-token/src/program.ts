@@ -14,112 +14,26 @@ interface GetProgramParams {
 
 export function splTokenProgram(params?: GetProgramParams): Program<SplToken> {
   return new Program<SplToken>(
-    IDL,
-    params?.programId ?? SPL_TOKEN_PROGRAM_ID,
+    params?.programId ? { ...IDL, address: params.programId.toString() } : IDL,
     params?.provider,
     new SplTokenCoder(IDL)
   );
 }
 
 type SplToken = {
-  version: "3.3.0";
-  name: "spl_token";
+  address: string;
+  metadata: {
+    name: "splToken";
+    version: "3.3.0";
+    spec: "0.1.0";
+  };
   instructions: [
     {
-      name: "initializeMint";
+      name: "amountToUiAmount";
+      discriminator: [23];
       accounts: [
         {
           name: "mint";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "rent";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [
-        {
-          name: "decimals";
-          type: "u8";
-        },
-        {
-          name: "mintAuthority";
-          type: "publicKey";
-        },
-        {
-          name: "freezeAuthority";
-          type: {
-            defined: "COption<Pubkey>";
-          };
-        }
-      ];
-    },
-    {
-      name: "initializeAccount";
-      accounts: [
-        {
-          name: "account";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "mint";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "owner";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "rent";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [];
-    },
-    {
-      name: "initializeMultisig";
-      accounts: [
-        {
-          name: "multisig";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "rent";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [
-        {
-          name: "m";
-          type: "u8";
-        }
-      ];
-    },
-    {
-      name: "transfer";
-      accounts: [
-        {
-          name: "source";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "destination";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "authority";
-          isMut: false;
-          isSigner: true;
         }
       ];
       args: [
@@ -131,21 +45,18 @@ type SplToken = {
     },
     {
       name: "approve";
+      discriminator: [4];
       accounts: [
         {
           name: "source";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "delegate";
-          isMut: false;
-          isSigner: false;
         },
         {
           name: "owner";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
@@ -156,98 +67,50 @@ type SplToken = {
       ];
     },
     {
-      name: "revoke";
+      name: "approveChecked";
+      discriminator: [13];
       accounts: [
         {
           name: "source";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
-        {
-          name: "owner";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [];
-    },
-    {
-      name: "setAuthority";
-      accounts: [
-        {
-          name: "owned";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "owner";
-          isMut: false;
-          isSigner: true;
-        },
-        {
-          name: "signer";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "authorityType";
-          type: {
-            defined: "AuthorityType";
-          };
-        },
-        {
-          name: "newAuthority";
-          type: {
-            defined: "COption<Pubkey>";
-          };
-        }
-      ];
-    },
-    {
-      name: "mintTo";
-      accounts: [
         {
           name: "mint";
-          isMut: true;
-          isSigner: false;
         },
         {
-          name: "account";
-          isMut: true;
-          isSigner: false;
+          name: "delegate";
         },
         {
           name: "owner";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
         {
           name: "amount";
           type: "u64";
+        },
+        {
+          name: "decimals";
+          type: "u8";
         }
       ];
     },
     {
       name: "burn";
+      discriminator: [8];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "mint";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "authority";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
@@ -258,268 +121,221 @@ type SplToken = {
       ];
     },
     {
-      name: "closeAccount";
+      name: "burnChecked";
+      discriminator: [15];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
+        },
+        {
+          name: "mint";
+          writable: true;
+        },
+        {
+          name: "authority";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "amount";
+          type: "u64";
+        },
+        {
+          name: "decimals";
+          type: "u8";
+        }
+      ];
+    },
+    {
+      name: "closeAccount";
+      discriminator: [9];
+      accounts: [
+        {
+          name: "account";
+          writable: true;
         },
         {
           name: "destination";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "owner";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [];
     },
     {
       name: "freezeAccount";
+      discriminator: [10];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "mint";
-          isMut: false;
-          isSigner: false;
         },
         {
           name: "owner";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [];
     },
     {
-      name: "thawAccount";
+      name: "getAccountDataSize";
+      discriminator: [21];
       accounts: [
         {
-          name: "account";
-          isMut: true;
-          isSigner: false;
-        },
-        {
           name: "mint";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "owner";
-          isMut: false;
-          isSigner: true;
         }
       ];
       args: [];
     },
     {
-      name: "transferChecked";
+      name: "initializeAccount";
+      discriminator: [1];
       accounts: [
         {
-          name: "source";
-          isMut: true;
-          isSigner: false;
+          name: "account";
+          writable: true;
         },
         {
           name: "mint";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "destination";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "authority";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "amount";
-          type: "u64";
-        },
-        {
-          name: "decimals";
-          type: "u8";
-        }
-      ];
-    },
-    {
-      name: "approveChecked";
-      accounts: [
-        {
-          name: "source";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "mint";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "delegate";
-          isMut: false;
-          isSigner: false;
         },
         {
           name: "owner";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "amount";
-          type: "u64";
-        },
-        {
-          name: "decimals";
-          type: "u8";
-        }
-      ];
-    },
-    {
-      name: "mintToChecked";
-      accounts: [
-        {
-          name: "mint";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "account";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "owner";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "amount";
-          type: "u64";
-        },
-        {
-          name: "decimals";
-          type: "u8";
-        }
-      ];
-    },
-    {
-      name: "burnChecked";
-      accounts: [
-        {
-          name: "account";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "mint";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "authority";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "amount";
-          type: "u64";
-        },
-        {
-          name: "decimals";
-          type: "u8";
-        }
-      ];
-    },
-    {
-      name: "initializeAccount2";
-      accounts: [
-        {
-          name: "account";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "mint";
-          isMut: false;
-          isSigner: false;
         },
         {
           name: "rent";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [
-        {
-          name: "owner";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
-      name: "syncNative";
-      accounts: [
-        {
-          name: "account";
-          isMut: true;
-          isSigner: false;
+          address: "SysvarRent111111111111111111111111111111111";
         }
       ];
       args: [];
     },
     {
-      name: "initializeAccount3";
+      name: "initializeAccount2";
+      discriminator: [16];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "mint";
-          isMut: false;
-          isSigner: false;
+        },
+        {
+          name: "rent";
+          address: "SysvarRent111111111111111111111111111111111";
         }
       ];
       args: [
         {
           name: "owner";
-          type: "publicKey";
+          type: "pubkey";
         }
       ];
     },
     {
-      name: "initializeMultisig2";
+      name: "initializeAccount3";
+      discriminator: [18];
+      accounts: [
+        {
+          name: "account";
+          writable: true;
+        },
+        {
+          name: "mint";
+        }
+      ];
+      args: [
+        {
+          name: "owner";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "initializeImmutableOwner";
+      discriminator: [22];
+      accounts: [
+        {
+          name: "account";
+          writable: true;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: "initializeMint";
+      discriminator: [0];
+      accounts: [
+        {
+          name: "mint";
+          writable: true;
+        },
+        {
+          name: "rent";
+          address: "SysvarRent111111111111111111111111111111111";
+        }
+      ];
+      args: [
+        {
+          name: "decimals";
+          type: "u8";
+        },
+        {
+          name: "mintAuthority";
+          type: "pubkey";
+        },
+        {
+          name: "freezeAuthority";
+          type: {
+            coption: "pubkey";
+          };
+        }
+      ];
+    },
+    {
+      name: "initializeMint2";
+      discriminator: [20];
+      accounts: [
+        {
+          name: "mint";
+          writable: true;
+        }
+      ];
+      args: [
+        {
+          name: "decimals";
+          type: "u8";
+        },
+        {
+          name: "mintAuthority";
+          type: "pubkey";
+        },
+        {
+          name: "freezeAuthority";
+          type: {
+            coption: "pubkey";
+          };
+        }
+      ];
+    },
+    {
+      name: "initializeMultisig";
+      discriminator: [2];
       accounts: [
         {
           name: "multisig";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
-          name: "signer";
-          isMut: false;
-          isSigner: false;
+          name: "rent";
+          address: "SysvarRent111111111111111111111111111111111";
         }
       ];
       args: [
@@ -530,60 +346,39 @@ type SplToken = {
       ];
     },
     {
-      name: "initializeMint2";
+      name: "initializeMultisig2";
+      discriminator: [19];
       accounts: [
         {
-          name: "mint";
-          isMut: true;
-          isSigner: false;
+          name: "multisig";
+          writable: true;
+        },
+        {
+          name: "signer";
         }
       ];
       args: [
         {
-          name: "decimals";
+          name: "m";
           type: "u8";
-        },
-        {
-          name: "mintAuthority";
-          type: "publicKey";
-        },
-        {
-          name: "freezeAuthority";
-          type: {
-            defined: "COption<Pubkey>";
-          };
         }
       ];
     },
     {
-      name: "getAccountDataSize";
+      name: "mintTo";
+      discriminator: [7];
       accounts: [
         {
           name: "mint";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [];
-    },
-    {
-      name: "initializeImmutableOwner";
-      accounts: [
+          writable: true;
+        },
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
-        }
-      ];
-      args: [];
-    },
-    {
-      name: "amountToUiAmount";
-      accounts: [
+          writable: true;
+        },
         {
-          name: "mint";
-          isMut: false;
-          isSigner: false;
+          name: "owner";
+          signer: true;
         }
       ];
       args: [
@@ -594,20 +389,178 @@ type SplToken = {
       ];
     },
     {
-      name: "uiAmountToAmount";
+      name: "mintToChecked";
+      discriminator: [14];
       accounts: [
         {
           name: "mint";
-          isMut: false;
-          isSigner: false;
+          writable: true;
+        },
+        {
+          name: "account";
+          writable: true;
+        },
+        {
+          name: "owner";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "amount";
+          type: "u64";
+        },
+        {
+          name: "decimals";
+          type: "u8";
+        }
+      ];
+    },
+    {
+      name: "revoke";
+      discriminator: [5];
+      accounts: [
+        {
+          name: "source";
+          writable: true;
+        },
+        {
+          name: "owner";
+          signer: true;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: "setAuthority";
+      discriminator: [6];
+      accounts: [
+        {
+          name: "owned";
+          writable: true;
+        },
+        {
+          name: "owner";
+          signer: true;
+        },
+        {
+          name: "signer";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "authorityType";
+          type: {
+            defined: {
+              name: "authorityType";
+            };
+          };
+        },
+        {
+          name: "newAuthority";
+          type: {
+            coption: "pubkey";
+          };
+        }
+      ];
+    },
+    {
+      name: "syncNative";
+      discriminator: [17];
+      accounts: [
+        {
+          name: "account";
+          writable: true;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: "thawAccount";
+      discriminator: [11];
+      accounts: [
+        {
+          name: "account";
+          writable: true;
+        },
+        {
+          name: "mint";
+        },
+        {
+          name: "owner";
+          signer: true;
+        }
+      ];
+      args: [];
+    },
+    {
+      name: "transfer";
+      discriminator: [3];
+      accounts: [
+        {
+          name: "source";
+          writable: true;
+        },
+        {
+          name: "destination";
+          writable: true;
+        },
+        {
+          name: "authority";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "amount";
+          type: "u64";
+        }
+      ];
+    },
+    {
+      name: "transferChecked";
+      discriminator: [12];
+      accounts: [
+        {
+          name: "source";
+          writable: true;
+        },
+        {
+          name: "mint";
+        },
+        {
+          name: "destination";
+          writable: true;
+        },
+        {
+          name: "authority";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "amount";
+          type: "u64";
+        },
+        {
+          name: "decimals";
+          type: "u8";
+        }
+      ];
+    },
+    {
+      name: "uiAmountToAmount";
+      discriminator: [24];
+      accounts: [
+        {
+          name: "mint";
         }
       ];
       args: [
         {
           name: "uiAmount";
-          type: {
-            defined: "&'astr";
-          };
+          type: "string";
         }
       ];
     }
@@ -615,79 +568,195 @@ type SplToken = {
   accounts: [
     {
       name: "mint";
+      discriminator: [];
+    },
+    {
+      name: "multisig";
+      discriminator: [];
+    },
+    {
+      name: "account";
+      discriminator: [];
+    }
+  ];
+  errors: [
+    {
+      code: 0;
+      name: "notRentExempt";
+      msg: "Lamport balance below rent-exempt threshold";
+    },
+    {
+      code: 1;
+      name: "insufficientFunds";
+      msg: "Insufficient funds";
+    },
+    {
+      code: 2;
+      name: "invalidMint";
+      msg: "Invalid Mint";
+    },
+    {
+      code: 3;
+      name: "mintMismatch";
+      msg: "Account not associated with this Mint";
+    },
+    {
+      code: 4;
+      name: "ownerMismatch";
+      msg: "Owner does not match";
+    },
+    {
+      code: 5;
+      name: "fixedSupply";
+      msg: "Fixed supply";
+    },
+    {
+      code: 6;
+      name: "alreadyInUse";
+      msg: "Already in use";
+    },
+    {
+      code: 7;
+      name: "invalidNumberOfProvidedSigners";
+      msg: "Invalid number of provided signers";
+    },
+    {
+      code: 8;
+      name: "invalidNumberOfRequiredSigners";
+      msg: "Invalid number of required signers";
+    },
+    {
+      code: 9;
+      name: "uninitializedState";
+      msg: "State is unititialized";
+    },
+    {
+      code: 10;
+      name: "nativeNotSupported";
+      msg: "Instruction does not support native tokens";
+    },
+    {
+      code: 11;
+      name: "nonNativeHasBalance";
+      msg: "Non-native account can only be closed if its balance is zero";
+    },
+    {
+      code: 12;
+      name: "invalidInstruction";
+      msg: "Invalid instruction";
+    },
+    {
+      code: 13;
+      name: "invalidState";
+      msg: "State is invalid for requested operation";
+    },
+    {
+      code: 14;
+      name: "overflow";
+      msg: "Operation overflowed";
+    },
+    {
+      code: 15;
+      name: "authorityTypeNotSupported";
+      msg: "Account does not support specified authority type";
+    },
+    {
+      code: 16;
+      name: "mintCannotFreeze";
+      msg: "This token mint cannot freeze accounts";
+    },
+    {
+      code: 17;
+      name: "accountFrozen";
+      msg: "Account is frozen";
+    },
+    {
+      code: 18;
+      name: "mintDecimalsMismatch";
+      msg: "The provided decimals value different from the Mint decimals";
+    },
+    {
+      code: 19;
+      name: "nonNativeNotSupported";
+      msg: "Instruction does not support non-native tokens";
+    }
+  ];
+  types: [
+    {
+      name: "accountState";
       type: {
-        kind: "struct";
-        fields: [
+        kind: "enum";
+        variants: [
           {
-            name: "mintAuthority";
-            type: {
-              defined: "COption<Pubkey>";
-            };
+            name: "uninitialized";
           },
           {
-            name: "supply";
-            type: "u64";
+            name: "initialized";
           },
           {
-            name: "decimals";
-            type: "u8";
-          },
-          {
-            name: "isInitialized";
-            type: "bool";
-          },
-          {
-            name: "freezeAuthority";
-            type: {
-              defined: "COption<Pubkey>";
-            };
+            name: "frozen";
           }
         ];
       };
     },
     {
-      name: "account";
+      name: "authorityType";
+      type: {
+        kind: "enum";
+        variants: [
+          {
+            name: "mintTokens";
+          },
+          {
+            name: "freezeAccount";
+          },
+          {
+            name: "accountOwner";
+          },
+          {
+            name: "closeAccount";
+          }
+        ];
+      };
+    },
+    {
+      name: "mint";
       type: {
         kind: "struct";
         fields: [
           {
-            name: "mint";
-            type: "publicKey";
+            name: "mintAuthority";
+            docs: [
+              "Optional authority used to mint new tokens. The mint authority may only be provided during",
+              "mint creation. If no mint authority is present then the mint has a fixed supply and no",
+              "further tokens may be minted."
+            ];
+            type: {
+              coption: "pubkey";
+            };
           },
           {
-            name: "owner";
-            type: "publicKey";
-          },
-          {
-            name: "amount";
+            name: "supply";
+            docs: ["Total supply of tokens."];
             type: "u64";
           },
           {
-            name: "delegate";
-            type: {
-              defined: "COption<Pubkey>";
-            };
+            name: "decimals";
+            docs: [
+              "Number of base 10 digits to the right of the decimal place."
+            ];
+            type: "u8";
           },
           {
-            name: "state";
-            type: {
-              defined: "AccountState";
-            };
+            name: "isInitialized";
+            docs: ["Is `true` if this structure has been initialized"];
+            type: "bool";
           },
           {
-            name: "isNative";
+            name: "freezeAuthority";
+            docs: ["Optional authority to freeze token accounts."];
             type: {
-              defined: "COption<u64>";
-            };
-          },
-          {
-            name: "delegatedAmount";
-            type: "u64";
-          },
-          {
-            name: "closeAuthority";
-            type: {
-              defined: "COption<Pubkey>";
+              coption: "pubkey";
             };
           }
         ];
@@ -700,268 +769,111 @@ type SplToken = {
         fields: [
           {
             name: "m";
+            docs: ["Number of signers required"];
             type: "u8";
           },
           {
             name: "n";
+            docs: ["Number of valid signers"];
             type: "u8";
           },
           {
             name: "isInitialized";
+            docs: ["Is `true` if this structure has been initialized"];
             type: "bool";
           },
           {
             name: "signers";
+            docs: ["Signer public keys"];
             type: {
-              array: ["publicKey", 11];
+              array: ["pubkey", 11];
+            };
+          }
+        ];
+      };
+    },
+    {
+      name: "account";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "mint";
+            docs: ["The mint associated with this account"];
+            type: "pubkey";
+          },
+          {
+            name: "owner";
+            docs: ["The owner of this account."];
+            type: "pubkey";
+          },
+          {
+            name: "amount";
+            docs: ["The amount of tokens this account holds."];
+            type: "u64";
+          },
+          {
+            name: "delegate";
+            docs: [
+              "If `delegate` is `Some` then `delegated_amount` represents",
+              "the amount authorized by the delegate"
+            ];
+            type: {
+              coption: "pubkey";
+            };
+          },
+          {
+            name: "state";
+            docs: ["The account's state"];
+            type: {
+              defined: {
+                name: "accountState";
+              };
+            };
+          },
+          {
+            name: "isNative";
+            docs: [
+              "If is_native.is_some, this is a native token, and the value logs the rent-exempt reserve. An",
+              "Account is required to be rent-exempt, so the value is used by the Processor to ensure that",
+              "wrapped SOL accounts do not drop below this threshold."
+            ];
+            type: {
+              coption: "u64";
+            };
+          },
+          {
+            name: "delegatedAmount";
+            docs: ["The amount delegated"];
+            type: "u64";
+          },
+          {
+            name: "closeAuthority";
+            docs: ["Optional authority to close the account."];
+            type: {
+              coption: "pubkey";
             };
           }
         ];
       };
     }
   ];
-  types: [
-    {
-      name: "AccountState";
-      type: {
-        kind: "enum";
-        variants: [
-          {
-            name: "Uninitialized";
-          },
-          {
-            name: "Initialized";
-          },
-          {
-            name: "Frozen";
-          }
-        ];
-      };
-    },
-    {
-      name: "AuthorityType";
-      type: {
-        kind: "enum";
-        variants: [
-          {
-            name: "MintTokens";
-          },
-          {
-            name: "FreezeAccount";
-          },
-          {
-            name: "AccountOwner";
-          },
-          {
-            name: "CloseAccount";
-          }
-        ];
-      };
-    }
-  ];
-  errors: [
-    {
-      code: 0;
-      name: "NotRentExempt";
-      msg: "Lamport balance below rent-exempt threshold";
-    },
-    {
-      code: 1;
-      name: "InsufficientFunds";
-      msg: "Insufficient funds";
-    },
-    {
-      code: 2;
-      name: "InvalidMint";
-      msg: "Invalid Mint";
-    },
-    {
-      code: 3;
-      name: "MintMismatch";
-      msg: "Account not associated with this Mint";
-    },
-    {
-      code: 4;
-      name: "OwnerMismatch";
-      msg: "Owner does not match";
-    },
-    {
-      code: 5;
-      name: "FixedSupply";
-      msg: "Fixed supply";
-    },
-    {
-      code: 6;
-      name: "AlreadyInUse";
-      msg: "Already in use";
-    },
-    {
-      code: 7;
-      name: "InvalidNumberOfProvidedSigners";
-      msg: "Invalid number of provided signers";
-    },
-    {
-      code: 8;
-      name: "InvalidNumberOfRequiredSigners";
-      msg: "Invalid number of required signers";
-    },
-    {
-      code: 9;
-      name: "UninitializedState";
-      msg: "State is unititialized";
-    },
-    {
-      code: 10;
-      name: "NativeNotSupported";
-      msg: "Instruction does not support native tokens";
-    },
-    {
-      code: 11;
-      name: "NonNativeHasBalance";
-      msg: "Non-native account can only be closed if its balance is zero";
-    },
-    {
-      code: 12;
-      name: "InvalidInstruction";
-      msg: "Invalid instruction";
-    },
-    {
-      code: 13;
-      name: "InvalidState";
-      msg: "State is invalid for requested operation";
-    },
-    {
-      code: 14;
-      name: "Overflow";
-      msg: "Operation overflowed";
-    },
-    {
-      code: 15;
-      name: "AuthorityTypeNotSupported";
-      msg: "Account does not support specified authority type";
-    },
-    {
-      code: 16;
-      name: "MintCannotFreeze";
-      msg: "This token mint cannot freeze accounts";
-    },
-    {
-      code: 17;
-      name: "AccountFrozen";
-      msg: "Account is frozen";
-    },
-    {
-      code: 18;
-      name: "MintDecimalsMismatch";
-      msg: "The provided decimals value different from the Mint decimals";
-    },
-    {
-      code: 19;
-      name: "NonNativeNotSupported";
-      msg: "Instruction does not support non-native tokens";
-    }
-  ];
 };
 
 const IDL: SplToken = {
-  version: "3.3.0",
-  name: "spl_token",
+  address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  metadata: {
+    name: "splToken",
+    version: "3.3.0",
+    spec: "0.1.0",
+  },
   instructions: [
     {
-      name: "initializeMint",
+      name: "amountToUiAmount",
+      discriminator: [23],
       accounts: [
         {
           name: "mint",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [
-        {
-          name: "decimals",
-          type: "u8",
-        },
-        {
-          name: "mintAuthority",
-          type: "publicKey",
-        },
-        {
-          name: "freezeAuthority",
-          type: {
-            defined: "COption<Pubkey>",
-          },
-        },
-      ],
-    },
-    {
-      name: "initializeAccount",
-      accounts: [
-        {
-          name: "account",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "mint",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "owner",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [],
-    },
-    {
-      name: "initializeMultisig",
-      accounts: [
-        {
-          name: "multisig",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [
-        {
-          name: "m",
-          type: "u8",
-        },
-      ],
-    },
-    {
-      name: "transfer",
-      accounts: [
-        {
-          name: "source",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "destination",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "authority",
-          isMut: false,
-          isSigner: true,
         },
       ],
       args: [
@@ -973,21 +885,18 @@ const IDL: SplToken = {
     },
     {
       name: "approve",
+      discriminator: [4],
       accounts: [
         {
           name: "source",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "delegate",
-          isMut: false,
-          isSigner: false,
         },
         {
           name: "owner",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
@@ -998,98 +907,50 @@ const IDL: SplToken = {
       ],
     },
     {
-      name: "revoke",
+      name: "approveChecked",
+      discriminator: [13],
       accounts: [
         {
           name: "source",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
-        {
-          name: "owner",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [],
-    },
-    {
-      name: "setAuthority",
-      accounts: [
-        {
-          name: "owned",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "owner",
-          isMut: false,
-          isSigner: true,
-        },
-        {
-          name: "signer",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "authorityType",
-          type: {
-            defined: "AuthorityType",
-          },
-        },
-        {
-          name: "newAuthority",
-          type: {
-            defined: "COption<Pubkey>",
-          },
-        },
-      ],
-    },
-    {
-      name: "mintTo",
-      accounts: [
         {
           name: "mint",
-          isMut: true,
-          isSigner: false,
         },
         {
-          name: "account",
-          isMut: true,
-          isSigner: false,
+          name: "delegate",
         },
         {
           name: "owner",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
         {
           name: "amount",
           type: "u64",
+        },
+        {
+          name: "decimals",
+          type: "u8",
         },
       ],
     },
     {
       name: "burn",
+      discriminator: [8],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "mint",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "authority",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
@@ -1100,268 +961,221 @@ const IDL: SplToken = {
       ],
     },
     {
-      name: "closeAccount",
+      name: "burnChecked",
+      discriminator: [15],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
+        },
+        {
+          name: "mint",
+          writable: true,
+        },
+        {
+          name: "authority",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "amount",
+          type: "u64",
+        },
+        {
+          name: "decimals",
+          type: "u8",
+        },
+      ],
+    },
+    {
+      name: "closeAccount",
+      discriminator: [9],
+      accounts: [
+        {
+          name: "account",
+          writable: true,
         },
         {
           name: "destination",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "owner",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [],
     },
     {
       name: "freezeAccount",
+      discriminator: [10],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "mint",
-          isMut: false,
-          isSigner: false,
         },
         {
           name: "owner",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [],
     },
     {
-      name: "thawAccount",
+      name: "getAccountDataSize",
+      discriminator: [21],
       accounts: [
         {
-          name: "account",
-          isMut: true,
-          isSigner: false,
-        },
-        {
           name: "mint",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "owner",
-          isMut: false,
-          isSigner: true,
         },
       ],
       args: [],
     },
     {
-      name: "transferChecked",
+      name: "initializeAccount",
+      discriminator: [1],
       accounts: [
         {
-          name: "source",
-          isMut: true,
-          isSigner: false,
+          name: "account",
+          writable: true,
         },
         {
           name: "mint",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "destination",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "authority",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "amount",
-          type: "u64",
-        },
-        {
-          name: "decimals",
-          type: "u8",
-        },
-      ],
-    },
-    {
-      name: "approveChecked",
-      accounts: [
-        {
-          name: "source",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "mint",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "delegate",
-          isMut: false,
-          isSigner: false,
         },
         {
           name: "owner",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "amount",
-          type: "u64",
-        },
-        {
-          name: "decimals",
-          type: "u8",
-        },
-      ],
-    },
-    {
-      name: "mintToChecked",
-      accounts: [
-        {
-          name: "mint",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "account",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "owner",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "amount",
-          type: "u64",
-        },
-        {
-          name: "decimals",
-          type: "u8",
-        },
-      ],
-    },
-    {
-      name: "burnChecked",
-      accounts: [
-        {
-          name: "account",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "mint",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "authority",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "amount",
-          type: "u64",
-        },
-        {
-          name: "decimals",
-          type: "u8",
-        },
-      ],
-    },
-    {
-      name: "initializeAccount2",
-      accounts: [
-        {
-          name: "account",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "mint",
-          isMut: false,
-          isSigner: false,
         },
         {
           name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [
-        {
-          name: "owner",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
-      name: "syncNative",
-      accounts: [
-        {
-          name: "account",
-          isMut: true,
-          isSigner: false,
+          address: "SysvarRent111111111111111111111111111111111",
         },
       ],
       args: [],
     },
     {
-      name: "initializeAccount3",
+      name: "initializeAccount2",
+      discriminator: [16],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "mint",
-          isMut: false,
-          isSigner: false,
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
         },
       ],
       args: [
         {
           name: "owner",
-          type: "publicKey",
+          type: "pubkey",
         },
       ],
     },
     {
-      name: "initializeMultisig2",
+      name: "initializeAccount3",
+      discriminator: [18],
+      accounts: [
+        {
+          name: "account",
+          writable: true,
+        },
+        {
+          name: "mint",
+        },
+      ],
+      args: [
+        {
+          name: "owner",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "initializeImmutableOwner",
+      discriminator: [22],
+      accounts: [
+        {
+          name: "account",
+          writable: true,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "initializeMint",
+      discriminator: [0],
+      accounts: [
+        {
+          name: "mint",
+          writable: true,
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
+        },
+      ],
+      args: [
+        {
+          name: "decimals",
+          type: "u8",
+        },
+        {
+          name: "mintAuthority",
+          type: "pubkey",
+        },
+        {
+          name: "freezeAuthority",
+          type: {
+            coption: "pubkey",
+          },
+        },
+      ],
+    },
+    {
+      name: "initializeMint2",
+      discriminator: [20],
+      accounts: [
+        {
+          name: "mint",
+          writable: true,
+        },
+      ],
+      args: [
+        {
+          name: "decimals",
+          type: "u8",
+        },
+        {
+          name: "mintAuthority",
+          type: "pubkey",
+        },
+        {
+          name: "freezeAuthority",
+          type: {
+            coption: "pubkey",
+          },
+        },
+      ],
+    },
+    {
+      name: "initializeMultisig",
+      discriminator: [2],
       accounts: [
         {
           name: "multisig",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
-          name: "signer",
-          isMut: false,
-          isSigner: false,
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
         },
       ],
       args: [
@@ -1372,60 +1186,39 @@ const IDL: SplToken = {
       ],
     },
     {
-      name: "initializeMint2",
+      name: "initializeMultisig2",
+      discriminator: [19],
       accounts: [
         {
-          name: "mint",
-          isMut: true,
-          isSigner: false,
+          name: "multisig",
+          writable: true,
+        },
+        {
+          name: "signer",
         },
       ],
       args: [
         {
-          name: "decimals",
+          name: "m",
           type: "u8",
         },
-        {
-          name: "mintAuthority",
-          type: "publicKey",
-        },
-        {
-          name: "freezeAuthority",
-          type: {
-            defined: "COption<Pubkey>",
-          },
-        },
       ],
     },
     {
-      name: "getAccountDataSize",
+      name: "mintTo",
+      discriminator: [7],
       accounts: [
         {
           name: "mint",
-          isMut: false,
-          isSigner: false,
+          writable: true,
         },
-      ],
-      args: [],
-    },
-    {
-      name: "initializeImmutableOwner",
-      accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
-      ],
-      args: [],
-    },
-    {
-      name: "amountToUiAmount",
-      accounts: [
         {
-          name: "mint",
-          isMut: false,
-          isSigner: false,
+          name: "owner",
+          signer: true,
         },
       ],
       args: [
@@ -1436,20 +1229,178 @@ const IDL: SplToken = {
       ],
     },
     {
-      name: "uiAmountToAmount",
+      name: "mintToChecked",
+      discriminator: [14],
       accounts: [
         {
           name: "mint",
-          isMut: false,
-          isSigner: false,
+          writable: true,
+        },
+        {
+          name: "account",
+          writable: true,
+        },
+        {
+          name: "owner",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "amount",
+          type: "u64",
+        },
+        {
+          name: "decimals",
+          type: "u8",
+        },
+      ],
+    },
+    {
+      name: "revoke",
+      discriminator: [5],
+      accounts: [
+        {
+          name: "source",
+          writable: true,
+        },
+        {
+          name: "owner",
+          signer: true,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "setAuthority",
+      discriminator: [6],
+      accounts: [
+        {
+          name: "owned",
+          writable: true,
+        },
+        {
+          name: "owner",
+          signer: true,
+        },
+        {
+          name: "signer",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "authorityType",
+          type: {
+            defined: {
+              name: "authorityType",
+            },
+          },
+        },
+        {
+          name: "newAuthority",
+          type: {
+            coption: "pubkey",
+          },
+        },
+      ],
+    },
+    {
+      name: "syncNative",
+      discriminator: [17],
+      accounts: [
+        {
+          name: "account",
+          writable: true,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "thawAccount",
+      discriminator: [11],
+      accounts: [
+        {
+          name: "account",
+          writable: true,
+        },
+        {
+          name: "mint",
+        },
+        {
+          name: "owner",
+          signer: true,
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "transfer",
+      discriminator: [3],
+      accounts: [
+        {
+          name: "source",
+          writable: true,
+        },
+        {
+          name: "destination",
+          writable: true,
+        },
+        {
+          name: "authority",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "amount",
+          type: "u64",
+        },
+      ],
+    },
+    {
+      name: "transferChecked",
+      discriminator: [12],
+      accounts: [
+        {
+          name: "source",
+          writable: true,
+        },
+        {
+          name: "mint",
+        },
+        {
+          name: "destination",
+          writable: true,
+        },
+        {
+          name: "authority",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "amount",
+          type: "u64",
+        },
+        {
+          name: "decimals",
+          type: "u8",
+        },
+      ],
+    },
+    {
+      name: "uiAmountToAmount",
+      discriminator: [24],
+      accounts: [
+        {
+          name: "mint",
         },
       ],
       args: [
         {
           name: "uiAmount",
-          type: {
-            defined: "&'astr",
-          },
+          type: "string",
         },
       ],
     },
@@ -1457,79 +1408,195 @@ const IDL: SplToken = {
   accounts: [
     {
       name: "mint",
+      discriminator: [],
+    },
+    {
+      name: "multisig",
+      discriminator: [],
+    },
+    {
+      name: "account",
+      discriminator: [],
+    },
+  ],
+  errors: [
+    {
+      code: 0,
+      name: "notRentExempt",
+      msg: "Lamport balance below rent-exempt threshold",
+    },
+    {
+      code: 1,
+      name: "insufficientFunds",
+      msg: "Insufficient funds",
+    },
+    {
+      code: 2,
+      name: "invalidMint",
+      msg: "Invalid Mint",
+    },
+    {
+      code: 3,
+      name: "mintMismatch",
+      msg: "Account not associated with this Mint",
+    },
+    {
+      code: 4,
+      name: "ownerMismatch",
+      msg: "Owner does not match",
+    },
+    {
+      code: 5,
+      name: "fixedSupply",
+      msg: "Fixed supply",
+    },
+    {
+      code: 6,
+      name: "alreadyInUse",
+      msg: "Already in use",
+    },
+    {
+      code: 7,
+      name: "invalidNumberOfProvidedSigners",
+      msg: "Invalid number of provided signers",
+    },
+    {
+      code: 8,
+      name: "invalidNumberOfRequiredSigners",
+      msg: "Invalid number of required signers",
+    },
+    {
+      code: 9,
+      name: "uninitializedState",
+      msg: "State is unititialized",
+    },
+    {
+      code: 10,
+      name: "nativeNotSupported",
+      msg: "Instruction does not support native tokens",
+    },
+    {
+      code: 11,
+      name: "nonNativeHasBalance",
+      msg: "Non-native account can only be closed if its balance is zero",
+    },
+    {
+      code: 12,
+      name: "invalidInstruction",
+      msg: "Invalid instruction",
+    },
+    {
+      code: 13,
+      name: "invalidState",
+      msg: "State is invalid for requested operation",
+    },
+    {
+      code: 14,
+      name: "overflow",
+      msg: "Operation overflowed",
+    },
+    {
+      code: 15,
+      name: "authorityTypeNotSupported",
+      msg: "Account does not support specified authority type",
+    },
+    {
+      code: 16,
+      name: "mintCannotFreeze",
+      msg: "This token mint cannot freeze accounts",
+    },
+    {
+      code: 17,
+      name: "accountFrozen",
+      msg: "Account is frozen",
+    },
+    {
+      code: 18,
+      name: "mintDecimalsMismatch",
+      msg: "The provided decimals value different from the Mint decimals",
+    },
+    {
+      code: 19,
+      name: "nonNativeNotSupported",
+      msg: "Instruction does not support non-native tokens",
+    },
+  ],
+  types: [
+    {
+      name: "accountState",
       type: {
-        kind: "struct",
-        fields: [
+        kind: "enum",
+        variants: [
           {
-            name: "mintAuthority",
-            type: {
-              defined: "COption<Pubkey>",
-            },
+            name: "uninitialized",
           },
           {
-            name: "supply",
-            type: "u64",
+            name: "initialized",
           },
           {
-            name: "decimals",
-            type: "u8",
-          },
-          {
-            name: "isInitialized",
-            type: "bool",
-          },
-          {
-            name: "freezeAuthority",
-            type: {
-              defined: "COption<Pubkey>",
-            },
+            name: "frozen",
           },
         ],
       },
     },
     {
-      name: "account",
+      name: "authorityType",
+      type: {
+        kind: "enum",
+        variants: [
+          {
+            name: "mintTokens",
+          },
+          {
+            name: "freezeAccount",
+          },
+          {
+            name: "accountOwner",
+          },
+          {
+            name: "closeAccount",
+          },
+        ],
+      },
+    },
+    {
+      name: "mint",
       type: {
         kind: "struct",
         fields: [
           {
-            name: "mint",
-            type: "publicKey",
+            name: "mintAuthority",
+            docs: [
+              "Optional authority used to mint new tokens. The mint authority may only be provided during",
+              "mint creation. If no mint authority is present then the mint has a fixed supply and no",
+              "further tokens may be minted.",
+            ],
+            type: {
+              coption: "pubkey",
+            },
           },
           {
-            name: "owner",
-            type: "publicKey",
-          },
-          {
-            name: "amount",
+            name: "supply",
+            docs: ["Total supply of tokens."],
             type: "u64",
           },
           {
-            name: "delegate",
-            type: {
-              defined: "COption<Pubkey>",
-            },
+            name: "decimals",
+            docs: [
+              "Number of base 10 digits to the right of the decimal place.",
+            ],
+            type: "u8",
           },
           {
-            name: "state",
-            type: {
-              defined: "AccountState",
-            },
+            name: "isInitialized",
+            docs: ["Is `true` if this structure has been initialized"],
+            type: "bool",
           },
           {
-            name: "isNative",
+            name: "freezeAuthority",
+            docs: ["Optional authority to freeze token accounts."],
             type: {
-              defined: "COption<u64>",
-            },
-          },
-          {
-            name: "delegatedAmount",
-            type: "u64",
-          },
-          {
-            name: "closeAuthority",
-            type: {
-              defined: "COption<Pubkey>",
+              coption: "pubkey",
             },
           },
         ],
@@ -1542,165 +1609,93 @@ const IDL: SplToken = {
         fields: [
           {
             name: "m",
+            docs: ["Number of signers required"],
             type: "u8",
           },
           {
             name: "n",
+            docs: ["Number of valid signers"],
             type: "u8",
           },
           {
             name: "isInitialized",
+            docs: ["Is `true` if this structure has been initialized"],
             type: "bool",
           },
           {
             name: "signers",
+            docs: ["Signer public keys"],
             type: {
-              array: ["publicKey", 11],
+              array: ["pubkey", 11],
             },
           },
         ],
       },
     },
-  ],
-  types: [
     {
-      name: "AccountState",
+      name: "account",
       type: {
-        kind: "enum",
-        variants: [
+        kind: "struct",
+        fields: [
           {
-            name: "Uninitialized",
+            name: "mint",
+            docs: ["The mint associated with this account"],
+            type: "pubkey",
           },
           {
-            name: "Initialized",
+            name: "owner",
+            docs: ["The owner of this account."],
+            type: "pubkey",
           },
           {
-            name: "Frozen",
+            name: "amount",
+            docs: ["The amount of tokens this account holds."],
+            type: "u64",
+          },
+          {
+            name: "delegate",
+            docs: [
+              "If `delegate` is `Some` then `delegated_amount` represents",
+              "the amount authorized by the delegate",
+            ],
+            type: {
+              coption: "pubkey",
+            },
+          },
+          {
+            name: "state",
+            docs: ["The account's state"],
+            type: {
+              defined: {
+                name: "accountState",
+              },
+            },
+          },
+          {
+            name: "isNative",
+            docs: [
+              "If is_native.is_some, this is a native token, and the value logs the rent-exempt reserve. An",
+              "Account is required to be rent-exempt, so the value is used by the Processor to ensure that",
+              "wrapped SOL accounts do not drop below this threshold.",
+            ],
+            type: {
+              coption: "u64",
+            },
+          },
+          {
+            name: "delegatedAmount",
+            docs: ["The amount delegated"],
+            type: "u64",
+          },
+          {
+            name: "closeAuthority",
+            docs: ["Optional authority to close the account."],
+            type: {
+              coption: "pubkey",
+            },
           },
         ],
       },
-    },
-    {
-      name: "AuthorityType",
-      type: {
-        kind: "enum",
-        variants: [
-          {
-            name: "MintTokens",
-          },
-          {
-            name: "FreezeAccount",
-          },
-          {
-            name: "AccountOwner",
-          },
-          {
-            name: "CloseAccount",
-          },
-        ],
-      },
-    },
-  ],
-  errors: [
-    {
-      code: 0,
-      name: "NotRentExempt",
-      msg: "Lamport balance below rent-exempt threshold",
-    },
-    {
-      code: 1,
-      name: "InsufficientFunds",
-      msg: "Insufficient funds",
-    },
-    {
-      code: 2,
-      name: "InvalidMint",
-      msg: "Invalid Mint",
-    },
-    {
-      code: 3,
-      name: "MintMismatch",
-      msg: "Account not associated with this Mint",
-    },
-    {
-      code: 4,
-      name: "OwnerMismatch",
-      msg: "Owner does not match",
-    },
-    {
-      code: 5,
-      name: "FixedSupply",
-      msg: "Fixed supply",
-    },
-    {
-      code: 6,
-      name: "AlreadyInUse",
-      msg: "Already in use",
-    },
-    {
-      code: 7,
-      name: "InvalidNumberOfProvidedSigners",
-      msg: "Invalid number of provided signers",
-    },
-    {
-      code: 8,
-      name: "InvalidNumberOfRequiredSigners",
-      msg: "Invalid number of required signers",
-    },
-    {
-      code: 9,
-      name: "UninitializedState",
-      msg: "State is unititialized",
-    },
-    {
-      code: 10,
-      name: "NativeNotSupported",
-      msg: "Instruction does not support native tokens",
-    },
-    {
-      code: 11,
-      name: "NonNativeHasBalance",
-      msg: "Non-native account can only be closed if its balance is zero",
-    },
-    {
-      code: 12,
-      name: "InvalidInstruction",
-      msg: "Invalid instruction",
-    },
-    {
-      code: 13,
-      name: "InvalidState",
-      msg: "State is invalid for requested operation",
-    },
-    {
-      code: 14,
-      name: "Overflow",
-      msg: "Operation overflowed",
-    },
-    {
-      code: 15,
-      name: "AuthorityTypeNotSupported",
-      msg: "Account does not support specified authority type",
-    },
-    {
-      code: 16,
-      name: "MintCannotFreeze",
-      msg: "This token mint cannot freeze accounts",
-    },
-    {
-      code: 17,
-      name: "AccountFrozen",
-      msg: "Account is frozen",
-    },
-    {
-      code: 18,
-      name: "MintDecimalsMismatch",
-      msg: "The provided decimals value different from the Mint decimals",
-    },
-    {
-      code: 19,
-      name: "NonNativeNotSupported",
-      msg: "Instruction does not support non-native tokens",
     },
   ],
 };

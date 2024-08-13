@@ -12,19 +12,20 @@ describe("IDL", () => {
     const checkDefined = (
       cb: (constant: typeof program["idl"]["constants"][number]) => boolean
     ) => {
-      program.idl.constants.find((c) => cb(c));
+      const constant = program.idl.constants.find(cb);
+      if (!constant) throw new Error("Constant not found");
     };
 
-    checkDefined((c) => c.name === "U8" && c.type === "u8" && c.value === "6");
+    checkDefined((c) => c.name === "u8" && c.type === "u8" && c.value === "6");
     checkDefined(
-      (c) => c.name === "I128" && c.type === "i128" && c.value === "1000000"
+      (c) => c.name === "i128" && c.type === "i128" && c.value === "1000000"
     );
     checkDefined(
-      (c) => c.name === "BYTE_STR" && c.type === "u8" && c.value === "116"
+      (c) => c.name === "byteStr" && c.type === "u8" && c.value === "116"
     );
     checkDefined(
       (c) =>
-        c.name === "BYTES_STR" &&
+        c.name === "bytesStr" &&
         c.type === "bytes" &&
         c.value === "[116, 101, 115, 116]"
     );
@@ -32,6 +33,6 @@ describe("IDL", () => {
 
   it("Does not include constants that does not use `#[constant]` macro ", () => {
     // @ts-expect-error
-    assert.isUndefined(program.idl.constants.find((c) => c.name === "NO_IDL"));
+    assert.isUndefined(program.idl.constants.find((c) => c.name === "noIdl"));
   });
 });

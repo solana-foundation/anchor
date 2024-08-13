@@ -10,7 +10,7 @@ pub struct Initialize<'info> {
     pub system_program: Option<Program<'info, System>>,
     #[account(zero)]
     pub required: Account<'info, DataAccount>,
-    #[account(init, seeds=[DataPda::PREFIX.as_ref(), optional_account.as_ref().unwrap().key().as_ref()], bump, payer=payer, space=DataPda::LEN)]
+    #[account(init, seeds=[DataPda::PREFIX.as_bytes(), optional_account.as_ref().unwrap().key().as_ref()], bump, payer=payer, space=DataPda::LEN)]
     pub optional_pda: Option<Account<'info, DataPda>>,
 }
 
@@ -19,22 +19,22 @@ pub struct Initialize<'info> {
 pub struct Update<'info> {
     #[account(mut)]
     pub payer: Option<Signer<'info>>,
-    #[account(mut, seeds=[DataPda::PREFIX.as_ref(), optional_account.as_ref().unwrap().key().as_ref()], bump = pda_bump)]
+    #[account(mut, seeds=[DataPda::PREFIX.as_bytes(), optional_account.as_ref().unwrap().key().as_ref()], bump = pda_bump)]
     pub optional_pda: Option<Account<'info, DataPda>>,
     #[account(mut, signer, constraint = payer.is_some())]
     pub optional_account: Option<Box<Account<'info, DataAccount>>>,
 }
 
 #[derive(Accounts)]
-#[instruction(new_size: usize)]
+#[instruction(new_size: u64)]
 pub struct Realloc<'info> {
     #[account(mut)]
     pub payer: Option<Signer<'info>>,
-    #[account(mut, realloc = new_size, realloc::payer = payer, realloc::zero = false)]
+    #[account(mut, realloc = new_size as usize, realloc::payer = payer, realloc::zero = false)]
     pub optional_pda: Option<Account<'info, DataPda>>,
     pub required: Account<'info, DataAccount>,
     pub system_program: Option<Program<'info, System>>,
-    #[account(mut, signer, realloc = new_size, realloc::payer = payer, realloc::zero = true)]
+    #[account(mut, signer, realloc = new_size as usize, realloc::payer = payer, realloc::zero = true)]
     pub optional_account: Option<Account<'info, DataAccount>>,
 }
 

@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
+# Generate temp directory
+tmp_dir=$(mktemp -d)
+
+# Fix external type resolution not working in CI due to missing `anchor-lang`
+# crates.io entry in runner machine.
+pushd $tmp_dir
+cargo new external-ci
+pushd external-ci
+cargo add anchor-lang
+cargo b
+popd
+popd
+
 # Run anchor test
 anchor test --skip-lint
-
-tmp_dir=$(mktemp -d)
 
 # Generate IDLs
 ./generate.sh $tmp_dir
@@ -27,9 +38,8 @@ compare() {
     echo ""
 }
 
-compare "parse"
-compare "build"
-compare "generics_build"
-compare "relations_build"
+compare "new"
+compare "generics"
+compare "relations"
 
 exit $ret

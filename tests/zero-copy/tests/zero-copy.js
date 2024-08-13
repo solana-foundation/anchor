@@ -57,7 +57,7 @@ describe("zero-copy", () => {
     );
   });
 
-  it("Updates a a second zero copy account field", async () => {
+  it("Updates a second zero copy account field", async () => {
     await program.rpc.updateFooSecond(new BN(55), {
       accounts: {
         foo: foo.publicKey,

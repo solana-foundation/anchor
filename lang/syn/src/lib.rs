@@ -3,7 +3,7 @@
 pub mod codegen;
 pub mod parser;
 
-#[cfg(feature = "idl-types")]
+#[cfg(feature = "idl-build")]
 pub mod idl;
 
 #[cfg(feature = "hash")]
@@ -11,7 +11,6 @@ pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
 
-use crate::parser::tts_to_string;
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
 use parser::accounts as accounts_parser;
@@ -26,6 +25,7 @@ use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult}
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
     TypePath,
@@ -69,7 +69,58 @@ pub struct Ix {
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
     // The discriminator based on the `#[interface]` attribute.
+    // TODO: Remove and use `overrides`
     pub interface_discriminator: Option<[u8; 8]>,
+    /// Overrides coming from the `#[instruction]` attribute
+    pub overrides: Option<Overrides>,
+}
+
+/// Common overrides for the `#[instruction]`, `#[account]` and `#[event]` attributes
+#[derive(Debug, Default)]
+pub struct Overrides {
+    /// Override the default 8-byte discriminator
+    pub discriminator: Option<TokenStream>,
+}
+
+impl Parse for Overrides {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        let mut attr = Self::default();
+        let args = input.parse_terminated::<_, Comma>(NamedArg::parse)?;
+        for arg in args {
+            match arg.name.to_string().as_str() {
+                "discriminator" => {
+                    let value = match &arg.value {
+                        // Allow `discriminator = 42`
+                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        // Allow `discriminator = [0, 1, 2, 3]`
+                        Expr::Array(arr) => quote! { &#arr },
+                        expr => expr.to_token_stream(),
+                    };
+                    attr.discriminator.replace(value)
+                }
+                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+            };
+        }
+
+        Ok(attr)
+    }
+}
+
+struct NamedArg {
+    name: Ident,
+    #[allow(dead_code)]
+    eq_token: Token![=],
+    value: Expr,
+}
+
+impl Parse for NamedArg {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        Ok(Self {
+            name: input.parse()?,
+            eq_token: input.parse()?,
+            value: input.parse()?,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -175,7 +226,7 @@ impl AccountsStruct {
         let matching_field = self
             .fields
             .iter()
-            .find(|f| *f.ident() == tts_to_string(field));
+            .find(|f| *f.ident() == parser::tts_to_string(field));
         if let Some(matching_field) = matching_field {
             matching_field.is_optional()
         } else {
@@ -681,6 +732,21 @@ pub enum ConstraintToken {
     Realloc(Context<ConstraintRealloc>),
     ReallocPayer(Context<ConstraintReallocPayer>),
     ReallocZero(Context<ConstraintReallocZero>),
+    // extensions
+    ExtensionGroupPointerAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionGroupPointerGroupAddress(Context<ConstraintExtensionGroupPointerGroupAddress>),
+    ExtensionGroupMemberPointerAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionGroupMemberPointerMemberAddress(
+        Context<ConstraintExtensionGroupMemberPointerMemberAddress>,
+    ),
+    ExtensionMetadataPointerAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionMetadataPointerMetadataAddress(
+        Context<ConstraintExtensionMetadataPointerMetadataAddress>,
+    ),
+    ExtensionCloseAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
+    ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
 }
 
 impl Parse for ConstraintToken {
@@ -797,6 +863,37 @@ pub struct ConstraintSpace {
     pub space: Expr,
 }
 
+// extension constraints
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionAuthority {
+    pub authority: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionGroupPointerGroupAddress {
+    pub group_address: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionGroupMemberPointerMemberAddress {
+    pub member_address: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionMetadataPointerMetadataAddress {
+    pub metadata_address: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionTokenHookProgramId {
+    pub program_id: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionPermanentDelegate {
+    pub permanent_delegate: Expr,
+}
+
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
@@ -823,6 +920,17 @@ pub enum InitKind {
         freeze_authority: Option<Expr>,
         decimals: Expr,
         token_program: Option<Expr>,
+        // extensions
+        group_pointer_authority: Option<Expr>,
+        group_pointer_group_address: Option<Expr>,
+        group_member_pointer_authority: Option<Expr>,
+        group_member_pointer_member_address: Option<Expr>,
+        metadata_pointer_authority: Option<Expr>,
+        metadata_pointer_metadata_address: Option<Expr>,
+        close_authority: Option<Expr>,
+        permanent_delegate: Option<Expr>,
+        transfer_hook_authority: Option<Expr>,
+        transfer_hook_program_id: Option<Expr>,
     },
 }
 
@@ -834,6 +942,46 @@ pub struct ConstraintClose {
 #[derive(Debug, Clone)]
 pub struct ConstraintTokenMint {
     pub mint: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintConfidentialTransferData {
+    pub confidential_transfer_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintMetadata {
+    pub token_metadata: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintTokenGroupData {
+    pub token_group_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintTokenGroupMemberData {
+    pub token_group_member_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintMetadataPointerData {
+    pub metadata_pointer_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintGroupPointerData {
+    pub group_pointer_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintGroupMemberPointerData {
+    pub group_member_pointer_data: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMintCloseAuthority {
+    pub close_authority: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -891,6 +1039,16 @@ pub struct ConstraintTokenMintGroup {
     pub mint_authority: Option<Expr>,
     pub freeze_authority: Option<Expr>,
     pub token_program: Option<Expr>,
+    pub group_pointer_authority: Option<Expr>,
+    pub group_pointer_group_address: Option<Expr>,
+    pub group_member_pointer_authority: Option<Expr>,
+    pub group_member_pointer_member_address: Option<Expr>,
+    pub metadata_pointer_authority: Option<Expr>,
+    pub metadata_pointer_metadata_address: Option<Expr>,
+    pub close_authority: Option<Expr>,
+    pub permanent_delegate: Option<Expr>,
+    pub transfer_hook_authority: Option<Expr>,
+    pub transfer_hook_program_id: Option<Expr>,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

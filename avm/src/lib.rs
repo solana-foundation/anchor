@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use cargo_toml::Manifest;
+use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
 use reqwest::StatusCode;
@@ -10,26 +11,30 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
 
-/// Storage directory for AVM, ~/.avm
+/// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
     cfg_if::cfg_if! {
         if #[cfg(test)] {
             let dir = tempfile::tempdir().expect("Could not create temporary directory");
             dir.path().join(".avm")
         } else {
-            let mut user_home = dirs::home_dir().expect("Could not find home directory");
-            user_home.push(".avm");
-            user_home
+            if let Ok(avm_home) = std::env::var("AVM_HOME") {
+                PathBuf::from(avm_home)
+            } else {
+                let mut user_home = dirs::home_dir().expect("Could not find home directory");
+                user_home.push(".avm");
+                user_home
+            }
         }
     }
 });
 
-/// Path to the current version file ~/.avm/.version
+/// Path to the current version file $AVM_HOME/.version
 fn current_version_file_path() -> PathBuf {
     AVM_HOME.join(".version")
 }
 
-/// Path to the current version file ~/.avm/bin
+/// Path to the current version file $AVM_HOME/bin
 fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
 }
@@ -240,7 +245,7 @@ pub fn read_anchorversion_file() -> Result<Version> {
 
 /// Retrieve a list of installable versions of anchor-cli using the GitHub API and tags on the Anchor
 /// repository.
-pub fn fetch_versions() -> Result<Vec<Version>> {
+pub fn fetch_versions() -> Result<Vec<Version>, Error> {
     #[derive(Deserialize)]
     struct Release {
         #[serde(rename = "name", deserialize_with = "version_deserializer")]
@@ -255,16 +260,30 @@ pub fn fetch_versions() -> Result<Vec<Version>> {
         Version::parse(s.trim_start_matches('v')).map_err(de::Error::custom)
     }
 
-    let versions = reqwest::blocking::Client::new()
+    let response = reqwest::blocking::Client::new()
         .get("https://api.github.com/repos/coral-xyz/anchor/tags")
         .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
-        .send()?
-        .json::<Vec<Release>>()?
-        .into_iter()
-        .map(|release| release.version)
-        .collect();
+        .send()?;
 
-    Ok(versions)
+    if response.status().is_success() {
+        let releases: Vec<Release> = response.json()?;
+        let versions = releases.into_iter().map(|r| r.version).collect();
+        Ok(versions)
+    } else {
+        let reset_time_header = response
+            .headers()
+            .get("X-RateLimit-Reset")
+            .map_or("unknown", |v| v.to_str().unwrap());
+        let t = Utc.timestamp_opt(reset_time_header.parse::<i64>().unwrap(), 0);
+        let reset_time = t
+            .single()
+            .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+        Err(anyhow!(
+            "GitHub API rate limit exceeded. Try again after {} UTC.",
+            reset_time
+        ))
+    }
 }
 
 /// Print available versions and flags indicating installed, current and latest

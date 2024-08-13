@@ -147,7 +147,10 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             let owner = accounts.program.key;
             let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
             // Space: account discriminator || authority pubkey || vec len || vec data
-            let space = std::cmp::min(8 + 32 + 4 + data_len as usize, 10_000);
+            let space = std::cmp::min(
+                IdlAccount::DISCRIMINATOR.len() + 32 + 4 + data_len as usize,
+                10_000
+            );
             let rent = Rent::get()?;
             let lamports = rent.minimum_balance(space);
             let seeds = &[&[nonce][..]];

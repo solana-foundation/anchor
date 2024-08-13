@@ -3,10 +3,12 @@ import { Program } from "../program/index.js";
 import Provider from "../provider.js";
 import { SystemCoder } from "../coder/system/index.js";
 
-const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
+export const SYSTEM_PROGRAM_ID = new PublicKey(
+  "11111111111111111111111111111111"
+);
 
 export function program(provider?: Provider): Program<SystemProgram> {
-  return new Program<SystemProgram>(IDL, SYSTEM_PROGRAM_ID, provider, coder());
+  return new Program<SystemProgram>(IDL, provider, coder());
 }
 
 export function coder(): SystemCoder {
@@ -17,233 +19,44 @@ export function coder(): SystemCoder {
  * System IDL.
  */
 export type SystemProgram = {
-  version: "0.1.0";
-  name: "system_program";
+  address: "11111111111111111111111111111111";
+  metadata: {
+    name: "systemProgram";
+    version: "0.1.0";
+    spec: "0.1.0";
+  };
   instructions: [
     {
-      name: "createAccount";
-      accounts: [
-        {
-          name: "from";
-          isMut: true;
-          isSigner: true;
-        },
-        {
-          name: "to";
-          isMut: true;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "lamports";
-          type: "u64";
-        },
-        {
-          name: "space";
-          type: "u64";
-        },
-        {
-          name: "owner";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
-      name: "assign";
-      accounts: [
-        {
-          name: "pubkey";
-          isMut: true;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "owner";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
-      name: "transfer";
-      accounts: [
-        {
-          name: "from";
-          isMut: true;
-          isSigner: true;
-        },
-        {
-          name: "to";
-          isMut: true;
-          isSigner: false;
-        }
-      ];
-      args: [
-        {
-          name: "lamports";
-          type: "u64";
-        }
-      ];
-    },
-    {
-      name: "createAccountWithSeed";
-      accounts: [
-        {
-          name: "from";
-          isMut: true;
-          isSigner: true;
-        },
-        {
-          name: "to";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "base";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "base";
-          type: "publicKey";
-        },
-        {
-          name: "seed";
-          type: "string";
-        },
-        {
-          name: "lamports";
-          type: "u64";
-        },
-        {
-          name: "space";
-          type: "u64";
-        },
-        {
-          name: "owner";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
       name: "advanceNonceAccount";
+      discriminator: [4, 0, 0, 0];
       accounts: [
         {
           name: "nonce";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "recentBlockhashes";
-          isMut: false;
-          isSigner: false;
         },
         {
           name: "authorized";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
         {
           name: "authorized";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
-      name: "withdrawNonceAccount";
-      accounts: [
-        {
-          name: "nonce";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "to";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "recentBlockhashes";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "rent";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "authorized";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "lamports";
-          type: "u64";
-        }
-      ];
-    },
-    {
-      name: "initializeNonceAccount";
-      accounts: [
-        {
-          name: "nonce";
-          isMut: true;
-          isSigner: true;
-        },
-        {
-          name: "recentBlockhashes";
-          isMut: false;
-          isSigner: false;
-        },
-        {
-          name: "rent";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [
-        {
-          name: "authorized";
-          type: "publicKey";
-        }
-      ];
-    },
-    {
-      name: "authorizeNonceAccount";
-      accounts: [
-        {
-          name: "nonce";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "authorized";
-          isMut: false;
-          isSigner: true;
-        }
-      ];
-      args: [
-        {
-          name: "authorized";
-          type: "publicKey";
+          type: "pubkey";
         }
       ];
     },
     {
       name: "allocate";
+      discriminator: [8, 0, 0, 0];
       accounts: [
         {
           name: "pubkey";
-          isMut: true;
-          isSigner: true;
+          writable: true;
+          signer: true;
         }
       ];
       args: [
@@ -255,22 +68,21 @@ export type SystemProgram = {
     },
     {
       name: "allocateWithSeed";
+      discriminator: [9, 0, 0, 0];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "base";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
         {
           name: "base";
-          type: "publicKey";
+          type: "pubkey";
         },
         {
           name: "seed";
@@ -282,28 +94,44 @@ export type SystemProgram = {
         },
         {
           name: "owner";
-          type: "publicKey";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "assign";
+      discriminator: [1, 0, 0, 0];
+      accounts: [
+        {
+          name: "pubkey";
+          writable: true;
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "owner";
+          type: "pubkey";
         }
       ];
     },
     {
       name: "assignWithSeed";
+      discriminator: [10, 0, 0, 0];
       accounts: [
         {
           name: "account";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "base";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         }
       ];
       args: [
         {
           name: "base";
-          type: "publicKey";
+          type: "pubkey";
         },
         {
           name: "seed";
@@ -311,27 +139,161 @@ export type SystemProgram = {
         },
         {
           name: "owner";
-          type: "publicKey";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "authorizeNonceAccount";
+      discriminator: [7, 0, 0, 0];
+      accounts: [
+        {
+          name: "nonce";
+          writable: true;
+        },
+        {
+          name: "authorized";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "authorized";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "createAccount";
+      discriminator: [0, 0, 0, 0];
+      accounts: [
+        {
+          name: "from";
+          writable: true;
+          signer: true;
+        },
+        {
+          name: "to";
+          writable: true;
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "lamports";
+          type: "u64";
+        },
+        {
+          name: "space";
+          type: "u64";
+        },
+        {
+          name: "owner";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "createAccountWithSeed";
+      discriminator: [3, 0, 0, 0];
+      accounts: [
+        {
+          name: "from";
+          writable: true;
+          signer: true;
+        },
+        {
+          name: "to";
+          writable: true;
+        },
+        {
+          name: "base";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "base";
+          type: "pubkey";
+        },
+        {
+          name: "seed";
+          type: "string";
+        },
+        {
+          name: "lamports";
+          type: "u64";
+        },
+        {
+          name: "space";
+          type: "u64";
+        },
+        {
+          name: "owner";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "initializeNonceAccount";
+      discriminator: [6, 0, 0, 0];
+      accounts: [
+        {
+          name: "nonce";
+          writable: true;
+          signer: true;
+        },
+        {
+          name: "recentBlockhashes";
+        },
+        {
+          name: "rent";
+          address: "SysvarRent111111111111111111111111111111111";
+        }
+      ];
+      args: [
+        {
+          name: "authorized";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "transfer";
+      discriminator: [2, 0, 0, 0];
+      accounts: [
+        {
+          name: "from";
+          writable: true;
+          signer: true;
+        },
+        {
+          name: "to";
+          writable: true;
+        }
+      ];
+      args: [
+        {
+          name: "lamports";
+          type: "u64";
         }
       ];
     },
     {
       name: "transferWithSeed";
+      discriminator: [11, 0, 0, 0];
       accounts: [
         {
           name: "from";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         },
         {
           name: "base";
-          isMut: false;
-          isSigner: true;
+          signer: true;
         },
         {
           name: "to";
-          isMut: true;
-          isSigner: false;
+          writable: true;
         }
       ];
       args: [
@@ -345,12 +307,61 @@ export type SystemProgram = {
         },
         {
           name: "owner";
-          type: "publicKey";
+          type: "pubkey";
+        }
+      ];
+    },
+    {
+      name: "withdrawNonceAccount";
+      discriminator: [5, 0, 0, 0];
+      accounts: [
+        {
+          name: "nonce";
+          writable: true;
+        },
+        {
+          name: "to";
+          writable: true;
+        },
+        {
+          name: "recentBlockhashes";
+        },
+        {
+          name: "rent";
+          address: "SysvarRent111111111111111111111111111111111";
+        },
+        {
+          name: "authorized";
+          signer: true;
+        }
+      ];
+      args: [
+        {
+          name: "lamports";
+          type: "u64";
         }
       ];
     }
   ];
   accounts: [
+    {
+      name: "nonce";
+      discriminator: [];
+    }
+  ];
+  types: [
+    {
+      name: "feeCalculator";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "lamportsPerSignature";
+            type: "u64";
+          }
+        ];
+      };
+    },
     {
       name: "nonce";
       type: {
@@ -366,31 +377,19 @@ export type SystemProgram = {
           },
           {
             name: "authorizedPubkey";
-            type: "publicKey";
+            type: "pubkey";
           },
           {
             name: "nonce";
-            type: "publicKey";
+            type: "pubkey";
           },
           {
             name: "feeCalculator";
             type: {
-              defined: "FeeCalculator";
+              defined: {
+                name: "feeCalculator";
+              };
             };
-          }
-        ];
-      };
-    }
-  ];
-  types: [
-    {
-      name: "FeeCalculator";
-      type: {
-        kind: "struct";
-        fields: [
-          {
-            name: "lamportsPerSignature";
-            type: "u64";
           }
         ];
       };
@@ -399,233 +398,44 @@ export type SystemProgram = {
 };
 
 export const IDL: SystemProgram = {
-  version: "0.1.0",
-  name: "system_program",
+  address: "11111111111111111111111111111111",
+  metadata: {
+    name: "systemProgram",
+    version: "0.1.0",
+    spec: "0.1.0",
+  },
   instructions: [
     {
-      name: "createAccount",
-      accounts: [
-        {
-          name: "from",
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: "to",
-          isMut: true,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "lamports",
-          type: "u64",
-        },
-        {
-          name: "space",
-          type: "u64",
-        },
-        {
-          name: "owner",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
-      name: "assign",
-      accounts: [
-        {
-          name: "pubkey",
-          isMut: true,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "owner",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
-      name: "transfer",
-      accounts: [
-        {
-          name: "from",
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: "to",
-          isMut: true,
-          isSigner: false,
-        },
-      ],
-      args: [
-        {
-          name: "lamports",
-          type: "u64",
-        },
-      ],
-    },
-    {
-      name: "createAccountWithSeed",
-      accounts: [
-        {
-          name: "from",
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: "to",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "base",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "base",
-          type: "publicKey",
-        },
-        {
-          name: "seed",
-          type: "string",
-        },
-        {
-          name: "lamports",
-          type: "u64",
-        },
-        {
-          name: "space",
-          type: "u64",
-        },
-        {
-          name: "owner",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
       name: "advanceNonceAccount",
+      discriminator: [4, 0, 0, 0],
       accounts: [
         {
           name: "nonce",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "recentBlockhashes",
-          isMut: false,
-          isSigner: false,
         },
         {
           name: "authorized",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
         {
           name: "authorized",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
-      name: "withdrawNonceAccount",
-      accounts: [
-        {
-          name: "nonce",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "to",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "recentBlockhashes",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "authorized",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "lamports",
-          type: "u64",
-        },
-      ],
-    },
-    {
-      name: "initializeNonceAccount",
-      accounts: [
-        {
-          name: "nonce",
-          isMut: true,
-          isSigner: true,
-        },
-        {
-          name: "recentBlockhashes",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "rent",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [
-        {
-          name: "authorized",
-          type: "publicKey",
-        },
-      ],
-    },
-    {
-      name: "authorizeNonceAccount",
-      accounts: [
-        {
-          name: "nonce",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "authorized",
-          isMut: false,
-          isSigner: true,
-        },
-      ],
-      args: [
-        {
-          name: "authorized",
-          type: "publicKey",
+          type: "pubkey",
         },
       ],
     },
     {
       name: "allocate",
+      discriminator: [8, 0, 0, 0],
       accounts: [
         {
           name: "pubkey",
-          isMut: true,
-          isSigner: true,
+          writable: true,
+          signer: true,
         },
       ],
       args: [
@@ -637,22 +447,21 @@ export const IDL: SystemProgram = {
     },
     {
       name: "allocateWithSeed",
+      discriminator: [9, 0, 0, 0],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "base",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
         {
           name: "base",
-          type: "publicKey",
+          type: "pubkey",
         },
         {
           name: "seed",
@@ -664,28 +473,44 @@ export const IDL: SystemProgram = {
         },
         {
           name: "owner",
-          type: "publicKey",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "assign",
+      discriminator: [1, 0, 0, 0],
+      accounts: [
+        {
+          name: "pubkey",
+          writable: true,
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "owner",
+          type: "pubkey",
         },
       ],
     },
     {
       name: "assignWithSeed",
+      discriminator: [10, 0, 0, 0],
       accounts: [
         {
           name: "account",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "base",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
       ],
       args: [
         {
           name: "base",
-          type: "publicKey",
+          type: "pubkey",
         },
         {
           name: "seed",
@@ -693,27 +518,161 @@ export const IDL: SystemProgram = {
         },
         {
           name: "owner",
-          type: "publicKey",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "authorizeNonceAccount",
+      discriminator: [7, 0, 0, 0],
+      accounts: [
+        {
+          name: "nonce",
+          writable: true,
+        },
+        {
+          name: "authorized",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "authorized",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "createAccount",
+      discriminator: [0, 0, 0, 0],
+      accounts: [
+        {
+          name: "from",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "to",
+          writable: true,
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "lamports",
+          type: "u64",
+        },
+        {
+          name: "space",
+          type: "u64",
+        },
+        {
+          name: "owner",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "createAccountWithSeed",
+      discriminator: [3, 0, 0, 0],
+      accounts: [
+        {
+          name: "from",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "to",
+          writable: true,
+        },
+        {
+          name: "base",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "base",
+          type: "pubkey",
+        },
+        {
+          name: "seed",
+          type: "string",
+        },
+        {
+          name: "lamports",
+          type: "u64",
+        },
+        {
+          name: "space",
+          type: "u64",
+        },
+        {
+          name: "owner",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "initializeNonceAccount",
+      discriminator: [6, 0, 0, 0],
+      accounts: [
+        {
+          name: "nonce",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "recentBlockhashes",
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
+        },
+      ],
+      args: [
+        {
+          name: "authorized",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "transfer",
+      discriminator: [2, 0, 0, 0],
+      accounts: [
+        {
+          name: "from",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "to",
+          writable: true,
+        },
+      ],
+      args: [
+        {
+          name: "lamports",
+          type: "u64",
         },
       ],
     },
     {
       name: "transferWithSeed",
+      discriminator: [11, 0, 0, 0],
       accounts: [
         {
           name: "from",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
         {
           name: "base",
-          isMut: false,
-          isSigner: true,
+          signer: true,
         },
         {
           name: "to",
-          isMut: true,
-          isSigner: false,
+          writable: true,
         },
       ],
       args: [
@@ -727,12 +686,61 @@ export const IDL: SystemProgram = {
         },
         {
           name: "owner",
-          type: "publicKey",
+          type: "pubkey",
+        },
+      ],
+    },
+    {
+      name: "withdrawNonceAccount",
+      discriminator: [5, 0, 0, 0],
+      accounts: [
+        {
+          name: "nonce",
+          writable: true,
+        },
+        {
+          name: "to",
+          writable: true,
+        },
+        {
+          name: "recentBlockhashes",
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
+        },
+        {
+          name: "authorized",
+          signer: true,
+        },
+      ],
+      args: [
+        {
+          name: "lamports",
+          type: "u64",
         },
       ],
     },
   ],
   accounts: [
+    {
+      name: "nonce",
+      discriminator: [],
+    },
+  ],
+  types: [
+    {
+      name: "feeCalculator",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "lamportsPerSignature",
+            type: "u64",
+          },
+        ],
+      },
+    },
     {
       name: "nonce",
       type: {
@@ -748,31 +756,19 @@ export const IDL: SystemProgram = {
           },
           {
             name: "authorizedPubkey",
-            type: "publicKey",
+            type: "pubkey",
           },
           {
             name: "nonce",
-            type: "publicKey",
+            type: "pubkey",
           },
           {
             name: "feeCalculator",
             type: {
-              defined: "FeeCalculator",
+              defined: {
+                name: "feeCalculator",
+              },
             },
-          },
-        ],
-      },
-    },
-  ],
-  types: [
-    {
-      name: "FeeCalculator",
-      type: {
-        kind: "struct",
-        fields: [
-          {
-            name: "lamportsPerSignature",
-            type: "u64",
           },
         ],
       },

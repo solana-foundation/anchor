@@ -1,9 +1,6 @@
 use crate::Error;
 use quote::quote;
 
-#[cfg(feature = "idl-build")]
-use crate::idl::build::gen_idl_print_function_for_error;
-
 pub fn generate(error: Error) -> proc_macro2::TokenStream {
     let error_enum = &error.raw_enum;
     let enum_name = &error.ident;
@@ -103,10 +100,10 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let idl_build = gen_idl_print_function_for_error(&error);
+        let idl_print = crate::idl::gen_idl_print_fn_error(&error);
         return quote! {
             #ret
-            #idl_build
+            #idl_print
         };
     };
 

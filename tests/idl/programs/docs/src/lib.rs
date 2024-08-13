@@ -4,6 +4,10 @@ use anchor_lang::prelude::*;
 
 declare_id!("Docs111111111111111111111111111111111111111");
 
+/// Documentation comment for constant
+#[constant]
+pub const MY_CONST: u8 = 42;
+
 /// This is a doc comment for the program
 #[program]
 pub mod docs {

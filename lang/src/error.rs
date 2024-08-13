@@ -2,6 +2,7 @@ use anchor_lang::error_code;
 use borsh::maybestd::io::Error as BorshIoError;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::fmt::{Debug, Display};
+use std::num::TryFromIntError;
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -20,8 +21,8 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 #[error_code(offset = 0)]
 pub enum ErrorCode {
     // Instructions
-    /// 100 - 8 byte instruction identifier not provided
-    #[msg("8 byte instruction identifier not provided")]
+    /// 100 - Instruction discriminator not provided
+    #[msg("Instruction discriminator not provided")]
     InstructionMissing = 100,
     /// 101 - Fallback functions are not supported
     #[msg("Fallback functions are not supported")]
@@ -126,6 +127,56 @@ pub enum ErrorCode {
     /// 2023 - A mint token program constraint was violated
     #[msg("An associated token account token program constraint was violated")]
     ConstraintAssociatedTokenTokenProgram,
+    /// Extension constraints
+    ///
+    /// 2024 - A group pointer extension constraint was violated
+    #[msg("A group pointer extension constraint was violated")]
+    ConstraintMintGroupPointerExtension,
+    /// 2025 - A group pointer extension authority constraint was violated
+    #[msg("A group pointer extension authority constraint was violated")]
+    ConstraintMintGroupPointerExtensionAuthority,
+    /// 2026 - A group pointer extension group address constraint was violated
+    #[msg("A group pointer extension group address constraint was violated")]
+    ConstraintMintGroupPointerExtensionGroupAddress,
+    /// 2027 - A group member pointer extension constraint was violated
+    #[msg("A group member pointer extension constraint was violated")]
+    ConstraintMintGroupMemberPointerExtension,
+    /// 2028 - A group member pointer extension authority constraint was violated
+    #[msg("A group member pointer extension authority constraint was violated")]
+    ConstraintMintGroupMemberPointerExtensionAuthority,
+    /// 2029 - A group member pointer extension member address constraint was violated
+    #[msg("A group member pointer extension group address constraint was violated")]
+    ConstraintMintGroupMemberPointerExtensionMemberAddress,
+    /// 2030 - A metadata pointer extension constraint was violated
+    #[msg("A metadata pointer extension constraint was violated")]
+    ConstraintMintMetadataPointerExtension,
+    /// 2031 - A metadata pointer extension authority constraint was violated
+    #[msg("A metadata pointer extension authority constraint was violated")]
+    ConstraintMintMetadataPointerExtensionAuthority,
+    /// 2032 - A metadata pointer extension metadata address constraint was violated
+    #[msg("A metadata pointer extension metadata address constraint was violated")]
+    ConstraintMintMetadataPointerExtensionMetadataAddress,
+    /// 2033 - A close authority extension constraint was violated
+    #[msg("A close authority constraint was violated")]
+    ConstraintMintCloseAuthorityExtension,
+    /// 2034 - A close authority extension authority constraint was violated
+    #[msg("A close authority extension authority constraint was violated")]
+    ConstraintMintCloseAuthorityExtensionAuthority,
+    /// 2035 - A permanent delegate extension constraint was violated
+    #[msg("A permanent delegate extension constraint was violated")]
+    ConstraintMintPermanentDelegateExtension,
+    /// 2036 - A permanent delegate extension authority constraint was violated
+    #[msg("A permanent delegate extension delegate constraint was violated")]
+    ConstraintMintPermanentDelegateExtensionDelegate,
+    /// 2037 - A transfer hook extension constraint was violated
+    #[msg("A transfer hook extension constraint was violated")]
+    ConstraintMintTransferHookExtension,
+    /// 2038 - A transfer hook extension authority constraint was violated
+    #[msg("A transfer hook extension authority constraint was violated")]
+    ConstraintMintTransferHookExtensionAuthority,
+    /// 2039 - A transfer hook extension transfer hook program id constraint was violated
+    #[msg("A transfer hook extension transfer hook program id constraint was violated")]
+    ConstraintMintTransferHookExtensionProgramId,
 
     // Require
     /// 2500 - A require expression was violated
@@ -154,11 +205,11 @@ pub enum ErrorCode {
     /// 3000 - The account discriminator was already set on this account
     #[msg("The account discriminator was already set on this account")]
     AccountDiscriminatorAlreadySet = 3000,
-    /// 3001 - No 8 byte discriminator was found on the account
-    #[msg("No 8 byte discriminator was found on the account")]
+    /// 3001 - No discriminator was found on the account
+    #[msg("No discriminator was found on the account")]
     AccountDiscriminatorNotFound,
-    /// 3002 - 8 byte discriminator did not match what was expected
-    #[msg("8 byte discriminator did not match what was expected")]
+    /// 3002 - Account discriminator did not match what was expected
+    #[msg("Account discriminator did not match what was expected")]
     AccountDiscriminatorMismatch,
     /// 3003 - Failed to deserialize the account
     #[msg("Failed to deserialize the account")]
@@ -213,6 +264,9 @@ pub enum ErrorCode {
     /// 4101 - You cannot/should not initialize the payer account as a program account
     #[msg("You cannot/should not initialize the payer account as a program account")]
     TryingToInitPayerAsProgramAccount = 4101,
+    /// 4102 - Invalid numeric conversion error
+    #[msg("Error during numeric conversion")]
+    InvalidNumericConversion = 4102,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
@@ -257,6 +311,18 @@ impl From<BorshIoError> for Error {
 impl From<ProgramErrorWithOrigin> for Error {
     fn from(pe: ProgramErrorWithOrigin) -> Self {
         Self::ProgramError(Box::new(pe))
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        Self::AnchorError(Box::new(AnchorError {
+            error_name: ErrorCode::InvalidNumericConversion.name(),
+            error_code_number: ErrorCode::InvalidNumericConversion.into(),
+            error_msg: format!("{}", e),
+            error_origin: None,
+            compared_values: None,
+        }))
     }
 }
 

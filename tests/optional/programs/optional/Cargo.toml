@@ -11,6 +11,7 @@ name = "optional"
 [features]
 no-entrypoint = []
 cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }

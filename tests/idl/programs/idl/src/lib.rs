@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{token, token_interface};
-use std::str::FromStr;
 
 declare_id!("id11111111111111111111111111111111111111111");
 
@@ -105,7 +104,7 @@ pub mod idl {
     }
 
     pub fn cause_error(_ctx: Context<CauseError>) -> Result<()> {
-        return Err(error!(ErrorCode::SomeError));
+        Err(error!(ErrorCode::SomeError))
     }
 }
 
@@ -137,10 +136,10 @@ pub struct BarStruct {
 
 impl Default for BarStruct {
     fn default() -> Self {
-        return BarStruct {
+        Self {
             some_field: true,
             other_field: 10,
-        };
+        }
     }
 }
 
@@ -156,7 +155,7 @@ pub struct FooStruct {
 
 impl Default for FooStruct {
     fn default() -> Self {
-        return FooStruct {
+        Self {
             field1: 123,
             field2: 999,
             nested: BarStruct::default(),
@@ -167,7 +166,7 @@ impl Default for FooStruct {
                 u8_field: 15,
                 nested: BarStruct::default(),
             },
-        };
+        }
     }
 }
 
@@ -205,8 +204,7 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        // some arbitrary default values
-        return State {
+        Self {
             bool_field: true,
             u8_field: 234,
             i8_field: -123,
@@ -222,7 +220,7 @@ impl Default for State {
             i128_field: i128::MIN / 2 - 10,
             bytes_field: vec![1, 2, 255, 254],
             string_field: String::from("hello"),
-            pubkey_field: Pubkey::from_str("EPZP2wrcRtMxrAPJCXVEQaYD9eH7fH7h12YqKDcd4aS7").unwrap(),
+            pubkey_field: pubkey!("EPZP2wrcRtMxrAPJCXVEQaYD9eH7fH7h12YqKDcd4aS7"),
             vec_field: vec![1, 2, 100, 1000, u64::MAX],
             vec_struct_field: vec![FooStruct::default()],
             option_field: None,
@@ -237,7 +235,7 @@ impl Default for State {
             },
             enum_field_3: FooEnum::Struct(BarStruct::default()),
             enum_field_4: FooEnum::NoFields,
-        };
+        }
     }
 }
 
@@ -248,10 +246,10 @@ pub struct State2 {
 }
 impl Default for State2 {
     fn default() -> Self {
-        return State2 {
+        Self {
             vec_of_option: vec![None, Some(10)],
             box_field: Box::new(true),
-        };
+        }
     }
 }
 
@@ -267,7 +265,7 @@ pub struct Initialize<'info> {
     /// State account
     #[account(
         init,
-        space = 8 + 1000, // TODO: use exact space required
+        space = 8 + 1000,
         payer = payer,
     )]
     state: Account<'info, State>,
@@ -289,7 +287,7 @@ pub struct Initialize<'info> {
 pub struct Initialize2<'info> {
     #[account(
         init,
-        space = 8 + 1000, // TODO: use exact space required
+        space = 8 + 1000,
         payer = payer,
     )]
     state: Account<'info, State2>,
@@ -315,7 +313,7 @@ mod some_other_module {
     use super::*;
 
     #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-    pub struct Baz {
+    pub struct MyStruct {
         some_u8: u8,
     }
 }
@@ -323,8 +321,8 @@ mod some_other_module {
 #[event]
 pub struct SomeEvent {
     bool_field: bool,
-    external_baz: external::Baz,
-    other_module_baz: some_other_module::Baz,
+    external_my_struct: external::MyStruct,
+    other_module_my_struct: some_other_module::MyStruct,
 }
 
 #[zero_copy]

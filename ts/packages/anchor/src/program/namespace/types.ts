@@ -1,19 +1,20 @@
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { Idl } from "../../";
 import {
-  IdlAccounts as IdlIdlAccounts,
-  IdlAccountItem,
-  IdlEnumFields,
-  IdlEnumFieldsNamed,
-  IdlEnumFieldsTuple,
+  Idl,
+  IdlInstructionAccounts as IdlInstructionAccounts,
+  IdlInstructionAccountItem,
   IdlField,
   IdlInstruction,
   IdlType,
   IdlTypeDef,
-  IdlTypeDefTyAlias,
   IdlTypeDefTyEnum,
   IdlTypeDefTyStruct,
+  IdlTypeDefTyType,
+  IdlDefinedFields,
+  IdlDefinedFieldsNamed,
+  IdlDefinedFieldsTuple,
+  IdlArrayLen,
 } from "../../idl";
 import { Accounts, Context } from "../context";
 import { MethodsBuilder } from "./methods";
@@ -21,40 +22,43 @@ import { MethodsBuilder } from "./methods";
 /**
  * All instructions for an IDL.
  */
-export type AllInstructions<IDL extends Idl> = IDL["instructions"][number];
+export type AllInstructions<I extends Idl> = I["instructions"][number];
 
 /**
  * Returns a type of instruction name to the IdlInstruction.
  */
-export type InstructionMap<I extends IdlInstruction> = {
+type InstructionMap<I extends IdlInstruction> = {
   [K in I["name"]]: I & { name: K };
 };
 
 /**
  * Returns a type of instruction name to the IdlInstruction.
  */
-export type AllInstructionsMap<IDL extends Idl> = InstructionMap<
-  AllInstructions<IDL>
+export type AllInstructionsMap<I extends Idl> = InstructionMap<
+  AllInstructions<I>
 >;
 
 /**
  * All accounts for an IDL.
  */
-export type AllAccounts<IDL extends Idl> = IDL["accounts"] extends undefined
-  ? IdlTypeDef
-  : NonNullable<IDL["accounts"]>[number];
+export type AllAccounts<I extends Idl> = ResolveIdlTypePointer<I, "accounts">;
 
 /**
  * Returns a type of instruction name to the IdlInstruction.
  */
-export type AccountMap<I extends IdlTypeDef> = {
-  [K in I["name"]]: I & { name: K };
+type AccountMap<I extends IdlTypeDef[]> = {
+  [K in I[number]["name"]]: I & { name: K };
 };
 
 /**
  * Returns a type of instruction name to the IdlInstruction.
  */
-export type AllAccountsMap<IDL extends Idl> = AccountMap<AllAccounts<IDL>>;
+export type AllAccountsMap<I extends Idl> = AccountMap<AllAccounts<I>>;
+
+/**
+ * All events for an IDL.
+ */
+export type AllEvents<I extends Idl> = ResolveIdlTypePointer<I, "events">;
 
 export type MakeInstructionsNamespace<
   IDL extends Idl,
@@ -99,12 +103,14 @@ export type InstructionAccountAddresses<
   I extends AllInstructions<IDL>
 > = InstructionAccountsAddresses<I["accounts"][number]>;
 
-type InstructionAccountsAddresses<A extends IdlAccountItem = IdlAccountItem> = {
+type InstructionAccountsAddresses<
+  A extends IdlInstructionAccountItem = IdlInstructionAccountItem
+> = {
   [N in A["name"]]: InstructionAccountsAddress<A & { name: N }>;
 };
 
-type InstructionAccountsAddress<A extends IdlAccountItem> =
-  A extends IdlIdlAccounts
+type InstructionAccountsAddress<A extends IdlInstructionAccountItem> =
+  A extends IdlInstructionAccounts
     ? InstructionAccountsAddresses<A["accounts"][number]>
     : PublicKey;
 
@@ -115,7 +121,7 @@ export type MethodsFn<
 > = (...args: ArgsTuple<I["args"], IdlTypes<IDL>>) => Ret;
 
 type TypeMap = {
-  publicKey: PublicKey;
+  pubkey: PublicKey;
   bool: boolean;
   string: string;
   bytes: Buffer;
@@ -129,15 +135,15 @@ export type DecodeType<T extends IdlType, Defined> = IdlType extends T
   ? unknown
   : T extends keyof TypeMap
   ? TypeMap[T]
-  : T extends { defined: keyof Defined }
-  ? Defined[T["defined"]]
+  : T extends { defined: { name: keyof Defined } }
+  ? Defined[T["defined"]["name"]]
   : T extends { option: IdlType }
   ? DecodeType<T["option"], Defined> | null
   : T extends { coption: IdlType }
   ? DecodeType<T["coption"], Defined> | null
   : T extends { vec: IdlType }
   ? DecodeType<T["vec"], Defined>[]
-  : T extends { array: [defined: IdlType, size: number] }
+  : T extends { array: [defined: IdlType, size: IdlArrayLen] }
   ? DecodeType<T["array"][0], Defined>[]
   : unknown;
 
@@ -160,33 +166,23 @@ type UnboxToUnion<T> = T extends (infer U)[]
   ? UnboxToUnion<V>
   : T;
 
-type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
-  ? `${T}${Capitalize<SnakeToCamelCase<U>>}`
-  : S;
-
-/**
- * decode single enum.field
- */
-declare type DecodeEnumField<F, Defined> = F extends IdlType
+type DecodeDefinedField<F, Defined> = F extends IdlType
   ? DecodeType<F, Defined>
   : never;
 
 /**
  * decode enum variant: named or tuple
  */
-declare type DecodeEnumFields<
-  F extends IdlEnumFields,
+type DecodeDefinedFields<
+  F extends IdlDefinedFields,
   Defined
-> = F extends IdlEnumFieldsNamed
+> = F extends IdlDefinedFieldsNamed
   ? {
-      [F2 in F[number] as SnakeToCamelCase<F2["name"]>]: DecodeEnumField<
-        F2["type"],
-        Defined
-      >;
+      [F2 in F[number] as F2["name"]]: DecodeDefinedField<F2["type"], Defined>;
     }
-  : F extends IdlEnumFieldsTuple
+  : F extends IdlDefinedFieldsTuple
   ? {
-      [F3 in keyof F as Exclude<F3, keyof unknown[]>]: DecodeEnumField<
+      [F3 in keyof F as Exclude<F3, keyof unknown[]>]: DecodeDefinedField<
         F[F3],
         Defined
       >;
@@ -194,7 +190,7 @@ declare type DecodeEnumFields<
   : Record<string, never>;
 
 type DecodeEnumVariants<I extends IdlTypeDefTyEnum, Defined> = {
-  [V in I["variants"][number] as Uncapitalize<V["name"]>]: DecodeEnumFields<
+  [V in I["variants"][number] as V["name"]]: DecodeDefinedFields<
     NonNullable<V["fields"]>,
     Defined
   >;
@@ -211,12 +207,13 @@ type DecodeEnum<I extends IdlTypeDefTyEnum, Defined> = XorEnumVariants<
   DecodeEnumVariants<I, Defined>
 >;
 
-type DecodeStruct<I extends IdlTypeDefTyStruct, Defined> = {
-  [F in I["fields"][number] as F["name"]]: DecodeType<F["type"], Defined>;
-};
+type DecodeStruct<I extends IdlTypeDefTyStruct, Defined> = DecodeDefinedFields<
+  NonNullable<I["fields"]>,
+  Defined
+>;
 
-type DecodeAlias<I extends IdlTypeDefTyAlias, Defined> = DecodeType<
-  I["value"],
+type DecodeAlias<I extends IdlTypeDefTyType, Defined> = DecodeType<
+  I["alias"],
   Defined
 >;
 
@@ -227,7 +224,7 @@ export type TypeDef<
   ? DecodeEnum<I["type"], Defined>
   : I["type"] extends IdlTypeDefTyStruct
   ? DecodeStruct<I["type"], Defined>
-  : I["type"] extends IdlTypeDefTyAlias
+  : I["type"] extends IdlTypeDefTyType
   ? DecodeAlias<I["type"], Defined>
   : never;
 
@@ -241,8 +238,9 @@ type DecodedHelper<T extends IdlTypeDef[], Defined> = {
 
 type UnknownType = "__unknown_defined_type__";
 /**
- * empty "defined" object to produce UnknownType instead of never/unknown during idl types decoding
- *  */
+ * Empty "defined" object to produce `UnknownType` instead of never/unknown
+ * during IDL types decoding.
+ */
 type EmptyDefined = Record<UnknownType, never>;
 
 type RecursiveDepth2<
@@ -267,8 +265,8 @@ type RecursiveDepth4<
 > = DecodedHelper<T, Defined>;
 
 /**
- * typescript can't handle truly recursive type (RecursiveTypes instead of RecursiveDepth2).
- * Hence we're doing "recursion" of depth=4 manually
+ * TypeScript can't handle truly recursive type (RecursiveTypes instead of RecursiveDepth2).
+ * Hence we're doing recursion of depth=4 manually
  *  */
 type RecursiveTypes<
   T extends IdlTypeDef[],
@@ -280,27 +278,35 @@ type RecursiveTypes<
     ? RecursiveDepth2<T, DecodedHelper<T, Defined>>
     : Decoded;
 
-export type IdlTypes<T extends Idl> = RecursiveTypes<NonNullable<T["types"]>>;
+export type IdlTypes<I extends Idl> = RecursiveTypes<NonNullable<I["types"]>>;
 
-type IdlEventType<
-  I extends Idl,
-  Event extends NonNullable<I["events"]>[number],
-  Defined
-> = {
-  [F in Event["fields"][number] as F["name"]]: DecodeType<F["type"], Defined>;
-};
+export type IdlErrors<I extends Idl> = NonNullable<I["errors"]>[number];
 
-export type IdlEvents<I extends Idl, Defined = IdlTypes<I>> = {
-  [E in NonNullable<I["events"]>[number] as E["name"]]: IdlEventType<
-    I,
-    E,
-    Defined
-  >;
-};
-
-export type IdlAccounts<T extends Idl> = TypeDefDictionary<
-  NonNullable<T["accounts"]>,
-  IdlTypes<T>
+export type IdlAccounts<I extends Idl> = ResolveIdlPointerSection<
+  I,
+  "accounts"
 >;
 
-export type IdlErrorInfo<IDL extends Idl> = NonNullable<IDL["errors"]>[number];
+export type IdlEvents<I extends Idl> = ResolveIdlPointerSection<I, "events">;
+
+type IdlPointerSection = keyof Pick<Idl, "accounts" | "events">;
+
+type ResolveIdlPointerSection<
+  I extends Idl,
+  K extends IdlPointerSection,
+  T extends ResolveIdlTypePointer<I, K> = ResolveIdlTypePointer<I, K>
+> = TypeDefDictionary<T extends [] ? IdlTypeDef[] : T, IdlTypes<I>>;
+
+type ResolveIdlTypePointer<
+  I extends Idl,
+  Key extends IdlPointerSection
+> = FilterTuple<
+  NonNullable<I["types"]>,
+  { name: NonNullable<I[Key]>[number]["name"] }
+>;
+
+type FilterTuple<T extends unknown[], F> = T extends [infer Head, ...infer Tail]
+  ? [Head] extends [F]
+    ? [Head, ...FilterTuple<Tail, F>]
+    : FilterTuple<Tail, F>
+  : [];

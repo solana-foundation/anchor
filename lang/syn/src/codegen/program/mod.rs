@@ -39,12 +39,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        let no_docs = crate::idl::build::get_no_docs();
-        let idl_build = crate::idl::build::gen_idl_print_function_for_program(program, no_docs);
-
+        let idl_build_impl = crate::idl::gen_idl_print_fn_program(program);
         return quote! {
             #ret
-            #idl_build
+            #idl_build_impl
         };
     };
 

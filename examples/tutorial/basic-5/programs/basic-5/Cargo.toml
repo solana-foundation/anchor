@@ -2,7 +2,6 @@
 name = "basic-5"
 version = "0.1.0"
 description = "Created with Anchor"
-rust-version = "1.60"
 edition = "2021"
 
 [lib]
@@ -12,6 +11,7 @@ name = "basic_5"
 [features]
 no-entrypoint = []
 cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../../lang" }

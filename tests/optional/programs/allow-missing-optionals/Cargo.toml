@@ -11,6 +11,7 @@ name = "allow_missing_optionals"
 [features]
 no-entrypoint = []
 cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang", features = ["allow-missing-optionals"] }

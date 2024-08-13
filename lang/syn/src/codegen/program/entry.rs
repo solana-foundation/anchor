@@ -1,13 +1,9 @@
-use crate::program_codegen::dispatch;
 use crate::Program;
 use heck::CamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
-    let fallback_maybe = dispatch::gen_fallback(program).unwrap_or(quote! {
-        Err(anchor_lang::error::ErrorCode::InstructionMissing.into())
-    });
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
@@ -61,9 +57,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
             if *program_id != ID {
                 return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into());
-            }
-            if data.len() < 8 {
-                return #fallback_maybe;
             }
 
             dispatch(program_id, accounts, data)

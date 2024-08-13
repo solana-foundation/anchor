@@ -1,8 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { IdlEvent, IdlEventField } from "../idl.js";
+import { Commitment, PublicKey } from "@solana/web3.js";
 import { Coder } from "../coder/index.js";
-import { DecodeType } from "./namespace/types.js";
+import { IdlEvent, IdlField } from "../idl.js";
 import Provider from "../provider.js";
+import { DecodeType } from "./namespace/types.js";
 
 const PROGRAM_LOG = "Program log: ";
 const PROGRAM_DATA = "Program data: ";
@@ -15,10 +15,12 @@ export type Event<
   Defined = Record<string, never>
 > = {
   name: E["name"];
-  data: EventData<E["fields"][number], Defined>;
+  // TODO:
+  // data: EventData<E["type"]["fields"][number], Defined>;
+  data: any;
 };
 
-export type EventData<T extends IdlEventField, Defined> = {
+export type EventData<T extends IdlField, Defined> = {
   [N in T["name"]]: DecodeType<(T & { name: N })["type"], Defined>;
 };
 
@@ -71,7 +73,8 @@ export class EventManager {
 
   public addEventListener(
     eventName: string,
-    callback: (event: any, slot: number, signature: string) => void
+    callback: (event: any, slot: number, signature: string) => void,
+    commitment?: Commitment
   ): number {
     let listener = this._listenerIdCount;
     this._listenerIdCount += 1;
@@ -114,7 +117,8 @@ export class EventManager {
             });
           }
         }
-      }
+      },
+      commitment
     );
 
     return listener;

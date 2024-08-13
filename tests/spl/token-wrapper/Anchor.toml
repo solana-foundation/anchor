@@ -7,11 +7,3 @@ token_wrapper = "4ZPcGU8MX8oL2u1EtErHzixAbgNBNeE9yoYq3kKMqnAy"
 
 [scripts]
 test = "yarn run ts-mocha -t 1000000 tests/*.ts"
-
-[features]
-
-[test.validator]
-url = "https://api.mainnet-beta.solana.com"
-
-[[test.validator.clone]]
-address = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"

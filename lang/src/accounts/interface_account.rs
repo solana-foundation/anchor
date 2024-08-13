@@ -86,6 +86,7 @@ use std::ops::{Deref, DerefMut};
 /// those programs are not annotated with `#[account]` so you have to
 /// - create a wrapper type around the structs you want to wrap with InterfaceAccount
 /// - implement the functions required by InterfaceAccount yourself
+///
 /// instead of using `#[account]`. You only have to implement a fraction of the
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.

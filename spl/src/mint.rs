@@ -1,4 +1,4 @@
-use anchor_lang::solana_program::declare_id;
+use anchor_lang::declare_id;
 
 pub use srm::ID as SRM;
 mod srm {

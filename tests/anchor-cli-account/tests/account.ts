@@ -55,9 +55,9 @@ describe("Test CLI account commands", () => {
       await sleep(5000);
     }
 
-    assert(output.balance == balance, "Balance deserialized incorrectly");
+    assert(output.balance === balance, "Balance deserialized incorrectly");
     assert(
-      output.delegatePubkey == provider.wallet.publicKey,
+      output.delegate_pubkey === provider.wallet.publicKey.toBase58(),
       "delegatePubkey deserialized incorrectly"
     );
     assert(

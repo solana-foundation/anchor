@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { EventParser } from "../src/program/event";
-import { BorshCoder } from "../src";
+import { BorshCoder, Idl } from "../src";
 
 describe("Events", () => {
   it("Parses multiple instructions", () => {
@@ -11,14 +11,19 @@ describe("Events", () => {
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 consumed 17867 of 200000 compute units",
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 success",
     ];
-    const idl = {
-      version: "0.0.0",
-      name: "basic_0",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
           accounts: [],
           args: [],
+          discriminator: [],
         },
       ],
     };
@@ -39,14 +44,19 @@ describe("Events", () => {
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 consumed 17867 of 200000 compute units",
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 success",
     ];
-    const idl = {
-      version: "0.0.0",
-      name: "basic_0",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
           accounts: [],
           args: [],
+          discriminator: [],
         },
       ],
     };
@@ -83,31 +93,43 @@ describe("Events", () => {
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 success",
     ];
 
-    const idl = {
-      version: "0.0.0",
-      name: "basic_1",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_1",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "initialize",
           accounts: [],
           args: [],
+          discriminator: [],
         },
       ],
       events: [
         {
           name: "NftSold",
-          fields: [
-            {
-              name: "nftMintAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-            {
-              name: "accountAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-          ],
+          discriminator: [82, 21, 49, 86, 87, 54, 132, 103],
+        },
+      ],
+      types: [
+        {
+          name: "NftSold",
+          type: {
+            kind: "struct",
+            fields: [
+              {
+                name: "nftMintAddress",
+                type: "pubkey",
+              },
+              {
+                name: "accountAddress",
+                type: "pubkey",
+              },
+            ],
+          },
         },
       ],
     };
@@ -116,6 +138,7 @@ describe("Events", () => {
     const programId = new PublicKey(
       "J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54"
     );
+
     const eventParser = new EventParser(programId, coder);
 
     const gen = eventParser.parseLogs(logs);
@@ -143,42 +166,41 @@ describe("Events", () => {
       "Program J2XMGdW2qQLx7rAdwWtSZpTXDgAQ988BLP9QTgUZvm54 success",
     ];
 
-    const idl = {
-      version: "0.0.0",
-      name: "basic_2",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_2",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [
         {
           name: "cancelListing",
+          discriminator: [],
           accounts: [
             {
               name: "globalState",
-              isMut: true,
-              isSigner: false,
+              writable: true,
             },
             {
               name: "nftHolderAccount",
-              isMut: true,
-              isSigner: false,
+              writable: true,
             },
             {
               name: "listingAccount",
-              isMut: true,
-              isSigner: false,
+              writable: true,
             },
             {
               name: "nftAssociatedAccount",
-              isMut: true,
-              isSigner: false,
+              writable: true,
             },
             {
               name: "signer",
-              isMut: true,
-              isSigner: true,
+              writable: true,
+              signer: true,
             },
             {
               name: "tokenProgram",
-              isMut: false,
-              isSigner: false,
             },
           ],
           args: [],
@@ -187,23 +209,29 @@ describe("Events", () => {
       events: [
         {
           name: "ListingClosed",
-          fields: [
-            {
-              name: "initializer",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-            {
-              name: "nftMintAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-            {
-              name: "accountAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-          ],
+          discriminator: [86, 219, 253, 196, 184, 194, 176, 78],
+        },
+      ],
+      types: [
+        {
+          name: "ListingClosed",
+          type: {
+            kind: "struct",
+            fields: [
+              {
+                name: "initializer",
+                type: "pubkey",
+              },
+              {
+                name: "nftMintAddress",
+                type: "pubkey",
+              },
+              {
+                name: "accountAddress",
+                type: "pubkey",
+              },
+            ],
+          },
         },
       ],
     };
@@ -239,30 +267,40 @@ describe("Events", () => {
       "Program 5VcVB7jEjdWJBkriXxayCrUUkwfhrPK3rXtnkxxUvMFP success",
     ];
 
-    const idl = {
-      version: "0.0.0",
-      name: "basic_2",
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_2",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
       instructions: [],
       events: [
         {
           name: "ListingClosed",
-          fields: [
-            {
-              name: "initializer",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-            {
-              name: "nftMintAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-            {
-              name: "accountAddress",
-              type: "publicKey" as "publicKey",
-              index: false,
-            },
-          ],
+          discriminator: [],
+        },
+      ],
+      types: [
+        {
+          name: "ListingClosed",
+          type: {
+            kind: "struct",
+            fields: [
+              {
+                name: "initializer",
+                type: "pubkey",
+              },
+              {
+                name: "nftMintAddress",
+                type: "pubkey",
+              },
+              {
+                name: "accountAddress",
+                type: "pubkey",
+              },
+            ],
+          },
         },
       ],
     };

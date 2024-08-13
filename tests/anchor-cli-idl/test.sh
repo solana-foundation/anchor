@@ -8,8 +8,12 @@ RANDOM_DATA=$(openssl rand -base64 $((10*1680)) | sed 's/.*/"&",/')
 
 # Create the JSON object with the "docs" field containing random data
 echo '{
-  "version": "0.1.0",
-  "name": "idl_commands_one",
+  "address": "2uA3amp95zsEHUpo8qnLMhcFAUsiKVEcKHXS1JetFjU5",
+  "metadata": {
+    "name": "idl_commands_one",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
   "instructions": [
     {
       "name": "initialize",
@@ -17,6 +21,7 @@ echo '{
         '"$RANDOM_DATA"'
         "trailing comma begone"
       ],
+      "discriminator": [],
       "accounts": [],
       "args": []
     }

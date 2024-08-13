@@ -1,6 +1,6 @@
 import TransactionFactory from "../src/program/namespace/transaction";
 import InstructionFactory from "../src/program/namespace/instruction";
-import { BorshCoder } from "../src";
+import { BorshCoder, Idl } from "../src";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
 describe("Transaction", () => {
@@ -14,14 +14,19 @@ describe("Transaction", () => {
     programId: PublicKey.default,
     data: Buffer.from("post"),
   });
-  const idl = {
-    version: "0.0.0",
-    name: "basic_0",
+  const idl: Idl = {
+    address: "Test111111111111111111111111111111111111111",
+    metadata: {
+      name: "basic_0",
+      version: "0.0.0",
+      spec: "0.1.0",
+    },
     instructions: [
       {
         name: "initialize",
         accounts: [],
         args: [],
+        discriminator: [],
       },
     ],
   };

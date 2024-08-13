@@ -39,10 +39,10 @@ export class SplAssociatedTokenAccountAccountsCoder<A extends string = string>
     }
   }
 
-  public size(idlAccount: IdlTypeDef): number {
-    switch (idlAccount.name) {
+  public size(accountName: A): number {
+    switch (accountName) {
       default: {
-        throw new Error(`Invalid account name: ${idlAccount.name}`);
+        throw new Error(`Invalid account name: ${accountName}`);
       }
     }
   }

@@ -1,0 +1,32 @@
+{
+  "name": "@coral-xyz/anchor-errors",
+  "version": "0.30.1",
+  "description": "Anchor error codes",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint:fix": "prettier src/** -w",
+    "lint": "prettier src/** --check",
+    "watch": "tsc --watch",
+    "prepublishOnly": "yarn build",
+    "test": "",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "prettier": "^2.1.2"
+  }
+}

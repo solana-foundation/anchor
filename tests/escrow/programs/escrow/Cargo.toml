@@ -2,7 +2,6 @@
 name = "escrow"
 version = "0.1.0"
 description = "Created with Anchor"
-rust-version = "1.60"
 edition = "2021"
 
 [lib]
@@ -14,6 +13,7 @@ no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }

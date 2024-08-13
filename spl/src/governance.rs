@@ -12,7 +12,7 @@ macro_rules! vote_weight_record {
                 let vwr: spl_governance_addin_api::voter_weight::VoterWeightRecord =
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize)?;
-                if !solana_program::program_pack::IsInitialized::is_initialized(&vwr) {
+                if !anchor_lang::solana_program::program_pack::IsInitialized::is_initialized(&vwr) {
                     return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                 }
                 Ok(VoterWeightRecord(vwr))
@@ -57,5 +57,10 @@ macro_rules! vote_weight_record {
 
         #[cfg(feature = "idl-build")]
         impl anchor_lang::IdlBuild for VoterWeightRecord {}
+
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang::Discriminator for VoterWeightRecord {
+            const DISCRIMINATOR: &'static [u8] = &[];
+        }
     };
 }

@@ -1,0 +1,755 @@
+{
+  "version": "0.1.0",
+  "name": "idl",
+  "docs": [
+    "IDL test program documentation."
+  ],
+  "constants": [
+    {
+      "name": "U8",
+      "type": "u8",
+      "value": "6"
+    },
+    {
+      "name": "I128",
+      "type": "i128",
+      "value": "1_000_000"
+    },
+    {
+      "name": "BYTE_STR",
+      "type": "u8",
+      "value": "116"
+    },
+    {
+      "name": "BYTES_STR",
+      "type": "bytes",
+      "value": "[116, 101, 115, 116]"
+    }
+  ],
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "State account"
+          ]
+        },
+        {
+          "name": "nested",
+          "accounts": [
+            {
+              "name": "clock",
+              "isMut": false,
+              "isSigner": false,
+              "docs": [
+                "Sysvar clock"
+              ]
+            },
+            {
+              "name": "rent",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "zcAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "mintAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenInterfaceAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "mintInterfaceAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeWithValues",
+      "docs": [
+        "Initializes an account with specified values"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "State account"
+          ]
+        },
+        {
+          "name": "nested",
+          "accounts": [
+            {
+              "name": "clock",
+              "isMut": false,
+              "isSigner": false,
+              "docs": [
+                "Sysvar clock"
+              ]
+            },
+            {
+              "name": "rent",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "zcAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "mintAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenInterfaceAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "mintInterfaceAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "boolField",
+          "type": "bool"
+        },
+        {
+          "name": "u8Field",
+          "type": "u8"
+        },
+        {
+          "name": "i8Field",
+          "type": "i8"
+        },
+        {
+          "name": "u16Field",
+          "type": "u16"
+        },
+        {
+          "name": "i16Field",
+          "type": "i16"
+        },
+        {
+          "name": "u32Field",
+          "type": "u32"
+        },
+        {
+          "name": "i32Field",
+          "type": "i32"
+        },
+        {
+          "name": "f32Field",
+          "type": "f32"
+        },
+        {
+          "name": "u64Field",
+          "type": "u64"
+        },
+        {
+          "name": "i64Field",
+          "type": "i64"
+        },
+        {
+          "name": "f64Field",
+          "type": "f64"
+        },
+        {
+          "name": "u128Field",
+          "type": "u128"
+        },
+        {
+          "name": "i128Field",
+          "type": "i128"
+        },
+        {
+          "name": "bytesField",
+          "type": "bytes"
+        },
+        {
+          "name": "stringField",
+          "type": "string"
+        },
+        {
+          "name": "pubkeyField",
+          "type": "publicKey"
+        },
+        {
+          "name": "vecField",
+          "type": {
+            "vec": "u64"
+          }
+        },
+        {
+          "name": "vecStructField",
+          "type": {
+            "vec": {
+              "defined": "FooStruct"
+            }
+          }
+        },
+        {
+          "name": "optionField",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "optionStructField",
+          "type": {
+            "option": {
+              "defined": "FooStruct"
+            }
+          }
+        },
+        {
+          "name": "structField",
+          "type": {
+            "defined": "FooStruct"
+          }
+        },
+        {
+          "name": "arrayField",
+          "type": {
+            "array": [
+              "bool",
+              3
+            ]
+          }
+        },
+        {
+          "name": "enumField1",
+          "type": {
+            "defined": "FooEnum"
+          }
+        },
+        {
+          "name": "enumField2",
+          "type": {
+            "defined": "FooEnum"
+          }
+        },
+        {
+          "name": "enumField3",
+          "type": {
+            "defined": "FooEnum"
+          }
+        },
+        {
+          "name": "enumField4",
+          "type": {
+            "defined": "FooEnum"
+          }
+        }
+      ]
+    },
+    {
+      "name": "initializeWithValues2",
+      "docs": [
+        "a separate instruction due to initialize_with_values having too many arguments",
+        "https://github.com/solana-labs/solana/issues/23978"
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vecOfOption",
+          "type": {
+            "vec": {
+              "option": "u64"
+            }
+          }
+        },
+        {
+          "name": "boxField",
+          "type": "bool"
+        }
+      ],
+      "returns": {
+        "defined": "SomeRetStruct"
+      }
+    },
+    {
+      "name": "causeError",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "State",
+      "docs": [
+        "An account containing various fields"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boolField",
+            "docs": [
+              "A boolean field"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "u8Field",
+            "type": "u8"
+          },
+          {
+            "name": "i8Field",
+            "type": "i8"
+          },
+          {
+            "name": "u16Field",
+            "type": "u16"
+          },
+          {
+            "name": "i16Field",
+            "type": "i16"
+          },
+          {
+            "name": "u32Field",
+            "type": "u32"
+          },
+          {
+            "name": "i32Field",
+            "type": "i32"
+          },
+          {
+            "name": "f32Field",
+            "type": "f32"
+          },
+          {
+            "name": "u64Field",
+            "type": "u64"
+          },
+          {
+            "name": "i64Field",
+            "type": "i64"
+          },
+          {
+            "name": "f64Field",
+            "type": "f64"
+          },
+          {
+            "name": "u128Field",
+            "type": "u128"
+          },
+          {
+            "name": "i128Field",
+            "type": "i128"
+          },
+          {
+            "name": "bytesField",
+            "type": "bytes"
+          },
+          {
+            "name": "stringField",
+            "type": "string"
+          },
+          {
+            "name": "pubkeyField",
+            "type": "publicKey"
+          },
+          {
+            "name": "vecField",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "vecStructField",
+            "type": {
+              "vec": {
+                "defined": "FooStruct"
+              }
+            }
+          },
+          {
+            "name": "optionField",
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "optionStructField",
+            "type": {
+              "option": {
+                "defined": "FooStruct"
+              }
+            }
+          },
+          {
+            "name": "structField",
+            "type": {
+              "defined": "FooStruct"
+            }
+          },
+          {
+            "name": "arrayField",
+            "type": {
+              "array": [
+                "bool",
+                3
+              ]
+            }
+          },
+          {
+            "name": "enumField1",
+            "type": {
+              "defined": "FooEnum"
+            }
+          },
+          {
+            "name": "enumField2",
+            "type": {
+              "defined": "FooEnum"
+            }
+          },
+          {
+            "name": "enumField3",
+            "type": {
+              "defined": "FooEnum"
+            }
+          },
+          {
+            "name": "enumField4",
+            "type": {
+              "defined": "FooEnum"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "State2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vecOfOption",
+            "type": {
+              "vec": {
+                "option": "u64"
+              }
+            }
+          },
+          {
+            "name": "boxField",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SomeZcAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": {
+              "defined": "ZcStruct"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "MyStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someU8",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BarStruct",
+      "docs": [
+        "Bar struct type"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "docs": [
+              "Some field"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "otherField",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FooStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field1",
+            "type": "u8"
+          },
+          {
+            "name": "field2",
+            "type": "u16"
+          },
+          {
+            "name": "nested",
+            "type": {
+              "defined": "BarStruct"
+            }
+          },
+          {
+            "name": "vecNested",
+            "type": {
+              "vec": {
+                "defined": "BarStruct"
+              }
+            }
+          },
+          {
+            "name": "optionNested",
+            "type": {
+              "option": {
+                "defined": "BarStruct"
+              }
+            }
+          },
+          {
+            "name": "enumField",
+            "type": {
+              "defined": "FooEnum"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZcStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SomeRetStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "someField",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FooEnum",
+      "docs": [
+        "Enum type"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unnamed",
+            "fields": [
+              "bool",
+              "u8",
+              {
+                "defined": "BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "UnnamedSingle",
+            "fields": [
+              {
+                "defined": "BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "Named",
+            "fields": [
+              {
+                "name": "boolField",
+                "docs": [
+                  "A bool field inside a struct tuple kind"
+                ],
+                "type": "bool"
+              },
+              {
+                "name": "u8Field",
+                "type": "u8"
+              },
+              {
+                "name": "nested",
+                "type": {
+                  "defined": "BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Struct",
+            "fields": [
+              {
+                "defined": "BarStruct"
+              }
+            ]
+          },
+          {
+            "name": "OptionStruct",
+            "fields": [
+              {
+                "option": {
+                  "defined": "BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "VecStruct",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "BarStruct"
+                }
+              }
+            ]
+          },
+          {
+            "name": "NoFields"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "SomeEvent",
+      "fields": [
+        {
+          "name": "boolField",
+          "type": "bool",
+          "index": false
+        },
+        {
+          "name": "externalMyStruct",
+          "type": {
+            "defined": "external::MyStruct"
+          },
+          "index": false
+        },
+        {
+          "name": "otherModuleMyStruct",
+          "type": {
+            "defined": "some_other_module::MyStruct"
+          },
+          "index": false
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "SomeError",
+      "msg": "Example error."
+    },
+    {
+      "code": 6001,
+      "name": "OtherError",
+      "msg": "Another error."
+    },
+    {
+      "code": 6002,
+      "name": "ErrorWithoutMsg"
+    }
+  ]
+}

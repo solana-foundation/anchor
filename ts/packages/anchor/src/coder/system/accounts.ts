@@ -1,8 +1,8 @@
 import { AccountsCoder } from "../index.js";
-import { Idl, IdlTypeDef } from "../../idl.js";
+import { Idl } from "../../idl.js";
 import * as BufferLayout from "buffer-layout";
 import { NONCE_ACCOUNT_LENGTH, PublicKey } from "@solana/web3.js";
-import { accountSize } from "../common.js";
+import { IdlCoder } from "../borsh/idl.js";
 
 export class SystemAccountsCoder<A extends string = string>
   implements AccountsCoder
@@ -51,8 +51,8 @@ export class SystemAccountsCoder<A extends string = string>
     }
   }
 
-  public size(idlAccount: IdlTypeDef): number {
-    return accountSize(this.idl, idlAccount) ?? 0;
+  public size(accountName: A): number {
+    return IdlCoder.typeSize({ defined: { name: accountName } }, this.idl);
   }
 }
 

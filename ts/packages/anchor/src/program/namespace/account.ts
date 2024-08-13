@@ -1,4 +1,3 @@
-import camelCase from "camelcase";
 import EventEmitter from "eventemitter3";
 import {
   Signer,
@@ -12,7 +11,7 @@ import {
   Context,
 } from "@solana/web3.js";
 import Provider, { getProvider } from "../../provider.js";
-import { Idl, IdlAccountDef } from "../../idl.js";
+import { Idl, IdlAccount } from "../../idl.js";
 import { Coder, BorshCoder } from "../../coder/index.js";
 import { Subscription, Address, translateAddress } from "../common.js";
 import { AllAccountsMap, IdlAccounts } from "./types.js";
@@ -25,25 +24,21 @@ export default class AccountFactory {
     programId: PublicKey,
     provider?: Provider
   ): AccountNamespace<IDL> {
-    const accountFns = {} as AccountNamespace<IDL>;
-
-    idl.accounts?.forEach((idlAccount) => {
-      const name = camelCase(idlAccount.name);
-      accountFns[name] = new AccountClient<IDL>(
+    return (idl.accounts ?? []).reduce((accountFns, acc) => {
+      accountFns[acc.name] = new AccountClient<IDL>(
         idl,
-        idlAccount,
+        acc,
         programId,
         provider,
         coder
       );
-    });
-
-    return accountFns;
+      return accountFns;
+    }, {}) as AccountNamespace<IDL>;
   }
 }
 
 type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
-  ? IdlAccountDef
+  ? IdlAccount
   : NonNullable<IDL["accounts"]>[number];
 
 /**
@@ -66,15 +61,17 @@ type NullableIdlAccount<IDL extends Idl> = IDL["accounts"] extends undefined
  *
  * For the full API, see the [[AccountClient]] reference.
  */
-export type AccountNamespace<IDL extends Idl = Idl> = {
-  [N in keyof AllAccountsMap<IDL>]: AccountClient<IDL, N>;
+export type AccountNamespace<I extends Idl = Idl> = {
+  [A in keyof AllAccountsMap<I>]: AccountClient<I, A>;
 };
 
 export class AccountClient<
   IDL extends Idl = Idl,
-  N extends keyof IdlAccounts<IDL> = keyof IdlAccounts<IDL>,
-  A extends NullableIdlAccount<IDL> = NullableIdlAccount<IDL>,
-  T = IdlAccounts<IDL>[N]
+  A extends keyof IdlAccounts<IDL> = keyof IdlAccounts<IDL>,
+  N extends NullableIdlAccount<IDL> = NullableIdlAccount<IDL>,
+  T = IdlAccounts<IDL>[A] extends Record<string, unknown>
+    ? IdlAccounts<IDL>[A]
+    : never
 > {
   /**
    * Returns the number of bytes in this account.
@@ -108,17 +105,11 @@ export class AccountClient<
   }
   private _coder: Coder;
 
-  /**
-   * Returns the idl account.
-   */
-  get idlAccount(): A {
-    return this._idlAccount;
-  }
-  private _idlAccount: A;
+  private _idlAccount: N;
 
   constructor(
     idl: IDL,
-    idlAccount: A,
+    idlAccount: N,
     programId: PublicKey,
     provider?: Provider,
     coder?: Coder
@@ -127,7 +118,7 @@ export class AccountClient<
     this._programId = programId;
     this._provider = provider ?? getProvider();
     this._coder = coder ?? new BorshCoder(idl);
-    this._size = this._coder.accounts.size(idlAccount);
+    this._size = this._coder.accounts.size(idlAccount.name);
   }
 
   /**

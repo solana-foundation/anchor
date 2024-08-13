@@ -5,7 +5,11 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { Address } from "./common.js";
-import { IdlAccountItem, IdlAccounts, IdlInstruction } from "../idl.js";
+import {
+  IdlInstructionAccountItem,
+  IdlInstructionAccounts,
+  IdlInstruction,
+} from "../idl.js";
 
 /**
  * Context provides all non-argument inputs for generating Anchor transactions.
@@ -50,11 +54,6 @@ export type Context<A extends Accounts = Accounts> = {
    * Commitment parameters to use for a transaction.
    */
   options?: ConfirmOptions;
-
-  /**
-   * An optional override for the default instruction discriminator.
-   */
-  discriminator?: Buffer;
 };
 
 /**
@@ -66,15 +65,20 @@ export type Context<A extends Accounts = Accounts> = {
  * If multiple accounts are nested in the rust program, then they should be
  * nested here.
  */
-export type Accounts<A extends IdlAccountItem = IdlAccountItem> = {
+export type Accounts<
+  A extends IdlInstructionAccountItem = IdlInstructionAccountItem
+> = {
   [N in A["name"]]: Account<A & { name: N }>;
 };
 
-type Account<A extends IdlAccountItem> = A extends IdlAccounts
-  ? Accounts<A["accounts"][number]>
-  : A extends { isOptional: true }
-  ? Address | null
-  : Address;
+type Account<A extends IdlInstructionAccountItem> =
+  A extends IdlInstructionAccounts
+    ? Accounts<A["accounts"][number]>
+    : A extends { optional: true }
+    ? Address | null
+    : A extends { signer: true }
+    ? Address | undefined
+    : Address;
 
 export function splitArgsAndCtx(
   idlIx: IdlInstruction,

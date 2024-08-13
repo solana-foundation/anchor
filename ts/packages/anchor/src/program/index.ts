@@ -1,22 +1,28 @@
+import { Commitment, PublicKey } from "@solana/web3.js";
 import { inflate } from "pako";
-import { PublicKey } from "@solana/web3.js";
+import { BorshCoder, Coder } from "../coder/index.js";
+import {
+  Idl,
+  IdlInstruction,
+  convertIdlToCamelCase,
+  decodeIdlAccount,
+  idlAddress,
+} from "../idl.js";
 import Provider, { getProvider } from "../provider.js";
-import { Idl, idlAddress, decodeIdlAccount, IdlInstruction } from "../idl.js";
-import { Coder, BorshCoder } from "../coder/index.js";
-import NamespaceFactory, {
-  RpcNamespace,
-  InstructionNamespace,
-  TransactionNamespace,
-  AccountNamespace,
-  SimulateNamespace,
-  MethodsNamespace,
-  ViewNamespace,
-  IdlEvents,
-} from "./namespace/index.js";
 import { utf8 } from "../utils/bytes/index.js";
-import { EventManager } from "./event.js";
-import { Address, translateAddress } from "./common.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
+import { Address, translateAddress } from "./common.js";
+import { EventManager } from "./event.js";
+import NamespaceFactory, {
+  AccountNamespace,
+  IdlEvents,
+  InstructionNamespace,
+  MethodsNamespace,
+  RpcNamespace,
+  SimulateNamespace,
+  TransactionNamespace,
+  ViewNamespace,
+} from "./namespace/index.js";
 
 export * from "./common.js";
 export * from "./context.js";
@@ -224,12 +230,24 @@ export class Program<IDL extends Idl = Idl> {
   private _programId: PublicKey;
 
   /**
-   * IDL defining the program's interface.
+   * IDL in camelCase format to work in TypeScript.
+   *
+   * See {@link rawIdl} field if you need the original IDL.
    */
   public get idl(): IDL {
     return this._idl;
   }
   private _idl: IDL;
+
+  /**
+   * Raw IDL i.e. the original IDL without camelCase conversion.
+   *
+   * See {@link idl} field if you need the camelCased version of the IDL.
+   */
+  public get rawIdl(): Idl {
+    return this._rawIdl;
+  }
+  private _rawIdl: Idl;
 
   /**
    * Coder for serializing requests.
@@ -254,7 +272,6 @@ export class Program<IDL extends Idl = Idl> {
 
   /**
    * @param idl       The interface definition.
-   * @param programId The on-chain address of the program.
    * @param provider  The network and wallet context to use. If not provided
    *                  then uses [[getProvider]].
    * @param getCustomResolver A function that returns a custom account resolver
@@ -263,34 +280,30 @@ export class Program<IDL extends Idl = Idl> {
    */
   public constructor(
     idl: IDL,
-    programId: Address,
-    provider?: Provider,
+    provider: Provider = getProvider(),
     coder?: Coder,
     getCustomResolver?: (
       instruction: IdlInstruction
     ) => CustomAccountResolver<IDL> | undefined
   ) {
-    programId = translateAddress(programId);
-
-    if (!provider) {
-      provider = getProvider();
-    }
+    const camelCasedIdl = convertIdlToCamelCase(idl);
 
     // Fields.
-    this._idl = idl;
+    this._idl = camelCasedIdl;
+    this._rawIdl = idl;
     this._provider = provider;
-    this._programId = programId;
-    this._coder = coder ?? new BorshCoder(idl);
+    this._programId = translateAddress(idl.address);
+    this._coder = coder ?? new BorshCoder(camelCasedIdl);
     this._events = new EventManager(this._programId, provider, this._coder);
 
     // Dynamic namespaces.
     const [rpc, instruction, transaction, account, simulate, methods, views] =
       NamespaceFactory.build(
-        idl,
+        camelCasedIdl,
         this._coder,
-        programId,
+        this._programId,
         provider,
-        getCustomResolver ?? (() => undefined)
+        getCustomResolver
       );
     this.rpc = rpc;
     this.instruction = instruction;
@@ -321,7 +334,7 @@ export class Program<IDL extends Idl = Idl> {
       throw new Error(`IDL not found for program: ${address.toString()}`);
     }
 
-    return new Program(idl, programId, provider);
+    return new Program(idl, provider);
   }
 
   /**
@@ -359,14 +372,15 @@ export class Program<IDL extends Idl = Idl> {
    *                  program logs.
    */
   public addEventListener<E extends keyof IdlEvents<IDL>>(
-    eventName: E,
+    eventName: E & string,
     callback: (
       event: IdlEvents<IDL>[E],
       slot: number,
       signature: string
-    ) => void
+    ) => void,
+    commitment?: Commitment
   ): number {
-    return this._events.addEventListener(eventName, callback);
+    return this._events.addEventListener(eventName, callback, commitment);
   }
 
   /**

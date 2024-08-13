@@ -5,8 +5,8 @@ use syn::punctuated::Punctuated;
 use syn::{ConstParam, LifetimeDef, Token, TypeParam};
 use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
 
-mod __client_accounts;
-mod __cpi_client_accounts;
+pub mod __client_accounts;
+pub mod __cpi_client_accounts;
 mod bumps;
 mod constraints;
 mod exit;
@@ -21,8 +21,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_exit = exit::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
-    let __client_accounts_mod = __client_accounts::generate(accs);
-    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs);
+    let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, quote!(crate::ID));
 
     let ret = quote! {
         #impl_try_accounts
@@ -37,10 +37,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        #![allow(warnings)]
-        let no_docs = crate::idl::build::get_no_docs();
-        let idl_build_impl =
-            crate::idl::build::gen_idl_build_impl_for_accounts_struct(&accs, no_docs);
+        let idl_build_impl = crate::idl::gen_idl_build_impl_accounts_struct(accs);
         return quote! {
             #ret
             #idl_build_impl

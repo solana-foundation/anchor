@@ -10,7 +10,6 @@ extern crate proc_macro;
 
 use proc_macro2::{Delimiter, Span, TokenTree};
 use quote::{quote, ToTokens};
-use std::convert::TryFrom;
 use syn::{
     bracketed,
     parse::{Parse, ParseStream, Result},
@@ -47,6 +46,9 @@ fn id_to_tokens(
         /// The static program ID
         pub static ID: #pubkey_type = #id;
 
+        /// Const version of `ID`
+        pub const ID_CONST: #pubkey_type = #id;
+
         /// Confirms that a given pubkey is equivalent to the program ID
         pub fn check_id(id: &#pubkey_type) -> bool {
             id == &ID
@@ -55,6 +57,11 @@ fn id_to_tokens(
         /// Returns the program ID
         pub fn id() -> #pubkey_type {
             ID
+        }
+
+        /// Const version of `ID`
+        pub const fn id_const() -> #pubkey_type {
+            ID_CONST
         }
 
         #[cfg(test)]
@@ -93,6 +100,25 @@ fn deprecated_id_to_tokens(
             assert!(check_id(&id()));
         }
     });
+}
+
+pub struct Pubkey(proc_macro2::TokenStream);
+
+impl Parse for Pubkey {
+    fn parse(input: ParseStream) -> Result<Self> {
+        parse_id(
+            input,
+            quote! { anchor_lang::solana_program::pubkey::Pubkey },
+        )
+        .map(Self)
+    }
+}
+
+impl ToTokens for Pubkey {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let id = &self.0;
+        tokens.extend(quote! {#id})
+    }
 }
 
 pub struct Id(proc_macro2::TokenStream);

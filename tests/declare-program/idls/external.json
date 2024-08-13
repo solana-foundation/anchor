@@ -1,0 +1,233 @@
+{
+  "address": "Externa111111111111111111111111111111111111",
+  "metadata": {
+    "name": "external",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "init",
+      "discriminator": [
+        220,
+        59,
+        207,
+        236,
+        108,
+        250,
+        47,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "test_compilation_defined_type_param",
+      "discriminator": [
+        61,
+        118,
+        87,
+        242,
+        137,
+        97,
+        90,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "_my_account",
+          "type": {
+            "defined": {
+              "name": "MyAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "test_compilation_return_type",
+      "discriminator": [
+        174,
+        51,
+        51,
+        121,
+        52,
+        61,
+        38,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [],
+      "returns": "bool"
+    },
+    {
+      "name": "update",
+      "discriminator": [
+        219,
+        200,
+        88,
+        176,
+        158,
+        63,
+        253,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "update_composite",
+      "discriminator": [
+        26,
+        42,
+        201,
+        224,
+        121,
+        60,
+        188,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "update",
+          "accounts": [
+            {
+              "name": "authority",
+              "signer": true
+            },
+            {
+              "name": "my_account",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "authority"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MyAccount",
+      "discriminator": [
+        246,
+        28,
+        6,
+        87,
+        251,
+        45,
+        50,
+        42
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MyEvent",
+      "discriminator": [
+        96,
+        184,
+        197,
+        243,
+        139,
+        2,
+        90,
+        148
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "MyAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MyEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "value",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ]
+}

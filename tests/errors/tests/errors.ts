@@ -258,7 +258,7 @@ describe("errors", () => {
             },
           ],
           programId: program.programId,
-          data: program.coder.instruction.encode("signer_error", {}),
+          data: program.coder.instruction.encode("signerError", {}),
         })
       );
       await program.provider.sendAndConfirm(tx);
@@ -602,6 +602,23 @@ describe("errors", () => {
       "Program log: AnchorError thrown in programs/errors/src/lib.rs:131. Error Code: RequireGteViolated. Error Number: 2506. Error Message: A require_gte expression was violated.",
       "Program log: Left: 5",
       "Program log: Right: 10",
+    ]);
+  });
+
+  it("Emits a InvalidNumericConversion error via try_into", async () => {
+    await withLogTest(async () => {
+      try {
+        const tx = await program.methods.tryIntoInteger().rpc();
+        assert.fail(
+          "Unexpected success in creating a transaction that should have failed with `InvalidNumericConversion` error"
+        );
+      } catch (_err) {
+        assert.isTrue(_err instanceof AnchorError);
+        const err: AnchorError = _err;
+        assert.strictEqual(err.error.errorCode.number, 4102);
+      }
+    }, [
+      "Program log: AnchorError occurred. Error Code: InvalidNumericConversion. Error Number: 4102. Error Message: out of range integral type conversion attempted.",
     ]);
   });
 });

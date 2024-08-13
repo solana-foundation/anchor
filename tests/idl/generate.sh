@@ -8,11 +8,10 @@ else
 fi
 
 cd programs/idl
-anchor idl parse --file src/lib.rs -o $dir/parse.json
-anchor idl build -o $dir/build.json
+anchor idl build -o $dir/new.json
 
 cd ../generics
-anchor idl build -o $dir/generics_build.json
+anchor idl build -o $dir/generics.json
 
 cd ../relations-derivation
-anchor idl build -o $dir/relations_build.json
+anchor idl build -o $dir/relations.json

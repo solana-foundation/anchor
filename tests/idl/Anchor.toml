@@ -1,16 +1,15 @@
 [features]
-seeds = true
+skip-lint = true
 
 [programs.localnet]
-client_interactions = "C1ient1nteractions1111111111111111111111111"
 docs = "Docs111111111111111111111111111111111111111"
 external = "Externa1111111111111111111111111111111111111"
 generics = "Generics111111111111111111111111111111111111"
 idl = "id11111111111111111111111111111111111111111"
-idl_build_features = "id1Bui1dFeatures111111111111111111111111111"
 relations_derivation = "Re1ationsDerivation111111111111111111111111"
 non_existent = { address = "NonExistent11111111111111111111111111111111", idl = "non-existent.json" }
-numbers_123 = { address = "Numbers111111111111111111111111111111111111", idl = "idls/relations_build.json" }
+numbers_123 = { address = "Numbers111111111111111111111111111111111111", idl = "idls/relations.json" }
+new_idl = "Newid11111111111111111111111111111111111111"
 
 [provider]
 cluster = "localnet"

@@ -1,15 +1,22 @@
-use crate::VERSION;
-use crate::{config::ProgramWorkspace, create_files, Files};
-use anchor_syn::idl::types::Idl;
+use crate::{
+    config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
+    VERSION,
+};
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToSnakeCase, ToUpperCamelCase};
+use heck::{ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
     signer::Signer,
 };
-use std::{fmt::Write, path::Path};
+use std::{
+    fmt::Write as _,
+    fs::{self, File},
+    io::Write as _,
+    path::Path,
+    process::Stdio,
+};
 
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
@@ -52,6 +59,7 @@ pub mod {} {{
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
+        msg!("Greetings from: {{:?}}", ctx.program_id);
         Ok(())
     }}
 }}
@@ -135,6 +143,7 @@ pub use initialize::*;
 pub struct Initialize {}
 
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    msg!("Greetings from: {{:?}}", ctx.program_id);
     Ok(())
 }
 "#
@@ -175,11 +184,12 @@ crate-type = ["cdylib", "lib"]
 name = "{1}"
 
 [features]
+default = []
+cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = "{2}"
@@ -217,24 +227,6 @@ pub fn credentials(token: &str) -> String {
 token = "{token}"
 "#
     )
-}
-
-pub fn idl_ts(idl: &Idl) -> Result<String> {
-    let mut idl = idl.clone();
-    for acc in idl.accounts.iter_mut() {
-        acc.name = acc.name.to_lower_camel_case();
-    }
-    let idl_json = serde_json::to_string_pretty(&idl)?;
-    Ok(format!(
-        r#"export type {} = {};
-
-export const IDL: {} = {};
-"#,
-        idl.name.to_upper_camel_case(),
-        idl_json,
-        idl.name.to_upper_camel_case(),
-        idl_json
-    ))
 }
 
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
@@ -339,7 +331,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -360,91 +352,95 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
     )
 }
 
-pub fn package_json(jest: bool) -> String {
+pub fn package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
             r#"{{
-        "scripts": {{
-            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-        }},
-        "dependencies": {{
-            "@coral-xyz/anchor": "^{VERSION}"
-        }},
-        "devDependencies": {{
-            "jest": "^29.0.3",
-            "prettier": "^2.6.2"
-        }}
-    }}
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "jest": "^29.0.3",
+    "prettier": "^2.6.2"
+  }}
+}}
     "#
         )
     } else {
         format!(
             r#"{{
-    "scripts": {{
-        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-    }},
-    "dependencies": {{
-        "@coral-xyz/anchor": "^{VERSION}"
-    }},
-    "devDependencies": {{
-        "chai": "^4.3.4",
-        "mocha": "^9.0.3",
-        "prettier": "^2.6.2"
-    }}
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "prettier": "^2.6.2"
+  }}
 }}
 "#
         )
     }
 }
 
-pub fn ts_package_json(jest: bool) -> String {
+pub fn ts_package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
             r#"{{
-        "scripts": {{
-            "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-            "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-        }},
-        "dependencies": {{
-            "@coral-xyz/anchor": "^{VERSION}"
-        }},
-        "devDependencies": {{
-            "@types/bn.js": "^5.1.0",
-            "@types/jest": "^29.0.3",
-            "jest": "^29.0.3",
-            "prettier": "^2.6.2",
-            "ts-jest": "^29.0.2",
-            "typescript": "^4.3.5"
-        }}
-    }}
-    "#
+  "license": "{license}",              
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "@types/bn.js": "^5.1.0",
+    "@types/jest": "^29.0.3",
+    "jest": "^29.0.3",
+    "prettier": "^2.6.2",
+    "ts-jest": "^29.0.2",
+    "typescript": "^4.3.5"
+  }}
+}}
+"#
         )
     } else {
         format!(
             r#"{{
-    "scripts": {{
-        "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-        "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
-    }},
-    "dependencies": {{
-        "@coral-xyz/anchor": "^{VERSION}"
-    }},
-    "devDependencies": {{
-        "chai": "^4.3.4",
-        "mocha": "^9.0.3",
-        "ts-mocha": "^10.0.0",
-        "@types/bn.js": "^5.1.0",
-        "@types/chai": "^4.3.0",
-        "@types/mocha": "^9.0.0",
-        "typescript": "^4.3.5",
-        "prettier": "^2.6.2"
-    }}
+  "license": "{license}",  
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@coral-xyz/anchor": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "typescript": "^4.3.5",
+    "prettier": "^2.6.2"
+  }}
 }}
 "#
         )
@@ -470,11 +466,11 @@ describe("{}", () => {{
   }});
 }});
 "#,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_upper_camel_case(),
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
+        name.to_pascal_case(),
     )
 }
 
@@ -497,45 +493,44 @@ describe("{}", () => {{
   }});
 }});
 "#,
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_upper_camel_case(),
-        name.to_upper_camel_case(),
+        name.to_pascal_case(),
+        name.to_pascal_case(),
     )
 }
 
 pub fn ts_config(jest: bool) -> &'static str {
     if jest {
         r#"{
-            "compilerOptions": {
-              "types": ["jest"],
-              "typeRoots": ["./node_modules/@types"],
-              "lib": ["es2015"],
-              "module": "commonjs",
-              "target": "es6",
-              "esModuleInterop": true
-            }
-          }
-          "#
+  "compilerOptions": {
+    "types": ["jest"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
     } else {
         r#"{
-            "compilerOptions": {
-              "types": ["mocha", "chai"],
-              "typeRoots": ["./node_modules/@types"],
-              "lib": ["es2015"],
-              "module": "commonjs",
-              "target": "es6",
-              "esModuleInterop": true
-            }
-          }
-          "#
+  "compilerOptions": {
+    "types": ["mocha", "chai"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
     }
 }
 
 pub fn git_ignore() -> &'static str {
-    r#"
-.anchor
+    r#".anchor
 .DS_Store
 target
 **/*.rs.bk
@@ -546,8 +541,7 @@ test-ledger
 }
 
 pub fn prettier_ignore() -> &'static str {
-    r#"
-.anchor
+    r#".anchor
 .DS_Store
 target
 node_modules
@@ -598,11 +592,184 @@ anchor.setProvider(provider);
             r#"
 anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
 "#,
-            program.name.to_upper_camel_case(),
+            program.name.to_pascal_case(),
             serde_json::to_string(&program.idl)?,
             program.program_id
         )?;
     }
 
     Ok(eval_string)
+}
+
+/// Test initialization template
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+pub enum TestTemplate {
+    /// Generate template for Mocha unit-test
+    #[default]
+    Mocha,
+    /// Generate template for Jest unit-test    
+    Jest,
+    /// Generate template for Rust unit-test
+    Rust,
+}
+
+impl TestTemplate {
+    pub fn get_test_script(&self, js: bool) -> &str {
+        match &self {
+            Self::Mocha => {
+                if js {
+                    "yarn run mocha -t 1000000 tests/"
+                } else {
+                    "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+                }
+            }
+            Self::Jest => {
+                if js {
+                    "yarn run jest"
+                } else {
+                    "yarn run jest --preset ts-jest"
+                }
+            }
+            Self::Rust => "cargo test",
+        }
+    }
+
+    pub fn create_test_files(
+        &self,
+        project_name: &str,
+        js: bool,
+        solidity: bool,
+        program_id: &str,
+    ) -> Result<()> {
+        match self {
+            Self::Mocha => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                if js {
+                    let mut test = File::create(format!("tests/{}.js", &project_name))?;
+                    if solidity {
+                        test.write_all(solidity_template::mocha(project_name).as_bytes())?;
+                    } else {
+                        test.write_all(mocha(project_name).as_bytes())?;
+                    }
+                } else {
+                    let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
+                    if solidity {
+                        mocha.write_all(solidity_template::ts_mocha(project_name).as_bytes())?;
+                    } else {
+                        mocha.write_all(ts_mocha(project_name).as_bytes())?;
+                    }
+                }
+            }
+            Self::Jest => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                if solidity {
+                    test.write_all(solidity_template::jest(project_name).as_bytes())?;
+                } else {
+                    test.write_all(jest(project_name).as_bytes())?;
+                }
+            }
+            Self::Rust => {
+                // Do not initilize git repo
+                let exit = std::process::Command::new("cargo")
+                    .arg("new")
+                    .arg("--vcs")
+                    .arg("none")
+                    .arg("--lib")
+                    .arg("tests")
+                    .stderr(Stdio::inherit())
+                    .output()
+                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                if !exit.status.success() {
+                    eprintln!("'cargo new --lib tests' failed");
+                    std::process::exit(exit.status.code().unwrap_or(1));
+                }
+
+                let mut files = Vec::new();
+                let tests_path = Path::new("tests");
+                files.extend(vec![(
+                    tests_path.join("Cargo.toml"),
+                    tests_cargo_toml(project_name),
+                )]);
+                files.extend(create_program_template_rust_test(
+                    project_name,
+                    tests_path,
+                    program_id,
+                ));
+                override_or_create_files(&files)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub fn tests_cargo_toml(name: &str) -> String {
+    format!(
+        r#"[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-client = "{0}"
+{1} = {{ version = "0.1.0", path = "../programs/{1}" }}
+"#,
+        VERSION, name,
+    )
+}
+
+/// Generate template for Rust unit-test
+fn create_program_template_rust_test(name: &str, tests_path: &Path, program_id: &str) -> Files {
+    let src_path = tests_path.join("src");
+    vec![
+        (
+            src_path.join("lib.rs"),
+            r#"#[cfg(test)]
+mod test_initialize;
+"#
+            .into(),
+        ),
+        (
+            src_path.join("test_initialize.rs"),
+            format!(
+                r#"use std::str::FromStr;
+
+use anchor_client::{{
+    solana_sdk::{{
+        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
+    }},
+    Client, Cluster,
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = "{0}";
+    let anchor_wallet = std::env::var("ANCHOR_WALLET").unwrap();
+    let payer = read_keypair_file(&anchor_wallet).unwrap();
+
+    let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
+    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program = client.program(program_id).unwrap();
+
+    let tx = program
+        .request()
+        .accounts({1}::accounts::Initialize {{}})
+        .args({1}::instruction::Initialize {{}})
+        .send()
+        .expect("");
+
+    println!("Your transaction signature {{}}", tx);
+}}
+"#,
+                program_id,
+                name.to_snake_case(),
+            ),
+        ),
+    ]
 }

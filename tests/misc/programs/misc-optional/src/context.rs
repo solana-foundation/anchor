@@ -693,3 +693,54 @@ pub struct TestAssociatedTokenWithTokenProgramConstraint<'info> {
     /// CHECK: ignore
     pub associated_token_token_program: Option<AccountInfo<'info>>,
 }
+
+#[derive(Accounts)]
+pub struct InitManyAssociatedTokenAccounts<'info> {
+    #[account(
+        init,
+        payer = user,
+        mint::authority = user,
+        mint::decimals = 9,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = user,
+        associated_token::mint = mint,
+    )]
+    pub ata1: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = system_program,
+        associated_token::mint = mint,
+    )]
+    pub ata2: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = token_program,
+        associated_token::mint = mint,
+    )]
+    pub ata3: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = associated_token_program,
+        associated_token::mint = mint,
+    )]
+    pub ata4: Account<'info, TokenAccount>,
+    #[account(
+        init,
+        payer = user,
+        associated_token::authority = mint,
+        associated_token::mint = mint,
+    )]
+    pub ata5: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}

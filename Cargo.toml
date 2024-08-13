@@ -9,6 +9,7 @@ members = [
     "avm",
     "cli",
     "client",
+    "idl",
     "lang",
     "lang/attribute/*",
     "lang/derive/*",

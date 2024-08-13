@@ -75,7 +75,7 @@ describe("Optional", () => {
       const [requiredKeypair, createRequiredIx] = await createRequired();
       const initializeIx = await program.methods
         .initialize(initializeValue1, initializeKey)
-        .accounts({
+        .accountsPartial({
           payer: null,
           optionalAccount: null,
           systemProgram,
@@ -115,7 +115,7 @@ describe("Optional", () => {
         .AllowMissingOptionals as Program<AllowMissingOptionals>;
       const doStuffIx = await allowMissingOptionals.methods
         .doStuff()
-        .accounts({
+        .accountsPartial({
           payer,
           systemProgram,
           optional2: null,
@@ -135,7 +135,7 @@ describe("Optional", () => {
         await program.methods
           .initialize(initializeValue1, initializeKey)
           .preInstructions([createRequiredIx])
-          .accounts({
+          .accountsPartial({
             payer,
             systemProgram,
             // @ts-ignore
@@ -149,7 +149,7 @@ describe("Optional", () => {
           "Unexpected success in creating a transaction that should have failed at the client level"
         );
       } catch (e) {
-        const errMsg = "Invalid arguments: required not provided";
+        const errMsg = "Account `required` not provided";
         // @ts-ignore
         let error: string = e.toString();
         assert(error.includes(errMsg), `Unexpected error: ${e}`);
@@ -161,7 +161,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue1, initializeKey)
         .preInstructions([createRequiredIx])
-        .accounts({
+        .accountsPartial({
           payer: null,
           systemProgram,
           required: requiredKeypair.publicKey,
@@ -182,7 +182,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue1, initializeKey)
         .preInstructions([createRequiredIx])
-        .accounts({
+        .accountsPartial({
           payer: null,
           systemProgram: null,
           required: requiredKeypair.publicKey,
@@ -205,7 +205,7 @@ describe("Optional", () => {
         await program.methods
           .initialize(initializeValue1, initializeKey)
           .preInstructions([createRequiredIx])
-          .accounts({
+          .accountsStrict({
             payer,
             systemProgram: null,
             required: requiredKeypair.publicKey,
@@ -238,7 +238,7 @@ describe("Optional", () => {
         await program.methods
           .initialize(initializeValue1, initializeKey)
           .preInstructions([createRequiredIx])
-          .accounts({
+          .accountsPartial({
             payer,
             systemProgram,
             required: requiredKeypair.publicKey,
@@ -262,7 +262,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue1, initializeKey)
         .preInstructions([createRequiredIx1])
-        .accounts({
+        .accountsPartial({
           payer,
           systemProgram,
           required: requiredKeypair1.publicKey,
@@ -290,7 +290,7 @@ describe("Optional", () => {
         await program.methods
           .initialize(initializeValue2, initializeKey)
           .preInstructions([createRequiredIx2])
-          .accounts({
+          .accountsPartial({
             payer,
             systemProgram,
             required: requiredKeypair2.publicKey,
@@ -319,7 +319,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue2, initializeKey)
         .preInstructions([createRequiredIx2])
-        .accounts({
+        .accountsPartial({
           payer,
           systemProgram,
           required: requiredKeypair2.publicKey,
@@ -352,7 +352,7 @@ describe("Optional", () => {
     it("Can update with invalid explicit pda bump with no pda", async () => {
       await program.methods
         .update(initializeValue2, initializeKey, dataPda2[1] - 1)
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: null,
           optionalAccount: null,
@@ -364,7 +364,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .update(initializeValue2, initializeKey, dataPda2[1] - 1)
-          .accounts({
+          .accountsPartial({
             payer,
             optionalPda: dataPda2[0],
             optionalAccount: dataAccountKeypair2.publicKey,
@@ -391,7 +391,7 @@ describe("Optional", () => {
       try {
         let txn = await program.methods
           .update(initializeValue2, initializeKey, dataPda2[1])
-          .accounts({
+          .accountsPartial({
             payer,
             optionalPda: dataPda2[0],
             optionalAccount: dataAccountKeypair2.publicKey,
@@ -424,7 +424,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .update(initializeValue2, initializeKey, dataPda2[1])
-          .accounts({
+          .accountsPartial({
             payer: null,
             optionalPda: dataPda2[0],
             optionalAccount: dataAccountKeypair2.publicKey,
@@ -450,7 +450,7 @@ describe("Optional", () => {
     it("Can update an optional account", async () => {
       await program.methods
         .update(initializeValue2.muln(3), initializeKey, dataPda2[1])
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: null,
           optionalAccount: dataAccountKeypair2.publicKey,
@@ -470,7 +470,7 @@ describe("Optional", () => {
       const newKey = web3.PublicKey.unique();
       await program.methods
         .update(initializeValue2, newKey, dataPda2[1])
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: dataPda2[0],
           optionalAccount: dataAccountKeypair2.publicKey,
@@ -493,7 +493,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .realloc(new BN(100))
-          .accounts({
+          .accountsPartial({
             payer: null,
             required: dataAccountKeypair1.publicKey,
             optionalPda: null,
@@ -522,7 +522,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .realloc(new BN(100))
-          .accounts({
+          .accountsStrict({
             payer,
             required: dataAccountKeypair1.publicKey,
             optionalPda: null,
@@ -551,7 +551,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .realloc(new BN(100))
-          .accounts({
+          .accountsPartial({
             payer,
             required: dataAccountKeypair1.publicKey,
             optionalPda: dataAccountKeypair2.publicKey,
@@ -579,7 +579,7 @@ describe("Optional", () => {
       const newLength = 100;
       await program.methods
         .realloc(new BN(newLength))
-        .accounts({
+        .accountsPartial({
           payer,
           required: dataAccountKeypair1.publicKey,
           optionalPda: null,
@@ -599,7 +599,7 @@ describe("Optional", () => {
       const newLength = program.account.dataAccount.size;
       await program.methods
         .realloc(new BN(newLength))
-        .accounts({
+        .accountsPartial({
           payer,
           required: dataAccountKeypair1.publicKey,
           optionalPda: null,
@@ -619,7 +619,7 @@ describe("Optional", () => {
       const newLength = 100;
       await program.methods
         .realloc(new BN(newLength))
-        .accounts({
+        .accountsPartial({
           payer,
           required: dataAccountKeypair1.publicKey,
           optionalPda: dataPda2[0],
@@ -690,7 +690,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue3, initializeKey)
         .preInstructions([createRequiredIx3])
-        .accounts({
+        .accountsPartial({
           payer,
           systemProgram,
           required: requiredKeypair3.publicKey,
@@ -708,7 +708,7 @@ describe("Optional", () => {
       await program.methods
         .initialize(initializeValue4, initializeKey)
         .preInstructions([createRequiredIx4])
-        .accounts({
+        .accountsPartial({
           payer,
           systemProgram,
           required: requiredKeypair4.publicKey,
@@ -726,7 +726,7 @@ describe("Optional", () => {
 
       await program.methods
         .update(initializeValue3, dataAccountKeypair3.publicKey, dataPda3[1])
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: dataPda3[0],
           optionalAccount: dataAccountKeypair3.publicKey,
@@ -739,7 +739,7 @@ describe("Optional", () => {
       );
       await program.methods
         .update(initializeValue4, dataAccountKeypair4.publicKey, dataPda4[1])
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: dataPda4[0],
           optionalAccount: dataAccountKeypair4.publicKey,
@@ -756,7 +756,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .close()
-          .accounts({
+          .accountsPartial({
             payer: null,
             optionalPda: null,
             dataAccount: dataAccountKeypair3.publicKey,
@@ -784,7 +784,7 @@ describe("Optional", () => {
       try {
         await program.methods
           .close()
-          .accounts({
+          .accountsPartial({
             payer,
             optionalPda: dataPda4[0],
             dataAccount: dataAccountKeypair3.publicKey,
@@ -811,7 +811,7 @@ describe("Optional", () => {
     it("Can close an optional account", async () => {
       await program.methods
         .close()
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: null,
           dataAccount: dataAccountKeypair3.publicKey,
@@ -828,7 +828,7 @@ describe("Optional", () => {
     it("Can close multiple optional accounts", async () => {
       await program.methods
         .close()
-        .accounts({
+        .accountsPartial({
           payer,
           optionalPda: dataPda4[0],
           dataAccount: dataAccountKeypair4.publicKey,

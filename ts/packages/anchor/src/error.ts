@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import * as errors from "@coral-xyz/anchor-errors";
 import * as features from "./utils/features.js";
 
 export class IdlError extends Error {
@@ -307,80 +308,134 @@ export function translateError(err: any, idlErrors: Map<number, string>) {
 
 export const LangErrorCode = {
   // Instructions.
-  InstructionMissing: 100,
-  InstructionFallbackNotFound: 101,
-  InstructionDidNotDeserialize: 102,
-  InstructionDidNotSerialize: 103,
+  InstructionMissing: errors.ANCHOR_ERROR__INSTRUCTION_MISSING,
+  InstructionFallbackNotFound:
+    errors.ANCHOR_ERROR__INSTRUCTION_FALLBACK_NOT_FOUND,
+  InstructionDidNotDeserialize:
+    errors.ANCHOR_ERROR__INSTRUCTION_DID_NOT_DESERIALIZE,
+  InstructionDidNotSerialize:
+    errors.ANCHOR_ERROR__INSTRUCTION_DID_NOT_SERIALIZE,
 
   // IDL instructions.
-  IdlInstructionStub: 1000,
-  IdlInstructionInvalidProgram: 1001,
+  IdlInstructionStub: errors.ANCHOR_ERROR__IDL_INSTRUCTION_STUB,
+  IdlInstructionInvalidProgram:
+    errors.ANCHOR_ERROR__IDL_INSTRUCTION_INVALID_PROGRAM,
+  IdlAccountNotEmpty: errors.ANCHOR_ERROR__IDL_ACCOUNT_NOT_EMPTY,
+
+  // Event instructions.
+  EventInstructionStub: errors.ANCHOR_ERROR__EVENT_INSTRUCTION_STUB,
 
   // Constraints.
-  ConstraintMut: 2000,
-  ConstraintHasOne: 2001,
-  ConstraintSigner: 2002,
-  ConstraintRaw: 2003,
-  ConstraintOwner: 2004,
-  ConstraintRentExempt: 2005,
-  ConstraintSeeds: 2006,
-  ConstraintExecutable: 2007,
-  ConstraintState: 2008,
-  ConstraintAssociated: 2009,
-  ConstraintAssociatedInit: 2010,
-  ConstraintClose: 2011,
-  ConstraintAddress: 2012,
-  ConstraintZero: 2013,
-  ConstraintTokenMint: 2014,
-  ConstraintTokenOwner: 2015,
-  ConstraintMintMintAuthority: 2016,
-  ConstraintMintFreezeAuthority: 2017,
-  ConstraintMintDecimals: 2018,
-  ConstraintSpace: 2019,
-  ConstraintAccountIsNone: 2020,
+  ConstraintMut: errors.ANCHOR_ERROR__CONSTRAINT_MUT,
+  ConstraintHasOne: errors.ANCHOR_ERROR__CONSTRAINT_HAS_ONE,
+  ConstraintSigner: errors.ANCHOR_ERROR__CONSTRAINT_SIGNER,
+  ConstraintRaw: errors.ANCHOR_ERROR__CONSTRAINT_RAW,
+  ConstraintOwner: errors.ANCHOR_ERROR__CONSTRAINT_OWNER,
+  ConstraintRentExempt: errors.ANCHOR_ERROR__CONSTRAINT_RENT_EXEMPT,
+  ConstraintSeeds: errors.ANCHOR_ERROR__CONSTRAINT_SEEDS,
+  ConstraintExecutable: errors.ANCHOR_ERROR__CONSTRAINT_EXECUTABLE,
+  ConstraintState: errors.ANCHOR_ERROR__CONSTRAINT_STATE,
+  ConstraintAssociated: errors.ANCHOR_ERROR__CONSTRAINT_ASSOCIATED,
+  ConstraintAssociatedInit: errors.ANCHOR_ERROR__CONSTRAINT_ASSOCIATED_INIT,
+  ConstraintClose: errors.ANCHOR_ERROR__CONSTRAINT_CLOSE,
+  ConstraintAddress: errors.ANCHOR_ERROR__CONSTRAINT_ADDRESS,
+  ConstraintZero: errors.ANCHOR_ERROR__CONSTRAINT_ZERO,
+  ConstraintTokenMint: errors.ANCHOR_ERROR__CONSTRAINT_TOKEN_MINT,
+  ConstraintTokenOwner: errors.ANCHOR_ERROR__CONSTRAINT_TOKEN_OWNER,
+  ConstraintMintMintAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_MINT_AUTHORITY,
+  ConstraintMintFreezeAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_FREEZE_AUTHORITY,
+  ConstraintMintDecimals: errors.ANCHOR_ERROR__CONSTRAINT_MINT_DECIMALS,
+  ConstraintSpace: errors.ANCHOR_ERROR__CONSTRAINT_SPACE,
+  ConstraintAccountIsNone: errors.ANCHOR_ERROR__CONSTRAINT_ACCOUNT_IS_NONE,
+  ConstraintTokenTokenProgram:
+    errors.ANCHOR_ERROR__CONSTRAINT_TOKEN_TOKEN_PROGRAM,
+  ConstraintMintTokenProgram:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_TOKEN_PROGRAM,
+  ConstraintAssociatedTokenTokenProgram:
+    errors.ANCHOR_ERROR__CONSTRAINT_ASSOCIATED_TOKEN_TOKEN_PROGRAM,
+  ConstraintMintGroupPointerExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_POINTER_EXTENSION,
+  ConstraintMintGroupPointerExtensionAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_POINTER_EXTENSION_AUTHORITY,
+  ConstraintMintGroupPointerExtensionGroupAddress:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_POINTER_EXTENSION_GROUP_ADDRESS,
+  ConstraintMintGroupMemberPointerExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_MEMBER_POINTER_EXTENSION,
+  ConstraintMintGroupMemberPointerExtensionAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_MEMBER_POINTER_EXTENSION_AUTHORITY,
+  ConstraintMintGroupMemberPointerExtensionMemberAddress:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_GROUP_MEMBER_POINTER_EXTENSION_MEMBER_ADDRESS,
+  ConstraintMintMetadataPointerExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_METADATA_POINTER_EXTENSION,
+  ConstraintMintMetadataPointerExtensionAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_METADATA_POINTER_EXTENSION_AUTHORITY,
+  ConstraintMintMetadataPointerExtensionMetadataAddress:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_METADATA_POINTER_EXTENSION_METADATA_ADDRESS,
+  ConstraintMintCloseAuthorityExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_CLOSE_AUTHORITY_EXTENSION,
+  ConstraintMintCloseAuthorityExtensionAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_CLOSE_AUTHORITY_EXTENSION_AUTHORITY,
+  ConstraintMintPermanentDelegateExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_PERMANENT_DELEGATE_EXTENSION,
+  ConstraintMintPermanentDelegateExtensionDelegate:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_PERMANENT_DELEGATE_EXTENSION_DELEGATE,
+  ConstraintMintTransferHookExtension:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_TRANSFER_HOOK_EXTENSION,
+  ConstraintMintTransferHookExtensionAuthority:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_TRANSFER_HOOK_EXTENSION_AUTHORITY,
+  ConstraintMintTransferHookExtensionProgramId:
+    errors.ANCHOR_ERROR__CONSTRAINT_MINT_TRANSFER_HOOK_EXTENSION_PROGRAM_ID,
 
   // Require.
-  RequireViolated: 2500,
-  RequireEqViolated: 2501,
-  RequireKeysEqViolated: 2502,
-  RequireNeqViolated: 2503,
-  RequireKeysNeqViolated: 2504,
-  RequireGtViolated: 2505,
-  RequireGteViolated: 2506,
+  RequireViolated: errors.ANCHOR_ERROR__REQUIRE_VIOLATED,
+  RequireEqViolated: errors.ANCHOR_ERROR__REQUIRE_EQ_VIOLATED,
+  RequireKeysEqViolated: errors.ANCHOR_ERROR__REQUIRE_KEYS_EQ_VIOLATED,
+  RequireNeqViolated: errors.ANCHOR_ERROR__REQUIRE_NEQ_VIOLATED,
+  RequireKeysNeqViolated: errors.ANCHOR_ERROR__REQUIRE_KEYS_NEQ_VIOLATED,
+  RequireGtViolated: errors.ANCHOR_ERROR__REQUIRE_GT_VIOLATED,
+  RequireGteViolated: errors.ANCHOR_ERROR__REQUIRE_GTE_VIOLATED,
 
   // Accounts.
-  AccountDiscriminatorAlreadySet: 3000,
-  AccountDiscriminatorNotFound: 3001,
-  AccountDiscriminatorMismatch: 3002,
-  AccountDidNotDeserialize: 3003,
-  AccountDidNotSerialize: 3004,
-  AccountNotEnoughKeys: 3005,
-  AccountNotMutable: 3006,
-  AccountOwnedByWrongProgram: 3007,
-  InvalidProgramId: 3008,
-  InvalidProgramExecutable: 3009,
-  AccountNotSigner: 3010,
-  AccountNotSystemOwned: 3011,
-  AccountNotInitialized: 3012,
-  AccountNotProgramData: 3013,
-  AccountNotAssociatedTokenAccount: 3014,
-  AccountSysvarMismatch: 3015,
-  AccountReallocExceedsLimit: 3016,
-  AccountDuplicateReallocs: 3017,
+  AccountDiscriminatorAlreadySet:
+    errors.ANCHOR_ERROR__ACCOUNT_DISCRIMINATOR_ALREADY_SET,
+  AccountDiscriminatorNotFound:
+    errors.ANCHOR_ERROR__ACCOUNT_DISCRIMINATOR_NOT_FOUND,
+  AccountDiscriminatorMismatch:
+    errors.ANCHOR_ERROR__ACCOUNT_DISCRIMINATOR_MISMATCH,
+  AccountDidNotDeserialize: errors.ANCHOR_ERROR__ACCOUNT_DID_NOT_DESERIALIZE,
+  AccountDidNotSerialize: errors.ANCHOR_ERROR__ACCOUNT_DID_NOT_SERIALIZE,
+  AccountNotEnoughKeys: errors.ANCHOR_ERROR__ACCOUNT_NOT_ENOUGH_KEYS,
+  AccountNotMutable: errors.ANCHOR_ERROR__ACCOUNT_NOT_MUTABLE,
+  AccountOwnedByWrongProgram:
+    errors.ANCHOR_ERROR__ACCOUNT_OWNED_BY_WRONG_PROGRAM,
+  InvalidProgramId: errors.ANCHOR_ERROR__INVALID_PROGRAM_ID,
+  InvalidProgramExecutable: errors.ANCHOR_ERROR__INVALID_PROGRAM_EXECUTABLE,
+  AccountNotSigner: errors.ANCHOR_ERROR__ACCOUNT_NOT_SIGNER,
+  AccountNotSystemOwned: errors.ANCHOR_ERROR__ACCOUNT_NOT_SYSTEM_OWNED,
+  AccountNotInitialized: errors.ANCHOR_ERROR__ACCOUNT_NOT_INITIALIZED,
+  AccountNotProgramData: errors.ANCHOR_ERROR__ACCOUNT_NOT_PROGRAM_DATA,
+  AccountNotAssociatedTokenAccount:
+    errors.ANCHOR_ERROR__ACCOUNT_NOT_ASSOCIATED_TOKEN_ACCOUNT,
+  AccountSysvarMismatch: errors.ANCHOR_ERROR__ACCOUNT_SYSVAR_MISMATCH,
+  AccountReallocExceedsLimit:
+    errors.ANCHOR_ERROR__ACCOUNT_REALLOC_EXCEEDS_LIMIT,
+  AccountDuplicateReallocs: errors.ANCHOR_ERROR__ACCOUNT_DUPLICATE_REALLOCS,
 
   // Miscellaneous
-  DeclaredProgramIdMismatch: 4100,
+  DeclaredProgramIdMismatch: errors.ANCHOR_ERROR__DECLARED_PROGRAM_ID_MISMATCH,
+  TryingToInitPayerAsProgramAccount:
+    errors.ANCHOR_ERROR__TRYING_TO_INIT_PAYER_AS_PROGRAM_ACCOUNT,
+  InvalidNumericConversion: errors.ANCHOR_ERROR__INVALID_NUMERIC_CONVERSION,
 
   // Used for APIs that shouldn't be used anymore.
-  Deprecated: 5000,
+  Deprecated: errors.ANCHOR_ERROR__DEPRECATED,
 };
 
-export const LangErrorMessage = new Map([
+export const LangErrorMessage = new Map<number, string>([
   // Instructions.
-  [
-    LangErrorCode.InstructionMissing,
-    "8 byte instruction identifier not provided",
-  ],
+  [LangErrorCode.InstructionMissing, "Instruction discriminator not provided"],
   [
     LangErrorCode.InstructionFallbackNotFound,
     "Fallback functions are not supported",
@@ -402,6 +457,16 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.IdlInstructionInvalidProgram,
     "The transaction was given an invalid program for the IDL instruction",
+  ],
+  [
+    LangErrorCode.IdlAccountNotEmpty,
+    "IDL account must be empty in order to resize, try closing first",
+  ],
+
+  // Event instructions.
+  [
+    LangErrorCode.EventInstructionStub,
+    "The program was compiled without `event-cpi` feature",
   ],
 
   // Constraints.
@@ -447,6 +512,82 @@ export const LangErrorMessage = new Map([
     LangErrorCode.ConstraintAccountIsNone,
     "A required account for the constraint is None",
   ],
+  [
+    LangErrorCode.ConstraintTokenTokenProgram,
+    "A token account token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTokenProgram,
+    "A mint token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintAssociatedTokenTokenProgram,
+    "An associated token account token program constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtension,
+    "A group pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtensionAuthority,
+    "A group pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupPointerExtensionGroupAddress,
+    "A group pointer extension group address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtension,
+    "A group member pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtensionAuthority,
+    "A group member pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintGroupMemberPointerExtensionMemberAddress,
+    "A group member pointer extension group address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtension,
+    "A metadata pointer extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtensionAuthority,
+    "A metadata pointer extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintMetadataPointerExtensionMetadataAddress,
+    "A metadata pointer extension metadata address constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintCloseAuthorityExtension,
+    "A close authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintCloseAuthorityExtensionAuthority,
+    "A close authority extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintPermanentDelegateExtension,
+    "A permanent delegate extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintPermanentDelegateExtensionDelegate,
+    "A permanent delegate extension delegate constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtension,
+    "A transfer hook extension constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtensionAuthority,
+    "A transfer hook extension authority constraint was violated",
+  ],
+  [
+    LangErrorCode.ConstraintMintTransferHookExtensionProgramId,
+    "A transfer hook extension transfer hook program id constraint was violated",
+  ],
 
   // Require.
   [LangErrorCode.RequireViolated, "A require expression was violated"],
@@ -470,11 +611,11 @@ export const LangErrorMessage = new Map([
   ],
   [
     LangErrorCode.AccountDiscriminatorNotFound,
-    "No 8 byte discriminator was found on the account",
+    "No discriminator was found on the account",
   ],
   [
     LangErrorCode.AccountDiscriminatorMismatch,
-    "8 byte discriminator did not match what was expected",
+    "Account discriminator did not match what was expected",
   ],
   [LangErrorCode.AccountDidNotDeserialize, "Failed to deserialize the account"],
   [LangErrorCode.AccountDidNotSerialize, "Failed to serialize the account"],
@@ -523,6 +664,14 @@ export const LangErrorMessage = new Map([
   [
     LangErrorCode.DeclaredProgramIdMismatch,
     "The declared program id does not match the actual program id",
+  ],
+  [
+    LangErrorCode.TryingToInitPayerAsProgramAccount,
+    "You cannot/should not initialize the payer account as a program account",
+  ],
+  [
+    LangErrorCode.InvalidNumericConversion,
+    "The program could not perform the numeric conversion, out of range integral type conversion attempted",
   ],
 
   // Deprecated

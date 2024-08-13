@@ -1,6 +1,6 @@
 {
   "name": "basic-2",
-  "version": "0.29.0",
+  "version": "0.30.1",
   "license": "(MIT OR Apache-2.0)",
   "homepage": "https://github.com/coral-xyz/anchor#readme",
   "bugs": {
@@ -14,6 +14,6 @@
     "node": ">=11"
   },
   "scripts": {
-    "test": "anchor test --skip-lint"
+    "test": "anchor test --skip-lint && anchor clean"
   }
 }

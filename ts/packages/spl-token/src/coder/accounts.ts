@@ -78,8 +78,8 @@ export class SplTokenAccountsCoder<A extends string = string>
     }
   }
 
-  public size(idlAccount: IdlTypeDef): number {
-    switch (idlAccount.name) {
+  public size(accountName: A): number {
+    switch (accountName) {
       case "mint": {
         return 82;
       }
@@ -90,7 +90,7 @@ export class SplTokenAccountsCoder<A extends string = string>
         return 355;
       }
       default: {
-        throw new Error(`Invalid account name: ${idlAccount.name}`);
+        throw new Error(`Invalid account name: ${accountName}`);
       }
     }
   }
