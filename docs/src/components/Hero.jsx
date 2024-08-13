@@ -43,7 +43,7 @@ export function Hero() {
                 Anchor
               </p>
               <p className="mt-3 text-2xl tracking-tight text-slate-400">
-                Solana's most popular smart contract framework.
+                Solana&apos;s most popular smart contract framework
               </p>
               <div className="mt-8 flex space-x-4 md:justify-center lg:justify-start">
                 <ButtonLink href="/">Get started</ButtonLink>
