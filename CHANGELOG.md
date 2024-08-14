@@ -51,6 +51,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Skip IDL checks if `--no-idl` option is passed ([#3093](https://github.com/coral-xyz/anchor/pull/3093)).
 - lang: Remove unnecessary clone in account exit routine ([#3139](https://github.com/coral-xyz/anchor/pull/3139)).
 - cli: Fix installation with `--locked` argument using Rust v1.80 due to `time` crate issue ([#3143](https://github.com/coral-xyz/anchor/pull/3143)).
+- lang: Fix compilation warnings due to unused deprecated program id macros ([#3170](https://github.com/coral-xyz/anchor/pull/3170)).
 
 ### Breaking
 
