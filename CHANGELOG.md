@@ -37,6 +37,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Disallow all zero account discriminators ([#3159](https://github.com/coral-xyz/anchor/pull/3159)).
 - cli: Support non-8-byte discriminators ([#3165](https://github.com/coral-xyz/anchor/pull/3165)).
 - idl: Disallow empty discriminators ([#3166](https://github.com/coral-xyz/anchor/pull/3166)).
+- cli: Add `--no-idl` option to the `test` command ([#3175](https://github.com/coral-xyz/anchor/pull/3175)).
 
 ### Fixes
 

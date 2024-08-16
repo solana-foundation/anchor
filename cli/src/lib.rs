@@ -209,6 +209,9 @@ pub enum Command {
         /// use this to save time when running test and the program code is not altered.
         #[clap(long)]
         skip_build: bool,
+        /// Do not build the IDL
+        #[clap(long)]
+        no_idl: bool,
         /// Architecture to use when building the program
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
@@ -816,6 +819,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_deploy,
             skip_local_validator,
             skip_build,
+            no_idl,
             detach,
             run,
             args,
@@ -830,6 +834,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_local_validator,
             skip_build,
             skip_lint,
+            no_idl,
             detach,
             run,
             args,
@@ -3119,6 +3124,7 @@ fn test(
     skip_local_validator: bool,
     skip_build: bool,
     skip_lint: bool,
+    no_idl: bool,
     detach: bool,
     tests_to_run: Vec<String>,
     extra_args: Vec<String>,
@@ -3140,7 +3146,7 @@ fn test(
         if !skip_build {
             build(
                 cfg_override,
-                false,
+                no_idl,
                 None,
                 None,
                 false,
