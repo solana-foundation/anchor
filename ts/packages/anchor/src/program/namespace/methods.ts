@@ -313,7 +313,12 @@ export class MethodsBuilder<
     }
 
     if (!this._viewFn) {
-      throw new Error("Method does not support views");
+      throw new Error(
+        [
+          "Method does not support views.",
+          "The instruction should return a value, and its accounts must be read-only",
+        ].join(" ")
+      );
     }
 
     // @ts-ignore
