@@ -111,7 +111,7 @@ Add constraints to an account with the following format:
 pub account: AccountType
 ```
 
-Some constraints support custom Errors (we will explore errors [later](./errors.md)):
+Some constraints support custom Errors (we will explore errors [later](./errors)):
 
 ```rust
 #[account(...,<constraint> @ MyError::MyErrorVariant, ...)]

@@ -268,7 +268,7 @@ Let us briefly explain how we arrived at the `Game::MAXIMUM_SIZE`. Anchor uses t
 
 In addition to the game's size, we have to add another 8 to the space. This is space for the internal discriminator which anchor sets automatically. In short, the discriminator is how anchor can differentiate between different accounts of the same program. For more information, check out the Anchor space reference.
 
-> [Anchor Space Reference](./../anchor_references/space.md)
+> [Anchor Space Reference](./space)
 
 > (What about using `mem::size_of<Game>()`? This almost works but not quite. The issue is that borsh will always serialize an option as 1 byte for the variant identifier and then additional x bytes for the content if it's Some. Rust uses null-pointer optimization to make Option's variant identifier 0 bytes when it can, so an option is sometimes just as big as its contents. This is the case with `Sign`. This means the `MAXIMUM_SIZE` could also be expressed as `mem::size_of<Game>() + 9`.)
 
@@ -340,7 +340,7 @@ The structure of the transaction function is as follows: First come the instruct
 We did not have to specify the `system_program` account. This is because anchor recognizes this account and is able to infer it. This is also true for other known accounts such as the `token_program` or the `rent` sysvar account.
 
 After the transaction returns, we can fetch the state of the game account. You can fetch account state using the `program.account` namespace.
-Finally, we verify the game has been set up properly by comparing the actual state and the expected state. To learn how Anchor maps the Rust types to the js/ts types, check out the [Javascript Anchor Types Reference](./../anchor_references/javascript_anchor_types_reference.md).
+Finally, we verify the game has been set up properly by comparing the actual state and the expected state. To learn how Anchor maps the Rust types to the js/ts types, check out the [Javascript Anchor Types Reference](./javascript-anchor-types).
 
 Now, run `anchor test`. This starts up (and subsequently shuts down) a local validator (make sure you don't have one running before) and runs your tests using the test script defined in `Anchor.toml`.
 
