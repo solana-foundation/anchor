@@ -18,6 +18,11 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
+pub fn gen_discriminator(namespace: &str, name: impl ToString) -> proc_macro2::TokenStream {
+    let discriminator = sighash(namespace, name.to_string().as_str());
+    format!("&{:?}", discriminator).parse().unwrap()
+}
+
 pub fn generate_ix_variant(name: String, args: &[IxArg]) -> proc_macro2::TokenStream {
     let ix_arg_names: Vec<&syn::Ident> = args.iter().map(|arg| &arg.name).collect();
     let ix_name_camel: proc_macro2::TokenStream = {

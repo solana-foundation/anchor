@@ -2,7 +2,7 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
-use anchor_syn::Overrides;
+use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -37,13 +37,9 @@ pub fn event(
     let event_strct = parse_macro_input!(input as syn::ItemStruct);
     let event_name = &event_strct.ident;
 
-    let discriminator = args.discriminator.unwrap_or_else(|| {
-        let discriminator_preimage = format!("event:{event_name}").into_bytes();
-        let discriminator = anchor_syn::hash::hash(&discriminator_preimage);
-        let discriminator: proc_macro2::TokenStream =
-            format!("{:?}", &discriminator.0[..8]).parse().unwrap();
-        quote! { &#discriminator }
-    });
+    let discriminator = args
+        .discriminator
+        .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
         #[derive(anchor_lang::__private::EventIndex, AnchorSerialize, AnchorDeserialize)]

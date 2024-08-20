@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-use anchor_syn::Overrides;
+use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
 use quote::{quote, ToTokens};
 use syn::{
     parenthesized,
@@ -105,19 +105,13 @@ pub fn account(
         .and_then(|ov| ov.discriminator)
         .unwrap_or_else(|| {
             // Namespace the discriminator to prevent collisions.
-            let discriminator_preimage = if namespace.is_empty() {
-                format!("account:{account_name}")
+            let namespace = if namespace.is_empty() {
+                "account"
             } else {
-                format!("{namespace}:{account_name}")
+                &namespace
             };
 
-            let mut discriminator = [0u8; 8];
-            discriminator.copy_from_slice(
-                &anchor_syn::hash::hash(discriminator_preimage.as_bytes()).to_bytes()[..8],
-            );
-            let discriminator: proc_macro2::TokenStream =
-                format!("{discriminator:?}").parse().unwrap();
-            quote! { &#discriminator }
+            gen_discriminator(namespace, account_name)
         });
     let disc = if account_strct.generics.lt_token.is_some() {
         quote! { #account_name::#type_gen::DISCRIMINATOR }

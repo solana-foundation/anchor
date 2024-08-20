@@ -26,15 +26,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     Some(overrides) if overrides.discriminator.is_some() => {
                         overrides.discriminator.as_ref().unwrap().to_owned()
                     }
-                    _ => {
-                        // TODO: Remove `interface_discriminator`
-                        let discriminator = ix
-                            .interface_discriminator
-                            .unwrap_or_else(|| sighash(SIGHASH_GLOBAL_NAMESPACE, name));
-                        let discriminator: proc_macro2::TokenStream =
-                            format!("{discriminator:?}").parse().unwrap();
-                        quote! { &#discriminator }
-                    }
+                    // TODO: Remove `interface_discriminator`
+                    _ => match &ix.interface_discriminator {
+                        Some(disc) => format!("&{disc:?}").parse().unwrap(),
+                        _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
+                    },
                 };
 
                 quote! {

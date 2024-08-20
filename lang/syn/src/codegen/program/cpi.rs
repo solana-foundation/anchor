@@ -1,4 +1,6 @@
-use crate::codegen::program::common::{generate_ix_variant, sighash, SIGHASH_GLOBAL_NAMESPACE};
+use crate::codegen::program::common::{
+    gen_discriminator, generate_ix_variant, SIGHASH_GLOBAL_NAMESPACE,
+};
 use crate::Program;
 use heck::SnakeCase;
 use quote::{quote, ToTokens};
@@ -11,13 +13,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .map(|ix| {
             let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
             let cpi_method = {
-                let ix_variant = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
+                let name = &ix.raw_method.sig.ident;
+                let ix_variant = generate_ix_variant(name.to_string(), &ix.args);
                 let method_name = &ix.ident;
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
-                let name = &ix.raw_method.sig.ident.to_string();
-                let sighash_arr = sighash(SIGHASH_GLOBAL_NAMESPACE, name);
-                let sighash_tts: proc_macro2::TokenStream =
-                    format!("{sighash_arr:?}").parse().unwrap();
+                let discriminator = gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name);
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
                     "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
@@ -35,7 +35,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         let ix = {
                             let ix = instruction::#ix_variant;
                             let mut data = Vec::with_capacity(256);
-                            data.extend_from_slice(&#sighash_tts);
+                            data.extend_from_slice(#discriminator);
                             AnchorSerialize::serialize(&ix, &mut data)
                                 .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
                             let accounts = ctx.to_account_metas(None);
