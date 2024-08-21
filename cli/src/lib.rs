@@ -573,9 +573,46 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                 // from `~/.local/share/solana/install/releases` because we use multiple Solana
                 // binaries in various commands.
                 fn override_solana_version(version: String) -> Result<bool> {
-                    let output = std::process::Command::new("solana-install")
-                        .arg("list")
-                        .output()?;
+                    // There is a deprecation warning message starting with `1.18.19` which causes
+                    // parsing problems https://github.com/coral-xyz/anchor/issues/3147
+                    let (cmd_name, domain) =
+                        if Version::parse(&version)? < Version::parse("1.18.19")? {
+                            ("solana-install", "solana.com")
+                        } else {
+                            ("agave-install", "anza.xyz")
+                        };
+
+                    // Install the command if it's not installed
+                    if get_current_version(cmd_name).is_err() {
+                        // `solana-install` and `agave-install` are not usable at the same time i.e.
+                        // using one of them makes the other unusable with the default installation,
+                        // causing the installation process to run each time users switch between
+                        // `agave` supported versions. For example, if the user's active Solana
+                        // version is `1.18.17`, and he specifies `solana_version = "2.0.6"`, this
+                        // code path will run each time an Anchor command gets executed.
+                        eprintln!(
+                            "Command not installed: `{cmd_name}`. \
+                            See https://github.com/anza-xyz/agave/wiki/Agave-Transition, \
+                            installing..."
+                        );
+                        let install_script = std::process::Command::new("curl")
+                            .args([
+                                "-sSfL",
+                                &format!("https://release.{domain}/v{version}/install"),
+                            ])
+                            .output()?;
+                        let is_successful = std::process::Command::new("sh")
+                            .args(["-c", std::str::from_utf8(&install_script.stdout)?])
+                            .spawn()?
+                            .wait_with_output()?
+                            .status
+                            .success();
+                        if !is_successful {
+                            return Err(anyhow!("Failed to install `{cmd_name}`"));
+                        }
+                    }
+
+                    let output = std::process::Command::new(cmd_name).arg("list").output()?;
                     if !output.status.success() {
                         return Err(anyhow!("Failed to list installed `solana` versions"));
                     }
@@ -590,7 +627,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         (Stdio::inherit(), Stdio::inherit())
                     };
 
-                    std::process::Command::new("solana-install")
+                    std::process::Command::new(cmd_name)
                         .arg("init")
                         .arg(&version)
                         .stderr(stderr)
@@ -598,7 +635,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         .spawn()?
                         .wait()
                         .map(|status| status.success())
-                        .map_err(|err| anyhow!("Failed to run `solana-install` command: {err}"))
+                        .map_err(|err| anyhow!("Failed to run `{cmd_name}` command: {err}"))
                 }
 
                 match override_solana_version(solana_version.to_owned())? {
