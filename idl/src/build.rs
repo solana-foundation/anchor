@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     env, mem,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -43,36 +43,91 @@ pub trait IdlBuild {
     }
 }
 
+/// IDL builder using builder pattern.
+///
+/// # Example
+///
+/// ```ignore
+/// let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
+/// ```
+#[derive(Default)]
+pub struct IdlBuilder {
+    program_path: Option<PathBuf>,
+    resolution: Option<bool>,
+    skip_lint: Option<bool>,
+    no_docs: Option<bool>,
+    cargo_args: Option<Vec<String>>,
+}
+
+impl IdlBuilder {
+    /// Create a new [`IdlBuilder`] instance.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the program path (default: current directory)
+    pub fn program_path(mut self, program_path: PathBuf) -> Self {
+        self.program_path.replace(program_path);
+        self
+    }
+
+    /// Set whether to include account resolution information in the IDL (default: true).
+    pub fn resolution(mut self, resolution: bool) -> Self {
+        self.resolution.replace(resolution);
+        self
+    }
+    /// Set whether to skip linting (default: false).
+    pub fn skip_lint(mut self, skip_lint: bool) -> Self {
+        self.skip_lint.replace(skip_lint);
+        self
+    }
+
+    /// Set whether to skip generating docs in the IDL (default: false).
+    pub fn no_docs(mut self, no_docs: bool) -> Self {
+        self.no_docs.replace(no_docs);
+        self
+    }
+
+    /// Set the `cargo` args that will get passed to the underyling `cargo` command when building
+    /// IDLs (default: empty).
+    pub fn cargo_args(mut self, cargo_args: Vec<String>) -> Self {
+        self.cargo_args.replace(cargo_args);
+        self
+    }
+
+    /// Build the IDL with the current configuration.
+    pub fn build(self) -> Result<Idl> {
+        let idl = build(
+            &self
+                .program_path
+                .unwrap_or_else(|| std::env::current_dir().expect("Failed to get program path")),
+            self.resolution.unwrap_or(true),
+            self.skip_lint.unwrap_or_default(),
+            self.no_docs.unwrap_or_default(),
+            &self.cargo_args.unwrap_or_default(),
+        )
+        .map(convert_module_paths)
+        .map(sort)?;
+        verify(&idl)?;
+
+        Ok(idl)
+    }
+}
+
 /// Generate IDL via compilation.
+#[deprecated(since = "0.1.2", note = "Use `IdlBuilder` instead")]
 pub fn build_idl(
     program_path: impl AsRef<Path>,
     resolution: bool,
     skip_lint: bool,
     no_docs: bool,
 ) -> Result<Idl> {
-    build_idl_with_cargo_args(program_path, resolution, skip_lint, no_docs, &[])
-}
-
-/// Generate IDL via compilation with passing cargo arguments.
-pub fn build_idl_with_cargo_args(
-    program_path: impl AsRef<Path>,
-    resolution: bool,
-    skip_lint: bool,
-    no_docs: bool,
-    cargo_args: &[String],
-) -> Result<Idl> {
-    let idl = build(
-        program_path.as_ref(),
-        resolution,
-        skip_lint,
-        no_docs,
-        cargo_args,
-    )?;
-    let idl = convert_module_paths(idl);
-    let idl = sort(idl);
-    verify(&idl)?;
-
-    Ok(idl)
+    IdlBuilder::new()
+        .program_path(program_path.as_ref().into())
+        .resolution(resolution)
+        .skip_lint(skip_lint)
+        .no_docs(no_docs)
+        .build()
 }
 
 /// Build IDL.

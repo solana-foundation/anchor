@@ -2722,13 +2722,13 @@ fn idl_build(
         }
     };
     check_idl_build_feature().ok();
-    let idl = anchor_lang_idl::build::build_idl_with_cargo_args(
-        program_path,
-        cfg.features.resolution,
-        cfg.features.skip_lint || skip_lint,
-        no_docs,
-        &cargo_args,
-    )?;
+    let idl = anchor_lang_idl::build::IdlBuilder::new()
+        .program_path(program_path)
+        .resolution(cfg.features.resolution)
+        .skip_lint(cfg.features.skip_lint || skip_lint)
+        .no_docs(no_docs)
+        .cargo_args(cargo_args)
+        .build()?;
     let out = match out {
         Some(path) => OutFile::File(PathBuf::from(path)),
         None => OutFile::Stdout,
@@ -2776,13 +2776,12 @@ in `{path}`."#
 
     check_idl_build_feature().ok();
 
-    anchor_lang_idl::build::build_idl_with_cargo_args(
-        std::env::current_dir()?,
-        cfg.features.resolution,
-        cfg.features.skip_lint || skip_lint,
-        no_docs,
-        cargo_args,
-    )
+    anchor_lang_idl::build::IdlBuilder::new()
+        .resolution(cfg.features.resolution)
+        .skip_lint(cfg.features.skip_lint || skip_lint)
+        .no_docs(no_docs)
+        .cargo_args(cargo_args.into())
+        .build()
 }
 
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {
