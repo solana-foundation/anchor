@@ -20,10 +20,13 @@ use {
         },
         token_interface::{Mint, TokenAccount},
     },
+    spl_discriminator::SplDiscriminate,
     spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList},
     spl_transfer_hook_interface::{
         error::TransferHookError,
-        instruction::{ExecuteInstruction, TransferHookInstruction},
+        instruction::{
+            ExecuteInstruction, InitializeExtraAccountMetaListInstruction, TransferHookInstruction,
+        },
     },
 };
 
@@ -45,7 +48,7 @@ fn check_token_account_is_transferring(account_data: &[u8]) -> Result<()> {
 pub mod transfer_hook {
     use super::*;
 
-    #[interface(spl_transfer_hook_interface::initialize_extra_account_meta_list)]
+    #[instruction(discriminator = InitializeExtraAccountMetaListInstruction::SPL_DISCRIMINATOR_SLICE)]
     pub fn initialize(ctx: Context<Initialize>, metas: Vec<AnchorExtraAccountMeta>) -> Result<()> {
         let extra_metas_account = &ctx.accounts.extra_metas_account;
         let mint = &ctx.accounts.mint;
@@ -68,7 +71,7 @@ pub mod transfer_hook {
         Ok(())
     }
 
-    #[interface(spl_transfer_hook_interface::execute)]
+    #[instruction(discriminator = ExecuteInstruction::SPL_DISCRIMINATOR_SLICE)]
     pub fn execute(ctx: Context<Execute>, amount: u64) -> Result<()> {
         let source_account = &ctx.accounts.source_account;
         let destination_account = &ctx.accounts.destination_account;

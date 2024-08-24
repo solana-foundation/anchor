@@ -41,6 +41,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add `burn_checked`, `mint_to_checked` and `approve_checked` instructions ([#3186]([https://github.com/coral-xyz/anchor/pull/3186)).
 - cli: Migrate to `agave-install` when `solana_version` is `>= 1.18.19` ([#3185](https://github.com/coral-xyz/anchor/pull/3185)).
 - idl: Add `IdlBuilder` ([#3188](https://github.com/coral-xyz/anchor/pull/3188)).
+- cli: Make `clean` command also remove the `.anchor` directory ([#3192](https://github.com/coral-xyz/anchor/pull/3192)).
+- lang: Deprecate `#[interface]` attribute ([#3195](https://github.com/coral-xyz/anchor/pull/3195)).
 
 ### Fixes
 

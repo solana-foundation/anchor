@@ -91,6 +91,11 @@ pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// }
 /// ```
 #[cfg(feature = "interface-instructions")]
+#[deprecated(
+    since = "0.31.0",
+    note = "Use `#[instruction(discriminator = <EXPR>)]` instead.
+    See examples in https://github.com/coral-xyz/anchor/tree/v0.31.0/tests/spl/transfer-hook"
+)]
 #[proc_macro_attribute]
 pub fn interface(
     _args: proc_macro::TokenStream,
