@@ -497,9 +497,7 @@ pub fn gen_idl_type(
                 use quote::ToTokens;
 
                 let source_path = proc_macro2::Span::call_site().source_file().path();
-                let lib_path = find_path("lib.rs", &source_path).expect("lib.rs should exist");
-
-                if let Ok(ctx) = CrateContext::parse(lib_path) {
+                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
                     let alias = ctx.type_aliases().find(|ty| ty.ident == name);
                     if let Some(alias) = alias {
