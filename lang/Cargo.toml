@@ -54,7 +54,7 @@ anchor-lang-idl = { path = "../idl", version = "0.1.1", optional = true }
 arrayref = "0.3"
 base64 = "0.21"
 bincode = "1"
-borsh = ">=0.9, <0.11"
+borsh = "0.10.3"
 bytemuck = "1"
 solana-program = "1.17.3"
 thiserror = "1"

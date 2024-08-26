@@ -27,7 +27,7 @@ token_2022_extensions = ["spl-token-2022", "spl-token-group-interface", "spl-tok
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.30.1", features = ["derive"] }
-borsh = { version = ">=0.9, <0.11", optional = true }
+borsh = { version = "0.10.3", optional = true }
 mpl-token-metadata = { version = "4", optional = true }
 serum_dex = { git = "https://github.com/openbook-dex/program/", rev = "1be91f2", version = "0.4.0", features = ["no-entrypoint"], optional = true }
 spl-associated-token-account = { version = "3", features = ["no-entrypoint"], optional = true }
