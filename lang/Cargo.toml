@@ -51,7 +51,6 @@ anchor-derive-space = { path = "./derive/space", version = "0.30.1" }
 # `anchor-lang-idl` should only be included with `idl-build` feature
 anchor-lang-idl = { path = "../idl", version = "0.1.1", optional = true }
 
-arrayref = "0.3"
 base64 = "0.21"
 bincode = "1"
 borsh = "0.10.3"

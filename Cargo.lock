@@ -277,7 +277,6 @@ dependencies = [
  "anchor-derive-serde",
  "anchor-derive-space",
  "anchor-lang-idl",
- "arrayref",
  "base64 0.21.7",
  "bincode",
  "borsh 0.10.3",
