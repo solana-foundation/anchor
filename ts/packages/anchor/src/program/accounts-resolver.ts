@@ -86,7 +86,43 @@ export class AccountsResolver<IDL extends Idl> {
     ) {
       depth++;
       if (depth === 16) {
-        throw new Error("Reached maximum depth for account resolution");
+        const isResolvable = (acc: IdlInstructionAccountItem) => {
+          if (!isCompositeAccounts(acc)) {
+            return !!(acc.address || acc.pda || acc.relations);
+          }
+
+          return acc.accounts.some(isResolvable);
+        };
+
+        const getPaths = (
+          accs: IdlInstructionAccountItem[],
+          path: string[] = [],
+          paths: string[][] = []
+        ) => {
+          for (const acc of accs) {
+            if (isCompositeAccounts(acc)) {
+              paths.push(...getPaths(acc.accounts, [...path, acc.name]));
+            } else {
+              paths.push([...path, acc.name]);
+            }
+          }
+
+          return paths;
+        };
+
+        const resolvableAccs = this._idlIx.accounts.filter(isResolvable);
+        const unresolvedAccs = getPaths(resolvableAccs)
+          .filter((path) => !this.get(path))
+          .map((path) => path.reduce((acc, p) => acc + "." + p))
+          .map((acc) => `\`${acc}\``)
+          .join(", ");
+
+        throw new Error(
+          [
+            `Reached maximum depth for account resolution.`,
+            `Unresolved accounts: ${unresolvedAccs}`,
+          ].join(" ")
+        );
       }
     }
   }

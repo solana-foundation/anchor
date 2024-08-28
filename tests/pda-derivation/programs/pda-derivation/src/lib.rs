@@ -51,6 +51,10 @@ pub mod pda_derivation {
     pub fn seed_math_expr(_ctx: Context<SeedMathExpr>) -> Result<()> {
         Ok(())
     }
+
+    pub fn resolution_error(_ctx: Context<ResolutionError>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -176,6 +180,15 @@ pub struct SeedMathExpr<'info> {
     pub my_account: Account<'info, MyAccount>,
     #[account(seeds = [&(my_account.data + 1).to_le_bytes()], bump)]
     pub math_expr_account: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ResolutionError<'info> {
+    pub unknown: UncheckedAccount<'info>,
+    #[account(seeds = [unknown.key.as_ref()], bump)]
+    pub pda: UncheckedAccount<'info>,
+    #[account(seeds = [pda.key.as_ref()], bump)]
+    pub another_pda: UncheckedAccount<'info>,
 }
 
 #[account]
