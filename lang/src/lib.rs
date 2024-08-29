@@ -273,9 +273,8 @@ pub trait AccountDeserialize: Sized {
 pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 
 /// Calculates the data for an instruction invocation, where the data is
-/// `Sha256(<namespace>:<method_name>)[..8] || BorshSerialize(args)`.
-/// `args` is a borsh serialized struct of named fields for each argument given
-/// to an instruction.
+/// `Discriminator + BorshSerialize(args)`. `args` is a borsh serialized
+/// struct of named fields for each argument given to an instruction.
 pub trait InstructionData: Discriminator + AnchorSerialize {
     fn data(&self) -> Vec<u8> {
         let mut data = Vec::with_capacity(256);
@@ -300,8 +299,25 @@ pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
     fn data(&self) -> Vec<u8>;
 }
 
-/// 8 byte unique identifier for a type.
+/// Unique identifier for a type.
+///
+/// This is not a trait you should derive manually, as various Anchor macros already derive it
+/// internally.
+///
+/// Prior to Anchor v0.31, discriminators were always 8 bytes in size. However, starting with Anchor
+/// v0.31, it is possible to override the default discriminators, and discriminator length is no
+/// longer fixed, which means this trait can also be implemented for non-Anchor programs.
+///
+/// It's important that the discriminator is always unique for the type you're implementing it
+/// for. While the discriminator can be at any length (including zero), the IDL generation does not
+/// currently allow empty discriminators for safety and convenience reasons. However, the trait
+/// definition still allows empty discriminators because some non-Anchor programs, e.g. the SPL
+/// Token program, don't have account discriminators. In that case, safety checks should never
+/// depend on the discriminator.
 pub trait Discriminator {
+    /// Discriminator slice.
+    ///
+    /// See [`Discriminator`] trait documentation for more information.
     const DISCRIMINATOR: &'static [u8];
 }
 

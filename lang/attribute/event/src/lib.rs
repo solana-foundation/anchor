@@ -11,7 +11,7 @@ use syn::parse_macro_input;
 /// their programs that clients can subscribe to. Currently, this macro is for
 /// structs only.
 ///
-/// # Args
+/// # Arguments
 ///
 /// - `discriminator`: Override the default 8-byte discriminator
 ///

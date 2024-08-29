@@ -111,7 +111,7 @@ pub fn interface(
 
 /// This attribute is used to override the Anchor defaults of program instructions.
 ///
-/// # Args
+/// # Arguments
 ///
 /// - `discriminator`: Override the default 8-byte discriminator
 ///
