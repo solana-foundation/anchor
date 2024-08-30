@@ -27,10 +27,9 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
     let if_statements = idl.accounts.iter().map(|acc| {
         let name = format_ident!("{}", acc.name);
         let disc = gen_discriminator(&acc.discriminator);
-        let disc_len = acc.discriminator.len();
         quote! {
             if value.starts_with(&#disc) {
-                return #name::try_from_slice(&value[#disc_len..])
+                return #name::try_deserialize_unchecked(&mut &value[..])
                     .map(Self::#name)
                     .map_err(Into::into)
             }
