@@ -161,7 +161,25 @@ fn get_address(acc: &Field) -> TokenStream {
             .address
             .as_ref()
             .map(|constraint| &constraint.address)
-            .filter(|address| !matches!(address, syn::Expr::Field(_)))
+            .filter(|address| {
+                match address {
+                    // Allow constants (assume the identifier follows the Rust naming convention)
+                    // e.g. `crate::ID`
+                    syn::Expr::Path(expr) => expr
+                        .path
+                        .segments
+                        .last()
+                        .unwrap()
+                        .ident
+                        .to_string()
+                        .chars()
+                        .all(|c| c.is_uppercase() || c == '_'),
+                    // Allow `const fn`s (assume any stand-alone function call without an argument)
+                    // e.g. `crate::id()`
+                    syn::Expr::Call(expr) => expr.args.is_empty(),
+                    _ => false,
+                }
+            })
             .map(|address| quote! { Some(#address.to_string()) })
             .unwrap_or_else(|| quote! { None }),
     }

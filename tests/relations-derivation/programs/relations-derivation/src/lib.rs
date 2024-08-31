@@ -19,7 +19,7 @@ pub mod relations_derivation {
         Ok(())
     }
 
-    pub fn test_address_relation(_ctx: Context<TestAddressRelation>) -> Result<()> {
+    pub fn test_address(_ctx: Context<TestAddress>) -> Result<()> {
         Ok(())
     }
 }
@@ -66,9 +66,20 @@ pub struct TestRelation<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestAddressRelation<'info> {
+pub struct TestAddress<'info> {
+    // Included wit the `address` field in IDL
+    // It's actually `static` but it doesn't matter for our purposes
+    #[account(address = crate::ID)]
+    constant: UncheckedAccount<'info>,
+    #[account(address = crate::id())]
+    const_fn: UncheckedAccount<'info>,
+
+    // Not included with the `address` field in IDL
     #[account(address = my_account.my_account)]
-    account: UncheckedAccount<'info>,
+    field: UncheckedAccount<'info>,
+    #[account(address = my_account.my_account())]
+    method: UncheckedAccount<'info>,
+
     #[account(seeds = [b"seed"], bump = my_account.bump)]
     my_account: Account<'info, MyAccount>,
 }
@@ -77,4 +88,10 @@ pub struct TestAddressRelation<'info> {
 pub struct MyAccount {
     pub my_account: Pubkey,
     pub bump: u8,
+}
+
+impl MyAccount {
+    pub fn my_account(&self) -> Pubkey {
+        self.my_account
+    }
 }
