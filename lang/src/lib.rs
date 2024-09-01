@@ -44,8 +44,11 @@ pub mod event;
 #[doc(hidden)]
 pub mod idl;
 pub mod system_program;
-
 mod vec;
+
+#[cfg(feature = "lazy-account")]
+mod lazy;
+
 pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
@@ -440,18 +443,20 @@ pub mod prelude {
 
     #[cfg(feature = "interface-instructions")]
     pub use super::interface;
+
+    #[cfg(feature = "lazy-account")]
+    pub use super::accounts::lazy_account::LazyAccount;
 }
 
 /// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
     pub use anchor_attribute_account::ZeroCopyAccessor;
-
     pub use anchor_attribute_event::EventIndex;
-
     pub use base64;
-
     pub use bytemuck;
+
+    pub use crate::{bpf_writer::BpfWriter, common::is_closed};
 
     use solana_program::pubkey::Pubkey;
 
@@ -478,6 +483,11 @@ pub mod __private {
             input.to_bytes()
         }
     }
+
+    #[cfg(feature = "lazy-account")]
+    pub use crate::lazy::Lazy;
+    #[cfg(feature = "lazy-account")]
+    pub use anchor_derive_serde::Lazy;
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.

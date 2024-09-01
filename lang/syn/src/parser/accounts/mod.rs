@@ -334,6 +334,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "UncheckedAccount"
             | "AccountLoader"
             | "Account"
+            | "LazyAccount"
             | "Program"
             | "Interface"
             | "InterfaceAccount"
@@ -352,6 +353,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "UncheckedAccount" => Ty::UncheckedAccount,
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
+        "LazyAccount" => Ty::LazyAccount(parse_lazy_account_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
         "Interface" => Ty::Interface(parse_interface_ty(&path)?),
         "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
@@ -442,6 +444,11 @@ fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
         account_type_path,
         boxed,
     })
+}
+
+fn parse_lazy_account_ty(path: &syn::Path) -> ParseResult<LazyAccountTy> {
+    let account_type_path = parse_account(path)?;
+    Ok(LazyAccountTy { account_type_path })
 }
 
 fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountTy> {

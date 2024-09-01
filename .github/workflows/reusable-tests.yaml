@@ -463,6 +463,8 @@ jobs:
             path: tests/bench
           - cmd: cd tests/idl && ./test.sh
             path: tests/idl
+          - cmd: cd tests/lazy-account && anchor test
+            path: tests/lazy-account
           # TODO: Enable when `solang` becomes compatible with the new IDL spec
           # - cmd: cd tests/solang && anchor test
           #   path: tests/solang

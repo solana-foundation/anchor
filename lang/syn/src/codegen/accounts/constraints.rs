@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use std::collections::HashSet;
 
 use crate::*;
@@ -260,6 +260,13 @@ pub fn generate_constraint_has_one(
         Ty::AccountLoader(_) => quote! {#ident.load()?},
         _ => quote! {#ident},
     };
+    let my_key = match &f.ty {
+        Ty::LazyAccount(_) => {
+            let load_ident = format_ident!("load_{}", target.to_token_stream().to_string());
+            quote! { *#field.#load_ident()? }
+        }
+        _ => quote! { #field.#target },
+    };
     let error = generate_custom_error(
         ident,
         &c.error,
@@ -272,7 +279,7 @@ pub fn generate_constraint_has_one(
     quote! {
         {
             #target_optional_check
-            let my_key = #field.#target;
+            let my_key = #my_key;
             let target_key = #target.key();
             if my_key != target_key {
                 return #error;

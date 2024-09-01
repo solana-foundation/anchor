@@ -45,6 +45,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Make `clean` command also remove the `.anchor` directory ([#3192](https://github.com/coral-xyz/anchor/pull/3192)).
 - lang: Deprecate `#[interface]` attribute ([#3195](https://github.com/coral-xyz/anchor/pull/3195)).
 - ts: Include unresolved accounts in the resolution error message ([#3207](https://github.com/coral-xyz/anchor/pull/3207)).
+- lang: Add `LazyAccount` ([#3194](https://github.com/coral-xyz/anchor/pull/3194)).
 
 ### Fixes
 

@@ -59,6 +59,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     {
                         Some(&ty.account_type_path)
                     }
+                    Ty::LazyAccount(ty) => Some(&ty.account_type_path),
                     Ty::AccountLoader(ty) => Some(&ty.account_type_path),
                     Ty::InterfaceAccount(ty) => Some(&ty.account_type_path),
                     _ => None,

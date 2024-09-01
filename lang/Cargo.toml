@@ -36,6 +36,7 @@ idl-build = [
 ]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 interface-instructions = ["anchor-attribute-program/interface-instructions"]
+lazy-account = ["anchor-attribute-account/lazy-account", "anchor-derive-serde/lazy-account"]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.30.1" }

@@ -13,6 +13,7 @@ proc-macro = true
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
+lazy-account = []
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.30.1", features = ["hash"] }
