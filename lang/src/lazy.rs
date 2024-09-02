@@ -19,6 +19,9 @@ use crate::{AnchorDeserialize, Pubkey};
 /// }
 /// ```
 pub trait Lazy: AnchorDeserialize {
+    /// Whether the type is a fixed-size type.
+    const SIZED: bool = false;
+
     /// Get the serialized size of the type from the given buffer.
     ///
     /// For performance reasons, this method does not verify the validity of the data, and should
@@ -35,6 +38,8 @@ pub trait Lazy: AnchorDeserialize {
 macro_rules! impl_sized {
     ($ty: ty) => {
         impl Lazy for $ty {
+            const SIZED: bool = true;
+
             #[inline(always)]
             fn size_of(_buf: &[u8]) -> usize {
                 ::core::mem::size_of::<$ty>()
@@ -59,6 +64,8 @@ impl_sized!(f64);
 impl_sized!(Pubkey);
 
 impl<T: Lazy, const N: usize> Lazy for [T; N] {
+    const SIZED: bool = T::SIZED;
+
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
         N * T::size_of(buf)
@@ -66,6 +73,8 @@ impl<T: Lazy, const N: usize> Lazy for [T; N] {
 }
 
 impl Lazy for String {
+    const SIZED: bool = false;
+
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
         LEN + get_len(buf)
@@ -73,6 +82,8 @@ impl Lazy for String {
 }
 
 impl<T: Lazy> Lazy for Option<T> {
+    const SIZED: bool = false;
+
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
         1 + match buf.first() {
@@ -84,6 +95,8 @@ impl<T: Lazy> Lazy for Option<T> {
 }
 
 impl<T: Lazy> Lazy for Vec<T> {
+    const SIZED: bool = false;
+
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
         (0..get_len(buf)).fold(LEN, |acc, _| acc + T::size_of(&buf[acc..]))
@@ -166,6 +179,7 @@ mod tests {
                 c: Some(String::from("a"))
             })
         );
+        assert!(!MyStruct::SIZED);
 
         // Enum
         #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -181,6 +195,7 @@ mod tests {
             MyEnum::size_of(&[2, 1, 2, 1, 2]),
             len!(MyEnum::Unnamed(1, 2))
         );
+        assert!(!MyEnum::SIZED);
     }
 
     #[test]
@@ -194,9 +209,12 @@ mod tests {
             GenericStruct::<i64>::size_of(&[1, 2, 3, 4, 5, 6, 7, 8]),
             len!(GenericStruct { t: 1i64 })
         );
+        assert!(GenericStruct::<i64>::SIZED);
+
         assert_eq!(
             GenericStruct::<Vec<u8>>::size_of(&[8, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]),
             len!(GenericStruct { t: vec![0u8; 8] })
         );
+        assert!(!GenericStruct::<Vec<u8>>::SIZED);
     }
 }

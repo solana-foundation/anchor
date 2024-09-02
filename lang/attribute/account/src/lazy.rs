@@ -57,10 +57,14 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             });
 
             let ty = &field.ty;
+            let ty_as_lazy = quote! { <#ty as anchor_lang::__private::Lazy> };
             let size = quote! {
-                <#ty as anchor_lang::__private::Lazy>::size_of(
-                    &self.__info.data.borrow()[self.#offset_of_ident()..]
-                )
+                // Calculating the offset is highly wasteful if the type is sized.
+                if #ty_as_lazy::SIZED {
+                    #ty_as_lazy::size_of(&[])
+                } else {
+                    #ty_as_lazy::size_of(&self.__info.data.borrow()[self.#offset_of_ident()..])
+                }
             };
 
             let signatures = quote! {

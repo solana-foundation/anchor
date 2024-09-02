@@ -4,8 +4,18 @@ use syn::{spanned::Spanned, Fields, Item};
 
 pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let item = syn::parse::<Item>(input)?;
-    let (name, generics, size) = match &item {
-        Item::Struct(strct) => (&strct.ident, &strct.generics, sum_fields(&strct.fields)),
+    let (name, generics, size, sized) = match &item {
+        Item::Struct(strct) => (
+            &strct.ident,
+            &strct.generics,
+            sum_fields(&strct.fields),
+            strct
+                .fields
+                .iter()
+                .map(|field| &field.ty)
+                .map(|ty| quote! { <#ty as anchor_lang::__private::Lazy>::SIZED })
+                .fold(quote!(true), |acc, sized| quote! { #acc && #sized }),
+        ),
         Item::Enum(enm) => {
             let arms = enm
                 .variants
@@ -24,6 +34,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                         _ => unreachable!(),
                     }
                 },
+                quote!(false),
             )
         }
         Item::Union(_) => return Err(syn::Error::new(item.span(), "Unions are not supported")),
@@ -34,6 +45,8 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
 
     Ok(quote! {
         impl #impl_generics anchor_lang::__private::Lazy for #name #ty_generics #where_clause {
+            const SIZED: bool = #sized;
+
             #[inline(always)]
             fn size_of(buf: &[u8]) -> usize {
                 #size
