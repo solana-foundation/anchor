@@ -84,6 +84,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - docker: Upgrade `node` to 20.16.0 LTS ([#3179](https://github.com/coral-xyz/anchor/pull/3179)).
 - ts: Change the `Program` constructor's `idl` parameter type to `any` ([#3181](https://github.com/coral-xyz/anchor/pull/3181)).
 - lang, spl: Remove `borsh 0.9` support ([#3199](https://github.com/coral-xyz/anchor/pull/3199)).
+- ts: Upgrade `typescript` to `5.5.4` and remove the generic parameters of `SimulateResponse` ([#3221](https://github.com/coral-xyz/anchor/pull/3221)).
 
 ## [0.30.1] - 2024-06-20
 

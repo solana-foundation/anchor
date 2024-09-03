@@ -332,9 +332,7 @@ export class MethodsBuilder<
     });
   }
 
-  public async simulate(
-    options?: ConfirmOptions
-  ): Promise<SimulateResponse<any, any>> {
+  public async simulate(options?: ConfirmOptions): Promise<SimulateResponse> {
     if (this._resolveAccounts) {
       await this._accountsResolver.resolve();
     }
