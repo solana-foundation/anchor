@@ -29,11 +29,6 @@ export interface Coder<A extends string = string, T extends string = string> {
   readonly types: TypesCoder<T>;
 }
 
-export interface StateCoder {
-  encode<T = any>(name: string, account: T): Promise<Buffer>;
-  decode<T = any>(ix: Buffer): T;
-}
-
 export interface AccountsCoder<A extends string = string> {
   encode<T = any>(accountName: A, account: T): Promise<Buffer>;
   decode<T = any>(accountName: A, acc: Buffer): T;
