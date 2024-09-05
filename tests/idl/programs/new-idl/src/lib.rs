@@ -291,6 +291,7 @@ pub struct AccountAndEventFieldAccount {
 pub struct FullPath<'info> {
     #[account(zero)]
     pub account: Account<'info, FullPathAccount>,
+    pub external_program: Program<'info, external::program::External>,
 }
 
 #[account]

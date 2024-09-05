@@ -144,18 +144,12 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
 
 fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
-        Ty::Program(ty) => ty
-            .account_type_path
-            .path
-            .segments
-            .last()
-            .map(|seg| &seg.ident)
-            .map(|ident| quote! { Some(#ident::id().to_string()) })
-            .unwrap_or_else(|| quote! { None }),
-        Ty::Sysvar(_) => {
+        Ty::Program(_) | Ty::Sysvar(_) => {
             let ty = acc.account_ty();
-            let sysvar_id_trait = quote!(anchor_lang::solana_program::sysvar::SysvarId);
-            quote! { Some(<#ty as #sysvar_id_trait>::id().to_string()) }
+            let id_trait = matches!(acc.ty, Ty::Program(_))
+                .then(|| quote!(anchor_lang::Id))
+                .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
+            quote! { Some(<#ty as #id_trait>::id().to_string()) }
         }
         _ => acc
             .constraints
