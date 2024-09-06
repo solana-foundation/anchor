@@ -7,7 +7,7 @@ use reqwest::StatusCode;
 use semver::{Prerelease, Version};
 use serde::{de, Deserialize};
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::Stdio;
 
@@ -80,16 +80,16 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
     // Make sure the requested version is installed
     let installed_versions = read_installed_versions()?;
     if !installed_versions.contains(&version) {
-        if let Ok(current) = current_version() {
-            println!("Version {version} is not installed, staying on version {current}.");
-        } else {
-            println!("Version {version} is not installed, no current version.");
-        }
-
-        return Err(anyhow!(
-            "You need to run 'avm install {}' to install it before using it.",
-            version
-        ));
+        println!("Version {version} is not installed. Would you like to install? [y/n]");
+        let input = std::io::stdin()
+            .lock()
+            .lines()
+            .next()
+            .expect("Expected input")?;
+        match input.as_str() {
+            "y" | "yes" => return install_version(InstallTarget::Version(version), false),
+            _ => return Err(anyhow!("Installation rejected.")),
+        };
     }
 
     let mut current_version_file = fs::File::create(current_version_file_path())?;
