@@ -39,15 +39,15 @@ url = "https://api.apr.dev"
 
 ## features
 
-#### seeds
+#### resolution
 
-This tells the IDL to include seed generation for PDA Accounts. The default is `false`
+This tells the IDL to support account resolution. The default is `true`.
 
 Example:
 
 ```
 [features]
-seeds = true
+resolution = true
 ```
 
 ## workspace
