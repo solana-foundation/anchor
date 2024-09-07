@@ -69,6 +69,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix template code shouldn't escape ([#3210](https://github.com/coral-xyz/anchor/pull/3210)).
 - idl: Fix using `address` constraint with non-const expressions ([#3216](https://github.com/coral-xyz/anchor/pull/3216)).
 - idl: Fix using full path types with `Program` ([#3228](https://github.com/coral-xyz/anchor/pull/3228)).
+- lang: Use closures for `init` constraints to reduce the stack usage of `try_accounts` ([#2939](https://github.com/coral-xyz/anchor/pull/2939)).
 
 ### Breaking
 

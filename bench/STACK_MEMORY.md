@@ -108,6 +108,8 @@ Solana version: 1.18.17
 
 ### Notable changes
 
+- lang: Use closures for `init` constraints to reduce the stack usage of `try_accounts` ([#2939](https://github.com/coral-xyz/anchor/pull/2939)).
+
 ---
 
 ## [0.30.1]
