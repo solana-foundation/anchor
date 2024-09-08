@@ -145,7 +145,7 @@ These options are passed into the options with the same name in the `solana-test
 ```toml
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"     # This is the url of the cluster that accounts are cloned from (See `test.validator.clone`).
-warp_slot = 1337                                # Warp the ledger to `warp_slot` after starting the validator.
+warp_slot = "1337"                              # Warp the ledger to `warp_slot` after starting the validator.
 slots_per_epoch = 5                             # Override the number of slots in an epoch.
 rpc_port = 1337                                 # Set JSON RPC on this port, and the next port for the RPC websocket.
 limit_ledger_size = 1337                        # Keep this amount of shreds in root slots.
