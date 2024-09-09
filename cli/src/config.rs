@@ -9,6 +9,7 @@ use reqwest::Url;
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
+use solana_sdk::clock::Slot;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use solang_parser::pt::{ContractTy, SourceUnitPart};
@@ -1069,7 +1070,7 @@ pub struct _Validator {
     pub ticks_per_slot: Option<u16>,
     // Warp the ledger to WARP_SLOT after starting the validator.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub warp_slot: Option<String>,
+    pub warp_slot: Option<Slot>,
     // Deactivate one or more features.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deactivate_feature: Option<Vec<String>>,
@@ -1107,7 +1108,7 @@ pub struct Validator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ticks_per_slot: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub warp_slot: Option<String>,
+    pub warp_slot: Option<Slot>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deactivate_feature: Option<Vec<String>>,
 }

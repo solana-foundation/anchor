@@ -89,6 +89,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang, spl: Remove `borsh 0.9` support ([#3199](https://github.com/coral-xyz/anchor/pull/3199)).
 - ts: Upgrade `typescript` to `5.5.4` and remove the generic parameters of `SimulateResponse` ([#3221](https://github.com/coral-xyz/anchor/pull/3221)).
 - ts: Remove `StateCoder`([#3224](https://github.com/coral-xyz/anchor/pull/3224)).
+- cli: Accept integers for `warp_slot` ([#3235](https://github.com/coral-xyz/anchor/pull/3235)).
 
 ## [0.30.1] - 2024-06-20
 
