@@ -216,7 +216,7 @@ jobs:
         with:
           name: optional.so
           path: tests/optional/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: events.so
           path: tests/events/target/deploy/
