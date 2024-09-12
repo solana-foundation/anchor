@@ -452,7 +452,6 @@ pub mod prelude {
 #[doc(hidden)]
 pub mod __private {
     pub use anchor_attribute_account::ZeroCopyAccessor;
-    pub use anchor_attribute_event::EventIndex;
     pub use base64;
     pub use bytemuck;
 
