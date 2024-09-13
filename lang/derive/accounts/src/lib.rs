@@ -94,7 +94,8 @@ use syn::parse_macro_input;
 ///             </td>
 ///             <td>
 ///                 Creates the account via a CPI to the system program and
-///                 initializes it (sets its account discriminator).<br>
+///                 initializes it (sets its account discriminator). The annotated account is required to sign for this instruction
+///                 unless `seeds` is provided. <br>
 ///                 Marks the account as mutable and is mutually exclusive with <code>mut</code>.<br>
 ///                 Makes the account rent exempt unless skipped with <code>rent_exempt = skip</code>.<br><br>
 ///                 Use <code>#[account(zero)]</code> for accounts larger than 10 Kibibyte.<br><br>
