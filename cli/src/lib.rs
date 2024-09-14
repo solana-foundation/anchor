@@ -9,7 +9,7 @@ use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discri
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, Context, Result};
-use checks::{check_anchor_version, check_idl_build_feature, check_overflow};
+use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::Parser;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
@@ -1328,6 +1328,7 @@ pub fn build(
 
     // Check whether there is a mismatch between CLI and crate/package versions
     check_anchor_version(&cfg).ok();
+    check_deps(&cfg).ok();
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),

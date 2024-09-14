@@ -81,6 +81,36 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     Ok(())
 }
 
+/// Check for potential dependency improvements.
+///
+/// The main problem people will run into with Solana v2 is that the `solana-program` version
+/// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
+/// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
+/// `anchor-spl` when possible.
+pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
+    // Check `solana-program`
+    cfg.get_rust_program_list()?
+        .into_iter()
+        .map(|path| path.join("Cargo.toml"))
+        .map(cargo_toml::Manifest::from_path)
+        .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .filter(|man| man.dependencies.contains_key("solana-program"))
+        .for_each(|man| {
+            eprintln!(
+                "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
+                To solve, remove the `solana-program` dependency and use the exported crate from \
+                `anchor-lang`.\n\
+                `use solana_program` becomes `use anchor_lang::solana_program`.\n\
+                Program name: `{}`\n",
+                man.package().name()
+            )
+        });
+
+    Ok(())
+}
+
 /// Check whether the `idl-build` feature is being used correctly.
 ///
 /// **Note:** The check expects the current directory to be a program directory.

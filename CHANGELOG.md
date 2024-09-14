@@ -47,6 +47,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Include unresolved accounts in the resolution error message ([#3207](https://github.com/coral-xyz/anchor/pull/3207)).
 - lang: Add `LazyAccount` ([#3194](https://github.com/coral-xyz/anchor/pull/3194)).
 - avm: Ask whether to install if the version is not installed with the `use` command ([#3230](https://github.com/coral-xyz/anchor/pull/3230)).
+- cli: Warn if a manifest has `solana-program` dependency ([#3250](https://github.com/coral-xyz/anchor/pull/3250)).
 
 ### Fixes
 
