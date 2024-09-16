@@ -395,10 +395,9 @@ jobs:
             path: tests/multisig
           # - cmd: cd tests/lockup && anchor test --skip-lint
           #   path: tests/lockup
-          # TODO: Remove `1.14.18` installation if/when https://github.com/solana-labs/solana/issues/31960 is solved
-          # `swap` tests don't work with Solana `1.16.0`, downgrade to `1.14.18`
-          - cmd: cd tests/swap/deps/openbook-dex/dex && solana-install init 1.14.18 && cargo build-bpf -- --locked && cd ../../../ && solana-install init $SOLANA_CLI_VERSION && anchor test --skip-lint
-            path: tests/swap
+          # TODO: Re-enable after making it work with Solana v2
+          # - cmd: cd tests/swap/deps/openbook-dex/dex && solana-install init 1.14.18 && cargo build-bpf -- --locked && cd ../../../ && solana-install init $SOLANA_CLI_VERSION && anchor test --skip-lint
+          #   path: tests/swap
           - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
             path: tests/escrow
           - cmd: cd tests/pyth && anchor test --skip-lint && npx tsc --noEmit

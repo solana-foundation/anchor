@@ -20,9 +20,6 @@ pub mod token_2022_extensions;
 #[cfg(feature = "token_2022")]
 pub mod token_interface;
 
-#[cfg(feature = "dex")]
-pub mod dex;
-
 #[cfg(feature = "governance")]
 pub mod governance;
 

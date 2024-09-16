@@ -94,6 +94,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Remove `StateCoder`([#3224](https://github.com/coral-xyz/anchor/pull/3224)).
 - cli: Accept integers for `warp_slot` ([#3235](https://github.com/coral-xyz/anchor/pull/3235)).
 - lang: Remove `EventIndex` ([#3244](https://github.com/coral-xyz/anchor/pull/3244)).
+- spl: Remove `dex` feature ([#3257](https://github.com/coral-xyz/anchor/pull/3257)).
 
 ## [0.30.1] - 2024-06-20
 
