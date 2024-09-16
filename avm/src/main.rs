@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Error, Result};
 use avm::InstallTarget;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use semver::Version;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,6 +38,11 @@ pub enum Commands {
     List {},
     #[clap(about = "Update to the latest Anchor version")]
     Update {},
+    #[clap(about = "Generate shell completions for AVM")]
+    Completions {
+        #[clap(value_enum)]
+        shell: clap_complete::Shell,
+    },
 }
 
 // If `latest` is passed use the latest available version.
@@ -78,6 +83,10 @@ pub fn entry(opts: Cli) -> Result<()> {
         Commands::Uninstall { version } => avm::uninstall_version(&version),
         Commands::List {} => avm::list_versions(),
         Commands::Update {} => avm::update(),
+        Commands::Completions { shell } => {
+            clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
+            Ok(())
+        }
     }
 }
 

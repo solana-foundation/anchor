@@ -77,3 +77,42 @@ Now verify the CLI is installed properly.
 ```shell
 anchor --version
 ```
+
+## Generating Shell Completions
+
+Shell completions can be generated for `bash`, `elvish`, `fish`, `powershell`, and `zsh`.
+
+### Bash
+
+```bash
+mkdir -p $HOME/.local/share/bash-completion/completions
+anchor completions bash > $HOME/.local/share/bash-completion/completions/anchor
+avm completions bash > $HOME/.local/share/bash-completion/completions/avm
+exec bash
+```
+
+### Fish
+
+```bash
+mkdir -p $HOME/.config/fish/completions
+anchor completions fish > $HOME/.config/fish/completions/anchor.fish
+avm completions fish > $HOME/.config/fish/completions/avm.fish
+source $HOME/.config/fish/config.fish
+```
+
+### Zsh
+
+First ensure the following is in your `.zshrc` file. If using `oh-my-zsh` this step can be skipped.
+
+```bash
+autoload -U compinit
+compinit -i
+```
+
+Next run:
+
+```bash
+anchor completions zsh | sudo tee /usr/local/share/zsh/site-functions/_anchor
+avm completions zsh | sudo tee /usr/local/share/zsh/site-functions/_avm
+exec zsh
+```

@@ -10,7 +10,7 @@ use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
@@ -364,6 +364,11 @@ pub enum Command {
         /// IDL to use (defaults to workspace IDL)
         #[clap(long)]
         idl: Option<String>,
+    },
+    /// Generates shell completions.
+    Completions {
+        #[clap(value_enum)]
+        shell: clap_complete::Shell,
     },
 }
 
@@ -924,6 +929,15 @@ fn process_command(opts: Opts) -> Result<()> {
             address,
             idl,
         } => account(&opts.cfg_override, account_type, address, idl),
+        Command::Completions { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Opts::command(),
+                "anchor",
+                &mut std::io::stdout(),
+            );
+            Ok(())
+        }
     }
 }
 
