@@ -32,6 +32,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
             let name = ix.ident.to_string();
             let name_pascal = format_ident!("{}", name.to_camel_case());
             let ctx_ident = &ix.anchor_ident;
+            let cfgs = &ix.cfgs;
 
             let docs = match &ix.docs {
                 Some(docs) if !no_docs => quote! { vec![#(#docs.into()),*] },
@@ -74,6 +75,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
 
             Ok((
                 quote! {
+                    #(#cfgs)*
                     #idl::IdlInstruction {
                         name: #name.into(),
                         docs: #docs,

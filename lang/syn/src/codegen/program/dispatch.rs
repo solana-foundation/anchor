@@ -12,8 +12,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
         let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
+        let ix_cfgs = &ix.cfgs;
 
         quote! {
+            #(#ix_cfgs)*
             if data.starts_with(#discriminator) {
                 return __private::__global::#ix_method_name(
                     program_id,

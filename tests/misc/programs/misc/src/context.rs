@@ -812,3 +812,7 @@ pub struct TestBoxedOwnerConstraint<'info> {
     pub my_account: Box<Account<'info, Data>>,
     pub program: Program<'info, Misc>,
 }
+
+#[cfg(feature = "my-feature")]
+#[derive(Accounts)]
+pub struct Empty {}

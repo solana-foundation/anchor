@@ -25,6 +25,7 @@ use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult}
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::Attribute;
 use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
@@ -64,6 +65,7 @@ pub struct Ix {
     pub raw_method: ItemFn,
     pub ident: Ident,
     pub docs: Option<Vec<String>>,
+    pub cfgs: Vec<Attribute>,
     pub args: Vec<IxArg>,
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.

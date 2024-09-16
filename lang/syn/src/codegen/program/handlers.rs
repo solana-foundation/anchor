@@ -104,6 +104,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let variant_arm = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
             let ix_name_log = format!("Instruction: {ix_name}");
             let ret_type = &ix.returns.ty.to_token_stream();
+            let cfgs = &ix.cfgs;
             let maybe_set_return_data = match ret_type.to_string().as_str() {
                 "()" => quote! {},
                 _ => quote! {
@@ -113,6 +114,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 },
             };
             quote! {
+                #(#cfgs)*
                 #[inline(never)]
                 pub fn #ix_method_name<'info>(
                     __program_id: &Pubkey,

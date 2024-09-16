@@ -396,4 +396,9 @@ pub mod misc {
     pub fn test_boxed_owner_constraint(_ctx: Context<TestBoxedOwnerConstraint>) -> Result<()> {
         Ok(())
     }
+
+    #[cfg(feature = "my-feature")]
+    pub fn only_my_feature(_ctx: Context<Empty>) -> Result<()> {
+        Ok(())
+    }
 }

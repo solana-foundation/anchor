@@ -19,6 +19,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
                 let discriminator = gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name);
                 let ret_type = &ix.returns.ty.to_token_stream();
+                let ix_cfgs = &ix.cfgs;
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
                     "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
                     _ => (
@@ -28,6 +29,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 };
 
                 quote! {
+                    #(#ix_cfgs)*
                     pub fn #method_name<'a, 'b, 'c, 'info>(
                         ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
@@ -91,7 +93,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 }
 
 pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
-    let mut accounts = std::collections::HashSet::new();
+    let mut accounts = std::collections::HashMap::new();
 
     // Go through instruction accounts.
     for ix in &program.ixs {
@@ -101,15 +103,17 @@ pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
             "__cpi_client_accounts_{}",
             anchor_ident.to_string().to_snake_case()
         );
-        accounts.insert(macro_name);
+        let cfgs = &ix.cfgs;
+        accounts.insert(macro_name, cfgs.as_slice());
     }
 
     // Build the tokens from all accounts
     let account_structs: Vec<proc_macro2::TokenStream> = accounts
         .iter()
-        .map(|macro_name: &String| {
+        .map(|(macro_name, cfgs)| {
             let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
             quote! {
+                #(#cfgs)*
                 pub use crate::#macro_name::*;
             }
         })
