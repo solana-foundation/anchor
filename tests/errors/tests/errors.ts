@@ -7,33 +7,27 @@ import { Errors } from "../target/types/errors";
 
 const withLogTest = async (callback, expectedLogs) => {
   let logTestOk = false;
-  const listener = anchor.getProvider().connection.onLogs(
-    "all",
-    (logs) => {
-      const index = logs.logs.findIndex(
-        (logLine) => logLine === expectedLogs[0]
-      );
-      if (index === -1) {
-        console.log("Expected: ");
-        console.log(expectedLogs);
-        console.log("Actual: ");
-        console.log(logs);
-      } else {
-        const actualLogs = logs.logs.slice(index, index + expectedLogs.length);
-        for (let i = 0; i < expectedLogs.length; i++) {
-          if (actualLogs[i] !== expectedLogs[i]) {
-            console.log("Expected: ");
-            console.log(expectedLogs);
-            console.log("Actual: ");
-            console.log(logs);
-            return;
-          }
+  const listener = anchor.getProvider().connection.onLogs("all", (logs) => {
+    const index = logs.logs.findIndex((logLine) => logLine === expectedLogs[0]);
+    if (index === -1) {
+      console.log("Expected: ");
+      console.log(expectedLogs);
+      console.log("Actual: ");
+      console.log(logs);
+    } else {
+      const actualLogs = logs.logs.slice(index, index + expectedLogs.length);
+      for (let i = 0; i < expectedLogs.length; i++) {
+        if (actualLogs[i] !== expectedLogs[i]) {
+          console.log("Expected: ");
+          console.log(expectedLogs);
+          console.log("Actual: ");
+          console.log(logs);
+          return;
         }
-        logTestOk = true;
       }
-    },
-    "recent"
-  );
+      logTestOk = true;
+    }
+  });
   try {
     await callback();
   } catch (err) {

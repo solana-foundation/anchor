@@ -9,9 +9,6 @@ on:
       solana_cli_version:
         required: true
         type: string
-      solang_version:
-        required: true
-        type: string
       node_version:
         required: true
         type: string
@@ -24,7 +21,6 @@ on:
 env:
   CACHE: inputs.cache
   SOLANA_CLI_VERSION: ${{ inputs.solana_cli_version }}
-  SOLANG_VERSION: ${{ inputs.solang_version }}
   NODE_VERSION: ${{ inputs.node_version }}
   CARGO_PROFILE: ${{ inputs.cargo_profile }}
   ANCHOR_BINARY_NAME: ${{ inputs.anchor_binary_name }}
@@ -396,7 +392,7 @@ jobs:
           # - cmd: cd tests/lockup && anchor test --skip-lint
           #   path: tests/lockup
           # TODO: Re-enable after making it work with Solana v2
-          # - cmd: cd tests/swap/deps/openbook-dex/dex && solana-install init 1.14.18 && cargo build-bpf -- --locked && cd ../../../ && solana-install init $SOLANA_CLI_VERSION && anchor test --skip-lint
+          # - cmd: cd tests/swap && anchor test --skip-lint
           #   path: tests/swap
           - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
             path: tests/escrow

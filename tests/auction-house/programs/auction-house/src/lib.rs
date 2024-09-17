@@ -8,17 +8,21 @@ use {
             program::{invoke, invoke_signed},
             system_instruction,
         },
-        AnchorDeserialize, AnchorSerialize,
     },
     anchor_spl::{
-        associated_token::AssociatedToken,
+        associated_token::{spl_associated_token_account, AssociatedToken},
         metadata::mpl_token_metadata,
-        token::{Mint, Token, TokenAccount},
+        token::{
+            spl_token::{
+                self,
+                instruction::{approve, revoke},
+            },
+            Mint, Token, TokenAccount,
+        },
     },
-    spl_token::instruction::{approve, revoke},
 };
 
-anchor_lang::declare_id!("hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk");
+declare_id!("hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk");
 
 const PREFIX: &str = "auction_house";
 const FEE_PAYER: &str = "fee_payer";

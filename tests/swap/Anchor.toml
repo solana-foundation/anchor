@@ -7,7 +7,7 @@ swap = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [[test.genesis]]
 address = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
-program = "./deps/openbook-dex/dex/target/deploy/serum_dex.so"
+program = "prebuilt-programs/openbook_dex.so"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"

@@ -95,6 +95,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Accept integers for `warp_slot` ([#3235](https://github.com/coral-xyz/anchor/pull/3235)).
 - lang: Remove `EventIndex` ([#3244](https://github.com/coral-xyz/anchor/pull/3244)).
 - spl: Remove `dex` feature ([#3257](https://github.com/coral-xyz/anchor/pull/3257)).
+- client, lang, spl: Upgrade Solana to v2 and SPL to the latest ([#3219](https://github.com/coral-xyz/anchor/pull/3219)).
 
 ## [0.30.1] - 2024-06-20
 

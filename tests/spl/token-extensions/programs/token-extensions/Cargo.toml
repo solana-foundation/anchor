@@ -18,7 +18,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { path = "../../../../../lang", features = ["init-if-needed"] }
 anchor-spl = { path = "../../../../../spl" }
-spl-tlv-account-resolution = "0.6.3"
-spl-transfer-hook-interface = "0.6.3"
-spl-type-length-value = "0.4.3"
-spl-pod = "0.2.2"
+spl-tlv-account-resolution = "0.8.0"
+spl-transfer-hook-interface = "0.8.1"
+spl-type-length-value = "0.6"
+spl-pod = "0.4"

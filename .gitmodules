@@ -1,6 +1,3 @@
-[submodule "examples/swap/deps/openbook-dex"]
-	path = tests/swap/deps/openbook-dex
-	url = https://github.com/openbook-dex/program
 [submodule "examples/cfo/deps/openbook-dex"]
 	path = tests/cfo/deps/openbook-dex
 	url = https://github.com/openbook-dex/program

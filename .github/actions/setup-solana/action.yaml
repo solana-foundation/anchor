@@ -19,19 +19,7 @@ runs:
         max_attempts: 10
         retry_on: error
         shell: bash
-        command: sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_CLI_VERSION }}/install)"
-    - uses: nick-fields/retry@v2
-      if: steps.cache-solana.outputs.cache-hit != 'true'
-      with:
-        retry_wait_seconds: 300
-        timeout_minutes: 2
-        max_attempts: 10
-        retry_on: error
-        shell: bash
-        command: |
-          curl -sSL -o /home/runner/.local/share/solana/install/active_release/bin/solang \
-            https://github.com/hyperledger/solang/releases/download/v${{ env.SOLANG_VERSION }}/solang-linux-x86-64
-          chmod 755 /home/runner/.local/share/solana/install/active_release/bin/solang
+        command: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_CLI_VERSION }}/install)"
     - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
       shell: bash
     - run: solana-keygen new --no-bip39-passphrase
