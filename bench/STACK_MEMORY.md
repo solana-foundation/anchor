@@ -14,7 +14,7 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 
 ## [Unreleased]
 
-Solana version: 1.18.17
+Solana version: 2.0.8
 
 | Instruction                    | Stack Memory | -   |
 | ------------------------------ | ------------ | --- |

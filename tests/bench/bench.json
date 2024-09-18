@@ -930,10 +930,10 @@
     }
   },
   "unreleased": {
-    "solanaVersion": "1.18.17",
+    "solanaVersion": "2.0.8",
     "result": {
       "binarySize": {
-        "bench": 1096096
+        "bench": 1097424
       },
       "computeUnits": {
         "accountInfo1": 573,
