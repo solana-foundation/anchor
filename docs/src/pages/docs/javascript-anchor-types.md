@@ -119,4 +119,21 @@ This reference shows you how Anchor maps Rust types to JavaScript/TypeScript typ
     .init([1, 2, 3])
     .rpc();
   ```
+
+---
+* `Option<T>`
+* `T | null | undefined`
+* ```javascript
+  // `null` for `None`
+  await program
+    .methods
+    .init(null)
+    .rpc();
+
+  // Non-nullish value for `Option<T>`
+  await program
+    .methods
+    .init(42)
+    .rpc();
+  ```
 {% /table %}
