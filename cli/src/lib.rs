@@ -2928,25 +2928,26 @@ fn account(
                 .expect("Not in workspace.")
                 .read_all_programs()
                 .expect("Workspace must contain atleast one program.")
-                .iter()
-                .find(|&p| p.lib_name == *program_name)
-                .unwrap_or_else(|| panic!("Program {program_name} not found in workspace."))
-                .idl
-                .as_ref()
-                .expect("IDL not found. Please build the program atleast once to generate the IDL.")
-                .clone()
+                .into_iter()
+                .find(|p| p.lib_name == *program_name)
+                .ok_or_else(|| anyhow!("Program {program_name} not found in workspace."))
+                .map(|p| p.idl)?
+                .ok_or_else(|| {
+                    anyhow!(
+                        "IDL not found. Please build the program atleast once to generate the IDL."
+                    )
+                })
         },
         |idl_path| {
             let bytes = fs::read(idl_path).expect("Unable to read IDL.");
             let idl: Idl = serde_json::from_reader(&*bytes).expect("Invalid IDL format.");
-
             if idl.metadata.name != program_name {
-                panic!("IDL does not match program {program_name}.");
+                return Err(anyhow!("IDL does not match program {program_name}."));
             }
 
-            idl
+            Ok(idl)
         },
-    );
+    )?;
 
     let cluster = match &cfg_override.cluster {
         Some(cluster) => cluster.clone(),
@@ -3020,7 +3021,7 @@ fn deserialize_idl_defined_type_to_json(
 
             let variant = variants
                 .get(repr as usize)
-                .unwrap_or_else(|| panic!("Error while deserializing enum variant {repr}"));
+                .ok_or_else(|| anyhow!("Error while deserializing enum variant {repr}"))?;
 
             let mut value = json!({});
 
