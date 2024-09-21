@@ -1972,9 +1972,8 @@ fn _build_solidity_cwd(
         .unwrap_or(PathBuf::from("."))
         .join(format!("{}.json", name));
 
-    let idl = fs::read_to_string(idl_path)?;
-
-    let idl: Idl = serde_json::from_str(&idl)?;
+    let idl = fs::read(idl_path)?;
+    let idl = convert_idl(&idl)?;
 
     // TS out path.
     let ts_out = match idl_ts_out {
@@ -2339,8 +2338,8 @@ fn idl_init(
     with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
-        let bytes = fs::read(idl_filepath)?;
-        let idl: Idl = serde_json::from_reader(&*bytes)?;
+        let idl = fs::read(idl_filepath)?;
+        let idl = convert_idl(&idl)?;
 
         let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
 
@@ -2373,8 +2372,8 @@ fn idl_write_buffer(
     with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
-        let bytes = fs::read(idl_filepath)?;
-        let idl: Idl = serde_json::from_reader(&*bytes)?;
+        let idl = fs::read(idl_filepath)?;
+        let idl = convert_idl(&idl)?;
 
         let idl_buffer = create_idl_buffer(cfg, &keypair, &program_id, &idl, priority_fee)?;
         idl_write(cfg, &program_id, &idl, idl_buffer, priority_fee)?;
@@ -2939,8 +2938,8 @@ fn account(
                 })
         },
         |idl_path| {
-            let bytes = fs::read(idl_path).expect("Unable to read IDL.");
-            let idl: Idl = serde_json::from_reader(&*bytes).expect("Invalid IDL format.");
+            let idl = fs::read(idl_path)?;
+            let idl = convert_idl(&idl)?;
             if idl.metadata.name != program_name {
                 return Err(anyhow!("IDL does not match program {program_name}."));
             }
@@ -3573,10 +3572,8 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
     fs::create_dir_all(program_logs_dir)?;
     let mut handles = vec![];
     for program in config.read_all_programs()? {
-        let mut file = File::open(format!("target/idl/{}.json", program.lib_name))?;
-        let mut contents = vec![];
-        file.read_to_end(&mut contents)?;
-        let idl: Idl = serde_json::from_slice(&contents)?;
+        let idl = fs::read(format!("target/idl/{}.json", program.lib_name))?;
+        let idl = convert_idl(&idl)?;
 
         let log_file = File::create(format!(
             "{}/{}.{}.log",

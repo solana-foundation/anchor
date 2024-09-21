@@ -49,6 +49,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm: Ask whether to install if the version is not installed with the `use` command ([#3230](https://github.com/coral-xyz/anchor/pull/3230)).
 - cli: Warn if a manifest has `solana-program` dependency ([#3250](https://github.com/coral-xyz/anchor/pull/3250)).
 - cli: Add completions command to generate shell completions via the clap_complete crate ([#3251](https://github.com/coral-xyz/anchor/pull/3251)).
+- cli: Always convert IDLs ([#3265](https://github.com/coral-xyz/anchor/pull/3265)).
 
 ### Fixes
 
