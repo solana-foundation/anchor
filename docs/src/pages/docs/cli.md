@@ -28,6 +28,7 @@ SUBCOMMANDS:
     help       Prints this message or the help of the given subcommand(s)
     idl        Commands for interacting with interface definitions
     init       Initializes a workspace
+    keys       Program keypair commands
     migrate    Runs the deploy migration script
     new        Creates a new program
     shell      Starts a node shell with an Anchor client setup according to the local config
@@ -195,6 +196,26 @@ Initializes a project workspace with the following structure.
 - `app/`: Directory for your application frontend.
 - `tests/`: Directory for JavaScript integration tests.
 - `migrations/deploy.js`: Deploy script.
+
+## Keys
+
+Program keypair commands.
+
+### Keys List
+
+```shell
+anchor keys list
+```
+
+List all of the program keys.
+
+### Keys Sync
+
+```shell
+anchor keys sync
+```
+
+Sync program `declare_id!` pubkeys with the program's actual pubkey.
 
 ## Migrate
 

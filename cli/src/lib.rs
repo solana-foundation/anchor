@@ -326,7 +326,7 @@ pub enum Command {
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
     },
-    /// Keypair commands.
+    /// Program keypair commands.
     Keys {
         #[clap(subcommand)]
         subcmd: KeysCommand,
@@ -376,7 +376,7 @@ pub enum Command {
 pub enum KeysCommand {
     /// List all of the program keys.
     List,
-    /// Sync the program's `declare_id!` pubkey with the program's actual pubkey.
+    /// Sync program `declare_id!` pubkeys with the program's actual pubkey.
     Sync {
         /// Only sync the given program instead of all programs
         #[clap(short, long)]
@@ -4512,7 +4512,7 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
     })
 }
 
-/// Sync the program's `declare_id!` pubkey with the pubkey from `target/deploy/<KEYPAIR>.json`.
+/// Sync program `declare_id!` pubkeys with the pubkey from `target/deploy/<KEYPAIR>.json`.
 fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         let declare_id_regex = RegexBuilder::new(r#"^(([\w]+::)*)declare_id!\("(\w*)"\)"#)
