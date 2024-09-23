@@ -1728,7 +1728,7 @@ fn docker_prep(container_name: &str, build_config: &BuildConfig) -> Result<()> {
             &[
                 "curl",
                 "-sSfL",
-                &format!("https://release.solana.com/v{solana_version}/install",),
+                &format!("https://release.anza.xyz/v{solana_version}/install",),
                 "-o",
                 "solana_installer.sh",
             ],
