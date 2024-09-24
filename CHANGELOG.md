@@ -50,6 +50,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Warn if a manifest has `solana-program` dependency ([#3250](https://github.com/coral-xyz/anchor/pull/3250)).
 - cli: Add completions command to generate shell completions via the clap_complete crate ([#3251](https://github.com/coral-xyz/anchor/pull/3251)).
 - cli: Always convert IDLs ([#3265](https://github.com/coral-xyz/anchor/pull/3265)).
+- cli: Check whether the `idl-build` feature exists when using the `idl build` command ([#3273](https://github.com/coral-xyz/anchor/pull/3273)).
 
 ### Fixes
 
