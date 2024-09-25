@@ -41,6 +41,27 @@ On Linux systems you may need to install additional dependencies if cargo instal
 sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 ```
 
+If you're using `bash`, add `avm` to PATH for `bash`, then reload the shell:
+
+```shell
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+If you're using `fish`, add `avm` to PATH for `fish`, then reload the shell:
+
+```shell
+echo "set -gx PATH \$PATH \$HOME/.cargo/bin" >> ~/.config/fish/config.fish
+source ~/.config/fish/config.fish
+```
+
+If you're using `zsh`, add `avm` to PATH for `zsh`, then reload the shell:
+
+```shell
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
 Install the latest version of the CLI using `avm`, and then set it to be the version to use.
 
 ```shell
