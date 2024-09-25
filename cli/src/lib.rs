@@ -2728,11 +2728,16 @@ fn idl_build(
         Some(name) => cfg.get_program(&name)?.path,
         None => {
             let current_dir = std::env::current_dir()?;
-            cfg.read_all_programs()?
-                .into_iter()
-                .find(|program| program.path == current_dir)
-                .ok_or_else(|| anyhow!("Not in a program directory"))?
-                .path
+            let programs = cfg.read_all_programs()?;
+            if programs.len() == 1 {
+                programs.into_iter().next().unwrap().path
+            } else {
+                programs
+                    .into_iter()
+                    .find(|program| program.path == current_dir)
+                    .ok_or_else(|| anyhow!("Not in a program directory"))?
+                    .path
+            }
         }
     };
     std::env::set_current_dir(program_path)?;

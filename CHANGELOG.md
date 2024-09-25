@@ -51,6 +51,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add completions command to generate shell completions via the clap_complete crate ([#3251](https://github.com/coral-xyz/anchor/pull/3251)).
 - cli: Always convert IDLs ([#3265](https://github.com/coral-xyz/anchor/pull/3265)).
 - cli: Check whether the `idl-build` feature exists when using the `idl build` command ([#3273](https://github.com/coral-xyz/anchor/pull/3273)).
+- cli: Build IDL if there is only one program when using the `idl build` command ([#3275](https://github.com/coral-xyz/anchor/pull/3275)).
 
 ### Fixes
 
