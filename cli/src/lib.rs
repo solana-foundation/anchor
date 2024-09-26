@@ -470,6 +470,7 @@ pub enum IdlCommand {
         program_id: Pubkey,
     },
     /// Generates the IDL for the program using the compilation method.
+    #[clap(alias = "b")]
     Build {
         // Program name to build the IDL of(current dir's program if not specified)
         #[clap(short, long)]
