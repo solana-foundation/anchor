@@ -171,8 +171,16 @@ fn build(
         .current_dir(program_path)
         .stderr(Stdio::inherit())
         .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if env::var("ANCHOR_LOG").is_ok() {
+        eprintln!("{}", stdout);
+    }
+
     if !output.status.success() {
-        return Err(anyhow!("Building IDL failed"));
+        return Err(anyhow!(
+            "Building IDL failed. Run `ANCHOR_LOG=true anchor idl build` to see the logs."
+        ));
     }
 
     enum State {
@@ -191,13 +199,8 @@ fn build(
     let mut types = BTreeMap::new();
     let mut idl: Option<Idl> = None;
 
-    let output = String::from_utf8_lossy(&output.stdout);
-    if env::var("ANCHOR_LOG").is_ok() {
-        println!("{}", output);
-    }
-
     let mut state = State::Pass;
-    for line in output.lines() {
+    for line in stdout.lines() {
         match &mut state {
             State::Pass => match line {
                 "--- IDL begin address ---" => state = State::Address,
