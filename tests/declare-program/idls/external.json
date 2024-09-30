@@ -229,5 +229,12 @@
         ]
       }
     }
+  ],
+  "constants": [
+    {
+      "name": "MASTER_SEED",
+      "type": "bytes",
+      "value": "[109, 97, 115, 116, 101, 114]"
+    }
   ]
 }

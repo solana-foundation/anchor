@@ -78,6 +78,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Use closures for `init` constraints to reduce the stack usage of `try_accounts` ([#2939](https://github.com/coral-xyz/anchor/pull/2939)).
 - lang: Allow the `cfg` attribute above the instructions ([#2339](https://github.com/coral-xyz/anchor/pull/2339)).
 - idl: Log output with `ANCHOR_LOG` on failure and improve build error message ([#3284](https://github.com/coral-xyz/anchor/pull/3284)).
+- lang: Fix constant bytes declarations when using `declare_program!` ([#3287](https://github.com/coral-xyz/anchor/pull/3287)).
 
 ### Breaking
 

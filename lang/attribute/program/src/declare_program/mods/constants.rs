@@ -1,16 +1,19 @@
 use anchor_lang_idl::types::{Idl, IdlType};
 use quote::{format_ident, quote, ToTokens};
 
-use super::common::convert_idl_type_to_str;
+use super::common::convert_idl_type_to_syn_type;
 
 pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let constants = idl.constants.iter().map(|c| {
         let name = format_ident!("{}", c.name);
-        let ty = match &c.ty {
-            IdlType::String => quote!(&str),
-            _ => parse_expr_ts(&convert_idl_type_to_str(&c.ty)),
+        let val = syn::parse_str::<syn::Expr>(&c.value)
+            .unwrap()
+            .to_token_stream();
+        let (ty, val) = match &c.ty {
+            IdlType::Bytes => (quote!(&[u8]), quote! { &#val }),
+            IdlType::String => (quote!(&str), val),
+            _ => (convert_idl_type_to_syn_type(&c.ty).to_token_stream(), val),
         };
-        let val = parse_expr_ts(&c.value);
 
         // TODO: Docs
         quote! { pub const #name: #ty = #val; }
@@ -22,8 +25,4 @@ pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
             #(#constants)*
         }
     }
-}
-
-fn parse_expr_ts(s: &str) -> proc_macro2::TokenStream {
-    syn::parse_str::<syn::Expr>(s).unwrap().to_token_stream()
 }
