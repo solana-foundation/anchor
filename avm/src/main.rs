@@ -3,8 +3,6 @@ use avm::InstallTarget;
 use clap::{CommandFactory, Parser, Subcommand};
 use semver::Version;
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
 #[derive(Parser)]
 #[clap(name = "avm", about = "Anchor version manager", version)]
 pub struct Cli {
