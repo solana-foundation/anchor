@@ -172,6 +172,52 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "update_non_instruction_composite",
+      "discriminator": [
+        49,
+        218,
+        69,
+        196,
+        204,
+        66,
+        36,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "non_instruction_update",
+          "accounts": [
+            {
+              "name": "authority",
+              "signer": true
+            },
+            {
+              "name": "my_account",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "authority"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "program",
+              "address": "Externa111111111111111111111111111111111111"
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [

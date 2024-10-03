@@ -23,6 +23,15 @@ pub mod external {
         Ok(())
     }
 
+    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3274
+    pub fn update_non_instruction_composite(
+        ctx: Context<UpdateNonInstructionComposite>,
+        value: u32,
+    ) -> Result<()> {
+        ctx.accounts.non_instruction_update.my_account.field = value;
+        Ok(())
+    }
+
     // Compilation test for whether a defined type (an account in this case) can be used in `cpi` client.
     pub fn test_compilation_defined_type_param(
         _ctx: Context<TestCompilation>,
@@ -65,8 +74,21 @@ pub struct Update<'info> {
 }
 
 #[derive(Accounts)]
+pub struct NonInstructionUpdate<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    pub my_account: Account<'info, MyAccount>,
+    pub program: Program<'info, program::External>,
+}
+
+#[derive(Accounts)]
 pub struct UpdateComposite<'info> {
     pub update: Update<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateNonInstructionComposite<'info> {
+    pub non_instruction_update: NonInstructionUpdate<'info>,
 }
 
 #[account]

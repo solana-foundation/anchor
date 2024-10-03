@@ -35,6 +35,7 @@ pub mod declare_program {
     pub fn cpi_composite(ctx: Context<Cpi>, value: u32) -> Result<()> {
         let cpi_my_account = &mut ctx.accounts.cpi_my_account;
 
+        // Composite accounts that's also an instruction
         let cpi_ctx = CpiContext::new(
             ctx.accounts.external_program.to_account_info(),
             external::cpi::accounts::UpdateComposite {
@@ -44,8 +45,22 @@ pub mod declare_program {
                 },
             },
         );
-        external::cpi::update_composite(cpi_ctx, value)?;
+        external::cpi::update_composite(cpi_ctx, 42)?;
+        cpi_my_account.reload()?;
+        require_eq!(cpi_my_account.field, 42);
 
+        // Composite accounts but not an actual instruction
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.external_program.to_account_info(),
+            external::cpi::accounts::UpdateNonInstructionComposite {
+                non_instruction_update: external::cpi::accounts::NonInstructionUpdate {
+                    authority: ctx.accounts.authority.to_account_info(),
+                    my_account: cpi_my_account.to_account_info(),
+                    program: ctx.accounts.external_program.to_account_info(),
+                },
+            },
+        );
+        external::cpi::update_non_instruction_composite(cpi_ctx, value)?;
         cpi_my_account.reload()?;
         require_eq!(cpi_my_account.field, value);
 
@@ -60,7 +75,7 @@ pub mod declare_program {
             return Err(ProgramError::Custom(0).into());
         }
 
-        const DISC: &[u8] = &external::accounts::MyAccount::DISCRIMINATOR;
+        const DISC: &[u8] = external::accounts::MyAccount::DISCRIMINATOR;
 
         // Correct discriminator but invalid data
         if Account::try_from_bytes(DISC).is_ok() {
@@ -84,8 +99,7 @@ pub mod declare_program {
             return Err(ProgramError::Custom(0).into());
         }
 
-        const DISC: &[u8] =
-            &<external::events::MyEvent as anchor_lang::Discriminator>::DISCRIMINATOR;
+        const DISC: &[u8] = external::events::MyEvent::DISCRIMINATOR;
 
         // Correct discriminator but invalid data
         if Event::try_from_bytes(DISC).is_ok() {
