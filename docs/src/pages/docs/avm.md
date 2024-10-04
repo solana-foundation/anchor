@@ -28,10 +28,23 @@ SUBCOMMANDS:
 ## Install
 
 ```shell
-avm install <version>
+avm install <VERSION_OR_COMMIT>
 ```
 
 Install the specified version of anchor-cli. The version argument should follow semver versioning. It is also possible to use `latest` as the version argument to install the latest version.
+
+It's also possible to install based on a specific commit hash:
+
+```shell
+# <VERSION>-<COMMIT>
+avm install 0.30.1-cfe82aa682138f7c6c58bf7a78f48f7d63e9e466
+
+# Full commit hash
+avm install cfe82aa682138f7c6c58bf7a78f48f7d63e9e466
+
+# Short commit hash
+avm install cfe82aa
+```
 
 ## List
 
