@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use syn::spanned::Spanned;
 
 use super::{
     common::{gen_print_section, get_idl_module_path, get_no_docs, get_program_path},
@@ -25,10 +26,10 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
         _ => quote! { vec![] },
     };
 
-    let (instructions, defined) = program
+    let result = program
         .ixs
         .iter()
-        .flat_map(|ix| -> Result<_> {
+        .map(|ix| {
             let name = ix.ident.to_string();
             let name_pascal = format_ident!("{}", name.to_camel_case());
             let ctx_ident = &ix.anchor_ident;
@@ -48,7 +49,8 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                         Some(docs) if !no_docs => quote! { vec![#(#docs.into()),*] },
                         _ => quote! { vec![] },
                     };
-                    let (ty, defined) = gen_idl_type(&arg.raw_arg.ty, &[])?;
+                    let (ty, defined) = gen_idl_type(&arg.raw_arg.ty, &[])
+                        .map_err(|_| syn::Error::new(arg.raw_arg.ty.span(), "Unsupported type"))?;
 
                     Ok((
                         quote! {
@@ -61,7 +63,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                         defined,
                     ))
                 })
-                .collect::<Result<Vec<_>>>()?
+                .collect::<syn::Result<Vec<_>>>()?
                 .into_iter()
                 .unzip::<_, Vec<_>, Vec<_>, Vec<_>>();
 
@@ -91,7 +93,11 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                 defined,
             ))
         })
-        .unzip::<_, Vec<_>, Vec<_>, Vec<_>>();
+        .collect::<syn::Result<Vec<_>>>();
+    let (instructions, defined) = match result {
+        Err(e) => return e.into_compile_error(),
+        Ok(v) => v.into_iter().unzip::<_, Vec<_>, Vec<_>, Vec<_>>(),
+    };
     let defined = defined.into_iter().flatten().flatten().collect::<Vec<_>>();
 
     let fn_body = gen_print_section(

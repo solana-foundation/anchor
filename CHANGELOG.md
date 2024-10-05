@@ -80,6 +80,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Log output with `ANCHOR_LOG` on failure and improve build error message ([#3284](https://github.com/coral-xyz/anchor/pull/3284)).
 - lang: Fix constant bytes declarations when using `declare_program!` ([#3287](https://github.com/coral-xyz/anchor/pull/3287)).
 - lang: Fix using non-instruction composite accounts with `declare_program!` ([#3290](https://github.com/coral-xyz/anchor/pull/3290)).
+- idl: Fix instructions with tuple parameters not producing an error([#3294](https://github.com/coral-xyz/anchor/pull/3294)).
 
 ### Breaking
 
