@@ -230,6 +230,8 @@ export class MethodsBuilder<
    *
    * See {@link accounts} and {@link accountsPartial} methods for automatically
    * resolving accounts.
+   *
+   * @param accounts instruction accounts
    */
   public accountsStrict(accounts: Accounts<A>) {
     this._resolveAccounts = false;
@@ -237,16 +239,40 @@ export class MethodsBuilder<
     return this;
   }
 
+  /**
+   * Set instruction signers.
+   *
+   * Note that calling this method appends the given signers to the existing
+   * signers (instead of overriding them).
+   *
+   * @param signers signers to append
+   */
   public signers(signers: Array<Signer>) {
     this._signers = this._signers.concat(signers);
     return this;
   }
 
+  /**
+   * Set remaining accounts.
+   *
+   * Note that calling this method appends the given accounts to the existing
+   * remaining accounts (instead of overriding them).
+   *
+   * @param accounts remaining accounts
+   */
   public remainingAccounts(accounts: Array<AccountMeta>) {
     this._remainingAccounts = this._remainingAccounts.concat(accounts);
     return this;
   }
 
+  /**
+   * Set previous instructions.
+   *
+   * See {@link postInstructions} to set the post instructions instead.
+   *
+   * @param ixs instructions
+   * @param prepend whether to prepend to the existing previous instructions
+   */
   public preInstructions(ixs: Array<TransactionInstruction>, prepend = false) {
     if (prepend) {
       this._preInstructions = ixs.concat(this._preInstructions);
@@ -256,6 +282,13 @@ export class MethodsBuilder<
     return this;
   }
 
+  /**
+   * Set post instructions.
+   *
+   * See {@link preInstructions} to set the previous instructions instead.
+   *
+   * @param ixs instructions
+   */
   public postInstructions(ixs: Array<TransactionInstruction>) {
     this._postInstructions = this._postInstructions.concat(ixs);
     return this;
@@ -280,13 +313,66 @@ export class MethodsBuilder<
     return this._accounts;
   }
 
-  public async rpc(options?: ConfirmOptions): Promise<TransactionSignature> {
+  /**
+   * Create an instruction based on the current configuration.
+   *
+   * See {@link transaction} to create a transaction instead.
+   *
+   * @returns the transaction instruction
+   */
+  public async instruction(): Promise<TransactionInstruction> {
     if (this._resolveAccounts) {
       await this._accountsResolver.resolve();
     }
 
     // @ts-ignore
-    return this._rpcFn(...this._args, {
+    return this._ixFn(...this._args, {
+      accounts: this._accounts,
+      signers: this._signers,
+      remainingAccounts: this._remainingAccounts,
+      preInstructions: this._preInstructions,
+      postInstructions: this._postInstructions,
+    });
+  }
+
+  /**
+   * Create a transaction based on the current configuration.
+   *
+   * This method doesn't send the created transaction. Use {@link rpc} method
+   * to conveniently send an confirm the configured transaction.
+   *
+   * See {@link instruction} to only create an instruction instead.
+   *
+   * @returns the transaction
+   */
+  public async transaction(): Promise<Transaction> {
+    if (this._resolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
+    // @ts-ignore
+    return this._txFn(...this._args, {
+      accounts: this._accounts,
+      signers: this._signers,
+      remainingAccounts: this._remainingAccounts,
+      preInstructions: this._preInstructions,
+      postInstructions: this._postInstructions,
+    });
+  }
+
+  /**
+   * Simulate the configured transaction.
+   *
+   * @param options confirmation options
+   * @returns the simulation response
+   */
+  public async simulate(options?: ConfirmOptions): Promise<SimulateResponse> {
+    if (this._resolveAccounts) {
+      await this._accountsResolver.resolve();
+    }
+
+    // @ts-ignore
+    return this._simulateFn(...this._args, {
       accounts: this._accounts,
       signers: this._signers,
       remainingAccounts: this._remainingAccounts,
@@ -296,17 +382,15 @@ export class MethodsBuilder<
     });
   }
 
-  public async rpcAndKeys(options?: ConfirmOptions): Promise<{
-    pubkeys: InstructionAccountAddresses<IDL, I>;
-    signature: TransactionSignature;
-  }> {
-    const pubkeys = await this.pubkeys();
-    return {
-      pubkeys: pubkeys as Required<InstructionAccountAddresses<IDL, I>>,
-      signature: await this.rpc(options),
-    };
-  }
-
+  /**
+   * View the configured transaction.
+   *
+   * Note that to use this method, the instruction needs to return a value and
+   * all its accounts must be read-only.
+   *
+   * @param options confirmation options
+   * @returns the return value of the instruction
+   */
   public async view(options?: ConfirmOptions): Promise<any> {
     if (this._resolveAccounts) {
       await this._accountsResolver.resolve();
@@ -332,13 +416,22 @@ export class MethodsBuilder<
     });
   }
 
-  public async simulate(options?: ConfirmOptions): Promise<SimulateResponse> {
+  /**
+   * Send and confirm the configured transaction.
+   *
+   * See {@link rpcAndKeys} to both send the transaction and get the resolved
+   * account public keys.
+   *
+   * @param options confirmation options
+   * @returns the transaction signature
+   */
+  public async rpc(options?: ConfirmOptions): Promise<TransactionSignature> {
     if (this._resolveAccounts) {
       await this._accountsResolver.resolve();
     }
 
     // @ts-ignore
-    return this._simulateFn(...this._args, {
+    return this._rpcFn(...this._args, {
       accounts: this._accounts,
       signers: this._signers,
       remainingAccounts: this._remainingAccounts,
@@ -348,52 +441,43 @@ export class MethodsBuilder<
     });
   }
 
-  public async instruction(): Promise<TransactionInstruction> {
-    if (this._resolveAccounts) {
-      await this._accountsResolver.resolve();
-    }
-
-    // @ts-ignore
-    return this._ixFn(...this._args, {
-      accounts: this._accounts,
-      signers: this._signers,
-      remainingAccounts: this._remainingAccounts,
-      preInstructions: this._preInstructions,
-      postInstructions: this._postInstructions,
-    });
-  }
-
   /**
-   * Convenient shortcut to get instructions and pubkeys via:
+   * Conveniently call both {@link rpc} and {@link pubkeys} methods.
    *
-   * ```ts
-   * const { pubkeys, instructions } = await method.prepare();
-   * ```
+   * @param options confirmation options
+   * @returns the transaction signature and account public keys
    */
-  public async prepare(): Promise<{
-    pubkeys: Partial<InstructionAccountAddresses<IDL, I>>;
-    instruction: TransactionInstruction;
-    signers: Signer[];
+  public async rpcAndKeys(options?: ConfirmOptions): Promise<{
+    signature: TransactionSignature;
+    pubkeys: InstructionAccountAddresses<IDL, I>;
   }> {
     return {
-      instruction: await this.instruction(),
-      pubkeys: await this.pubkeys(),
-      signers: this._signers,
+      signature: await this.rpc(options),
+      pubkeys: (await this.pubkeys()) as Required<
+        InstructionAccountAddresses<IDL, I>
+      >,
     };
   }
 
-  public async transaction(): Promise<Transaction> {
-    if (this._resolveAccounts) {
-      await this._accountsResolver.resolve();
-    }
-
-    // @ts-ignore
-    return this._txFn(...this._args, {
-      accounts: this._accounts,
+  /**
+   * Get instruction information necessary to include the instruction inside a
+   * transaction.
+   *
+   * # Example
+   *
+   * ```ts
+   * const { instruction, signers, pubkeys } = await method.prepare();
+   * ```
+   */
+  public async prepare(): Promise<{
+    instruction: TransactionInstruction;
+    signers: Signer[];
+    pubkeys: Partial<InstructionAccountAddresses<IDL, I>>;
+  }> {
+    return {
+      instruction: await this.instruction(),
       signers: this._signers,
-      remainingAccounts: this._remainingAccounts,
-      preInstructions: this._preInstructions,
-      postInstructions: this._postInstructions,
-    });
+      pubkeys: await this.pubkeys(),
+    };
   }
 }
