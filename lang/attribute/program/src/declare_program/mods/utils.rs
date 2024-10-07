@@ -1,8 +1,6 @@
 use anchor_lang_idl::types::Idl;
 use quote::{format_ident, quote};
 
-use super::common::gen_discriminator;
-
 pub fn gen_utils_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let account = gen_account(idl);
     let event = gen_event(idl);
@@ -26,9 +24,8 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
         .map(|name| quote! { #name(#name) });
     let if_statements = idl.accounts.iter().map(|acc| {
         let name = format_ident!("{}", acc.name);
-        let disc = gen_discriminator(&acc.discriminator);
         quote! {
-            if value.starts_with(&#disc) {
+            if value.starts_with(#name::DISCRIMINATOR) {
                 return #name::try_deserialize_unchecked(&mut &value[..])
                     .map(Self::#name)
                     .map_err(Into::into)
@@ -73,11 +70,9 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
         .map(|name| quote! { #name(#name) });
     let if_statements = idl.events.iter().map(|ev| {
         let name = format_ident!("{}", ev.name);
-        let disc = gen_discriminator(&ev.discriminator);
-        let disc_len = ev.discriminator.len();
         quote! {
-            if value.starts_with(&#disc) {
-                return #name::try_from_slice(&value[#disc_len..])
+            if value.starts_with(#name::DISCRIMINATOR) {
+                return #name::try_from_slice(&value[#name::DISCRIMINATOR.len()..])
                     .map(Self::#name)
                     .map_err(Into::into)
             }
