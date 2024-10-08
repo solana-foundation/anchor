@@ -4502,6 +4502,7 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
             .build()
             .unwrap();
 
+        let mut changed_src = false;
         for program in cfg.get_programs(program_name)? {
             // Get the pubkey from the keypair file
             let actual_program_id = program.pubkey()?.to_string();
@@ -4527,6 +4528,7 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                     content.replace_range(program_id_match.range(), &actual_program_id);
                     fs::write(&path, content)?;
 
+                    changed_src = true;
                     println!("Updated to {actual_program_id}\n");
                     break;
                 }
@@ -4555,6 +4557,9 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
         }
 
         println!("All program id declarations are synced.");
+        if changed_src {
+            println!("Please rebuild the program to update the generated artifacts.")
+        }
 
         Ok(())
     })
