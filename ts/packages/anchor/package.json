@@ -19,7 +19,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=11"
+    "node": ">=17"
   },
   "scripts": {
     "build": "rimraf dist/ && yarn build:node && yarn build:browser",

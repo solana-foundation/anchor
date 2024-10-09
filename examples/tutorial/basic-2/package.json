@@ -11,7 +11,7 @@
     "url": "https://github.com/coral-xyz/anchor.git"
   },
   "engines": {
-    "node": ">=11"
+    "node": ">=17"
   },
   "scripts": {
     "test": "anchor test --skip-lint && anchor clean"

@@ -81,6 +81,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Fix constant bytes declarations when using `declare_program!` ([#3287](https://github.com/coral-xyz/anchor/pull/3287)).
 - lang: Fix using non-instruction composite accounts with `declare_program!` ([#3290](https://github.com/coral-xyz/anchor/pull/3290)).
 - idl: Fix instructions with tuple parameters not producing an error([#3294](https://github.com/coral-xyz/anchor/pull/3294)).
+- ts: Update `engines.node` to `>= 17` ([#3301](https://github.com/coral-xyz/anchor/pull/3301)).
 
 ### Breaking
 
