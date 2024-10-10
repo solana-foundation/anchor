@@ -1,7 +1,7 @@
 use crate::config::{
-    AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest, ProgramArch,
-    ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator, WithPath,
-    DEFAULT_LEDGER_PATH, SHUTDOWN_WAIT, STARTUP_WAIT,
+    get_default_ledger_path, AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride,
+    Manifest, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
+    WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -1028,7 +1028,8 @@ fn init(
     }
 
     // Build the migrations directory.
-    fs::create_dir_all("migrations")?;
+    let migrations_path = Path::new("migrations");
+    fs::create_dir_all(migrations_path)?;
 
     let license = get_npm_init_license()?;
 
@@ -1038,8 +1039,7 @@ fn init(
         let mut package_json = File::create("package.json")?;
         package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create("migrations/deploy.js")?;
-
+        let mut deploy = File::create(migrations_path.join("deploy.js"))?;
         deploy.write_all(rust_template::deploy_script().as_bytes())?;
     } else {
         // Build typescript config
@@ -1049,7 +1049,7 @@ fn init(
         let mut ts_package_json = File::create("package.json")?;
         ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create("migrations/deploy.ts")?;
+        let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
     }
 
@@ -1171,7 +1171,11 @@ pub type Files = Vec<(PathBuf, String)>;
 /// ```
 pub fn create_files(files: &Files) -> Result<()> {
     for (path, content) in files {
-        let path = Path::new(path);
+        let path = path
+            .display()
+            .to_string()
+            .replace('/', std::path::MAIN_SEPARATOR_STR);
+        let path = Path::new(&path);
         if path.exists() {
             continue;
         }
@@ -1228,7 +1232,7 @@ pub fn expand(
     let cfg_parent = workspace_cfg.path().parent().expect("Invalid Anchor.toml");
     let cargo = Manifest::discover()?;
 
-    let expansions_path = cfg_parent.join(".anchor/expanded-macros");
+    let expansions_path = cfg_parent.join(".anchor").join("expanded-macros");
     fs::create_dir_all(&expansions_path)?;
 
     match cargo {
@@ -1347,13 +1351,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(cfg_parent.join("target/idl")),
+        None => Some(cfg_parent.join("target").join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(cfg_parent.join("target/types")),
+        None => Some(cfg_parent.join("target").join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -1563,9 +1567,10 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    fs::create_dir_all(workspace_dir.join("target/verifiable"))?;
-    fs::create_dir_all(workspace_dir.join("target/idl"))?;
-    fs::create_dir_all(workspace_dir.join("target/types"))?;
+    let target_dir = workspace_dir.join("target");
+    fs::create_dir_all(target_dir.join("verifiable"))?;
+    fs::create_dir_all(target_dir.join("idl"))?;
+    fs::create_dir_all(target_dir.join("types"))?;
     if !&cfg.workspace.types.is_empty() {
         fs::create_dir_all(workspace_dir.join(&cfg.workspace.types))?;
     }
@@ -1595,12 +1600,20 @@ fn build_cwd_verifiable(
             let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
             // Write out the JSON file.
             println!("Writing the IDL file");
-            let out_file = workspace_dir.join(format!("target/idl/{}.json", idl.metadata.name));
+            let out_file = workspace_dir
+                .join("target")
+                .join("idl")
+                .join(&idl.metadata.name)
+                .with_extension("json");
             write_idl(&idl, OutFile::File(out_file))?;
 
             // Write out the TypeScript type.
             println!("Writing the .ts file");
-            let ts_file = workspace_dir.join(format!("target/types/{}.ts", idl.metadata.name));
+            let ts_file = workspace_dir
+                .join("target")
+                .join("types")
+                .join(&idl.metadata.name)
+                .with_extension("ts");
             fs::write(&ts_file, idl_ts(&idl)?)?;
 
             // Copy out the TypeScript type.
@@ -1802,7 +1815,12 @@ fn docker_build_bpf(
     println!("Copying out the build artifacts");
     let out_file = cfg_parent
         .canonicalize()?
-        .join(format!("target/verifiable/{binary_name}.so"))
+        .join(
+            Path::new("target")
+                .join("verifiable")
+                .join(&binary_name)
+                .with_extension("so"),
+        )
         .display()
         .to_string();
 
@@ -2053,8 +2071,10 @@ fn verify(
         .path()
         .parent()
         .ok_or_else(|| anyhow!("Unable to find workspace root"))?
-        .join("target/verifiable/")
-        .join(format!("{binary_name}.so"));
+        .join("target")
+        .join("verifiable")
+        .join(&binary_name)
+        .with_extension("so");
 
     let url = cluster_url(&cfg, &cfg.test_validator);
     let bin_ver = verify_bin(program_id, &bin_path, &url)?;
@@ -3417,7 +3437,8 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = PathBuf::from("target/idl")
+            let idl_out = Path::new("target")
+                .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
             write_idl(idl, OutFile::File(idl_out))?;
@@ -3547,20 +3568,24 @@ fn validator_flags(
 }
 
 fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::process::Child>> {
-    let program_logs_dir = ".anchor/program-logs";
-    if Path::new(program_logs_dir).exists() {
-        fs::remove_dir_all(program_logs_dir)?;
+    let program_logs_dir = Path::new(".anchor").join("program-logs");
+    if program_logs_dir.exists() {
+        fs::remove_dir_all(&program_logs_dir)?;
     }
-    fs::create_dir_all(program_logs_dir)?;
+    fs::create_dir_all(&program_logs_dir)?;
+
     let mut handles = vec![];
     for program in config.read_all_programs()? {
-        let idl = fs::read(format!("target/idl/{}.json", program.lib_name))?;
+        let idl_path = Path::new("target")
+            .join("idl")
+            .join(&program.lib_name)
+            .with_extension("json");
+        let idl = fs::read(idl_path)?;
         let idl = convert_idl(&idl)?;
 
-        let log_file = File::create(format!(
-            "{}/{}.{}.log",
-            program_logs_dir, idl.address, program.lib_name,
-        ))?;
+        let log_file = File::create(
+            program_logs_dir.join(format!("{}.{}.log", idl.address, program.lib_name)),
+        )?;
         let stdio = std::process::Stdio::from(log_file);
         let child = std::process::Command::new("solana")
             .arg("logs")
@@ -3574,7 +3599,8 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
     if let Some(test) = config.test_validator.as_ref() {
         if let Some(genesis) = &test.genesis {
             for entry in genesis {
-                let log_file = File::create(format!("{}/{}.log", program_logs_dir, entry.address))?;
+                let log_file =
+                    File::create(program_logs_dir.join(&entry.address).with_extension("log"))?;
                 let stdio = std::process::Stdio::from(log_file);
                 let child = std::process::Command::new("solana")
                     .arg("logs")
@@ -3692,10 +3718,9 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
         Some(TestValidator {
             validator: Some(validator),
             ..
-        }) => &validator.ledger,
-        _ => DEFAULT_LEDGER_PATH,
+        }) => PathBuf::from(&validator.ledger),
+        _ => get_default_ledger_path(),
     };
-    let ledger_path = Path::new(ledger_path);
 
     if !ledger_path.is_relative() {
         // Prevent absolute paths to avoid someone using / or similar, as the
@@ -3704,15 +3729,13 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
         std::process::exit(1);
     }
     if ledger_path.exists() {
-        fs::remove_dir_all(ledger_path)?;
+        fs::remove_dir_all(&ledger_path)?;
     }
 
-    fs::create_dir_all(ledger_path)?;
+    fs::create_dir_all(&ledger_path)?;
 
-    Ok((
-        ledger_path.to_owned(),
-        ledger_path.join("test-ledger-log.txt"),
-    ))
+    let log_path = ledger_path.join("test-ledger-log.txt");
+    Ok((ledger_path, log_path))
 }
 
 fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
@@ -3825,7 +3848,8 @@ fn deploy(
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = PathBuf::from("target/idl")
+                let idl_out = Path::new("target")
+                    .join("idl")
                     .join(&idl.metadata.name)
                     .with_extension("json");
                 write_idl(idl, OutFile::File(idl_out))?;
@@ -4267,12 +4291,14 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
 }
 
 fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
-    let dir = shellexpand::tilde("~/.config/anchor");
-    if !Path::new(&dir.to_string()).exists() {
-        fs::create_dir(dir.to_string())?;
+    let anchor_dir = Path::new(&*shellexpand::tilde("~"))
+        .join(".config")
+        .join("anchor");
+    if !anchor_dir.exists() {
+        fs::create_dir(&anchor_dir)?;
     }
 
-    std::env::set_current_dir(dir.to_string())?;
+    std::env::set_current_dir(&anchor_dir)?;
 
     // Freely overwrite the entire file since it's not used for anything else.
     let mut file = File::create("credentials")?;
@@ -4467,8 +4493,11 @@ fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
     struct Credentials {
         registry: Registry,
     }
-    let filename = shellexpand::tilde("~/.config/anchor/credentials");
-    let mut file = File::open(filename.to_string())?;
+    let filename = Path::new(&*shellexpand::tilde("~"))
+        .join(".config")
+        .join("anchor")
+        .join("credentials");
+    let mut file = File::open(filename)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
@@ -4730,7 +4759,8 @@ fn get_node_dns_option() -> Result<&'static str> {
 // of spaces in keypair/binary paths, but this should be fixed in the Solana CLI
 // and removed here.
 fn strip_workspace_prefix(absolute_path: String) -> String {
-    let workspace_prefix = std::env::current_dir().unwrap().display().to_string() + "/";
+    let workspace_prefix =
+        std::env::current_dir().unwrap().display().to_string() + std::path::MAIN_SEPARATOR_STR;
     absolute_path
         .strip_prefix(&workspace_prefix)
         .unwrap_or(&absolute_path)

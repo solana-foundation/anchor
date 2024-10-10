@@ -243,7 +243,10 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = format!("target/idl/{lib_name}.json");
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&lib_name)
+                .with_extension("json");
             let idl = fs::read(idl_filepath)
                 .ok()
                 .map(|bytes| serde_json::from_reader(&*bytes))
@@ -257,7 +260,10 @@ impl WithPath<Config> {
             });
         }
         for (lib_name, path) in self.get_solidity_program_list()? {
-            let idl_filepath = format!("target/idl/{lib_name}.json");
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&lib_name)
+                .with_extension("json");
             let idl = fs::read(idl_filepath)
                 .ok()
                 .map(|bytes| serde_json::from_reader(&*bytes))
@@ -1131,7 +1137,7 @@ impl From<_Validator> for Validator {
             url: _validator.url,
             ledger: _validator
                 .ledger
-                .unwrap_or_else(|| DEFAULT_LEDGER_PATH.to_string()),
+                .unwrap_or_else(|| get_default_ledger_path().display().to_string()),
             limit_ledger_size: _validator.limit_ledger_size,
             rpc_port: _validator
                 .rpc_port
@@ -1169,7 +1175,10 @@ impl From<Validator> for _Validator {
     }
 }
 
-pub const DEFAULT_LEDGER_PATH: &str = ".anchor/test-ledger";
+pub fn get_default_ledger_path() -> PathBuf {
+    Path::new(".anchor").join("test-ledger")
+}
+
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
 
 impl Merge for _Validator {
@@ -1282,12 +1291,12 @@ impl Program {
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        let deploy_dir_path = "target/deploy/";
-        fs::create_dir_all(deploy_dir_path)
-            .with_context(|| format!("Error creating directory with path: {deploy_dir_path}"))?;
+        let deploy_dir_path = Path::new("target").join("deploy");
+        fs::create_dir_all(&deploy_dir_path)
+            .with_context(|| format!("Error creating directory with path: {deploy_dir_path:?}"))?;
         let path = std::env::current_dir()
             .expect("Must have current dir")
-            .join(format!("target/deploy/{}-keypair.json", self.lib_name));
+            .join(deploy_dir_path.join(format!("{}-keypair.json", self.lib_name)));
         if path.exists() {
             return Ok(WithPath::new(
                 File::open(&path)
@@ -1303,11 +1312,10 @@ impl Program {
     }
 
     pub fn binary_path(&self, verifiable: bool) -> PathBuf {
-        let path = if verifiable {
-            format!("target/verifiable/{}.so", self.lib_name)
-        } else {
-            format!("target/deploy/{}.so", self.lib_name)
-        };
+        let path = Path::new("target")
+            .join(if verifiable { "verifiable" } else { "deploy" })
+            .join(&self.lib_name)
+            .with_extension("so");
 
         std::env::current_dir()
             .expect("Must have current dir")
@@ -1389,7 +1397,13 @@ macro_rules! home_path {
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(home_dir().unwrap().join($path).display().to_string())
+                $my_struct(
+                    home_dir()
+                        .unwrap()
+                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
+                        .display()
+                        .to_string(),
+                )
             }
         }
 
