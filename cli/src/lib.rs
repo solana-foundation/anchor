@@ -506,6 +506,9 @@ pub enum IdlCommand {
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
+        /// Address to use (defaults to `metadata.address` value)
+        #[clap(short, long)]
+        program_id: Option<Pubkey>,
     },
     /// Generate TypeScript type for the IDL
     Type {
@@ -2302,7 +2305,11 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             cargo_args,
         ),
         IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
-        IdlCommand::Convert { path, out } => idl_convert(path, out),
+        IdlCommand::Convert {
+            path,
+            out,
+            program_id,
+        } => idl_convert(path, out, program_id),
         IdlCommand::Type { path, out } => idl_type(path, out),
     }
 }
@@ -2809,8 +2816,24 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
     write_idl(&idl, out)
 }
 
-fn idl_convert(path: String, out: Option<String>) -> Result<()> {
+fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
     let idl = fs::read(path)?;
+
+    // Set the `metadata.address` field based on the given `program_id`
+    let idl = match program_id {
+        Some(program_id) => {
+            let mut idl = serde_json::from_slice::<serde_json::Value>(&idl)?;
+            idl.as_object_mut()
+                .ok_or_else(|| anyhow!("IDL must be an object"))?
+                .insert(
+                    "metadata".into(),
+                    serde_json::json!({ "address": program_id.to_string() }),
+                );
+            serde_json::to_vec(&idl)?
+        }
+        _ => idl,
+    };
+
     let idl = convert_idl(&idl)?;
     let out = match out {
         None => OutFile::Stdout,

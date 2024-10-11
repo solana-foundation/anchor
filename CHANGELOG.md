@@ -53,6 +53,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Check whether the `idl-build` feature exists when using the `idl build` command ([#3273](https://github.com/coral-xyz/anchor/pull/3273)).
 - cli: Build IDL if there is only one program when using the `idl build` command ([#3275](https://github.com/coral-xyz/anchor/pull/3275)).
 - cli: Add short alias for the `idl build` command ([#3283](https://github.com/coral-xyz/anchor/pull/3283)).
+- cli: Add `--program-id` option to `idl convert` command ([#3309](https://github.com/coral-xyz/anchor/pull/3309)).
 
 ### Fixes
 
