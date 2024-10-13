@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
+/// Master seed slice
 #[constant]
 pub const MASTER_SEED: &[u8] = b"master";
 

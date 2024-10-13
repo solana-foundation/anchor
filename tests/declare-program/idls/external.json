@@ -279,6 +279,9 @@
   "constants": [
     {
       "name": "MASTER_SEED",
+      "docs": [
+        "Master seed slice"
+      ],
       "type": "bytes",
       "value": "[109, 97, 115, 116, 101, 114]"
     }
