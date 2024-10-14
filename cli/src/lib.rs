@@ -2752,10 +2752,10 @@ fn idl_build(
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
+    let current_dir = std::env::current_dir()?;
     let program_path = match program_name {
         Some(name) => cfg.get_program(&name)?.path,
         None => {
-            let current_dir = std::env::current_dir()?;
             let programs = cfg.read_all_programs()?;
             if programs.len() == 1 {
                 programs.into_iter().next().unwrap().path
@@ -2769,14 +2769,9 @@ fn idl_build(
         }
     };
     std::env::set_current_dir(program_path)?;
+    let idl = generate_idl(&cfg, skip_lint, no_docs, &cargo_args)?;
+    std::env::set_current_dir(current_dir)?;
 
-    check_idl_build_feature()?;
-    let idl = anchor_lang_idl::build::IdlBuilder::new()
-        .resolution(cfg.features.resolution)
-        .skip_lint(cfg.features.skip_lint || skip_lint)
-        .no_docs(no_docs)
-        .cargo_args(cargo_args)
-        .build()?;
     let out = match out {
         Some(path) => OutFile::File(PathBuf::from(path)),
         None => OutFile::Stdout,
