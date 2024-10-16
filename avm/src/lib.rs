@@ -9,7 +9,7 @@ use serde::{de, Deserialize};
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
@@ -193,16 +193,43 @@ pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()>
         return Ok(());
     }
 
-    let exit = std::process::Command::new("cargo")
+    // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
+    // explained in https://github.com/coral-xyz/anchor/pull/3143
+    if version < Version::parse("0.31.0")? {
+        const REQUIRED_VERSION: &str = "1.79.0";
+        let is_installed = Command::new("rustup")
+            .args(["toolchain", "list"])
+            .output()
+            .map(|output| String::from_utf8(output.stdout))??
+            .lines()
+            .any(|line| line.starts_with(REQUIRED_VERSION));
+        if !is_installed {
+            let exit_status = Command::new("rustup")
+                .args(["toolchain", "install", REQUIRED_VERSION])
+                .spawn()?
+                .wait()?;
+            if !exit_status.success() {
+                return Err(anyhow!(
+                    "Installation of `rustc {REQUIRED_VERSION}` failed. \
+                    `rustc <1.80` is required to install Anchor v{version} from source. \
+                    See https://github.com/coral-xyz/anchor/pull/3143 for more information."
+                ));
+            }
+        }
+
+        // Prepend the toolchain to use with the `cargo install` command
+        args.insert(0, format!("+{REQUIRED_VERSION}"));
+    }
+
+    let output = Command::new("cargo")
         .args(args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow!("Cargo install for {} failed: {}", version, e.to_string()))?;
-    if !exit.status.success() {
+        .map_err(|e| anyhow!("Cargo install for {version} failed: {e}"))?;
+    if !output.status.success() {
         return Err(anyhow!(
-            "Failed to install {}, is it a valid version?",
-            version
+            "Failed to install {version}, is it a valid version?"
         ));
     }
 
