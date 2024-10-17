@@ -138,7 +138,7 @@ You can find information about all constraints in the reference. We will cover s
 
 ## Safety checks
 
-Two of the Anchor account types, [AccountInfo](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/account_info/index.html) and [UncheckedAccount](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/unchecked_account/index.html) do not implement any checks on the account being passed. Anchor implements safety checks that encourage additional documentation describing why additional checks are not necesssary.
+Two of the Anchor account types, [AccountInfo](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/account_info/index.html) and [UncheckedAccount](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/unchecked_account/index.html) do not implement any checks on the account being passed. Anchor implements safety checks that encourage additional documentation describing why additional checks are not necessary.
 
 Attempting to build a program containing the following excerpt with `anchor build`:
 
