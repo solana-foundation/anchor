@@ -82,6 +82,19 @@ members = [
 ]
 ```
 
+#### exclude
+
+Opposite of `workspace.members`.
+
+Example:
+
+```toml
+[workspace]
+exclude = [
+    "programs/my_program"
+]
+```
+
 ## programs
 
 Example:
