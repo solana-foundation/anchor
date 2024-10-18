@@ -86,6 +86,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Update `engines.node` to `>= 17` ([#3301](https://github.com/coral-xyz/anchor/pull/3301)).
 - cli: Use OS-agnostic paths ([#3307](https://github.com/coral-xyz/anchor/pull/3307)).
 - avm: Use `rustc 1.79.0` when installing versions older than v0.31 ([#3315](https://github.com/coral-xyz/anchor/pull/3315)).
+- cli: Fix priority fee calculation causing panic on localnet ([#3318](https://github.com/coral-xyz/anchor/pull/3318)).
 
 ### Breaking
 

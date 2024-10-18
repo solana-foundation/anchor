@@ -4726,6 +4726,10 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient, priority_fee: Option<u6
     }
 
     let mut fees = client.get_recent_prioritization_fees(&[])?;
+    if fees.is_empty() {
+        // Fees may be empty, e.g. on localnet
+        return Ok(0);
+    }
 
     // Get the median fee from the most recent recent 150 slots' prioritization fee
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
