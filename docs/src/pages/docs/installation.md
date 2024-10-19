@@ -41,27 +41,6 @@ On Linux systems you may need to install additional dependencies if cargo instal
 sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 ```
 
-If you're using `bash`, add `avm` to PATH for `bash`, then reload the shell:
-
-```shell
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-If you're using `fish`, add `avm` to PATH for `fish`, then reload the shell:
-
-```shell
-echo "set -gx PATH \$PATH \$HOME/.cargo/bin" >> ~/.config/fish/config.fish
-source ~/.config/fish/config.fish
-```
-
-If you're using `zsh`, add `avm` to PATH for `zsh`, then reload the shell:
-
-```shell
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
 Install the latest version of the CLI using `avm`, and then set it to be the version to use.
 
 ```shell
@@ -97,6 +76,47 @@ Now verify the CLI is installed properly.
 
 ```shell
 anchor --version
+```
+
+## Issues
+
+### Incorrect `$PATH`
+
+Rust binaries, including `avm` and `anchor`, are installed to the `~/.cargo/bin` directory. Since this directory is required to be in the `PATH` environment variable, [Rust](#rust) installation tries to set it up automatically, but it might fail to do so in some platforms.
+
+To verify that the `PATH` environment variable was set up correctly, run:
+
+```shell
+which anchor
+```
+
+the output should look like (with your username):
+
+```
+/home/user/.cargo/bin/anchor
+```
+
+If the command fails or the output is empty, make sure to add the `~/.cargo/bin` directory to the `PATH` environment variable.
+
+#### Bash
+
+```shell
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### Fish
+
+```shell
+echo "set -gx PATH \$PATH \$HOME/.cargo/bin" >> ~/.config/fish/config.fish
+source ~/.config/fish/config.fish
+```
+
+#### Zsh
+
+```shell
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ## Generating Shell Completions
