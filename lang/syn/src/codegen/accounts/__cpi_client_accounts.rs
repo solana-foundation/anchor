@@ -95,7 +95,7 @@ pub fn generate(
             AccountField::CompositeField(s) => {
                 let name = &s.ident;
                 quote! {
-                    account_metas.extend(self.#name.to_account_metas(None));
+                    account_metas.extend(self.#name.to_account_metas(is_signer));
                 }
             }
             AccountField::Field(f) => {
@@ -105,7 +105,7 @@ pub fn generate(
                 };
                 let is_signer = match is_signer {
                     false => quote! {false},
-                    true => quote! {true},
+                    true => quote! {is_signer.unwrap_or(true)},
                 };
                 let meta = match f.constraints.is_mutable() {
                     false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
