@@ -27,7 +27,7 @@
 //!     // Create program
 //!     let program = client.program(my_program::ID)?;
 //!
-//!     // Send a transaction
+//!     // Send transaction
 //!     let my_account_kp = Keypair::new();
 //!     program
 //!         .request()
@@ -40,7 +40,7 @@
 //!         .signer(&my_account_kp)
 //!         .send()?;
 //!
-//!     // Fetch an account
+//!     // Fetch account
 //!     let my_account: MyAccount = program.account(my_account_kp.pubkey())?;
 //!     assert_eq!(my_account.field, 42);
 //!
@@ -54,11 +54,20 @@
 //!
 //! # Features
 //!
+//! ## `async`
+//!
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
 //! anchor-client = { version = "0.30.1 ", features = ["async"] }
 //! ````
+//!
+//! ## `mock`
+//!
+//! This feature allows passing in a custom RPC client when creating program instances, which is
+//! useful for mocking RPC responses, e.g. via [`RpcClient::new_mock`].
+//!
+//! [`RpcClient::new_mock`]: https://docs.rs/solana-client/2.0.8/solana_client/rpc_client/struct.RpcClient.html#method.new_mock
 
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
