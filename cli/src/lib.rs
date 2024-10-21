@@ -2089,7 +2089,7 @@ fn verify(
     // Verify IDL (only if it's not a buffer account).
     let local_idl = generate_idl(&cfg, true, false, &cargo_args)?;
     if bin_ver.state != BinVerificationState::Buffer {
-        let deployed_idl = fetch_idl(cfg_override, program_id)?;
+        let deployed_idl = fetch_idl(cfg_override, program_id).map(serde_json::from_value)??;
         if local_idl != deployed_idl {
             println!("Error: IDLs don't match");
             std::process::exit(1);
@@ -2315,15 +2315,16 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
 }
 
 /// Fetch an IDL for the given program id.
-fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
+///
+/// Intentionally returns [`serde_json::Value`] rather than [`Idl`] to also support legacy IDLs.
+fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<serde_json::Value> {
     let url = match Config::discover(cfg_override)? {
         Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
         None => {
             // If the command is not run inside a workspace,
             // cluster_url will be used from default solana config
             // provider.cluster option can be used to override this
-
-            if let Some(cluster) = cfg_override.cluster.clone() {
+            if let Some(cluster) = cfg_override.cluster.as_ref() {
                 cluster.url().to_string()
             } else {
                 config::get_solana_cfg_url()?
@@ -2803,12 +2804,13 @@ fn generate_idl(
 }
 
 fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>) -> Result<()> {
-    let idl = fetch_idl(cfg_override, address)?;
-    let out = match out {
-        None => OutFile::Stdout,
-        Some(out) => OutFile::File(PathBuf::from(out)),
+    let idl = fetch_idl(cfg_override, address).map(|idl| serde_json::to_string_pretty(&idl))??;
+    match out {
+        Some(out) => fs::write(out, idl)?,
+        _ => println!("{idl}"),
     };
-    write_idl(&idl, out)
+
+    Ok(())
 }
 
 fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
