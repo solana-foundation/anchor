@@ -17,7 +17,7 @@ pub enum Commands {
         #[clap(value_parser = parse_version, required = false)]
         version: Option<Version>,
     },
-    #[clap(about = "Install a version of Anchor")]
+    #[clap(about = "Install a version of Anchor", alias = "i")]
     Install {
         /// Anchor version or commit
         #[clap(value_parser = parse_install_target)]
@@ -32,7 +32,7 @@ pub enum Commands {
         #[clap(value_parser = parse_version)]
         version: Version,
     },
-    #[clap(about = "List available versions of Anchor")]
+    #[clap(about = "List available versions of Anchor", alias = "ls")]
     List {},
     #[clap(about = "Update to the latest Anchor version")]
     Update {},
