@@ -35,12 +35,6 @@ Install `avm` using Cargo. Note this will replace your `anchor` binary if you ha
 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 ```
 
-On Linux systems you may need to install additional dependencies if cargo install fails. E.g. on Ubuntu:
-
-```shell
-sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
-```
-
 Install the latest version of the CLI using `avm`:
 
 ```shell
@@ -65,12 +59,6 @@ We can also use Cargo to install the CLI directly. Make sure that the `--tag` ar
 cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.1 anchor-cli --locked
 ```
 
-On Linux systems you may need to install additional dependencies if cargo install fails. On Ubuntu,
-
-```shell
-sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev
-```
-
 Now verify the CLI is installed properly.
 
 ```shell
@@ -78,6 +66,16 @@ anchor --version
 ```
 
 ## Issues
+
+Installation might fail due to a variety of reasons. This section contains a list of the most common issues and their solutions.
+
+### Missing dependencies
+
+On Linux systems you may need to install additional dependencies. E.g. on Ubuntu:
+
+```shell
+sudo apt-get update && sudo apt-get upgrade && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
+```
 
 ### Incorrect `$PATH`
 
