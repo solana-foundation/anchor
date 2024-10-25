@@ -5,12 +5,10 @@ import { splitArgsAndCtx } from "../context.js";
 import { TransactionFn } from "./transaction.js";
 import { EventParser, Event } from "../event.js";
 import { Coder } from "../../coder/index.js";
-import { Idl, IdlEvent, IdlTypeDef } from "../../idl.js";
+import { Idl } from "../../idl.js";
 import { translateError } from "../../error.js";
 import {
-  AllEvents,
   AllInstructions,
-  IdlTypes,
   InstructionContextFn,
   MakeInstructionsNamespace,
 } from "./types";
