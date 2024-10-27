@@ -1,7 +1,7 @@
 use crate::config::{
     get_default_ledger_path, AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride,
-    Manifest, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
-    WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+    TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -82,6 +82,9 @@ pub enum Command {
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
+        /// Package Manager to use
+        #[clap(value_enum, long, default_value = "yarn")]
+        package_manager: PackageManager,
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
@@ -756,6 +759,7 @@ fn process_command(opts: Opts) -> Result<()> {
             javascript,
             solidity,
             no_install,
+            package_manager,
             no_git,
             template,
             test_template,
@@ -766,6 +770,7 @@ fn process_command(opts: Opts) -> Result<()> {
             javascript,
             solidity,
             no_install,
+            package_manager,
             no_git,
             template,
             test_template,
@@ -952,6 +957,7 @@ fn init(
     javascript: bool,
     solidity: bool,
     no_install: bool,
+    package_manager: PackageManager,
     no_git: bool,
     template: ProgramTemplate,
     test_template: TestTemplate,
@@ -990,9 +996,12 @@ fn init(
     fs::create_dir_all("app")?;
 
     let mut cfg = Config::default();
-    let test_script = test_template.get_test_script(javascript);
-    cfg.scripts
-        .insert("test".to_owned(), test_script.to_owned());
+
+    let test_script = test_template.get_test_script(javascript, &package_manager);
+    cfg.scripts.insert("test".to_owned(), test_script);
+
+    let package_manager_cmd = package_manager.to_string();
+    cfg.toolchain.package_manager = Some(package_manager);
 
     let mut localnet = BTreeMap::new();
     let program_id = rust_template::get_or_create_program_id(&rust_name);
@@ -1064,10 +1073,16 @@ fn init(
     )?;
 
     if !no_install {
-        let yarn_result = install_node_modules("yarn")?;
-        if !yarn_result.status.success() {
-            println!("Failed yarn install will attempt to npm install");
+        let package_manager_result = install_node_modules(&package_manager_cmd)?;
+
+        if !package_manager_result.status.success() && package_manager_cmd != "npm" {
+            println!(
+                "Failed {} install will attempt to npm install",
+                package_manager_cmd
+            );
             install_node_modules("npm")?;
+        } else {
+            eprintln!("Failed to install node modules");
         }
     }
 
@@ -4124,7 +4139,12 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
                 rust_template::deploy_ts_script_host(&url, &module_path.display().to_string());
             fs::write(deploy_ts, deploy_script_host_str)?;
 
-            std::process::Command::new("yarn")
+            let pkg_manager_cmd = match &cfg.toolchain.package_manager {
+                Some(pkg_manager) => pkg_manager.to_string(),
+                None => PackageManager::default().to_string(),
+            };
+
+            std::process::Command::new(pkg_manager_cmd)
                 .args([
                     "run",
                     "ts-node",
@@ -4812,6 +4832,7 @@ mod tests {
             true,
             false,
             true,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -4832,6 +4853,7 @@ mod tests {
             true,
             false,
             true,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -4852,6 +4874,7 @@ mod tests {
             true,
             false,
             true,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),

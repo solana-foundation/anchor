@@ -380,6 +380,31 @@ pub struct Config {
 pub struct ToolchainConfig {
     pub anchor_version: Option<String>,
     pub solana_version: Option<String>,
+    pub package_manager: Option<PackageManager>,
+}
+
+/// Package manager to use for the project.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+pub enum PackageManager {
+    /// Use npm as the package manager.
+    NPM,
+    /// Use yarn as the package manager.
+    #[default]
+    Yarn,
+    /// Use pnpm as the package manager.
+    PNPM,
+}
+
+impl std::fmt::Display for PackageManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let pkg_manager_str = match self {
+            PackageManager::NPM => "npm",
+            PackageManager::Yarn => "yarn",
+            PackageManager::PNPM => "pnpm",
+        };
+
+        write!(f, "{pkg_manager_str}")
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

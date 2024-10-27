@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use semver::{Version, VersionReq};
 
 use crate::{
-    config::{Config, Manifest, WithPath},
+    config::{Config, Manifest, PackageManager, WithPath},
     VERSION,
 };
 
@@ -69,12 +69,21 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         .and_then(|ver| VersionReq::parse(ver).ok())
         .filter(|ver| !ver.matches(&cli_version));
 
+    let update_cmd = match &cfg.toolchain.package_manager {
+        Some(pkg_manager) => match pkg_manager {
+            PackageManager::NPM => "npm update",
+            PackageManager::Yarn => "yarn upgrade",
+            PackageManager::PNPM => "pnpm update",
+        },
+        None => "npm update",
+    };
+
     if let Some(ver) = mismatched_ts_version {
         eprintln!(
             "WARNING: `@coral-xyz/anchor` version({ver}) and the current CLI version\
                 ({cli_version}) don't match.\n\n\t\
                 This can lead to unwanted behavior. To fix, upgrade the package by running:\n\n\t\
-                yarn upgrade @coral-xyz/anchor@{cli_version}\n"
+                {update_cmd} @coral-xyz/anchor@{cli_version}\n"
         );
     }
 
