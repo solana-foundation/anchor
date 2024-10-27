@@ -125,6 +125,14 @@ It's recommended to use these commands to store an IDL on chain, at a determinis
 address, as a function of nothing but the program's ID. This
 allows us to generate clients for a program using nothing but the program ID.
 
+### Idl Build
+
+```shell
+anchor idl build
+```
+
+Generates the IDL for the program using the compilation method.
+
 ### Idl Init
 
 ```shell
