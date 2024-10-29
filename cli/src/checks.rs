@@ -69,16 +69,13 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         .and_then(|ver| VersionReq::parse(ver).ok())
         .filter(|ver| !ver.matches(&cli_version));
 
-    let update_cmd = match &cfg.toolchain.package_manager {
-        Some(pkg_manager) => match pkg_manager {
+    if let Some(ver) = mismatched_ts_version {
+        let update_cmd = match cfg.toolchain.package_manager.clone().unwrap_or_default() {
             PackageManager::NPM => "npm update",
             PackageManager::Yarn => "yarn upgrade",
             PackageManager::PNPM => "pnpm update",
-        },
-        None => "npm update",
-    };
+        };
 
-    if let Some(ver) = mismatched_ts_version {
         eprintln!(
             "WARNING: `@coral-xyz/anchor` version({ver}) and the current CLI version\
                 ({cli_version}) don't match.\n\n\t\
