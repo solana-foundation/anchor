@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::clock::UnixTimestamp};
+use anchor_lang::prelude::*;
 
 declare_id!("Newid11111111111111111111111111111111111111");
 
@@ -274,6 +274,12 @@ pub type AliasVec<T> = Vec<T>;
 pub type AliasOptionVec<T> = Vec<Option<T>>;
 pub type AliasGenericConst<const N: usize> = [u32; N];
 pub type AliasMultipleGenericMixed<T, const N: usize> = Vec<[T; N]>;
+
+// TODO: Remove this declaration and automatically resolve it from `solana-program`.
+// Splitting `solana-program` into multiple parts in Solana v2.1 broke resolution of type
+// aliases such as `UnixTimestamp` due to the resolution logic not being smart enough to figure
+// out where the declaration of the type comes from.
+pub type UnixTimestamp = i64;
 
 #[derive(Accounts)]
 pub struct AccountAndEventArgAndField<'info> {
