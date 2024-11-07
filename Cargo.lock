@@ -6723,8 +6723,3 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "spl-token-confidential-transfer-proof-generation"
-version = "0.1.0"
-source = "git+https://github.com/solana-labs/solana-program-library?rev=8e0ed0a#8e0ed0ab0d1caeb0b8125c0879ec6ae96a0685d0"

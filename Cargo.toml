@@ -21,12 +21,3 @@ exclude = [
     "tests/cfo/deps/openbook-dex",
 ]
 resolver = "2"
-
-# TODO: Remove once there is a new compatible release on crates.io
-#
-# The latest version of this crate on crates.io depends on `curve25519-dalek ^3.2.1` which
-# conflicts with `solana-* ^2.1`.
-#
-# Details: https://github.com/solana-labs/solana-program-library/pull/7416#discussion_r1824643243
-[patch.crates-io]
-spl-token-confidential-transfer-proof-generation = { git = "https://github.com/solana-labs/solana-program-library", rev = "8e0ed0a" }
