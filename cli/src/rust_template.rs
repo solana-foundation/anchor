@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use heck::{ToPascalCase, ToSnakeCase};
+use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
@@ -590,11 +590,10 @@ anchor.setProvider(provider);
         write!(
             &mut eval_string,
             r#"
-anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
+anchor.workspace.{} = new anchor.Program({}, provider);
 "#,
-            program.name.to_pascal_case(),
+            program.name.to_lower_camel_case(),
             serde_json::to_string(&program.idl)?,
-            program.program_id
         )?;
     }
 
