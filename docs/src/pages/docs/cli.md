@@ -75,6 +75,15 @@ anchor build --verifiable
 
 Runs the build inside a docker image so that the output binary is deterministic (assuming a Cargo.lock file is used). This command must be run from within a single crate subdirectory within the workspace. For example, `programs/<my-program>/`.
 
+{% callout title="Tip" %}
+It's possible to pass arguments to the underlying `cargo build-sbf` command with `-- <ARGS>`. For example:
+
+```
+anchor build -- --features my-feature
+```
+
+{% /callout %}
+
 ## Cluster
 
 ### Cluster list
