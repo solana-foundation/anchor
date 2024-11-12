@@ -1036,7 +1036,11 @@ fn init(
     if solidity {
         solidity_template::create_program(&project_name)?;
     } else {
-        rust_template::create_program(&project_name, template)?;
+        rust_template::create_program(
+            &project_name,
+            template,
+            TestTemplate::Mollusk == test_template,
+        )?;
     }
 
     // Build the migrations directory.
@@ -1155,7 +1159,7 @@ fn new(
                 if solidity {
                     solidity_template::create_program(&name)?;
                 } else {
-                    rust_template::create_program(&name, template)?;
+                    rust_template::create_program(&name, template, false)?;
                 }
 
                 programs.insert(

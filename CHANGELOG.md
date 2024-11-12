@@ -59,6 +59,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm: Add short alias for `install` and `list` commands ([#3326](https://github.com/coral-xyz/anchor/pull/3326)).
 - avm: Add Windows support for renaming anchor binary ([#3325](https://github.com/coral-xyz/anchor/pull/3325)).
 - cli: Add optional `package-manager` flag in `init` command to set package manager field in Anchor.toml ([#3328](https://github.com/coral-xyz/anchor/pull/3328)).
+- cli: Add test template for [Mollusk](https://github.com/buffalojoec/mollusk) ([#3352](https://github.com/coral-xyz/anchor/pull/3352)).
 
 ### Fixes
 

@@ -29,11 +29,14 @@ pub enum ProgramTemplate {
 }
 
 /// Create a program from the given name and template.
-pub fn create_program(name: &str, template: ProgramTemplate) -> Result<()> {
+pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
-        (program_path.join("Cargo.toml"), cargo_toml(name)),
+        (
+            program_path.join("Cargo.toml"),
+            cargo_toml(name, with_mollusk),
+        ),
         (program_path.join("Xargo.toml"), xargo_toml().into()),
     ];
 
@@ -171,7 +174,17 @@ codegen-units = 1
 "#
 }
 
-fn cargo_toml(name: &str) -> String {
+fn cargo_toml(name: &str, with_mollusk: bool) -> String {
+    let test_sbf_feature = if with_mollusk { r#"test-sbf = []"# } else { "" };
+    let dev_dependencies = if with_mollusk {
+        r#"
+[dev-dependencies]
+mollusk-svm = "=0.0.6-solana-1.18"
+"#
+    } else {
+        ""
+    };
+
     format!(
         r#"[package]
 name = "{0}"
@@ -190,13 +203,17 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
+{2}
 
 [dependencies]
-anchor-lang = "{2}"
+anchor-lang = "{3}"
+{4}
 "#,
         name,
         name.to_snake_case(),
+        test_sbf_feature,
         VERSION,
+        dev_dependencies,
     )
 }
 
@@ -610,6 +627,8 @@ pub enum TestTemplate {
     Jest,
     /// Generate template for Rust unit-test
     Rust,
+    /// Generate template for Mollusk Rust unit-test
+    Mollusk,
 }
 
 impl TestTemplate {
@@ -636,6 +655,7 @@ impl TestTemplate {
                 }
             }
             Self::Rust => "cargo test".to_owned(),
+            Self::Mollusk => "cargo test-sbf".to_owned(),
         }
     }
 
@@ -704,6 +724,19 @@ impl TestTemplate {
                     project_name,
                     tests_path,
                     program_id,
+                ));
+                override_or_create_files(&files)?;
+            }
+            Self::Mollusk => {
+                // Build the test suite.
+                let tests_path_str = format!("programs/{}/tests", &project_name);
+                let tests_path = Path::new(&tests_path_str);
+                fs::create_dir_all(tests_path)?;
+
+                let mut files = Vec::new();
+                files.extend(create_program_template_mollusk_test(
+                    project_name,
+                    tests_path,
                 ));
                 override_or_create_files(&files)?;
             }
@@ -777,4 +810,36 @@ fn test_initialize() {{
             ),
         ),
     ]
+}
+
+/// Generate template for Mollusk Rust unit-test
+fn create_program_template_mollusk_test(name: &str, tests_path: &Path) -> Files {
+    vec![(
+        tests_path.join("test_initialize.rs"),
+        format!(
+            r#"#![cfg(feature = "test-sbf")]
+
+use {{
+    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    mollusk_svm::{{result::Check, Mollusk}},
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = {0}::id();
+
+    let mollusk = Mollusk::new(&program_id, "{0}");
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Initialize {{}}.data(),
+        {0}::accounts::Initialize {{}}.to_account_metas(None),
+    );
+
+    mollusk.process_and_validate_instruction(&instruction, &[], &[Check::success()]);
+}}
+"#,
+            name.to_snake_case(),
+        ),
+    )]
 }
