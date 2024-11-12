@@ -144,6 +144,15 @@ pub mod new_idl {
     }
 }
 
+/// IDL test for the issue explained in https://github.com/coral-xyz/anchor/issues/3358
+///
+/// For example, using [`SimpleAccount`] and adding the full path at the end of a doc comment
+/// used to result in a false-positive when detecting conflicts.
+///
+/// [`SimpleAccount`]: crate::SimpleAccount
+#[constant]
+pub const TEST_CONVERT_MODULE_PATHS: &[u8] = b"convert_module_paths";
+
 #[account]
 #[derive(InitSpace)]
 pub struct SimpleAccount {

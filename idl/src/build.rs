@@ -303,18 +303,20 @@ fn install_toolchain_if_needed(toolchain: &str) -> Result<()> {
 /// Convert paths to name if there are no conflicts.
 fn convert_module_paths(idl: Idl) -> Idl {
     let idl = serde_json::to_string(&idl).unwrap();
-    let idl = Regex::new(r#""((\w+::)+)(\w+)""#)
+    let idl = Regex::new(r#""(\w+::)+(\w+)""#)
         .unwrap()
         .captures_iter(&idl.clone())
         .fold(idl, |acc, cur| {
             let path = cur.get(0).unwrap().as_str();
-            let name = cur.get(3).unwrap().as_str();
+            let name = cur.get(2).unwrap().as_str();
 
             // Replace path with name
             let replaced_idl = acc.replace(path, &format!(r#""{name}""#));
 
             // Check whether there is a conflict
-            let has_conflict = replaced_idl.contains(&format!(r#"::{name}""#));
+            let has_conflict = Regex::new(&format!(r#""(\w+::)+{name}""#))
+                .unwrap()
+                .is_match(&replaced_idl);
             if has_conflict {
                 acc
             } else {
