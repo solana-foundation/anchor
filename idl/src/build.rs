@@ -404,5 +404,35 @@ fn verify(idl: &Idl) -> Result<()> {
         ));
     }
 
+    // Disallow account discriminators that can conflict with the `zero` constraint.
+    //
+    // Problematic scenario:
+    //
+    // 1. Account 1's discriminator starts with 0 (but not all 0s, since that's disallowed)
+    // 2. Account 2's discriminator is a 1-byte custom discriminator
+    // 3. Account 2 gets initialized using the `zero` constraint.
+    //
+    // In this case, it's possible to pass an already initialized Account 1 to a place that expects
+    // non-initialized Account 2, because the first byte of Account 1 is also 0, which is what the
+    // `zero` constraint checks.
+    for account in &idl.accounts {
+        let zero_count = account
+            .discriminator
+            .iter()
+            .take_while(|b| **b == 0)
+            .count();
+        if let Some(account2) = idl
+            .accounts
+            .iter()
+            .find(|acc| acc.discriminator.len() <= zero_count)
+        {
+            return Err(anyhow!(
+                "Accounts may allow substitution when used with the `zero` constraint: `{}` `{}`",
+                account.name,
+                account2.name
+            ));
+        }
+    }
+
     Ok(())
 }

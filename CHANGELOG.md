@@ -60,6 +60,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - avm: Add Windows support for renaming anchor binary ([#3325](https://github.com/coral-xyz/anchor/pull/3325)).
 - cli: Add optional `package-manager` flag in `init` command to set package manager field in Anchor.toml ([#3328](https://github.com/coral-xyz/anchor/pull/3328)).
 - cli: Add test template for [Mollusk](https://github.com/buffalojoec/mollusk) ([#3352](https://github.com/coral-xyz/anchor/pull/3352)).
+- idl: Disallow account discriminators that can conflict with the `zero` constraint ([#3365](https://github.com/coral-xyz/anchor/pull/3365)).
 
 ### Fixes
 
