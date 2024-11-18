@@ -69,6 +69,13 @@ anchor build
 
 Builds programs in the workspace targeting Solana's BPF runtime and emitting IDLs in the `target/idl` directory.
 
+
+```shell
+anchor build --skip-lint
+```
+
+Disables [Safety Checks](/docs/the-accounts-struct#safety-checks) during the build process.
+
 ```shell
 anchor build --verifiable
 ```
@@ -282,6 +289,12 @@ anchor test
 
 Run an integration test suit against the configured cluster, deploying new versions
 of all workspace programs before running them.
+
+```shell
+anchor test --skip-lint
+```
+
+Similar to `anchor build`, `--skip-lint` option disables [Safety Checks](/docs/the-accounts-struct#safety-checks).
 
 If the configured network is a localnet, then automatically starts the localnetwork and runs
 the test.

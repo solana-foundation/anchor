@@ -50,6 +50,18 @@ Example:
 resolution = true
 ```
 
+#### skip-lint
+
+This disables the safety checks globally. The default is `false`.
+
+Example:
+
+```
+[features]
+skip-lint = true
+```
+See [Safety Checks](/docs/the-accounts-struct#safety-checks) for more information.
+
 ## workspace
 
 #### types
