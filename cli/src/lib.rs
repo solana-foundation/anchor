@@ -35,7 +35,6 @@ use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
-use solana_sdk::sysvar;
 use solana_sdk::transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -3974,7 +3973,6 @@ fn create_idl_account(
             AccountMeta::new_readonly(program_signer, false),
             AccountMeta::new_readonly(solana_program::system_program::ID, false),
             AccountMeta::new_readonly(*program_id, false),
-            AccountMeta::new_readonly(solana_program::sysvar::rent::ID, false),
         ];
         instructions.push(Instruction {
             program_id: *program_id,
@@ -4064,7 +4062,6 @@ fn create_idl_buffer(
         let accounts = vec![
             AccountMeta::new(buffer.pubkey(), false),
             AccountMeta::new_readonly(keypair.pubkey(), true),
-            AccountMeta::new_readonly(sysvar::rent::ID, false),
         ];
         let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
         data.append(&mut IdlInstruction::CreateBuffer.try_to_vec()?);

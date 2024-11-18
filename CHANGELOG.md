@@ -95,6 +95,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix priority fee calculation causing panic on localnet ([#3318](https://github.com/coral-xyz/anchor/pull/3318)).
 - cli: Fix `shell` command failing due to outdated program initialization ([#3351](https://github.com/coral-xyz/anchor/pull/3351)).
 - idl: Fix detecting false-positives from doc comments during module path conversion ([#3359](https://github.com/coral-xyz/anchor/pull/3359)).
+- cli: Remove passing the rent sysvar account to IDL instructions ([#3372](https://github.com/coral-xyz/anchor/pull/3372)).
 
 ### Breaking
 
