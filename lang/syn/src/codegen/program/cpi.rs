@@ -1,6 +1,4 @@
-use crate::codegen::program::common::{
-    gen_discriminator, generate_ix_variant, SIGHASH_GLOBAL_NAMESPACE,
-};
+use crate::codegen::program::common::{generate_ix_variant, generate_ix_variant_name};
 use crate::Program;
 use heck::SnakeCase;
 use quote::{quote, ToTokens};
@@ -14,10 +12,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
-                let ix_variant = generate_ix_variant(name.to_string(), &ix.args);
+                let name_str = name.to_string();
+                let ix_variant = generate_ix_variant(&name_str, &ix.args);
                 let method_name = &ix.ident;
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
-                let discriminator = gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name);
+                let discriminator = {
+                    let name = generate_ix_variant_name(&name_str);
+                    quote! { <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR }
+                };
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let ix_cfgs = &ix.cfgs;
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
