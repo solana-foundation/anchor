@@ -61,7 +61,7 @@ fn transfer(accounts, lamports) {
 }
 ```
 
-Take a moment to guess would happen if the user passed in a `from` account that was not owned by the system program!
+Take a moment to guess what would happen if the user passed in a `from` account that was not owned by the system program!
 
 ...
 
