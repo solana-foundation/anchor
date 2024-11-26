@@ -18,5 +18,4 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl" }
 external = { path = "../external", features = ["no-entrypoint"] }
