@@ -660,7 +660,6 @@ dependencies = [
  "clap 4.5.17",
  "clap_complete",
  "dirs",
- "once_cell",
  "reqwest",
  "semver",
  "serde",

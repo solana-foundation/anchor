@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
-use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
 use reqwest::StatusCode;
 use semver::{Prerelease, Version};
@@ -10,9 +9,10 @@ use std::fs;
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::LazyLock;
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
-pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
+pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     cfg_if::cfg_if! {
         if #[cfg(test)] {
             let dir = tempfile::tempdir().expect("Could not create temporary directory");
