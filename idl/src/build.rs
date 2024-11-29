@@ -167,7 +167,7 @@ fn build(
             if skip_lint { "TRUE" } else { "FALSE" },
         )
         .env("ANCHOR_IDL_BUILD_PROGRAM_PATH", program_path)
-        .env("RUSTFLAGS", "--cfg procmacro2_semver_exempt")
+        .env("RUSTFLAGS", "--cfg procmacro2_semver_exempt -A warnings")
         .current_dir(program_path)
         .stderr(Stdio::inherit())
         .output()?;
