@@ -97,6 +97,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix detecting false-positives from doc comments during module path conversion ([#3359](https://github.com/coral-xyz/anchor/pull/3359)).
 - cli: Remove passing the rent sysvar account to IDL instructions ([#3372](https://github.com/coral-xyz/anchor/pull/3372)).
 - lang: Fix `cpi` feature instructions not accounting for discriminator overrides ([#3376](https://github.com/coral-xyz/anchor/pull/3376)).
+- idl: Ignore compiler warnings during builds ([#3396](https://github.com/coral-xyz/anchor/pull/3396)).
+- cli: Avoid extra IDL generation during `verify` ([#3398](https://github.com/coral-xyz/anchor/pull/3398)).
 
 ### Breaking
 

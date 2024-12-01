@@ -2067,7 +2067,7 @@ fn verify(
     if !skip_build {
         build(
             cfg_override,
-            false,
+            true,
             None,
             None,
             true,
