@@ -35,6 +35,7 @@ use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
+use solana_sdk::signer::EncodableKey;
 use solana_sdk::transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -279,6 +280,9 @@ pub enum Command {
         program_id: Pubkey,
         /// Filepath to the new program binary.
         program_filepath: String,
+        /// Max times to retry on failure.
+        #[clap(long, default_value = "0")]
+        max_retries: u32,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -855,11 +859,13 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::Upgrade {
             program_id,
             program_filepath,
+            max_retries,
             solana_args,
         } => upgrade(
             &opts.cfg_override,
             program_id,
             program_filepath,
+            max_retries,
             solana_args,
         ),
         Command::Idl { subcmd } => idl(&opts.cfg_override, subcmd),
@@ -3555,7 +3561,7 @@ fn validator_flags(
                                 // Use a different flag for program accounts to fix the problem
                                 // described in https://github.com/anza-xyz/agave/issues/522
                                 if account.owner == bpf_loader_upgradeable::id()
-                                // Only programs are supported with `--clone-upgradeable-program`
+                                    // Only programs are supported with `--clone-upgradeable-program`
                                     && matches!(
                                         account.deserialize_data::<UpgradeableLoaderState>()?,
                                         UpgradeableLoaderState::Program { .. }
@@ -3840,6 +3846,10 @@ fn deploy(
         let url = cluster_url(cfg, &cfg.test_validator);
         let keypair = cfg.provider.wallet.to_string();
 
+        // Augment the given solana args with recommended defaults.
+        let client = create_client(&url);
+        let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
+
         // Deploy the programs.
         println!("Deploying cluster: {}", url);
         println!("Upgrade authority: {}", keypair);
@@ -3904,6 +3914,7 @@ fn upgrade(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
     program_filepath: String,
+    max_retries: u32,
     solana_args: Vec<String>,
 ) -> Result<()> {
     let path: PathBuf = program_filepath.parse().unwrap();
@@ -3911,24 +3922,35 @@ fn upgrade(
 
     with_workspace(cfg_override, |cfg| {
         let url = cluster_url(cfg, &cfg.test_validator);
-        let exit = std::process::Command::new("solana")
-            .arg("program")
-            .arg("deploy")
-            .arg("--url")
-            .arg(url)
-            .arg("--keypair")
-            .arg(cfg.provider.wallet.to_string())
-            .arg("--program-id")
-            .arg(program_id.to_string())
-            .arg(strip_workspace_prefix(program_filepath))
-            .args(&solana_args)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .expect("Must deploy");
-        if !exit.status.success() {
+        let client = create_client(&url);
+        let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
+
+        for retry in 0..(1 + max_retries) {
+            let exit = std::process::Command::new("solana")
+                .arg("program")
+                .arg("deploy")
+                .arg("--url")
+                .arg(url.clone())
+                .arg("--keypair")
+                .arg(cfg.provider.wallet.to_string())
+                .arg("--program-id")
+                .arg(program_id.to_string())
+                .arg(strip_workspace_prefix(program_filepath.clone()))
+                .args(&solana_args)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .output()
+                .expect("Must deploy");
+            if exit.status.success() {
+                break;
+            }
+
             println!("There was a problem deploying: {exit:?}.");
-            std::process::exit(exit.status.code().unwrap_or(1));
+            if retry < max_retries {
+                println!("Retrying {} more time(s)...", max_retries - retry);
+            } else {
+                std::process::exit(exit.status.code().unwrap_or(1));
+            }
         }
         Ok(())
     })
@@ -4743,18 +4765,54 @@ fn get_node_version() -> Result<Version> {
     Version::parse(output).map_err(Into::into)
 }
 
-fn get_recommended_micro_lamport_fee(client: &RpcClient, priority_fee: Option<u64>) -> Result<u64> {
-    if let Some(priority_fee) = priority_fee {
-        return Ok(priority_fee);
+fn add_recommended_deployment_solana_args(
+    client: &RpcClient,
+    args: Vec<String>,
+) -> Result<Vec<String>> {
+    let mut augmented_args = args.clone();
+
+    // If no priority fee is provided, calculate a recommended fee based on recent txs.
+    if !args.contains(&"--with-compute-unit-price".to_string()) {
+        let priority_fee = get_recommended_micro_lamport_fee(client)?;
+        augmented_args.push("--with-compute-unit-price".to_string());
+        augmented_args.push(priority_fee.to_string());
     }
 
+    const DEFAULT_MAX_SIGN_ATTEMPTS: u8 = 30;
+    if !args.contains(&"--max-sign-attempts".to_string()) {
+        augmented_args.push("--max-sign-attempts".to_string());
+        augmented_args.push(DEFAULT_MAX_SIGN_ATTEMPTS.to_string());
+    }
+
+    // If no buffer keypair is provided, create a temporary one to reuse across deployments.
+    // This is particularly useful for upgrading larger programs, which suffer from an increased
+    // likelihood of some write transactions failing during any single deployment.
+    if !args.contains(&"--buffer".to_owned()) {
+        let tmp_keypair_path = std::env::temp_dir().join("anchor-upgrade-buffer.json");
+        if !tmp_keypair_path.exists() {
+            if let Err(err) = Keypair::new().write_to_file(&tmp_keypair_path) {
+                return Err(anyhow!(
+                    "Error creating keypair for buffer account, {:?}",
+                    err
+                ));
+            }
+        }
+
+        augmented_args.push("--buffer".to_owned());
+        augmented_args.push(tmp_keypair_path.to_string_lossy().to_string());
+    }
+
+    Ok(augmented_args)
+}
+
+fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
     let mut fees = client.get_recent_prioritization_fees(&[])?;
     if fees.is_empty() {
         // Fees may be empty, e.g. on localnet
         return Ok(0);
     }
 
-    // Get the median fee from the most recent recent 150 slots' prioritization fee
+    // Get the median fee from the most recent 150 slots' prioritization fee
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
@@ -4766,6 +4824,7 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient, priority_fee: Option<u6
 
     Ok(median_priority_fee)
 }
+
 /// Prepend a compute unit ix, if the priority fee is greater than 0.
 /// This helps to improve the chances that the transaction will land.
 fn prepend_compute_unit_ix(
@@ -4773,7 +4832,10 @@ fn prepend_compute_unit_ix(
     client: &RpcClient,
     priority_fee: Option<u64>,
 ) -> Result<Vec<Instruction>> {
-    let priority_fee = get_recommended_micro_lamport_fee(client, priority_fee)?;
+    let priority_fee = match priority_fee {
+        Some(fee) => fee,
+        None => get_recommended_micro_lamport_fee(client)?,
+    };
 
     if priority_fee > 0 {
         let mut instructions_appended = instructions.clone();
