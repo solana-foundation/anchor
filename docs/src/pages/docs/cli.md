@@ -69,7 +69,6 @@ anchor build
 
 Builds programs in the workspace targeting Solana's BPF runtime and emitting IDLs in the `target/idl` directory.
 
-
 ```shell
 anchor build --skip-lint
 ```
@@ -220,6 +219,23 @@ Initializes a project workspace with the following structure.
 - `app/`: Directory for your application frontend.
 - `tests/`: Directory for JavaScript integration tests.
 - `migrations/deploy.js`: Deploy script.
+
+```shell
+anchor init --template multiple
+```
+
+Creates a more structured program project template (rather than only a single `lib.rs` file):
+
+```
+├── constants.rs
+├── error.rs
+├── instructions
+│   ├── initialize.rs
+│   └── mod.rs
+├── lib.rs
+└── state
+    └── mod.rs
+```
 
 ## Keys
 
