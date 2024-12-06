@@ -36,7 +36,7 @@ pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
     pub bumps: T::Bumps,
 }
 
-impl<'a, 'b, 'c, 'info, T> fmt::Debug for Context<'a, 'b, 'c, 'info, T>
+impl<T> fmt::Debug for Context<'_, '_, '_, '_, T>
 where
     T: fmt::Debug + Bumps,
 {

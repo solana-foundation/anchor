@@ -37,7 +37,7 @@ impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
     }
 }
 
-impl<'info> ToAccountMetas for UncheckedAccount<'info> {
+impl ToAccountMetas for UncheckedAccount<'_> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.is_signer);
         let meta = match self.is_writable {
@@ -70,7 +70,7 @@ impl<'info> Deref for UncheckedAccount<'info> {
     }
 }
 
-impl<'info> Key for UncheckedAccount<'info> {
+impl Key for UncheckedAccount<'_> {
     fn key(&self) -> Pubkey {
         *self.0.key
     }

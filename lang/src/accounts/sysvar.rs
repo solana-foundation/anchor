@@ -35,7 +35,7 @@ pub struct Sysvar<'info, T: solana_program::sysvar::Sysvar> {
     account: T,
 }
 
-impl<'info, T: solana_program::sysvar::Sysvar + fmt::Debug> fmt::Debug for Sysvar<'info, T> {
+impl<T: solana_program::sysvar::Sysvar + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sysvar")
             .field("info", &self.info)
@@ -56,7 +56,7 @@ impl<'info, T: solana_program::sysvar::Sysvar> Sysvar<'info, T> {
     }
 }
 
-impl<'info, T: solana_program::sysvar::Sysvar> Clone for Sysvar<'info, T> {
+impl<T: solana_program::sysvar::Sysvar> Clone for Sysvar<'_, T> {
     fn clone(&self) -> Self {
         Self {
             info: self.info,
@@ -82,7 +82,7 @@ impl<'info, B, T: solana_program::sysvar::Sysvar> Accounts<'info, B> for Sysvar<
     }
 }
 
-impl<'info, T: solana_program::sysvar::Sysvar> ToAccountMetas for Sysvar<'info, T> {
+impl<T: solana_program::sysvar::Sysvar> ToAccountMetas for Sysvar<'_, T> {
     fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
         vec![AccountMeta::new_readonly(*self.info.key, false)]
     }
@@ -100,7 +100,7 @@ impl<'info, T: solana_program::sysvar::Sysvar> AsRef<AccountInfo<'info>> for Sys
     }
 }
 
-impl<'a, T: solana_program::sysvar::Sysvar> Deref for Sysvar<'a, T> {
+impl<T: solana_program::sysvar::Sysvar> Deref for Sysvar<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -108,7 +108,7 @@ impl<'a, T: solana_program::sysvar::Sysvar> Deref for Sysvar<'a, T> {
     }
 }
 
-impl<'a, T: solana_program::sysvar::Sysvar> DerefMut for Sysvar<'a, T> {
+impl<T: solana_program::sysvar::Sysvar> DerefMut for Sysvar<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
@@ -116,7 +116,7 @@ impl<'a, T: solana_program::sysvar::Sysvar> DerefMut for Sysvar<'a, T> {
 
 impl<'info, T: solana_program::sysvar::Sysvar> AccountsExit<'info> for Sysvar<'info, T> {}
 
-impl<'info, T: solana_program::sysvar::Sysvar> Key for Sysvar<'info, T> {
+impl<T: solana_program::sysvar::Sysvar> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }

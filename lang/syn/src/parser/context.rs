@@ -94,7 +94,7 @@ pub struct ModuleContext<'krate> {
     detail: &'krate ParsedModule,
 }
 
-impl<'krate> ModuleContext<'krate> {
+impl ModuleContext<'_> {
     pub fn items(&self) -> impl Iterator<Item = &syn::Item> {
         self.detail.items.iter()
     }

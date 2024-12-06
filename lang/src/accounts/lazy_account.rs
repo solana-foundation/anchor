@@ -185,7 +185,7 @@ where
     pub __fields: Rc<RefCell<Option<Vec<bool>>>>,
 }
 
-impl<'info, T> fmt::Debug for LazyAccount<'info, T>
+impl<T> fmt::Debug for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone + fmt::Debug,
 {
@@ -296,7 +296,7 @@ where
     }
 }
 
-impl<'info, T> ToAccountMetas for LazyAccount<'info, T>
+impl<T> ToAccountMetas for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -328,7 +328,7 @@ where
     }
 }
 
-impl<'info, T> Key for LazyAccount<'info, T>
+impl<T> Key for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {

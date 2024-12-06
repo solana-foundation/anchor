@@ -497,7 +497,7 @@ pub trait AsSigner {
     fn as_signer(&self) -> &dyn Signer;
 }
 
-impl<'a> AsSigner for Box<dyn Signer + 'a> {
+impl AsSigner for Box<dyn Signer + '_> {
     fn as_signer(&self) -> &dyn Signer {
         self.as_ref()
     }

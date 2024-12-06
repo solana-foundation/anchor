@@ -431,7 +431,7 @@ mod legacy {
         fn from(value: IdlTypeDefinitionTy) -> Self {
             match value {
                 IdlTypeDefinitionTy::Struct { fields } => Self::Struct {
-                    fields: fields.is_empty().then(|| None).unwrap_or_else(|| {
+                    fields: fields.is_empty().then_some(None).unwrap_or_else(|| {
                         Some(t::IdlDefinedFields::Named(
                             fields.into_iter().map(Into::into).collect(),
                         ))

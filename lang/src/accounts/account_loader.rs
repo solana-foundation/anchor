@@ -98,7 +98,7 @@ pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
     phantom: PhantomData<&'info T>,
 }
 
-impl<'info, T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccountLoader")
             .field("acc_info", &self.acc_info)
@@ -260,7 +260,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer);
         let meta = match self.acc_info.is_writable {
@@ -283,7 +283,7 @@ impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, 
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> Key for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> Key for AccountLoader<'_, T> {
     fn key(&self) -> Pubkey {
         *self.acc_info.key
     }

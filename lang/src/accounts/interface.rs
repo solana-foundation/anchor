@@ -123,7 +123,7 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     }
 }
 
-impl<'info, T> ToAccountMetas for Interface<'info, T> {
+impl<T> ToAccountMetas for Interface<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.0.to_account_metas(is_signer)
     }
@@ -137,7 +137,7 @@ impl<'info, T> ToAccountInfos<'info> for Interface<'info, T> {
 
 impl<'info, T: AccountDeserialize> AccountsExit<'info> for Interface<'info, T> {}
 
-impl<'info, T: AccountDeserialize> Key for Interface<'info, T> {
+impl<T: AccountDeserialize> Key for Interface<'_, T> {
     fn key(&self) -> Pubkey {
         self.0.key()
     }

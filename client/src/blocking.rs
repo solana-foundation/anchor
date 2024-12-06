@@ -19,7 +19,7 @@ use tokio::{
     sync::RwLock,
 };
 
-impl<'a> EventUnsubscriber<'a> {
+impl EventUnsubscriber<'_> {
     /// Unsubscribe gracefully.
     pub fn unsubscribe(self) {
         self.runtime_handle.block_on(self.unsubscribe_internal())

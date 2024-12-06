@@ -26,7 +26,7 @@ impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
     }
 }
 
-impl<'info> ToAccountMetas for AccountInfo<'info> {
+impl ToAccountMetas for AccountInfo<'_> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.is_signer);
         let meta = match self.is_writable {
@@ -45,7 +45,7 @@ impl<'info> ToAccountInfos<'info> for AccountInfo<'info> {
 
 impl<'info> AccountsExit<'info> for AccountInfo<'info> {}
 
-impl<'info> Key for AccountInfo<'info> {
+impl Key for AccountInfo<'_> {
     fn key(&self) -> Pubkey {
         *self.key
     }
