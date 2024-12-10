@@ -3240,6 +3240,49 @@ const miscTest = (
         assert.isDefined(thisTx);
       });
     });
+
+    describe("Multiple `zero` constraint", () => {
+      it("Passing different accounts works", async () => {
+        const oneKp = anchor.web3.Keypair.generate();
+        const twoKp = anchor.web3.Keypair.generate();
+        await program.methods
+          .testMultipleZeroConstraint()
+          .preInstructions(
+            await Promise.all([
+              program.account.data.createInstruction(oneKp),
+              program.account.data.createInstruction(twoKp),
+            ])
+          )
+          .accounts({ one: oneKp.publicKey, two: twoKp.publicKey })
+          .signers([oneKp, twoKp])
+          .rpc();
+      });
+
+      it("Passing the same account throws", async () => {
+        const oneKp = anchor.web3.Keypair.generate();
+        try {
+          await program.methods
+            .testMultipleZeroConstraint()
+            .preInstructions([
+              await program.account.data.createInstruction(oneKp),
+            ])
+            .accounts({
+              one: oneKp.publicKey,
+              two: oneKp.publicKey,
+            })
+            .signers([oneKp])
+            .rpc();
+          throw new Error("Transaction did not fail!");
+        } catch (e) {
+          assert(e instanceof AnchorError);
+          const err: AnchorError = e;
+          assert.strictEqual(
+            err.error.errorCode.number,
+            anchor.LangErrorCode.ConstraintZero
+          );
+        }
+      });
+    });
   };
 };
 

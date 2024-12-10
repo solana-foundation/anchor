@@ -61,7 +61,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add optional `package-manager` flag in `init` command to set package manager field in Anchor.toml ([#3328](https://github.com/coral-xyz/anchor/pull/3328)).
 - cli: Add test template for [Mollusk](https://github.com/buffalojoec/mollusk) ([#3352](https://github.com/coral-xyz/anchor/pull/3352)).
 - idl: Disallow account discriminators that can conflict with the `zero` constraint ([#3365](https://github.com/coral-xyz/anchor/pull/3365)).
-- cli: Include recommended solana args by default and add new --max-retries ([#3354](https://github.com/coral-xyz/anchor/pull/3354)).
+- cli: Include recommended solana args by default and add new `--max-retries` option to the `deploy` command ([#3354](https://github.com/coral-xyz/anchor/pull/3354)).
 
 ### Fixes
 
@@ -100,6 +100,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Fix `cpi` feature instructions not accounting for discriminator overrides ([#3376](https://github.com/coral-xyz/anchor/pull/3376)).
 - idl: Ignore compiler warnings during builds ([#3396](https://github.com/coral-xyz/anchor/pull/3396)).
 - cli: Avoid extra IDL generation during `verify` ([#3398](https://github.com/coral-xyz/anchor/pull/3398)).
+- lang: Require `zero` accounts to be unique ([#3409](https://github.com/coral-xyz/anchor/pull/3409)).
 
 ### Breaking
 

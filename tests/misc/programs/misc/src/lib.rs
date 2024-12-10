@@ -401,4 +401,8 @@ pub mod misc {
     pub fn only_my_feature(_ctx: Context<Empty>) -> Result<()> {
         Ok(())
     }
+
+    pub fn test_multiple_zero_constraint(_ctx: Context<TestMultipleZeroConstraint>) -> Result<()> {
+        Ok(())
+    }
 }

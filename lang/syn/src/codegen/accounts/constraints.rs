@@ -144,7 +144,7 @@ fn generate_constraint(
 ) -> proc_macro2::TokenStream {
     match c {
         Constraint::Init(c) => generate_constraint_init(f, c, accs),
-        Constraint::Zeroed(c) => generate_constraint_zeroed(f, c),
+        Constraint::Zeroed(c) => generate_constraint_zeroed(f, c, accs),
         Constraint::Mut(c) => generate_constraint_mut(f, c),
         Constraint::HasOne(c) => generate_constraint_has_one(f, c, accs),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
@@ -197,7 +197,11 @@ pub fn generate_constraint_init(
     generate_constraint_init_group(f, c, accs)
 }
 
-pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macro2::TokenStream {
+pub fn generate_constraint_zeroed(
+    f: &Field,
+    _c: &ConstraintZeroed,
+    accs: &AccountsStruct,
+) -> proc_macro2::TokenStream {
     let account_ty = f.account_ty();
     let discriminator = quote! { #account_ty::DISCRIMINATOR };
 
@@ -205,6 +209,46 @@ pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macr
     let name_str = field.to_string();
     let ty_decl = f.ty_decl(true);
     let from_account_info = f.from_account_info(None, false);
+
+    // Require `zero` constraint accounts to be unique by:
+    //
+    // 1. Getting the names of all accounts that have the `zero` constraint and are declared before
+    //    the current field (in order to avoid checking the same field).
+    // 2. Comparing the key of the current field with all the previous fields' keys.
+    // 3. Returning an error if a match is found.
+    let unique_account_checks = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::Field(field) => Some(field),
+            _ => None,
+        })
+        .take_while(|field| field.ident != f.ident)
+        .filter(|field| field.constraints.is_zeroed())
+        .map(|other_field| {
+            let other = &other_field.ident;
+            let err = quote! {
+                Err(
+                    anchor_lang::error::Error::from(
+                        anchor_lang::error::ErrorCode::ConstraintZero
+                    ).with_account_name(#name_str)
+                )
+            };
+            if other_field.is_optional {
+                quote! {
+                    if #other.is_some() && #field.key == &#other.as_ref().unwrap().key() {
+                        return #err;
+                    }
+                }
+            } else {
+                quote! {
+                    if #field.key == &#other.key() {
+                        return #err;
+                    }
+                }
+            }
+        });
+
     quote! {
         let #field: #ty_decl = {
             let mut __data: &[u8] = &#field.try_borrow_data()?;
@@ -213,6 +257,7 @@ pub fn generate_constraint_zeroed(f: &Field, _c: &ConstraintZeroed) -> proc_macr
             if __has_disc {
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintZero).with_account_name(#name_str));
             }
+            #(#unique_account_checks)*
             #from_account_info
         };
     }

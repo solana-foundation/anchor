@@ -744,3 +744,11 @@ pub struct InitManyAssociatedTokenAccounts<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
+
+#[derive(Accounts)]
+pub struct TestMultipleZeroConstraint<'info> {
+    #[account(zero)]
+    pub one: Option<Account<'info, Data>>,
+    #[account(zero)]
+    pub two: Option<Account<'info, Data>>,
+}

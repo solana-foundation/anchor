@@ -402,4 +402,8 @@ pub mod misc_optional {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn test_multiple_zero_constraint(_ctx: Context<TestMultipleZeroConstraint>) -> Result<()> {
+        Ok(())
+    }
 }

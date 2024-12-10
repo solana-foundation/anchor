@@ -816,3 +816,11 @@ pub struct TestBoxedOwnerConstraint<'info> {
 #[cfg(feature = "my-feature")]
 #[derive(Accounts)]
 pub struct Empty {}
+
+#[derive(Accounts)]
+pub struct TestMultipleZeroConstraint<'info> {
+    #[account(zero)]
+    pub one: Account<'info, Data>,
+    #[account(zero)]
+    pub two: Account<'info, Data>,
+}
