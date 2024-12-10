@@ -88,7 +88,7 @@ impl IdlBuilder {
         self
     }
 
-    /// Set the `cargo` args that will get passed to the underyling `cargo` command when building
+    /// Set the `cargo` args that will get passed to the underlying `cargo` command when building
     /// IDLs (default: empty).
     pub fn cargo_args(mut self, cargo_args: Vec<String>) -> Self {
         self.cargo_args.replace(cargo_args);

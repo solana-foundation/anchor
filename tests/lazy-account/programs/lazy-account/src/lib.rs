@@ -1,6 +1,6 @@
 //! Tests demonstraing the usage of [`LazyAccount`].
 //!
-//! The tests have been simplied by using a stack heavy account in order to demonstrate the usage
+//! The tests have been simplified by using a stack heavy account in order to demonstrate the usage
 //! and its usefulness without adding excessive amount of accounts.
 //!
 //! See the individual instructions for more documentation: [`Init`], [`Read`], [`Write`].
