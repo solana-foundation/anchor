@@ -406,4 +406,8 @@ pub mod misc_optional {
     pub fn test_multiple_zero_constraint(_ctx: Context<TestMultipleZeroConstraint>) -> Result<()> {
         Ok(())
     }
+
+    pub fn test_init_and_zero(_ctx: Context<TestInitAndZero>) -> Result<()> {
+        Ok(())
+    }
 }

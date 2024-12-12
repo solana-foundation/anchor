@@ -752,3 +752,14 @@ pub struct TestMultipleZeroConstraint<'info> {
     #[account(zero)]
     pub two: Option<Account<'info, Data>>,
 }
+
+#[derive(Accounts)]
+pub struct TestInitAndZero<'info> {
+    #[account(init, payer = payer, space = Data::DISCRIMINATOR.len() + Data::LEN)]
+    pub init: Option<Account<'info, Data>>,
+    #[account(zero)]
+    pub zero: Option<Account<'info, Data>>,
+    #[account(mut)]
+    pub payer: Option<Signer<'info>>,
+    pub system_program: Option<Program<'info, System>>,
+}

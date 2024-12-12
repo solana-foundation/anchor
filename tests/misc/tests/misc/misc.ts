@@ -3241,8 +3241,8 @@ const miscTest = (
       });
     });
 
-    describe("Multiple `zero` constraint", () => {
-      it("Passing different accounts works", async () => {
+    describe("`zero` constraint unique account checks", () => {
+      it("Works with different accounts (multiple `zero`)", async () => {
         const oneKp = anchor.web3.Keypair.generate();
         const twoKp = anchor.web3.Keypair.generate();
         await program.methods
@@ -3258,21 +3258,48 @@ const miscTest = (
           .rpc();
       });
 
-      it("Passing the same account throws", async () => {
-        const oneKp = anchor.web3.Keypair.generate();
+      it("Throws with the same account (multiple `zero`)", async () => {
+        const kp = anchor.web3.Keypair.generate();
         try {
           await program.methods
             .testMultipleZeroConstraint()
-            .preInstructions([
-              await program.account.data.createInstruction(oneKp),
-            ])
-            .accounts({
-              one: oneKp.publicKey,
-              two: oneKp.publicKey,
-            })
-            .signers([oneKp])
+            .preInstructions([await program.account.data.createInstruction(kp)])
+            .accounts({ one: kp.publicKey, two: kp.publicKey })
+            .signers([kp])
             .rpc();
-          throw new Error("Transaction did not fail!");
+          assert.fail("Transaction did not fail!");
+        } catch (e) {
+          assert(e instanceof AnchorError);
+          const err: AnchorError = e;
+          assert.strictEqual(
+            err.error.errorCode.number,
+            anchor.LangErrorCode.ConstraintZero
+          );
+        }
+      });
+
+      it("Works with different accounts (`init` and `zero`)", async () => {
+        const initKp = anchor.web3.Keypair.generate();
+        const zeroKp = anchor.web3.Keypair.generate();
+        await program.methods
+          .testInitAndZero()
+          .preInstructions([
+            await program.account.data.createInstruction(zeroKp),
+          ])
+          .accounts({ init: initKp.publicKey, zero: zeroKp.publicKey })
+          .signers([initKp, zeroKp])
+          .rpc();
+      });
+
+      it("Throws with the same account (`init` and `zero`)", async () => {
+        const kp = anchor.web3.Keypair.generate();
+        try {
+          await program.methods
+            .testInitAndZero()
+            .accounts({ init: kp.publicKey, zero: kp.publicKey })
+            .signers([kp])
+            .rpc();
+          assert.fail("Transaction did not fail!");
         } catch (e) {
           assert(e instanceof AnchorError);
           const err: AnchorError = e;

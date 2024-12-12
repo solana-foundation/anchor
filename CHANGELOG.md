@@ -101,6 +101,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Ignore compiler warnings during builds ([#3396](https://github.com/coral-xyz/anchor/pull/3396)).
 - cli: Avoid extra IDL generation during `verify` ([#3398](https://github.com/coral-xyz/anchor/pull/3398)).
 - lang: Require `zero` accounts to be unique ([#3409](https://github.com/coral-xyz/anchor/pull/3409)).
+- lang: Deduplicate `zero` accounts against `init` accounts ([#3422](https://github.com/coral-xyz/anchor/pull/3422)).
 
 ### Breaking
 

@@ -212,8 +212,8 @@ pub fn generate_constraint_zeroed(
 
     // Require `zero` constraint accounts to be unique by:
     //
-    // 1. Getting the names of all accounts that have the `zero` constraint and are declared before
-    //    the current field (in order to avoid checking the same field).
+    // 1. Getting the names of all accounts that have the `zero` or the `init` constraints and are
+    //    declared before the current field (in order to avoid checking the same field).
     // 2. Comparing the key of the current field with all the previous fields' keys.
     // 3. Returning an error if a match is found.
     let unique_account_checks = accs
@@ -224,7 +224,7 @@ pub fn generate_constraint_zeroed(
             _ => None,
         })
         .take_while(|field| field.ident != f.ident)
-        .filter(|field| field.constraints.is_zeroed())
+        .filter(|field| field.constraints.is_zeroed() || field.constraints.init.is_some())
         .map(|other_field| {
             let other = &other_field.ident;
             let err = quote! {
