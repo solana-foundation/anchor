@@ -102,6 +102,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Avoid extra IDL generation during `verify` ([#3398](https://github.com/coral-xyz/anchor/pull/3398)).
 - lang: Require `zero` accounts to be unique ([#3409](https://github.com/coral-xyz/anchor/pull/3409)).
 - lang: Deduplicate `zero` accounts against `init` accounts ([#3422](https://github.com/coral-xyz/anchor/pull/3422)).
+- cli: Fix custom `provider.cluster` ([#3428](https://github.com/coral-xyz/anchor/pull/3428)).
 
 ### Breaking
 
