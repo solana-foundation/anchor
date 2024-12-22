@@ -26,6 +26,9 @@ pub enum Commands {
         /// Flag to force installation even if the version
         /// is already installed
         force: bool,
+        #[clap(long)]
+        /// Build from source code rather than downloading prebuilt binaries
+        from_source: bool,
     },
     #[clap(about = "Uninstall a version of Anchor")]
     Uninstall {
@@ -77,7 +80,8 @@ pub fn entry(opts: Cli) -> Result<()> {
         Commands::Install {
             version_or_commit,
             force,
-        } => avm::install_version(version_or_commit, force),
+            from_source,
+        } => avm::install_version(version_or_commit, force, from_source),
         Commands::Uninstall { version } => avm::uninstall_version(&version),
         Commands::List {} => avm::list_versions(),
         Commands::Update {} => avm::update(),

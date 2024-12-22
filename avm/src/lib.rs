@@ -87,7 +87,7 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
             .next()
             .expect("Expected input")?;
         match input.as_str() {
-            "y" | "yes" => return install_version(InstallTarget::Version(version), false),
+            "y" | "yes" => return install_version(InstallTarget::Version(version), false, false),
             _ => return Err(anyhow!("Installation rejected.")),
         };
     }
@@ -107,7 +107,7 @@ pub enum InstallTarget {
 /// Update to the latest version
 pub fn update() -> Result<()> {
     let latest_version = get_latest_version()?;
-    install_version(InstallTarget::Version(latest_version), false)
+    install_version(InstallTarget::Version(latest_version), false, false)
 }
 
 /// The commit sha provided can be shortened,
@@ -165,84 +165,119 @@ fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
 }
 
 /// Install a version of anchor-cli
-pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()> {
-    let mut args: Vec<String> = vec![
-        "install".into(),
-        "--git".into(),
-        "https://github.com/coral-xyz/anchor".into(),
-        "anchor-cli".into(),
-        "--locked".into(),
-        "--root".into(),
-        AVM_HOME.to_str().unwrap().into(),
-    ];
-    let version = match install_target {
-        InstallTarget::Version(version) => {
-            args.extend(["--tag".into(), format!("v{}", version), "anchor-cli".into()]);
-            version
-        }
-        InstallTarget::Commit(commit) => {
-            args.extend(["--rev".into(), commit.clone()]);
-            get_anchor_version_from_commit(&commit)?
-        }
+pub fn install_version(
+    install_target: InstallTarget,
+    force: bool,
+    from_source: bool,
+) -> Result<()> {
+    let version = match &install_target {
+        InstallTarget::Version(version) => version.to_owned(),
+        InstallTarget::Commit(commit) => get_anchor_version_from_commit(commit)?,
     };
-
-    // If version is already installed we ignore the request.
-    let installed_versions = read_installed_versions()?;
-    if installed_versions.contains(&version) && !force {
-        println!("Version {version} is already installed");
+    // Return early if version is already installed
+    if !force && read_installed_versions()?.contains(&version) {
+        eprintln!("Version `{version}` is already installed");
         return Ok(());
     }
 
-    // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
-    // explained in https://github.com/coral-xyz/anchor/pull/3143
-    if version < Version::parse("0.31.0")? {
-        const REQUIRED_VERSION: &str = "1.79.0";
-        let is_installed = Command::new("rustup")
-            .args(["toolchain", "list"])
-            .output()
-            .map(|output| String::from_utf8(output.stdout))??
-            .lines()
-            .any(|line| line.starts_with(REQUIRED_VERSION));
-        if !is_installed {
-            let exit_status = Command::new("rustup")
-                .args(["toolchain", "install", REQUIRED_VERSION])
-                .spawn()?
-                .wait()?;
-            if !exit_status.success() {
-                return Err(anyhow!(
-                    "Installation of `rustc {REQUIRED_VERSION}` failed. \
+    let is_older_than_v0_31_0 = version < Version::parse("0.31.0")?;
+    if from_source || is_older_than_v0_31_0 {
+        // Build from source using `cargo install --git`
+        let mut args: Vec<String> = vec![
+            "install".into(),
+            "anchor-cli".into(),
+            "--git".into(),
+            "https://github.com/coral-xyz/anchor".into(),
+            "--locked".into(),
+            "--root".into(),
+            AVM_HOME.to_str().unwrap().into(),
+        ];
+        let conditional_args = match install_target {
+            InstallTarget::Version(version) => ["--tag".into(), format!("v{}", version)],
+            InstallTarget::Commit(commit) => ["--rev".into(), commit],
+        };
+        args.extend_from_slice(&conditional_args);
+
+        // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
+        // explained in https://github.com/coral-xyz/anchor/pull/3143
+        if is_older_than_v0_31_0 {
+            const REQUIRED_VERSION: &str = "1.79.0";
+            let is_installed = Command::new("rustup")
+                .args(["toolchain", "list"])
+                .output()
+                .map(|output| String::from_utf8(output.stdout))??
+                .lines()
+                .any(|line| line.starts_with(REQUIRED_VERSION));
+            if !is_installed {
+                let exit_status = Command::new("rustup")
+                    .args(["toolchain", "install", REQUIRED_VERSION])
+                    .spawn()?
+                    .wait()?;
+                if !exit_status.success() {
+                    return Err(anyhow!(
+                        "Installation of `rustc {REQUIRED_VERSION}` failed. \
                     `rustc <1.80` is required to install Anchor v{version} from source. \
                     See https://github.com/coral-xyz/anchor/pull/3143 for more information."
-                ));
+                    ));
+                }
             }
+
+            // Prepend the toolchain to use with the `cargo install` command
+            args.insert(0, format!("+{REQUIRED_VERSION}"));
         }
 
-        // Prepend the toolchain to use with the `cargo install` command
-        args.insert(0, format!("+{REQUIRED_VERSION}"));
-    }
+        let output = Command::new("cargo")
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow!("`cargo install` for version `{version}` failed: {e}"))?;
+        if !output.status.success() {
+            return Err(anyhow!(
+                "Failed to install {version}, is it a valid version?"
+            ));
+        }
 
-    let output = Command::new("cargo")
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow!("Cargo install for {version} failed: {e}"))?;
-    if !output.status.success() {
-        return Err(anyhow!(
-            "Failed to install {version}, is it a valid version?"
-        ));
-    }
-
-    let bin_dir = get_bin_dir_path();
-    let bin_name = if cfg!(target_os = "windows") {
-        "anchor.exe"
+        let bin_dir = get_bin_dir_path();
+        let bin_name = if cfg!(target_os = "windows") {
+            "anchor.exe"
+        } else {
+            "anchor"
+        };
+        fs::rename(bin_dir.join(bin_name), version_binary_path(&version))?;
     } else {
-        "anchor"
-    };
-    fs::rename(
-        bin_dir.join(bin_name),
-        bin_dir.join(format!("anchor-{version}")),
-    )?;
+        let output = Command::new("rustc").arg("-vV").output()?;
+        let target = core::str::from_utf8(&output.stdout)?
+            .lines()
+            .find(|line| line.starts_with("host:"))
+            .and_then(|line| line.split(':').last())
+            .ok_or_else(|| anyhow!("`host` not found from `rustc -vV` output"))?
+            .trim();
+        let ext = if cfg!(target_os = "windows") {
+            ".exe"
+        } else {
+            ""
+        };
+        let res = reqwest::blocking::get(format!(
+            "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
+        ))?;
+        if !res.status().is_success() {
+            return Err(anyhow!(
+                "Failed to download the binary for version `{version}` (status code: {})",
+                res.status()
+            ));
+        }
+
+        let bin_path = version_binary_path(&version);
+        fs::write(&bin_path, res.bytes()?)?;
+
+        // Set file to executable on UNIX
+        #[cfg(not(target_os = "windows"))]
+        fs::set_permissions(
+            bin_path,
+            <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
+        )?;
+    }
 
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
@@ -255,7 +290,7 @@ pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()>
 
 /// Remove an installed version of anchor-cli
 pub fn uninstall_version(version: &Version) -> Result<()> {
-    let version_path = get_bin_dir_path().join(format!("anchor-{version}"));
+    let version_path = version_binary_path(version);
     if !version_path.exists() {
         return Err(anyhow!("anchor-cli {} is not installed", version));
     }

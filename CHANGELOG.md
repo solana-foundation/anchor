@@ -62,6 +62,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add test template for [Mollusk](https://github.com/buffalojoec/mollusk) ([#3352](https://github.com/coral-xyz/anchor/pull/3352)).
 - idl: Disallow account discriminators that can conflict with the `zero` constraint ([#3365](https://github.com/coral-xyz/anchor/pull/3365)).
 - cli: Include recommended solana args by default and add new `--max-retries` option to the `deploy` command ([#3354](https://github.com/coral-xyz/anchor/pull/3354)).
+- avm: Make installation download binaries by default ([#3445](https://github.com/coral-xyz/anchor/pull/3445)).
 
 ### Fixes
 
