@@ -1,6 +1,8 @@
 mod common;
 mod mods;
 
+use std::{env, fs, path::PathBuf};
+
 use anchor_lang_idl::{convert::convert_idl, types::Idl};
 use anyhow::anyhow;
 use quote::{quote, ToTokens};
@@ -34,8 +36,9 @@ impl ToTokens for DeclareProgram {
 }
 
 fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("Failed to get manifest dir");
-    std::path::Path::new(&manifest_dir)
+    env::var("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .map_err(|e| anyhow!("Failed to get environment variable `CARGO_MANIFEST_DIR`: {e}"))?
         .ancestors()
         .find_map(|ancestor| {
             let idl_dir = ancestor.join("idls");
@@ -43,7 +46,7 @@ fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
         })
         .ok_or_else(|| anyhow!("`idls` directory not found"))
         .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))
-        .map(std::fs::read)?
+        .map(fs::read)?
         .map_err(|e| anyhow!("Failed to read IDL `{name}`: {e}"))
         .map(|buf| convert_idl(&buf))?
 }

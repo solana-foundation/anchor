@@ -107,6 +107,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix custom `provider.cluster` ([#3428](https://github.com/coral-xyz/anchor/pull/3428)).
 - cli: Ignore non semver solana/agave releases to avoid panic ([#3432](https://github.com/coral-xyz/anchor/pull/3432)).
 - ts: Fix loading programs with numbers in their names using `workspace` ([#3450](https://github.com/coral-xyz/anchor/pull/3450)).
+- lang: Remove a potential panic while getting the IDL in `declare_program!` ([#3458](https://github.com/coral-xyz/anchor/pull/3458)).
 
 ### Breaking
 
