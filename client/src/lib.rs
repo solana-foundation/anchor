@@ -112,6 +112,7 @@ pub use anchor_lang;
 pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
+pub use solana_account_decoder;
 pub use solana_client;
 pub use solana_sdk;
 
