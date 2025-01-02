@@ -273,7 +273,7 @@ pub fn install_version(
         fs::write(&bin_path, res.bytes()?)?;
 
         // Set file to executable on UNIX
-        #[cfg(not(target_os = "windows"))]
+        #[cfg(unix)]
         fs::set_permissions(
             bin_path,
             <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
