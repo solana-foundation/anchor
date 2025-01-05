@@ -25,13 +25,13 @@ use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
-use solana_program::instruction::{AccountMeta, Instruction};
 use solana_sdk::account_utils::StateMut;
 use solana_sdk::bpf_loader;
 use solana_sdk::bpf_loader_deprecated;
 use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
+use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
@@ -3994,7 +3994,7 @@ fn create_idl_account(
             AccountMeta::new_readonly(keypair.pubkey(), true),
             AccountMeta::new(idl_address, false),
             AccountMeta::new_readonly(program_signer, false),
-            AccountMeta::new_readonly(solana_program::system_program::ID, false),
+            AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
             AccountMeta::new_readonly(*program_id, false),
         ];
         instructions.push(Instruction {
@@ -4010,7 +4010,7 @@ fn create_idl_account(
                 accounts: vec![
                     AccountMeta::new(idl_address, false),
                     AccountMeta::new_readonly(keypair.pubkey(), true),
-                    AccountMeta::new_readonly(solana_program::system_program::ID, false),
+                    AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
                 ],
                 data,
             });

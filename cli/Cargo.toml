@@ -39,7 +39,6 @@ shellexpand = "2.1.0"
 solana-client = "2"
 solana-cli-config = "2"
 solana-faucet = "2"
-solana-program = "2"
 solana-sdk = "2"
 # Pin solang-parser because it may break in a backwards incompatible way in minor versions
 solang-parser = "=0.3.3"

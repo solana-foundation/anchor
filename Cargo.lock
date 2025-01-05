@@ -192,7 +192,6 @@ dependencies = [
  "solana-cli-config",
  "solana-client",
  "solana-faucet",
- "solana-program",
  "solana-sdk",
  "solang-parser",
  "syn 1.0.109",
