@@ -79,24 +79,15 @@ impl Manifest {
     }
 
     pub fn lib_name(&self) -> Result<String> {
-        if self.lib.is_some() && self.lib.as_ref().unwrap().name.is_some() {
-            Ok(self
-                .lib
-                .as_ref()
-                .unwrap()
-                .name
-                .as_ref()
-                .unwrap()
-                .to_string()
-                .to_snake_case())
-        } else {
-            Ok(self
+        match &self.lib {
+            Some(cargo_toml::Product {
+                name: Some(name), ..
+            }) => Ok(name.to_owned()),
+            _ => self
                 .package
                 .as_ref()
-                .ok_or_else(|| anyhow!("package section not provided"))?
-                .name
-                .to_string()
-                .to_snake_case())
+                .ok_or_else(|| anyhow!("package section not provided"))
+                .map(|pkg| pkg.name.to_snake_case()),
         }
     }
 
