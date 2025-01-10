@@ -134,4 +134,12 @@ describe("typescript", () => {
       );
     }
   });
+
+  it("Skips resolution if `program::seeds` expression is not supported", async () => {
+    const acc = program.idl.instructions
+      .find((ix) => ix.name === "unsupportedProgramSeed")!
+      .accounts.find((acc) => acc.name === "pda")!;
+    // @ts-expect-error
+    expect(acc.pda).to.be.undefined;
+  });
 });

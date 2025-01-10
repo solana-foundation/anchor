@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
 use super::common::{get_idl_module_path, get_no_docs};
-use crate::{AccountField, AccountsStruct, Field, InitKind, Ty};
+use crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty};
 
 /// Generate the IDL build impl for the Accounts struct.
 pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStream {
@@ -189,21 +189,25 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let pda = seed_constraints
         .map(|seed| seed.seeds.iter().map(parse_default))
         .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
-        .map(|seeds| {
-            let program = seed_constraints
-                .and_then(|seed| seed.program_seed.as_ref())
-                .and_then(|program| parse_default(program).ok())
-                .map(|program| quote! { Some(#program) })
-                .unwrap_or_else(|| quote! { None });
+        .and_then(|seeds| {
+            let program = match seed_constraints {
+                Some(ConstraintSeedsGroup {
+                    program_seed: Some(program),
+                    ..
+                }) => parse_default(program)
+                    .map(|program| quote! { Some(#program) })
+                    .ok()?,
+                _ => quote! { None },
+            };
 
-            quote! {
+            Some(quote! {
                 Some(
                     #idl::IdlPda {
                         seeds: vec![#(#seeds),*],
                         program: #program,
                     }
                 )
-            }
+            })
         });
     if let Some(pda) = pda {
         return pda;

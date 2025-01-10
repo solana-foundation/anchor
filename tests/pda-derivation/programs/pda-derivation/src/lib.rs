@@ -55,6 +55,10 @@ pub mod pda_derivation {
     pub fn resolution_error(_ctx: Context<ResolutionError>) -> Result<()> {
         Ok(())
     }
+
+    pub fn unsupported_program_seed(_ctx: Context<UnsupportedProgramSeed>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -189,6 +193,21 @@ pub struct ResolutionError<'info> {
     pub pda: UncheckedAccount<'info>,
     #[account(seeds = [pda.key.as_ref()], bump)]
     pub another_pda: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+
+pub struct UnsupportedProgramSeed<'info> {
+    #[account(
+        seeds = [],
+        seeds::program = external_function_with_an_argument(&pda.key),
+        bump
+    )]
+    pub pda: UncheckedAccount<'info>,
+}
+
+fn external_function_with_an_argument(pk: &Pubkey) -> Pubkey {
+    *pk
 }
 
 #[account]
