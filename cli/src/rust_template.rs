@@ -432,7 +432,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "jest": "^29.0.3",
     "prettier": "^2.6.2",
     "ts-jest": "^29.0.2",
-    "typescript": "^4.3.5"
+    "typescript": "^5.7.3"
   }}
 }}
 "#
@@ -455,7 +455,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
-    "typescript": "^4.3.5",
+    "typescript": "^5.7.3",
     "prettier": "^2.6.2"
   }}
 }}

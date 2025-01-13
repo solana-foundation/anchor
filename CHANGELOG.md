@@ -135,6 +135,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - client, lang, spl: Upgrade Solana to v2 and SPL to the latest ([#3219](https://github.com/coral-xyz/anchor/pull/3219)).
 - cli: Install Solana from anza.xyz domain in Docker verifiable builds ([#3271](https://github.com/coral-xyz/anchor/pull/3271)).
 - spl: Upgrade SPL deps to latest ([#3346](https://github.com/coral-xyz/anchor/pull/3346)).
+- cli: Upgrade `typescript` version of templates to v5 ([#3480](https://github.com/coral-xyz/anchor/pull/3480)).
 
 ## [0.30.1] - 2024-06-20
 
