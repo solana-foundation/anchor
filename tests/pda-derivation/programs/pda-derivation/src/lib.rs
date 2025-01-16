@@ -59,6 +59,10 @@ pub mod pda_derivation {
     pub fn unsupported_program_seed(_ctx: Context<UnsupportedProgramSeed>) -> Result<()> {
         Ok(())
     }
+
+    pub fn call_expr_with_no_args(_ctx: Context<CallExprWithNoArgs>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -208,6 +212,16 @@ pub struct UnsupportedProgramSeed<'info> {
 
 fn external_function_with_an_argument(pk: &Pubkey) -> Pubkey {
     *pk
+}
+
+#[derive(Accounts)]
+pub struct CallExprWithNoArgs<'info> {
+    #[account(
+        seeds = [System::id().as_ref()],
+        seeds::program = System::id(),
+        bump
+    )]
+    pub pda: UncheckedAccount<'info>,
 }
 
 #[account]

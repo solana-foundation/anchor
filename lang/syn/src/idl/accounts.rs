@@ -342,6 +342,14 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                 })
             }
         }
+        // Support call expressions that don't have any arguments e.g. `System::id()`
+        syn::Expr::Call(call) if call.args.is_empty() => Ok(quote! {
+            #idl::IdlSeed::Const(
+                #idl::IdlSeedConst {
+                    value: AsRef::<[u8]>::as_ref(&#seed).into(),
+                }
+            )
+        }),
         syn::Expr::Path(path) => {
             let seed = path
                 .path

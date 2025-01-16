@@ -64,6 +64,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Disallow account discriminators that can conflict with the `zero` constraint ([#3365](https://github.com/coral-xyz/anchor/pull/3365)).
 - cli: Include recommended solana args by default and add new `--max-retries` option to the `deploy` command ([#3354](https://github.com/coral-xyz/anchor/pull/3354)).
 - avm: Make installation download binaries by default ([#3445](https://github.com/coral-xyz/anchor/pull/3445)).
+- idl: Support PDA resolution of call expressions that don't have any arguments ([#3485](https://github.com/coral-xyz/anchor/pull/3485)).
 
 ### Fixes
 

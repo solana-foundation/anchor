@@ -142,4 +142,8 @@ describe("typescript", () => {
     // @ts-expect-error
     expect(acc.pda).to.be.undefined;
   });
+
+  it("Can resolve call expressions with no arguments", async () => {
+    await program.methods.callExprWithNoArgs().rpc();
+  });
 });
