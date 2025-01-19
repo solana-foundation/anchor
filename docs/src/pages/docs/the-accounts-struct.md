@@ -91,7 +91,7 @@ pub struct SetData<'info> {
 }
 ```
 
-To run this example, add `anchor-spl = "<version>"` to the dependencies section in your `Cargo.toml`, located in the `programs/<your-project-name>/` directory. `<version>` should be equal to the `anchor-lang` version you're using.
+To run this example, add `anchor-spl = "<version>"` to the dependencies section in your `Cargo.toml`, located in the `programs/<your-project-name>/` directory. `<version>` should be equal to the `anchor-lang` version you're using. Also add `"anchor-spl/idl-build"` to the `idl-build` list in the features section of your `Cargo.toml`.
 
 In this example, we set the `data` field of an account if the caller has admin rights. We decide whether the caller is an admin by checking whether they own admin tokens for the account they want to change. We do most of this via constraints which we will look at in the next section.
 The important thing to take away is that we use the `TokenAccount` type (that wraps around the token program's `Account` struct and adds the required functions) to make anchor ensure that the incoming account is owned by the token program and to make anchor deserialize it. This means we can use the `TokenAccount` properties inside our constraints (e.g. `token_account.mint`) as well as in the instruction function.
