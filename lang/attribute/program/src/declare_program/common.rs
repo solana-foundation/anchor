@@ -194,10 +194,10 @@ pub fn convert_idl_type_def_to_ts(
         quote!()
     };
 
-    let ty = match &ty_def.ty {
+    match &ty_def.ty {
         IdlTypeDefTy::Struct { fields } => {
             let declare_struct = quote! { pub struct #name #generics };
-            handle_defined_fields(
+            let ty = handle_defined_fields(
                 fields.as_ref(),
                 || quote! { #declare_struct; },
                 |fields| {
@@ -222,7 +222,14 @@ pub fn convert_idl_type_def_to_ts(
                         #declare_struct (#(#tys,)*);
                     }
                 },
-            )
+            );
+
+            quote! {
+                #docs
+                #attrs
+                #repr
+                #ty
+            }
         }
         IdlTypeDefTy::Enum { variants } => {
             let variants = variants.iter().map(|variant| {
@@ -252,6 +259,9 @@ pub fn convert_idl_type_def_to_ts(
             });
 
             quote! {
+                #docs
+                #attrs
+                #repr
                 pub enum #name #generics {
                     #(#variants,)*
                 }
@@ -259,15 +269,11 @@ pub fn convert_idl_type_def_to_ts(
         }
         IdlTypeDefTy::Type { alias } => {
             let alias = convert_idl_type_to_syn_type(alias);
-            quote! { pub type #name = #alias; }
+            quote! {
+                #docs
+                pub type #name = #alias;
+            }
         }
-    };
-
-    quote! {
-        #docs
-        #attrs
-        #repr
-        #ty
     }
 }
 

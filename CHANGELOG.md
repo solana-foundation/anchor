@@ -111,6 +111,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Remove a potential panic while getting the IDL in `declare_program!` ([#3458](https://github.com/coral-xyz/anchor/pull/3458)).
 - cli: Fix altering user-provided lib names ([#3467](https://github.com/coral-xyz/anchor/pull/3467)).
 - idl: Fix missing `program::seed` resolution ([#3474](https://github.com/coral-xyz/anchor/pull/3474)).
+- lang: Fix adding `derive`s and `repr`s to type alias definitions in `declare_program!` ([#3504](https://github.com/coral-xyz/anchor/pull/3504)).
 
 ### Breaking
 
