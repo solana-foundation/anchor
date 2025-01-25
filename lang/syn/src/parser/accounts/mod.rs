@@ -14,7 +14,7 @@ pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         .find(|a| {
             a.path
                 .get_ident()
-                .map_or(false, |ident| ident == "instruction")
+                .is_some_and(|ident| ident == "instruction")
         })
         .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<Expr, Comma>::parse_terminated))
         .transpose()?;

@@ -12,6 +12,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"]
+anchor-debug = ["anchor-lang/anchor-debug"]
 associated_token = ["spl-associated-token-account"]
 devnet = []
 governance = []
