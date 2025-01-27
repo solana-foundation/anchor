@@ -65,6 +65,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Include recommended solana args by default and add new `--max-retries` option to the `deploy` command ([#3354](https://github.com/coral-xyz/anchor/pull/3354)).
 - avm: Make installation download binaries by default ([#3445](https://github.com/coral-xyz/anchor/pull/3445)).
 - idl: Support PDA resolution of call expressions that don't have any arguments ([#3485](https://github.com/coral-xyz/anchor/pull/3485)).
+- spl: Add `anchor-debug` feature ([#3511](https://github.com/coral-xyz/anchor/pull/3511)).
 
 ### Fixes
 
@@ -112,7 +113,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix altering user-provided lib names ([#3467](https://github.com/coral-xyz/anchor/pull/3467)).
 - idl: Fix missing `program::seed` resolution ([#3474](https://github.com/coral-xyz/anchor/pull/3474)).
 - lang: Fix adding `derive`s and `repr`s to type alias definitions in `declare_program!` ([#3504](https://github.com/coral-xyz/anchor/pull/3504)).
-- spl: Add `anchor-debug` feature ([#3511](https://github.com/coral-xyz/anchor/pull/3511)).
 
 ### Breaking
 
@@ -139,6 +139,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Install Solana from anza.xyz domain in Docker verifiable builds ([#3271](https://github.com/coral-xyz/anchor/pull/3271)).
 - spl: Upgrade SPL deps to latest ([#3346](https://github.com/coral-xyz/anchor/pull/3346)).
 - cli: Upgrade `typescript` version of templates to v5 ([#3480](https://github.com/coral-xyz/anchor/pull/3480)).
+- ts: Remove `snake-case` dependency ([#3507](https://github.com/coral-xyz/anchor/pull/3507)).
 
 ## [0.30.1] - 2024-06-20
 

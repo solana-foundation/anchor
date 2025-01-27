@@ -1,6 +1,5 @@
 import * as toml from "toml";
 import camelcase from "camelcase";
-import { snakeCase } from "snake-case";
 import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
 import { Idl } from "./idl.js";

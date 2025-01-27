@@ -44,7 +44,6 @@
     "cross-fetch": "^3.1.5",
     "eventemitter3": "^4.0.7",
     "pako": "^2.0.3",
-    "snake-case": "^3.0.4",
     "superstruct": "^0.15.4",
     "toml": "^3.0.0"
   },
