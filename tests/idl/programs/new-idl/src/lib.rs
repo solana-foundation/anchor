@@ -369,10 +369,14 @@ pub struct SomeStruct {
     pub field: u16,
 }
 
+/// Compilation check for the issue described in https://github.com/coral-xyz/anchor/issues/3520
+// TODO: Use this from client-side (instead of hardcoding) once `program.constants` is supported
+const GENERIC_CONST: usize = 8;
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct GenericStruct<T, const N: usize> {
     arr: [T; N],
-    sub_field: SubGenericStruct<8, T, Vec<Option<T>>>,
+    sub_field: SubGenericStruct<GENERIC_CONST, T, Vec<Option<T>>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]

@@ -113,6 +113,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fix altering user-provided lib names ([#3467](https://github.com/coral-xyz/anchor/pull/3467)).
 - idl: Fix missing `program::seed` resolution ([#3474](https://github.com/coral-xyz/anchor/pull/3474)).
 - lang: Fix adding `derive`s and `repr`s to type alias definitions in `declare_program!` ([#3504](https://github.com/coral-xyz/anchor/pull/3504)).
+- idl: Fix using constant identifiers as generic arguments ([#3522](https://github.com/coral-xyz/anchor/pull/3522)).
 
 ### Breaking
 
