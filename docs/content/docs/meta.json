@@ -1,0 +1,22 @@
+{
+  "title": "docs",
+  "description": "The description of root folder",
+  "pages": [
+    "---Getting Started---",
+    "installation",
+    "quickstart",
+
+    "---Core Concepts---",
+    "basics",
+    "clients",
+    "features",
+
+    "---SPL Tokens---",
+    "tokens",
+
+    "---References---",
+    "references",
+    "updates",
+    "contribution"
+  ]
+}
