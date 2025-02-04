@@ -377,6 +377,7 @@ pub struct ToolchainConfig {
 
 /// Package manager to use for the project.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
     NPM,
