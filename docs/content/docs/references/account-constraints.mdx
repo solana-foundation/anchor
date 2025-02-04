@@ -14,11 +14,6 @@ for implementation details.
 
 ### `#[account(signer)]`
 
-```rust title="attribute"
-#[account(signer)]
-#[account(signer @ <custom_error>)]
-```
-
 Description: Checks the given account signed the transaction. Consider using the
 Signer type if you would only have this constraint on the account.  
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/signer)
