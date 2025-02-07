@@ -24,7 +24,7 @@ simplifies the process of interacting with Solana's Token Programs in an Anchor
 program. This crate includes instructions and account types for both the
 original Token Program and the newer Token Extension Program (Token 2022).
 
-Simply add the `anchor-spl` crate as a dependency to your program. For a
+Simply add the `anchor-spl` crate as a dependency to your program and add `"anchor-spl/idl-build"` to idl-build feature list in `Cargo.toml`. For a
 walkthrough of how to create an Anchor program locally, see the
 [quickstart page](/docs/quickstart/local).
 
@@ -33,6 +33,12 @@ cargo add anchor-spl
 ```
 
 ```toml title="Cargo.toml"
+[features]
+idl-build = [
+    "anchor-lang/idl-build",
+    "anchor-spl/idl-build",
+]
+
 [dependencies]
 anchor-lang = "0.30.1"
 anchor-spl = "0.30.1"
