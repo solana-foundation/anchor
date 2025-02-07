@@ -345,7 +345,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
                         signature: logs.value.signature.parse().unwrap(),
                         slot: logs.context.slot,
                     };
-                    let events = parse_logs_response(logs, &program_id_str);
+                    let events = parse_logs_response(logs, &program_id_str)?;
                     for e in events {
                         f(&ctx, e);
                     }
@@ -672,7 +672,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
 fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     logs: RpcResponse<RpcLogsResponse>,
     program_id_str: &str,
-) -> Vec<T> {
+) -> Result<Vec<T>, ClientError> {
     let mut logs = &logs.value.logs[..];
     let mut events: Vec<T> = Vec::new();
     if !logs.is_empty() {
@@ -685,10 +685,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                 // Parse the log.
                 let (event, new_program, did_pop) = {
                     if program_id_str == execution.program() {
-                        handle_program_log(program_id_str, l).unwrap_or_else(|e| {
-                            println!("Unable to parse log: {e}");
-                            std::process::exit(1);
-                        })
+                        handle_program_log(program_id_str, l)?
                     } else {
                         let (program, did_pop) = handle_system_log(program_id_str, l);
                         (None, program, did_pop)
@@ -727,7 +724,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
             }
         }
     }
-    events
+    Ok(events)
 }
 
 #[cfg(test)]
@@ -856,7 +853,7 @@ mod tests {
 
         // No events returned here. Just ensuring that the function doesn't panic
         // due an incorrectly emptied stack.
-        let _: Vec<MockEvent> = parse_logs_response(
+        parse_logs_response::<MockEvent>(
             RpcResponse {
                 context: RpcResponseContext::new(0),
                 value: RpcLogsResponse {
@@ -866,7 +863,8 @@ mod tests {
                 },
             },
             program_id_str,
-        );
+        )
+        .unwrap();
 
         Ok(())
     }
