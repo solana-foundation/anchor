@@ -52,9 +52,9 @@ jobs:
       - run: cargo build
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo test --workspace --exclude avm
       # using singlethreaded testing for avm so that tests that change files do not conflict with each other
-      - run: cd avm && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test -- --test-threads=1
+      - run: cargo test --package avm -- --test-threads=1
       # Init local borsh package
       - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build
       - run: cd ts/packages/anchor-errors && yarn --frozen-lockfile && yarn build
