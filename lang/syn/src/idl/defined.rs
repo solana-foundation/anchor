@@ -359,7 +359,7 @@ pub fn gen_idl_type(
         if path.path.segments.len() != 1 {
             return false;
         };
-        return get_first_segment(path).ident == cmp;
+        get_first_segment(path).ident == cmp
     }
 
     fn get_angle_bracketed_type_args(seg: &syn::PathSegment) -> Vec<&syn::Type> {
