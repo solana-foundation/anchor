@@ -366,20 +366,10 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                     }
                 })
                 .unwrap_or_else(|| {
-                    // Not all types can be converted to `Vec<u8>` with `.into` call e.g. `Pubkey`.
-                    // This is problematic for `seeds::program` but a hacky way to handle this
-                    // scenerio is to check whether the last segment of the path ends with `ID`.
-                    let seed = path
-                        .path
-                        .segments
-                        .last()
-                        .filter(|seg| seg.ident.to_string().ends_with("ID"))
-                        .map(|_| quote! { #seed.as_ref() })
-                        .unwrap_or_else(|| quote! { #seed });
                     quote! {
                         #idl::IdlSeed::Const(
                             #idl::IdlSeedConst {
-                                value: #seed.into(),
+                                value: AsRef::<[u8]>::as_ref(&#seed).into(),
                             }
                         )
                     }

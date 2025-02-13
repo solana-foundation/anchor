@@ -146,4 +146,8 @@ describe("typescript", () => {
   it("Can resolve call expressions with no arguments", async () => {
     await program.methods.callExprWithNoArgs().rpc();
   });
+
+  it("Can use `Pubkey` constants with `seeds::program`", async () => {
+    await program.methods.pubkeyConst().rpc();
+  });
 });

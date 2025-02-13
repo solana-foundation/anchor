@@ -63,6 +63,10 @@ pub mod pda_derivation {
     pub fn call_expr_with_no_args(_ctx: Context<CallExprWithNoArgs>) -> Result<()> {
         Ok(())
     }
+
+    pub fn pubkey_const(_ctx: Context<PubkeyConst>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -222,6 +226,18 @@ pub struct CallExprWithNoArgs<'info> {
         bump
     )]
     pub pda: UncheckedAccount<'info>,
+}
+
+const PUBKEY_CONST: Pubkey = pubkey!("4LVUJzLugULF1PemZ1StknKJEEtJM6rJZaGijpNqCouG");
+
+#[derive(Accounts)]
+pub struct PubkeyConst<'info> {
+    #[account(
+        seeds = [],
+        seeds::program = PUBKEY_CONST,
+        bump
+    )]
+    pub acc: UncheckedAccount<'info>,
 }
 
 #[account]
