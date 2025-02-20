@@ -116,6 +116,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix using constant identifiers as generic arguments ([#3522](https://github.com/coral-xyz/anchor/pull/3522)).
 - client: Remove `std::process::exit` usage ([#3544](https://github.com/coral-xyz/anchor/pull/3544)).
 - idl: Fix using `Pubkey` constants with `seeds::program` ([#3559](https://github.com/coral-xyz/anchor/pull/3559)).
+- lang: Fix instructions with no accounts causing compilation errors when using `declare_program!` ([#3567](https://github.com/coral-xyz/anchor/pull/3567)).
 
 ### Breaking
 

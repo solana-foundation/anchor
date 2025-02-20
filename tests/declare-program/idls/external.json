@@ -74,6 +74,21 @@
       ]
     },
     {
+      "name": "test_compilation_no_accounts",
+      "discriminator": [
+        194,
+        91,
+        205,
+        217,
+        51,
+        10,
+        247,
+        201
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
       "name": "test_compilation_return_type",
       "discriminator": [
         174,

@@ -45,12 +45,20 @@ pub mod external {
     pub fn test_compilation_return_type(_ctx: Context<TestCompilation>) -> Result<bool> {
         Ok(true)
     }
+
+    // Compilation test for an instruction with no accounts
+    pub fn test_compilation_no_accounts(_ctx: Context<TestCompilationNoAccounts>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
 pub struct TestCompilation<'info> {
     pub signer: Signer<'info>,
 }
+
+#[derive(Accounts)]
+pub struct TestCompilationNoAccounts {}
 
 #[derive(Accounts)]
 pub struct Init<'info> {
