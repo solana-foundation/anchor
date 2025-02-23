@@ -150,4 +150,12 @@ describe("typescript", () => {
   it("Can use `Pubkey` constants with `seeds::program`", async () => {
     await program.methods.pubkeyConst().rpc();
   });
+
+  it("Can use accounts with `seeds::program`", async () => {
+    await program.methods.seedsProgramAccount().rpc();
+  });
+
+  it("Can use arguments with `seeds::program`", async () => {
+    await program.methods.seedsProgramArg(anchor.web3.PublicKey.default).rpc();
+  });
 });

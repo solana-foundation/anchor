@@ -67,6 +67,14 @@ pub mod pda_derivation {
     pub fn pubkey_const(_ctx: Context<PubkeyConst>) -> Result<()> {
         Ok(())
     }
+
+    pub fn seeds_program_account(_ctx: Context<SeedsProgramAccount>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn seeds_program_arg(_ctx: Context<SeedsProgramArg>, _some_program: Pubkey) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -238,6 +246,28 @@ pub struct PubkeyConst<'info> {
         bump
     )]
     pub acc: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SeedsProgramAccount<'info> {
+    #[account(
+        seeds = [b"*"],
+        seeds::program = some_program,
+        bump
+    )]
+    pub pda: UncheckedAccount<'info>,
+    pub some_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(some_program: Pubkey)]
+pub struct SeedsProgramArg<'info> {
+    #[account(
+        seeds = [b"*"],
+        seeds::program = some_program,
+        bump
+    )]
+    pub pda: UncheckedAccount<'info>,
 }
 
 #[account]
