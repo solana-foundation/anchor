@@ -15,6 +15,6 @@ anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.31.0" }
-quote = "1"
-syn = { version = "1", features = ["full"] }
+anchor-syn = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }
