@@ -118,6 +118,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix using `Pubkey` constants with `seeds::program` ([#3559](https://github.com/coral-xyz/anchor/pull/3559)).
 - lang: Fix instructions with no accounts causing compilation errors when using `declare_program!` ([#3567](https://github.com/coral-xyz/anchor/pull/3567)).
 - idl: Fix using account or arg values for `seeds::program` ([#3570](https://github.com/coral-xyz/anchor/pull/3570)).
+- lang: Fix using `data` as an instruction parameter name in `declare_program!` ([#3574](https://github.com/coral-xyz/anchor/pull/3574)).
 
 ### Breaking
 

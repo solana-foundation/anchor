@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
@@ -44,6 +46,14 @@ pub mod external {
     // Compilation test for whether a custom return type can be specified in `cpi` client
     pub fn test_compilation_return_type(_ctx: Context<TestCompilation>) -> Result<bool> {
         Ok(true)
+    }
+
+    // Compilation test for whether `data` can be used as an instruction parameter name
+    pub fn test_compilation_data_as_parameter_name(
+        _ctx: Context<TestCompilation>,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        Ok(())
     }
 
     // Compilation test for an instruction with no accounts

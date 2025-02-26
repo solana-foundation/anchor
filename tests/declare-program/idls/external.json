@@ -45,6 +45,31 @@
       "args": []
     },
     {
+      "name": "test_compilation_data_as_parameter_name",
+      "discriminator": [
+        225,
+        145,
+        68,
+        92,
+        146,
+        206,
+        248,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "test_compilation_defined_type_param",
       "discriminator": [
         61,

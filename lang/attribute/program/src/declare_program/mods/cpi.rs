@@ -71,9 +71,10 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 #(#args),*
             ) -> #ret_type {
                 let ix = {
+                    let ix = internal::args::#arg_value;
                     let mut data = Vec::with_capacity(256);
                     data.extend_from_slice(&#discriminator);
-                    AnchorSerialize::serialize(&internal::args::#arg_value, &mut data)
+                    AnchorSerialize::serialize(&ix, &mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
 
                     let accounts = ctx.to_account_metas(None);
