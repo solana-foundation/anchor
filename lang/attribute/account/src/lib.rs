@@ -456,7 +456,7 @@ pub fn zero_copy(
         Some(_attr) => quote! {},
         None => {
             if is_unsafe {
-                quote! {#[repr(packed)]}
+                quote! {#[repr(Rust, packed)]}
             } else {
                 quote! {#[repr(C)]}
             }
