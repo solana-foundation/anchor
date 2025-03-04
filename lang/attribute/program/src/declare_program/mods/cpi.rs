@@ -2,7 +2,7 @@ use anchor_lang_idl::types::Idl;
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
-use super::common::{convert_idl_type_to_syn_type, gen_accounts_common, gen_discriminator};
+use super::common::{convert_idl_type_to_syn_type, gen_accounts_common};
 
 pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let cpi_instructions = gen_cpi_instructions(idl);
@@ -49,8 +49,6 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             }
         };
 
-        let discriminator = gen_discriminator(&ix.discriminator);
-
         let (ret_type, ret_value) = match ix.returns.as_ref() {
             Some(ty) => {
                 let ty = convert_idl_type_to_syn_type(ty);
@@ -73,7 +71,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 let ix = {
                     let ix = internal::args::#arg_value;
                     let mut data = Vec::with_capacity(256);
-                    data.extend_from_slice(&#discriminator);
+                    data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
                     AnchorSerialize::serialize(&ix, &mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
 
