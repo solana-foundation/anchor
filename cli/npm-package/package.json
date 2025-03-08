@@ -1,6 +1,6 @@
 {
   "name": "@coral-xyz/anchor-cli",
-  "version": "0.30.1",
+  "version": "0.31.0",
   "description": "Anchor CLI tool",
   "homepage": "https://github.com/coral-xyz/anchor#readme",
   "bugs": {
