@@ -348,7 +348,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
     )
 }
 
@@ -369,7 +369,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
     )
 }
 
@@ -486,7 +486,7 @@ describe("{}", () => {{
         name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
         name.to_pascal_case(),
     )
 }
@@ -513,7 +513,7 @@ describe("{}", () => {{
         name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
         name.to_pascal_case(),
     )
 }
