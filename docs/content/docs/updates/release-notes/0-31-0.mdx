@@ -146,6 +146,27 @@ various commands do this conversion automatically, meaning you'll be able to
 work with both specs without having to switch versions. The only exception is
 the `idl fetch` command, which does not convert legacy IDLs.
 
+### Package manager
+
+Anchor has been using `yarn` as the default JS package manager, but some people
+want to use other package managers. Changing the package manager to use wasn't
+easy, as certain commands required `yarn` to be installed to function properly.
+This is no longer the case, and you can simply specify the package manager to
+use from `Anchor.toml`:
+
+```toml
+[toolchain]
+package_manager = "npm"
+```
+
+or when creating a new workspace:
+
+```
+anchor init <NAME> --package-manager npm
+```
+
+Supported values: `npm`, `yarn`, `pnpm` (default: `yarn`)
+
 ### Shell completions
 
 You can now generate shell completions, see
