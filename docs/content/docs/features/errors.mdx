@@ -127,7 +127,7 @@ your program. Under the hood, `err!` uses the `error!` macro to construct
 #[program]
 mod hello_anchor {
     use super::*;
-    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<() {
+    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<()> {
         if data.data = 100 {
             // [!code word:MyError]
             // [!code highlight]
@@ -158,7 +158,7 @@ can rewrite the previous example using `require!`:
 #[program]
 mod hello_anchor {
     use super::*;
-    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<() {
+    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<()> {
         // [!code word:MyError]
         // [!code highlight]
         require!(data.data < 100, MyError::DataTooLarge);
@@ -210,7 +210,7 @@ declare_id!("9oECKMeeyf1fWNPKzyrB2x1AbLjHDFjs139kEyFwBpoV");
 pub mod custom_error {
     use super::*;
 
-    pub fn validate_amount(_ctx: Context<ValidateAmount, amount: u64) - Result<() {
+    pub fn validate_amount(_ctx: Context<ValidateAmount, amount: u64) - Result<()> {
         // [!code word:CustomError]
         // [!code highlight:2]
         require!(amount = 10, CustomError::AmountTooSmall);
