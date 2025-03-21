@@ -127,7 +127,7 @@ your program. Under the hood, `err!` uses the `error!` macro to construct
 #[program]
 mod hello_anchor {
     use super::*;
-    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<()> {
+    pub fn set_data(ctx: Context<SetData>, data: MyAccount) - Result<()> {
         if data.data = 100 {
             // [!code word:MyError]
             // [!code highlight]
@@ -158,7 +158,7 @@ can rewrite the previous example using `require!`:
 #[program]
 mod hello_anchor {
     use super::*;
-    pub fn set_data(ctx: Context<SetData, data: MyAccount) - Result<()> {
+    pub fn set_data(ctx: Context<SetData>, data: MyAccount) - Result<()> {
         // [!code word:MyError]
         // [!code highlight]
         require!(data.data < 100, MyError::DataTooLarge);
@@ -210,10 +210,10 @@ declare_id!("9oECKMeeyf1fWNPKzyrB2x1AbLjHDFjs139kEyFwBpoV");
 pub mod custom_error {
     use super::*;
 
-    pub fn validate_amount(_ctx: Context<ValidateAmount, amount: u64) - Result<()> {
+    pub fn validate_amount(_ctx: Context<ValidateAmount>, amount: u64) - Result<()> {
         // [!code word:CustomError]
         // [!code highlight:2]
-        require!(amount = 10, CustomError::AmountTooSmall);
+        require!(amount >= 10, CustomError::AmountTooSmall);
         require!(amount <= 100, CustomError::AmountTooLarge);
 
         msg!("Amount validated successfully: {}", amount);
@@ -252,7 +252,7 @@ describe("custom-error", () = {
     console.log("Transaction signature:", tx);
   });
 
-  it("Fails with amount too small", async () = {
+  it("Fails with amount too small", async () => {
     try {
       await program.methods.validateAmount(new anchor.BN(5)).rpc();
 
@@ -266,7 +266,7 @@ describe("custom-error", () = {
     }
   });
 
-  it("Fails with amount too large", async () = {
+  it("Fails with amount too large", async () => {
     try {
       await program.methods.validateAmount(new anchor.BN(150)).rpc();
 
