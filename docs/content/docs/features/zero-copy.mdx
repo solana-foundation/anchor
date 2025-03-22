@@ -24,7 +24,7 @@ anchor-lang = "0.31.0"
 ### Define a Zero Copy Account
 
 To define an account type that uses zero-copy, annotate the struct with
-[`#[account(zero_copy)]`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/attribute/account/src/lib.rs#L319).
+[`#[account(zero_copy)]`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/attribute/account/src/lib.rs#L417).
 
 ```rust
 // [!code highlight]
@@ -52,7 +52,7 @@ struct Data {
 ### Use AccountLoader for Zero Copy Accounts
 
 To deserialize a zero-copy account, use
-[`AccountLoader<'info, T>`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/accounts/account_loader.rs#L96-L100),
+[`AccountLoader<'info, T>`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/src/accounts/account_loader.rs#L95-L99),
 where `T` is the zero-copy account type defined with the `#[account(zero_copy)]`
 attribute.
 
@@ -97,7 +97,7 @@ pub struct Initialize<'info> {
 </Callout>
 
 When initializing a zero-copy account for the first time, use
-[`load_init`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/accounts/account_loader.rs#L194-L214)
+[`load_init`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/src/accounts/account_loader.rs#L199-L221)
 to get a mutable reference to the account data. The `load_init` method also sets
 the account discriminator.
 
@@ -112,7 +112,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
 ```
 
 For accounts that require more than 10240 bytes, use the
-[`zero`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/syn/src/codegen/accounts/constraints.rs#L200-L217)
+[`zero`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/syn/src/codegen/accounts/constraints.rs#L200-L264)
 constraint instead of `init`. The `zero` constraint verifies the account has not
 been initialized by checking that its discriminator has not been set.
 
@@ -148,7 +148,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
 #### Update a Zero Copy Account
 
 Use
-[`load_mut`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/accounts/account_loader.rs#L170-L190)
+[`load_mut`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/src/accounts/account_loader.rs#L172-L195)
 when you need mutable access to update an existing zero-copy account:
 
 ```rust
@@ -173,7 +173,7 @@ pub fn update(ctx: Context<Update>) -> Result<()> {
 #### Read a Zero Copy Account
 
 Use
-[`load`](https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/accounts/account_loader.rs#L153-L167)
+[`load`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/src/accounts/account_loader.rs#L154-L169)
 to only read the account data.
 
 ```rust
