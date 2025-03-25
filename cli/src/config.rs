@@ -504,7 +504,7 @@ impl Config {
             .anchor_version
             .as_deref()
             .unwrap_or(crate::DOCKER_BUILDER_VERSION);
-        format!("backpackapp/build:v{version}")
+        format!("solanafoundation/anchor:v{version}")
     }
 
     pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {

@@ -15,6 +15,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- cli, docker: Replace `backpackapp/build` Docker image with `solanafoundation/anchor` ([#3619](https://github.com/coral-xyz/anchor/pull/3619)).
+
 ### Breaking
 
 ## [0.31.0] - 2025-03-08
