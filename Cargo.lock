@@ -264,7 +264,6 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "bytemuck",
- "bytemuck_derive",
  "solana-program",
  "thiserror",
 ]
