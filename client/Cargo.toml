@@ -19,7 +19,6 @@ mock = []
 anchor-lang = { path = "../lang", version = "0.31.0" }
 anyhow = "1"
 futures = "0.3"
-regex = "1"
 serde = { version = "1", features = ["derive"] }
 solana-account-decoder = "2"
 solana-client = "2"
