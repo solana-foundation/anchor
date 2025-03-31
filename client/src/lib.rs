@@ -600,14 +600,18 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                 }
             };
 
-            let event = log_bytes
-                .starts_with(T::DISCRIMINATOR)
-                .then(|| {
-                    let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
-                    T::deserialize(&mut data).map_err(|e| ClientError::LogParseError(e.to_string()))
-                })
-                .ok_or(ClientError::LogParseError(log.to_string()))??;
-            events.push(event);
+            if log_bytes.starts_with(T::DISCRIMINATOR) {
+                let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
+                let event = match T::deserialize(&mut data){
+                    Ok(event) => {event}
+                    Err(e) => {
+                        #[cfg(feature = "debug")]
+                        println!("Could not base64 decode log: {log}; err:{e}");
+                        continue;
+                    }
+                };
+                events.push(event);
+            }
         };
     }
 
