@@ -23,15 +23,22 @@ pub fn gen_idl_print_fn_constant(item: &syn::ItemConst) -> TokenStream {
 
     let fn_body = match gen_idl_type(&item.ty, &[]) {
         Ok((ty, _)) => {
-            // Get the type as a string for comparison
-            let type_str = ty.to_string();
+            // Check if the type is a string directly
+            let is_string_type = match &*item.ty {
+                syn::Type::Path(type_path) => {
+                    // Check that the path consists of a single segment with the identifier "string"
+                    type_path.path.segments.len() == 1 
+                        && type_path.path.segments[0].ident == "string"
+                }
+                _ => false,
+            };
             
             // Use different formatting based on the type
-            let value_format = if type_str == "string" {
+            let value_format = if is_string_type {
                 // For string types, use Display formatting to avoid extra quotes
                 quote! { format!("{}", #expr) }
             } else {
-                // For other types, keep using Debug formatting
+                // For other types, continue using Debug formatting
                 quote! { format!("{:?}", #expr) }
             };
             
