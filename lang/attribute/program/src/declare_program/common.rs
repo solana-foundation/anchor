@@ -317,7 +317,7 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_copy(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .expect(&format!("Type def must exist for {:?}", name)),
         IdlType::Bytes | IdlType::String | IdlType::Vec(_) | IdlType::Generic(_) => false,
         _ => true,
     }
@@ -341,7 +341,7 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_default(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .expect(&format!("Type def must exist for {:?}", name)),
         IdlType::Generic(_) => false,
         _ => true,
     }
