@@ -67,6 +67,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add short alias for the `idl build` command ([#3283](https://github.com/coral-xyz/anchor/pull/3283)).
 - cli: Add `--program-id` option to `idl convert` command ([#3309](https://github.com/coral-xyz/anchor/pull/3309)).
 - lang: Generate documentation of constants in `declare_program!` ([#3311](https://github.com/coral-xyz/anchor/pull/3311)).
+- spl: Add 'Interest Bearing Config` Extension ([#3278](https://github.com/coral-xyz/anchor/pull/3278)).
 - cli: Add support for fetching legacy IDLs ([#3324](https://github.com/coral-xyz/anchor/pull/3324)).
 - avm: Add short alias for `install` and `list` commands ([#3326](https://github.com/coral-xyz/anchor/pull/3326)).
 - avm: Add Windows support for renaming anchor binary ([#3325](https://github.com/coral-xyz/anchor/pull/3325)).
