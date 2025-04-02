@@ -742,11 +742,19 @@ fn restore_toolchain(restore_cbs: RestoreToolchainCallbacks) -> Result<()> {
 
 /// Get the system's default license - what 'npm init' would use.
 fn get_npm_init_license() -> Result<String> {
-    let npm_init_license_output = std::process::Command::new("npm")
-        .arg("config")
-        .arg("get")
-        .arg("init-license")
-        .output()?;
+    let npm_init_license_output = if cfg!(target_os = "windows") {
+        std::process::Command::new("npm.cmd")
+            .arg("config")
+            .arg("get")
+            .arg("init-license")
+            .output()?
+    } else {
+        std::process::Command::new("npm")
+            .arg("config")
+            .arg("get")
+            .arg("init-license")
+            .output()?
+    };
 
     if !npm_init_license_output.status.success() {
         return Err(anyhow!("Failed to get npm init license"));
@@ -1091,8 +1099,24 @@ fn init(
                 package_manager_cmd
             );
             install_node_modules("npm")?;
-        } else {
-            eprintln!("Failed to install node modules");
+        }
+
+        match package_manager_result.status.code() {
+            Some(status) => {
+                if status == 0 {
+                    eprintln!("node modules installed");
+                } else {
+                    eprintln!(
+                        "Failed to install node modules: {}",
+                        String::from_utf8(package_manager_result.stderr)
+                            .unwrap_or("".to_owned())
+                            .trim()
+                    );
+                }
+            }
+            None => {
+                eprintln!("Failed to install node modules");
+            }
         }
     }
 
@@ -1116,7 +1140,7 @@ fn init(
 fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
     if cfg!(target_os = "windows") {
         std::process::Command::new("cmd")
-            .arg(format!("/C {cmd} install"))
+            .arg(format!("/C {cmd}.cmd install"))
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
