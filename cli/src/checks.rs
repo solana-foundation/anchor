@@ -74,6 +74,7 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
             PackageManager::NPM => "npm update",
             PackageManager::Yarn => "yarn upgrade",
             PackageManager::PNPM => "pnpm update",
+            PackageManager::Bun => "bun update",
         };
 
         eprintln!(
