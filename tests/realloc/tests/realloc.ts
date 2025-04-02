@@ -58,7 +58,7 @@ describe("realloc", () => {
     assert.lengthOf(s.data, 5);
   });
 
-  it("realloc substractive", async () => {
+  it("realloc subtractive", async () => {
     await program.methods
       .realloc(1)
       .accounts({ authority: authority.publicKey, sample })
