@@ -1119,7 +1119,7 @@
     "solanaVersion": "2.1.0",
     "result": {
       "binarySize": {
-        "bench": 1041928
+        "bench": 1106136
       },
       "computeUnits": {
         "accountInfo1": 571,
