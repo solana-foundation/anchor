@@ -22,8 +22,6 @@ use std::ops::DerefMut;
 /// Note that using accounts in this way is distinctly different from using,
 /// for example, the [`Account`](crate::accounts::account::Account). Namely,
 /// one must call
-/// - `load_init` after initializing an account (this will ignore the missing
-///    account discriminator that gets added only after the user's instruction code)
 /// - `load` when the account is not mutable
 /// - `load_mut` when the account is mutable
 ///
@@ -51,7 +49,7 @@ use std::ops::DerefMut;
 ///     use super::*;
 ///
 ///     pub fn create_bar(ctx: Context<CreateBar>, data: u64) -> Result<()> {
-///         let bar = &mut ctx.accounts.bar.load_init()?;
+///         let bar = &mut ctx.accounts.bar.load_mut()?;
 ///         bar.authority = ctx.accounts.authority.key();
 ///         bar.data = data;
 ///         Ok(())
@@ -154,15 +152,6 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     pub fn load(&self) -> Result<Ref<T>> {
         let data = self.acc_info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
-        if data.len() < disc.len() {
-            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
-        }
-
-        let given_disc = &data[..disc.len()];
-        if given_disc != disc {
-            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
-        }
-
         Ok(Ref::map(data, |data| {
             bytemuck::from_bytes(&data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
@@ -178,41 +167,6 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
         let data = self.acc_info.try_borrow_mut_data()?;
         let disc = T::DISCRIMINATOR;
-        if data.len() < disc.len() {
-            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
-        }
-
-        let given_disc = &data[..disc.len()];
-        if given_disc != disc {
-            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
-        }
-
-        Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(
-                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
-            )
-        }))
-    }
-
-    /// Returns a `RefMut` to the account data structure for reading or writing.
-    /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<T>> {
-        // AccountInfo api allows you to borrow mut even if the account isn't
-        // writable, so add this check for a better dev experience.
-        if !self.acc_info.is_writable {
-            return Err(ErrorCode::AccountNotMutable.into());
-        }
-
-        let data = self.acc_info.try_borrow_mut_data()?;
-
-        // The discriminator should be zero, since we're initializing.
-        let disc = T::DISCRIMINATOR;
-        let given_disc = &data[..disc.len()];
-        let has_disc = given_disc.iter().any(|b| *b != 0);
-        if has_disc {
-            return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
-        }
-
         Ok(RefMut::map(data, |data| {
             bytemuck::from_bytes_mut(
                 &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],

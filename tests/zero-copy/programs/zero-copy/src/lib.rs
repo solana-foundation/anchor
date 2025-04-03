@@ -14,7 +14,7 @@ pub mod zero_copy {
     use super::*;
 
     pub fn create_foo(ctx: Context<CreateFoo>) -> Result<()> {
-        let foo = &mut ctx.accounts.foo.load_init()?;
+        let foo = &mut ctx.accounts.foo.load_mut()?;
         foo.authority = *ctx.accounts.authority.key;
         foo.set_second_authority(ctx.accounts.authority.key);
         Ok(())
@@ -33,7 +33,7 @@ pub mod zero_copy {
     }
 
     pub fn create_bar(ctx: Context<CreateBar>) -> Result<()> {
-        let bar = &mut ctx.accounts.bar.load_init()?;
+        let bar = &mut ctx.accounts.bar.load_mut()?;
         bar.authority = *ctx.accounts.authority.key;
         Ok(())
     }
