@@ -23,7 +23,7 @@ describe("realloc", () => {
   it("initialized", async () => {
     await program.methods
       .initialize()
-      .accounts({ authority: authority.publicKey, sample })
+      .accountsPartial({ authority: authority.publicKey, sample })
       .rpc();
 
     const samples = await program.account.sample.all();
@@ -35,7 +35,7 @@ describe("realloc", () => {
     try {
       await program.methods
         .realloc(10250)
-        .accounts({ authority: authority.publicKey, sample })
+        .accountsPartial({ authority: authority.publicKey, sample })
         .rpc();
       assert.ok(false);
     } catch (e) {
@@ -51,7 +51,7 @@ describe("realloc", () => {
   it("realloc additive", async () => {
     await program.methods
       .realloc(5)
-      .accounts({ authority: authority.publicKey, sample })
+      .accountsPartial({ authority: authority.publicKey, sample })
       .rpc();
 
     const s = await program.account.sample.fetch(sample);
@@ -61,7 +61,7 @@ describe("realloc", () => {
   it("realloc substractive", async () => {
     await program.methods
       .realloc(1)
-      .accounts({ authority: authority.publicKey, sample })
+      .accountsPartial({ authority: authority.publicKey, sample })
       .rpc();
 
     const s = await program.account.sample.fetch(sample);
@@ -72,7 +72,7 @@ describe("realloc", () => {
     try {
       await program.methods
         .realloc2(1000)
-        .accounts({
+        .accountsPartial({
           authority: authority.publicKey,
           sample1: sample,
           sample2: sample,

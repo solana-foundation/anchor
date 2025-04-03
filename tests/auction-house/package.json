@@ -17,6 +17,8 @@
     "test": "anchor test --skip-lint"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.1.8",
+    "@solana/web3.js": "^1.68.0",
     "@metaplex/js": "^4.4.1"
   }
 }
