@@ -452,7 +452,7 @@ export class AccountsResolver<IDL extends Idl> {
   }
 
   /**
-   * Converts the given idl valaue into a Buffer. The values here must be
+   * Converts the given idl value into a Buffer. The values here must be
    * primitives, e.g. no structs.
    */
   private toBufferValue(type: any, value: any): Buffer {
