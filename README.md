@@ -12,6 +12,7 @@
     <a href="https://anchor-lang.com"><img alt="Tutorials" src="https://img.shields.io/badge/docs-tutorials-blueviolet" /></a>
     <a href="https://discord.gg/NHHGSXAnXk"><img alt="Discord Chat" src="https://img.shields.io/discord/889577356681945098?color=blueviolet" /></a>
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="License" src="https://img.shields.io/github/license/coral-xyz/anchor?color=blueviolet" /></a>
+    <a href="https://gurubase.io/g/anchor"><img alt="Gurubase" src="https://img.shields.io/badge/Gurubase-Ask%20Anchor%20Guru-006BFF" /></a>
   </p>
 </div>
 
