@@ -86,6 +86,7 @@ pub fn gen_idl_type_def_struct(
                     .map(|f| gen_idl_field(f, generic_params, no_docs))
                     .collect::<Result<Vec<_>>>()?
                     .into_iter()
+                    .filter(|(t,_)| !t.is_empty())
                     .unzip::<_, _, Vec<_>, Vec<_>>();
 
                 (
@@ -100,6 +101,7 @@ pub fn gen_idl_type_def_struct(
                     .map(|f| gen_idl_type(&f.ty, generic_params))
                     .collect::<Result<Vec<_>>>()?
                     .into_iter()
+                    .filter(|(t,_)| !t.is_empty())
                     .unzip::<_, Vec<_>, Vec<_>, Vec<_>>();
 
                 (
@@ -337,6 +339,10 @@ fn gen_idl_field(
     };
     let (ty, defined) = gen_idl_type(&field.ty, generic_params)?;
 
+    if ty.is_empty() {
+        return Ok((ty, defined));
+    }
+
     Ok((
         quote! {
             #idl::IdlField {
@@ -423,6 +429,9 @@ pub fn gen_idl_type(
         }
         syn::Type::Path(path) if the_only_segment_is(path, "Pubkey") => {
             Ok((quote! { #idl::IdlType::Pubkey }, vec![]))
+        }
+        syn::Type::Path(path) if the_only_segment_is(path, "PhantomData") => {
+            Ok((TokenStream::new(), vec![]))
         }
         syn::Type::Path(path) if the_only_segment_is(path, "Option") => {
             let segment = get_first_segment(path);
