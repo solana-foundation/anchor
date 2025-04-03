@@ -4,9 +4,7 @@ import { IdlEvent, IdlField } from "../idl.js";
 import Provider from "../provider.js";
 import { DecodeType } from "./namespace/types.js";
 
-const PROGRAM_LOG = "Program log: ";
 const PROGRAM_DATA = "Program data: ";
-const PROGRAM_LOG_START_INDEX = PROGRAM_LOG.length;
 const PROGRAM_DATA_START_INDEX = PROGRAM_DATA.length;
 
 // Deserialized event.
@@ -234,11 +232,9 @@ export class EventParser {
     log: string,
     errorOnDecodeFailure: boolean
   ): [Event | null, string | null, boolean] {
-    // This is a `msg!` log or a `sol_log_data` log.
-    if (log.startsWith(PROGRAM_LOG) || log.startsWith(PROGRAM_DATA)) {
-      const logStr = log.startsWith(PROGRAM_LOG)
-        ? log.slice(PROGRAM_LOG_START_INDEX)
-        : log.slice(PROGRAM_DATA_START_INDEX);
+    // This is a `sol_log_data` log.
+    if (log.startsWith(PROGRAM_DATA)) {
+      const logStr = log.slice(PROGRAM_DATA_START_INDEX);
       const event = this.coder.events.decode(logStr);
 
       if (errorOnDecodeFailure && event === null) {
