@@ -33,6 +33,7 @@ import {
   any,
   Struct,
 } from "superstruct";
+import { bs58 } from "./bytes";
 
 /**
  * Sends a transaction to a program with the given accounts and instruction
@@ -202,10 +203,13 @@ export async function simulateTransaction(
         console.error(res.error.message, logTrace);
       }
     }
-    throw new SendTransactionError(
-      "failed to simulate transaction: " + res.error.message,
-      logs
-    );
+    throw new SendTransactionError({
+      action: "simulate",
+      signature: bs58.encode(transaction.signature!),
+      transactionMessage:
+        "failed to simulate transaction: " + res.error.message,
+      logs,
+    });
   }
   return res.result;
 }
