@@ -73,7 +73,6 @@ use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
-use regex::Regex;
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_client::rpc_config::{
@@ -109,6 +108,8 @@ use tokio::{
 };
 
 pub use anchor_lang;
+use anchor_lang::__private::base64::engine::general_purpose::STANDARD;
+use anchor_lang::__private::base64::Engine;
 pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
@@ -375,101 +376,6 @@ impl<T> Iterator for ProgramAccountsIterator<T> {
     }
 }
 
-pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
-    self_program_str: &str,
-    l: &str,
-) -> Result<(Option<T>, Option<String>, bool), ClientError> {
-    use anchor_lang::__private::base64;
-    use base64::engine::general_purpose::STANDARD;
-    use base64::Engine;
-
-    // Log emitted from the current program.
-    if let Some(log) = l
-        .strip_prefix(PROGRAM_LOG)
-        .or_else(|| l.strip_prefix(PROGRAM_DATA))
-    {
-        let log_bytes = match STANDARD.decode(log) {
-            Ok(log_bytes) => log_bytes,
-            _ => {
-                #[cfg(feature = "debug")]
-                println!("Could not base64 decode log: {}", log);
-                return Ok((None, None, false));
-            }
-        };
-
-        let event = log_bytes
-            .starts_with(T::DISCRIMINATOR)
-            .then(|| {
-                let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
-                T::deserialize(&mut data).map_err(|e| ClientError::LogParseError(e.to_string()))
-            })
-            .transpose()?;
-
-        Ok((event, None, false))
-    }
-    // System log.
-    else {
-        let (program, did_pop) = handle_system_log(self_program_str, l);
-        Ok((None, program, did_pop))
-    }
-}
-
-pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
-    if log.starts_with(&format!("Program {this_program_str} log:")) {
-        (Some(this_program_str.to_string()), false)
-
-        // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
-        // so this ensures we only push CPIs to the stack at this stage
-    } else if log.contains("invoke") && !log.ends_with("[1]") {
-        (Some("cpi".to_string()), false) // Any string will do.
-    } else {
-        let re = Regex::new(r"^Program (.*) success*$").unwrap();
-        if re.is_match(log) {
-            (None, true)
-        } else {
-            (None, false)
-        }
-    }
-}
-
-pub struct Execution {
-    stack: Vec<String>,
-}
-
-impl Execution {
-    pub fn new(logs: &mut &[String]) -> Result<Self, ClientError> {
-        let l = &logs[0];
-        *logs = &logs[1..];
-
-        let re = Regex::new(r"^Program (.*) invoke.*$").unwrap();
-        let c = re
-            .captures(l)
-            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?;
-        let program = c
-            .get(1)
-            .ok_or_else(|| ClientError::LogParseError(l.to_string()))?
-            .as_str()
-            .to_string();
-        Ok(Self {
-            stack: vec![program],
-        })
-    }
-
-    pub fn program(&self) -> String {
-        assert!(!self.stack.is_empty());
-        self.stack[self.stack.len() - 1].clone()
-    }
-
-    pub fn push(&mut self, new_program: String) {
-        self.stack.push(new_program);
-    }
-
-    pub fn pop(&mut self) {
-        assert!(!self.stack.is_empty());
-        self.stack.pop().unwrap();
-    }
-}
-
 #[derive(Debug)]
 pub struct EventContext {
     pub signature: Signature,
@@ -671,59 +577,44 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
 
 fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
     logs: RpcResponse<RpcLogsResponse>,
-    program_id_str: &str,
+    _program_id_str: &str,
 ) -> Result<Vec<T>, ClientError> {
-    let mut logs = &logs.value.logs[..];
+    let logs = logs.value.logs;
     let mut events: Vec<T> = Vec::new();
-    if !logs.is_empty() {
-        if let Ok(mut execution) = Execution::new(&mut logs) {
-            // Create a new peekable iterator so that we can peek at the next log whilst iterating
-            let mut logs_iter = logs.iter().peekable();
-            let regex = Regex::new(r"^Program (.*) invoke.*$").unwrap();
 
-            while let Some(l) = logs_iter.next() {
-                // Parse the log.
-                let (event, new_program, did_pop) = {
-                    if program_id_str == execution.program() {
-                        handle_program_log(program_id_str, l)?
-                    } else {
-                        let (program, did_pop) = handle_system_log(program_id_str, l);
-                        (None, program, did_pop)
+    for log in logs {
+        if !log.starts_with(PROGRAM_DATA) {
+            continue;
+        }
+
+        if let Some(log) = log
+            .strip_prefix(PROGRAM_LOG)
+            .or_else(|| log.strip_prefix(PROGRAM_DATA))
+        {
+            let log_bytes = match STANDARD.decode(log) {
+                Ok(log_bytes) => log_bytes,
+                _ => {
+                    #[cfg(feature = "debug")]
+                    println!("Could not base64 decode log: {}", log);
+                    continue;
+                }
+            };
+
+            if log_bytes.starts_with(T::DISCRIMINATOR) {
+                let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
+                let event = match T::deserialize(&mut data){
+                    Ok(event) => {event}
+                    Err(e) => {
+                        #[cfg(feature = "debug")]
+                        println!("Could not base64 decode log: {log}; err:{e}");
+                        continue;
                     }
                 };
-                // Emit the event.
-                if let Some(e) = event {
-                    events.push(e);
-                }
-                // Switch program context on CPI.
-                if let Some(new_program) = new_program {
-                    execution.push(new_program);
-                }
-                // Program returned.
-                if did_pop {
-                    execution.pop();
-
-                    // If the current iteration popped then it means there was a
-                    //`Program x success` log. If the next log in the iteration is
-                    // of depth [1] then we're not within a CPI and this is a new instruction.
-                    //
-                    // We need to ensure that the `Execution` instance is updated with
-                    // the next program ID, or else `execution.program()` will cause
-                    // a panic during the next iteration.
-                    if let Some(&next_log) = logs_iter.peek() {
-                        if next_log.ends_with("invoke [1]") {
-                            let next_instruction =
-                                regex.captures(next_log).unwrap().get(1).unwrap().as_str();
-                            // Within this if block, there will always be a regex match.
-                            // Therefore it's safe to unwrap and the captured program ID
-                            // at index 1 can also be safely unwrapped.
-                            execution.push(next_instruction.to_string());
-                        }
-                    };
-                }
+                events.push(event);
             }
-        }
+        };
     }
+
     Ok(events)
 }
 
@@ -739,112 +630,86 @@ mod tests {
     pub struct MockEvent {}
 
     use super::*;
-    #[test]
-    fn new_execution() {
-        let mut logs: &[String] =
-            &["Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string()];
-        let exe = Execution::new(&mut logs).unwrap();
-        assert_eq!(
-            exe.stack[0],
-            "7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw".to_string()
-        );
-    }
-
-    #[test]
-    fn handle_system_log_pop() {
-        let log = "Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw success";
-        let (program, did_pop) = handle_system_log("asdf", log);
-        assert_eq!(program, None);
-        assert!(did_pop);
-    }
-
-    #[test]
-    fn handle_system_log_no_pop() {
-        let log = "Program 7swsTUiQ6KUK4uFYquQKg4epFRsBnvbrTf2fZQCa2sTJ qwer";
-        let (program, did_pop) = handle_system_log("asdf", log);
-        assert_eq!(program, None);
-        assert!(!did_pop);
-    }
 
     #[test]
     fn test_parse_logs_response() -> Result<()> {
         // Mock logs received within an `RpcResponse`. These are based on a Jupiter transaction.
         let logs = vec![
-          "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
-          "Program log: Instruction: VeryCoolEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program VeryCoolProgram consumed 42417 of 700000 compute units",
-          "Program VeryCoolProgram success", // Outer instruction #1 ends
-          "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
-          "Program log: Instruction: EvenCoolerEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
-          "Program EvenCoolerProgram success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
-          "Program EvenCoolerProgram success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: MintTo",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 compute units",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
-          "Program EvenCoolerProgram success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
-          "Program EvenCoolerProgram success", // Outer instruction #2 ends
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success",
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success"];
+            "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
+            "Program log: Instruction: VeryCoolEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program VeryCoolProgram consumed 42417 of 700000 compute units",
+            "Program VeryCoolProgram success", // Outer instruction #1 ends
+            "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
+            "Program log: Instruction: EvenCoolerEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
+            "Program EvenCoolerProgram success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
+            "Program EvenCoolerProgram success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: MintTo",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 compute units",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
+            "Program EvenCoolerProgram success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
+            "Program EvenCoolerProgram success", // Outer instruction #2 ends
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success"];
 
         // Converting to Vec<String> as expected in `RpcLogsResponse`
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
@@ -866,6 +731,239 @@ mod tests {
         )
         .unwrap();
 
+        Ok(())
+    }
+
+    #[derive(Debug, Clone, Copy,PartialEq,Hash,Eq)]
+    #[event]
+    pub struct CreatePoolEvent {
+        pub timestamp: i64,
+        pub index: u16,
+        pub creator: Pubkey,
+        pub base_mint: Pubkey,
+        pub quote_mint: Pubkey,
+        pub base_mint_decimals: u8,
+        pub quote_mint_decimals: u8,
+        pub base_amount_in: u64,
+        pub quote_amount_in: u64,
+        pub pool_base_amount: u64,
+        pub pool_quote_amount: u64,
+        pub minimum_liquidity: u64,
+        pub initial_liquidity: u64,
+        pub lp_token_amount_out: u64,
+        pub pool_bump: u8,
+        pub pool: Pubkey,
+        pub lp_mint: Pubkey,
+        pub user_base_token_account: Pubkey,
+        pub user_quote_token_account: Pubkey,
+    }
+    #[test]
+    fn test_parse_inner_ix_logs() -> Result<()> {
+        //inner ix event from tx
+        // https://solscan.io/tx/2Lb8zwsUj8WDFv2fbezctzXFY6yPacV7ByRThEt9f3n6LCXmWz6w5Jf68xTsXXUEP3ZjdYgVYavacrLzqKim9e8X
+        let logs = ["Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]",
+            "Program log: Instruction: Migrate",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+            "Program log: CreateIdempotent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: GetAccountDataSize",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 345147 compute units",
+            "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program log: Initialize the associated token account",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeImmutableOwner",
+            "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 338560 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeAccount3",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4188 of 334676 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 22127 of 352277 compute units",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+            "Program log: CreateIdempotent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: GetAccountDataSize",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 319814 compute units",
+            "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program log: Initialize the associated token account",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeImmutableOwner",
+            "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 313227 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeAccount3",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3158 of 309343 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 21097 of 326944 compute units",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+            "Program log: CreateIdempotent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: GetAccountDataSize",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 297110 compute units",
+            "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program log: Initialize the associated token account",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeImmutableOwner",
+            "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 290523 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeAccount3",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4188 of 286641 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20526 of 302662 compute units",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+            "Program log: CreateIdempotent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: GetAccountDataSize",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 270398 compute units",
+            "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program log: Initialize the associated token account",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeImmutableOwner",
+            "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 263811 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: InitializeAccount3",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3158 of 259929 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 22496 of 278950 compute units",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 254068 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: SyncNative",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3225 of 246509 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA invoke [2]",
+            "Program log: Instruction: CreatePool",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program 11111111111111111111111111111111 invoke [3]",
+            "Program 11111111111111111111111111111111 success",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]",
+            "Program log: Instruction: InitializeMint2",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1338 of 203412 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [3]",
+            "Program log: Create",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [4]",
+            "Program log: Instruction: GetAccountDataSize",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 928 of 190492 compute units",
+            "Program return: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb qgAAAAAAAAA=",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program 11111111111111111111111111111111 invoke [4]",
+            "Program 11111111111111111111111111111111 success",
+            "Program log: Initialize the associated token account",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [4]",
+            "Program log: Instruction: InitializeImmutableOwner",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 487 of 184634 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [4]",
+            "Program log: Instruction: InitializeAccount3",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1440 of 181760 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 15764 of 195801 compute units",
+            "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6147 of 166806 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6238 of 158007 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]",
+            "Program log: Instruction: MintTo",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 970 of 142909 compute units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            "Program data: sTEM0qB2p3RSntxnAAAAAAAAmACaj1MD2GuzLjz+67fyyiLGJpFHKoiUZc1guT+CG4RfFNX/ACDLVgAVglJMS/WLSd/u1+cpgYApTDIM11XsUQabiFf+q4GE+2h/Y0YYwDXaxDncGus7VZig8AAAAAABBgkACAGpLLwAABD20ckTAAAAAAgBqSy8AAAQ9tHJEwAAAGQAAAAAAAAA7EJrWdADAACIQmtZ0AMAAP8bYPlQP69+L0b39huoK7Dl/4Jp90ASP2xSjejhzvHKlCGcyavp9KXNuVK9T/1Xqc0IlklBa1/JQ6dnTiBvYkOp8mtO8sLtoj8XyWTieiFdT+U7fvmzJEGhCFICY8Ssyp2LAkik+2ylBgAaVFsHYXGIJTWC57PemGOYgyTlfcxmzA==",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA invoke [3]",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA consumed 2004 of 136197 compute units",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA success",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA consumed 100167 of 233181 compute units",
+            "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: CloseAccount",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3015 of 130209 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: CloseAccount",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3014 of 124762 compute units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]",
+            "Program log: Instruction: Burn",
+            "Log truncated",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success"];
+
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
+
+        let vec = parse_logs_response::<CreatePoolEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+        assert_eq!(
+            vec[0],
+            CreatePoolEvent {
+                timestamp: 1742511698,
+                index: 0,
+                creator: Pubkey::from_str_const("BEMWEX7bu1dpkehotbwY4e3dhAqkRy4Pprnoz7HfR8iX"),
+                base_mint: Pubkey::from_str_const("7QAACosnnVtUg9xShX71i1DiceeN67sVVbRVgyAEQ5UU"),
+                quote_mint: Pubkey::from_str_const("So11111111111111111111111111111111111111112"),
+                base_mint_decimals: 6,
+                quote_mint_decimals: 9,
+                base_amount_in: 206900000000000,
+                quote_amount_in: 84990359056,
+                pool_base_amount: 206900000000000,
+                pool_quote_amount: 84990359056,
+                minimum_liquidity: 100,
+                initial_liquidity: 4193388282604,
+                lp_token_amount_out: 4193388282504,
+                pool_bump: 255,
+                pool: Pubkey::from_str_const("2qsmn7ZxRrXFHpQgXyzBLj5R1dWifX49rRp18z1GYJ3u"),
+                lp_mint: Pubkey::from_str_const("3GD7qjAFHpg3eLzdQVzECwuFhL3h53PoYWbqSKW37a4g"),
+                user_base_token_account: Pubkey::from_str_const(
+                    "HKJZtCZ2QczLTJge8Pwdb9u5xQHeTqeXD1mGsnckhg1J"
+                ),
+                user_quote_token_account: Pubkey::from_str_const(
+                    "AMdh1NHz2AQyhG95n3dGEF1fsWFpk2DcGxnLtMZrqmsy"
+                )
+            }
+        );
         Ok(())
     }
 }
