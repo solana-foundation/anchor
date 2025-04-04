@@ -115,8 +115,8 @@ now builds the IDL with `my-feature` enabled.
 If you make a change to your program, but the API of the program stays the same,
 building the IDL is pointless and takes additional time.
 
-Similar to [`--no-idl` flag on builds](./0.30.0#no-idl-flag-on-builds), now you
-can use:
+Similar to [`--no-idl` flag on builds](./0-30-0#--no-idl-flag-on-builds), now
+you can use:
 
 ```
 anchor test --no-idl
@@ -282,7 +282,7 @@ means you can't have any other discriminators that start with `1`, e.g.
 `[1, 2 , 3, 4]`, as it would not be unique.
 
 This change also enables using non-Anchor programs with both Rust (via
-[`declare_program!`](./0.30.0#dependency-free-program-declaration)) and in the
+[`declare_program!`](./0-30-0#dependency-free-program-declaration)) and in the
 TS client.
 
 ### `Discriminator` trait
