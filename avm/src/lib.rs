@@ -251,7 +251,7 @@ pub fn install_version(
         let target = core::str::from_utf8(&output.stdout)?
             .lines()
             .find(|line| line.starts_with("host:"))
-            .and_then(|line| line.split(':').last())
+            .and_then(|line| line.split(':').next_back())
             .ok_or_else(|| anyhow!("`host` not found from `rustc -vV` output"))?
             .trim();
         let ext = if cfg!(target_os = "windows") {

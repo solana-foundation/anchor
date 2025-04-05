@@ -59,9 +59,9 @@ use std::ops::Deref;
 /// The required constraints are as follows:
 ///
 /// - `program` is the account of the program itself.
-///    Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
-///    Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
-///    will be `None` if it's not).
+///   Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
+///   Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
+///   will be `None` if it's not).
 /// - `program_data`'s constraint checks that its upgrade authority is the `authority` account.
 /// - Finally, `authority` needs to sign the transaction.
 ///

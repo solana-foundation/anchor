@@ -99,7 +99,7 @@ fn parse_lock_file(path: impl AsRef<Path>) -> Result<Vec<(String, String)>> {
             let get_value = |key: &str| -> String {
                 pkg.lines()
                     .find(|line| line.starts_with(key))
-                    .expect(&format!("`{key}` line not found"))
+                    .unwrap_or_else(|| panic!("`{key}` line not found"))
                     .split('"')
                     .nth(1)
                     .unwrap()
