@@ -218,10 +218,10 @@ export class ProgramError extends Error {
     let unparsedErrorCode: string;
     if (errString.includes("custom program error:")) {
       let components = errString.split("custom program error: ");
-      if (components.length !== 2) {
-        return null;
-      } else {
+      if (components.length > 2) {
         unparsedErrorCode = components[1];
+      } else {
+        return null;
       }
     } else {
       const matches = errString.match(/"Custom":([0-9]+)}/g);
