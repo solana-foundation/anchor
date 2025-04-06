@@ -183,6 +183,9 @@ pub enum ErrorCode {
     /// 2042 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
+    /// 2043 - An immutable owner extension constraint was violated
+    #[msg("An immutable owner extension constraint was violated")]
+    ConstraintTokenAccountImmutableOwnerExtension,
 
     // Require
     /// 2500 - A require expression was violated
