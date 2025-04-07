@@ -58,9 +58,9 @@ pub struct CreateMintAccount<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::token_program = token_program,
-        associated_token::mint = mint,
-        associated_token::authority = receiver,
+        token::token_program = token_program,
+        token::mint = mint,
+        token::authority = receiver,
     )]
     pub mint_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
@@ -187,10 +187,30 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::permanent_delegate::delegate = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CheckTokenAccountExtensionConstraints<'info> {
+    pub authority: Signer<'info>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         token::mint = mint,
         token::authority = authority,
         extensions::immutable_owner,
     )]
     pub mint_immutable_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CheckMissingTokenAccountExtensionConstraints<'info> {
+    pub authority: Signer<'info>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        token::mint = mint,
+        token::authority = authority,
+        extensions::immutable_owner,
+    )]
+    pub mint_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 }
