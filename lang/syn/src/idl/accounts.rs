@@ -282,9 +282,10 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
 ///
 /// Seeds must be of one of the following forms:
 ///
-/// - Constant
+/// - Constant (string literal, integer literal)
 /// - Instruction argument
 /// - Account key or field
+/// - Signer
 fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream> {
     let idl = get_idl_module_path();
     let args = accounts.instruction_args().unwrap_or_default();
@@ -323,23 +324,26 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                         }
                     )
                 })
-            } else if seed_path.name.contains('"') {
-                let seed = seed_path.name.trim_start_matches("b\"").trim_matches('"');
-                Ok(quote! {
-                    #idl::IdlSeed::Const(
-                        #idl::IdlSeedConst {
-                            value: #seed.into(),
-                        }
-                    )
-                })
             } else {
-                Ok(quote! {
-                    #idl::IdlSeed::Const(
-                        #idl::IdlSeedConst {
-                            value: #seed.into(),
-                        }
-                    )
-                })
+                // Handle string literals without requiring .as_bytes()
+                if seed_path.name.starts_with('"') {
+                    let seed = seed_path.name.trim_matches('"');
+                    Ok(quote! {
+                        #idl::IdlSeed::Const(
+                            #idl::IdlSeedConst {
+                                value: #seed.into(),
+                            }
+                        )
+                    })
+                } else {
+                    Ok(quote! {
+                        #idl::IdlSeed::Const(
+                            #idl::IdlSeedConst {
+                                value: #seed.into(),
+                            }
+                        )
+                    })
+                }
             }
         }
         // Support call expressions that don't have any arguments e.g. `System::id()`
@@ -362,13 +366,34 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                     }
                 }
                 Some(ident) if accounts.field_names().contains(&ident.to_string()) => {
-                    quote! {
-                        #idl::IdlSeed::Account(
-                            #idl::IdlSeedAccount {
-                                path: stringify!(#ident).into(),
-                                account: None,
-                            }
-                        )
+                    // Check if the field is a Signer
+                    let is_signer = accounts
+                        .fields
+                        .iter()
+                        .find(|field| *field.ident() == ident.to_string())
+                        .map(|field| match field {
+                            AccountField::Field(f) => matches!(f.ty, Ty::Signer),
+                            AccountField::CompositeField(_) => false,
+                        })
+                        .unwrap_or(false);
+
+                    if is_signer {
+                        quote! {
+                            #idl::IdlSeed::Signer(
+                                #idl::IdlSeedSigner {
+                                    path: stringify!(#ident).into(),
+                                }
+                            )
+                        }
+                    } else {
+                        quote! {
+                            #idl::IdlSeed::Account(
+                                #idl::IdlSeedAccount {
+                                    path: stringify!(#ident).into(),
+                                    account: None,
+                                }
+                            )
+                        }
                     }
                 }
                 _ => quote! {
@@ -381,13 +406,29 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
             };
             Ok(seed)
         }
-        syn::Expr::Lit(_) => Ok(quote! {
-            #idl::IdlSeed::Const(
-                #idl::IdlSeedConst {
-                    value: #seed.into(),
-                }
-            )
-        }),
+        syn::Expr::Lit(lit) => match &lit.lit {
+            syn::Lit::Str(s) => Ok(quote! {
+                #idl::IdlSeed::Const(
+                    #idl::IdlSeedConst {
+                        value: #s.value().into(),
+                    }
+                )
+            }),
+            syn::Lit::Int(i) => Ok(quote! {
+                #idl::IdlSeed::Int(
+                    #idl::IdlSeedInt {
+                        value: #i,
+                    }
+                )
+            }),
+            _ => Ok(quote! {
+                #idl::IdlSeed::Const(
+                    #idl::IdlSeedConst {
+                        value: #lit.into(),
+                    }
+                )
+            }),
+        },
         syn::Expr::Reference(rf) => parse_seed(&rf.expr, accounts),
         _ => Err(anyhow!("Unexpected seed: {seed:?}")),
     }

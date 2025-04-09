@@ -8,16 +8,16 @@ use anchor_spl::token_interface::{Mint as MintInterface, TokenAccount as TokenAc
 pub struct TestTokenSeedsInit<'info> {
     #[account(
         init,
-        seeds = [b"my-mint-seed".as_ref()],
+        seeds = [b"my-mint-seed"],
         bump,
         payer = authority,
         mint::decimals = 6,
         mint::authority = authority,
     )]
-    pub mint: Option<Account<'info, Mint>>,
+    pub mint: Account<'info, Mint>,
     #[account(
         init,
-        seeds = [b"my-token-seed".as_ref()],
+        seeds = [b"my-token-seed"],
         bump,
         payer = authority,
         token::mint = mint,
@@ -96,7 +96,7 @@ pub struct TestInstructionConstraint<'info> {
 pub struct TestPdaInit<'info> {
     #[account(
         init,
-        seeds = [b"my-seed", domain.as_bytes(), foo.as_ref().unwrap().key.as_ref(), &seed],
+        seeds = [b"my-seed", domain.as_ref(), foo.as_ref().unwrap().key.as_ref(), &seed],
         bump,
         payer = my_payer,
         space = DataU16::LEN + 8
@@ -338,7 +338,7 @@ pub struct TestInitIfNeededChecksOwner<'info> {
 #[derive(Accounts)]
 #[instruction(seed_data: String)]
 pub struct TestInitIfNeededChecksSeeds<'info> {
-    #[account(init_if_needed, payer = payer, space = 100, seeds = [seed_data.as_bytes()], bump)]
+    #[account(init_if_needed, payer = payer, space = 100, seeds = [seed_data.as_ref()], bump)]
     /// CHECK:
     pub data: Option<UncheckedAccount<'info>>,
     #[account(mut)]
