@@ -158,6 +158,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Upgrade SPL deps to latest ([#3346](https://github.com/coral-xyz/anchor/pull/3346)).
 - cli: Upgrade `typescript` version of templates to v5 ([#3480](https://github.com/coral-xyz/anchor/pull/3480)).
 - ts: Remove `snake-case` dependency ([#3507](https://github.com/coral-xyz/anchor/pull/3507)).
+- client: Remove unused `Result` return types to simplify certain functions ([#3563](https://github.com/coral-xyz/anchor/pull/3563)).
 
 ## [0.30.1] - 2024-06-20
 
