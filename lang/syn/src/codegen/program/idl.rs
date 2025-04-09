@@ -1,6 +1,8 @@
 use quote::quote;
 
-pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
+pub fn idl_accounts_and_functions(
+    program_struct_ident: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     quote! {
         use anchor_lang::idl::ERASED_AUTHORITY;
 
@@ -50,8 +52,11 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             // The system program.
             pub system_program: Program<'info, System>,
             // The program whose state is being constructed.
-            #[account(executable)]
-            pub program: AccountInfo<'info>,
+            #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+            pub program: Program<'info, program::#program_struct_ident>,
+            // Program's data account necessary to check the upgrade authority.
+            #[account(constraint = program_data.upgrade_authority_address == Some(from.key()))]
+            pub program_data: Account<'info, ProgramData>,
         }
 
         // Accounts for Idl instructions.
