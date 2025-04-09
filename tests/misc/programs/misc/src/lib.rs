@@ -103,13 +103,6 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> Result<()> {
-        let mut acc = ctx.accounts.my_pda.load_init()?;
-        acc.data = 9;
-        acc.bump = ctx.bumps.my_pda;
-        Ok(())
-    }
-
     pub fn test_pda_mut_zero_copy(ctx: Context<TestPdaMutZeroCopy>) -> Result<()> {
         let mut acc = ctx.accounts.my_pda.load_mut()?;
         acc.data = 1234;
@@ -134,7 +127,7 @@ pub mod misc {
     }
 
     pub fn test_init_zero_copy(ctx: Context<TestInitZeroCopy>) -> Result<()> {
-        let mut data = ctx.accounts.data.load_init()?;
+        let mut data = ctx.accounts.data.load_mut()?;
         data.data = 10;
         data.bump = 2;
         Ok(())

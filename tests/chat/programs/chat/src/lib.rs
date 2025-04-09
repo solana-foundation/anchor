@@ -18,7 +18,7 @@ pub mod chat {
         let given_name = name.as_bytes();
         let mut name = [0u8; 280];
         name[..given_name.len()].copy_from_slice(given_name);
-        let mut chat = ctx.accounts.chat_room.load_init()?;
+        let mut chat = ctx.accounts.chat_room.load_mut()?;
         chat.name = name;
         Ok(())
     }
