@@ -101,5 +101,9 @@ pub struct Initialize<'info> {
 A few important things to know:
 
 - Don't forget the discriminator when defining `space`
-- The `max_len` length represents the length of the structure, not the total
-  length. (ie: the `max_len` of a Vec\<u32\> will be `max_len` \* 4)
+- The `max_len` attribute specifies the maximum number of elements in a Vec, not the total size in bytes. 
+  For example, if you specify `#[max_len(10)]` for a `Vec<u32>`, it means:
+  - Maximum 10 elements
+  - Each element (u32) takes 4 bytes
+  - The Vec itself has a 4-byte length prefix
+  - Total space = 4 + (10 * 4) = 44 bytes
