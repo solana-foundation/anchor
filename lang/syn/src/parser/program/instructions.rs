@@ -129,7 +129,9 @@ pub fn parse_return(method: &syn::ItemFn) -> ParseResult<IxReturn> {
             // Assume unit return by default
             let default_generic_arg = syn::GenericArgument::Type(syn::parse_str("()").unwrap());
             let generic_args = match &ty.path.segments.last().unwrap().arguments {
-                syn::PathArguments::AngleBracketed(params) => params.args.iter().last().unwrap(),
+                syn::PathArguments::AngleBracketed(params) => {
+                    params.args.iter().next_back().unwrap()
+                }
                 _ => &default_generic_arg,
             };
             let ty = match generic_args {
