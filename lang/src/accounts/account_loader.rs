@@ -23,7 +23,7 @@ use std::ops::DerefMut;
 /// for example, the [`Account`](crate::accounts::account::Account). Namely,
 /// one must call
 /// - `load_init` after initializing an account (this will ignore the missing
-///    account discriminator that gets added only after the user's instruction code)
+///   account discriminator that gets added only after the user's instruction code)
 /// - `load` when the account is not mutable
 /// - `load_mut` when the account is mutable
 ///
