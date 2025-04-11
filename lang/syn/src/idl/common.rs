@@ -13,7 +13,7 @@ pub fn find_path(name: &str, path: impl AsRef<Path>) -> Result<PathBuf> {
         }
     }
 
-    Err(anyhow!("Path ({path:?}) not found"))
+    Err(anyhow!("Path ({:?}) not found", path))
 }
 
 pub fn get_no_docs() -> bool {
