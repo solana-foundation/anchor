@@ -873,9 +873,8 @@ mod tests {
     fn test_parse_logs_response_fake_pop() -> Result<()> {
         let logs = [
             "Program fake111111111111111111111111111111111111112 invoke [1]",
-            "Program log: Program log: PWNED!!! success",
-            "Program log: Program log: PWNED!!! success",
-            "Program log: Program log: PWNED!!! success",
+            "Program log: i logged success",
+            "Program log: i logged success",
             "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
             "Program fake111111111111111111111111111111111111112 success"
           ];
