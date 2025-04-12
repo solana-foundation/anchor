@@ -868,4 +868,38 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_parse_logs_response_fake_pop() -> Result<()> {
+        let logs = [
+            "Program fake111111111111111111111111111111111111112 invoke [1]",
+            "Program log: Program log: PWNED!!! success",
+            "Program log: Program log: PWNED!!! success",
+            "Program log: Program log: PWNED!!! success",
+            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
+            "Program fake111111111111111111111111111111111111112 success"
+          ];
+
+        // Converting to Vec<String> as expected in `RpcLogsResponse`
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+
+        // No events returned here. Just ensuring that the function doesn't panic
+        // due an incorrectly emptied stack.
+        parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        Ok(())
+    }
 }
