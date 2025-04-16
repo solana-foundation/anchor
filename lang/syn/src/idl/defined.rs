@@ -495,13 +495,16 @@ pub fn gen_idl_type(
                 use super::{common::find_path, external::get_external_type};
                 use crate::parser::context::CrateContext;
                 use quote::ToTokens;
+
                 if let Some(source_path) = proc_macro2::Span::call_site().local_file() {
-                    if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
+                    if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse)
+                    {
                         let name = path.path.segments.last().unwrap().ident.to_string();
                         let alias = ctx.type_aliases().find(|ty| ty.ident == name);
                         if let Some(alias) = alias {
                             if let Some(segment) = path.path.segments.last() {
-                                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+                                {
                                     let inners = args
                                         .args
                                         .iter()
@@ -511,7 +514,9 @@ pub fn gen_idl_type(
                                                     inner_ty.path.to_token_stream().to_string()
                                                 }
                                                 _ => {
-                                                    unimplemented!("Inner type not implemented: {ty:?}")
+                                                    unimplemented!(
+                                                        "Inner type not implemented: {ty:?}"
+                                                    )
                                                 }
                                             },
                                             syn::GenericArgument::Const(c) => {
@@ -522,7 +527,9 @@ pub fn gen_idl_type(
                                         .collect::<Vec<_>>();
 
                                     let outer = match &*alias.ty {
-                                        syn::Type::Path(outer_ty) => outer_ty.path.to_token_stream(),
+                                        syn::Type::Path(outer_ty) => {
+                                            outer_ty.path.to_token_stream()
+                                        }
                                         syn::Type::Array(outer_ty) => outer_ty.to_token_stream(),
                                         _ => unimplemented!("Type not implemented: {:?}", alias.ty),
                                     }
@@ -533,8 +540,12 @@ pub fn gen_idl_type(
                                         .params
                                         .iter()
                                         .map(|param| match param {
-                                            syn::GenericParam::Const(param) => param.ident.to_string(),
-                                            syn::GenericParam::Type(param) => param.ident.to_string(),
+                                            syn::GenericParam::Const(param) => {
+                                                param.ident.to_string()
+                                            }
+                                            syn::GenericParam::Type(param) => {
+                                                param.ident.to_string()
+                                            }
                                             _ => panic!("Lifetime parameters are not allowed"),
                                         })
                                         .enumerate()
