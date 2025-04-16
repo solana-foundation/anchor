@@ -495,80 +495,80 @@ pub fn gen_idl_type(
                 use super::{common::find_path, external::get_external_type};
                 use crate::parser::context::CrateContext;
                 use quote::ToTokens;
-
-                let source_path = proc_macro2::Span::call_site().file();
-                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
-                    let name = path.path.segments.last().unwrap().ident.to_string();
-                    let alias = ctx.type_aliases().find(|ty| ty.ident == name);
-                    if let Some(alias) = alias {
-                        if let Some(segment) = path.path.segments.last() {
-                            if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                                let inners = args
-                                    .args
-                                    .iter()
-                                    .map(|arg| match arg {
-                                        syn::GenericArgument::Type(ty) => match ty {
-                                            syn::Type::Path(inner_ty) => {
-                                                inner_ty.path.to_token_stream().to_string()
+                if let Some(source_path) = proc_macro2::Span::call_site().local_file() {
+                    if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
+                        let name = path.path.segments.last().unwrap().ident.to_string();
+                        let alias = ctx.type_aliases().find(|ty| ty.ident == name);
+                        if let Some(alias) = alias {
+                            if let Some(segment) = path.path.segments.last() {
+                                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                                    let inners = args
+                                        .args
+                                        .iter()
+                                        .map(|arg| match arg {
+                                            syn::GenericArgument::Type(ty) => match ty {
+                                                syn::Type::Path(inner_ty) => {
+                                                    inner_ty.path.to_token_stream().to_string()
+                                                }
+                                                _ => {
+                                                    unimplemented!("Inner type not implemented: {ty:?}")
+                                                }
+                                            },
+                                            syn::GenericArgument::Const(c) => {
+                                                c.to_token_stream().to_string()
                                             }
-                                            _ => {
-                                                unimplemented!("Inner type not implemented: {ty:?}")
-                                            }
-                                        },
-                                        syn::GenericArgument::Const(c) => {
-                                            c.to_token_stream().to_string()
-                                        }
-                                        _ => unimplemented!("Arg not implemented: {arg:?}"),
-                                    })
-                                    .collect::<Vec<_>>();
+                                            _ => unimplemented!("Arg not implemented: {arg:?}"),
+                                        })
+                                        .collect::<Vec<_>>();
 
-                                let outer = match &*alias.ty {
-                                    syn::Type::Path(outer_ty) => outer_ty.path.to_token_stream(),
-                                    syn::Type::Array(outer_ty) => outer_ty.to_token_stream(),
-                                    _ => unimplemented!("Type not implemented: {:?}", alias.ty),
-                                }
-                                .to_string();
+                                    let outer = match &*alias.ty {
+                                        syn::Type::Path(outer_ty) => outer_ty.path.to_token_stream(),
+                                        syn::Type::Array(outer_ty) => outer_ty.to_token_stream(),
+                                        _ => unimplemented!("Type not implemented: {:?}", alias.ty),
+                                    }
+                                    .to_string();
 
-                                let resolved_alias = alias
-                                    .generics
-                                    .params
-                                    .iter()
-                                    .map(|param| match param {
-                                        syn::GenericParam::Const(param) => param.ident.to_string(),
-                                        syn::GenericParam::Type(param) => param.ident.to_string(),
-                                        _ => panic!("Lifetime parameters are not allowed"),
-                                    })
-                                    .enumerate()
-                                    .fold(outer, |acc, (i, cur)| {
-                                        let inner = &inners[i];
-                                        // The spacing of the `outer` variable can differ between
-                                        // versions, e.g. `[T; N]` and `[T ; N]`
-                                        acc.replace(&format!(" {cur} "), &format!(" {inner} "))
-                                            .replace(&format!(" {cur},"), &format!(" {inner},"))
-                                            .replace(&format!("[{cur} "), &format!("[{inner} "))
-                                            .replace(&format!("[{cur};"), &format!("[{inner};"))
-                                            .replace(&format!(" {cur}]"), &format!(" {inner}]"))
-                                    });
-                                if let Ok(ty) = syn::parse_str(&resolved_alias) {
-                                    return gen_idl_type(&ty, generic_params);
+                                    let resolved_alias = alias
+                                        .generics
+                                        .params
+                                        .iter()
+                                        .map(|param| match param {
+                                            syn::GenericParam::Const(param) => param.ident.to_string(),
+                                            syn::GenericParam::Type(param) => param.ident.to_string(),
+                                            _ => panic!("Lifetime parameters are not allowed"),
+                                        })
+                                        .enumerate()
+                                        .fold(outer, |acc, (i, cur)| {
+                                            let inner = &inners[i];
+                                            // The spacing of the `outer` variable can differ between
+                                            // versions, e.g. `[T; N]` and `[T ; N]`
+                                            acc.replace(&format!(" {cur} "), &format!(" {inner} "))
+                                                .replace(&format!(" {cur},"), &format!(" {inner},"))
+                                                .replace(&format!("[{cur} "), &format!("[{inner} "))
+                                                .replace(&format!("[{cur};"), &format!("[{inner};"))
+                                                .replace(&format!(" {cur}]"), &format!(" {inner}]"))
+                                        });
+                                    if let Ok(ty) = syn::parse_str(&resolved_alias) {
+                                        return gen_idl_type(&ty, generic_params);
+                                    }
                                 }
+                            };
+
+                            // Non-generic type alias e.g. `type UnixTimestamp = i64`
+                            return gen_idl_type(&*alias.ty, generic_params);
+                        }
+
+                        // Handle external types
+                        let is_external = ctx
+                            .structs()
+                            .map(|s| s.ident.to_string())
+                            .chain(ctx.enums().map(|e| e.ident.to_string()))
+                            .find(|defined| defined == &name)
+                            .is_none();
+                        if is_external {
+                            if let Ok(Some(ty)) = get_external_type(&name, source_path) {
+                                return gen_idl_type(&ty, generic_params);
                             }
-                        };
-
-                        // Non-generic type alias e.g. `type UnixTimestamp = i64`
-                        return gen_idl_type(&*alias.ty, generic_params);
-                    }
-
-                    // Handle external types
-                    let is_external = ctx
-                        .structs()
-                        .map(|s| s.ident.to_string())
-                        .chain(ctx.enums().map(|e| e.ident.to_string()))
-                        .find(|defined| defined == &name)
-                        .is_none();
-                    if is_external {
-                        if let Ok(Some(ty)) = get_external_type(&name, source_path) {
-                            return gen_idl_type(&ty, generic_params);
                         }
                     }
                 }
