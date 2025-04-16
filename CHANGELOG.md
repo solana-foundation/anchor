@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- idl: Update `proc-macro2` usage for latest nightly ([#3663](https://github.com/solana-foundation/anchor/pull/3663))
 - cli, docker: Replace `backpackapp/build` Docker image with `solanafoundation/anchor` ([#3619](https://github.com/coral-xyz/anchor/pull/3619)).
 
 ### Breaking
