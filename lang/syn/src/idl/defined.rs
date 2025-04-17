@@ -498,7 +498,8 @@ pub fn gen_idl_type(
 
                 let source_path = match proc_macro2::Span::call_site().local_file() {
                     Some(source_path) => source_path,
-                    None => return Err(anyhow!("No source path found")),
+                    // If no path was found, just return an empty path and let the find_path function handle it
+                    None => std::path::PathBuf::new(),
                 };
 
                 if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
