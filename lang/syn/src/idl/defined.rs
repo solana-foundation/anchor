@@ -497,8 +497,10 @@ pub fn gen_idl_type(
                 use quote::ToTokens;
 
                 // If no path was found, just return an empty path and let the find_path function handle it
-                let source_path = proc_macro2::Span::call_site().local_file().unwrap_or(std::path::PathBuf::new());
-    
+                let source_path = proc_macro2::Span::call_site()
+                    .local_file()
+                    .unwrap_or_default();
+
                 if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
                     let alias = ctx.type_aliases().find(|ty| ty.ident == name);
