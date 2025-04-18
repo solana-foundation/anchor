@@ -21,3 +21,70 @@ exclude = [
     "tests/cfo/deps/openbook-dex",
 ]
 resolver = "2"
+
+[workspace.dependencies]
+anchor-attribute-access-control = { version = "0.31.0", path = "lang/attribute/access-control" }
+anchor-attribute-account = { version = "0.31.0", path = "lang/attribute/account" }
+anchor-attribute-constant = { version = "0.31.0", path = "lang/attribute/constant" }
+anchor-attribute-error = { version = "0.31.0", path = "lang/attribute/error" }
+anchor-attribute-event = { version = "0.31.0", path = "lang/attribute/event" }
+anchor-attribute-program = { version = "0.31.0", path = "lang/attribute/program" }
+anchor-client = { version = "0.31.0", path = "client" }
+anchor-derive-accounts = { version = "0.31.0", path = "lang/derive/accounts" }
+anchor-derive-serde = { version = "0.31.0", path = "lang/derive/serde" }
+anchor-derive-space = { version = "0.31.0", path = "lang/derive/space" }
+anchor-lang = { version = "0.31.0", path = "lang" }
+anchor-lang-idl = { version = "0.1.2", path = "idl" }
+anchor-lang-idl-spec = { version = "0.1.0", path = "idl/spec" }
+anchor-syn = { version = "0.31.0", path = "lang/syn" }
+anyhow = "1.0.32"
+base64 = "0.21"
+bincode = "1.3.3"
+borsh = "0.10.3"
+borsh-derive-internal = "0.10.3"
+bs58 = "0.5"
+bytemuck = "1"
+bytemuck_derive = ">1.0.0, <1.9"
+cargo_toml = "0.19.2"
+cfg-if = "1.0.0"
+chrono = "0.4.19"
+clap = "4.5.17"
+clap_complete = "4.5.26"
+dirs = "4.0.0"
+flate2 = "1.0.19"
+futures = "0.3"
+mpl-token-metadata = "5"
+pathdiff = "0.2.0"
+portpicker = "0.1.1"
+proc-macro2 = "1"
+quote = "1"
+regex = "1.8.3"
+reqwest = { version = "0.11.9", default-features = false }
+semver = "1.0.4"
+serde = "1.0.136"
+serde_json = "1.0"
+sha2 = "0.10"
+shellexpand = "2.1.0"
+solana-account-decoder = "2"
+solana-cli-config = "2"
+solana-client = "2"
+solana-faucet = "2"
+solana-program = "2"
+solana-sdk = "2"
+solang-parser = "=0.3.3"
+spl-associated-token-account = "6"
+spl-memo = "6"
+spl-pod = "0.5"
+spl-token = "7"
+spl-token-2022 = "6"
+spl-token-group-interface = "0.5"
+spl-token-metadata-interface = "0.6"
+syn = "1.0.60"
+tar = "0.4.35"
+tempfile = "3.3.0"
+thiserror = "1"
+tokio = "1"
+toml = "0.7.6"
+url = "2"
+walkdir = "2.3.2"
+heck = "0.4.0"

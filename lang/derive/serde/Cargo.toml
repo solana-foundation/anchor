@@ -15,8 +15,8 @@ idl-build = ["anchor-syn/idl-build"]
 lazy-account = []
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.31.0" }
-borsh-derive-internal = "0.10.3"
-proc-macro2 = "1"
-syn = { version = "1", features = ["full"] }
-quote = "1"
+anchor-syn = { workspace = true }
+borsh-derive-internal = { workspace = true }
+proc-macro2 = { workspace = true }
+syn = { workspace = true, features = ["full"] }
+quote = { workspace = true }
