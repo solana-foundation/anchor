@@ -317,8 +317,7 @@ impl WithPath<Config> {
                             .filter_map(|entry| entry.ok())
                             .map(|entry| self.process_single_path(&entry.path()))
                             .collect(),
-                        Err(e) => vec![Err(Error::new(io::Error::new(
-                            io::ErrorKind::Other,
+                        Err(e) => vec![Err(Error::new(io::Error::other(
                             format!("Error reading directory {:?}: {}", dir, e),
                         )))],
                     }
@@ -331,8 +330,7 @@ impl WithPath<Config> {
 
     fn process_single_path(&self, path: &PathBuf) -> Result<PathBuf, Error> {
         path.canonicalize().map_err(|e| {
-            Error::new(io::Error::new(
-                io::ErrorKind::Other,
+            Error::new(io::Error::other(
                 format!("Error canonicalizing path {:?}: {}", path, e),
             ))
         })

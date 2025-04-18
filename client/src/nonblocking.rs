@@ -12,7 +12,7 @@ use solana_sdk::{
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 use tokio::sync::RwLock;
 
-impl<'a> EventUnsubscriber<'a> {
+impl EventUnsubscriber<'_> {
     /// Unsubscribe gracefully.
     pub async fn unsubscribe(self) {
         self.unsubscribe_internal().await
