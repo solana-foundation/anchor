@@ -47,6 +47,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
+use std::thread::sleep;
+use std::time::Duration;
 use tar::Archive;
 
 mod checks;
@@ -2719,9 +2721,9 @@ fn idl_write(
     while offset < idl_data.len() {
         println!("Step {offset}/{} ", idl_data.len());
         // Instruction data.
+        let end = std::cmp::min(offset + MAX_WRITE_SIZE, idl_data.len());
         let data = {
             let start = offset;
-            let end = std::cmp::min(offset + MAX_WRITE_SIZE, idl_data.len());
             serialize_idl_ix(anchor_lang::idl::IdlInstruction::Write {
                 data: idl_data[start..end].to_vec(),
             })?
@@ -2758,7 +2760,23 @@ fn idl_write(
                     if retries == 19 {
                         return Err(anyhow!("Error: {e}. Failed to send transaction."));
                     }
-                    println!("Error: {e}. Retrying transaction.");
+                    // maybe the transaction has been finalized, but we haven't seen it yet
+                    let sleep_time = 16;
+                    println!("Error: {e}, but let's wait for {sleep_time} seconds and see...");
+                    sleep(Duration::from_secs(sleep_time));
+                    let idl_account = get_idl_account(&client, &idl_address)?;
+                    if idl_account.data_len.saturating_sub(1) >= end as u32 {
+                        println!(
+                            "IDL already written for step {}, end bytes: {}",
+                            offset, end
+                        );
+                        break;
+                    } else {
+                        println!(
+                            "Error: {:?}. Retrying transaction (step {}, end {}, data_len {})",
+                            e, offset, end, idl_account.data_len
+                        );
+                    }
                 }
             }
         }
