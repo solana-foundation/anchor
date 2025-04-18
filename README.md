@@ -9,7 +9,7 @@
 
   <p>
     <a href="https://github.com/coral-xyz/anchor/actions"><img alt="Build Status" src="https://github.com/coral-xyz/anchor/actions/workflows/tests.yaml/badge.svg" /></a>
-    <a href="https://github.com/solana-foundation/anchor/releases"><img alt="Release" scc="https://img.shields.io/badge/release-v0.31.0%20-blueviolet.svg" /></a>
+    <a href="https://github.com/solana-foundation/anchor/releases"><img alt="Release" src="https://img.shields.io/badge/release-v0.31.0%20-blueviolet.svg" /></a>
     <a href="https://anchor-lang.com"><img alt="Tutorials" src="https://img.shields.io/badge/docs-tutorials-blueviolet" /></a>
     <a href="https://discord.gg/NHHGSXAnXk"><img alt="Discord Chat" src="https://img.shields.io/discord/889577356681945098?color=blueviolet" /></a>
     <a href="https://opensource.org/licenses/Apache-2.0"><img alt="License" src="https://img.shields.io/github/license/coral-xyz/anchor?color=blueviolet" /></a>
