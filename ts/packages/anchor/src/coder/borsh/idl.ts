@@ -449,24 +449,25 @@ export class IdlCoder {
         const [elTy, len] = type.array;
         const isGenericLen = typeof len === "object";
 
-        const args = IdlCoder.resolveGenericArgs({
-          type: elTy,
-          typeDef,
-          genericArgs,
-          isDefined,
-        });
-        if (args) {
-          // Has generic type, also check for generic length
-          for (const i in typeDef.generics.slice(+index)) {
-            const curIndex = +index + +i;
-            if (
-              isGenericLen &&
-              typeDef.generics[curIndex].name === len.generic
-            ) {
-              args.push(genericArgs[curIndex]);
-            }
-          }
+        const args =
+          IdlCoder.resolveGenericArgs({
+            type: elTy,
+            typeDef,
+            genericArgs,
+            isDefined,
+          }) || [];
 
+        // Check all generics for matching const generic length
+        if (isGenericLen) {
+          const matchingGeneric = typeDef.generics.findIndex(
+            (g) => g.name === len.generic
+          );
+          if (matchingGeneric !== -1) {
+            args.push(genericArgs[matchingGeneric]);
+          }
+        }
+
+        if (args.length > 0) {
           if (!isDefined) return args;
 
           if (args[0].kind === "type" && args[1].kind === "const") {
