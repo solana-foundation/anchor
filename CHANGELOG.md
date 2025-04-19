@@ -18,6 +18,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [0.31.1] - 2025-04-19
 
+This release uses a new docker image found at `solanafoundation/anchor` for the `anchor verify` command. New images will be pushed to this organization in the future.
+
+Releases for anchor will also be published under the `solanafoundation` Github organization from now on.
+
 ### Features
  - ts: Make `Provider` require publicKey instead of wallet in accounts resolver ([#3613](https://github.com/coral-xyz/anchor/pull/3613))
 
