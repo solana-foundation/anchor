@@ -449,12 +449,13 @@ export class IdlCoder {
         const [elTy, len] = type.array;
         const isGenericLen = typeof len === "object";
 
-        const args = IdlCoder.resolveGenericArgs({
-          type: elTy,
-          typeDef,
-          genericArgs,
-          isDefined,
-        }) || [];
+        const args =
+          IdlCoder.resolveGenericArgs({
+            type: elTy,
+            typeDef,
+            genericArgs,
+            isDefined,
+          }) || [];
 
         // Check all generics for matching const generic length
         if (isGenericLen) {
