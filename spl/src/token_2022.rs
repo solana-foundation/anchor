@@ -341,15 +341,10 @@ pub fn set_authority<'info>(
     authority_type: spl_token_2022::instruction::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
-    let mut spl_new_authority: Option<&Pubkey> = None;
-    if new_authority.is_some() {
-        spl_new_authority = new_authority.as_ref()
-    }
-
     let ix = spl_token_2022::instruction::set_authority(
         ctx.program.key,
         ctx.accounts.account_or_mint.key,
-        spl_new_authority,
+        new_authority.as_ref(),
         authority_type,
         ctx.accounts.current_authority.key,
         &[], // TODO: Support multisig signers.
@@ -382,7 +377,10 @@ pub fn get_account_data_size<'info>(
         .and_then(|(key, data)| {
             if key != *ctx.program.key {
                 Err(anchor_lang::solana_program::program_error::ProgramError::IncorrectProgramId)
-            } else {
+            } else if data.len() != 8 {
+                Err(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
+            }
+            else {
                 data.try_into().map(u64::from_le_bytes).map_err(|_| {
                     anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData
                 })
