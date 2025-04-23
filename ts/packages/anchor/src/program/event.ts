@@ -168,7 +168,7 @@ export class EventParser {
   private coder: Coder;
   private programId: PublicKey;
   private static readonly INVOKE_RE =
-    /^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[(\d+)]$/;
+    /^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[(\d+)\]$/;
   private static readonly ROOT_DEPTH = "1";
 
   constructor(programId: PublicKey, coder: Coder) {
