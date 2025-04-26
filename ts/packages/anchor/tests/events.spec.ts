@@ -321,7 +321,7 @@ describe("Events", () => {
       "Program log: i logged success",
       "Program log: i logged success",
       "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
-      "Program fake111111111111111111111111111111111111112 success"
+      "Program fake111111111111111111111111111111111111112 success",
     ];
 
     const idl: Idl = {
@@ -346,7 +346,9 @@ describe("Events", () => {
 
     // Should not find any events due to strict log parsing
     if (Array.from(eventParser.parseLogs(logs)).length > 0) {
-      throw new Error("Should never find logs with malicious injection attempts");
+      throw new Error(
+        "Should never find logs with malicious injection attempts"
+      );
     }
   });
 });

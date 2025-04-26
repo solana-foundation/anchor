@@ -276,8 +276,7 @@ export class EventParser {
   private handleSystemLog(log: string): [string | null, boolean] {
     if (log.startsWith(`Program ${this.programId.toString()} log:`)) {
       return [this.programId.toString(), false];
-    }
-    else if (log.includes("invoke") && !log.endsWith("[1]")) {
+    } else if (log.includes("invoke") && !log.endsWith("[1]")) {
       return ["cpi", false];
     } else {
       let regex = /^Program ([1-9A-HJ-NP-Za-km-z]+) success$/;
