@@ -315,4 +315,40 @@ describe("Events", () => {
       throw new Error("Should never find logs");
     }
   });
+  it("Handles malicious log injection attempts", () => {
+    const logs = [
+      "Program fake111111111111111111111111111111111111112 invoke [1]",
+      "Program log: i logged success",
+      "Program log: i logged success",
+      "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
+      "Program fake111111111111111111111111111111111111112 success",
+    ];
+
+    const idl: Idl = {
+      address: "Test111111111111111111111111111111111111111",
+      metadata: {
+        name: "basic_0",
+        version: "0.0.0",
+        spec: "0.1.0",
+      },
+      instructions: [
+        {
+          name: "initialize",
+          accounts: [],
+          args: [],
+          discriminator: [],
+        },
+      ],
+    };
+    const coder = new BorshCoder(idl);
+    const programId = PublicKey.default;
+    const eventParser = new EventParser(programId, coder);
+
+    // Should not find any events due to strict log parsing
+    if (Array.from(eventParser.parseLogs(logs)).length > 0) {
+      throw new Error(
+        "Should never find logs with malicious injection attempts"
+      );
+    }
+  });
 });
