@@ -2910,7 +2910,7 @@ type SplGovernance = {
     {
       code: 584;
       name: "ProposalIsNotExecutable";
-      msg: "Proposal is not not executable";
+      msg: "Proposal is not executable";
     },
     {
       code: 585;
@@ -5869,7 +5869,7 @@ const IDL: SplGovernance = {
     {
       code: 584,
       name: "ProposalIsNotExecutable",
-      msg: "Proposal is not not executable",
+      msg: "Proposal is not executable",
     },
     {
       code: 585,

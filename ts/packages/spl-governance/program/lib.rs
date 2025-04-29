@@ -1848,8 +1848,8 @@ pub enum GovernanceError {
     #[msg("Invalid proposal options")]
     InvalidProposalOptions,
 
-    /// Proposal is not not executable
-    #[msg("Proposal is not not executable")]
+    /// Proposal is not executable
+    #[msg("Proposal is not executable")]
     ProposalIsNotExecutable,
 
     /// Invalid vote
