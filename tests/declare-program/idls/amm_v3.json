@@ -2679,7 +2679,7 @@
           {
             "name": "negativeTickArrayBitmap",
             "docs": [
-              "Packed initialized tick array state for start_tick_index is negitive"
+              "Packed initialized tick array state for start_tick_index is negative"
             ],
             "type": {
               "array": [
@@ -3430,12 +3430,12 @@
     },
     {
       "code": 6006,
-      "name": "InvaildTickIndex",
+      "name": "InvalidTickIndex",
       "msg": "Tick out of range"
     },
     {
       "code": 6007,
-      "name": "TickInvaildOrder",
+      "name": "TickInvalidOrder",
       "msg": "The lower tick must be below the upper tick"
     },
     {
@@ -3456,12 +3456,12 @@
     {
       "code": 6011,
       "name": "InvalidTickArray",
-      "msg": "Invaild tick array account"
+      "msg": "Invalid tick array account"
     },
     {
       "code": 6012,
       "name": "InvalidTickArrayBoundary",
-      "msg": "Invaild tick array boundary"
+      "msg": "Invalid tick array boundary"
     },
     {
       "code": 6013,
@@ -3485,8 +3485,8 @@
     },
     {
       "code": 6017,
-      "name": "InvaildLiquidity",
-      "msg": "Invaild liquidity when update position"
+      "name": "InvalidLiquidity",
+      "msg": "Invalid liquidity when update position"
     },
     {
       "code": 6018,
@@ -3541,7 +3541,7 @@
     {
       "code": 6028,
       "name": "InvalidFirstTickArrayAccount",
-      "msg": "Invaild first tick array account"
+      "msg": "Invalid first tick array account"
     },
     {
       "code": 6029,
