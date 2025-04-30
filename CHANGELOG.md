@@ -10,9 +10,13 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+- 
+
 ### Features
 
 ### Fixes
+
+- docker: Upgrade `node` to 20.18.0 LTS ([#3179](https://github.com/solana-foundation/anchor/pull/3687)).
 
 ### Breaking
 
