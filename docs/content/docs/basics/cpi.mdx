@@ -280,7 +280,7 @@ When building an instruction in Rust, use the following syntax to specify the
 AccountMeta::new(account1_pubkey, true),           // writable, signer
 AccountMeta::new(account2_pubkey, false),          // writable, not signer
 AccountMeta::new_readonly(account3_pubkey, false), // not writable, not signer
-AccountMeta::new_readonly(account4_pubkey, true),  // writable, signer
+AccountMeta::new_readonly(account4_pubkey, true),  // not writable, signer
 ```
 
 </Tab>
