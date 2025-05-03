@@ -700,7 +700,7 @@ impl TestTemplate {
                 }
             }
             Self::Rust => {
-                // Do not initilize git repo
+                // Do not initialize git repo
                 let exit = std::process::Command::new("cargo")
                     .arg("new")
                     .arg("--vcs")
