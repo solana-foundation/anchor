@@ -11,7 +11,6 @@ This section covers the steps to set up your local environment for Solana
 development.
 
 ## Quick Installation
-
 On Mac and Linux, run this single command to install all dependencies.
 
 ```shell title="Terminal"
@@ -22,6 +21,20 @@ curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev 
   Windows Users: You must first install WSL (see [Install
   Dependencies](#install-dependencies)). Then run the command above in the
   Ubuntu (Linux) terminal.
+</Callout>
+
+<Callout type="warn">
+```
+If you see this timeout error while trying to properly install Anchor, simply close your jobs, and restart your machine.
+
+It should work perfectly.
+
+[INFO] Anchor CLI is already installed. Updating...
+Error: error decoding response body: operation timed out
+
+Caused by:
+    operation timed out
+```
 </Callout>
 
 After installation, you should see output similar to the following:
