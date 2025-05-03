@@ -74,7 +74,7 @@ pub use idl::IdlBuild;
 #[cfg(feature = "interface-instructions")]
 pub use anchor_attribute_program::interface;
 
-pub type Result<T> = std::result::Result<T, error::Error>;
+pub type Result<T, E = error::Error> = std::result::Result<T, E>;
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any
