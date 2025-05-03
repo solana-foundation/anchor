@@ -783,6 +783,8 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionInterestBearingMintRate(Context<ConstraintExtensionInterestBearingMintRate>),
+    ExtensionInterestBearingMintAuthority(Context<ConstraintExtensionAuthority>),
 }
 
 impl Parse for ConstraintToken {
@@ -906,6 +908,11 @@ pub struct ConstraintExtensionAuthority {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintBool {
+    pub enable: Expr,
+}
+
+#[derive(Debug, Clone)]
 pub struct ConstraintExtensionGroupPointerGroupAddress {
     pub group_address: Expr,
 }
@@ -928,6 +935,11 @@ pub struct ConstraintExtensionTokenHookProgramId {
 #[derive(Debug, Clone)]
 pub struct ConstraintExtensionPermanentDelegate {
     pub permanent_delegate: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionInterestBearingMintRate {
+    pub rate: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -965,6 +977,8 @@ pub enum InitKind {
         metadata_pointer_metadata_address: Option<Expr>,
         close_authority: Option<Expr>,
         permanent_delegate: Option<Expr>,
+        interest_bearing_mint_rate: Option<Expr>,
+        interest_bearing_mint_authority: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
     },
