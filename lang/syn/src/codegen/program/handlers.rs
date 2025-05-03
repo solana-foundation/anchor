@@ -10,7 +10,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let program_name = &program.name;
     // A constant token stream that stores the accounts and functions, required to live
     // inside the target program in order to get the program ID.
-    let idl_accounts_and_functions = idl_accounts_and_functions();
+    let idl_accounts_and_functions = idl_accounts_and_functions(&program.struct_name());
     let non_inlined_idl: proc_macro2::TokenStream = {
         quote! {
             // Entry for all IDL related instructions. Use the "no-idl" feature
