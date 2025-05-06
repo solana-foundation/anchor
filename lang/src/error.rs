@@ -183,6 +183,11 @@ pub enum ErrorCode {
     /// 2042 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
+    /// Extension constraints - cont.
+    ///
+    /// 2043 - A non-transferable extension constraint was violated
+    #[msg("A non-transferable extension constraint was violated")]
+    ConstraintMintNonTransferableExtension,
 
     // Require
     /// 2500 - A require expression was violated

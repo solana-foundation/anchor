@@ -834,6 +834,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionNonTransferable(Context<ConstraintExtensionNonTransferable>),
 }
 
 impl Parse for ConstraintToken {
@@ -1075,6 +1076,9 @@ pub struct ConstraintExtensionPermanentDelegate {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintExtensionNonTransferable {}
+
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
     Program {
@@ -1111,6 +1115,7 @@ pub enum InitKind {
         permanent_delegate: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
+        non_transferable: Option<()>,
     },
 }
 
@@ -1229,6 +1234,7 @@ pub struct ConstraintTokenMintGroup {
     pub permanent_delegate: Option<Expr>,
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
+    pub non_transferable: Option<()>,
 }
 
 // Syntax context object for preserving metadata about the inner item.
