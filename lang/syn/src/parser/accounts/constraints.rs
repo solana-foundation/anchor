@@ -257,6 +257,10 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "non_transferable" => ConstraintToken::ExtensionNonTransferable(Context::new(
+                    ident.span(),
+                    ConstraintExtensionNonTransferable {},
+                )),
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -538,6 +542,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_hook_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
     pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
+    pub extension_non_transferable: Option<Context<ConstraintExtensionNonTransferable>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -583,6 +588,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority: None,
             extension_transfer_hook_program_id: None,
             extension_permanent_delegate: None,
+            extension_non_transferable: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -795,6 +801,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority,
             extension_transfer_hook_program_id,
             extension_permanent_delegate,
+            extension_non_transferable,
             bump,
             program_seed,
             realloc,
@@ -894,8 +901,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_authority,
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
+            &extension_non_transferable,
         ) {
             (
+                None,
                 None,
                 None,
                 None,
@@ -955,6 +964,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_hook_program_id: extension_transfer_hook_program_id
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
+                non_transferable: extension_non_transferable
+                    .as_ref()
+                    .map(|_| ()),
             }),
         };
 
@@ -1005,6 +1017,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                         permanent_delegate: extension_permanent_delegate.map(|pd| pd.into_inner().permanent_delegate),
                         transfer_hook_authority: extension_transfer_hook_authority.map(|tha| tha.into_inner().authority),
                         transfer_hook_program_id: extension_transfer_hook_program_id.map(|thpid| thpid.into_inner().program_id),
+                        non_transferable: extension_non_transferable.map(|_| ()),
                     }
                 } else {
                     InitKind::Program {
@@ -1092,6 +1105,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
+            }
+            ConstraintToken::ExtensionNonTransferable(c) => {
+                self.add_extension_non_transferable(c)
             }
         }
     }
@@ -1673,6 +1689,20 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_permanent_delegate.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_non_transferable(
+        &mut self,
+        c: Context<ConstraintExtensionNonTransferable>,
+    ) -> ParseResult<()> {
+        if self.extension_non_transferable.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension non-transferable already provided",
+            ));
+        }
+        self.extension_non_transferable.replace(c);
         Ok(())
     }
 }

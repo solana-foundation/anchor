@@ -735,6 +735,7 @@ fn generate_constraint_init_group(
             permanent_delegate,
             transfer_hook_authority,
             transfer_hook_program_id,
+            non_transferable
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -848,6 +849,10 @@ fn generate_constraint_init_group(
 
             if permanent_delegate.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate});
+            }
+
+            if non_transferable.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable});
             }
 
             let mint_space = if extensions.is_empty() {
@@ -990,6 +995,12 @@ fn generate_constraint_init_group(
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
                                         }), #permanent_delegate.unwrap())?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable => {
+                                        ::anchor_spl::token_interface::non_transferable_mint_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::NonTransferableMintInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }))?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
@@ -1533,6 +1544,18 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let non_transferable_check = match &c.non_transferable {
+        Some(_) => {
+            quote! {
+                let non_transferable = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::non_transferable::NonTransferable>(#account_ref);
+                if non_transferable.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintNonTransferableExtension.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
     quote! {
         {
             #decimal_check
@@ -1549,6 +1572,7 @@ fn generate_constraint_mint(
             #permanent_delegate_check
             #transfer_hook_authority_check
             #transfer_hook_program_id_check
+            #non_transferable_check
         }
     }
 }
