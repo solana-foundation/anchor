@@ -839,6 +839,8 @@ pub enum ConstraintToken {
     ExtensionTransferFeeWithheldAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTransferFeeBasisPoints(Context<ConstraintExtensionTransferFeeBasisPoints>),
     ExtensionTransferFeeMaxFee(Context<ConstraintExtensionTransferFeeMaxFee>),
+    ExtensionInterestBearingRateAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionInterestBearingRate(Context<ConstraintExtensionInterestBearingRate>),
 }
 
 impl Parse for ConstraintToken {
@@ -1093,6 +1095,11 @@ pub struct ConstraintExtensionTransferFeeMaxFee {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintExtensionInterestBearingRate {
+    pub rate: Expr,
+}
+
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
     Program {
@@ -1134,6 +1141,8 @@ pub enum InitKind {
         transfer_fee_withheld_authority: Option<Expr>,
         transfer_fee_basis_points: Option<Expr>,
         transfer_fee_max_fee: Option<Expr>,
+        interest_bearing_authority: Option<Expr>,
+        interest_bearing_rate: Option<Expr>,
     },
 }
 
@@ -1257,6 +1266,8 @@ pub struct ConstraintTokenMintGroup {
     pub transfer_fee_withheld_authority: Option<Expr>,
     pub transfer_fee_basis_points: Option<Expr>,
     pub transfer_fee_max_fee: Option<Expr>,
+    pub interest_bearing_authority: Option<Expr>,
+    pub interest_bearing_rate: Option<Expr>,
 }
 
 // Syntax context object for preserving metadata about the inner item.
