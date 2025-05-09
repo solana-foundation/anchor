@@ -180,6 +180,15 @@ pub enum ErrorCode {
     /// 2040 - A non-transferable extension constraint was violated
     #[msg("A non-transferable extension constraint was violated")]
     ConstraintMintNonTransferableExtension,
+    /// 2041 - A transfer fee extension constraint was violated
+    #[msg("A transfer fee extension constraint was violated")]
+    ConstraintMintTransferFeeExtension,
+    /// 2042 - A transfer fee extension config authority constraint was violated
+    #[msg("A transfer fee extension config authority constraint was violated")]
+    ConstraintMintTransferFeeConfigAuthority,
+    /// 2043 - A transfer fee extension withheld authority constraint was violated
+    #[msg("A transfer fee extension withheld authority constraint was violated")]
+    ConstraintMintTransferFeeWithheldAuthority,
 
     // Require
     /// 2500 - A require expression was violated

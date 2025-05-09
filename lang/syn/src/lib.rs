@@ -784,6 +784,10 @@ pub enum ConstraintToken {
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
     ExtensionNonTransferable(Context<ConstraintExtensionNonTransferable>),
+    ExtensionTransferFeeConfigAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionTransferFeeWithheldAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionTransferFeeBasisPoints(Context<ConstraintExtensionTransferFeeBasisPoints>),
+    ExtensionTransferFeeMaxFee(Context<ConstraintExtensionTransferFeeMaxFee>),
 }
 
 impl Parse for ConstraintToken {
@@ -935,6 +939,16 @@ pub struct ConstraintExtensionPermanentDelegate {
 pub struct ConstraintExtensionNonTransferable {}
 
 #[derive(Debug, Clone)]
+pub struct ConstraintExtensionTransferFeeBasisPoints {
+    pub basis_points: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintExtensionTransferFeeMaxFee {
+    pub max_fee: Expr,
+}
+
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
     Program {
@@ -972,6 +986,10 @@ pub enum InitKind {
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
         non_transferable: Option<()>,
+        transfer_fee_config_authority: Option<Expr>,
+        transfer_fee_withheld_authority: Option<Expr>,
+        transfer_fee_basis_points: Option<Expr>,
+        transfer_fee_max_fee: Option<Expr>,
     },
 }
 
@@ -1091,6 +1109,10 @@ pub struct ConstraintTokenMintGroup {
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
     pub non_transferable: Option<()>,
+    pub transfer_fee_config_authority: Option<Expr>,
+    pub transfer_fee_withheld_authority: Option<Expr>,
+    pub transfer_fee_basis_points: Option<Expr>,
+    pub transfer_fee_max_fee: Option<Expr>,
 }
 
 // Syntaxt context object for preserving metadata about the inner item.

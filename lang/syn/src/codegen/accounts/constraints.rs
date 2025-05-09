@@ -735,7 +735,11 @@ fn generate_constraint_init_group(
             permanent_delegate,
             transfer_hook_authority,
             transfer_hook_program_id,
-            non_transferable
+            non_transferable,
+            transfer_fee_config_authority,
+            transfer_fee_withheld_authority,
+            transfer_fee_basis_points,
+            transfer_fee_max_fee,
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -800,6 +804,26 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let transfer_fee_config_authority_check = match transfer_fee_config_authority {
+                Some(tfca) => check_scope.generate_check(tfca),
+                None => quote! {},
+            };
+
+            let transfer_fee_withheld_authority_check = match transfer_fee_withheld_authority {
+                Some(tfwa) => check_scope.generate_check(tfwa),
+                None => quote! {},
+            };
+
+            let transfer_fee_basis_points_check = match transfer_fee_basis_points {
+                Some(tfbp) => check_scope.generate_check(tfbp),
+                None => quote! {},
+            };
+
+            let transfer_fee_max_fee_check = match transfer_fee_max_fee {
+                Some(tfmf) => check_scope.generate_check(tfmf),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -820,6 +844,10 @@ fn generate_constraint_init_group(
                 #transfer_hook_authority_check
                 #transfer_hook_program_id_check
                 #permanent_delegate_check
+                #transfer_fee_config_authority_check
+                #transfer_fee_withheld_authority_check
+                #transfer_fee_basis_points_check
+                #transfer_fee_max_fee_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
@@ -853,6 +881,11 @@ fn generate_constraint_init_group(
 
             if non_transferable.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable});
+            }
+
+            if transfer_fee_config_authority.is_some() || transfer_fee_withheld_authority.is_some() ||
+               transfer_fee_basis_points.is_some() || transfer_fee_max_fee.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferFeeConfig});
             }
 
             let mint_space = if extensions.is_empty() {
@@ -924,6 +957,26 @@ fn generate_constraint_init_group(
                     quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#thpid.key()) }
                 }
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let transfer_fee_config_authority = match transfer_fee_config_authority {
+                Some(tfca) => quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#tfca.key()) },
+                None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let transfer_fee_withheld_authority = match transfer_fee_withheld_authority {
+                Some(tfwa) => quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#tfwa.key()) },
+                None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let transfer_fee_basis_points = match transfer_fee_basis_points {
+                Some(tfbp) => quote! { Option::<u16>::Some(#tfbp) },
+                None => quote! { Option::<u16>::None },
+            };
+
+            let transfer_fee_max_fee = match transfer_fee_max_fee {
+                Some(tfmf) => quote! { Option::<u64>::Some(#tfmf) },
+                None => quote! { Option::<u64>::None },
             };
 
             let create_account = generate_create_account(
@@ -1001,6 +1054,17 @@ fn generate_constraint_init_group(
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
                                         }))?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferFeeConfig => {
+                                        ::anchor_spl::token_interface::transfer_fee_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::TransferFeeInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }),
+                                        #transfer_fee_config_authority.as_ref(),
+                                        #transfer_fee_withheld_authority.as_ref(),
+                                        #transfer_fee_basis_points.unwrap(),
+                                        #transfer_fee_max_fee.unwrap(),
+                                        )?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
@@ -1556,6 +1620,43 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let transfer_fee_config_authority_check = match &c.transfer_fee_config_authority {
+        Some(transfer_fee_config_authority) => {
+            let transfer_fee_config_authority_optional_check =
+                optional_check_scope.generate_check(transfer_fee_config_authority);
+            quote! {
+                let transfer_fee = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::transfer_fee::TransferFeeConfig>(#account_ref);
+                if transfer_fee.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferFeeExtension.into());
+                }
+                #transfer_fee_config_authority_optional_check
+                if transfer_fee.unwrap().transfer_fee_config_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_fee_config_authority.key()))? {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferFeeConfigAuthority.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
+    let transfer_fee_withheld_authority_check = match &c.transfer_fee_withheld_authority {
+        Some(transfer_fee_withheld_authority) => {
+            let transfer_fee_withheld_authority_optional_check =
+                optional_check_scope.generate_check(transfer_fee_withheld_authority);
+            quote! {
+                let transfer_fee = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::transfer_fee::TransferFeeConfig>(#account_ref);
+                if transfer_fee.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferFeeExtension.into());
+                }
+                #transfer_fee_withheld_authority_optional_check
+                if transfer_fee.unwrap().withdraw_withheld_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_fee_withheld_authority.key()))? {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferFeeWithheldAuthority.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
+
     quote! {
         {
             #decimal_check
@@ -1573,6 +1674,8 @@ fn generate_constraint_mint(
             #transfer_hook_authority_check
             #transfer_hook_program_id_check
             #non_transferable_check
+            #transfer_fee_config_authority_check
+            #transfer_fee_withheld_authority_check
         }
     }
 }
