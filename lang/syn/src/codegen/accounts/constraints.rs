@@ -740,6 +740,8 @@ fn generate_constraint_init_group(
             transfer_fee_withheld_authority,
             transfer_fee_basis_points,
             transfer_fee_max_fee,
+            interest_bearing_authority,
+            interest_bearing_rate,
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -824,6 +826,16 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let interest_bearing_authority_check = match interest_bearing_authority {
+                Some(iba) => check_scope.generate_check(iba),
+                None => quote! {},
+            };
+
+            let interest_bearing_rate_check = match interest_bearing_rate {
+                Some(ibr) => check_scope.generate_check(ibr),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -848,6 +860,8 @@ fn generate_constraint_init_group(
                 #transfer_fee_withheld_authority_check
                 #transfer_fee_basis_points_check
                 #transfer_fee_max_fee_check
+                #interest_bearing_authority_check
+                #interest_bearing_rate_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
@@ -886,6 +900,10 @@ fn generate_constraint_init_group(
             if transfer_fee_config_authority.is_some() || transfer_fee_withheld_authority.is_some() ||
                transfer_fee_basis_points.is_some() || transfer_fee_max_fee.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferFeeConfig});
+            }
+
+            if interest_bearing_authority.is_some() || interest_bearing_rate.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::InterestBearingConfig});
             }
 
             let mint_space = if extensions.is_empty() {
@@ -979,6 +997,16 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<u64>::None },
             };
 
+            let interest_bearing_authority = match interest_bearing_authority {
+                Some(iba) => quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#iba.key()) },
+                None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let interest_bearing_rate = match interest_bearing_rate {
+                Some(ibr) => quote! { Option::<i16>::Some(#ibr) },
+                None => quote! { Option::<i16>::None },
+            };
+
             let create_account = generate_create_account(
                 field,
                 mint_space,
@@ -1064,6 +1092,15 @@ fn generate_constraint_init_group(
                                         #transfer_fee_withheld_authority.as_ref(),
                                         #transfer_fee_basis_points.unwrap(),
                                         #transfer_fee_max_fee.unwrap(),
+                                        )?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::InterestBearingConfig => {
+                                        ::anchor_spl::token_interface::interest_bearing_mint_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::InterestBearingMintInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }),
+                                        #interest_bearing_authority,
+                                        #interest_bearing_rate.unwrap(),
                                         )?;
                                     },
                                     // All extensions specified by the user should be implemented.
@@ -1656,6 +1693,24 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let interest_bearing_authority_check = match &c.interest_bearing_authority {
+        Some(interest_bearing_authority) => {
+            let interest_bearing_authority_optional_check =
+                optional_check_scope.generate_check(interest_bearing_authority);
+            quote! {
+                let interest_bearing = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::interest_bearing_mint::InterestBearingConfig>(#account_ref);
+                if interest_bearing.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingExtension.into());
+                }
+                #interest_bearing_authority_optional_check
+                if interest_bearing.unwrap().rate_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#interest_bearing_authority.key()))? {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingRateAuthority.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
 
     quote! {
         {
@@ -1676,6 +1731,7 @@ fn generate_constraint_mint(
             #non_transferable_check
             #transfer_fee_config_authority_check
             #transfer_fee_withheld_authority_check
+            #interest_bearing_authority_check
         }
     }
 }

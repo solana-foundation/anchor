@@ -300,6 +300,33 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "interest_bearing" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "authority" => ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
+                            span,
+                            ConstraintExtensionAuthority {
+                                authority: stream.parse()?,
+                            },
+                        )),
+                        "rate" => ConstraintToken::ExtensionInterestBearingRate(Context::new(
+                            span,
+                            ConstraintExtensionInterestBearingRate {
+                                rate: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -586,6 +613,8 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_fee_withheld_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_transfer_fee_basis_points: Option<Context<ConstraintExtensionTransferFeeBasisPoints>>,
     pub extension_transfer_fee_max_fee: Option<Context<ConstraintExtensionTransferFeeMaxFee>>,
+    pub extension_interest_bearing_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_interest_bearing_rate: Option<Context<ConstraintExtensionInterestBearingRate>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -636,6 +665,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_fee_withheld_authority: None,
             extension_transfer_fee_basis_points: None,
             extension_transfer_fee_max_fee: None,
+            extension_interest_bearing_authority: None,
+            extension_interest_bearing_rate: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -853,6 +884,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_fee_withheld_authority,
             extension_transfer_fee_basis_points,
             extension_transfer_fee_max_fee,
+            extension_interest_bearing_authority,
+            extension_interest_bearing_rate,
             bump,
             program_seed,
             realloc,
@@ -957,8 +990,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_fee_withheld_authority,
             &extension_transfer_fee_basis_points,
             &extension_transfer_fee_max_fee,
+            &extension_interest_bearing_authority,
+            &extension_interest_bearing_rate,
         ) {
             (
+                None,
+                None,
                 None,
                 None,
                 None,
@@ -1038,6 +1075,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_fee_max_fee: extension_transfer_fee_max_fee
                     .as_ref()
                     .map(|a| a.clone().into_inner().max_fee),
+                interest_bearing_authority: extension_interest_bearing_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                interest_bearing_rate: extension_interest_bearing_rate
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().rate),
             }),
         };
 
@@ -1108,6 +1151,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                             (None, true) => return Err(ParseError::new(
                                 d.span(),
                                 "maximum fee must be provided to initialize a mint with transfer fee extension"
+                            )),
+                            _ => None
+                        },
+                        interest_bearing_authority: extension_interest_bearing_authority.as_ref().map(|iba| iba.clone().into_inner().authority),
+                        interest_bearing_rate: match (&extension_interest_bearing_rate, &extension_interest_bearing_authority) {
+                            (Some(ibr), _) => Some(ibr.clone().into_inner().rate),
+                            (None, Some(_)) => return Err(ParseError::new(
+                                d.span(),
+                                "rate must be provided to initialize a mint with interest bearing extension"
                             )),
                             _ => None
                         },
@@ -1214,6 +1266,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionTransferFeeMaxFee(c) => {
                 self.add_extension_transfer_fee_max_fee(c)
             }
+            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => self.add_extension_interest_bearing_authority(c),
+            ConstraintToken::ExtensionInterestBearingRate(c) => self.add_extension_interest_bearing_rate(c),
         }
     }
 
@@ -1864,6 +1918,34 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_transfer_fee_max_fee.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing authority already provided",
+            ));
+        }
+        self.extension_interest_bearing_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_rate(
+        &mut self,
+        c: Context<ConstraintExtensionInterestBearingRate>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_rate.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing rate already provided",
+            ));
+        }
+        self.extension_interest_bearing_rate.replace(c);
         Ok(())
     }
 

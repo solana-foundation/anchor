@@ -189,6 +189,12 @@ pub enum ErrorCode {
     /// 2043 - A transfer fee extension withheld authority constraint was violated
     #[msg("A transfer fee extension withheld authority constraint was violated")]
     ConstraintMintTransferFeeWithheldAuthority,
+    /// 2044 - An interest bearing extension constraint was violated
+    #[msg("An interest bearing extension constraint was violated")]
+    ConstraintMintInterestBearingExtension,
+    /// 2045 - An interest bearing extension rate authority constraint was violated
+    #[msg("An interest bearing extension rate authority constraint was violated")]
+    ConstraintMintInterestBearingRateAuthority,
 
     // Require
     /// 2500 - A require expression was violated

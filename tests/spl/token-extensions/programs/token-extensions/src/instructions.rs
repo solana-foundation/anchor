@@ -3,7 +3,7 @@ use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::spl_token_2022::extension::{
-        group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer, mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable, permanent_delegate::PermanentDelegate, transfer_fee::TransferFeeConfig, transfer_hook::TransferHook
+        group_member_pointer::GroupMemberPointer, interest_bearing_mint::InterestBearingConfig, metadata_pointer::MetadataPointer, mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable, permanent_delegate::PermanentDelegate, transfer_fee::TransferFeeConfig, transfer_hook::TransferHook
     },
     token_interface::{
         get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
@@ -19,6 +19,8 @@ use crate::{
 
 const BASIS_POINTS: u16 = 100;
 const MAX_FEE: u64 = 10000;
+const RATE: i16 = 100;
+
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateMintAccountArgs {
     pub name: String,
@@ -58,6 +60,8 @@ pub struct CreateMintAccount<'info> {
         extensions::transfer_fee::withheld_authority = authority,
         extensions::transfer_fee::basis_points = BASIS_POINTS,
         extensions::transfer_fee::max_fee = MAX_FEE,
+        extensions::interest_bearing::authority = authority,
+        extensions::interest_bearing::rate = RATE,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -173,6 +177,15 @@ pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> 
         transfer_fee.newer_transfer_fee.maximum_fee,
         MAX_FEE.into()
     );
+    let interest_bearing = get_mint_extension_data::<InterestBearingConfig>(mint_data)?;
+    assert_eq!(
+        interest_bearing.rate_authority,
+        OptionalNonZeroPubkey::try_from(authority_key)?
+    );
+    assert_eq!(
+        interest_bearing.current_rate,
+        RATE.into()
+    );
     // transfer minimum rent to mint account
     update_account_lamports_to_minimum_balance(
         ctx.accounts.mint.to_account_info(),
@@ -200,7 +213,8 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::permanent_delegate::delegate = authority,
         extensions::non_transferable,
         extensions::transfer_fee::config_authority = authority,
-        extensions::transfer_fee::withheld_authority = authority
+        extensions::transfer_fee::withheld_authority = authority,
+        extensions::interest_bearing::authority = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
 }
