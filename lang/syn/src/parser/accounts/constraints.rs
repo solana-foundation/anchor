@@ -266,6 +266,51 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     ident.span(),
                     ConstraintExtensionNonTransferable {},
                 )),
+                "transfer_fee" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "config_authority" => {
+                            ConstraintToken::ExtensionTransferFeeConfigAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "withheld_authority" => {
+                            ConstraintToken::ExtensionTransferFeeWithheldAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "basis_points" => {
+                            ConstraintToken::ExtensionTransferFeeBasisPoints(Context::new(
+                                span,
+                                ConstraintExtensionTransferFeeBasisPoints {
+                                    basis_points: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "max_fee" => ConstraintToken::ExtensionTransferFeeMaxFee(Context::new(
+                            span,
+                            ConstraintExtensionTransferFeeMaxFee {
+                                max_fee: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -549,6 +594,11 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
     pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
     pub extension_non_transferable: Option<Context<ConstraintExtensionNonTransferable>>,
+    pub extension_transfer_fee_config_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_transfer_fee_withheld_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_transfer_fee_basis_points:
+        Option<Context<ConstraintExtensionTransferFeeBasisPoints>>,
+    pub extension_transfer_fee_max_fee: Option<Context<ConstraintExtensionTransferFeeMaxFee>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -596,6 +646,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_program_id: None,
             extension_permanent_delegate: None,
             extension_non_transferable: None,
+            extension_transfer_fee_config_authority: None,
+            extension_transfer_fee_withheld_authority: None,
+            extension_transfer_fee_basis_points: None,
+            extension_transfer_fee_max_fee: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -810,6 +864,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_program_id,
             extension_permanent_delegate,
             extension_non_transferable,
+            extension_transfer_fee_config_authority,
+            extension_transfer_fee_withheld_authority,
+            extension_transfer_fee_basis_points,
+            extension_transfer_fee_max_fee,
             bump,
             program_seed,
             realloc,
@@ -843,40 +901,35 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 .expect("bump must be provided with seeds"),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
-        let associated_token = match (
-            associated_token_mint,
-            associated_token_authority,
-            &associated_token_token_program,
-        ) {
-            (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
-                wallet: auth.into_inner().auth,
-                mint: mint.into_inner().mint,
-                token_program: associated_token_token_program
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().token_program),
-            }),
-            (Some(mint), None, _) => {
-                return Err(ParseError::new(
+        let associated_token =
+            match (
+                associated_token_mint,
+                associated_token_authority,
+                &associated_token_token_program,
+            ) {
+                (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
+                    wallet: auth.into_inner().auth,
+                    mint: mint.into_inner().mint,
+                    token_program: associated_token_token_program
+                        .as_ref()
+                        .map(|a| a.clone().into_inner().token_program),
+                }),
+                (Some(mint), None, _) => return Err(ParseError::new(
                     mint.span(),
                     "authority must be provided to specify an associated token program derived \
                      address",
-                ))
-            }
-            (None, Some(auth), _) => {
-                return Err(ParseError::new(
+                )),
+                (None, Some(auth), _) => return Err(ParseError::new(
                     auth.span(),
                     "mint must be provided to specify an associated token program derived address",
-                ))
-            }
-            (None, None, Some(token_program)) => {
-                return Err(ParseError::new(
+                )),
+                (None, None, Some(token_program)) => return Err(ParseError::new(
                     token_program.span(),
                     "mint and authority must be provided to specify an associated token program \
                      derived address",
-                ))
-            }
-            _ => None,
-        };
+                )),
+                _ => None,
+            };
         if let Some(associated_token) = &associated_token {
             if seeds.is_some() {
                 return Err(ParseError::new(
@@ -915,8 +968,16 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
             &extension_non_transferable,
+            &extension_transfer_fee_config_authority,
+            &extension_transfer_fee_withheld_authority,
+            &extension_transfer_fee_basis_points,
+            &extension_transfer_fee_max_fee,
         ) {
             (
+                None,
+                None,
+                None,
+                None,
                 None,
                 None,
                 None,
@@ -977,9 +1038,19 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_hook_program_id: extension_transfer_hook_program_id
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
-                non_transferable: extension_non_transferable
+                non_transferable: extension_non_transferable.as_ref().map(|_| ()),
+                transfer_fee_config_authority: extension_transfer_fee_config_authority
                     .as_ref()
-                    .map(|_| ()),
+                    .map(|a| a.clone().into_inner().authority),
+                transfer_fee_withheld_authority: extension_transfer_fee_withheld_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                transfer_fee_basis_points: extension_transfer_fee_basis_points
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().basis_points),
+                transfer_fee_max_fee: extension_transfer_fee_max_fee
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().max_fee),
             }),
         };
 
@@ -1016,6 +1087,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                     .map(|tp| tp.into_inner().token_program),
                             }
                         } else if let Some(d) = &mint_decimals {
+                            let init_transfer_fee = extension_transfer_fee_config_authority.is_some() ||
+                                extension_transfer_fee_withheld_authority.is_some() ||
+                                extension_transfer_fee_basis_points.is_some() ||
+                                extension_transfer_fee_max_fee.is_some();
                             InitKind::Mint {
                                 decimals: d.clone().into_inner().decimals,
                                 owner: match &mint_authority {
@@ -1057,6 +1132,24 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                 transfer_hook_program_id: extension_transfer_hook_program_id
                                     .map(|thpid| thpid.into_inner().program_id),
                                 non_transferable: extension_non_transferable.map(|_| ()),
+                                transfer_fee_config_authority: extension_transfer_fee_config_authority.map(|tfca| tfca.into_inner().authority),
+                                transfer_fee_withheld_authority: extension_transfer_fee_withheld_authority.map(|tfwa| tfwa.into_inner().authority),
+                                transfer_fee_basis_points: match (&extension_transfer_fee_basis_points, init_transfer_fee) {
+                                    (Some(tfbp), _) => Some(tfbp.clone().into_inner().basis_points),
+                                    (None, true) => return Err(ParseError::new(
+                                        d.span(),
+                                        "fee basis points must be provided to initialize a mint with transfer fee extension"
+                                    )),
+                                    _ => None
+                                },
+                                transfer_fee_max_fee:  match (&extension_transfer_fee_max_fee, init_transfer_fee) {
+                                    (Some(tfmf), _) => Some(tfmf.clone().into_inner().max_fee),
+                                    (None, true) => return Err(ParseError::new(
+                                        d.span(),
+                                        "maximum fee must be provided to initialize a mint with transfer fee extension"
+                                    )),
+                                    _ => None
+                                },
                             }
                         } else {
                             InitKind::Program {
@@ -1149,8 +1242,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 self.add_extension_permanent_delegate(c)
             }
             ConstraintToken::Dup(c) => self.add_dup(c),
-            ConstraintToken::ExtensionNonTransferable(c) => {
-                self.add_extension_non_transferable(c)
+            ConstraintToken::ExtensionNonTransferable(c) => self.add_extension_non_transferable(c),
+            ConstraintToken::ExtensionTransferFeeConfigAuthority(c) => {
+                self.add_extension_transfer_fee_config_authority(c)
+            }
+            ConstraintToken::ExtensionTransferFeeWithheldAuthority(c) => {
+                self.add_extension_transfer_fee_withheld_authority(c)
+            }
+            ConstraintToken::ExtensionTransferFeeBasisPoints(c) => {
+                self.add_extension_transfer_fee_basis_points(c)
+            }
+            ConstraintToken::ExtensionTransferFeeMaxFee(c) => {
+                self.add_extension_transfer_fee_max_fee(c)
             }
         }
     }
@@ -1755,6 +1858,62 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_non_transferable.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_config_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_config_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee config authority already provided",
+            ));
+        }
+        self.extension_transfer_fee_config_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_withheld_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_withheld_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee withheld authority already provided",
+            ));
+        }
+        self.extension_transfer_fee_withheld_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_basis_points(
+        &mut self,
+        c: Context<ConstraintExtensionTransferFeeBasisPoints>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_basis_points.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee basis points already provided",
+            ));
+        }
+        self.extension_transfer_fee_basis_points.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_max_fee(
+        &mut self,
+        c: Context<ConstraintExtensionTransferFeeMaxFee>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_max_fee.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee maximum fee already provided",
+            ));
+        }
+        self.extension_transfer_fee_max_fee.replace(c);
         Ok(())
     }
 }
