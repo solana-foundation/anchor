@@ -323,12 +323,14 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         .unwrap_or_else(|| ident.span());
 
                     match kw.as_str() {
-                        "authority" => ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
+                        "authority" => {
+                            ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
                         "rate" => ConstraintToken::ExtensionInterestBearingRate(Context::new(
                             span,
                             ConstraintExtensionInterestBearingRate {
@@ -958,35 +960,40 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 .expect("bump must be provided with seeds"),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
-        let associated_token =
-            match (
-                associated_token_mint,
-                associated_token_authority,
-                &associated_token_token_program,
-            ) {
-                (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
-                    wallet: auth.into_inner().auth,
-                    mint: mint.into_inner().mint,
-                    token_program: associated_token_token_program
-                        .as_ref()
-                        .map(|a| a.clone().into_inner().token_program),
-                }),
-                (Some(mint), None, _) => return Err(ParseError::new(
+        let associated_token = match (
+            associated_token_mint,
+            associated_token_authority,
+            &associated_token_token_program,
+        ) {
+            (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
+                wallet: auth.into_inner().auth,
+                mint: mint.into_inner().mint,
+                token_program: associated_token_token_program
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().token_program),
+            }),
+            (Some(mint), None, _) => {
+                return Err(ParseError::new(
                     mint.span(),
                     "authority must be provided to specify an associated token program derived \
                      address",
-                )),
-                (None, Some(auth), _) => return Err(ParseError::new(
+                ))
+            }
+            (None, Some(auth), _) => {
+                return Err(ParseError::new(
                     auth.span(),
                     "mint must be provided to specify an associated token program derived address",
-                )),
-                (None, None, Some(token_program)) => return Err(ParseError::new(
+                ))
+            }
+            (None, None, Some(token_program)) => {
+                return Err(ParseError::new(
                     token_program.span(),
                     "mint and authority must be provided to specify an associated token program \
                      derived address",
-                )),
-                _ => None,
-            };
+                ))
+            }
+            _ => None,
+        };
         if let Some(associated_token) = &associated_token {
             if seeds.is_some() {
                 return Err(ParseError::new(
@@ -1031,7 +1038,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_fee_max_fee,
             &extension_interest_bearing_authority,
             &extension_interest_bearing_rate,
-            &extension_default_account_state
+            &extension_default_account_state,
         ) {
             (
                 None,
@@ -1123,8 +1130,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 default_account_state: extension_default_account_state
                     .as_ref()
                     .map(|a| a.clone().into_inner().state),
-        }),
-    };
+            }),
+        };
 
         Ok(ConstraintGroup {
             init: init
@@ -1159,10 +1166,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                     .map(|tp| tp.into_inner().token_program),
                             }
                         } else if let Some(d) = &mint_decimals {
-                            let init_transfer_fee = extension_transfer_fee_config_authority.is_some() ||
-                                extension_transfer_fee_withheld_authority.is_some() ||
-                                extension_transfer_fee_basis_points.is_some() ||
-                                extension_transfer_fee_max_fee.is_some();
+                            let init_transfer_fee = extension_transfer_fee_config_authority
+                                .is_some()
+                                || extension_transfer_fee_withheld_authority.is_some()
+                                || extension_transfer_fee_basis_points.is_some()
+                                || extension_transfer_fee_max_fee.is_some();
                             InitKind::Mint {
                                 decimals: d.clone().into_inner().decimals,
                                 owner: match &mint_authority {
@@ -1204,34 +1212,59 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                 transfer_hook_program_id: extension_transfer_hook_program_id
                                     .map(|thpid| thpid.into_inner().program_id),
                                 non_transferable: extension_non_transferable.map(|_| ()),
-                                transfer_fee_config_authority: extension_transfer_fee_config_authority.map(|tfca| tfca.into_inner().authority),
-                                transfer_fee_withheld_authority: extension_transfer_fee_withheld_authority.map(|tfwa| tfwa.into_inner().authority),
-                                transfer_fee_basis_points: match (&extension_transfer_fee_basis_points, init_transfer_fee) {
+                                transfer_fee_config_authority:
+                                    extension_transfer_fee_config_authority
+                                        .map(|tfca| tfca.into_inner().authority),
+                                transfer_fee_withheld_authority:
+                                    extension_transfer_fee_withheld_authority
+                                        .map(|tfwa| tfwa.into_inner().authority),
+                                transfer_fee_basis_points: match (
+                                    &extension_transfer_fee_basis_points,
+                                    init_transfer_fee,
+                                ) {
                                     (Some(tfbp), _) => Some(tfbp.clone().into_inner().basis_points),
-                                    (None, true) => return Err(ParseError::new(
-                                        d.span(),
-                                        "fee basis points must be provided to initialize a mint with transfer fee extension"
-                                    )),
-                                    _ => None
+                                    (None, true) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "fee basis points must be provided to initialize a \
+                                             mint with transfer fee extension",
+                                        ))
+                                    }
+                                    _ => None,
                                 },
-                                transfer_fee_max_fee:  match (&extension_transfer_fee_max_fee, init_transfer_fee) {
+                                transfer_fee_max_fee: match (
+                                    &extension_transfer_fee_max_fee,
+                                    init_transfer_fee,
+                                ) {
                                     (Some(tfmf), _) => Some(tfmf.clone().into_inner().max_fee),
-                                    (None, true) => return Err(ParseError::new(
-                                        d.span(),
-                                        "maximum fee must be provided to initialize a mint with transfer fee extension"
-                                    )),
-                                    _ => None
+                                    (None, true) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "maximum fee must be provided to initialize a mint \
+                                             with transfer fee extension",
+                                        ))
+                                    }
+                                    _ => None,
                                 },
-                                interest_bearing_authority: extension_interest_bearing_authority.as_ref().map(|iba| iba.clone().into_inner().authority),
-                                interest_bearing_rate: match (&extension_interest_bearing_rate, &extension_interest_bearing_authority) {
+                                interest_bearing_authority: extension_interest_bearing_authority
+                                    .as_ref()
+                                    .map(|iba| iba.clone().into_inner().authority),
+                                interest_bearing_rate: match (
+                                    &extension_interest_bearing_rate,
+                                    &extension_interest_bearing_authority,
+                                ) {
                                     (Some(ibr), _) => Some(ibr.clone().into_inner().rate),
-                                    (None, Some(_)) => return Err(ParseError::new(
-                                        d.span(),
-                                        "rate must be provided to initialize a mint with interest bearing extension"
-                                    )),
-                                    _ => None
+                                    (None, Some(_)) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "rate must be provided to initialize a mint with \
+                                             interest bearing extension",
+                                        ))
+                                    }
+                                    _ => None,
                                 },
-                                default_account_state: extension_default_account_state.map(|das| das.into_inner().state),
+                                default_account_state: extension_default_account_state
+                                    .map(|das| das.into_inner().state),
                             }
                         } else {
                             InitKind::Program {
@@ -1337,9 +1370,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionTransferFeeMaxFee(c) => {
                 self.add_extension_transfer_fee_max_fee(c)
             }
-            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => self.add_extension_interest_bearing_authority(c),
-            ConstraintToken::ExtensionInterestBearingRate(c) => self.add_extension_interest_bearing_rate(c),
-            ConstraintToken::ExtensionDefaultAccountState(c) => self.add_extension_default_account_state(c),
+            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => {
+                self.add_extension_interest_bearing_authority(c)
+            }
+            ConstraintToken::ExtensionInterestBearingRate(c) => {
+                self.add_extension_interest_bearing_rate(c)
+            }
+            ConstraintToken::ExtensionDefaultAccountState(c) => {
+                self.add_extension_default_account_state(c)
+            }
         }
     }
 
@@ -2043,5 +2082,4 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         self.extension_default_account_state.replace(c);
         Ok(())
     }
-
 }
