@@ -742,6 +742,7 @@ fn generate_constraint_init_group(
             transfer_fee_max_fee,
             interest_bearing_authority,
             interest_bearing_rate,
+            default_account_state,
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -836,6 +837,11 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let default_account_state_check = match default_account_state {
+                Some(das) => check_scope.generate_check(das),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -862,6 +868,7 @@ fn generate_constraint_init_group(
                 #transfer_fee_max_fee_check
                 #interest_bearing_authority_check
                 #interest_bearing_rate_check
+                #default_account_state_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
@@ -904,6 +911,10 @@ fn generate_constraint_init_group(
 
             if interest_bearing_authority.is_some() || interest_bearing_rate.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::InterestBearingConfig});
+            }
+
+            if default_account_state.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::DefaultAccountState});
             }
 
             let mint_space = if extensions.is_empty() {
@@ -1007,6 +1018,11 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<i16>::None },
             };
 
+            let default_account_state = match default_account_state {
+                Some(das) => quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::Some(#das) },
+                None => quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::None },
+            };
+
             let create_account = generate_create_account(
                 field,
                 mint_space,
@@ -1102,6 +1118,12 @@ fn generate_constraint_init_group(
                                         #interest_bearing_authority,
                                         #interest_bearing_rate.unwrap(),
                                         )?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::DefaultAccountState => {
+                                        ::anchor_spl::token_interface::default_account_state_initialize(anchor_lang::context::CpiContext::new(#token_program.to_account_info(), ::anchor_spl::token_interface::DefaultAccountStateInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }), #default_account_state.as_ref().unwrap())?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
@@ -1711,6 +1733,24 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let default_account_state_check = match &c.default_account_state {
+        Some(default_account_state) => {
+            let default_account_state_optional_check =
+                optional_check_scope.generate_check(default_account_state);
+            quote! {
+                let account_state = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::default_account_state::DefaultAccountState>(#account_ref);
+                if account_state.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintDefaultAccountStateExtension.into());
+                }
+                #default_account_state_optional_check
+                if account_state.unwrap().state != #default_account_state as u8 {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintDefaultAccountState.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
 
     quote! {
         {
@@ -1732,6 +1772,7 @@ fn generate_constraint_mint(
             #transfer_fee_config_authority_check
             #transfer_fee_withheld_authority_check
             #interest_bearing_authority_check
+            #default_account_state_check
         }
     }
 }

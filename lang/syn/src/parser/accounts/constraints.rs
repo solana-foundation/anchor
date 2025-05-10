@@ -327,6 +327,27 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "default_account_state" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "state" => ConstraintToken::ExtensionDefaultAccountState(Context::new(
+                            span,
+                            ConstraintExtensionDefaultAccountState {
+                                state: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -615,6 +636,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_fee_max_fee: Option<Context<ConstraintExtensionTransferFeeMaxFee>>,
     pub extension_interest_bearing_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_interest_bearing_rate: Option<Context<ConstraintExtensionInterestBearingRate>>,
+    pub extension_default_account_state: Option<Context<ConstraintExtensionDefaultAccountState>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -667,6 +689,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_fee_max_fee: None,
             extension_interest_bearing_authority: None,
             extension_interest_bearing_rate: None,
+            extension_default_account_state: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -886,6 +909,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_fee_max_fee,
             extension_interest_bearing_authority,
             extension_interest_bearing_rate,
+            extension_default_account_state,
             bump,
             program_seed,
             realloc,
@@ -992,8 +1016,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_fee_max_fee,
             &extension_interest_bearing_authority,
             &extension_interest_bearing_rate,
+            &extension_default_account_state
         ) {
             (
+                None,
                 None,
                 None,
                 None,
@@ -1081,8 +1107,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 interest_bearing_rate: extension_interest_bearing_rate
                     .as_ref()
                     .map(|a| a.clone().into_inner().rate),
-            }),
-        };
+                default_account_state: extension_default_account_state
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().state),
+        }),
+    };
 
         Ok(ConstraintGroup {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
@@ -1163,6 +1192,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                             )),
                             _ => None
                         },
+                        default_account_state: extension_default_account_state.map(|das| das.into_inner().state),
                     }
                 } else {
                     InitKind::Program {
@@ -1268,6 +1298,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             ConstraintToken::ExtensionInterestBearingRateAuthority(c) => self.add_extension_interest_bearing_authority(c),
             ConstraintToken::ExtensionInterestBearingRate(c) => self.add_extension_interest_bearing_rate(c),
+            ConstraintToken::ExtensionDefaultAccountState(c) => self.add_extension_default_account_state(c),
         }
     }
 
@@ -1946,6 +1977,20 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_interest_bearing_rate.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_default_account_state(
+        &mut self,
+        c: Context<ConstraintExtensionDefaultAccountState>,
+    ) -> ParseResult<()> {
+        if self.extension_default_account_state.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension default account state already provided",
+            ));
+        }
+        self.extension_default_account_state.replace(c);
         Ok(())
     }
 

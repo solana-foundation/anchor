@@ -195,6 +195,12 @@ pub enum ErrorCode {
     /// 2045 - An interest bearing extension rate authority constraint was violated
     #[msg("An interest bearing extension rate authority constraint was violated")]
     ConstraintMintInterestBearingRateAuthority,
+    /// 2046 - A default account state extension constraint was violated
+    #[msg("A default account state extension constraint was violated")]
+    ConstraintMintDefaultAccountStateExtension,
+    /// 2047 - A default account state extension state constraint was violated
+    #[msg("A default account state extension state constraint was violated")]
+    ConstraintMintDefaultAccountState,
 
     // Require
     /// 2500 - A require expression was violated
