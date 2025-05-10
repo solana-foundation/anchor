@@ -273,24 +273,30 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         .unwrap_or_else(|| ident.span());
 
                     match kw.as_str() {
-                        "config_authority" => ConstraintToken::ExtensionTransferFeeConfigAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
-                        "withheld_authority" => ConstraintToken::ExtensionTransferFeeWithheldAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
-                        "basis_points" => ConstraintToken::ExtensionTransferFeeBasisPoints(Context::new(
-                            span,
-                            ConstraintExtensionTransferFeeBasisPoints {
-                                basis_points: stream.parse()?,
-                            },
-                        )),
+                        "config_authority" => {
+                            ConstraintToken::ExtensionTransferFeeConfigAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "withheld_authority" => {
+                            ConstraintToken::ExtensionTransferFeeWithheldAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "basis_points" => {
+                            ConstraintToken::ExtensionTransferFeeBasisPoints(Context::new(
+                                span,
+                                ConstraintExtensionTransferFeeBasisPoints {
+                                    basis_points: stream.parse()?,
+                                },
+                            ))
+                        }
                         "max_fee" => ConstraintToken::ExtensionTransferFeeMaxFee(Context::new(
                             span,
                             ConstraintExtensionTransferFeeMaxFee {
@@ -312,12 +318,14 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         .unwrap_or_else(|| ident.span());
 
                     match kw.as_str() {
-                        "authority" => ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
+                        "authority" => {
+                            ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
                         "rate" => ConstraintToken::ExtensionInterestBearingRate(Context::new(
                             span,
                             ConstraintExtensionInterestBearingRate {
@@ -632,7 +640,8 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_non_transferable: Option<Context<ConstraintExtensionNonTransferable>>,
     pub extension_transfer_fee_config_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_transfer_fee_withheld_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_transfer_fee_basis_points: Option<Context<ConstraintExtensionTransferFeeBasisPoints>>,
+    pub extension_transfer_fee_basis_points:
+        Option<Context<ConstraintExtensionTransferFeeBasisPoints>>,
     pub extension_transfer_fee_max_fee: Option<Context<ConstraintExtensionTransferFeeMaxFee>>,
     pub extension_interest_bearing_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_interest_bearing_rate: Option<Context<ConstraintExtensionInterestBearingRate>>,
@@ -1016,7 +1025,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_fee_max_fee,
             &extension_interest_bearing_authority,
             &extension_interest_bearing_rate,
-            &extension_default_account_state
+            &extension_default_account_state,
         ) {
             (
                 None,
@@ -1086,9 +1095,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_hook_program_id: extension_transfer_hook_program_id
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
-                non_transferable: extension_non_transferable
-                    .as_ref()
-                    .map(|_| ()),
+                non_transferable: extension_non_transferable.as_ref().map(|_| ()),
                 transfer_fee_config_authority: extension_transfer_fee_config_authority
                     .as_ref()
                     .map(|a| a.clone().into_inner().authority),
@@ -1110,8 +1117,8 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 default_account_state: extension_default_account_state
                     .as_ref()
                     .map(|a| a.clone().into_inner().state),
-        }),
-    };
+            }),
+        };
 
         Ok(ConstraintGroup {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
@@ -1281,9 +1288,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
             }
-            ConstraintToken::ExtensionNonTransferable(c) => {
-                self.add_extension_non_transferable(c)
-            }
+            ConstraintToken::ExtensionNonTransferable(c) => self.add_extension_non_transferable(c),
             ConstraintToken::ExtensionTransferFeeConfigAuthority(c) => {
                 self.add_extension_transfer_fee_config_authority(c)
             }
@@ -1296,9 +1301,15 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionTransferFeeMaxFee(c) => {
                 self.add_extension_transfer_fee_max_fee(c)
             }
-            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => self.add_extension_interest_bearing_authority(c),
-            ConstraintToken::ExtensionInterestBearingRate(c) => self.add_extension_interest_bearing_rate(c),
-            ConstraintToken::ExtensionDefaultAccountState(c) => self.add_extension_default_account_state(c),
+            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => {
+                self.add_extension_interest_bearing_authority(c)
+            }
+            ConstraintToken::ExtensionInterestBearingRate(c) => {
+                self.add_extension_interest_bearing_rate(c)
+            }
+            ConstraintToken::ExtensionDefaultAccountState(c) => {
+                self.add_extension_default_account_state(c)
+            }
         }
     }
 
@@ -1993,5 +2004,4 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         self.extension_default_account_state.replace(c);
         Ok(())
     }
-
 }

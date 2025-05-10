@@ -904,8 +904,11 @@ fn generate_constraint_init_group(
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable});
             }
 
-            if transfer_fee_config_authority.is_some() || transfer_fee_withheld_authority.is_some() ||
-               transfer_fee_basis_points.is_some() || transfer_fee_max_fee.is_some() {
+            if transfer_fee_config_authority.is_some()
+                || transfer_fee_withheld_authority.is_some()
+                || transfer_fee_basis_points.is_some()
+                || transfer_fee_max_fee.is_some()
+            {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferFeeConfig});
             }
 
@@ -1019,8 +1022,12 @@ fn generate_constraint_init_group(
             };
 
             let default_account_state = match default_account_state {
-                Some(das) => quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::Some(#das) },
-                None => quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::None },
+                Some(das) => {
+                    quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::Some(#das) }
+                }
+                None => {
+                    quote! { Option::<anchor_spl::token_2022::spl_token_2022::state::AccountState>::None }
+                }
             };
 
             let create_account = generate_create_account(
@@ -1750,7 +1757,6 @@ fn generate_constraint_mint(
         }
         None => quote! {},
     };
-
 
     quote! {
         {
