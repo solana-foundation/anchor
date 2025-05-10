@@ -2,9 +2,9 @@ use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
 
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_2022::spl_token_2022::extension::{
-        group_member_pointer::GroupMemberPointer, interest_bearing_mint::InterestBearingConfig, metadata_pointer::MetadataPointer, mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable, permanent_delegate::PermanentDelegate, transfer_fee::TransferFeeConfig, transfer_hook::TransferHook
-    },
+    token_2022::spl_token_2022::{extension::{
+        default_account_state::DefaultAccountState, group_member_pointer::GroupMemberPointer, interest_bearing_mint::InterestBearingConfig, metadata_pointer::MetadataPointer, mint_close_authority::MintCloseAuthority, non_transferable::NonTransferable, permanent_delegate::PermanentDelegate, transfer_fee::TransferFeeConfig, transfer_hook::TransferHook
+    }, state::AccountState},
     token_interface::{
         get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
         token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
@@ -62,6 +62,7 @@ pub struct CreateMintAccount<'info> {
         extensions::transfer_fee::max_fee = MAX_FEE,
         extensions::interest_bearing::authority = authority,
         extensions::interest_bearing::rate = RATE,
+        extensions::default_account_state::state = AccountState::Frozen,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -186,6 +187,11 @@ pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> 
         interest_bearing.current_rate,
         RATE.into()
     );
+    let default_account_state = get_mint_extension_data::<DefaultAccountState>(mint_data)?;
+    assert_eq!(
+        default_account_state.state,
+        AccountState::Frozen as u8
+    );
     // transfer minimum rent to mint account
     update_account_lamports_to_minimum_balance(
         ctx.accounts.mint.to_account_info(),
@@ -215,6 +221,7 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::transfer_fee::config_authority = authority,
         extensions::transfer_fee::withheld_authority = authority,
         extensions::interest_bearing::authority = authority,
+        extensions::default_account_state::state = AccountState::Frozen,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
 }
