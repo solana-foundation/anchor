@@ -5,6 +5,7 @@ set -e -u
 script_dir=$(realpath "$(dirname "${0}")")
 workspace_dir=$(realpath "${script_dir}/../../")
 expected_dir="${script_dir}/expected"
+initialize_dir="${script_dir}/initialize"
 output_dir="${script_dir}/output"
 
 anchor_cli() {
@@ -14,8 +15,13 @@ anchor_cli() {
 setup_test() {
   test_dir="${output_dir}/${1}"
   rm -rf "${test_dir}"
-  mkdir -p "${test_dir}"
+  cp -r "${initialize_dir}/${1}" "${test_dir}"
   cd "${test_dir}"
+}
+
+patch_program() {
+  program="${1}"
+  rm -r "${program}/app" "${program}/target"
 }
 
 patch_program_id() {
@@ -39,17 +45,8 @@ patch_program_id() {
       "${f}"
   done
 
-  # replace keypair, if exists
-  keypair_file="${script_dir}/keypairs/${new_program_id}.json"
-  if [ -f "${keypair_file}" ]; then
-    for old_keypair in *"/target/deploy/${program_rust_name}-keypair.json"; do
-      [ -f "${old_keypair}" ] || continue
-      cp "${keypair_file}" "${old_keypair}"
-    done
-  # else, delete it
-  else
-    rm "${keypair_file}"
-  fi
+  # delete keypair, if exists
+  rm -f *"/target/deploy/${program_rust_name}-keypair.json"
 }
 
 script_exit_code=0
@@ -90,6 +87,7 @@ diff_test() {
   setup_test init
   output=$(
     anchor_cli init test-program --no-install --no-git
+    patch_program test-program
     patch_program_id test-program
   ) || exit_code="$?"
   diff_test init "${output}" "${exit_code:-0}"
@@ -99,18 +97,17 @@ diff_test() {
 (
   setup_test new
   output=$(
-    anchor_cli init test-program --no-install --no-git
     (
       cd test-program
       anchor_cli new another-program --solidity
     )
-    patch_program_id test-program
+    patch_program test-program
     patch_program_id another-program bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ
   )
   diff_test new "${output}" "$?"
 )
 
-# build
+# build # just check binary, commit the generated idl for expected
 # clean
 # build
 
