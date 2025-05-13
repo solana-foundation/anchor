@@ -1,12 +1,14 @@
 #!/bin/sh
 
-set -e -u -o pipefail
+set -e -u
 
-script_dir=$(dirname "${0}")
+script_dir=$(realpath "$(dirname "${0}")")
+workspace_dir=$(realpath "${script_dir}/../../")
+expected_dir="${script_dir}/expected"
 output_dir="${script_dir}/output"
 
-anchor_cli(){
-  cargo run -p anchor-cli --bin anchor "$@"
+anchor_cli() {
+  "${workspace_dir}/target/debug/anchor" "$@" 2>&1
 }
 
 setup_test() {
@@ -16,20 +18,97 @@ setup_test() {
   cd "${test_dir}"
 }
 
-diff_test() {
-  actual_dir="${output_dir}/${1}"
-  expected_dir="${script_dir}/${1}"
-  diff --oneline -r "${actual_dir}" "${expected_dir}"
+patch_program_id() {
+  program_name="${1}"
+  program_rust_name=$(printf "%s" "${program_name}" | sed "s/-/_/g")
+  program_regex=$(printf "%s" "${program_name}" | sed "s/-/./g")
+
+  new_program_id="${2:-aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x}"
+
+  # fix declare_id!()
+  for f in *"/programs/${program_name}/src/lib.rs"; do
+    [ -f "${f}" ] || continue
+    sed -i "s/declare_id!.*/declare_id!(\"${new_program_id}\");/" \
+      "${f}"
+  done
+
+  # fix Anchor.toml
+  for f in *"/Anchor.toml"; do
+    [ -f "${f}" ] || continue
+    sed -i "s/\(${program_regex}\) = .*/\1 = \"${new_program_id}\"/" \
+      "${f}"
+  done
+
+  # replace keypair, if exists
+  keypair_file="${script_dir}/keypairs/${new_program_id}.json"
+  if [ -f "${keypair_file}" ]; then
+    for old_keypair in *"/target/deploy/${program_rust_name}-keypair.json"; do
+      [ -f "${old_keypair}" ] || continue
+      cp "${keypair_file}" "${old_keypair}"
+    done
+  # else, delete it
+  else
+    rm "${keypair_file}"
+  fi
 }
+
+script_exit_code=0
+diff_test() {
+  test_name="${1}"
+  test_output="${2}"
+  test_exit_code="${3}"
+  diff_output=$(
+    diff -u -r \
+      "${expected_dir}/${test_name}" \
+      "${output_dir}/${test_name}" \
+        2>&1
+  ) || diff_exit_code="$?" 
+
+  if [ "${diff_exit_code:-0}" = "0" ] && [ "${test_exit_code}" = "0" ]; then
+    echo "test ${test_name} passed"
+  else
+    echo
+    echo "test ${test_name} failed with code ${test_exit_code}"
+    echo "----- output ----"
+    echo "${test_output}"
+    echo "----- diff ----"
+    echo "${diff_output}"
+    echo "----- end -----"
+    echo
+    exit_code=1
+  fi
+}
+
+# build binary
+(
+  cd "${workspace_dir}"
+  cargo build -p anchor-cli --bin anchor
+)
 
 # init
-{
+(
   setup_test init
-  anchor_cli init test-program --no-install
-  diff_test init
-}
+  output=$(
+    anchor_cli init test-program --no-install --no-git
+    patch_program_id test-program
+  ) || exit_code="$?"
+  diff_test init "${output}" "${exit_code:-0}"
+)
 
 # new
+(
+  setup_test new
+  output=$(
+    anchor_cli init test-program --no-install --no-git
+    (
+      cd test-program
+      anchor_cli new another-program --solidity
+    )
+    patch_program_id test-program
+    patch_program_id another-program bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ
+  )
+  diff_test new "${output}" "$?"
+)
 
 # build
 # clean
@@ -53,3 +132,5 @@ diff_test() {
 # login
 # publish
 # localnet
+
+exit "${script_exit_code}"
