@@ -166,15 +166,62 @@ pub struct CheckMintExtensionConstraints<'info> {
     #[account(mut)]
     /// CHECK: can be any account
     pub authority: Signer<'info>,
-    #[account(
-        extensions::metadata_pointer::authority = authority,
-        extensions::metadata_pointer::metadata_address = mint,
-        extensions::group_member_pointer::authority = authority,
-        extensions::group_member_pointer::member_address = mint,
-        extensions::transfer_hook::authority = authority,
-        extensions::transfer_hook::program_id = crate::ID,
-        extensions::close_authority::authority = authority,
-        extensions::permanent_delegate::delegate = authority,
-    )]
+    #[account(mut)]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateAndRemoveTokenMetadata<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    
+    pub token_program: Program<'info, Token2022>,
+}
+
+
+impl<'info> UpdateAndRemoveTokenMetadata<'info> {
+    fn update_token_metadata(
+        &self,
+        field: String,
+        value: String,
+    ) -> ProgramResult {
+        let cpi_accounts = TokenMetadataUpdateField {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token_metadata_initialize(cpi_ctx, name, symbol, uri)?;
+        Ok(())
+    }
+
+    fn remove_token_metadata(
+        &self,
+        key: String,
+    ) -> ProgramResult {
+        let cpi_accounts = TokenMetadataRemoveKey {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token_metadata_remove_key(cpi_ctx, key, true)?;
+        Ok(())
+    }
+}
+
+pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> Result<()> {
+    const key = "dummy_key";
+    const value = "dummy_value";
+    ctx.accounts.update_token_metadata(
+        key,
+        value,
+    )?;
+    ctx.accounts.mint.reload()?;
+
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+    metadata.additional_metadata.
 }

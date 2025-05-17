@@ -29,4 +29,13 @@ pub mod token_extensions {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn update_and_remove_token_metadata(
+        ctx: Context<UpdateAndRemoveTokenMetadata>,
+        args: UpdateAndRemoveTokenMetadataArgs,
+    ) -> Result<()> {
+        instructions::handler(ctx, args)
+    }
+
+
 }
