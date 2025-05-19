@@ -6,7 +6,7 @@ macro_rules! impl_idl_build {
         impl anchor_lang::IdlBuild for $ty {}
 
         // This is not used for the IDL generation since default `IdlBuild` impl doesn't include
-        // the type in the IDL but it stil needs to be added in order to make compilation work.
+        // the type in the IDL but it still needs to be added in order to make compilation work.
         //
         // TODO: Find a better way to handle discriminators of wrapped external accounts.
         impl anchor_lang::Discriminator for $ty {
