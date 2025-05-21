@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-access-control"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-account"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "bs58",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-constant"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-error"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -141,7 +141,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-event"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-program"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-lang-idl",
  "anchor-syn",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-cli"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-client"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-lang",
  "anyhow",
@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-serde"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "borsh-derive-internal",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-space"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -248,7 +248,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -264,7 +264,6 @@ dependencies = [
  "bincode",
  "borsh 0.10.4",
  "bytemuck",
- "bytemuck_derive",
  "solana-program",
  "thiserror 1.0.69",
 ]
@@ -292,7 +291,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-spl"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
@@ -308,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-syn"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anyhow",
  "bs58",
@@ -652,7 +651,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "avm"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -3154,9 +3153,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.94"
+version = "1.0.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31971752e70b8b2686d7e46ec17fb38dad4051d94024c88df49b667caea9c84"
+checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
 ]

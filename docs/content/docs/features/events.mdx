@@ -148,7 +148,7 @@ program's `Cargo.toml`:
 
 ```toml title="Cargo.toml"
 [dependencies]
-anchor-lang = { version = "0.31.0", features = ["event-cpi"] }
+anchor-lang = { version = "0.31.1", features = ["event-cpi"] }
 ```
 
 Example usage:
@@ -231,8 +231,7 @@ describe("event-cpi", () => {
 
 The
 [`event_cpi`](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/attribute/event/src/lib.rs#L228-L237)
-attribute must be added to the `#[derive(Accounts)]` struct for the instruction
-instruction that emits events using the `emit_cpi!()` macro. This attribute
+attribute must be added to the `#[derive(Accounts)]` struct for the instruction that emits events using the `emit_cpi!()` macro. This attribute
 [automatically includes additional accounts](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/syn/src/parser/accounts/event_cpi.rs#L28-L70)
 that are required for the self CPI.
 

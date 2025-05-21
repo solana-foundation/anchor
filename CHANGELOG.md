@@ -10,9 +10,31 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+- 
+
 ### Features
 
 ### Fixes
+
+- docker: Upgrade `node` to 20.18.0 LTS ([#3179](https://github.com/solana-foundation/anchor/pull/3687)).
+
+### Breaking
+
+## [0.31.1] - 2025-04-19
+
+This release uses a new docker image found at `solanafoundation/anchor` for the `anchor verify` command. New images will be pushed to this organization in the future.
+
+Releases for anchor will also be published under the `solanafoundation` Github organization from now on.
+
+### Features
+
+- cli, docker: Replace `backpackapp/build` Docker image with `solanafoundation/anchor` ([#3619](https://github.com/coral-xyz/anchor/pull/3619)).
+- ts: Make `Provider` require publicKey instead of wallet in accounts resolver ([#3613](https://github.com/coral-xyz/anchor/pull/3613))
+
+### Fixes
+
+- idl: Update `proc-macro2` usage for latest nightly ([#3663](https://github.com/solana-foundation/anchor/pull/3663))
+- ts: Fix parsing IDL with multiple const generics ([#3665](https://github.com/solana-foundation/anchor/pull/3665))
 
 ### Breaking
 

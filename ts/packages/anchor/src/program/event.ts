@@ -167,6 +167,9 @@ export class EventManager {
 export class EventParser {
   private coder: Coder;
   private programId: PublicKey;
+  private static readonly INVOKE_RE =
+    /^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[(\d+)\]$/;
+  private static readonly ROOT_DEPTH = "1";
 
   constructor(programId: PublicKey, coder: Coder) {
     this.coder = coder;
@@ -184,26 +187,43 @@ export class EventParser {
   // its emission, thereby allowing us to know if a given log event was
   // emitted by *this* program. If it was, then we parse the raw string and
   // emit the event if the string matches the event being subscribed to.
-  public *parseLogs(logs: string[], errorOnDecodeFailure: boolean = false) {
-    const logScanner = new LogScanner(logs);
+  public *parseLogs(
+    logs: string[],
+    errorOnDecodeFailure = false
+  ): Generator<Event> {
+    const scanner = new LogScanner([...logs]);
     const execution = new ExecutionContext();
-    let log = logScanner.next();
-    while (log !== null) {
+
+    const firstLog = scanner.next();
+    if (firstLog === null) return;
+
+    const firstCap = EventParser.INVOKE_RE.exec(firstLog);
+    if (!firstCap || firstCap[2] !== EventParser.ROOT_DEPTH) {
+      throw new Error(`Unexpected first log line: ${firstLog}`);
+    }
+    execution.push(firstCap[1]);
+
+    while (scanner.peek() !== null) {
+      const log = scanner.next();
+      if (log === null) break;
+
       let [event, newProgram, didPop] = this.handleLog(
         execution,
         log,
         errorOnDecodeFailure
       );
-      if (event) {
-        yield event;
-      }
-      if (newProgram) {
-        execution.push(newProgram);
-      }
+
+      if (event) yield event;
+      if (newProgram) execution.push(newProgram);
+
       if (didPop) {
         execution.pop();
+        const nextLog = scanner.peek();
+        if (nextLog && nextLog.endsWith("invoke [1]")) {
+          const m = EventParser.INVOKE_RE.exec(nextLog);
+          if (m) execution.push(m[1]);
+        }
       }
-      log = logScanner.next();
     }
   }
 
@@ -254,23 +274,17 @@ export class EventParser {
 
   // Handles logs when the current program being executing is *not* this.
   private handleSystemLog(log: string): [string | null, boolean] {
-    // System component.
-    const logStart = log.split(":")[0];
-
-    // Did the program finish executing?
-    if (logStart.match(/^Program (.*) success/g) !== null) {
-      return [null, true];
-      // Recursive call.
-    } else if (
-      logStart.startsWith(`Program ${this.programId.toString()} invoke`)
-    ) {
+    if (log.startsWith(`Program ${this.programId.toString()} log:`)) {
       return [this.programId.toString(), false];
-    }
-    // CPI call.
-    else if (logStart.includes("invoke")) {
-      return ["cpi", false]; // Any string will do.
+    } else if (log.includes("invoke") && !log.endsWith("[1]")) {
+      return ["cpi", false];
     } else {
-      return [null, false];
+      let regex = /^Program ([1-9A-HJ-NP-Za-km-z]+) success$/;
+      if (regex.test(log)) {
+        return [null, true];
+      } else {
+        return [null, false];
+      }
     }
   }
 }
@@ -300,7 +314,12 @@ class ExecutionContext {
 }
 
 class LogScanner {
-  constructor(public logs: string[]) {}
+  constructor(public logs: string[]) {
+    // remove any logs that don't start with "Program "
+    // this can happen in loader logs.
+    // e.g. 3psYALQ9s7SjdezXw2kxKkVuQLtSAQxPAjETvy765EVxJE7cYqfc4oGbpNYEWsAiuXuTnqcsSUHLQ3iZUenTHTsA on devnet
+    this.logs = this.logs.filter((log) => log.startsWith("Program "));
+  }
 
   next(): string | null {
     if (this.logs.length === 0) {
@@ -309,5 +328,9 @@ class LogScanner {
     let l = this.logs[0];
     this.logs = this.logs.slice(1);
     return l;
+  }
+
+  peek(): string | null {
+    return this.logs.length > 0 ? this.logs[0] : null;
   }
 }

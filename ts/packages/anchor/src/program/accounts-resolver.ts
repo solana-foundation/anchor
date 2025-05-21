@@ -279,12 +279,12 @@ export class AccountsResolver<IDL extends Idl> {
         if ((account.signer || account.address) && !this.get([...path, name])) {
           // Default signers to the provider
           if (account.signer) {
-            if (!this._provider.wallet) {
+            if (!this._provider.publicKey) {
               throw new Error(
-                "This function requires the `Provider` interface implementor to have a `wallet` field."
+                "This function requires the `Provider` interface implementor to have a `publicKey` field."
               );
             }
-            this.set([...path, name], this._provider.wallet.publicKey);
+            this.set([...path, name], this._provider.publicKey);
           }
 
           // Set based on `address` field

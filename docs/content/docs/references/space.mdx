@@ -25,8 +25,8 @@ In addition to the space for the account data, you have to add `8` to the
 | u128/i128  | 16                            |
 | [T;amount] | space(T) \* amount            | e.g. space([u16;32]) = 2 \* 32 = 64                                                             |
 | Pubkey     | 32                            |
-| Vec\<T>    | 4 + (space(T) \* amount)      | Account size is fixed so account should be initialized with sufficient space from the beginning |
-| String     | 4 + length of string in bytes | Account size is fixed so account should be initialized with sufficient space from the beginning |
+| Vec\<T>    | 4 + (space(T) \* amount)      |
+| String     | 4 + length of string in bytes |
 | Option\<T> | 1 + (space(T))                |
 | Enum       | 1 \+ Largest Variant Size     | e.g. Enum \{ A, B \{ val: u8 \}, C \{ val: u16 \} \} \-\> 1 \+ space(u16) = 3                   |
 | f32        | 4                             | serialization will fail for NaN                                                                 |
@@ -101,5 +101,9 @@ pub struct Initialize<'info> {
 A few important things to know:
 
 - Don't forget the discriminator when defining `space`
-- The `max_len` length represents the length of the structure, not the total
-  length. (ie: the `max_len` of a Vec\<u32\> will be `max_len` \* 4)
+- The `max_len` attribute specifies the maximum number of elements in a Vec, not the total size in bytes. 
+  For example, if you specify `#[max_len(10)]` for a `Vec<u32>`, it means:
+  - Maximum 10 elements
+  - Each element (u32) takes 4 bytes
+  - The Vec itself has a 4-byte length prefix
+  - Total space = 4 + (10 * 4) = 44 bytes

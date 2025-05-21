@@ -50,7 +50,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.31.0/client/example/src
+//! [here]: https://github.com/coral-xyz/anchor/tree/v0.31.1/client/example/src
 //!
 //! # Features
 //!
@@ -59,7 +59,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.31.0 ", features = ["async"] }
+//! anchor-client = { version = "0.31.1 ", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -423,7 +423,7 @@ pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, 
     } else if log.contains("invoke") && !log.ends_with("[1]") {
         (Some("cpi".to_string()), false) // Any string will do.
     } else {
-        let re = Regex::new(r"^Program (.*) success*$").unwrap();
+        let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) success$").unwrap();
         if re.is_match(log) {
             (None, true)
         } else {
@@ -441,7 +441,7 @@ impl Execution {
         let l = &logs[0];
         *logs = &logs[1..];
 
-        let re = Regex::new(r"^Program (.*) invoke.*$").unwrap();
+        let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[[\d]+\]$").unwrap();
         let c = re
             .captures(l)
             .ok_or_else(|| ClientError::LogParseError(l.to_string()))?;
@@ -679,7 +679,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         if let Ok(mut execution) = Execution::new(&mut logs) {
             // Create a new peekable iterator so that we can peek at the next log whilst iterating
             let mut logs_iter = logs.iter().peekable();
-            let regex = Regex::new(r"^Program (.*) invoke.*$").unwrap();
+            let regex = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[[\d]+\]$").unwrap();
 
             while let Some(l) = logs_iter.next() {
                 // Parse the log.
@@ -850,6 +850,39 @@ mod tests {
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
 
         let program_id_str = "VeryCoolProgram";
+
+        // No events returned here. Just ensuring that the function doesn't panic
+        // due an incorrectly emptied stack.
+        parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_logs_response_fake_pop() -> Result<()> {
+        let logs = [
+            "Program fake111111111111111111111111111111111111112 invoke [1]",
+            "Program log: i logged success",
+            "Program log: i logged success",
+            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
+            "Program fake111111111111111111111111111111111111112 success"
+          ];
+
+        // Converting to Vec<String> as expected in `RpcLogsResponse`
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 
         // No events returned here. Just ensuring that the function doesn't panic
         // due an incorrectly emptied stack.
