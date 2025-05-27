@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "programs/string-constants"
+]
+
+[profile.release]
+overflow-checks = true 
