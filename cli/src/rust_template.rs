@@ -638,6 +638,7 @@ impl TestTemplate {
             PackageManager::Yarn => "yarn run",
             PackageManager::NPM => "npx",
             PackageManager::PNPM => "pnpm exec",
+            PackageManager::Bun => "bunx",
         };
 
         match &self {
