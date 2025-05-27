@@ -1,4 +1,4 @@
----
+   ---
 title: 0.30.1
 description: Anchor - Release Notes 0.30.1
 ---
@@ -134,7 +134,7 @@ To fix this problem, a new [crate](https://docs.rs/anchor-lang-idl-spec) that
 only includes the IDL spec has been introduced. The new crate's version will be
 used in the `idl.metadata.spec` field to differentiate between various IDLs.
 
-**NOTE:** This crate is accesible via the main IDL crate from
+**NOTE:** This crate is accessible via the main IDL crate from
 [`anchor_lang_idl::types`](https://docs.rs/anchor-lang-idl/0.1.1/anchor_lang_idl/types/index.html).
 
 ## CLI
@@ -209,7 +209,7 @@ macro can now be used with legacy IDLs (pre Anchor v0.30).
 This works great as long as the program can be described correctly with the
 legacy IDL spec. However, if a program uses non-default features such as zero
 copy, or `repr` modifications, the declaration of the program either won't
-compile, or will be invalid. There are two main solutions in this scenerio:
+compile, or will be invalid. There are two main solutions in this scenario:
 
 - Use the `idl convert` command, and manually fix the invalid parts
 - Generate the program's IDL by upgrading the program to Anchor v0.30
