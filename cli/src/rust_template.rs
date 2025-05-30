@@ -256,15 +256,12 @@ const anchor = require('@coral-xyz/anchor');
 const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{cluster_url}";
-    const preflightCommitment = 'recent';
-    const connection = new anchor.web3.Connection(url, preflightCommitment);
+    const connection = new anchor.web3.Connection(
+      "{cluster_url}",
+      anchor.AnchorProvider.defaultOptions().commitment
+    );
     const wallet = anchor.Wallet.local();
-
-    const provider = new anchor.AnchorProvider(connection, wallet, {{
-        preflightCommitment,
-        commitment: 'recent',
-    }});
+    const provider = new anchor.AnchorProvider(connection, wallet);
 
     // Run the user's deploy script.
     userScript(provider);
@@ -282,15 +279,12 @@ pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
 const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{cluster_url}";
-    const preflightCommitment = 'recent';
-    const connection = new anchor.web3.Connection(url, preflightCommitment);
+    const connection = new anchor.web3.Connection(
+      "{cluster_url}",
+      anchor.AnchorProvider.defaultOptions().commitment
+    );
     const wallet = anchor.Wallet.local();
-
-    const provider = new anchor.AnchorProvider(connection, wallet, {{
-        preflightCommitment,
-        commitment: 'recent',
-    }});
+    const provider = new anchor.AnchorProvider(connection, wallet);
 
     // Run the user's deploy script.
     userScript(provider);
