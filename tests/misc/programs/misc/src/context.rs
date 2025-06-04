@@ -115,7 +115,7 @@ pub struct TestPdaInit<'info> {
 pub struct TestPdaInitZeroCopy<'info> {
     #[account(
         init,
-        seeds = [b"my-seed".as_ref()],
+        seeds = [b"my-seed"],
         bump,
         payer = my_payer,
         space = DataZeroCopy::LEN + 8
@@ -831,6 +831,23 @@ pub struct TestInitAndZero<'info> {
     pub init: Account<'info, Data>,
     #[account(zero)]
     pub zero: Account<'info, Data>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(string_arg: String, number_arg: u16)]
+pub struct TestSeedsConstraintFix<'info> {
+    #[account(
+        init,
+        seeds = [b"test-prefix", string_arg.as_bytes(), number_arg.to_le_bytes().as_ref()],
+        bump,
+        payer = payer,
+        space = 8
+    )]
+    /// CHECK: This is a test account for seeds constraint fix
+    pub test_account: AccountInfo<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,

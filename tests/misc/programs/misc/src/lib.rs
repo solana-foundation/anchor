@@ -104,9 +104,9 @@ pub mod misc {
     }
 
     pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> Result<()> {
-        let mut acc = ctx.accounts.my_pda.load_init()?;
-        acc.data = 9;
-        acc.bump = ctx.bumps.my_pda;
+        let mut account = ctx.accounts.my_pda.load_init()?;
+        account.data = 9;
+        account.bump = ctx.bumps.my_pda;
         Ok(())
     }
 
@@ -407,6 +407,15 @@ pub mod misc {
     }
 
     pub fn test_init_and_zero(_ctx: Context<TestInitAndZero>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_seeds_constraint_fix(
+        _ctx: Context<TestSeedsConstraintFix>,
+        _string_arg: String,
+        _number_arg: u16,
+    ) -> Result<()> {
+        // This instruction tests that seeds constraint works correctly with instruction arguments
         Ok(())
     }
 }
