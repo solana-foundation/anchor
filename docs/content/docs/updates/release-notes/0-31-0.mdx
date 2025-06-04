@@ -440,7 +440,7 @@ Building the IDL via the
 [`build_idl`](https://github.com/coral-xyz/anchor/blob/v0.31.0/idl/src/build.rs#L119)
 function made it impossible to extend its functionality e.g. add new parameters
 without a breaking change. To solve this problem, there is a new way to build
-IDLs programatically:
+IDLs programmatically:
 
 ```rs
 let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
