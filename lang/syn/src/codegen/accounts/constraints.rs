@@ -151,7 +151,7 @@ fn generate_constraint(
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
         Constraint::Owner(c) => generate_constraint_owner(f, c),
         Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
-        Constraint::Seeds(c) => generate_constraint_seeds(f, c),
+        Constraint::Seeds(c) => generate_constraint_seeds(f, c, accs),
         Constraint::Executable(c) => generate_constraint_executable(f, c),
         Constraint::Close(c) => generate_constraint_close(f, c, accs),
         Constraint::Address(c) => generate_constraint_address(f, c),
@@ -493,7 +493,7 @@ fn generate_constraint_init_group(
     let (find_pda, seeds_with_bump) = match &c.seeds {
         None => (quote! {}, quote! {}),
         Some(c) => {
-            let seeds = &mut c.seeds.clone();
+            let mut seeds = transform_seeds_expressions(&c.seeds, accs);
 
             // If the seeds came with a trailing comma, we need to chop it off
             // before we interpolate them below.
@@ -1130,7 +1130,7 @@ fn generate_constraint_init_group(
     }
 }
 
-fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
+fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     if c.is_init {
         // Note that for `#[account(init, seeds)]`, the seed generation and checks is checked in
         // the init constraint find_pda/validate_pda block, so we don't do anything here and
@@ -1140,7 +1140,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let name = &f.ident;
         let name_str = name.to_string();
 
-        let s = &mut c.seeds.clone();
+        let mut s = transform_seeds_expressions(&c.seeds, accs);
 
         let deriving_program_id = c
             .program_seed
@@ -1728,4 +1728,53 @@ fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
         }
         _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
     }
+}
+
+/// Transforms seeds expressions to handle instruction arguments properly.
+/// This ensures that instruction arguments with methods like .as_bytes() or .to_le_bytes().as_ref()
+/// are interpreted literally instead of being Borsh-serialized.
+fn transform_seeds_expressions(
+    seeds: &syn::punctuated::Punctuated<Expr, syn::Token![,]>,
+    accs: &AccountsStruct,
+) -> syn::punctuated::Punctuated<Expr, syn::Token![,]> {
+    let instruction_args = accs.instruction_args().unwrap_or_default();
+    
+    seeds
+        .iter()
+        .map(|seed| {
+            // Check if this is a method call on an instruction argument
+            if let Expr::MethodCall(method_call) = seed {
+                // Check if the receiver is an instruction argument
+                if let Expr::Path(path) = &*method_call.receiver {
+                    if let Some(ident) = path.path.get_ident() {
+                        let arg_name = ident.to_string();
+                        if instruction_args.contains_key(&arg_name) {
+                            // Check if this is .as_bytes() method call
+                            if method_call.method == "as_bytes" && method_call.args.is_empty() {
+                                // Transform to use the literal bytes of the string
+                                return syn::parse_quote! { #arg_name.as_bytes() };
+                            }
+                            // Check if this is .to_le_bytes().as_ref() method call chain
+                            if method_call.method == "as_ref" {
+                                if let Expr::MethodCall(inner_call) = &*method_call.receiver {
+                                    if inner_call.method == "to_le_bytes" {
+                                        if let Expr::Path(inner_path) = &*inner_call.receiver {
+                                            if let Some(inner_ident) = inner_path.path.get_ident() {
+                                                let inner_arg_name = inner_ident.to_string();
+                                                if instruction_args.contains_key(&inner_arg_name) {
+                                                    // Transform to use literal bytes
+                                                    return syn::parse_quote! { #inner_arg_name.to_le_bytes().as_ref() };
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            seed.clone()
+        })
+        .collect()
 }

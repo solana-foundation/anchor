@@ -499,6 +499,39 @@ const miscTest = (
       assert.strictEqual(myPdaAccount.data, 6);
     });
 
+    it("Can handle string seeds correctly (seeds constraint fix)", async () => {
+      // Test the fix for seeds constraint with String instruction arguments
+      const stringArg = "test-string";
+      const numberArg = 12345;
+      
+      // Calculate PDA manually as client would do
+      const numberBytes = Buffer.allocUnsafe(2);
+      numberBytes.writeUInt16LE(numberArg, 0);
+      
+      const [expectedPda, bump] = await PublicKey.findProgramAddress(
+        [
+          Buffer.from("test-prefix"),
+          Buffer.from(stringArg),  // This should use .as_bytes() on program side
+          numberBytes              // This should use .to_le_bytes().as_ref() on program side
+        ],
+        program.programId
+      );
+
+      // This test would fail before the fix due to Borsh serialization of string args
+      // After the fix, it should work correctly
+      await program.rpc.testSeedsConstraintFix(stringArg, numberArg, {
+        accounts: {
+          testAccount: expectedPda,
+          payer: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+      });
+
+      // Verify the account was created correctly
+      const account = await program.provider.connection.getAccountInfo(expectedPda);
+      assert.isNotNull(account);
+    });
+
     it("Can create a zero copy PDA account", async () => {
       const [myPda, nonce] = await PublicKey.findProgramAddress(
         [Buffer.from(anchor.utils.bytes.utf8.encode("my-seed"))],
@@ -1091,7 +1124,6 @@ const miscTest = (
             mint: mint.publicKey,
             payer: provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             associatedTokenTokenProgram: TOKEN_2022_PROGRAM_ID,
           },
           signers: [],
