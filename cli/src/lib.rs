@@ -28,7 +28,7 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::account_utils::StateMut;
 use solana_sdk::bpf_loader;
 use solana_sdk::bpf_loader_deprecated;
-use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use solana_sdk::bpf_loader_upgradeable::{self, get_program_data_address, UpgradeableLoaderState};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -3990,12 +3990,14 @@ fn create_idl_account(
         let mut instructions = Vec::new();
         let data = serialize_idl_ix(anchor_lang::idl::IdlInstruction::Create { data_len })?;
         let program_signer = Pubkey::find_program_address(&[], program_id).0;
+        let program_data_address = get_program_data_address(program_id);
         let accounts = vec![
             AccountMeta::new_readonly(keypair.pubkey(), true),
             AccountMeta::new(idl_address, false),
             AccountMeta::new_readonly(program_signer, false),
             AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
             AccountMeta::new_readonly(*program_id, false),
+            AccountMeta::new_readonly(program_data_address, false),
         ];
         instructions.push(Instruction {
             program_id: *program_id,

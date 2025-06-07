@@ -13,6 +13,7 @@ pub(crate) mod hash;
 
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
+use heck::CamelCase;
 use parser::accounts as accounts_parser;
 use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
@@ -39,6 +40,13 @@ pub struct Program {
     pub docs: Option<Vec<String>>,
     pub program_mod: ItemMod,
     pub fallback_fn: Option<FallbackFn>,
+}
+
+impl Program {
+    /// Get program struct name (in PascalCase).
+    pub fn struct_name(&self) -> proc_macro2::TokenStream {
+        self.name.to_string().to_camel_case().parse().unwrap()
+    }
 }
 
 impl Parse for Program {
