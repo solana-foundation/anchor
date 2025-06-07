@@ -11,8 +11,14 @@ import {
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
-  Token,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  createMint,
+  getAssociatedTokenAddressSync,
+  getAccount,
+  getMint,
+  setAuthority,
+  AuthorityType,
   AccountLayout,
   MintLayout,
 } from "@solana/spl-token";
@@ -25,10 +31,6 @@ const utf8 = anchor.utils.bytes.utf8;
 const nativeAssert = require("assert");
 const miscIdl = require("../../target/idl/misc.json");
 
-const TOKEN_2022_PROGRAM_ID = new anchor.web3.PublicKey(
-  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
-);
-
 const miscTest = (
   program: anchor.Program<Misc> | anchor.Program<MiscOptional>
 ) => {
@@ -37,6 +39,7 @@ const miscTest = (
     const provider = anchor.AnchorProvider.env();
     const wallet = provider.wallet as Wallet;
     anchor.setProvider(provider);
+    const connection = provider.connection;
 
     describe("Data Account", () => {
       const data = anchor.web3.Keypair.generate();
@@ -535,11 +538,11 @@ const miscTest = (
     });
 
     it("Can create a token account from seeds pda", async () => {
-      const [mint, mint_bump] = await PublicKey.findProgramAddress(
+      const [mint] = PublicKey.findProgramAddressSync(
         [Buffer.from(anchor.utils.bytes.utf8.encode("my-mint-seed"))],
         program.programId
       );
-      const [myPda, token_bump] = await PublicKey.findProgramAddress(
+      const [myPda] = PublicKey.findProgramAddressSync(
         [Buffer.from(anchor.utils.bytes.utf8.encode("my-token-seed"))],
         program.programId
       );
@@ -553,16 +556,9 @@ const miscTest = (
         },
       });
 
-      const mintAccount = new Token(
-        program.provider.connection,
-        mint,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const account = await mintAccount.getAccountInfo(myPda);
-      // @ts-expect-error
-      assert.strictEqual(account.state, 1);
-      assert.strictEqual(account.amount.toNumber(), 0);
+      const account = await getAccount(connection, myPda);
+      // assert.strictEqual(account.state, 1);
+      assert.strictEqual(account.amount, BigInt(0));
       assert.isTrue(account.isInitialized);
       assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(mint));
@@ -661,13 +657,13 @@ const miscTest = (
         },
         signers: [mint],
       });
-      const client = new Token(
-        program.provider.connection,
-        mint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const mintAccount = await client.getMintInfo();
+      // const client = new Token(
+      //   program.provider.connection,
+      //   mint.publicKey,
+      //   TOKEN_PROGRAM_ID,
+      //   wallet.payer
+      // );
+      const mintAccount = await getMint(connection, mint.publicKey);
       assert.strictEqual(mintAccount.decimals, 6);
       assert.isTrue(
         mintAccount.mintAuthority.equals(provider.wallet.publicKey)
@@ -695,13 +691,8 @@ const miscTest = (
           }),
         ],
       });
-      const client = new Token(
-        program.provider.connection,
-        mint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const mintAccount = await client.getMintInfo();
+
+      const mintAccount = await getMint(connection, mint.publicKey);
       assert.strictEqual(mintAccount.decimals, 6);
       assert.isTrue(
         mintAccount.mintAuthority.equals(provider.wallet.publicKey)
@@ -720,16 +711,10 @@ const miscTest = (
         },
         signers: [token],
       });
-      const client = new Token(
-        program.provider.connection,
-        mint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const account = await client.getAccountInfo(token.publicKey);
-      // @ts-expect-error
-      assert.strictEqual(account.state, 1);
-      assert.strictEqual(account.amount.toNumber(), 0);
+
+      const account = await getAccount(connection, token.publicKey);
+      // assert.strictEqual(account.state, 1);
+      assert.strictEqual(account.amount, BigInt(0));
       assert.isTrue(account.isInitialized);
       assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(mint.publicKey));
@@ -754,16 +739,9 @@ const miscTest = (
           }),
         ],
       });
-      const client = new Token(
-        program.provider.connection,
-        mint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const account = await client.getAccountInfo(token.publicKey);
-      // @ts-expect-error
-      assert.strictEqual(account.state, 1);
-      assert.strictEqual(account.amount.toNumber(), 0);
+      const account = await getAccount(connection, token.publicKey);
+      // assert.strictEqual(account.state, 1);
+      assert.strictEqual(account.amount, BigInt(0));
       assert.isTrue(account.isInitialized);
       assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(mint.publicKey));
@@ -788,16 +766,9 @@ const miscTest = (
           }),
         ],
       });
-      const client = new Token(
-        program.provider.connection,
-        mint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const account = await client.getAccountInfo(token.publicKey);
-      // @ts-expect-error
-      assert.strictEqual(account.state, 1);
-      assert.strictEqual(account.amount.toNumber(), 0);
+      const account = await getAccount(connection, token.publicKey);
+      // assert.strictEqual(account.state, 1);
+      assert.strictEqual(account.amount, BigInt(0));
       assert.isTrue(account.isInitialized);
       assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       assert.isTrue(account.mint.equals(mint.publicKey));
@@ -809,7 +780,7 @@ const miscTest = (
 
       const tx = await program.methods
         .testCompositePayer()
-        .accounts({
+        .accountsPartial({
           composite: {
             data: data1.publicKey,
             payer: provider.wallet.publicKey,
@@ -877,7 +848,7 @@ const miscTest = (
       );
       const ataAccount = AccountLayout.decode(rawAccount.data);
       assert.strictEqual(ataAccount.state, 1);
-      assert.strictEqual(new anchor.BN(ataAccount.amount).toNumber(), 0);
+      assert.strictEqual(ataAccount.amount, BigInt(0));
       assert.strictEqual(
         new PublicKey(ataAccount.owner).toString(),
         provider.wallet.publicKey.toString()
@@ -891,28 +862,26 @@ const miscTest = (
     describe("associated_token constraints", () => {
       let associatedToken = null;
       // apparently cannot await here so doing it in the 'it' statements
-      let client = Token.createMint(
+
+      const client = createMint(
         program.provider.connection,
         wallet.payer,
         provider.wallet.publicKey,
         provider.wallet.publicKey,
-        9,
-        TOKEN_PROGRAM_ID
+        9
       );
 
       it("Can create an associated token account", async () => {
         const localClient = await client;
-        associatedToken = await Token.getAssociatedTokenAddress(
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-          TOKEN_PROGRAM_ID,
-          localClient.publicKey,
+        associatedToken = getAssociatedTokenAddressSync(
+          localClient,
           provider.wallet.publicKey
         );
 
         await program.rpc.testInitAssociatedToken({
           accounts: {
             token: associatedToken,
-            mint: localClient.publicKey,
+            mint: localClient,
             payer: provider.wallet.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
             tokenProgram: TOKEN_PROGRAM_ID,
@@ -920,13 +889,12 @@ const miscTest = (
           },
         });
 
-        const account = await localClient.getAccountInfo(associatedToken);
-        // @ts-expect-error
-        assert.strictEqual(account.state, 1);
-        assert.strictEqual(account.amount.toNumber(), 0);
+        const account = await getAccount(connection, associatedToken);
+        // assert.strictEqual(account.state, 1);
+        assert.strictEqual(account.amount, BigInt(0));
         assert.isTrue(account.isInitialized);
         assert.isTrue(account.owner.equals(provider.wallet.publicKey));
-        assert.isTrue(account.mint.equals(localClient.publicKey));
+        assert.isTrue(account.mint.equals(localClient));
       });
 
       it("Can create an associated token account with token program", async () => {
@@ -941,11 +909,11 @@ const miscTest = (
           signers: [newMint],
         });
 
-        const associatedToken = await Token.getAssociatedTokenAddress(
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-          TOKEN_2022_PROGRAM_ID,
+        const associatedToken = getAssociatedTokenAddressSync(
           newMint.publicKey,
-          provider.wallet.publicKey
+          provider.wallet.publicKey,
+          false,
+          TOKEN_2022_PROGRAM_ID
         );
 
         await program.rpc.testInitAssociatedTokenWithTokenProgram({
@@ -964,7 +932,7 @@ const miscTest = (
         );
         const ataAccount = AccountLayout.decode(rawAta.data);
         assert.strictEqual(ataAccount.state, 1);
-        assert.strictEqual(new anchor.BN(ataAccount.amount).toNumber(), 0);
+        assert.strictEqual(ataAccount.amount, BigInt(0));
         assert.strictEqual(
           new PublicKey(ataAccount.owner).toString(),
           provider.wallet.publicKey.toString()
@@ -1000,18 +968,17 @@ const miscTest = (
         await program.rpc.testValidateAssociatedToken({
           accounts: {
             token: associatedToken,
-            mint: localClient.publicKey,
+            mint: localClient,
             wallet: provider.wallet.publicKey,
           },
         });
 
-        let otherMint = await Token.createMint(
-          program.provider.connection,
+        const otherMint = await createMint(
+          connection,
           wallet.payer,
           provider.wallet.publicKey,
           provider.wallet.publicKey,
-          9,
-          TOKEN_PROGRAM_ID
+          9
         );
 
         await nativeAssert.rejects(
@@ -1019,7 +986,7 @@ const miscTest = (
             await program.rpc.testValidateAssociatedToken({
               accounts: {
                 token: associatedToken,
-                mint: otherMint.publicKey,
+                mint: otherMint,
                 wallet: provider.wallet.publicKey,
               },
             });
@@ -1036,17 +1003,18 @@ const miscTest = (
         await program.rpc.testValidateAssociatedToken({
           accounts: {
             token: associatedToken,
-            mint: localClient.publicKey,
+            mint: localClient,
             wallet: provider.wallet.publicKey,
           },
         });
 
-        await localClient.setAuthority(
-          associatedToken,
-          anchor.web3.Keypair.generate().publicKey,
-          "AccountOwner",
+        await setAuthority(
+          connection,
           wallet.payer,
-          []
+          associatedToken,
+          wallet.payer,
+          AuthorityType.AccountOwner,
+          anchor.web3.Keypair.generate().publicKey
         );
 
         await nativeAssert.rejects(
@@ -1054,7 +1022,7 @@ const miscTest = (
             await program.rpc.testValidateAssociatedToken({
               accounts: {
                 token: associatedToken,
-                mint: localClient.publicKey,
+                mint: localClient,
                 wallet: provider.wallet.publicKey,
               },
             });
@@ -1078,11 +1046,11 @@ const miscTest = (
           signers: [mint],
         });
 
-        const associatedToken = await Token.getAssociatedTokenAddress(
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-          TOKEN_2022_PROGRAM_ID,
+        const associatedToken = getAssociatedTokenAddressSync(
           mint.publicKey,
-          provider.wallet.publicKey
+          provider.wallet.publicKey,
+          false,
+          TOKEN_2022_PROGRAM_ID
         );
 
         await program.rpc.testInitAssociatedTokenWithTokenProgram({
@@ -1126,9 +1094,7 @@ const miscTest = (
           signers: [mint],
         });
 
-        const associatedToken = await Token.getAssociatedTokenAddress(
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-          TOKEN_PROGRAM_ID,
+        const associatedToken = getAssociatedTokenAddressSync(
           mint.publicKey,
           provider.wallet.publicKey
         );
@@ -1384,14 +1350,7 @@ const miscTest = (
         signers: [newMint],
       });
 
-      const mintClient = new Token(
-        provider.connection,
-        newMint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-
-      const mintAccount = await mintClient.getMintInfo();
+      const mintAccount = await getMint(provider.connection, newMint.publicKey);
       assert.strictEqual(mintAccount.decimals, 6);
       assert.strictEqual(
         mintAccount.mintAuthority.toString(),
@@ -1401,7 +1360,7 @@ const miscTest = (
         mintAccount.freezeAuthority.toString(),
         provider.wallet.publicKey.toString()
       );
-      assert.strictEqual(mintAccount.supply.toNumber(), 0);
+      assert.strictEqual(mintAccount.supply, BigInt(0));
       const rawAccount = await provider.connection.getAccountInfo(
         newMint.publicKey
       );
@@ -1426,14 +1385,8 @@ const miscTest = (
         signers: [newMint],
       });
 
-      const mintClient = new Token(
-        provider.connection,
-        newMint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
+      const mintAccount = await getMint(provider.connection, newMint.publicKey);
 
-      const mintAccount = await mintClient.getMintInfo();
       assert.strictEqual(mintAccount.decimals, 6);
       assert.strictEqual(
         mintAccount.mintAuthority.toString(),
@@ -1443,7 +1396,7 @@ const miscTest = (
         mintAccount.freezeAuthority.toString(),
         provider.wallet.publicKey.toString()
       );
-      assert.strictEqual(mintAccount.supply.toNumber(), 0);
+      assert.strictEqual(mintAccount.supply, BigInt(0));
       const rawAccount = await provider.connection.getAccountInfo(
         newMint.publicKey
       );
@@ -1477,14 +1430,11 @@ const miscTest = (
         },
         signers: [newToken],
       });
-      const mintClient = new Token(
+      const tokenAccount = await getAccount(
         provider.connection,
-        newMint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
+        newToken.publicKey
       );
-      const tokenAccount = await mintClient.getAccountInfo(newToken.publicKey);
-      assert.strictEqual(tokenAccount.amount.toNumber(), 0);
+      assert.strictEqual(tokenAccount.amount, BigInt(0));
       assert.strictEqual(
         tokenAccount.mint.toString(),
         newMint.publicKey.toString()
@@ -1531,7 +1481,7 @@ const miscTest = (
         newToken.publicKey
       );
       const ataAccount = AccountLayout.decode(rawAccount.data);
-      assert.strictEqual(new anchor.BN(ataAccount.amount).toNumber(), 0);
+      assert.strictEqual(ataAccount.amount, BigInt(0));
       assert.strictEqual(
         new PublicKey(ataAccount.mint).toString(),
         newMint.publicKey.toString()
@@ -1559,9 +1509,7 @@ const miscTest = (
         signers: [newMint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         newMint.publicKey,
         provider.wallet.publicKey
       );
@@ -1578,14 +1526,8 @@ const miscTest = (
         },
       });
 
-      const mintClient = new Token(
-        provider.connection,
-        newMint.publicKey,
-        TOKEN_PROGRAM_ID,
-        wallet.payer
-      );
-      const ataAccount = await mintClient.getAccountInfo(associatedToken);
-      assert.strictEqual(ataAccount.amount.toNumber(), 0);
+      const ataAccount = await getAccount(provider.connection, associatedToken);
+      assert.strictEqual(ataAccount.amount, BigInt(0));
       assert.strictEqual(
         ataAccount.mint.toString(),
         newMint.publicKey.toString()
@@ -1615,11 +1557,11 @@ const miscTest = (
         signers: [newMint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_2022_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         newMint.publicKey,
-        provider.wallet.publicKey
+        provider.wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID
       );
 
       await program.rpc.testInitAssociatedTokenIfNeededWithTokenProgram({
@@ -1638,7 +1580,7 @@ const miscTest = (
         associatedToken
       );
       const ataAccount = AccountLayout.decode(rawAccount.data);
-      assert.strictEqual(new anchor.BN(ataAccount.amount).toNumber(), 0);
+      assert.strictEqual(ataAccount.amount, BigInt(0));
       assert.strictEqual(
         new PublicKey(ataAccount.mint).toString(),
         newMint.publicKey.toString()
@@ -2106,9 +2048,7 @@ const miscTest = (
         signers: [mint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
         provider.wallet.publicKey
       );
@@ -2167,9 +2107,7 @@ const miscTest = (
         signers: [mint2],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
         provider.wallet.publicKey
       );
@@ -2217,9 +2155,7 @@ const miscTest = (
         signers: [mint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
         provider.wallet.publicKey
       );
@@ -2281,9 +2217,7 @@ const miscTest = (
         signers: [mint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
         provider.wallet.publicKey
       );
@@ -2324,11 +2258,11 @@ const miscTest = (
         signers: [mint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_2022_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
-        provider.wallet.publicKey
+        provider.wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID
       );
 
       await program.rpc.testInitAssociatedTokenWithTokenProgram({
@@ -2367,9 +2301,7 @@ const miscTest = (
         signers: [mint],
       });
 
-      const associatedToken = await Token.getAssociatedTokenAddress(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
+      const associatedToken = getAssociatedTokenAddressSync(
         mint.publicKey,
         provider.wallet.publicKey
       );
@@ -2463,12 +2395,12 @@ const miscTest = (
     describe("Can validate PDAs derived from other program ids", () => {
       it("With bumps using create_program_address", async () => {
         const [firstPDA, firstBump] =
-          await anchor.web3.PublicKey.findProgramAddress(
+          anchor.web3.PublicKey.findProgramAddressSync(
             [anchor.utils.bytes.utf8.encode("seed")],
             ASSOCIATED_TOKEN_PROGRAM_ID
           );
         const [secondPDA, secondBump] =
-          await anchor.web3.PublicKey.findProgramAddress(
+          anchor.web3.PublicKey.findProgramAddressSync(
             [anchor.utils.bytes.utf8.encode("seed")],
             program.programId
           );
@@ -2599,15 +2531,9 @@ const miscTest = (
             payer: provider.wallet.publicKey,
           },
         });
-        const mintAccount = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const account = await mintAccount.getAccountInfo(token.publicKey);
-        assert.isTrue(account.owner.equals(provider.wallet.publicKey));
-        assert.isTrue(account.mint.equals(mint.publicKey));
+        const mintAccount = await getAccount(connection, token.publicKey);
+        assert.isTrue(mintAccount.owner.equals(provider.wallet.publicKey));
+        assert.isTrue(mintAccount.mint.equals(mint.publicKey));
       });
 
       it("Token Constraint Test(no init) - Can make only token::authority", async () => {
@@ -2640,13 +2566,8 @@ const miscTest = (
             payer: provider.wallet.publicKey,
           },
         });
-        const mintAccount = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const account = await mintAccount.getAccountInfo(token.publicKey);
+
+        const account = await getAccount(connection, token.publicKey);
         assert.isTrue(account.owner.equals(provider.wallet.publicKey));
       });
 
@@ -2679,13 +2600,8 @@ const miscTest = (
             mint: mint.publicKey,
           },
         });
-        const mintAccount = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const account = await mintAccount.getAccountInfo(token.publicKey);
+
+        const account = await getAccount(connection, token.publicKey);
         assert.isTrue(account.mint.equals(mint.publicKey));
       });
 
@@ -2718,10 +2634,7 @@ const miscTest = (
             tokenTokenProgram: TOKEN_PROGRAM_ID,
           },
         });
-
-        const account = await provider.connection.getAccountInfo(
-          token.publicKey
-        );
+        const account = await connection.getAccountInfo(token.publicKey);
         assert.strictEqual(
           account.owner.toString(),
           TOKEN_PROGRAM_ID.toString()
@@ -2929,13 +2842,7 @@ const miscTest = (
             freezeAuthority: provider.wallet.publicKey,
           },
         });
-        const client = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const mintAccount = await client.getMintInfo();
+        const mintAccount = await getMint(connection, mint.publicKey);
         assert.strictEqual(mintAccount.decimals, 6);
         assert.isTrue(
           mintAccount.mintAuthority.equals(provider.wallet.publicKey)
@@ -3092,13 +2999,8 @@ const miscTest = (
             mint: mint.publicKey,
           },
         });
-        const client = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const mintAccount = await client.getMintInfo();
+        const mintAccount = await getMint(connection, mint.publicKey);
+
         assert.strictEqual(mintAccount.decimals, 6);
       });
 
@@ -3121,13 +3023,7 @@ const miscTest = (
             freezeAuthority: provider.wallet.publicKey,
           },
         });
-        const client = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const mintAccount = await client.getMintInfo();
+        const mintAccount = await getMint(connection, mint.publicKey);
         assert.isTrue(
           mintAccount.mintAuthority.equals(provider.wallet.publicKey)
         );
@@ -3154,13 +3050,8 @@ const miscTest = (
             mintAuthority: provider.wallet.publicKey,
           },
         });
-        const client = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const mintAccount = await client.getMintInfo();
+
+        const mintAccount = await getMint(connection, mint.publicKey);
         assert.isTrue(
           mintAccount.mintAuthority.equals(provider.wallet.publicKey)
         );
@@ -3184,13 +3075,8 @@ const miscTest = (
             freezeAuthority: provider.wallet.publicKey,
           },
         });
-        const client = new Token(
-          program.provider.connection,
-          mint.publicKey,
-          TOKEN_PROGRAM_ID,
-          wallet.payer
-        );
-        const mintAccount = await client.getMintInfo();
+
+        const mintAccount = await getMint(connection, mint.publicKey);
         assert.strictEqual(mintAccount.decimals, 6);
         assert.isTrue(
           mintAccount.freezeAuthority.equals(provider.wallet.publicKey)

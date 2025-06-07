@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, AnchorError } from "@coral-xyz/anchor";
 import { Keypair, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import { createMint } from "@solana/spl-token";
 import { assert, expect } from "chai";
 import { Errors } from "../target/types/errors";
 
@@ -307,20 +307,19 @@ describe("errors", () => {
   });
 
   it("Emits an AccountOwnedByWrongProgram error", async () => {
-    let client = await Token.createMint(
+    let client = await createMint(
       program.provider.connection,
       (provider.wallet as anchor.Wallet).payer,
       provider.wallet.publicKey,
       provider.wallet.publicKey,
-      9,
-      TOKEN_PROGRAM_ID
+      9
     );
 
     await withLogTest(async () => {
       try {
         const tx = await program.rpc.accountOwnedByWrongProgramError({
           accounts: {
-            wrongAccount: client.publicKey,
+            wrongAccount: client,
           },
         });
         assert.fail(
