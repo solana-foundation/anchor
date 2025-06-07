@@ -115,7 +115,7 @@ There are new account constraints for
   - `authority`
   - `program_id`
 
-**Note:** Above values are concatinated with `::` (similar to other Anchor
+**Note:** Above values are concatenated with `::` (similar to other Anchor
 constraints) and have `extensions` prefix e.g.
 `extensions::group_pointer::authority = <EXPR>`.
 
@@ -183,7 +183,7 @@ supports setting `--priority-fee` argument for the IDL commands. For example:
 anchor idl erase-authority --program-id <PROGRAM_ID> --priority-fee 9000
 ```
 
-When the `--priortiy-fee` argument is not specified, the median fee of the last
+When the `--priority-fee` argument is not specified, the median fee of the last
 150 confirmed slots is used.
 
 ### `--no-idl` flag on builds
@@ -245,7 +245,7 @@ get a warning if any of them don't match.
 ### Explicit `overflow-checks` flag
 
 [`overflow-checks`](https://doc.rust-lang.org/cargo/reference/profiles.html#overflow-checks)
-flag is implicitly disabled by default. Anchor workspaces that are crated with
+flag is implicitly disabled by default. Anchor workspaces that are created with
 `anchor init` have this flag enabled, however, Anchor doesn't do any checks for
 it after the initial workspace creation.
 
