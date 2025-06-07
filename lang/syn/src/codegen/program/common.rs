@@ -8,7 +8,7 @@ pub const SIGHASH_GLOBAL_NAMESPACE: &str = "global";
 
 // We don't technically use sighash, because the input arguments aren't given.
 // Rust doesn't have method overloading so no need to use the arguments.
-// However, we do namespace methods in the preeimage so that we can use
+// However, we do namespace methods in the preimage so that we can use
 // different traits with the same method name.
 pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{namespace}:{name}");
