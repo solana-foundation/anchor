@@ -344,3 +344,105 @@ Program BZLiJ62bzRryYp9mRobz47uA66WDgtfTXhhgM25tJyx5 success
 
 </Tab>
 </Tabs>
+
+## PDA Bump Patterns
+
+Below is a concise pattern cookbook for the three most common PDA bump scenarios in Anchor:
+
+### 1. Creating a PDA (auto-derive bump)
+
+When **initializing** a new PDA account, let Anchor automatically find and store the bump:
+
+```rust
+#[derive(Accounts)]
+pub struct InitFoo<'info> {
+    #[account(
+        init,
+        seeds = [ b"foo", authority.key().as_ref(), &id.to_le_bytes() ],
+        bump,                    // ← auto-find and store in ctx.bumps
+        payer = authority,
+        space = Foo::SIZE,
+    )]
+    pub foo: Account<'info, Foo>,
+    // …
+}
+````
+
+* Anchor runs `Pubkey::find_program_address(seeds, program_id)`,
+  creates the account at that PDA, and sets
+  `ctx.bumps["foo"] = bump`.
+* In your handler you retrieve it with:
+
+  ```rust
+  let bump = ctx.bumps["foo"];
+  ```
+
+---
+
+### 2. Verifying an existing PDA (reuse stored bump)
+
+For **subsequent** instructions, verify the PDA by reading the bump you saved on-chain:
+
+```rust
+#[derive(Accounts)]
+#[instruction(id: u64)]
+pub struct DoBar<'info> {
+    #[account(
+        mut,
+        seeds = [ b"foo", authority.key().as_ref(), &id.to_le_bytes() ],
+        bump = foo_account.bump, // ← use stored bump field
+        has_one = authority,
+    )]
+    pub foo_account: Account<'info, Foo>,
+    // …
+}
+```
+
+* Anchor reads `foo_account.bump`,
+  recreates the PDA with
+  `Pubkey::create_program_address(seeds + &[foo_account.bump], program_id)`,
+  and checks it matches the account’s address.
+
+---
+
+### 3. Signing CPIs with a PDA
+
+When your program needs to **sign** a cross-program invocation as the PDA:
+
+```rust
+let bump = foo_account.bump;
+let seeds = &[
+    b"foo".as_ref(),
+    authority.key.as_ref(),
+    &id.to_le_bytes(),
+    &[bump],
+];
+let signer_seeds = &[&seeds[..]];
+
+token::transfer(
+    CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        Transfer {
+            from: vault.to_account_info(),
+            to: dst.to_account_info(),
+            authority: foo_account.to_account_info(),
+        },
+        signer_seeds,
+    ),
+    amount,
+)?;
+```
+
+* These same seeds + bump re-derive the PDA’s “private key” so the runtime permits the PDA to sign.
+
+---
+
+### TL;DR Checklist
+
+* **Init**: use `bump` (no `=`) → Anchor auto-finds & stores `ctx.bumps`.
+* **Later**: use `bump = account.bump` → Anchor verifies against stored bump.
+* **CPI-signing**: include `&[bump]` in your signer seeds to let the PDA sign.
+
+```
+```
+
