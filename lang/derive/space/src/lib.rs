@@ -151,6 +151,15 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                 }
             }
         }
+        Type::Tuple(ty_tuple) => {
+            let recurse = ty_tuple
+                .elems
+                .iter()
+                .map(|t| len_from_type(t.clone(), attrs));
+            quote! {
+                (0 #(+ #recurse)*)
+            }
+        }
         _ => panic!("Type {ty:?} is not supported"),
     }
 }
