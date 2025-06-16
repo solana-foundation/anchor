@@ -255,7 +255,6 @@ fn test_nested_tuple_complexity() {
     // = 1 + (1 + 2) + (4 + (8 + 16)) = 1 + 3 + (4 + 24) = 1 + 3 + 28 = 32
     let complex_nested_size = 1 + (1 + 2) + (4 + (8 + 16)); // 32
 
-    
     assert!(TestTupleStruct::INIT_SPACE >= deeply_nested_size + complex_nested_size);
 }
 
