@@ -2389,10 +2389,13 @@ fn idl_init(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
+    // Convert relative path to absolute path before changing directories
+    let idl_filepath = std::env::current_dir()?.join(&idl_filepath);
+    
     with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
-        let idl = fs::read(idl_filepath)?;
+        let idl = fs::read(&idl_filepath)?;
         let idl = convert_idl(&idl)?;
 
         let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
@@ -2423,10 +2426,13 @@ fn idl_write_buffer(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
+    // Convert relative path to absolute path before changing directories
+    let idl_filepath = std::env::current_dir()?.join(&idl_filepath);
+    
     with_workspace(cfg_override, |cfg| {
         let keypair = cfg.provider.wallet.to_string();
 
-        let idl = fs::read(idl_filepath)?;
+        let idl = fs::read(&idl_filepath)?;
         let idl = convert_idl(&idl)?;
 
         let idl_buffer = create_idl_buffer(cfg, &keypair, &program_id, &idl, priority_fee)?;
