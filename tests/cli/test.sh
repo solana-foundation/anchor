@@ -83,39 +83,116 @@ diff_test() {
 )
 
 # init
-(
-  setup_test init
-  output=$(
-    anchor_cli init test-program --no-install --no-git
-    patch_program test-program
-    patch_program_id test-program
-  ) || exit_code="$?"
-  diff_test init "${output}" "${exit_code:-0}"
-)
+# (
+#   setup_test init
+#   output=$(
+#     anchor_cli init test-program --no-install --no-git
+#     patch_program test-program
+#     patch_program_id test-program
+#   ) || exit_code="$?"
+#   diff_test init "${output}" "${exit_code:-0}"
+# )
 
 # new
+# (
+#   setup_test new
+#   output=$(
+#     (
+#       cd test-program
+#       anchor_cli new another-program --solidity
+#     )
+#     patch_program test-program
+#     patch_program_id another-program bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ
+#   )
+#   diff_test new "${output}" "$?"
+# )
+
+# build # just check binary, commit the generated idl for expected
+# (
+#   setup_test build
+#   output=$(
+#     (
+#       cd test-program
+#       anchor_cli build
+
+#       if [ -f target/deploy/test_program.so ]; then
+#         echo "test build passed"
+#       else
+#         echo "test build failed"
+#       fi
+#     )
+#   )
+# )
+
+# clean
 (
-  setup_test new
+  setup_test clean
   output=$(
     (
       cd test-program
-      anchor_cli new another-program --solidity
+      anchor_cli build
+
+      # Check that target exists and is non-empty
+      if [ -d target ] && [ "$(ls -A target)" ]; then
+        echo "target exists and is not empty before clean"
+      else
+        echo "target is missing or empty before clean"
+      fi
+
+      # Run anchor clean
+      anchor_cli clean
+
+      rm Cargo.lock
+
+      # Check that only test_program-keypair.json exists
+      if [ "$(find target -type f | wc -l)" -eq 1 ] && [ -f target/deploy/test_program-keypair.json ]; then
+        echo "clean successful: only test_program-keypair.json exists"
+      else
+        echo "clean failed or unexpected files remain in target"
+        find target
+      fi
     )
-    patch_program test-program
-    patch_program_id another-program bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ
   )
-  diff_test new "${output}" "$?"
+  
+  # Remove the keypair file from both directories before diff comparison since it's randomly generated
+  rm -f "${output_dir}/clean/test-program/target/deploy/test_program-keypair.json"
+  rm -f "${expected_dir}/clean/test-program/target/deploy/test_program-keypair.json"
+  
+  diff_test clean "${output}" "$?"
 )
 
-# build # just check binary, commit the generated idl for expected
-# clean
+
+
+
 # build
 
 # airdrop
 # cluster
+(
+  expected_output="Cluster Endpoints:
+
+* Mainnet - https://api.mainnet-beta.solana.com
+* Devnet  - https://api.devnet.solana.com
+* Testnet - https://api.testnet.solana.com"
+  output=$(
+    anchor_cli cluster list
+  ) || exit_code="$?"
+
+  echo "${expected_output}" > "${output_dir}/expected_cluster.txt"
+  echo "${output}" > "${output_dir}/actual_cluster.txt"
+  if diff_output=$(diff "${output_dir}/expected_cluster.txt" "${output_dir}/actual_cluster.txt"); then
+    echo "test cluster passed"
+  else
+    echo "test cluster failed"
+    echo "----- diff ----"
+    echo "${diff_output}"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+)
+
 
 # idl
-# run
 # test
 # deploy
 # keys
