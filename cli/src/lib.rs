@@ -2389,7 +2389,6 @@ fn idl_init(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    // Convert relative path to absolute path before changing directories
     let idl_filepath = std::env::current_dir()?.join(&idl_filepath);
     
     with_workspace(cfg_override, |cfg| {
@@ -2426,7 +2425,6 @@ fn idl_write_buffer(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
-    // Convert relative path to absolute path before changing directories
     let idl_filepath = std::env::current_dir()?.join(&idl_filepath);
     
     with_workspace(cfg_override, |cfg| {
