@@ -303,7 +303,8 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         let mut client = lock.write().await;
 
         if client.is_none() {
-            let sub_client = PubsubClient::new(self.cfg.cluster.ws_url()).await
+            let sub_client = PubsubClient::new(self.cfg.cluster.ws_url())
+                .await
                 .map_err(Box::new)?;
             *client = Some(sub_client);
         }
@@ -333,15 +334,18 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
         let handle = tokio::spawn(async move {
             if let Some(ref client) = *lock.read().await {
-                let (mut notifications, unsubscribe) =
-                    client.logs_subscribe(filter, config).await
-                        .map_err(Box::new)?;
+                let (mut notifications, unsubscribe) = client
+                    .logs_subscribe(filter, config)
+                    .await
+                    .map_err(Box::new)?;
 
                 tx.send(unsubscribe).map_err(|e| {
-                    ClientError::SolanaClientPubsubError(Box::new(PubsubClientError::RequestFailed {
-                        message: "Unsubscribe failed".to_string(),
-                        reason: e.to_string(),
-                    }))
+                    ClientError::SolanaClientPubsubError(Box::new(
+                        PubsubClientError::RequestFailed {
+                            message: "Unsubscribe failed".to_string(),
+                            reason: e.to_string(),
+                        },
+                    ))
                 })?;
 
                 while let Some(logs) = notifications.next().await {
@@ -639,7 +643,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
-        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await
+        let latest_hash = self
+            .internal_rpc_client
+            .get_latest_blockhash()
+            .await
             .map_err(Box::new)?;
 
         let tx = self.signed_transaction_with_blockhash(latest_hash)?;
@@ -647,7 +654,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     async fn send_internal(&self) -> Result<Signature, ClientError> {
-        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await
+        let latest_hash = self
+            .internal_rpc_client
+            .get_latest_blockhash()
+            .await
             .map_err(Box::new)?;
         let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
@@ -661,7 +671,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         &self,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
-        let latest_hash = self.internal_rpc_client.get_latest_blockhash().await
+        let latest_hash = self
+            .internal_rpc_client
+            .get_latest_blockhash()
+            .await
             .map_err(Box::new)?;
         let tx = self.signed_transaction_with_blockhash(latest_hash)?;
 
