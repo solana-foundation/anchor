@@ -409,4 +409,8 @@ pub mod misc {
     pub fn test_init_and_zero(_ctx: Context<TestInitAndZero>) -> Result<()> {
         Ok(())
     }
+
+    pub fn test_system_account(_ctx: Context<TestSystemAccount>) -> Result<()> {
+        Ok(())
+    }
 }
