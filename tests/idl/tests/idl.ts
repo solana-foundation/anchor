@@ -10,7 +10,7 @@ describe("IDL", () => {
 
   it("Includes constants that use `#[constant]` macro", () => {
     const checkDefined = (
-      cb: (constant: typeof program["idl"]["constants"][number]) => boolean
+      cb: (constant: (typeof program)["idl"]["constants"][number]) => boolean
     ) => {
       const constant = program.idl.constants.find(cb);
       if (!constant) throw new Error("Constant not found");

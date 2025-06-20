@@ -13,7 +13,7 @@ describe("declare-program", () => {
   // TODO: Add a utility type that does this?
   let pubkeys: Awaited<
     ReturnType<
-      ReturnType<typeof externalProgram["methods"]["init"]>["rpcAndKeys"]
+      ReturnType<(typeof externalProgram)["methods"]["init"]>["rpcAndKeys"]
     >
   >["pubkeys"];
 
