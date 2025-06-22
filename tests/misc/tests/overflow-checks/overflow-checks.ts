@@ -9,7 +9,7 @@ describe("overflow-checks", () => {
     .OverflowChecks as anchor.Program<OverflowChecks>;
 
   const accountKp = anchor.web3.Keypair.generate();
-  const testOverflow = async (method: keyof (typeof program)["methods"]) => {
+  const testOverflow = async (method: keyof typeof program["methods"]) => {
     try {
       await program.methods[method]()
         .accounts({

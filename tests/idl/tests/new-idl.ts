@@ -189,7 +189,7 @@ describe("New IDL", () => {
 
     it("Can use enum", async () => {
       const testAccountEnum = async (
-        ...args: Parameters<(typeof program)["methods"]["enm"]>
+        ...args: Parameters<typeof program["methods"]["enm"]>
       ) => {
         const kp = anchor.web3.Keypair.generate();
         await program.methods

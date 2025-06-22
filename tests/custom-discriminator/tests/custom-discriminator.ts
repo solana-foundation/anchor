@@ -9,7 +9,7 @@ describe("custom-discriminator", () => {
     anchor.workspace.customDiscriminator;
 
   describe("Instructions", () => {
-    const testCommon = async (ixName: keyof (typeof program)["methods"]) => {
+    const testCommon = async (ixName: keyof typeof program["methods"]) => {
       const tx = await program.methods[ixName]().transaction();
 
       // Verify discriminator

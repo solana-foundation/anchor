@@ -8,10 +8,10 @@ describe("Events", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Events as anchor.Program<Events>;
 
-  type Event = anchor.IdlEvents<(typeof program)["idl"]>;
+  type Event = anchor.IdlEvents<typeof program["idl"]>;
   const getEvent = async <E extends keyof Event>(
     eventName: E,
-    methodName: keyof (typeof program)["methods"]
+    methodName: keyof typeof program["methods"]
   ) => {
     let listenerId: number;
     const event = await new Promise<Event[E]>((res) => {
