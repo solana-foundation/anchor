@@ -37,7 +37,7 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
             program_path.join("Cargo.toml"),
             cargo_toml(name, with_mollusk),
         ),
-        (program_path.join("Xargo.toml"), xargo_toml().into()),
+        // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
     ];
 
     let template_files = match template {
@@ -204,11 +204,17 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
 {2}
 
 [dependencies]
 anchor-lang = "{3}"
 {4}
+
+[lints.rust]
+unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }}
 "#,
         name,
         name.to_snake_case(),
@@ -216,12 +222,6 @@ anchor-lang = "{3}"
         VERSION,
         dev_dependencies,
     )
-}
-
-fn xargo_toml() -> &'static str {
-    r#"[target.bpfel-unknown-unknown.dependencies.std]
-features = []
-"#
 }
 
 /// Read the program keypair file or create a new one if it doesn't exist.
