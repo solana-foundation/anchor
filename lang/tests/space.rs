@@ -110,6 +110,7 @@ pub struct TestUnnamedStruct(
 pub struct TestUnitStruct;
 
 #[derive(InitSpace)]
+#[allow(clippy::type_complexity)]
 pub struct TestTupleStruct {
     pub test_tuple: (u8, u16, u32, u64, u128),
     pub mixed_tuple: (bool, f32, f64, i8, i16, i32, i64, i128),
@@ -206,7 +207,8 @@ fn test_unit_struct() {
 
 #[test]
 fn test_basic_tuple() {
-    assert!(TestTupleStruct::INIT_SPACE >= 31);
+    let basic_tuple_size = 1 + 2 + 4 + 8 + 16; // 31
+    assert!(TestTupleStruct::INIT_SPACE >= basic_tuple_size);
 }
 
 #[test]
