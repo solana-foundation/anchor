@@ -206,7 +206,7 @@ fn test_unit_struct() {
 
 #[test]
 fn test_basic_tuple() {
-    assert_eq!(TestTupleStruct::INIT_SPACE >= 31, true);
+    assert!(TestTupleStruct::INIT_SPACE >= 31);
 }
 
 #[test]
@@ -272,7 +272,7 @@ fn test_tuple_with_options() {
 #[test]
 fn test_tuple_with_arrays() {
     // array_tuple: ([u8; 4], u16) = (4 * 1) + 2 = 6
-    let array_tuple_size = (4 * 1) + 2; // 6
+    let array_tuple_size = 4 + 2; // 6
 
     // tuple_array_nested: (u8, ([u16; 2], u32)) = 1 + ((2 * 2) + 4) = 1 + (4 + 4) = 9
     let tuple_array_nested_size = 1 + ((2 * 2) + 4); // 9
