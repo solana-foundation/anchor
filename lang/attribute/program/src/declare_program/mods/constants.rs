@@ -13,6 +13,13 @@ pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let (ty, val) = match &c.ty {
             IdlType::Bytes => (quote!(&[u8]), quote! { &#val }),
             IdlType::String => (quote!(&str), val),
+            IdlType::Pubkey => {
+                let pubkey_str = c.value.to_string();
+                (
+                    quote!(anchor_lang::prelude::Pubkey),
+                    quote!(anchor_lang::prelude::Pubkey::from_str_const(#pubkey_str)),
+                )
+            }
             _ => (convert_idl_type_to_syn_type(&c.ty).to_token_stream(), val),
         };
 
