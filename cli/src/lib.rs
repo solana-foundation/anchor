@@ -4595,6 +4595,9 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
             .build()
             .unwrap();
 
+        let cfg_cluster = cfg.provider.cluster.to_owned();
+        println!("Syncing program ids for the configured cluster ({cfg_cluster})\n");
+
         let mut changed_src = false;
         for program in cfg.get_programs(program_name)? {
             // Get the pubkey from the keypair file
@@ -4628,7 +4631,12 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
             }
 
             // Handle declaration in Anchor.toml
-            'outer: for programs in cfg.programs.values_mut() {
+            'outer: for (cluster, programs) in &mut cfg.programs {
+                // Only change if the configured cluster matches the program's cluster
+                if cluster != &cfg_cluster {
+                    continue;
+                }
+
                 for (name, deployment) in programs {
                     // Skip other programs
                     if name != &program.lib_name {
