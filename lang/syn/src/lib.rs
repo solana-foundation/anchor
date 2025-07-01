@@ -441,6 +441,22 @@ impl Field {
                     }
                 }
             }
+            Ty::Signer => {
+                quote! {
+                    match Signer::try_from(&#field) {
+                        Ok(val) => val,
+                        Err(e) => return Err(e.with_account_name(#field_str))
+                    }
+                }
+            }
+            Ty::SystemAccount => {
+                quote! {
+                    match SystemAccount::try_from(&#field) {
+                        Ok(val) => val,
+                        Err(e) => return Err(e.with_account_name(#field_str))
+                    }
+                }
+            }
             _ => {
                 if checked {
                     quote! {
