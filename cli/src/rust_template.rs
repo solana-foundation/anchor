@@ -686,11 +686,20 @@ impl TestTemplate {
                 // Build the test suite.
                 fs::create_dir_all("tests")?;
 
-                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-                if solidity {
-                    test.write_all(solidity_template::jest(project_name).as_bytes())?;
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    if solidity {
+                        test.write_all(solidity_template::jest(project_name).as_bytes())?;
+                    } else {
+                        test.write_all(jest(project_name).as_bytes())?;
+                    }
                 } else {
-                    test.write_all(jest(project_name).as_bytes())?;
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    if solidity {
+                        test.write_all(solidity_template::ts_jest(project_name).as_bytes())?;
+                    } else {
+                        test.write_all(ts_jest(project_name).as_bytes())?;
+                    }
                 }
             }
             Self::Rust => {
