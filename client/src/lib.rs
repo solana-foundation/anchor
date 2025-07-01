@@ -60,7 +60,7 @@
 //!
 //! ```toml
 //! anchor-client = { version = "0.31.1 ", features = ["async"] }
-//! ````
+//! ```
 //!
 //! ## `mock`
 //!
