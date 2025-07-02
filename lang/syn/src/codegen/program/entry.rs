@@ -36,14 +36,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        pub fn entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+        pub fn entry<'info>(program_id: &Pubkey, accounts: &[AccountInfo<'info>], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
             try_entry(program_id, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
         }
 
-        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
+        fn try_entry<'info>(program_id: &Pubkey, accounts: &[AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
