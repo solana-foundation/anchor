@@ -835,3 +835,35 @@ pub struct TestInitAndZero<'info> {
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+#[instruction(seed_int: u64)]
+pub struct TestIntSeed<'info> {
+    #[account(
+        init,
+        seeds = [seed_int],
+        bump,
+        payer = payer,
+        space = Data::LEN + 8
+    )]
+    pub pda: Account<'info, Data>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TestSignerSeed<'info> {
+    #[account(
+        init,
+        seeds = [signer],
+        bump,
+        payer = payer,
+        space = Data::LEN + 8
+    )]
+    pub pda: Account<'info, Data>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub signer: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
