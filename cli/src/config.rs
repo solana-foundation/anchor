@@ -386,6 +386,8 @@ pub enum PackageManager {
     Yarn,
     /// Use pnpm as the package manager.
     PNPM,
+    /// Use bun as the package manager.
+    Bun,
 }
 
 impl std::fmt::Display for PackageManager {
@@ -394,6 +396,7 @@ impl std::fmt::Display for PackageManager {
             PackageManager::NPM => "npm",
             PackageManager::Yarn => "yarn",
             PackageManager::PNPM => "pnpm",
+            PackageManager::Bun => "bun",
         };
 
         write!(f, "{pkg_manager_str}")
