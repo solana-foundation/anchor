@@ -11,8 +11,8 @@ use syn::parse::{Parse, ParseStream};
 use common::gen_docs;
 use mods::{
     accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
-    cpi::gen_cpi_mod, events::gen_events_mod, internal::gen_internal_mod, program::gen_program_mod,
-    types::gen_types_mod, utils::gen_utils_mod,
+    cpi::gen_cpi_mod, errors::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
+    program::gen_program_mod, types::gen_types_mod, utils::gen_utils_mod,
 };
 
 pub struct DeclareProgram {
@@ -61,6 +61,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     let accounts_mod = gen_accounts_mod(idl);
     let events_mod = gen_events_mod(idl);
     let types_mod = gen_types_mod(idl);
+    let errors_mod = gen_errors_mod(idl);
 
     // Clients
     let cpi_mod = gen_cpi_mod(idl);
@@ -85,6 +86,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
             #accounts_mod
             #events_mod
             #types_mod
+            #errors_mod
 
             #cpi_mod
             #client_mod
