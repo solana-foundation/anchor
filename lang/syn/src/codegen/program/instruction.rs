@@ -79,7 +79,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// instructions, where each method handler in the `#[program]` mod is
         /// associated with a struct defining the input arguments to the
         /// method. These should be used directly, when one wants to serialize
-        /// Anchor instruction data, for example, when speciying
+        /// Anchor instruction data, for example, when specifying
         /// instructions on a client.
         pub mod instruction {
             use super::*;
