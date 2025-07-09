@@ -178,10 +178,11 @@ fn gen_internal_accounts_common(
                         }
                     };
 
-                    let acc_expr = acc
-                        .optional
-                        .then(|| quote! { Option<AccountInfo #generics> })
-                        .unwrap_or_else(|| quote! { AccountInfo #generics });
+                    let acc_expr = if acc.optional {
+                        quote! { Option<AccountInfo #generics> }
+                    } else {
+                        quote! { AccountInfo #generics }
+                    };
 
                     quote! {
                         #[account(#attrs)]
