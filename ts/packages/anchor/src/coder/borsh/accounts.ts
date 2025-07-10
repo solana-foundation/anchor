@@ -54,7 +54,7 @@ export class BorshAccountsCoder<A extends string = string>
       throw new Error(`Unknown account: ${accountName}`);
     }
     const len = layout.layout.encode(account, buffer);
-    const accountData = buffer.slice(0, len);
+    const accountData = buffer.subarray(0, len);
     const discriminator = this.accountDiscriminator(accountName);
     return Buffer.concat([discriminator, accountData]);
   }
@@ -62,7 +62,7 @@ export class BorshAccountsCoder<A extends string = string>
   public decode<T = any>(accountName: A, data: Buffer): T {
     // Assert the account discriminator is correct.
     const discriminator = this.accountDiscriminator(accountName);
-    if (discriminator.compare(data.slice(0, discriminator.length))) {
+    if (discriminator.compare(data.subarray(0, discriminator.length))) {
       throw new Error("Invalid account discriminator");
     }
     return this.decodeUnchecked(accountName, data);
@@ -111,8 +111,8 @@ export class BorshAccountsCoder<A extends string = string>
    *
    * @param name The name of the account to get the discriminator of.
    */
-  public accountDiscriminator(name: string): Buffer {
-    const account = this.idl.accounts?.find((acc) => acc.name === name);
+  public accountDiscriminator(name: A): Buffer {
+    const account = this.accountLayouts.get(name);
     if (!account) {
       throw new Error(`Account not found: ${name}`);
     }
