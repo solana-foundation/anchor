@@ -299,7 +299,7 @@ class MapEntryLayout<K, V> extends LayoutCls<[K, V]> {
   valueLayout: Layout<V>;
 
   constructor(keyLayout: Layout<K>, valueLayout: Layout<V>, property?: string) {
-    super(keyLayout.span + valueLayout.span, property);
+    super(0, property);
     this.keyLayout = keyLayout;
     this.valueLayout = valueLayout;
   }
@@ -322,9 +322,10 @@ class MapEntryLayout<K, V> extends LayoutCls<[K, V]> {
   }
 
   getSpan(b: Buffer, offset?: number): number {
-    return (
-      this.keyLayout.getSpan(b, offset) + this.valueLayout.getSpan(b, offset)
-    );
+    offset = offset || 0;
+    const keySpan = this.keyLayout.getSpan(b, offset);
+    const valueSpan = this.valueLayout.getSpan(b, offset + keySpan);
+    return keySpan + valueSpan;
   }
 }
 
