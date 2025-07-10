@@ -1,59 +1,67 @@
 use saturn_collections::generic::fixed_set::FixedSetError;
-use anchor_lang::error_code;
 use saturn_safe_math::MathError;
 use arch_program::program_error::ProgramError;
+use arch_program::decode_error::DecodeError;
+use num_derive::FromPrimitive;
+use thiserror::Error;
 
-#[derive(PartialEq, Eq)]
-#[error_code(offset = 800)]
+/// Custom errors for Bitcoin transaction operations.
+///
+/// The first variant starts at 800 to maintain compatibility with the previous
+/// Anchor‐based error numbering.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Error, FromPrimitive)]
 pub enum BitcoinTxError {
-    #[msg("Transaction input amount is not enough to cover network fees")]
-    NotEnoughAmountToCoverFees,
+    #[error("Transaction input amount is not enough to cover network fees")]
+    NotEnoughAmountToCoverFees = 800,
 
-    #[msg("The resulting transaction exceeds the maximum size allowed")]
+    #[error("The resulting transaction exceeds the maximum size allowed")]
     TransactionTooLarge,
 
-    #[msg("An arithmetic error ocurred")]
+    #[error("An arithmetic error ocurred")]
     CalcOverflow,
 
-    #[msg("The transaction inputs don't cover the amount to be spent in the transaction")]
+    #[error("The transaction inputs don't cover the amount to be spent in the transaction")]
     InsufficientInputAmount,
 
-    #[msg("The configured fee rate is too low")]
+    #[error("The configured fee rate is too low")]
     InvalidFeeRateTooLow,
 
-    #[msg("The utxo was not found in the user utxos")]
+    #[error("The utxo was not found in the user utxos")]
     UtxoNotFoundInUserUtxos,
 
-    #[msg("The transaction input length must match the user utxos length")]
+    #[error("The transaction input length must match the user utxos length")]
     TransactionInputLengthMustMatchUserUtxosLength,
 
-    #[msg("The transaction was not found")]
+    #[error("The transaction was not found")]
     TransactionNotFound,
 
-    #[msg("The utxo does not contain runes")]
+    #[error("The utxo does not contain runes")]
     RuneOutputNotFound,
 
-    #[msg("The utxo contains more runes than the maximum allowed")]
+    #[error("The utxo contains more runes than the maximum allowed")]
     MoreRunesInUtxoThanMax,
 
-    #[msg("Not enough BTC in pool")]
+    #[error("Not enough BTC in pool")]
     NotEnoughBtcInPool,
 
-    #[msg("The runestone is not valid")]
+    #[error("The runestone is not valid")]
     RunestoneDecipherError,
 
-    #[msg("Rune input list is full")]
+    #[error("Rune input list is full")]
     RuneInputListFull,
 
-    #[msg("Rune addition overflow")]
+    #[error("Rune addition overflow")]
     RuneAdditionOverflow,
 
-    #[msg("Input to sign list is full")]
+    #[error("Input to sign list is full")]
     InputToSignListFull,
 
-    #[msg("Modified account list is full")]
+    #[error("Modified account list is full")]
     ModifiedAccountListFull,
 }
+
+// === Conversions ============================================================
 
 impl From<FixedSetError> for BitcoinTxError {
     fn from(error: FixedSetError) -> Self {
@@ -67,18 +75,33 @@ impl From<FixedSetError> for BitcoinTxError {
 impl From<MathError> for BitcoinTxError {
     fn from(error: MathError) -> Self {
         match error {
-            MathError::AdditionOverflow => BitcoinTxError::CalcOverflow,
-            MathError::SubtractionOverflow => BitcoinTxError::CalcOverflow,
-            MathError::MultiplicationOverflow => BitcoinTxError::CalcOverflow,
-            MathError::DivisionOverflow => BitcoinTxError::CalcOverflow,
-            MathError::ConversionError => BitcoinTxError::CalcOverflow,
+            MathError::AdditionOverflow
+            | MathError::SubtractionOverflow
+            | MathError::MultiplicationOverflow
+            | MathError::DivisionOverflow
+            | MathError::ConversionError => BitcoinTxError::CalcOverflow,
         }
     }
 }
 
-// Allow using `?` to convert `BitcoinTxError` into `ProgramError` directly.
+/// Convert to the generic [`ProgramError`] used by `arch_program`.
 impl From<BitcoinTxError> for ProgramError {
     fn from(e: BitcoinTxError) -> Self {
-        anchor_lang::error::Error::from(e).into()
+        ProgramError::Custom(e.into())
+    }
+}
+
+/// Allow using `.into()` to convert directly into the underlying `u32` code.
+impl From<BitcoinTxError> for u32 {
+    fn from(e: BitcoinTxError) -> Self {
+        e as u32
+    }
+}
+
+// === Runtime decoding support ==============================================
+
+impl DecodeError<BitcoinTxError> for BitcoinTxError {
+    fn type_of() -> &'static str {
+        "BitcoinTxError"
     }
 }

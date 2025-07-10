@@ -11,7 +11,9 @@ hex = { workspace = true }
 mempool-oracle-sdk = { workspace = true }
 saturn-collections = { workspace = true }
 saturn-safe-math = { workspace = true }
-anchor-lang = { path = "../lang", version = "0.31.1" }
+thiserror = { workspace = true }
+num-derive = { workspace = true }
+num-traits = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 utoipa = { workspace = true, optional = true }
