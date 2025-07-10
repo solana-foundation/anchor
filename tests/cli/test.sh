@@ -161,8 +161,33 @@ diff_test() {
   diff_test clean "${output}" "$?"
 )
 
+# test
+(
+  setup_test test
+  
+  # Set required environment variables for the test
+  export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
+  export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
 
+  cd test-program
 
+  # First build the program (redirect compilation output to /dev/null)
+  "${workspace_dir}/target/debug/anchor" build > /dev/null 2>&1
+
+  # Run test with local validator and capture output
+  test_output=$(timeout 60s "${workspace_dir}/target/debug/anchor" test 2>&1) || test_exit_code="$?"
+
+  # Check if test passed by looking for "1 passing" in the output
+  if echo "$test_output" | grep -q "1 passing"; then
+    echo "test test passed"
+  else
+    echo "test test failed"
+    echo "----- output ----"
+    echo "$test_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+)
 
 # build
 
