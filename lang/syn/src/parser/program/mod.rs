@@ -5,8 +5,22 @@ use syn::spanned::Spanned;
 
 mod instructions;
 
-pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
+pub fn parse(mut program_mod: syn::ItemMod) -> ParseResult<Program> {
     let docs = docs::parse(&program_mod.attrs);
+    // Extract optional btc_tx_cfg attribute
+    let btc_tx_cfg_attr_pos = program_mod
+        .attrs
+        .iter()
+        .position(|attr| attr.path.is_ident("btc_tx_cfg"));
+    let btc_tx_cfg = if let Some(pos) = btc_tx_cfg_attr_pos {
+        let attr = program_mod.attrs.get(pos).unwrap();
+        let cfg = attr.parse_args::<crate::BtcTxCfg>()?;
+        // Remove so it doesn't appear in final code
+        program_mod.attrs.remove(pos);
+        Some(cfg)
+    } else {
+        None
+    };
     let (ixs, fallback_fn) = instructions::parse(&program_mod)?;
     Ok(Program {
         ixs,
@@ -14,6 +28,7 @@ pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
         docs,
         program_mod,
         fallback_fn,
+        btc_tx_cfg,
     })
 }
 

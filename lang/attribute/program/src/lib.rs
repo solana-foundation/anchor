@@ -3,19 +3,45 @@ extern crate proc_macro;
 mod declare_program;
 
 use declare_program::DeclareProgram;
-use quote::ToTokens;
-use syn::parse_macro_input;
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, AttributeArgs, NestedMeta, Meta, ItemMod};
 
 /// The `#[program]` attribute defines the module containing all instruction
 /// handlers defining all entries into a Solana program.
 #[proc_macro_attribute]
 pub fn program(
-    _args: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    parse_macro_input!(input as anchor_syn::Program)
-        .to_token_stream()
-        .into()
+    // Parse the attribute arguments, looking for an optional `btc_tx(...)` section.
+    let args_parsed = parse_macro_input!(args as AttributeArgs);
+
+    // Parse the incoming module so we can attach a synthetic attribute.
+    let mut program_mod = parse_macro_input!(input as ItemMod);
+
+    // Extract btc_tx nested list if present.
+    for nested in args_parsed {
+        match nested {
+            NestedMeta::Meta(Meta::List(list)) if list.path.is_ident("btc_tx") => {
+                let nested = &list.nested;
+                // `nested` contains arguments like `max_inputs_to_sign = 4, ...`
+                let cfg_attr: syn::Attribute = syn::parse_quote! {
+                    #[btc_tx_cfg( #nested )]
+                };
+                program_mod.attrs.push(cfg_attr);
+            }
+            _ => {
+                // Ignore or emit error for unsupported meta
+            }
+        }
+    }
+
+    // Convert modified module back into tokens and let anchor_syn handle the heavy lifting.
+    let program_tokens = quote! { #program_mod };
+    match syn::parse2::<anchor_syn::Program>(program_tokens) {
+        Ok(p) => p.to_token_stream().into(),
+        Err(e) => e.to_compile_error().into(),
+    }
 }
 
 /// Declare an external program based on its IDL.

@@ -1,6 +1,7 @@
 use anchor_lang::error_code;
-use borsh::io::Error as BorshIoError;
 use arch_program::{program_error::ProgramError, pubkey::Pubkey};
+use borsh::io::Error as BorshIoError;
+use saturn_collections::generic::fixed_set::FixedSetError;
 use std::fmt::{Debug, Display};
 use std::num::TryFromIntError;
 
@@ -323,6 +324,12 @@ impl From<TryFromIntError> for Error {
             error_origin: None,
             compared_values: None,
         }))
+    }
+}
+
+impl From<FixedSetError> for Error {
+    fn from(e: FixedSetError) -> Self {
+        Self::ProgramError(Box::new(ProgramError::Custom(e.into()).into()))
     }
 }
 

@@ -90,15 +90,18 @@ macro_rules! declare_fixed_set {
             }
 
             /// Insert item into set.
-            pub fn insert(&mut self, item: $T) -> Result<(), FixedSetError>
+            pub fn insert(
+                &mut self,
+                item: $T,
+            ) -> ::core::result::Result<(), $crate::generic::fixed_set::FixedSetError>
             where
                 $T: Copy + PartialEq + Default,
             {
                 if self.contains(&item) {
-                    return Err(FixedSetError::Duplicate);
+                    return Err($crate::generic::fixed_set::FixedSetError::Duplicate);
                 }
                 if self.is_full() {
-                    return Err(FixedSetError::Full);
+                    return Err($crate::generic::fixed_set::FixedSetError::Full);
                 }
                 self.items[self.len as usize] = item;
                 self.len += 1;
@@ -106,11 +109,15 @@ macro_rules! declare_fixed_set {
             }
 
             /// Insert `item` into the set; if it already exists, call `modify` to update it.
-            pub fn insert_or_modify<E, F>(&mut self, item: $T, mut modify: F) -> Result<(), E>
+            pub fn insert_or_modify<E, F>(
+                &mut self,
+                item: $T,
+                mut modify: F,
+            ) -> ::core::result::Result<(), E>
             where
                 $T: Copy + PartialEq + Default,
-                F: FnMut(&mut $T) -> Result<(), E>,
-                E: From<FixedSetError>,
+                F: FnMut(&mut $T) -> ::core::result::Result<(), E>,
+                E: From<$crate::generic::fixed_set::FixedSetError>,
             {
                 if self.contains(&item) {
                     let pos = self.iter().position(|i| *i == item).unwrap();
@@ -156,12 +163,12 @@ macro_rules! declare_fixed_set {
             }
         }
 
-        impl From<$Name> for FixedSet<$T, $SIZE>
+        impl From<$Name> for $crate::generic::fixed_set::FixedSet<$T, $SIZE>
         where
             $T: Copy + PartialEq + Default,
         {
             fn from(custom: $Name) -> Self {
-                let mut set = FixedSet::<$T, $SIZE>::default();
+                let mut set = $crate::generic::fixed_set::FixedSet::<$T, $SIZE>::default();
                 for item in custom.as_slice().iter().copied() {
                     // Safe to unwrap; capacity matches
                     let _ = set.insert(item);
@@ -170,11 +177,11 @@ macro_rules! declare_fixed_set {
             }
         }
 
-        impl From<FixedSet<$T, $SIZE>> for $Name
+        impl From<$crate::generic::fixed_set::FixedSet<$T, $SIZE>> for $Name
         where
             $T: Copy + PartialEq + Default,
         {
-            fn from(set: FixedSet<$T, $SIZE>) -> Self {
+            fn from(set: $crate::generic::fixed_set::FixedSet<$T, $SIZE>) -> Self {
                 let mut custom = Self::new();
                 for item in set.as_slice() {
                     // Safe to unwrap; capacity matches
@@ -185,7 +192,7 @@ macro_rules! declare_fixed_set {
         }
 
         // Implement the `FixedCapacitySet` trait for interoperability.
-        impl crate::generic::fixed_set::FixedCapacitySet for $Name {
+        impl $crate::generic::fixed_set::FixedCapacitySet for $Name {
             type Item = $T;
 
             fn capacity(&self) -> usize {
@@ -220,16 +227,20 @@ macro_rules! declare_fixed_set {
             fn insert(
                 &mut self,
                 item: Self::Item,
-            ) -> Result<(), crate::generic::fixed_set::FixedSetError> {
-                self.insert(item)
+            ) -> ::core::result::Result<(), $crate::generic::fixed_set::FixedSetError> {
+                Self::insert(self, item)
             }
 
-            fn insert_or_modify<E, F>(&mut self, item: Self::Item, modify: F) -> Result<(), E>
+            fn insert_or_modify<E, F>(
+                &mut self,
+                item: Self::Item,
+                modify: F,
+            ) -> ::core::result::Result<(), E>
             where
-                F: FnMut(&mut Self::Item) -> Result<(), E>,
-                E: From<crate::generic::fixed_set::FixedSetError>,
+                F: FnMut(&mut Self::Item) -> ::core::result::Result<(), E>,
+                E: From<$crate::generic::fixed_set::FixedSetError>,
             {
-                self.insert_or_modify(item, modify)
+                Self::insert_or_modify(self, item, modify)
             }
 
             fn remove<Q>(&mut self, item: &Q) -> Option<Self::Item>

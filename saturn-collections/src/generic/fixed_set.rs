@@ -15,6 +15,15 @@ pub enum FixedSetError {
     Duplicate,
 }
 
+impl From<FixedSetError> for u32 {
+    fn from(e: FixedSetError) -> Self {
+        match e {
+            FixedSetError::Full => 1,
+            FixedSetError::Duplicate => 2,
+        }
+    }
+}
+
 impl std::fmt::Display for FixedSetError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)

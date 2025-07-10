@@ -290,6 +290,7 @@ dependencies = [
  "bincode",
  "borsh 1.5.7",
  "bytemuck",
+ "saturn-collections",
  "thiserror 1.0.66",
 ]
 
@@ -1048,6 +1049,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
  "tinyvec",
+]
+
+[[package]]
+name = "btc_tx_test"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "arch_program",
+ "bytemuck",
+ "saturn-bitcoin-transactions",
 ]
 
 [[package]]
@@ -4228,27 +4239,6 @@ dependencies = [
  "bytemuck",
  "proptest",
  "serde",
-]
-
-[[package]]
-name = "saturn-error"
-version = "0.1.0"
-dependencies = [
- "arch_program",
- "num-derive",
- "num-traits",
- "saturn-error-derive",
- "thiserror 1.0.66",
-]
-
-[[package]]
-name = "saturn-error-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.104",
- "thiserror 1.0.66",
 ]
 
 [[package]]

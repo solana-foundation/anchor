@@ -1,0 +1,11 @@
+[package]
+name = "btc_tx_test"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anchor-lang = { path = "../../lang" }
+saturn-bitcoin-transactions = { path = "../../saturn-bitcoin-transactions" }
+arch_program = { path = "../../deps/program" }
+bytemuck = { workspace = true, features = ["derive", "min_const_generics"] } 

@@ -19,8 +19,7 @@ members = [
     "saturn-bitcoin-transactions",
     "saturn-collections",
     "saturn-safe-math",
-    "saturn-error",
-    "saturn-error-derive",
+    "tests/btc_tx",
 ]
 exclude = [
     "tests/swap/deps/openbook-dex",
@@ -36,10 +35,6 @@ mempool-oracle-sdk = { path = "./deps/mempool_oracle_sdk" }
 saturn-bitcoin-transactions = { path = "./saturn-bitcoin-transactions" }
 saturn-collections = { path = "./saturn-collections" }
 saturn-safe-math = { path = "./saturn-safe-math" }
-
-# Saturn unified error handling
-saturn-error = { path = "./saturn-error" }
-saturn-error-derive = { path = "./saturn-error-derive" }
 
 anyhow = "1.0.82"
 base64 = "0.22.1"

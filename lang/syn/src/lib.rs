@@ -33,12 +33,73 @@ use syn::{
 };
 
 #[derive(Debug)]
+pub struct BtcTxCfg {
+    pub max_inputs_to_sign: usize,
+    pub max_modified_accounts: usize,
+    pub rune_capacity: usize,
+}
+
+impl Parse for BtcTxCfg {
+    fn parse(input: ParseStream) -> ParseResult<Self> {
+        // Parse named arguments in the form `key = value, ...`
+        let args = input.parse_terminated::<_, Comma>(NamedArg::parse)?;
+        let mut cfg = BtcTxCfg {
+            max_inputs_to_sign: 0,
+            max_modified_accounts: 0,
+            rune_capacity: 0,
+        };
+        for arg in args {
+            let ident_str = arg.name.to_string();
+            match ident_str.as_str() {
+                "max_inputs_to_sign" => {
+                    if let Expr::Lit(expr_lit) = &arg.value {
+                        if let Lit::Int(lit_int) = &expr_lit.lit {
+                            cfg.max_inputs_to_sign = lit_int.base10_parse()?;
+                        } else {
+                            return Err(ParseError::new(expr_lit.lit.span(), "expected integer"));
+                        }
+                    } else {
+                        return Err(ParseError::new(arg.value.span(), "expected integer"));
+                    }
+                }
+                "max_modified_accounts" => {
+                    if let Expr::Lit(expr_lit) = &arg.value {
+                        if let Lit::Int(lit_int) = &expr_lit.lit {
+                            cfg.max_modified_accounts = lit_int.base10_parse()?;
+                        } else {
+                            return Err(ParseError::new(expr_lit.lit.span(), "expected integer"));
+                        }
+                    } else {
+                        return Err(ParseError::new(arg.value.span(), "expected integer"));
+                    }
+                }
+                "rune_capacity" => {
+                    if let Expr::Lit(expr_lit) = &arg.value {
+                        if let Lit::Int(lit_int) = &expr_lit.lit {
+                            cfg.rune_capacity = lit_int.base10_parse()?;
+                        } else {
+                            return Err(ParseError::new(expr_lit.lit.span(), "expected integer"));
+                        }
+                    } else {
+                        return Err(ParseError::new(arg.value.span(), "expected integer"));
+                    }
+                }
+                _ => return Err(ParseError::new(arg.name.span(), "invalid btc_tx_cfg argument")),
+            }
+        }
+        Ok(cfg)
+    }
+}
+
+#[derive(Debug)]
 pub struct Program {
     pub ixs: Vec<Ix>,
     pub name: Ident,
     pub docs: Option<Vec<String>>,
     pub program_mod: ItemMod,
     pub fallback_fn: Option<FallbackFn>,
+    /// Optional bitcoin-transaction configuration provided via the `btc_tx` attribute.
+    pub btc_tx_cfg: Option<BtcTxCfg>,
 }
 
 impl Parse for Program {

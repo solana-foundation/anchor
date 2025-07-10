@@ -1607,6 +1607,24 @@ impl<
     }
 }
 
+impl<'a, const MAX_MODIFIED_ACCOUNTS: usize, const MAX_INPUTS_TO_SIGN: usize, RuneSet> Drop
+    for TransactionBuilder<'a, MAX_MODIFIED_ACCOUNTS, MAX_INPUTS_TO_SIGN, RuneSet>
+where
+    RuneSet: FixedCapacitySet<Item = RuneAmount> + Default,
+{
+    fn drop(&mut self) {
+        // Only attempt to finalize if there is at least one input in the transaction. This
+        // prevents unnecessary work for empty builders and mirrors the explicit `finalize()`
+        // call that would normally be made by callers.
+        if !self.transaction.input.is_empty() {
+            // We deliberately ignore any error returned by `finalize()` because the `drop` method
+            // cannot propagate errors. Any failure here would have to be handled by the runtime
+            // observing Arch's state, and panicking inside `drop` is undesirable.
+            let _ = self.finalize();
+        }
+    }
+}
+
 pub fn add_rune_input<RuneSet: FixedCapacitySet<Item = RuneAmount> + Default>(
     total_rune_inputs: &mut RuneSet,
     rune: RuneAmount,

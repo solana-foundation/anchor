@@ -428,6 +428,9 @@ pub mod prelude {
 
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
+
+    // Re-export `saturn-collections` so downstream crates can access its APIs through the Anchor prelude.
+    pub use saturn_collections;
 }
 
 /// Internal module used by macros and unstable apis.
@@ -734,3 +737,11 @@ macro_rules! source {
         }
     };
 }
+
+// Re-exports so that downstream programs can refer to the crates through `anchor_lang::` without
+// declaring their own Cargo dependencies when they use the `btc_tx` feature.
+// Note: saturn-bitcoin-transactions is not re-exported to avoid cyclic
+// dependency (that crate already depends on Anchor). User programs that
+// enable the `btc_tx` macro must add `saturn-bitcoin-transactions` to
+// their own Cargo.toml.
+pub use saturn_collections;

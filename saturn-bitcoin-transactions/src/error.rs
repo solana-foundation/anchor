@@ -1,7 +1,9 @@
 use saturn_collections::generic::fixed_set::FixedSetError;
 use anchor_lang::error_code;
 use saturn_safe_math::MathError;
+use arch_program::program_error::ProgramError;
 
+#[derive(PartialEq, Eq)]
 #[error_code(offset = 800)]
 pub enum BitcoinTxError {
     #[msg("Transaction input amount is not enough to cover network fees")]
@@ -71,5 +73,12 @@ impl From<MathError> for BitcoinTxError {
             MathError::DivisionOverflow => BitcoinTxError::CalcOverflow,
             MathError::ConversionError => BitcoinTxError::CalcOverflow,
         }
+    }
+}
+
+// Allow using `?` to convert `BitcoinTxError` into `ProgramError` directly.
+impl From<BitcoinTxError> for ProgramError {
+    fn from(e: BitcoinTxError) -> Self {
+        anchor_lang::error::Error::from(e).into()
     }
 }

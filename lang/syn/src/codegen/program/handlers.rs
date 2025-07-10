@@ -2,6 +2,7 @@ use crate::codegen::program::common::*;
 use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
 use quote::{quote, ToTokens};
+use proc_macro2::Span;
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -92,6 +93,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
     let event_cpi_mod = generate_event_cpi_mod();
 
+    // Generate support code for optional btc_tx feature
+    let btc_support: proc_macro2::TokenStream = if let Some(cfg) = &program.btc_tx_cfg {
+        let max_inputs = cfg.max_inputs_to_sign;
+        let max_modified = cfg.max_modified_accounts;
+        let rune_capacity = cfg.rune_capacity;
+        let rune_set_ident = syn::Ident::new("__BtcRuneSet", Span::call_site());
+        quote! {
+            saturn_collections::declare_fixed_set!(#rune_set_ident, arch_program::rune::RuneAmount, #rune_capacity);
+            type __BtcTxBuilder<'a> = saturn_bitcoin_transactions::TransactionBuilder<'a, #max_modified, #max_inputs, #rune_set_ident>;
+        }
+    } else {
+        quote! {}
+    };
+
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .ixs
         .iter()
@@ -113,6 +128,37 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::arch_program::program::set_return_data(&return_data);
                 },
             };
+            // Context creation depending on btc_tx presence
+            let ctx_creation = if let Some(cfg) = &program.btc_tx_cfg {
+                let max_inputs = cfg.max_inputs_to_sign;
+                let max_modified = cfg.max_modified_accounts;
+                quote! {
+                    let mut __btc_tx_builder: __BtcTxBuilder<'info> = saturn_bitcoin_transactions::TransactionBuilder::<'info, #max_modified, #max_inputs, __BtcRuneSet>::new();
+                    let result = #program_name::#ix_method_name(
+                        anchor_lang::context::Context::with_btc_builder(
+                            __program_id,
+                            &mut __accounts,
+                            __remaining_accounts,
+                            __bumps,
+                            &mut __btc_tx_builder as &mut dyn anchor_lang::context::BtcTxBuilderAny,
+                        ),
+                        #(#ix_arg_names),*
+                    )?;
+                }
+            } else {
+                quote! {
+                    let result = #program_name::#ix_method_name(
+                        anchor_lang::context::Context::new(
+                            __program_id,
+                            &mut __accounts,
+                            __remaining_accounts,
+                            __bumps,
+                        ),
+                        #(#ix_arg_names),*
+                    )?;
+                }
+            };
+
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
@@ -145,15 +191,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     )?;
 
                     // Invoke user defined handler.
-                    let result = #program_name::#ix_method_name(
-                        anchor_lang::context::Context::new(
-                            __program_id,
-                            &mut __accounts,
-                            __remaining_accounts,
-                            __bumps,
-                        ),
-                        #(#ix_arg_names),*
-                    )?;
+                    #ctx_creation
 
                     // Maybe set Solana return data.
                     #maybe_set_return_data
@@ -183,6 +221,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             pub mod __global {
                 use super::*;
 
+                #btc_support
                 #(#non_inlined_handlers)*
             }
 
