@@ -1,0 +1,9 @@
+[package]
+name = "saturn-safe-math"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+num = { workspace = true }
+primitive-types = { workspace = true }
+thiserror = { workspace = true }

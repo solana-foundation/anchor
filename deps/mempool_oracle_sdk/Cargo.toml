@@ -1,0 +1,23 @@
+[package]
+name = "mempool-oracle-sdk"
+version = "0.0.1"
+edition = "2021"
+
+authors = ["Marcos <mcolladomcm@email.com>"]
+license = "Apache-2.0"
+description = "Types for Saturn Mempool Oracle"
+repository = "https://github.com/SaturnBTC/oracle"
+readme = "README.md"
+categories = []
+keywords = ["bitcoin", "oracle", "mempool", "rust"]
+
+[dependencies]
+arch_program = { workspace = true }
+thiserror = { workspace = true }
+borsh = { workspace = true }
+bitcoin = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+hex = { workspace = true }
+saturn-collections = { workspace = true }

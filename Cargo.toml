@@ -16,6 +16,11 @@ members = [
     "lang/attribute/*",
     "lang/derive/*",
     "lang/syn",
+    "saturn-bitcoin-transactions",
+    "saturn-collections",
+    "saturn-safe-math",
+    "saturn-error",
+    "saturn-error-derive",
 ]
 exclude = [
     "tests/swap/deps/openbook-dex",
@@ -25,4 +30,93 @@ resolver = "2"
 
 [workspace.dependencies]
 borsh-derive-internal = { path = "deps/borsh-derive-internal", version = "0.10.4" }
-arch-program = { path = "deps/program", version = "0.5.3" }
+arch_program = { path = "deps/program", version = "0.5.3" }
+mempool-oracle-sdk = { path = "./deps/mempool_oracle_sdk" }
+
+saturn-bitcoin-transactions = { path = "./saturn-bitcoin-transactions" }
+saturn-collections = { path = "./saturn-collections" }
+saturn-safe-math = { path = "./saturn-safe-math" }
+
+# Saturn unified error handling
+saturn-error = { path = "./saturn-error" }
+saturn-error-derive = { path = "./saturn-error-derive" }
+
+anyhow = "1.0.82"
+base64 = "0.22.1"
+bitcoin = { version = "0.32.5", features = ["serde"] }
+borsh = { version = "1.4.0", features = ["derive"] }
+bytemuck = { version = "1.14", features = ["derive", "min_const_generics"] }
+hex = "0.4.3"
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+serde_with = "3.9.0"
+sha256 = "1.5.0"
+thiserror = "1.0.61"
+trybuild = "1.0.105"
+libsecp256k1 = { version = "0.7.0", default-features = false, features = [
+    "static-context",
+] }
+memoffset = "0.9.1"
+modular_math = "0.1.6"
+num = { version = "0.4.3", features = ["serde"] }
+num-integer = "0.1.46"
+num-derive = "0.4.0"
+num-traits = "0.2"
+primitive-types = { version = "0.13.1", default-features = false }
+proc-macro2 = "1.0.95"
+quote = "1.0.40"
+rustversion = "1.0.14"
+syn = "2.0.104"
+tracing = "0.1.40"
+proptest = "1.5.0"
+rand = "0.8.5"
+ordinals = "0.0.14"
+csv = "1.1"
+
+# indexer deps
+axum = { version = "0.8.1", features = ["ws"] }
+axum-server = "0.7.1"
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+    "uuid",
+    "json",
+    "bigdecimal",
+] }
+chrono = { version = "0.4.40", features = ["serde"] }
+tokio = { version = "1.43.0", features = [
+    "rt-multi-thread",
+    "macros",
+    "time",
+    "sync",
+    "signal",
+] }
+async-trait = "0.1.87"
+futures = "0.3.31"
+rocksdb = "0.23.0"
+indicatif = "0.17.9"
+warp = "0.3.7"
+tokio-stream = "0.1.17"
+titan-client = { version = "0.1.32", features = ["tcp_client"] }
+http = "1.2.0"
+clap = { version = "4.5.23", features = ["derive", "env"] }
+tokio-tungstenite = "0.26.2"
+tracing-subscriber = "0.3.19"
+rust_decimal = { version = "1.36.0" }
+threadpool = "1.8.1"
+utoipa = { version = "5.3.1", features = [
+    "axum_extras",
+    "yaml",
+    "preserve_order",
+    "chrono",
+    "decimal",
+] }
+utoipa-swagger-ui = { version = "9.0.1", features = ["axum"] }
+tower-http = { version = "0.6.2", features = ["cors", "trace"] }
+num_cpus = "1.16.0"
+
+# arch sdk
+bitcode = "0.6.4"
+uuid = { version = "1.12.1", features = ["borsh", "serde", "v4"] }
+insta = "1.43.1"
