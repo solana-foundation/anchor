@@ -34,7 +34,7 @@
 //!         .accounts(accounts::Initialize {
 //!             my_account: my_account_kp.pubkey(),
 //!             payer: program.payer(),
-//!             system_program: system_program::ID,
+//!             system_program: system_program::SYSTEM_PROGRAM_ID,
 //!         })
 //!         .args(instruction::Initialize { field: 42 })
 //!         .signer(&my_account_kp)
@@ -69,8 +69,8 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-client/2.1.0/solana_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::solana_program::program_error::ProgramError;
-use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::arch_program::program_error::ProgramError;
+use anchor_lang::arch_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
@@ -574,7 +574,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///     .accounts(accounts::Initialize {
     ///         my_account: my_account_kp.pubkey(),
     ///         payer: program.payer(),
-    ///         system_program: system_program::ID,
+    ///         system_program: system_program::SYSTEM_PROGRAM_ID,
     ///     })
     ///     // Remaining accounts
     ///     .accounts(vec![AccountMeta {

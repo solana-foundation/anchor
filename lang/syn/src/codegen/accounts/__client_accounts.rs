@@ -97,8 +97,8 @@ pub fn generate(
                     true => quote! {true},
                 };
                 let meta = match f.constraints.is_mutable() {
-                    false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
-                    true => quote! { anchor_lang::solana_program::instruction::AccountMeta::new },
+                    false => quote! { anchor_lang::arch_program::account::AccountMeta::new_readonly },
+                    true => quote! { anchor_lang::arch_program::account::AccountMeta::new },
                 };
                 let name = &f.ident;
                 if f.is_optional {
@@ -106,7 +106,7 @@ pub fn generate(
                         if let Some(#name) = &self.#name {
                             account_metas.push(#meta(*#name, #is_signer));
                         } else {
-                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(#program_id, false));
+                            account_metas.push(anchor_lang::arch_program::account::AccountMeta::new_readonly(#program_id, false));
                         }
                     }
                 } else {
@@ -175,7 +175,7 @@ pub fn generate(
 
             #[automatically_derived]
             impl anchor_lang::ToAccountMetas for #name {
-                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::arch_program::account::AccountMeta> {
                     let mut account_metas = vec![];
 
                     #(#account_struct_metas)*

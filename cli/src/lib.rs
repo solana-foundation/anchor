@@ -3994,7 +3994,7 @@ fn create_idl_account(
             AccountMeta::new_readonly(keypair.pubkey(), true),
             AccountMeta::new(idl_address, false),
             AccountMeta::new_readonly(program_signer, false),
-            AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
+            AccountMeta::new_readonly(solana_sdk::system_program::SYSTEM_PROGRAM_ID, false),
             AccountMeta::new_readonly(*program_id, false),
         ];
         instructions.push(Instruction {
@@ -4010,7 +4010,7 @@ fn create_idl_account(
                 accounts: vec![
                     AccountMeta::new(idl_address, false),
                     AccountMeta::new_readonly(keypair.pubkey(), true),
-                    AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
+                    AccountMeta::new_readonly(solana_sdk::system_program::SYSTEM_PROGRAM_ID, false),
                 ],
                 data,
             });

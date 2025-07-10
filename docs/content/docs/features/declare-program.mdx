@@ -641,7 +641,7 @@ async fn main() -> anyhow::Result<()> {
         .accounts(accounts::Initialize {
             counter: counter.pubkey(),
             payer: program.payer(),
-            system_program: system_program::ID,
+            system_program: system_program::SYSTEM_PROGRAM_ID,
         })
         .args(args::Initialize)
         .instructions()?
@@ -726,7 +726,7 @@ let initialize_ix = program
     .accounts(accounts::Initialize {
         counter: counter.pubkey(),
         payer: program.payer(),
-        system_program: system_program::ID,
+        system_program: system_program::SYSTEM_PROGRAM_ID,
     })
     // Arguments for initialize instruction (discriminator)
     .args(args::Initialize)

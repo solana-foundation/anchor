@@ -6,15 +6,15 @@ use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
     Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
-use solana_program::system_program;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::pubkey::Pubkey;
+use arch_program::system_program;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
+/// Wrapper around [`AccountInfo`](crate::arch_program::account_info::AccountInfo)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -301,7 +301,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Account<'a, T>> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+        if info.owner == &system_program::SYSTEM_PROGRAM_ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
@@ -317,7 +317,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// possible.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Account<'a, T>> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+        if info.owner == &system_program::SYSTEM_PROGRAM_ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
         if info.owner != &T::owner() {
@@ -412,7 +412,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
-            solana_program::msg!("The given Account is not mutable");
+            arch_program::msg!("The given Account is not mutable");
             panic!();
         }
         &mut self.account

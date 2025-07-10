@@ -73,7 +73,7 @@ pub fn event(
 }
 
 /// Logs an event that can be subscribed to by clients.
-/// Uses the [`sol_log_data`](https://docs.rs/solana-program/latest/solana_program/log/fn.sol_log_data.html)
+/// Uses the [`sol_log_data`](https://docs.rs/solana-program/latest/arch_program/log/fn.sol_log_data.html)
 /// syscall which results in the following log:
 /// ```ignore
 /// Program data: <Base64EncodedEvent>
@@ -103,7 +103,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            anchor_lang::solana_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
+            anchor_lang::arch_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
         }
     })
 }
@@ -113,7 +113,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// This way of logging events is more reliable than [`emit!`](emit!) because RPCs are less likely
 /// to truncate CPI information than program logs.
 ///
-/// Uses a [`invoke_signed`](https://docs.rs/solana-program/latest/solana_program/program/fn.invoke_signed.html)
+/// Uses a [`invoke_signed`](https://docs.rs/solana-program/latest/arch_program/program/fn.invoke_signed.html)
 /// syscall to store the event data in the ledger, which results in the data being stored in the
 /// transaction metadata.
 ///
@@ -174,17 +174,17 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .chain(inner_data.into_iter())
                 .collect();
 
-            let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
+            let ix = anchor_lang::arch_program::instruction::Instruction::new_with_bytes(
                 crate::ID,
                 &ix_data,
                 vec![
-                    anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
+                    anchor_lang::arch_program::account::AccountMeta::new_readonly(
                         *authority_info.key,
                         true,
                     ),
                 ],
             );
-            anchor_lang::solana_program::program::invoke_signed(
+            anchor_lang::arch_program::program::invoke_signed(
                 &ix,
                 &[authority_info],
                 &[&[#authority_seeds, &[authority_bump]]],

@@ -10,9 +10,9 @@
 
 use std::collections::BTreeSet;
 
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::pubkey::Pubkey;
 
 use crate::{
     error::ErrorCode, Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,

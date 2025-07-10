@@ -25,11 +25,11 @@
 
 extern crate self as anchor_lang;
 
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::program_error::ProgramError;
+use arch_program::pubkey::Pubkey;
 use bytemuck::{Pod, Zeroable};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
 use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
 mod account_meta;
@@ -60,10 +60,10 @@ pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 
+pub use arch_program;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
-pub use solana_program;
 
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
@@ -149,7 +149,7 @@ pub trait AccountsClose<'info>: ToAccountInfos<'info> {
 }
 
 /// Transformation to
-/// [`AccountMeta`](../solana_program/instruction/struct.AccountMeta.html)
+/// [`AccountMeta`](../arch_program/instruction/struct.AccountMeta.html)
 /// structs.
 pub trait ToAccountMetas {
     /// `is_signer` is given as an optional override for the signer meta field.
@@ -161,7 +161,7 @@ pub trait ToAccountMetas {
 }
 
 /// Transformation to
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html)
+/// [`AccountInfo`](../arch_program/account_info/struct.AccountInfo.html)
 /// structs.
 pub trait ToAccountInfos<'info> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>>;
@@ -234,7 +234,7 @@ impl<'info, T: AsRef<AccountInfo<'info>>> Lamports<'info> for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountInfo`](../arch_program/account_info/struct.AccountInfo.html#structfield.data)'s
 /// mutable data slice.
 ///
 /// Implementors of this trait should ensure that any subsequent usage of the
@@ -252,7 +252,7 @@ pub trait AccountSerialize {
 
 /// A data structure that can be deserialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountInfo`](../arch_program/account_info/struct.AccountInfo.html#structfield.data)'s
 /// mutable data slice.
 pub trait AccountDeserialize: Sized {
     /// Deserializes previously initialized account data. Should fail for all
@@ -406,33 +406,22 @@ pub mod prelude {
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
         accounts::interface_account::InterfaceAccount, accounts::program::Program,
         accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
-        require_keys_eq, require_keys_neq, require_neq,
-        solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
-        system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        accounts::unchecked_account::UncheckedAccount, arch_program::bpf_loader::LoaderState,
+        constant, context::Context, context::CpiContext, declare_id, declare_program, emit, err,
+        error, event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
+        require_keys_eq, require_keys_neq, require_neq, source, system_program::System, zero_copy,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
+        AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
+        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     pub use anchor_attribute_error::*;
+    pub use arch_program::account::AccountMeta;
+    pub use arch_program::account::{next_account_info, AccountInfo};
+    pub use arch_program::msg;
+    pub use arch_program::program_error::ProgramError;
+    pub use arch_program::pubkey::Pubkey;
     pub use borsh;
     pub use error::*;
-    pub use solana_program::account_info::{next_account_info, AccountInfo};
-    pub use solana_program::instruction::AccountMeta;
-    pub use solana_program::msg;
-    pub use solana_program::program_error::ProgramError;
-    pub use solana_program::pubkey::Pubkey;
-    pub use solana_program::sysvar::clock::Clock;
-    pub use solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_program::sysvar::instructions::Instructions;
-    pub use solana_program::sysvar::rent::Rent;
-    pub use solana_program::sysvar::rewards::Rewards;
-    pub use solana_program::sysvar::slot_hashes::SlotHashes;
-    pub use solana_program::sysvar::slot_history::SlotHistory;
-    pub use solana_program::sysvar::stake_history::StakeHistory;
-    pub use solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
 
     #[cfg(feature = "event-cpi")]
@@ -457,7 +446,7 @@ pub mod __private {
 
     pub use crate::{bpf_writer::BpfWriter, common::is_closed};
 
-    use solana_program::pubkey::Pubkey;
+    use arch_program::pubkey::Pubkey;
 
     // Used to calculate the maximum between two expressions.
     // It is necessary for the calculation of the enum space.
@@ -479,7 +468,7 @@ pub mod __private {
             Pubkey::from(*self)
         }
         fn set(input: &Pubkey) -> [u8; 32] {
-            input.to_bytes()
+            input.0
         }
     }
 

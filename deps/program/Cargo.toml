@@ -1,0 +1,47 @@
+[package]
+name = "arch_program"
+version = "0.5.3"
+edition = "2021"
+description = "A Rust library for building programs that run inside the Arch Virtual Machine. Provides core functionality for creating instructions, managing accounts, handling program errors, and interacting with the Arch runtime environment. Includes utilities for logging, transaction handling, and Bitcoin UTXO management."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+borsh = { version = "1.4.0", features = ["derive"] }
+bitcode = "0.6.4"
+hex = { version = "0.4.3", default-features = false }
+memoffset = "0.9.1"
+rustversion = "1.0.14"
+thiserror = "1.0"
+bitcoin = { version = "=0.32.5", features = ["serde"] }
+bitcoin_slices = { version = "0.10.0" }
+sha256 = "1.5.0"
+serde = { version = "1.0.198", features = ["derive"] }
+num-derive = "0.4.0"
+num-traits = "0.2"
+bytemuck = { version = "1.14", features = ["derive"] }
+bitcoin-io = { version = "=0.1.2" }
+bincode = "1.3.3"
+anyhow = { version = "1", features = ["backtrace"] }
+bs58 = "0.5.1"
+serde_derive = "1.0.210"
+serde_bytes = "0.11.15"
+sha3 = "0.10"
+solana-sanitize = "2.2.1"
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"], optional = true }
+
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+libsecp256k1 = { version = "0.7.0", default-features = false, features = [
+  "static-context",
+] }
+rand = "0.8.5"
+
+[dev-dependencies]
+proptest = "1.5.0"
+rand = "0.8.5"
+bitflags = { version = "2.8.0" }
+
+[features]
+default = []
+fuzzing = ["libfuzzer-sys"]

@@ -1185,10 +1185,10 @@ patch version will be incremented for features.
   `Err(Error::from(ProgramError::SomeProgramError).with_source(source!()))` to
   provide file and line source of the error (`with_source` is most useful with
   `ProgramError`s. `error!` already adds source information for custom and
-  anchor internal errors). _ change all `solana_program::program::invoke()` to
-  `solana_program::program::invoke().map_err(Into::into)` and
-  `solana_program::program::invoke_signed()` to
-  `solana_program::program::invoke_signed().map_err(Into::into)`
+  anchor internal errors). _ change all `arch_program::program::invoke()` to
+  `arch_program::program::invoke().map_err(Into::into)` and
+  `arch_program::program::invoke_signed()` to
+  `arch_program::program::invoke_signed().map_err(Into::into)`
 
 ## [0.21.0] - 2022-02-07
 
@@ -1338,7 +1338,7 @@ patch version will be incremented for features.
   ([#1057](https://github.com/coral-xyz/anchor/pull/1057)).
 - lang: `ProgramData` and `UpgradableLoaderState` can now be passed into
   `Account` as generics. see
-  [UpgradeableLoaderState](https://docs.rs/solana-program/latest/solana_program/bpf_loader_upgradeable/enum.UpgradeableLoaderState.html).
+  [UpgradeableLoaderState](https://docs.rs/solana-program/latest/arch_program/bpf_loader_upgradeable/enum.UpgradeableLoaderState.html).
   `UpgradableLoaderState` can also be matched on to get `ProgramData`, but when
   `ProgramData` is used instead, anchor does the serialization and checking that
   it is actually program data for you

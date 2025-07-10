@@ -154,7 +154,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             let rent = Rent::get()?;
             let lamports = rent.minimum_balance(space);
             let seeds = &[&[nonce][..]];
-            let ix = anchor_lang::solana_program::system_instruction::create_account_with_seed(
+            let ix = anchor_lang::arch_program::system_instruction::create_account_with_seed(
                 from,
                 &to,
                 &base,
@@ -163,7 +163,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                 space as u64,
                 owner,
             );
-            anchor_lang::solana_program::program::invoke_signed(
+            anchor_lang::arch_program::program::invoke_signed(
                 &ix,
                 &[
                     accounts.from.clone(),

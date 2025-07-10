@@ -104,11 +104,11 @@ let instruction = system_instruction::transfer(&sender, &recipient, transfer_amo
 let accounts = [
     (
         sender,
-        Account::new(base_lamports, 0, &system_program::id()),
+        Account::new(base_lamports, 0, &system_program::SYSTEM_PROGRAM_ID()),
     ),
     (
         recipient,
-        Account::new(base_lamports, 0, &system_program::id()),
+        Account::new(base_lamports, 0, &system_program::SYSTEM_PROGRAM_ID()),
     ),
 ];
 let checks = vec![

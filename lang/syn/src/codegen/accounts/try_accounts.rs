@@ -24,7 +24,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     let ty = &s.raw_field.ty;
                     quote! {
                         #[cfg(feature = "anchor-debug")]
-                        ::solana_program::log::sol_log(stringify!(#name));
+                        ::arch_program::log::sol_log(stringify!(#name));
                         let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
@@ -70,7 +70,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         let typed_name = f.typed_ident();
                         quote! {
                             #[cfg(feature = "anchor-debug")]
-                            ::solana_program::log::sol_log(stringify!(#typed_name));
+                            ::arch_program::log::sol_log(stringify!(#typed_name));
                             let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                         }
@@ -119,11 +119,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
             fn try_accounts(
-                __program_id: &anchor_lang::solana_program::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
+                __program_id: &anchor_lang::arch_program::pubkey::Pubkey,
+                __accounts: &mut &#trait_generics [anchor_lang::arch_program::account::AccountInfo<#trait_generics>],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
+                __reallocs: &mut std::collections::BTreeSet<anchor_lang::arch_program::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de

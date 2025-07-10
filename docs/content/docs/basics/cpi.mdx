@@ -205,7 +205,7 @@ Under the hood, the previous example is an abstraction of this implementation.
 The example below is functionally equivalent to the previous example.
 
 ```rust
-use anchor_lang::solana_program::{program::invoke, system_instruction};
+use anchor_lang::arch_program::{program::invoke, system_instruction};
 ```
 
 ```rust
@@ -549,7 +549,7 @@ This example shows how to use the `invoke_signed()` function to make a CPI
 signed for by a PDA.
 
 ```rust
-use anchor_lang::solana_program::{program::invoke_signed, system_instruction};
+use anchor_lang::arch_program::{program::invoke_signed, system_instruction};
 ```
 
 ```rust

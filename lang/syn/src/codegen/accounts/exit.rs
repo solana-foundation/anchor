@@ -65,7 +65,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::AccountsExit<#trait_generics> for #name<#struct_generics> #where_clause{
-            fn exit(&self, program_id: &anchor_lang::solana_program::pubkey::Pubkey) -> anchor_lang::Result<()> {
+            fn exit(&self, program_id: &anchor_lang::arch_program::pubkey::Pubkey) -> anchor_lang::Result<()> {
                 #(#on_save)*
                 Ok(())
             }

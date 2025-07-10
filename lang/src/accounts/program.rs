@@ -4,10 +4,10 @@ use crate::error::{Error, ErrorCode};
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
 };
-use solana_program::account_info::AccountInfo;
-use solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::bpf_loader::{self, LoaderState};
+use arch_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::marker::PhantomData;
@@ -16,8 +16,8 @@ use std::ops::Deref;
 /// Type validating that the account is the given Program
 ///
 /// The type has a `programdata_address` function that will return `Option::Some`
-/// if the program is owned by the [`BPFUpgradeableLoader`](https://docs.rs/solana-program/latest/solana_program/bpf_loader_upgradeable/index.html)
-/// which will contain the `programdata_address` property of the `Program` variant of the [`UpgradeableLoaderState`](https://docs.rs/solana-program/latest/solana_program/bpf_loader_upgradeable/enum.UpgradeableLoaderState.html) enum.
+/// if the program is owned by the [`BPFUpgradeableLoader`](https://docs.rs/solana-program/latest/arch_program/bpf_loader_upgradeable/index.html)
+/// which will contain the `programdata_address` property of the `Program` variant of the [`UpgradeableLoaderState`](https://docs.rs/solana-program/latest/arch_program/bpf_loader_upgradeable/enum.UpgradeableLoaderState.html) enum.
 ///
 /// # Table of Contents
 /// - [Basic Functionality](#basic-functionality)
@@ -95,29 +95,16 @@ impl<'a, T> Program<'a, T> {
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if *self.info.owner == bpf_loader_upgradeable::ID {
+        if *self.info.owner == bpf_loader::BPF_LOADER_ID {
             let mut data: &[u8] = &self.info.try_borrow_data()?;
-            let upgradable_loader_state =
-                UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
+            let loader_state = LoaderState::try_deserialize(&mut data)?;
 
-            match upgradable_loader_state {
-                UpgradeableLoaderState::Uninitialized
-                | UpgradeableLoaderState::Buffer {
-                    authority_address: _,
-                }
-                | UpgradeableLoaderState::ProgramData {
-                    slot: _,
-                    upgrade_authority_address: _,
-                } => {
-                    // Unreachable because check in try_from
-                    // ensures that program is executable
-                    // and therefore a program account.
-                    unreachable!()
-                }
-                UpgradeableLoaderState::Program {
-                    programdata_address,
-                } => Ok(Some(programdata_address)),
-            }
+            // On Arch the field `authority_address_or_next_version` is the upgrade
+            // authority while the program is `Retracted` or `Deployed`, and the
+            // next version once `Finalized`.  It is the closest equivalent to
+            // Solana’s `programdata_address`, so we expose it here for
+            // compatibility.
+            Ok(Some(loader_state.authority_address_or_next_version))
         } else {
             Ok(None)
         }
@@ -131,7 +118,7 @@ impl<'a, T: Id> TryFrom<&'a AccountInfo<'a>> for Program<'a, T> {
         if info.key != &T::id() {
             return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
         }
-        if !info.executable {
+        if !info.is_executable {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
 

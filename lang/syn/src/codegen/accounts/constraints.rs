@@ -441,7 +441,7 @@ fn generate_constraint_realloc(
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::arch_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -615,7 +615,7 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || owner_program == &anchor_lang::arch_program::system_program::SYSTEM_PROGRAM_ID {
                         #payer_optional_check
 
                         // Create the account with the system program.
@@ -686,7 +686,7 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || owner_program == &anchor_lang::arch_program::system_program::SYSTEM_PROGRAM_ID {
                         #payer_optional_check
 
                         ::anchor_spl::associated_token::create(
@@ -941,7 +941,7 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || owner_program == &anchor_lang::arch_program::system_program::SYSTEM_PROGRAM_ID {
                         // Define payer variable.
                         #payer_optional_check
 
@@ -1012,7 +1012,7 @@ fn generate_constraint_init_group(
 
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
-                        if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
+                        if pa.mint_authority != anchor_lang::arch_program::program_option::COption::Some(#owner.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
                         }
                         if pa.freeze_authority
@@ -1093,7 +1093,7 @@ fn generate_constraint_init_group(
 
                     // Create the account. Always do this in the event
                     // if needed is not specified or the system program is the owner.
-                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
+                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::arch_program::system_program::SYSTEM_PROGRAM_ID {
                         #payer_optional_check
 
                         // CPI to the system program to create.
@@ -1325,7 +1325,7 @@ fn generate_constraint_mint(
             let mint_authority_optional_check = optional_check_scope.generate_check(mint_authority);
             quote! {
                 #mint_authority_optional_check
-                if #name.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#mint_authority.key()) {
+                if #name.mint_authority != anchor_lang::arch_program::program_option::COption::Some(#mint_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority.into());
                 }
             }
@@ -1338,7 +1338,7 @@ fn generate_constraint_mint(
                 optional_check_scope.generate_check(freeze_authority);
             quote! {
                 #freeze_authority_optional_check
-                if #name.freeze_authority != anchor_lang::solana_program::program_option::COption::Some(#freeze_authority.key()) {
+                if #name.freeze_authority != anchor_lang::arch_program::program_option::COption::Some(#freeze_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority.into());
                 }
             }

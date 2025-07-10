@@ -1,7 +1,7 @@
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
@@ -37,8 +37,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use solana_program::clock::Epoch;
-    use solana_program::pubkey::Pubkey;
+    use arch_program::{pubkey::Pubkey, utxo::UtxoMeta};
 
     use super::*;
 
@@ -51,33 +50,34 @@ mod tests {
     #[test]
     fn test_accounts_trait_for_vec() {
         let program_id = Pubkey::default();
-
+        let meta1 = UtxoMeta::from([0; 32], 0);
         let key = Pubkey::default();
         let mut lamports1 = 0;
         let mut data1 = vec![0; 10];
         let owner = Pubkey::default();
         let account1 = AccountInfo::new(
             &key,
-            true,
-            true,
             &mut lamports1,
             &mut data1,
             &owner,
+            &meta1,
+            true,
+            true,
             false,
-            Epoch::default(),
         );
 
         let mut lamports2 = 0;
         let mut data2 = vec![0; 10];
+        let meta2 = UtxoMeta::from([0; 32], 0);
         let account2 = AccountInfo::new(
             &key,
-            true,
-            true,
             &mut lamports2,
             &mut data2,
             &owner,
+            &meta2,
+            true,
+            true,
             false,
-            Epoch::default(),
         );
         let mut bumps = TestBumps::default();
         let mut reallocs = std::collections::BTreeSet::new();

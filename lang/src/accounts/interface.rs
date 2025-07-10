@@ -6,9 +6,9 @@ use crate::{
     AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
     ToAccountMetas,
 };
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 use std::ops::Deref;
 
@@ -87,7 +87,7 @@ impl<'a, T: CheckId> TryFrom<&'a AccountInfo<'a>> for Interface<'a, T> {
     /// Deserializes the given `info` into a `Program`.
     fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
         T::check_id(info.key)?;
-        if !info.executable {
+        if !info.is_executable {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
         Ok(Self::new(info))

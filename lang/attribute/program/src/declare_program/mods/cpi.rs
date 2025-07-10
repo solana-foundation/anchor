@@ -76,7 +76,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
 
                     let accounts = ctx.to_account_metas(None);
-                    anchor_lang::solana_program::instruction::Instruction {
+                    anchor_lang::arch_program::instruction::Instruction {
                         program_id: ctx.program.key(),
                         accounts,
                         data,
@@ -84,7 +84,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 };
 
                 let mut acc_infos = ctx.to_account_infos();
-                anchor_lang::solana_program::program::invoke_signed(
+                anchor_lang::arch_program::program::invoke_signed(
                     &ix,
                     &acc_infos,
                     ctx.signer_seeds,
@@ -109,7 +109,7 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
 
         impl<T: AnchorDeserialize> Return<T> {
             pub fn get(&self) -> T {
-                let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                let (_key, data) = anchor_lang::arch_program::program::get_return_data().unwrap();
                 T::try_from_slice(&data).unwrap()
             }
         }

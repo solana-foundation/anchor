@@ -1,9 +1,9 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
 use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
+use arch_program::account::AccountInfo;
+use arch_program::account::AccountMeta;
+use arch_program::pubkey::Pubkey;
 use std::fmt;
 
 /// Provides non-argument inputs to the program.

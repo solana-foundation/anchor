@@ -185,7 +185,7 @@ pub fn basic_2<C: Deref<Target = impl Signer> + Clone>(
         .accounts(basic_2_accounts::Create {
             counter: counter.pubkey(),
             user: authority,
-            system_program: system_program::ID,
+            system_program: system_program::SYSTEM_PROGRAM_ID,
         })
         .args(basic_2_instruction::Create { authority })
         .send()?;
@@ -244,7 +244,7 @@ pub fn basic_4<C: Deref<Target = impl Signer> + Clone>(
         .accounts(basic_4_accounts::Initialize {
             counter,
             authority,
-            system_program: system_program::ID,
+            system_program: system_program::SYSTEM_PROGRAM_ID,
         })
         .args(basic_4_instruction::Initialize {})
         .send()?;
@@ -305,7 +305,7 @@ pub fn optional<C: Deref<Target = impl Signer> + Clone>(
         .accounts(OptionalInitialize {
             payer: Some(program.payer()),
             required: required_keypair.pubkey(),
-            system_program: Some(system_program::id()),
+            system_program: Some(system_program::SYSTEM_PROGRAM_ID()),
             optional_account: Some(data_account_keypair.pubkey()),
             optional_pda: None,
         })

@@ -47,7 +47,7 @@ fn recursively_find_type(
     match alias {
         Some(alias) => Ok(Some(*alias.ty.to_owned())),
         None => {
-            // Check re-exported deps e.g. `anchor_lang::solana_program::...`
+            // Check re-exported deps e.g. `anchor_lang::arch_program::...`
             let cargo_toml_path = find_path("Cargo.toml", &lib_path)?;
             let deps = Manifest::from_path(cargo_toml_path)?.dependencies;
             let paths = use_path.split("::").skip(1).collect::<Vec<_>>();

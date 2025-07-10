@@ -244,9 +244,9 @@ public.
 
 ### `pubkey!` macro
 
-[`solana-program`](https://docs.rs/solana-program/1.18.17/solana_program/index.html)
+[`solana-program`](https://docs.rs/solana-program/1.18.17/arch_program/index.html)
 has
-[`pubkey!`](https://docs.rs/solana-program/1.18.17/solana_program/macro.pubkey.html)
+[`pubkey!`](https://docs.rs/solana-program/1.18.17/arch_program/macro.pubkey.html)
 to easily declare public keys:
 
 ```rust
@@ -262,11 +262,11 @@ let key = Pubkey::from_str("11111111111111111111111111111111").unwrap();
 
 However, because of how the macro is implemented, it wasn't possible to use it
 from Anchor without also including `solana-program` to your dependency list as
-the macro was specifically using `::solana_program`.
+the macro was specifically using `::arch_program`.
 
 You can now directly use `pubkey!` as it's exported from `anchor_lang::prelude`.
 
-Note that because `solana_program` is exported from `anchor_lang`, you can also
+Note that because `arch_program` is exported from `anchor_lang`, you can also
 remove `solana-program` dependency from your `Cargo.toml` if `pubkey!` was the
 reason for adding it.
 
