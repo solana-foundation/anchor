@@ -1,4 +1,4 @@
-use crate::error::ErrorCode;
+// use crate::error::ErrorCode;
 use crate::{AccountDeserialize, AccountSerialize, Owner, Result};
 use arch_program::{
     bpf_loader::{LoaderState, LoaderStatus, BPF_LOADER_ID},

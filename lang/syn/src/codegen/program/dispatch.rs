@@ -27,22 +27,22 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     });
 
     // Generate the event-cpi instruction handler based on whether the `event-cpi` feature is enabled.
-    let event_cpi_handler = {
-        #[cfg(feature = "event-cpi")]
-        quote! {
-            // `event-cpi` feature is enabled, dispatch self-cpi instruction
-            __private::__events::__event_dispatch(
-                program_id,
-                accounts,
-                &data[anchor_lang::event::EVENT_IX_TAG_LE.len()..]
-            )
-        }
-        #[cfg(not(feature = "event-cpi"))]
-        quote! {
-            // `event-cpi` feature is not enabled
-            Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
-        }
-    };
+    // let event_cpi_handler = {
+    //     #[cfg(feature = "event-cpi")]
+    //     quote! {
+    //         // `event-cpi` feature is enabled, dispatch self-cpi instruction
+    //         __private::__events::__event_dispatch(
+    //             program_id,
+    //             accounts,
+    //             &data[anchor_lang::event::EVENT_IX_TAG_LE.len()..]
+    //         )
+    //     }
+    //     #[cfg(not(feature = "event-cpi"))]
+    //     quote! {
+    //         // `event-cpi` feature is not enabled
+    //         Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
+    //     }
+    // };
 
     let fallback_fn = program
         .fallback_fn
@@ -94,9 +94,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
 
             // Dispatch Event CPI instruction
-            if data.starts_with(anchor_lang::event::EVENT_IX_TAG_LE) {
-                return #event_cpi_handler;
-            }
+            // if data.starts_with(anchor_lang::event::EVENT_IX_TAG_LE) {
+            //     return #event_cpi_handler;
+            // }
 
             #fallback_fn
         }

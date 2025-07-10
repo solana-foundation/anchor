@@ -19,20 +19,20 @@ pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<Expr, Comma>::parse_terminated))
         .transpose()?;
 
-    #[cfg(feature = "event-cpi")]
-    let accounts_struct = {
-        let is_event_cpi = accounts_struct
-            .attrs
-            .iter()
-            .filter_map(|attr| attr.path.get_ident())
-            .any(|ident| *ident == "event_cpi");
-        if is_event_cpi {
-            event_cpi::add_event_cpi_accounts(accounts_struct)?
-        } else {
-            accounts_struct.clone()
-        }
-    };
-    #[cfg(not(feature = "event-cpi"))]
+    // #[cfg(feature = "event-cpi")]
+    // let accounts_struct = {
+    //     let is_event_cpi = accounts_struct
+    //         .attrs
+    //         .iter()
+    //         .filter_map(|attr| attr.path.get_ident())
+    //         .any(|ident| *ident == "event_cpi");
+    //     if is_event_cpi {
+    //         event_cpi::add_event_cpi_accounts(accounts_struct)?
+    //     } else {
+    //         accounts_struct.clone()
+    //     }
+    // };
+    // #[cfg(not(feature = "event-cpi"))]
     let accounts_struct = accounts_struct.clone();
 
     let fields = match &accounts_struct.fields {
@@ -111,39 +111,39 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         // init token/a_token/mint needs token program.
         match kind {
             InitKind::Program { .. } | InitKind::Interface { .. } => (),
-            InitKind::Token { token_program, .. }
-            | InitKind::AssociatedToken { token_program, .. }
-            | InitKind::Mint { token_program, .. } => {
-                // is the token_program constraint specified?
-                let token_program_field = if let Some(token_program_id) = token_program {
-                    // if so, is it present in the struct?
-                    token_program_id.to_token_stream().to_string()
-                } else {
-                    // if not, look for the token_program field
-                    "token_program".to_string()
-                };
-                if !fields.iter().any(|f| {
-                    f.ident() == &token_program_field && !(required_init && f.is_optional())
-                }) {
-                    return Err(ParseError::new(
-                        init_fields[0].ident.span(),
-                        message("init", &token_program_field, required_init),
-                    ));
-                }
-            }
+            // InitKind::Token { token_program, .. }
+            // | InitKind::AssociatedToken { token_program, .. }
+            // | InitKind::Mint { token_program, .. } => {
+            //     // is the token_program constraint specified?
+            //     let token_program_field = if let Some(token_program_id) = token_program {
+            //         // if so, is it present in the struct?
+            //         token_program_id.to_token_stream().to_string()
+            //     } else {
+            //         // if not, look for the token_program field
+            //         "token_program".to_string()
+            //     };
+            //     if !fields.iter().any(|f| {
+            //         f.ident() == &token_program_field && !(required_init && f.is_optional())
+            //     }) {
+            //         return Err(ParseError::new(
+            //             init_fields[0].ident.span(),
+            //             message("init", &token_program_field, required_init),
+            //         ));
+            //     }
+            // }
         }
 
         // a_token needs associated token program.
-        if let InitKind::AssociatedToken { .. } = kind {
-            if !fields.iter().any(|f| {
-                f.ident() == "associated_token_program" && !(required_init && f.is_optional())
-            }) {
-                return Err(ParseError::new(
-                    init_fields[0].ident.span(),
-                    message("init", "associated_token_program", required_init),
-                ));
-            }
-        }
+        // if let InitKind::AssociatedToken { .. } = kind {
+        //     if !fields.iter().any(|f| {
+        //         f.ident() == "associated_token_program" && !(required_init && f.is_optional())
+        //     }) {
+        //         return Err(ParseError::new(
+        //             init_fields[0].ident.span(),
+        //             message("init", "associated_token_program", required_init),
+        //         ));
+        //     }
+        // }
 
         for (pos, field) in init_fields.iter().enumerate() {
             // Get payer for init-ed account
@@ -185,36 +185,36 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
                 // this if I'm wrong.
-                InitKind::Token { mint, .. } | InitKind::AssociatedToken { mint, .. } => {
-                    if !fields.iter().any(|f| {
-                        f.ident()
-                            .to_string()
-                            .starts_with(&mint.to_token_stream().to_string())
-                    }) {
-                        return Err(ParseError::new(
-                            field.ident.span(),
-                            "the mint constraint has to be an account field for token initializations (not a public key)",
-                        ));
-                    }
-                }
+                // InitKind::Token { mint, .. } | InitKind::AssociatedToken { mint, .. } => {
+                //     if !fields.iter().any(|f| {
+                //         f.ident()
+                //             .to_string()
+                //             .starts_with(&mint.to_token_stream().to_string())
+                //     }) {
+                //         return Err(ParseError::new(
+                //             field.ident.span(),
+                //             "the mint constraint has to be an account field for token initializations (not a public key)",
+                //         ));
+                //     }
+                // }
 
-                // Make sure initialized token accounts are always declared after their corresponding mint.
-                InitKind::Mint { .. } => {
-                    if init_fields.iter().enumerate().any(|(f_pos, f)| {
-                        match &f.constraints.init.as_ref().unwrap().kind {
-                            InitKind::Token { mint, .. }
-                            | InitKind::AssociatedToken { mint, .. } => {
-                                field.ident == mint.to_token_stream().to_string() && pos > f_pos
-                            }
-                            _ => false,
-                        }
-                    }) {
-                        return Err(ParseError::new(
-                            field.ident.span(),
-                            "because of the init constraint, the mint has to be declared before the corresponding token account",
-                        ));
-                    }
-                }
+                // // Make sure initialized token accounts are always declared after their corresponding mint.
+                // InitKind::Mint { .. } => {
+                //     if init_fields.iter().enumerate().any(|(f_pos, f)| {
+                //         match &f.constraints.init.as_ref().unwrap().kind {
+                //             InitKind::Token { mint, .. }
+                //             | InitKind::AssociatedToken { mint, .. } => {
+                //                 field.ident == mint.to_token_stream().to_string() && pos > f_pos
+                //             }
+                //             _ => false,
+                //         }
+                //     }) {
+                //         return Err(ParseError::new(
+                //             field.ident.span(),
+                //             "because of the init constraint, the mint has to be declared before the corresponding token account",
+                //         ));
+                //     }
+                // }
                 _ => (),
             }
         }
@@ -348,7 +348,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
 fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
     let (ident, optional, path) = ident_string(f)?;
     let ty = match ident.as_str() {
-        "Sysvar" => Ty::Sysvar(parse_sysvar(&path)?),
+        // "Sysvar" => Ty::Sysvar(parse_sysvar(&path)?),
         "AccountInfo" => Ty::AccountInfo,
         "UncheckedAccount" => Ty::UncheckedAccount,
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
@@ -359,7 +359,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
         "Signer" => Ty::Signer,
         "SystemAccount" => Ty::SystemAccount,
-        "ProgramData" => Ty::ProgramData,
+        // "ProgramData" => Ty::ProgramData,
         _ => return Err(ParseError::new(f.ty.span(), "invalid account type given")),
     };
 

@@ -151,8 +151,9 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                 IdlAccount::DISCRIMINATOR.len() + 32 + 4 + data_len as usize,
                 10_000
             );
-            let rent = Rent::get()?;
-            let lamports = rent.minimum_balance(space);
+            // let rent = Rent::get()?;
+            // let lamports = rent.minimum_balance(space);
+            let lamports = anchor_lang::arch_program::account::MIN_ACCOUNT_LAMPORTS;
             let seeds = &[&[nonce][..]];
             let ix = anchor_lang::arch_program::system_instruction::create_account_with_seed(
                 from,
@@ -222,8 +223,9 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             .unwrap();
 
             if new_account_space > idl_ref.data_len() {
-                let sysvar_rent = Rent::get()?;
-                let new_rent_minimum = sysvar_rent.minimum_balance(new_account_space);
+                // let sysvar_rent = Rent::get()?;
+                // let new_rent_minimum = sysvar_rent.minimum_balance(new_account_space);
+                let new_rent_minimum = anchor_lang::arch_program::account::MIN_ACCOUNT_LAMPORTS;
                 anchor_lang::system_program::transfer(
                     anchor_lang::context::CpiContext::new(
                         accounts.system_program.to_account_info(),

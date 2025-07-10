@@ -18,16 +18,13 @@ anchor-debug = [
     "anchor-attribute-account/anchor-debug",
     "anchor-attribute-constant/anchor-debug",
     "anchor-attribute-error/anchor-debug",
-    "anchor-attribute-event/anchor-debug",
     "anchor-attribute-program/anchor-debug",
     "anchor-derive-accounts/anchor-debug"
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi"]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
-    "anchor-attribute-event/idl-build",
     "anchor-attribute-error/idl-build",
     "anchor-attribute-program/idl-build",
     "anchor-derive-accounts/idl-build",
@@ -43,7 +40,6 @@ anchor-attribute-access-control = { path = "./attribute/access-control", version
 anchor-attribute-account = { path = "./attribute/account", version = "0.31.1" }
 anchor-attribute-constant = { path = "./attribute/constant", version = "0.31.1" }
 anchor-attribute-error = { path = "./attribute/error", version = "0.31.1" }
-anchor-attribute-event = { path = "./attribute/event", version = "0.31.1" }
 anchor-attribute-program = { path = "./attribute/program", version = "0.31.1" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "0.31.1" }
 anchor-derive-serde = { path = "./derive/serde", version = "0.31.1" }

@@ -148,7 +148,8 @@ fn get_address(acc: &Field) -> TokenStream {
             let ty = acc.account_ty();
             let id_trait = matches!(acc.ty, Ty::Program(_))
                 .then(|| quote!(anchor_lang::Id))
-                .unwrap_or_else(|| quote!(anchor_lang::arch_program::sysvar::SysvarId));
+                .unwrap();
+                // .unwrap_or_else(|| quote!(anchor_lang::arch_program::sysvar::SysvarId));
             quote! { Some(<#ty as #id_trait>::id().to_string()) }
         }
         _ => acc

@@ -50,282 +50,282 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
         "executable" => {
             ConstraintToken::Executable(Context::new(ident.span(), ConstraintExecutable {}))
         }
-        "mint" => {
-            stream.parse::<Token![:]>()?;
-            stream.parse::<Token![:]>()?;
-            let kw = stream.call(Ident::parse_any)?.to_string();
-            stream.parse::<Token![=]>()?;
+        // "mint" => {
+        //     stream.parse::<Token![:]>()?;
+        //     stream.parse::<Token![:]>()?;
+        //     let kw = stream.call(Ident::parse_any)?.to_string();
+        //     stream.parse::<Token![=]>()?;
 
-            let span = ident
-                .span()
-                .join(stream.span())
-                .unwrap_or_else(|| ident.span());
+        //     let span = ident
+        //         .span()
+        //         .join(stream.span())
+        //         .unwrap_or_else(|| ident.span());
 
-            match kw.as_str() {
-                "authority" => ConstraintToken::MintAuthority(Context::new(
-                    span,
-                    ConstraintMintAuthority {
-                        mint_auth: stream.parse()?,
-                    },
-                )),
-                "freeze_authority" => ConstraintToken::MintFreezeAuthority(Context::new(
-                    span,
-                    ConstraintMintFreezeAuthority {
-                        mint_freeze_auth: stream.parse()?,
-                    },
-                )),
-                "decimals" => ConstraintToken::MintDecimals(Context::new(
-                    span,
-                    ConstraintMintDecimals {
-                        decimals: stream.parse()?,
-                    },
-                )),
-                "token_program" => ConstraintToken::MintTokenProgram(Context::new(
-                    span,
-                    ConstraintTokenProgram {
-                        token_program: stream.parse()?,
-                    },
-                )),
-                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-            }
-        }
-        "extensions" => {
-            stream.parse::<Token![:]>()?;
-            stream.parse::<Token![:]>()?;
-            let kw = stream.call(Ident::parse_any)?.to_string();
+        //     match kw.as_str() {
+        //         "authority" => ConstraintToken::MintAuthority(Context::new(
+        //             span,
+        //             ConstraintMintAuthority {
+        //                 mint_auth: stream.parse()?,
+        //             },
+        //         )),
+        //         "freeze_authority" => ConstraintToken::MintFreezeAuthority(Context::new(
+        //             span,
+        //             ConstraintMintFreezeAuthority {
+        //                 mint_freeze_auth: stream.parse()?,
+        //             },
+        //         )),
+        //         "decimals" => ConstraintToken::MintDecimals(Context::new(
+        //             span,
+        //             ConstraintMintDecimals {
+        //                 decimals: stream.parse()?,
+        //             },
+        //         )),
+        //         "token_program" => ConstraintToken::MintTokenProgram(Context::new(
+        //             span,
+        //             ConstraintTokenProgram {
+        //                 token_program: stream.parse()?,
+        //             },
+        //         )),
+        //         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //     }
+        // }
+        // "extensions" => {
+        //     stream.parse::<Token![:]>()?;
+        //     stream.parse::<Token![:]>()?;
+        //     let kw = stream.call(Ident::parse_any)?.to_string();
 
-            match kw.as_str() {
-                "group_pointer" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //     match kw.as_str() {
+        //         "group_pointer" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "authority" => {
-                            ConstraintToken::ExtensionGroupPointerAuthority(Context::new(
-                                span,
-                                ConstraintExtensionAuthority {
-                                    authority: stream.parse()?,
-                                },
-                            ))
-                        }
-                        "group_address" => {
-                            ConstraintToken::ExtensionGroupPointerGroupAddress(Context::new(
-                                span,
-                                ConstraintExtensionGroupPointerGroupAddress {
-                                    group_address: stream.parse()?,
-                                },
-                            ))
-                        }
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                "group_member_pointer" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "authority" => {
+        //                     ConstraintToken::ExtensionGroupPointerAuthority(Context::new(
+        //                         span,
+        //                         ConstraintExtensionAuthority {
+        //                             authority: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 "group_address" => {
+        //                     ConstraintToken::ExtensionGroupPointerGroupAddress(Context::new(
+        //                         span,
+        //                         ConstraintExtensionGroupPointerGroupAddress {
+        //                             group_address: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         "group_member_pointer" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "authority" => {
-                            ConstraintToken::ExtensionGroupMemberPointerAuthority(Context::new(
-                                span,
-                                ConstraintExtensionAuthority {
-                                    authority: stream.parse()?,
-                                },
-                            ))
-                        }
-                        "member_address" => {
-                            ConstraintToken::ExtensionGroupMemberPointerMemberAddress(Context::new(
-                                span,
-                                ConstraintExtensionGroupMemberPointerMemberAddress {
-                                    member_address: stream.parse()?,
-                                },
-                            ))
-                        }
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                "metadata_pointer" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "authority" => {
+        //                     ConstraintToken::ExtensionGroupMemberPointerAuthority(Context::new(
+        //                         span,
+        //                         ConstraintExtensionAuthority {
+        //                             authority: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 "member_address" => {
+        //                     ConstraintToken::ExtensionGroupMemberPointerMemberAddress(Context::new(
+        //                         span,
+        //                         ConstraintExtensionGroupMemberPointerMemberAddress {
+        //                             member_address: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         "metadata_pointer" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "authority" => {
-                            ConstraintToken::ExtensionMetadataPointerAuthority(Context::new(
-                                span,
-                                ConstraintExtensionAuthority {
-                                    authority: stream.parse()?,
-                                },
-                            ))
-                        }
-                        "metadata_address" => {
-                            ConstraintToken::ExtensionMetadataPointerMetadataAddress(Context::new(
-                                span,
-                                ConstraintExtensionMetadataPointerMetadataAddress {
-                                    metadata_address: stream.parse()?,
-                                },
-                            ))
-                        }
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                "close_authority" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "authority" => {
+        //                     ConstraintToken::ExtensionMetadataPointerAuthority(Context::new(
+        //                         span,
+        //                         ConstraintExtensionAuthority {
+        //                             authority: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 "metadata_address" => {
+        //                     ConstraintToken::ExtensionMetadataPointerMetadataAddress(Context::new(
+        //                         span,
+        //                         ConstraintExtensionMetadataPointerMetadataAddress {
+        //                             metadata_address: stream.parse()?,
+        //                         },
+        //                     ))
+        //                 }
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         "close_authority" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "authority" => ConstraintToken::ExtensionCloseAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                "permanent_delegate" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "authority" => ConstraintToken::ExtensionCloseAuthority(Context::new(
+        //                     span,
+        //                     ConstraintExtensionAuthority {
+        //                         authority: stream.parse()?,
+        //                     },
+        //                 )),
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         "permanent_delegate" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "delegate" => ConstraintToken::ExtensionPermanentDelegate(Context::new(
-                            span,
-                            ConstraintExtensionPermanentDelegate {
-                                permanent_delegate: stream.parse()?,
-                            },
-                        )),
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                "transfer_hook" => {
-                    stream.parse::<Token![:]>()?;
-                    stream.parse::<Token![:]>()?;
-                    let kw = stream.call(Ident::parse_any)?.to_string();
-                    stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "delegate" => ConstraintToken::ExtensionPermanentDelegate(Context::new(
+        //                     span,
+        //                     ConstraintExtensionPermanentDelegate {
+        //                         permanent_delegate: stream.parse()?,
+        //                     },
+        //                 )),
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         "transfer_hook" => {
+        //             stream.parse::<Token![:]>()?;
+        //             stream.parse::<Token![:]>()?;
+        //             let kw = stream.call(Ident::parse_any)?.to_string();
+        //             stream.parse::<Token![=]>()?;
 
-                    let span = ident
-                        .span()
-                        .join(stream.span())
-                        .unwrap_or_else(|| ident.span());
+        //             let span = ident
+        //                 .span()
+        //                 .join(stream.span())
+        //                 .unwrap_or_else(|| ident.span());
 
-                    match kw.as_str() {
-                        "authority" => ConstraintToken::ExtensionTokenHookAuthority(Context::new(
-                            span,
-                            ConstraintExtensionAuthority {
-                                authority: stream.parse()?,
-                            },
-                        )),
-                        "program_id" => ConstraintToken::ExtensionTokenHookProgramId(Context::new(
-                            span,
-                            ConstraintExtensionTokenHookProgramId {
-                                program_id: stream.parse()?,
-                            },
-                        )),
-                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-                    }
-                }
-                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-            }
-        }
-        "token" => {
-            stream.parse::<Token![:]>()?;
-            stream.parse::<Token![:]>()?;
-            let kw = stream.call(Ident::parse_any)?.to_string();
-            stream.parse::<Token![=]>()?;
+        //             match kw.as_str() {
+        //                 "authority" => ConstraintToken::ExtensionTokenHookAuthority(Context::new(
+        //                     span,
+        //                     ConstraintExtensionAuthority {
+        //                         authority: stream.parse()?,
+        //                     },
+        //                 )),
+        //                 "program_id" => ConstraintToken::ExtensionTokenHookProgramId(Context::new(
+        //                     span,
+        //                     ConstraintExtensionTokenHookProgramId {
+        //                         program_id: stream.parse()?,
+        //                     },
+        //                 )),
+        //                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //             }
+        //         }
+        //         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //     }
+        // }
+        // "token" => {
+        //     stream.parse::<Token![:]>()?;
+        //     stream.parse::<Token![:]>()?;
+        //     let kw = stream.call(Ident::parse_any)?.to_string();
+        //     stream.parse::<Token![=]>()?;
 
-            let span = ident
-                .span()
-                .join(stream.span())
-                .unwrap_or_else(|| ident.span());
+        //     let span = ident
+        //         .span()
+        //         .join(stream.span())
+        //         .unwrap_or_else(|| ident.span());
 
-            match kw.as_str() {
-                "mint" => ConstraintToken::TokenMint(Context::new(
-                    span,
-                    ConstraintTokenMint {
-                        mint: stream.parse()?,
-                    },
-                )),
-                "authority" => ConstraintToken::TokenAuthority(Context::new(
-                    span,
-                    ConstraintTokenAuthority {
-                        auth: stream.parse()?,
-                    },
-                )),
-                "token_program" => ConstraintToken::TokenTokenProgram(Context::new(
-                    span,
-                    ConstraintTokenProgram {
-                        token_program: stream.parse()?,
-                    },
-                )),
-                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-            }
-        }
-        "associated_token" => {
-            stream.parse::<Token![:]>()?;
-            stream.parse::<Token![:]>()?;
-            let kw = stream.call(Ident::parse_any)?.to_string();
-            stream.parse::<Token![=]>()?;
+        //     match kw.as_str() {
+        //         "mint" => ConstraintToken::TokenMint(Context::new(
+        //             span,
+        //             ConstraintTokenMint {
+        //                 mint: stream.parse()?,
+        //             },
+        //         )),
+        //         "authority" => ConstraintToken::TokenAuthority(Context::new(
+        //             span,
+        //             ConstraintTokenAuthority {
+        //                 auth: stream.parse()?,
+        //             },
+        //         )),
+        //         "token_program" => ConstraintToken::TokenTokenProgram(Context::new(
+        //             span,
+        //             ConstraintTokenProgram {
+        //                 token_program: stream.parse()?,
+        //             },
+        //         )),
+        //         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //     }
+        // }
+        // "associated_token" => {
+        //     stream.parse::<Token![:]>()?;
+        //     stream.parse::<Token![:]>()?;
+        //     let kw = stream.call(Ident::parse_any)?.to_string();
+        //     stream.parse::<Token![=]>()?;
 
-            let span = ident
-                .span()
-                .join(stream.span())
-                .unwrap_or_else(|| ident.span());
+        //     let span = ident
+        //         .span()
+        //         .join(stream.span())
+        //         .unwrap_or_else(|| ident.span());
 
-            match kw.as_str() {
-                "mint" => ConstraintToken::AssociatedTokenMint(Context::new(
-                    span,
-                    ConstraintTokenMint {
-                        mint: stream.parse()?,
-                    },
-                )),
-                "authority" => ConstraintToken::AssociatedTokenAuthority(Context::new(
-                    span,
-                    ConstraintTokenAuthority {
-                        auth: stream.parse()?,
-                    },
-                )),
-                "token_program" => ConstraintToken::AssociatedTokenTokenProgram(Context::new(
-                    span,
-                    ConstraintTokenProgram {
-                        token_program: stream.parse()?,
-                    },
-                )),
-                _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
-            }
-        }
+        //     match kw.as_str() {
+        //         "mint" => ConstraintToken::AssociatedTokenMint(Context::new(
+        //             span,
+        //             ConstraintTokenMint {
+        //                 mint: stream.parse()?,
+        //             },
+        //         )),
+        //         "authority" => ConstraintToken::AssociatedTokenAuthority(Context::new(
+        //             span,
+        //             ConstraintTokenAuthority {
+        //                 auth: stream.parse()?,
+        //             },
+        //         )),
+        //         "token_program" => ConstraintToken::AssociatedTokenTokenProgram(Context::new(
+        //             span,
+        //             ConstraintTokenProgram {
+        //                 token_program: stream.parse()?,
+        //             },
+        //         )),
+        //         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+        //     }
+        // }
         "bump" => {
             let bump = {
                 if stream.peek(Token![=]) {
@@ -436,19 +436,19 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         error: parse_optional_custom_error(&stream)?,
                     },
                 )),
-                "rent_exempt" => ConstraintToken::RentExempt(Context::new(
-                    span,
-                    match stream.parse::<Ident>()?.to_string().as_str() {
-                        "skip" => ConstraintRentExempt::Skip,
-                        "enforce" => ConstraintRentExempt::Enforce,
-                        _ => {
-                            return Err(ParseError::new(
-                                span,
-                                "rent_exempt must be either skip or enforce",
-                            ))
-                        }
-                    },
-                )),
+                // "rent_exempt" => ConstraintToken::RentExempt(Context::new(
+                //     span,
+                //     match stream.parse::<Ident>()?.to_string().as_str() {
+                //         "skip" => ConstraintRentExempt::Skip,
+                //         "enforce" => ConstraintRentExempt::Enforce,
+                //         _ => {
+                //             return Err(ParseError::new(
+                //                 span,
+                //                 "rent_exempt must be either skip or enforce",
+                //             ))
+                //         }
+                //     },
+                // )),
                 "payer" => ConstraintToken::Payer(Context::new(
                     span,
                     ConstraintPayer {
@@ -508,36 +508,36 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub has_one: Vec<Context<ConstraintHasOne>>,
     pub raw: Vec<Context<ConstraintRaw>>,
     pub owner: Option<Context<ConstraintOwner>>,
-    pub rent_exempt: Option<Context<ConstraintRentExempt>>,
+    // pub rent_exempt: Option<Context<ConstraintRentExempt>>,
     pub seeds: Option<Context<ConstraintSeeds>>,
     pub executable: Option<Context<ConstraintExecutable>>,
     pub payer: Option<Context<ConstraintPayer>>,
     pub space: Option<Context<ConstraintSpace>>,
     pub close: Option<Context<ConstraintClose>>,
     pub address: Option<Context<ConstraintAddress>>,
-    pub token_mint: Option<Context<ConstraintTokenMint>>,
-    pub token_authority: Option<Context<ConstraintTokenAuthority>>,
-    pub token_token_program: Option<Context<ConstraintTokenProgram>>,
-    pub associated_token_mint: Option<Context<ConstraintTokenMint>>,
-    pub associated_token_authority: Option<Context<ConstraintTokenAuthority>>,
-    pub associated_token_token_program: Option<Context<ConstraintTokenProgram>>,
-    pub mint_authority: Option<Context<ConstraintMintAuthority>>,
-    pub mint_freeze_authority: Option<Context<ConstraintMintFreezeAuthority>>,
-    pub mint_decimals: Option<Context<ConstraintMintDecimals>>,
-    pub mint_token_program: Option<Context<ConstraintTokenProgram>>,
-    pub extension_group_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_group_pointer_group_address:
-        Option<Context<ConstraintExtensionGroupPointerGroupAddress>>,
-    pub extension_group_member_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_group_member_pointer_member_address:
-        Option<Context<ConstraintExtensionGroupMemberPointerMemberAddress>>,
-    pub extension_metadata_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_metadata_pointer_metadata_address:
-        Option<Context<ConstraintExtensionMetadataPointerMetadataAddress>>,
-    pub extension_close_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_transfer_hook_authority: Option<Context<ConstraintExtensionAuthority>>,
-    pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
-    pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
+    // pub token_mint: Option<Context<ConstraintTokenMint>>,
+    // pub token_authority: Option<Context<ConstraintTokenAuthority>>,
+    // pub token_token_program: Option<Context<ConstraintTokenProgram>>,
+    // pub associated_token_mint: Option<Context<ConstraintTokenMint>>,
+    // pub associated_token_authority: Option<Context<ConstraintTokenAuthority>>,
+    // pub associated_token_token_program: Option<Context<ConstraintTokenProgram>>,
+    // pub mint_authority: Option<Context<ConstraintMintAuthority>>,
+    // pub mint_freeze_authority: Option<Context<ConstraintMintFreezeAuthority>>,
+    // pub mint_decimals: Option<Context<ConstraintMintDecimals>>,
+    // pub mint_token_program: Option<Context<ConstraintTokenProgram>>,
+    // pub extension_group_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
+    // pub extension_group_pointer_group_address:
+    //     Option<Context<ConstraintExtensionGroupPointerGroupAddress>>,
+    // pub extension_group_member_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
+    // pub extension_group_member_pointer_member_address:
+    //     Option<Context<ConstraintExtensionGroupMemberPointerMemberAddress>>,
+    // pub extension_metadata_pointer_authority: Option<Context<ConstraintExtensionAuthority>>,
+    // pub extension_metadata_pointer_metadata_address:
+    //     Option<Context<ConstraintExtensionMetadataPointerMetadataAddress>>,
+    // pub extension_close_authority: Option<Context<ConstraintExtensionAuthority>>,
+    // pub extension_transfer_hook_authority: Option<Context<ConstraintExtensionAuthority>>,
+    // pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
+    // pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -556,33 +556,33 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one: Vec::new(),
             raw: Vec::new(),
             owner: None,
-            rent_exempt: None,
+            // rent_exempt: None,
             seeds: None,
             executable: None,
             payer: None,
             space: None,
             close: None,
             address: None,
-            token_mint: None,
-            token_authority: None,
-            token_token_program: None,
-            associated_token_mint: None,
-            associated_token_authority: None,
-            associated_token_token_program: None,
-            mint_authority: None,
-            mint_freeze_authority: None,
-            mint_decimals: None,
-            mint_token_program: None,
-            extension_group_pointer_authority: None,
-            extension_group_pointer_group_address: None,
-            extension_group_member_pointer_authority: None,
-            extension_group_member_pointer_member_address: None,
-            extension_metadata_pointer_authority: None,
-            extension_metadata_pointer_metadata_address: None,
-            extension_close_authority: None,
-            extension_transfer_hook_authority: None,
-            extension_transfer_hook_program_id: None,
-            extension_permanent_delegate: None,
+            // token_mint: None,
+            // token_authority: None,
+            // token_token_program: None,
+            // associated_token_mint: None,
+            // associated_token_authority: None,
+            // associated_token_token_program: None,
+            // mint_authority: None,
+            // mint_freeze_authority: None,
+            // mint_decimals: None,
+            // mint_token_program: None,
+            // extension_group_pointer_authority: None,
+            // extension_group_pointer_group_address: None,
+            // extension_group_member_pointer_authority: None,
+            // extension_group_member_pointer_member_address: None,
+            // extension_metadata_pointer_authority: None,
+            // extension_metadata_pointer_metadata_address: None,
+            // extension_close_authority: None,
+            // extension_transfer_hook_authority: None,
+            // extension_transfer_hook_program_id: None,
+            // extension_permanent_delegate: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -617,10 +617,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .replace(Context::new(i.span(), ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
-            if self.rent_exempt.is_none() {
-                self.rent_exempt
-                    .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
-            }
+            // if self.rent_exempt.is_none() {
+            //     self.rent_exempt
+            //         .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
+            // }
             if self.payer.is_none() {
                 return Err(ParseError::new(
                     i.span(),
@@ -630,11 +630,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             // When initializing a non-PDA account, the account being
             // initialized must sign to invoke the system program's create
             // account instruction.
-            if self.signer.is_none() && self.seeds.is_none() && self.associated_token_mint.is_none()
-            {
-                self.signer
-                    .replace(Context::new(i.span(), ConstraintSigner { error: None }));
-            }
+            // if self.signer.is_none() && self.seeds.is_none() && self.associated_token_mint.is_none()
+            // {
+            //     self.signer
+            //         .replace(Context::new(i.span(), ConstraintSigner { error: None }));
+            // }
 
             // Assert a bump target is not given on init.
             if let Some(b) = &self.bump {
@@ -647,40 +647,40 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
 
             // TokenAccount.
-            if let Some(token_mint) = &self.token_mint {
-                if self.token_authority.is_none() {
-                    return Err(ParseError::new(
-                        token_mint.span(),
-                        "when initializing, token authority must be provided if token mint is",
-                    ));
-                }
-            }
-            if let Some(token_authority) = &self.token_authority {
-                if self.token_mint.is_none() {
-                    return Err(ParseError::new(
-                        token_authority.span(),
-                        "when initializing, token mint must be provided if token authority is",
-                    ));
-                }
-            }
+            // if let Some(token_mint) = &self.token_mint {
+            //     if self.token_authority.is_none() {
+            //         return Err(ParseError::new(
+            //             token_mint.span(),
+            //             "when initializing, token authority must be provided if token mint is",
+            //         ));
+            //     }
+            // }
+            // if let Some(token_authority) = &self.token_authority {
+            //     if self.token_mint.is_none() {
+            //         return Err(ParseError::new(
+            //             token_authority.span(),
+            //             "when initializing, token mint must be provided if token authority is",
+            //         ));
+            //     }
+            // }
 
             // Mint.
-            if let Some(mint_decimals) = &self.mint_decimals {
-                if self.mint_authority.is_none() {
-                    return Err(ParseError::new(
-                        mint_decimals.span(),
-                        "when initializing, mint authority must be provided if mint decimals is",
-                    ));
-                }
-            }
-            if let Some(mint_authority) = &self.mint_authority {
-                if self.mint_decimals.is_none() {
-                    return Err(ParseError::new(
-                        mint_authority.span(),
-                        "when initializing, mint decimals must be provided if mint authority is",
-                    ));
-                }
-            }
+            // if let Some(mint_decimals) = &self.mint_decimals {
+            //     if self.mint_authority.is_none() {
+            //         return Err(ParseError::new(
+            //             mint_decimals.span(),
+            //             "when initializing, mint authority must be provided if mint decimals is",
+            //         ));
+            //     }
+            // }
+            // if let Some(mint_authority) = &self.mint_authority {
+            //     if self.mint_decimals.is_none() {
+            //         return Err(ParseError::new(
+            //             mint_authority.span(),
+            //             "when initializing, mint decimals must be provided if mint authority is",
+            //         ));
+            //     }
+            // }
         }
 
         // Realloc.
@@ -713,10 +713,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .replace(Context::new(z.span(), ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
-            if self.rent_exempt.is_none() {
-                self.rent_exempt
-                    .replace(Context::new(z.span(), ConstraintRentExempt::Enforce));
-            }
+            // if self.rent_exempt.is_none() {
+            //     self.rent_exempt
+            //         .replace(Context::new(z.span(), ConstraintRentExempt::Enforce));
+            // }
         }
 
         // Seeds.
@@ -737,12 +737,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
         // Space.
         if let Some(i) = &self.init {
-            let initializing_token_program_acc = self.token_mint.is_some()
-                || self.mint_authority.is_some()
-                || self.token_authority.is_some()
-                || self.associated_token_authority.is_some();
+            // let initializing_token_program_acc = self.token_mint.is_some()
+            //     || self.mint_authority.is_some()
+            //     || self.token_authority.is_some()
+            //     || self.associated_token_authority.is_some();
 
-            match (self.space.is_some(), initializing_token_program_acc) {
+            match (self.space.is_some(), /*initializing_token_program_acc*/false) {
                 (true, true) => {
                     return Err(ParseError::new(
                         self.space.as_ref().unwrap().span(),
@@ -768,33 +768,33 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one,
             raw,
             owner,
-            rent_exempt,
+            // rent_exempt,
             seeds,
             executable,
             payer,
             space,
             close,
             address,
-            token_mint,
-            token_authority,
-            token_token_program,
-            associated_token_mint,
-            associated_token_authority,
-            associated_token_token_program,
-            mint_authority,
-            mint_freeze_authority,
-            mint_decimals,
-            mint_token_program,
-            extension_group_pointer_authority,
-            extension_group_pointer_group_address,
-            extension_group_member_pointer_authority,
-            extension_group_member_pointer_member_address,
-            extension_metadata_pointer_authority,
-            extension_metadata_pointer_metadata_address,
-            extension_close_authority,
-            extension_transfer_hook_authority,
-            extension_transfer_hook_program_id,
-            extension_permanent_delegate,
+            // token_mint,
+            // token_authority,
+            // token_token_program,
+            // associated_token_mint,
+            // associated_token_authority,
+            // associated_token_token_program,
+            // mint_authority,
+            // mint_freeze_authority,
+            // mint_decimals,
+            // mint_token_program,
+            // extension_group_pointer_authority,
+            // extension_group_pointer_group_address,
+            // extension_group_member_pointer_authority,
+            // extension_group_member_pointer_member_address,
+            // extension_metadata_pointer_authority,
+            // extension_metadata_pointer_metadata_address,
+            // extension_close_authority,
+            // extension_transfer_hook_authority,
+            // extension_transfer_hook_program_id,
+            // extension_permanent_delegate,
             bump,
             program_seed,
             realloc,
@@ -827,190 +827,193 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 .expect("bump must be provided with seeds"),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
-        let associated_token = match (
-            associated_token_mint,
-            associated_token_authority,
-            &associated_token_token_program,
-        ) {
-            (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
-                wallet: auth.into_inner().auth,
-                mint: mint.into_inner().mint,
-                token_program: associated_token_token_program
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().token_program),
-            }),
-            (Some(mint), None, _) => return Err(ParseError::new(
-                mint.span(),
-                "authority must be provided to specify an associated token program derived address",
-            )),
-            (None, Some(auth), _) => {
-                return Err(ParseError::new(
-                    auth.span(),
-                    "mint must be provided to specify an associated token program derived address",
-                ))
-            },
-            (None, None, Some(token_program)) => {
-                return Err(ParseError::new(
-                    token_program.span(),
-                    "mint and authority must be provided to specify an associated token program derived address",
-                ))
-            }
-            _ => None,
-        };
-        if let Some(associated_token) = &associated_token {
-            if seeds.is_some() {
-                return Err(ParseError::new(
-                    associated_token.mint.span(),
-                    "'associated_token' constraints cannot be used with the 'seeds' constraint",
-                ));
-            }
-        }
+        // let associated_token = match (
+        //     associated_token_mint,
+        //     associated_token_authority,
+        //     &associated_token_token_program,
+        // ) {
+        //     (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
+        //         wallet: auth.into_inner().auth,
+        //         mint: mint.into_inner().mint,
+        //         token_program: associated_token_token_program
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().token_program),
+        //     }),
+        //     (Some(mint), None, _) => return Err(ParseError::new(
+        //         mint.span(),
+        //         "authority must be provided to specify an associated token program derived address",
+        //     )),
+        //     (None, Some(auth), _) => {
+        //         return Err(ParseError::new(
+        //             auth.span(),
+        //             "mint must be provided to specify an associated token program derived address",
+        //         ))
+        //     },
+        //     (None, None, Some(token_program)) => {
+        //         return Err(ParseError::new(
+        //             token_program.span(),
+        //             "mint and authority must be provided to specify an associated token program derived address",
+        //         ))
+        //     }
+        //     _ => None,
+        // };
+        // if let Some(associated_token) = &associated_token {
+        //     if seeds.is_some() {
+        //         return Err(ParseError::new(
+        //             associated_token.mint.span(),
+        //             "'associated_token' constraints cannot be used with the 'seeds' constraint",
+        //         ));
+        //     }
+        // }
 
-        let token_account = match (&token_mint, &token_authority, &token_token_program) {
-            (None, None, None) => None,
-            _ => Some(ConstraintTokenAccountGroup {
-                mint: token_mint.as_ref().map(|a| a.clone().into_inner().mint),
-                authority: token_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().auth),
-                token_program: token_token_program
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().token_program),
-            }),
-        };
+        // let token_account = match (&token_mint, &token_authority, &token_token_program) {
+        //     (None, None, None) => None,
+        //     _ => Some(ConstraintTokenAccountGroup {
+        //         mint: token_mint.as_ref().map(|a| a.clone().into_inner().mint),
+        //         authority: token_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().auth),
+        //         token_program: token_token_program
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().token_program),
+        //     }),
+        // };
 
-        let mint = match (
-            &mint_decimals,
-            &mint_authority,
-            &mint_freeze_authority,
-            &mint_token_program,
-            &extension_group_pointer_authority,
-            &extension_group_pointer_group_address,
-            &extension_group_member_pointer_authority,
-            &extension_group_member_pointer_member_address,
-            &extension_metadata_pointer_authority,
-            &extension_metadata_pointer_metadata_address,
-            &extension_close_authority,
-            &extension_transfer_hook_authority,
-            &extension_transfer_hook_program_id,
-            &extension_permanent_delegate,
-        ) {
-            (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ) => None,
-            _ => Some(ConstraintTokenMintGroup {
-                decimals: mint_decimals
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().decimals),
-                mint_authority: mint_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().mint_auth),
-                freeze_authority: mint_freeze_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().mint_freeze_auth),
-                token_program: mint_token_program
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().token_program),
-                // extensions
-                group_pointer_authority: extension_group_pointer_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().authority),
-                group_pointer_group_address: extension_group_pointer_group_address
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().group_address),
-                group_member_pointer_authority: extension_group_member_pointer_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().authority),
-                group_member_pointer_member_address: extension_group_member_pointer_member_address
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().member_address),
-                metadata_pointer_authority: extension_metadata_pointer_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().authority),
-                metadata_pointer_metadata_address: extension_metadata_pointer_metadata_address
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().metadata_address),
-                close_authority: extension_close_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().authority),
-                permanent_delegate: extension_permanent_delegate
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().permanent_delegate),
-                transfer_hook_authority: extension_transfer_hook_authority
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().authority),
-                transfer_hook_program_id: extension_transfer_hook_program_id
-                    .as_ref()
-                    .map(|a| a.clone().into_inner().program_id),
-            }),
-        };
+        // let mint = match (
+        //     &mint_decimals,
+        //     &mint_authority,
+        //     &mint_freeze_authority,
+        //     &mint_token_program,
+        //     &extension_group_pointer_authority,
+        //     &extension_group_pointer_group_address,
+        //     &extension_group_member_pointer_authority,
+        //     &extension_group_member_pointer_member_address,
+        //     &extension_metadata_pointer_authority,
+        //     &extension_metadata_pointer_metadata_address,
+        //     &extension_close_authority,
+        //     &extension_transfer_hook_authority,
+        //     &extension_transfer_hook_program_id,
+        //     &extension_permanent_delegate,
+        // ) {
+        //     (
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //         None,
+        //     ) => None,
+        //     _ => Some(ConstraintTokenMintGroup {
+        //         decimals: mint_decimals
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().decimals),
+        //         mint_authority: mint_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().mint_auth),
+        //         freeze_authority: mint_freeze_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().mint_freeze_auth),
+        //         token_program: mint_token_program
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().token_program),
+        //         // extensions
+        //         group_pointer_authority: extension_group_pointer_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().authority),
+        //         group_pointer_group_address: extension_group_pointer_group_address
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().group_address),
+        //         group_member_pointer_authority: extension_group_member_pointer_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().authority),
+        //         group_member_pointer_member_address: extension_group_member_pointer_member_address
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().member_address),
+        //         metadata_pointer_authority: extension_metadata_pointer_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().authority),
+        //         metadata_pointer_metadata_address: extension_metadata_pointer_metadata_address
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().metadata_address),
+        //         close_authority: extension_close_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().authority),
+        //         permanent_delegate: extension_permanent_delegate
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().permanent_delegate),
+        //         transfer_hook_authority: extension_transfer_hook_authority
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().authority),
+        //         transfer_hook_program_id: extension_transfer_hook_program_id
+        //             .as_ref()
+        //             .map(|a| a.clone().into_inner().program_id),
+        //     }),
+        // };
 
         Ok(ConstraintGroup {
-            init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
+            init: init.as_ref().map(|i| Ok::<_, ParseError>(ConstraintInitGroup {
                 if_needed: i.if_needed,
                 seeds: seeds.clone(),
                 payer: into_inner!(payer.clone()).unwrap().target,
                 space: space.clone().map(|s| s.space.clone()),
-                kind: if let Some(tm) = &token_mint {
-                    InitKind::Token {
-                        mint: tm.clone().into_inner().mint,
-                        owner: match &token_authority {
-                            Some(a) => a.clone().into_inner().auth,
-                            None => return Err(ParseError::new(
-                                tm.span(),
-                                "authority must be provided to initialize a token program derived address"
-                            )),
-                        },
-                        token_program: token_token_program.map(|tp| tp.into_inner().token_program),
-                    }
-                } else if let Some(at) = &associated_token {
-                    InitKind::AssociatedToken {
-                        mint: at.mint.clone(),
-                        owner: at.wallet.clone(),
-                        token_program: associated_token_token_program.map(|tp| tp.into_inner().token_program),
-                    }
-                } else if let Some(d) = &mint_decimals {
-                    InitKind::Mint {
-                        decimals: d.clone().into_inner().decimals,
-                        owner: match &mint_authority {
-                            Some(a) => a.clone().into_inner().mint_auth,
-                            None => return Err(ParseError::new(
-                                d.span(),
-                                "authority must be provided to initialize a mint program derived address"
-                            ))
-                        },
-                        freeze_authority: mint_freeze_authority.map(|fa| fa.into_inner().mint_freeze_auth),
-                        token_program: mint_token_program.map(|tp| tp.into_inner().token_program),
-                        // extensions
-                        group_pointer_authority: extension_group_pointer_authority.map(|gpa| gpa.into_inner().authority),
-                        group_pointer_group_address: extension_group_pointer_group_address.map(|gpga| gpga.into_inner().group_address),
-                        group_member_pointer_authority: extension_group_member_pointer_authority.map(|gmpa| gmpa.into_inner().authority),
-                        group_member_pointer_member_address: extension_group_member_pointer_member_address.map(|gmpma| gmpma.into_inner().member_address),
-                        metadata_pointer_authority: extension_metadata_pointer_authority.map(|mpa| mpa.into_inner().authority),
-                        metadata_pointer_metadata_address: extension_metadata_pointer_metadata_address.map(|mpma| mpma.into_inner().metadata_address),
-                        close_authority: extension_close_authority.map(|ca| ca.into_inner().authority),
-                        permanent_delegate: extension_permanent_delegate.map(|pd| pd.into_inner().permanent_delegate),
-                        transfer_hook_authority: extension_transfer_hook_authority.map(|tha| tha.into_inner().authority),
-                        transfer_hook_program_id: extension_transfer_hook_program_id.map(|thpid| thpid.into_inner().program_id),
-                    }
-                } else {
-                    InitKind::Program {
-                        owner: owner.as_ref().map(|o| o.owner_address.clone()),
-                    }
+                kind: InitKind::Program {
+                    owner: owner.as_ref().map(|o| o.owner_address.clone()),
                 },
+                // kind: if let Some(tm) = &token_mint {
+                //     InitKind::Token {
+                //         mint: tm.clone().into_inner().mint,
+                //         owner: match &token_authority {
+                //             Some(a) => a.clone().into_inner().auth,
+                //             None => return Err(ParseError::new(
+                //                 tm.span(),
+                //                 "authority must be provided to initialize a token program derived address"
+                //             )),
+                //         },
+                //         token_program: token_token_program.map(|tp| tp.into_inner().token_program),
+                //     }
+                // } else if let Some(at) = &associated_token {
+                //     InitKind::AssociatedToken {
+                //         mint: at.mint.clone(),
+                //         owner: at.wallet.clone(),
+                //         token_program: associated_token_token_program.map(|tp| tp.into_inner().token_program),
+                //     }
+                // } else if let Some(d) = &mint_decimals {
+                //     InitKind::Mint {
+                //         decimals: d.clone().into_inner().decimals,
+                //         owner: match &mint_authority {
+                //             Some(a) => a.clone().into_inner().mint_auth,
+                //             None => return Err(ParseError::new(
+                //                 d.span(),
+                //                 "authority must be provided to initialize a mint program derived address"
+                //             ))
+                //         },
+                //         freeze_authority: mint_freeze_authority.map(|fa| fa.into_inner().mint_freeze_auth),
+                //         token_program: mint_token_program.map(|tp| tp.into_inner().token_program),
+                //         // extensions
+                //         group_pointer_authority: extension_group_pointer_authority.map(|gpa| gpa.into_inner().authority),
+                //         group_pointer_group_address: extension_group_pointer_group_address.map(|gpga| gpga.into_inner().group_address),
+                //         group_member_pointer_authority: extension_group_member_pointer_authority.map(|gmpa| gmpa.into_inner().authority),
+                //         group_member_pointer_member_address: extension_group_member_pointer_member_address.map(|gmpma| gmpma.into_inner().member_address),
+                //         metadata_pointer_authority: extension_metadata_pointer_authority.map(|mpa| mpa.into_inner().authority),
+                //         metadata_pointer_metadata_address: extension_metadata_pointer_metadata_address.map(|mpma| mpma.into_inner().metadata_address),
+                //         close_authority: extension_close_authority.map(|ca| ca.into_inner().authority),
+                //         permanent_delegate: extension_permanent_delegate.map(|pd| pd.into_inner().permanent_delegate),
+                //         transfer_hook_authority: extension_transfer_hook_authority.map(|tha| tha.into_inner().authority),
+                //         transfer_hook_program_id: extension_transfer_hook_program_id.map(|thpid| thpid.into_inner().program_id),
+                //     }
+                // } else {
+                //     InitKind::Program {
+                //         owner: owner.as_ref().map(|o| o.owner_address.clone()),
+                //     }
+                // },
             })).transpose()?,
             realloc: realloc.as_ref().map(|r| ConstraintReallocGroup {
                 payer: into_inner!(realloc_payer).unwrap().target,
@@ -1023,14 +1026,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             has_one: into_inner_vec!(has_one),
             raw: into_inner_vec!(raw),
             owner: into_inner!(owner),
-            rent_exempt: into_inner!(rent_exempt),
+            // rent_exempt: into_inner!(rent_exempt),
             executable: into_inner!(executable),
             close: into_inner!(close),
             address: into_inner!(address),
-            associated_token: if !is_init { associated_token } else { None },
+            // associated_token: if !is_init { associated_token } else { None },
             seeds,
-            token_account: if !is_init {token_account} else {None},
-            mint: if !is_init {mint} else {None},
+            // token_account: if !is_init {token_account} else {None},
+            // mint: if !is_init {mint} else {None},
         })
     }
 
@@ -1043,56 +1046,56 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::HasOne(c) => self.add_has_one(c),
             ConstraintToken::Raw(c) => self.add_raw(c),
             ConstraintToken::Owner(c) => self.add_owner(c),
-            ConstraintToken::RentExempt(c) => self.add_rent_exempt(c),
+            // ConstraintToken::RentExempt(c) => self.add_rent_exempt(c),
             ConstraintToken::Seeds(c) => self.add_seeds(c),
             ConstraintToken::Executable(c) => self.add_executable(c),
             ConstraintToken::Payer(c) => self.add_payer(c),
             ConstraintToken::Space(c) => self.add_space(c),
             ConstraintToken::Close(c) => self.add_close(c),
             ConstraintToken::Address(c) => self.add_address(c),
-            ConstraintToken::TokenAuthority(c) => self.add_token_authority(c),
-            ConstraintToken::TokenMint(c) => self.add_token_mint(c),
-            ConstraintToken::TokenTokenProgram(c) => self.add_token_token_program(c),
-            ConstraintToken::AssociatedTokenAuthority(c) => self.add_associated_token_authority(c),
-            ConstraintToken::AssociatedTokenMint(c) => self.add_associated_token_mint(c),
-            ConstraintToken::AssociatedTokenTokenProgram(c) => {
-                self.add_associated_token_token_program(c)
-            }
-            ConstraintToken::MintAuthority(c) => self.add_mint_authority(c),
-            ConstraintToken::MintFreezeAuthority(c) => self.add_mint_freeze_authority(c),
-            ConstraintToken::MintDecimals(c) => self.add_mint_decimals(c),
-            ConstraintToken::MintTokenProgram(c) => self.add_mint_token_program(c),
+            // ConstraintToken::TokenAuthority(c) => self.add_token_authority(c),
+            // ConstraintToken::TokenMint(c) => self.add_token_mint(c),
+            // ConstraintToken::TokenTokenProgram(c) => self.add_token_token_program(c),
+            // ConstraintToken::AssociatedTokenAuthority(c) => self.add_associated_token_authority(c),
+            // ConstraintToken::AssociatedTokenMint(c) => self.add_associated_token_mint(c),
+            // ConstraintToken::AssociatedTokenTokenProgram(c) => {
+            //     self.add_associated_token_token_program(c)
+            // }
+            // ConstraintToken::MintAuthority(c) => self.add_mint_authority(c),
+            // ConstraintToken::MintFreezeAuthority(c) => self.add_mint_freeze_authority(c),
+            // ConstraintToken::MintDecimals(c) => self.add_mint_decimals(c),
+            // ConstraintToken::MintTokenProgram(c) => self.add_mint_token_program(c),
             ConstraintToken::Bump(c) => self.add_bump(c),
             ConstraintToken::ProgramSeed(c) => self.add_program_seed(c),
             ConstraintToken::Realloc(c) => self.add_realloc(c),
             ConstraintToken::ReallocPayer(c) => self.add_realloc_payer(c),
             ConstraintToken::ReallocZero(c) => self.add_realloc_zero(c),
-            ConstraintToken::ExtensionGroupPointerAuthority(c) => {
-                self.add_extension_group_pointer_authority(c)
-            }
-            ConstraintToken::ExtensionGroupPointerGroupAddress(c) => {
-                self.add_extension_group_pointer_group_address(c)
-            }
-            ConstraintToken::ExtensionGroupMemberPointerAuthority(c) => {
-                self.add_extension_group_member_pointer_authority(c)
-            }
-            ConstraintToken::ExtensionGroupMemberPointerMemberAddress(c) => {
-                self.add_extension_group_member_pointer_member_address(c)
-            }
-            ConstraintToken::ExtensionMetadataPointerAuthority(c) => {
-                self.add_extension_metadata_pointer_authority(c)
-            }
-            ConstraintToken::ExtensionMetadataPointerMetadataAddress(c) => {
-                self.add_extension_metadata_pointer_metadata_address(c)
-            }
-            ConstraintToken::ExtensionCloseAuthority(c) => self.add_extension_close_authority(c),
-            ConstraintToken::ExtensionTokenHookAuthority(c) => self.add_extension_authority(c),
-            ConstraintToken::ExtensionTokenHookProgramId(c) => {
-                self.add_extension_transfer_hook_program_id(c)
-            }
-            ConstraintToken::ExtensionPermanentDelegate(c) => {
-                self.add_extension_permanent_delegate(c)
-            }
+            // ConstraintToken::ExtensionGroupPointerAuthority(c) => {
+            //     self.add_extension_group_pointer_authority(c)
+            // }
+            // ConstraintToken::ExtensionGroupPointerGroupAddress(c) => {
+            //     self.add_extension_group_pointer_group_address(c)
+            // }
+            // ConstraintToken::ExtensionGroupMemberPointerAuthority(c) => {
+            //     self.add_extension_group_member_pointer_authority(c)
+            // }
+            // ConstraintToken::ExtensionGroupMemberPointerMemberAddress(c) => {
+            //     self.add_extension_group_member_pointer_member_address(c)
+            // }
+            // ConstraintToken::ExtensionMetadataPointerAuthority(c) => {
+            //     self.add_extension_metadata_pointer_authority(c)
+            // }
+            // ConstraintToken::ExtensionMetadataPointerMetadataAddress(c) => {
+            //     self.add_extension_metadata_pointer_metadata_address(c)
+            // }
+            // ConstraintToken::ExtensionCloseAuthority(c) => self.add_extension_close_authority(c),
+            // ConstraintToken::ExtensionTokenHookAuthority(c) => self.add_extension_authority(c),
+            // ConstraintToken::ExtensionTokenHookProgramId(c) => {
+            //     self.add_extension_transfer_hook_program_id(c)
+            // }
+            // ConstraintToken::ExtensionPermanentDelegate(c) => {
+            //     self.add_extension_permanent_delegate(c)
+            // }
         }
     }
 
@@ -1103,66 +1106,66 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.zeroed.is_some() {
             return Err(ParseError::new(c.span(), "zeroed already provided"));
         }
-        if self.token_mint.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before token mint",
-            ));
-        }
-        if self.token_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before token authority",
-            ));
-        }
-        if self.token_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before token account token program",
-            ));
-        }
-        if self.mint_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint authority",
-            ));
-        }
-        if self.mint_freeze_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint freeze authority",
-            ));
-        }
-        if self.mint_decimals.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint decimals",
-            ));
-        }
-        if self.mint_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before mint token program",
-            ));
-        }
-        if self.associated_token_mint.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before associated token mint",
-            ));
-        }
-        if self.associated_token_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before associated token authority",
-            ));
-        }
-        if self.associated_token_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "init must be provided before associated token account token program",
-            ));
-        }
+        // if self.token_mint.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before token mint",
+        //     ));
+        // }
+        // if self.token_authority.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before token authority",
+        //     ));
+        // }
+        // if self.token_token_program.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before token account token program",
+        //     ));
+        // }
+        // if self.mint_authority.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before mint authority",
+        //     ));
+        // }
+        // if self.mint_freeze_authority.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before mint freeze authority",
+        //     ));
+        // }
+        // if self.mint_decimals.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before mint decimals",
+        //     ));
+        // }
+        // if self.mint_token_program.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before mint token program",
+        //     ));
+        // }
+        // if self.associated_token_mint.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before associated token mint",
+        //     ));
+        // }
+        // if self.associated_token_authority.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before associated token authority",
+        //     ));
+        // }
+        // if self.associated_token_token_program.is_some() {
+        //     return Err(ParseError::new(
+        //         c.span(),
+        //         "init must be provided before associated token account token program",
+        //     ));
+        // }
         self.init.replace(c);
         Ok(())
     }
@@ -1272,33 +1275,33 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
-        if self.token_mint.is_some() {
-            return Err(ParseError::new(c.span(), "token mint already provided"));
-        }
-        if self.associated_token_mint.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "associated token mint already provided",
-            ));
-        }
-        self.token_mint.replace(c);
-        Ok(())
-    }
+    // fn add_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
+    //     if self.token_mint.is_some() {
+    //         return Err(ParseError::new(c.span(), "token mint already provided"));
+    //     }
+    //     if self.associated_token_mint.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "associated token mint already provided",
+    //         ));
+    //     }
+    //     self.token_mint.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_associated_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
-        if self.associated_token_mint.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "associated token mint already provided",
-            ));
-        }
-        if self.token_mint.is_some() {
-            return Err(ParseError::new(c.span(), "token mint already provided"));
-        }
-        self.associated_token_mint.replace(c);
-        Ok(())
-    }
+    // fn add_associated_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
+    //     if self.associated_token_mint.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "associated token mint already provided",
+    //         ));
+    //     }
+    //     if self.token_mint.is_some() {
+    //         return Err(ParseError::new(c.span(), "token mint already provided"));
+    //     }
+    //     self.associated_token_mint.replace(c);
+    //     Ok(())
+    // }
 
     fn add_bump(&mut self, c: Context<ConstraintTokenBump>) -> ParseResult<()> {
         if self.bump.is_some() {
@@ -1341,102 +1344,102 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_token_authority(&mut self, c: Context<ConstraintTokenAuthority>) -> ParseResult<()> {
-        if self.token_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "token authority already provided",
-            ));
-        }
-        self.token_authority.replace(c);
-        Ok(())
-    }
+    // fn add_token_authority(&mut self, c: Context<ConstraintTokenAuthority>) -> ParseResult<()> {
+    //     if self.token_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "token authority already provided",
+    //         ));
+    //     }
+    //     self.token_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_associated_token_authority(
-        &mut self,
-        c: Context<ConstraintTokenAuthority>,
-    ) -> ParseResult<()> {
-        if self.associated_token_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "associated token authority already provided",
-            ));
-        }
-        if self.token_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "token authority already provided",
-            ));
-        }
-        self.associated_token_authority.replace(c);
-        Ok(())
-    }
+    // fn add_associated_token_authority(
+    //     &mut self,
+    //     c: Context<ConstraintTokenAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.associated_token_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "associated token authority already provided",
+    //         ));
+    //     }
+    //     if self.token_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "token authority already provided",
+    //         ));
+    //     }
+    //     self.associated_token_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_token_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
-        if self.token_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "token token_program already provided",
-            ));
-        }
-        self.token_token_program.replace(c);
-        Ok(())
-    }
+    // fn add_token_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
+    //     if self.token_token_program.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "token token_program already provided",
+    //         ));
+    //     }
+    //     self.token_token_program.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_associated_token_token_program(
-        &mut self,
-        c: Context<ConstraintTokenProgram>,
-    ) -> ParseResult<()> {
-        if self.associated_token_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "associated token token_program already provided",
-            ));
-        }
-        self.associated_token_token_program.replace(c);
-        Ok(())
-    }
+    // fn add_associated_token_token_program(
+    //     &mut self,
+    //     c: Context<ConstraintTokenProgram>,
+    // ) -> ParseResult<()> {
+    //     if self.associated_token_token_program.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "associated token token_program already provided",
+    //         ));
+    //     }
+    //     self.associated_token_token_program.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_mint_authority(&mut self, c: Context<ConstraintMintAuthority>) -> ParseResult<()> {
-        if self.mint_authority.is_some() {
-            return Err(ParseError::new(c.span(), "mint authority already provided"));
-        }
-        self.mint_authority.replace(c);
-        Ok(())
-    }
+    // fn add_mint_authority(&mut self, c: Context<ConstraintMintAuthority>) -> ParseResult<()> {
+    //     if self.mint_authority.is_some() {
+    //         return Err(ParseError::new(c.span(), "mint authority already provided"));
+    //     }
+    //     self.mint_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_mint_freeze_authority(
-        &mut self,
-        c: Context<ConstraintMintFreezeAuthority>,
-    ) -> ParseResult<()> {
-        if self.mint_freeze_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "mint freeze_authority already provided",
-            ));
-        }
-        self.mint_freeze_authority.replace(c);
-        Ok(())
-    }
+    // fn add_mint_freeze_authority(
+    //     &mut self,
+    //     c: Context<ConstraintMintFreezeAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.mint_freeze_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "mint freeze_authority already provided",
+    //         ));
+    //     }
+    //     self.mint_freeze_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_mint_decimals(&mut self, c: Context<ConstraintMintDecimals>) -> ParseResult<()> {
-        if self.mint_decimals.is_some() {
-            return Err(ParseError::new(c.span(), "mint decimals already provided"));
-        }
-        self.mint_decimals.replace(c);
-        Ok(())
-    }
+    // fn add_mint_decimals(&mut self, c: Context<ConstraintMintDecimals>) -> ParseResult<()> {
+    //     if self.mint_decimals.is_some() {
+    //         return Err(ParseError::new(c.span(), "mint decimals already provided"));
+    //     }
+    //     self.mint_decimals.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_mint_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
-        if self.mint_token_program.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "mint token_program already provided",
-            ));
-        }
-        self.mint_token_program.replace(c);
-        Ok(())
-    }
+    // fn add_mint_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
+    //     if self.mint_token_program.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "mint token_program already provided",
+    //         ));
+    //     }
+    //     self.mint_token_program.replace(c);
+    //     Ok(())
+    // }
 
     fn add_mut(&mut self, c: Context<ConstraintMut>) -> ParseResult<()> {
         if self.mutable.is_some() {
@@ -1481,13 +1484,13 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_rent_exempt(&mut self, c: Context<ConstraintRentExempt>) -> ParseResult<()> {
-        if self.rent_exempt.is_some() {
-            return Err(ParseError::new(c.span(), "rent already provided"));
-        }
-        self.rent_exempt.replace(c);
-        Ok(())
-    }
+    // fn add_rent_exempt(&mut self, c: Context<ConstraintRentExempt>) -> ParseResult<()> {
+    //     if self.rent_exempt.is_some() {
+    //         return Err(ParseError::new(c.span(), "rent already provided"));
+    //     }
+    //     self.rent_exempt.replace(c);
+    //     Ok(())
+    // }
 
     fn add_seeds(&mut self, c: Context<ConstraintSeeds>) -> ParseResult<()> {
         if self.seeds.is_some() {
@@ -1535,144 +1538,144 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     // extensions
 
-    fn add_extension_group_pointer_authority(
-        &mut self,
-        c: Context<ConstraintExtensionAuthority>,
-    ) -> ParseResult<()> {
-        if self.extension_group_pointer_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension group pointer authority already provided",
-            ));
-        }
-        self.extension_group_pointer_authority.replace(c);
-        Ok(())
-    }
+    // fn add_extension_group_pointer_authority(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_group_pointer_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension group pointer authority already provided",
+    //         ));
+    //     }
+    //     self.extension_group_pointer_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_group_pointer_group_address(
-        &mut self,
-        c: Context<ConstraintExtensionGroupPointerGroupAddress>,
-    ) -> ParseResult<()> {
-        if self.extension_group_pointer_group_address.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension group pointer group address already provided",
-            ));
-        }
-        self.extension_group_pointer_group_address.replace(c);
-        Ok(())
-    }
+    // fn add_extension_group_pointer_group_address(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionGroupPointerGroupAddress>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_group_pointer_group_address.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension group pointer group address already provided",
+    //         ));
+    //     }
+    //     self.extension_group_pointer_group_address.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_group_member_pointer_authority(
-        &mut self,
-        c: Context<ConstraintExtensionAuthority>,
-    ) -> ParseResult<()> {
-        if self.extension_group_member_pointer_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension group member pointer authority already provided",
-            ));
-        }
-        self.extension_group_member_pointer_authority.replace(c);
-        Ok(())
-    }
+    // fn add_extension_group_member_pointer_authority(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_group_member_pointer_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension group member pointer authority already provided",
+    //         ));
+    //     }
+    //     self.extension_group_member_pointer_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_group_member_pointer_member_address(
-        &mut self,
-        c: Context<ConstraintExtensionGroupMemberPointerMemberAddress>,
-    ) -> ParseResult<()> {
-        if self.extension_group_member_pointer_member_address.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension group member pointer member address already provided",
-            ));
-        }
-        self.extension_group_member_pointer_member_address
-            .replace(c);
-        Ok(())
-    }
+    // fn add_extension_group_member_pointer_member_address(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionGroupMemberPointerMemberAddress>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_group_member_pointer_member_address.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension group member pointer member address already provided",
+    //         ));
+    //     }
+    //     self.extension_group_member_pointer_member_address
+    //         .replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_metadata_pointer_authority(
-        &mut self,
-        c: Context<ConstraintExtensionAuthority>,
-    ) -> ParseResult<()> {
-        if self.extension_metadata_pointer_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension metadata pointer authority already provided",
-            ));
-        }
-        self.extension_metadata_pointer_authority.replace(c);
-        Ok(())
-    }
+    // fn add_extension_metadata_pointer_authority(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_metadata_pointer_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension metadata pointer authority already provided",
+    //         ));
+    //     }
+    //     self.extension_metadata_pointer_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_metadata_pointer_metadata_address(
-        &mut self,
-        c: Context<ConstraintExtensionMetadataPointerMetadataAddress>,
-    ) -> ParseResult<()> {
-        if self.extension_metadata_pointer_metadata_address.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension metadata pointer metadata address already provided",
-            ));
-        }
-        self.extension_metadata_pointer_metadata_address.replace(c);
-        Ok(())
-    }
+    // fn add_extension_metadata_pointer_metadata_address(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionMetadataPointerMetadataAddress>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_metadata_pointer_metadata_address.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension metadata pointer metadata address already provided",
+    //         ));
+    //     }
+    //     self.extension_metadata_pointer_metadata_address.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_close_authority(
-        &mut self,
-        c: Context<ConstraintExtensionAuthority>,
-    ) -> ParseResult<()> {
-        if self.extension_close_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension close authority already provided",
-            ));
-        }
-        self.extension_close_authority.replace(c);
-        Ok(())
-    }
+    // fn add_extension_close_authority(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_close_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension close authority already provided",
+    //         ));
+    //     }
+    //     self.extension_close_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_authority(
-        &mut self,
-        c: Context<ConstraintExtensionAuthority>,
-    ) -> ParseResult<()> {
-        if self.extension_transfer_hook_authority.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension transfer hook authority already provided",
-            ));
-        }
-        self.extension_transfer_hook_authority.replace(c);
-        Ok(())
-    }
+    // fn add_extension_authority(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionAuthority>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_transfer_hook_authority.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension transfer hook authority already provided",
+    //         ));
+    //     }
+    //     self.extension_transfer_hook_authority.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_transfer_hook_program_id(
-        &mut self,
-        c: Context<ConstraintExtensionTokenHookProgramId>,
-    ) -> ParseResult<()> {
-        if self.extension_transfer_hook_program_id.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension transfer hook program id already provided",
-            ));
-        }
-        self.extension_transfer_hook_program_id.replace(c);
-        Ok(())
-    }
+    // fn add_extension_transfer_hook_program_id(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionTokenHookProgramId>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_transfer_hook_program_id.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension transfer hook program id already provided",
+    //         ));
+    //     }
+    //     self.extension_transfer_hook_program_id.replace(c);
+    //     Ok(())
+    // }
 
-    fn add_extension_permanent_delegate(
-        &mut self,
-        c: Context<ConstraintExtensionPermanentDelegate>,
-    ) -> ParseResult<()> {
-        if self.extension_permanent_delegate.is_some() {
-            return Err(ParseError::new(
-                c.span(),
-                "extension permanent delegate already provided",
-            ));
-        }
-        self.extension_permanent_delegate.replace(c);
-        Ok(())
-    }
+    // fn add_extension_permanent_delegate(
+    //     &mut self,
+    //     c: Context<ConstraintExtensionPermanentDelegate>,
+    // ) -> ParseResult<()> {
+    //     if self.extension_permanent_delegate.is_some() {
+    //         return Err(ParseError::new(
+    //             c.span(),
+    //             "extension permanent delegate already provided",
+    //         ));
+    //     }
+    //     self.extension_permanent_delegate.replace(c);
+    //     Ok(())
+    // }
 }

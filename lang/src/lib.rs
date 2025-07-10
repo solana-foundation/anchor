@@ -54,7 +54,6 @@ pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
 pub use anchor_attribute_error::*;
-pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
@@ -64,9 +63,6 @@ pub use arch_program;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
-
-#[cfg(feature = "event-cpi")]
-pub use anchor_attribute_event::{emit_cpi, event_cpi};
 
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
@@ -407,8 +403,8 @@ pub mod prelude {
         accounts::interface_account::InterfaceAccount, accounts::program::Program,
         accounts::signer::Signer, accounts::system_account::SystemAccount,
         accounts::unchecked_account::UncheckedAccount, arch_program::bpf_loader::LoaderState,
-        constant, context::Context, context::CpiContext, declare_id, declare_program, emit, err,
-        error, event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
+        constant, context::Context, context::CpiContext, declare_id, declare_program, err, error,
+        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
         require_keys_eq, require_keys_neq, require_neq, source, system_program::System, zero_copy,
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
         AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
@@ -423,9 +419,6 @@ pub mod prelude {
     pub use borsh;
     pub use error::*;
     pub use thiserror;
-
-    #[cfg(feature = "event-cpi")]
-    pub use super::{emit_cpi, event_cpi};
 
     #[cfg(feature = "idl-build")]
     pub use super::idl::IdlBuild;
