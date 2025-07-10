@@ -415,6 +415,13 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 }
             }
         }
+        "shards" => {
+            stream.parse::<Token![=]>()?;
+            ConstraintToken::Shards(Context::new(
+                ident.span(),
+                ConstraintShards { len: stream.parse()? },
+            ))
+        }
         _ => {
             stream.parse::<Token![=]>()?;
             let span = ident
@@ -543,6 +550,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub realloc: Option<Context<ConstraintRealloc>>,
     pub realloc_payer: Option<Context<ConstraintReallocPayer>>,
     pub realloc_zero: Option<Context<ConstraintReallocZero>>,
+    pub shards: Option<Context<ConstraintShards>>,
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
@@ -588,6 +596,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc: None,
             realloc_payer: None,
             realloc_zero: None,
+            shards: None,
         }
     }
 
@@ -800,6 +809,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc,
             realloc_payer,
             realloc_zero,
+            shards,
         } = self;
 
         // Converts Option<Context<T>> -> Option<T>.
@@ -1032,6 +1042,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             address: into_inner!(address),
             // associated_token: if !is_init { associated_token } else { None },
             seeds,
+            shards: into_inner!(shards),
             // token_account: if !is_init {token_account} else {None},
             // mint: if !is_init {mint} else {None},
         })
@@ -1053,6 +1064,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::Space(c) => self.add_space(c),
             ConstraintToken::Close(c) => self.add_close(c),
             ConstraintToken::Address(c) => self.add_address(c),
+            ConstraintToken::Shards(c) => self.add_shards(c),
             // ConstraintToken::TokenAuthority(c) => self.add_token_authority(c),
             // ConstraintToken::TokenMint(c) => self.add_token_mint(c),
             // ConstraintToken::TokenTokenProgram(c) => self.add_token_token_program(c),
@@ -1272,6 +1284,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "address already provided"));
         }
         self.address.replace(c);
+        Ok(())
+    }
+
+    fn add_shards(&mut self, c: Context<ConstraintShards>) -> ParseResult<()> {
+        if self.shards.is_some() {
+            return Err(ParseError::new(c.span(), "shards already provided"));
+        }
+        self.shards = Some(c);
         Ok(())
     }
 

@@ -57,3 +57,4 @@ thiserror = "1"
 
 # Bitcoin transaction support crates (re-exported for user convenience)
 saturn-collections = { workspace = true }
+saturn-bitcoin-transactions = { workspace = true }

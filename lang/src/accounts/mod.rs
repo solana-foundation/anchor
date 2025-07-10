@@ -13,5 +13,8 @@ pub mod system_account;
 // pub mod sysvar;
 pub mod unchecked_account;
 
+// Collection type that groups a variable number of account/account-loader items.
+pub mod shards;
+
 #[cfg(feature = "lazy-account")]
 pub mod lazy_account;

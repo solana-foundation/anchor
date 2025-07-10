@@ -74,13 +74,45 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         #[derive(Debug)]
         pub struct #bumps_name {
-            #(#bump_fields),*
+            #(#bump_fields,)*
+            /// Stack of shard indices encoded as little-endian bytes. Fixed-size to avoid heap allocation.
+            __shard_index_stack: [[u8; 8]; 8],
+            __shard_depth: u8,
         }
 
         impl Default for #bumps_name {
             fn default() -> Self {
                 #bumps_name {
-                    #(#bump_default_fields),*
+                    #(#bump_default_fields,)*
+                    __shard_index_stack: [[0u8; 8]; 8],
+                    __shard_depth: 0,
+                }
+            }
+        }
+
+        impl #bumps_name {
+            /// Pushes the given shard index (little-endian) onto the seed stack.
+            pub fn __push_shard_index(&mut self, idx: u64) {
+                let depth = self.__shard_depth as usize;
+                if depth < self.__shard_index_stack.len() {
+                    self.__shard_index_stack[depth] = idx.to_le_bytes();
+                    self.__shard_depth += 1;
+                }
+            }
+
+            /// Removes the most recently pushed shard index.
+            pub fn __pop_shard_index(&mut self) {
+                if self.__shard_depth > 0 {
+                    self.__shard_depth -= 1;
+                }
+            }
+
+            /// Returns the seed bytes for the current shard index, if any.
+            pub fn __current_shard_index_seed(&self) -> Option<&[u8]> {
+                if self.__shard_depth == 0 {
+                    None
+                } else {
+                    Some(&self.__shard_index_stack[(self.__shard_depth - 1) as usize][..])
                 }
             }
         }

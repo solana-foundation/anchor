@@ -100,8 +100,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         let rune_capacity = cfg.rune_capacity;
         let rune_set_ident = syn::Ident::new("__BtcRuneSet", Span::call_site());
         quote! {
-            saturn_collections::declare_fixed_set!(#rune_set_ident, arch_program::rune::RuneAmount, #rune_capacity);
-            type __BtcTxBuilder<'a> = saturn_bitcoin_transactions::TransactionBuilder<'a, #max_modified, #max_inputs, #rune_set_ident>;
+            anchor_lang::saturn_collections::declare_fixed_set!(#rune_set_ident, arch_program::rune::RuneAmount, #rune_capacity);
+            type __BtcTxBuilder<'a> = anchor_lang::saturn_bitcoin_transactions::TransactionBuilder<'a, #max_modified, #max_inputs, #rune_set_ident>;
         }
     } else {
         quote! {}
@@ -133,7 +133,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let max_inputs = cfg.max_inputs_to_sign;
                 let max_modified = cfg.max_modified_accounts;
                 quote! {
-                    let mut __btc_tx_builder: __BtcTxBuilder<'info> = saturn_bitcoin_transactions::TransactionBuilder::<'info, #max_modified, #max_inputs, __BtcRuneSet>::new();
+                    let mut __btc_tx_builder: __BtcTxBuilder<'info> = anchor_lang::saturn_bitcoin_transactions::TransactionBuilder::<'info, #max_modified, #max_inputs, __BtcRuneSet>::new();
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::with_btc_builder(
                             __program_id,

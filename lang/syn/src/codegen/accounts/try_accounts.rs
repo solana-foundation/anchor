@@ -1,7 +1,7 @@
 use crate::codegen::accounts::{bumps, constraints, generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct};
+use crate::{AccountField, AccountsStruct, Ty};
 use quote::quote;
-use syn::Expr;
+use syn::{Expr, Lit};
 
 // Generates the `Accounts` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
@@ -29,10 +29,73 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     }
                 }
                 AccountField::Field(f) => {
-                    // `init` and `zero` accounts are special cased as they are
-                    // deserialized by constraints. Here, we just take out the
-                    // AccountInfo for later use at constraint validation time.
-                    if is_init(af) || f.constraints.zeroed.is_some()  {
+                    // Special handling for Shards vector container.
+                    if matches!(&f.ty, Ty::Shards(_)) {
+                        let field_ident = &f.ident;
+                        let field_str = field_ident.to_string();
+                        let typed_ident = f.typed_ident();
+
+                        let len_expr = &f
+                            .constraints
+                            .shards
+                            .as_ref()
+                            .expect("shards constraint required")
+                            .len;
+
+                        // Determine if the len expression is the special "rest" keyword.
+                        let is_rest = matches!(
+                            len_expr,
+                            Expr::Lit(expr_lit)
+                                if matches!(&expr_lit.lit, syn::Lit::Str(lit) if lit.value() == "rest")
+                        );
+
+                        let deser_tokens = if is_rest {
+                            quote! {
+                                let mut vec = Vec::new();
+                                let mut __i: u64 = 0;
+                                while !__accounts.is_empty() {
+                                    __bumps.__push_shard_index(__i);
+                                    let item = anchor_lang::Accounts::try_accounts(
+                                        __program_id,
+                                        __accounts,
+                                        __ix_data,
+                                        __bumps,
+                                        __reallocs,
+                                    ).map_err(|e| e.with_account_name(#field_str))?;
+                                    __bumps.__pop_shard_index();
+                                    vec.push(item);
+                                    __i += 1;
+                                }
+                                let #typed_ident = anchor_lang::accounts::shards::Shards::new(vec);
+                            }
+                        } else {
+                            quote! {
+                                let mut vec = Vec::with_capacity(#len_expr as usize);
+                                for __i in 0u64..#len_expr {
+                                    __bumps.__push_shard_index(__i);
+                                    let item = anchor_lang::Accounts::try_accounts(
+                                        __program_id,
+                                        __accounts,
+                                        __ix_data,
+                                        __bumps,
+                                        __reallocs,
+                                    ).map_err(|e| e.with_account_name(#field_str))?;
+                                    __bumps.__pop_shard_index();
+                                    vec.push(item);
+                                }
+                                let #typed_ident = anchor_lang::accounts::shards::Shards::new(vec);
+                            }
+                        };
+
+                        quote! {
+                            #[cfg(feature = "anchor-debug")]
+                            ::arch_program::log::sol_log(stringify!(#typed_ident));
+                            #deser_tokens
+                        }
+                    } else if is_init(af) || f.constraints.zeroed.is_some()  {
+                        // `init` and `zero` accounts are special cased as they are
+                        // deserialized by constraints. Here, we just take out the
+                        // AccountInfo for later use at constraint validation time.                  
                         let name = &f.ident;
                         // Optional accounts have slightly different behavior here and
                         // we can't leverage the try_accounts implementation for zero and init.

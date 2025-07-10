@@ -89,6 +89,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         // token_account,
         // mint,
         realloc,
+        shards: _,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -162,6 +163,7 @@ fn generate_constraint(
         // Constraint::TokenAccount(c) => generate_constraint_token_account(f, c, accs),
         // Constraint::Mint(c) => generate_constraint_mint(f, c, accs),
         Constraint::Realloc(c) => generate_constraint_realloc(f, c, accs),
+        Constraint::Shards(_c) => quote!{},
     }
 }
 
@@ -546,19 +548,24 @@ fn generate_constraint_init_group(
             };
 
             (
-                quote! {
-                    let (__pda_address, __bump) = Pubkey::find_program_address(
-                        &[#maybe_seeds_plus_comma],
-                        __program_id,
-                    );
-                    __bumps.#field = #bump;
-                    #validate_pda
+                {
+                    // build seed vec with optional shard index
+                    quote! {
+                        let (__pda_address, __bump) = match __bumps.__current_shard_index_seed() {
+                            Some(__idx_seed) => Pubkey::find_program_address(&[ #maybe_seeds_plus_comma __idx_seed ], __program_id),
+                            None => Pubkey::find_program_address(&[ #maybe_seeds_plus_comma ], __program_id),
+                        };
+                        __bumps.#field = #bump;
+                        #validate_pda
+                    }
                 },
                 quote! {
-                    &[
-                        #maybe_seeds_plus_comma
-                        &[__bump][..]
-                    ][..]
+                    {
+                        match __bumps.__current_shard_index_seed() {
+                            Some(__idx_seed) => &[ #maybe_seeds_plus_comma __idx_seed &[__bump][..] ][..],
+                            None => &[ #maybe_seeds_plus_comma &[__bump][..] ][..],
+                        }
+                    }
                 },
             )
         }
@@ -1166,37 +1173,100 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
             quote! { #s, }
         });
-        let bump = if f.is_optional {
-            quote!(Some(__bump))
+
+        // Fast-path for the common case: account field is NOT a Shards container. Keep the old
+        // behaviour unchanged.
+        if !matches!(&f.ty, Ty::Shards(_)) {
+            let bump = if f.is_optional {
+                quote!(Some(__bump))
+            } else {
+                quote!(__bump)
+            };
+
+            // Not init here, so do all the checks.
+            let define_pda = match c.bump.as_ref() {
+                // Bump target not given. Find it.
+                None => quote! {
+                    let (__pda_address, __bump) = match __bumps.__current_shard_index_seed() {
+                        Some(__idx_seed) => Pubkey::find_program_address(&[ #maybe_seeds_plus_comma __idx_seed ], &#deriving_program_id),
+                        None => Pubkey::find_program_address(&[ #maybe_seeds_plus_comma ], &#deriving_program_id),
+                    };
+                    __bumps.#name = #bump;
+                },
+                // Bump target given. Use it.
+                Some(b) => quote! {
+                    let __pda_address = match __bumps.__current_shard_index_seed() {
+                        Some(__idx_seed) => Pubkey::create_program_address(&[ #maybe_seeds_plus_comma __idx_seed, &[#b][..] ], &#deriving_program_id)
+                            .map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?,
+                        None => Pubkey::create_program_address(&[ #maybe_seeds_plus_comma &[#b][..] ], &#deriving_program_id)
+                            .map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?,
+                    };
+                },
+            };
+            quote! {
+                // Define the PDA.
+                #define_pda
+
+                // Check it.
+                if #name.key() != __pda_address {
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#name.key(), __pda_address)));
+                }
+            }
         } else {
-            quote!(__bump)
-        };
+            // Special handling when the field is `Shards<'info, T>`: we must verify **each** shard.
 
-        // Not init here, so do all the checks.
-        let define_pda = match c.bump.as_ref() {
-            // Bump target not given. Find it.
-            None => quote! {
-                let (__pda_address, __bump) = Pubkey::find_program_address(
-                    &[#maybe_seeds_plus_comma],
-                    &#deriving_program_id,
-                );
-                __bumps.#name = #bump;
-            },
-            // Bump target given. Use it.
-            Some(b) => quote! {
-                let __pda_address = Pubkey::create_program_address(
-                    &[#maybe_seeds_plus_comma &[#b][..]],
-                    &#deriving_program_id,
-                ).map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?;
-            },
-        };
-        quote! {
-            // Define the PDA.
-            #define_pda
+            // Helper used inside generated code to set the bump once (for index 0) taking into
+            // account whether the field is optional.
+            let assign_bump_tokens = match c.bump.as_ref() {
+                None => {
+                    // We can use the bump that `find_program_address` returns for index 0.
+                    if f.is_optional {
+                        quote!( __bumps.#name = Some(__bump_first); )
+                    } else {
+                        quote!( __bumps.#name = __bump_first; )
+                    }
+                },
+                Some(_b) => {
+                    // When an explicit bump is supplied we leave the bumps struct untouched
+                    // because users are tracking it themselves.
+                    quote! {}
+                }
+            };
 
-            // Check it.
-            if #name.key() != __pda_address {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#name.key(), __pda_address)));
+            // Code that computes and checks the PDA for each shard element.
+            let per_shard_check = match c.bump.as_ref() {
+                None => quote! {
+                    for (__i, __shard) in #name.iter().enumerate() {
+                        let __idx_seed = (__i as u64).to_le_bytes();
+                        let (__expected, __bump_tmp) = Pubkey::find_program_address(&[ #maybe_seeds_plus_comma &__idx_seed ], &#deriving_program_id);
+                        if __shard.key() != __expected {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds)
+                                .with_account_name(#name_str)
+                                .with_pubkeys((__shard.key(), __expected)));
+                        }
+                        if __i == 0 { // capture bump of the first shard if we need it later
+                            let __bump_first = __bump_tmp;
+                            #assign_bump_tokens
+                        }
+                    }
+                },
+                Some(b) => quote! {
+                    for (__i, __shard) in #name.iter().enumerate() {
+                        let __idx_seed = (__i as u64).to_le_bytes();
+                        let __expected = Pubkey::create_program_address(&[ #maybe_seeds_plus_comma &__idx_seed, &[#b][..] ], &#deriving_program_id)
+                            .map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?;
+                        if __shard.key() != __expected {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds)
+                                .with_account_name(#name_str)
+                                .with_pubkeys((__shard.key(), __expected)));
+                        }
+                    }
+                },
+            };
+
+            quote! {
+                // Validate every shard in the Shards container against its PDA.
+                #per_shard_check
             }
         }
     }

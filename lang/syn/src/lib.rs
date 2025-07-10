@@ -404,6 +404,10 @@ impl Field {
             //         Sysvar<#account>
             //     }
             // }
+            Ty::Shards(ty) => {
+                let inner = &ty.inner;
+                quote! { anchor_lang::accounts::shards::Shards<'info, #inner> }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -539,6 +543,7 @@ impl Field {
             Ty::InterfaceAccount(_) => {
                 quote! { anchor_lang::accounts::interface_account::InterfaceAccount }
             }
+            Ty::Shards(_) => quote! { anchor_lang::accounts::shards::Shards },
             Ty::AccountInfo => quote! {},
             Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},
@@ -588,6 +593,10 @@ impl Field {
                 quote! {
                     #ident
                 }
+            }
+            Ty::Shards(ty) => {
+                let inner = &ty.inner;
+                quote! { #inner }
             }
             // Ty::Sysvar(ty) => match ty {
             //     SysvarTy::Clock => quote! {Clock},
@@ -639,6 +648,8 @@ pub enum Ty {
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
+    /// A vector of account/account loader shards.
+    Shards(ShardsTy),
     Signer,
     SystemAccount,
     // ProgramData,
@@ -698,6 +709,13 @@ pub struct InterfaceTy {
     pub account_type_path: TypePath,
 }
 
+// The inner type of a `Shards<'info, T>` container.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ShardsTy {
+    /// The type path of the inner account container, e.g. `Account<'info, Foo>`.
+    pub inner: TypePath,
+}
+
 #[derive(Debug)]
 pub struct Error {
     pub name: String,
@@ -752,6 +770,9 @@ pub struct ConstraintGroup {
     // pub token_account: Option<ConstraintTokenAccountGroup>,
     // pub mint: Option<ConstraintTokenMintGroup>,
     pub realloc: Option<ConstraintReallocGroup>,
+    // When `shards = N` or `shards = "rest"` is specified on an account field this entry holds
+    // the parsed configuration.
+    pub shards: Option<ConstraintShards>,
 }
 
 impl ConstraintGroup {
@@ -794,6 +815,7 @@ pub enum Constraint {
     // TokenAccount(ConstraintTokenAccountGroup),
     // Mint(ConstraintTokenMintGroup),
     Realloc(ConstraintReallocGroup),
+    Shards(ConstraintShards),
 }
 
 // Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
@@ -829,6 +851,7 @@ pub enum ConstraintToken {
     Realloc(Context<ConstraintRealloc>),
     ReallocPayer(Context<ConstraintReallocPayer>),
     ReallocZero(Context<ConstraintReallocZero>),
+    Shards(Context<ConstraintShards>),
     // extensions
     // ExtensionGroupPointerAuthority(Context<ConstraintExtensionAuthority>),
     // ExtensionGroupPointerGroupAddress(Context<ConstraintExtensionGroupPointerGroupAddress>),
@@ -958,6 +981,13 @@ pub struct ConstraintPayer {
 #[derive(Debug, Clone)]
 pub struct ConstraintSpace {
     pub space: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintShards {
+    /// The expression provided to `shards = ...`.
+    /// It can be an integer literal e.g. `3` or an identifier / string literal `rest`.
+    pub len: Expr,
 }
 
 // // extension constraints
