@@ -65,8 +65,9 @@ use anchor_lang::prelude::Owner;
 use anchor_lang::ZeroCopy;
 
 /// Splits the *remaining* satoshi value that belongs to the provided `shards`
-/// back into brand-new outputs, one per shard, so that liquidity across all
-/// participating shards ends up as even as possible.
+/// back into brand-new outputs (one per **retained allocation** after
+/// dust-limit filtering) so that liquidity across all participating shards
+/// ends up as even as possible.
 ///
 /// The function performs the following high-level steps:
 /// 1. Determine how many satoshis are still owned by the shards **after** the
@@ -78,11 +79,14 @@ use anchor_lang::ZeroCopy;
 ///    allocation, using `program_script_pubkey` to lock those outputs back to
 ///    the program.
 ///
-/// The returned vector contains **one element for each selected shard** and is
-/// **sorted in descending order by amount (largest first)**.  Since the order
-/// no longer corresponds to the indices returned by
-/// [`ShardSet::selected_indices`], callers that need to map
-/// values back to specific shards must perform that mapping explicitly.
+/// The returned vector contains **one element for each output actually
+/// created** (after dust filtering) and is **sorted in descending order by
+/// amount (largest first)**.  When allocations below the dust limit are
+/// removed, the length of the vector—and therefore the number of newly
+/// created change outputs—can be **smaller than the number of selected
+/// shards**.  Since the order no longer corresponds to the indices returned by
+/// [`ShardSet::selected_indices`], callers that need to map values back to
+/// specific shards must perform that mapping explicitly.
 ///
 /// # Type Parameters
 /// * `MAX_USER_UTXOS` – Maximum amount of user-supplied UTXOs supported by

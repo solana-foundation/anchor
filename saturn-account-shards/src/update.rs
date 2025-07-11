@@ -27,6 +27,7 @@
 //! --------------
 //! * Overflows when inserting new BTC UTXOs ⇒ `StateShardError::VecOverflow`
 //! * Rune bookkeeping errors ⇒ the respective `StateShardError::*` variant.
+//! * Too many BTC UTXOs for the selected shards ⇒ `StateShardError::ShardsAreFullOfBtcUtxos`
 //!
 //! All helpers operate only on `shard_set.selected_indices()`; unrelated shards
 //! remain untouched, which allows callers to pass references to the entire
@@ -211,8 +212,8 @@ where
 /// cloning or allocating temporaries.
 ///
 /// # Errors
-/// Returns `StateShardError::VecOverflow` when any shard's fixed-size UTXO
-/// collection runs out of capacity while trying to insert a new BTC UTXO.
+/// Returns `StateShardError::ShardsAreFullOfBtcUtxos` when all involved shards
+/// have reached their fixed-size BTC-UTXO capacity.
 #[allow(clippy::too_many_arguments)]
 pub fn update_shards_after_transaction<
     'slice,
