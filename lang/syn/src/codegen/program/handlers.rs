@@ -101,11 +101,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         let rune_set_ident = syn::Ident::new("__BtcRuneSet", Span::call_site());
         quote! {
             anchor_lang::saturn_collections::declare_fixed_set!(#rune_set_ident, arch_program::rune::RuneAmount, #rune_capacity);
-            type __BtcTxBuilder<'a> = anchor_lang::saturn_bitcoin_transactions::TransactionBuilder<'a, #max_modified, #max_inputs, #rune_set_ident>;
+            type __BtcTxBuilder<'info> = anchor_lang::saturn_bitcoin_transactions::TransactionBuilder<'info, #max_modified, #max_inputs, #rune_set_ident>;
         }
     } else {
         quote! {}
     };
+
+    // No alias needed: user handlers should be updated to use `BtcContext` directly.
+    let ctx_alias: proc_macro2::TokenStream = quote! {};
 
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .ixs
@@ -135,12 +138,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     let mut __btc_tx_builder: __BtcTxBuilder<'info> = anchor_lang::saturn_bitcoin_transactions::TransactionBuilder::<'info, #max_modified, #max_inputs, __BtcRuneSet>::new();
                     let result = #program_name::#ix_method_name(
-                        anchor_lang::context::Context::with_btc_builder(
+                        anchor_lang::context::BtcContext::new(
                             __program_id,
                             &mut __accounts,
                             __remaining_accounts,
                             __bumps,
-                            &mut __btc_tx_builder as &mut dyn anchor_lang::context::BtcTxBuilderAny,
+                            &mut __btc_tx_builder as &mut dyn anchor_lang::context::BtcTxBuilderAny<'info>,
                         ),
                         #(#ix_arg_names),*
                     )?;
@@ -204,6 +207,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
+        // no alias
+
         /// Create a private module to not clutter the program's namespace.
         /// Defines an entrypoint for each individual instruction handler
         /// wrapper.
@@ -222,6 +227,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 use super::*;
 
                 #btc_support
+                // no alias
                 #(#non_inlined_handlers)*
             }
 
