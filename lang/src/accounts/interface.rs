@@ -78,9 +78,6 @@ impl<'a, T> Interface<'a, T> {
     pub(crate) fn new(info: &'a AccountInfo<'a>) -> Self {
         Self(Program::new(info))
     }
-    pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        self.0.programdata_address()
-    }
 }
 impl<'a, T: CheckId> TryFrom<&'a AccountInfo<'a>> for Interface<'a, T> {
     type Error = Error;

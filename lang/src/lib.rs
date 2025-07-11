@@ -34,7 +34,6 @@ use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
 mod account_meta;
 pub mod accounts;
-mod bpf_upgradeable_state;
 mod bpf_writer;
 mod common;
 pub mod context;
@@ -48,9 +47,6 @@ mod vec;
 
 #[cfg(feature = "lazy-account")]
 mod lazy;
-
-#[cfg(feature = "bpf-upgradeable")]
-pub use crate::bpf_upgradeable_state::*;
 
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
@@ -399,8 +395,6 @@ impl Key for Pubkey {
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
-    #[cfg(feature = "bpf-upgradeable")]
-    pub use super::ProgramData;
     pub use super::{
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,

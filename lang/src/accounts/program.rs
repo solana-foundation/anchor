@@ -93,22 +93,6 @@ impl<'a, T> Program<'a, T> {
             _phantom: PhantomData,
         }
     }
-
-    pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if *self.info.owner == bpf_loader::BPF_LOADER_ID {
-            let mut data: &[u8] = &self.info.try_borrow_data()?;
-            let loader_state = LoaderState::try_deserialize(&mut data)?;
-
-            // On Arch the field `authority_address_or_next_version` is the upgrade
-            // authority while the program is `Retracted` or `Deployed`, and the
-            // next version once `Finalized`.  It is the closest equivalent to
-            // Solana’s `programdata_address`, so we expose it here for
-            // compatibility.
-            Ok(Some(loader_state.authority_address_or_next_version))
-        } else {
-            Ok(None)
-        }
-    }
 }
 
 impl<'a, T: Id> TryFrom<&'a AccountInfo<'a>> for Program<'a, T> {

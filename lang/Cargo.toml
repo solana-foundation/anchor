@@ -12,7 +12,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-bpf-upgradeable = []
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
 anchor-debug = [
     "anchor-attribute-access-control/anchor-debug",
