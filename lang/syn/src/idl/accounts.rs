@@ -144,7 +144,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
 
 fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
-        Ty::Program(_) | Ty::Sysvar(_) => {
+        Ty::Program(_) /*| Ty::Sysvar(_)*/ => {
             let ty = acc.account_ty();
             let id_trait = matches!(acc.ty, Ty::Program(_))
                 .then(|| quote!(anchor_lang::Id))

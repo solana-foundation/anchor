@@ -655,19 +655,19 @@ pub enum Ty {
     // ProgramData,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum SysvarTy {
-    Clock,
-    Rent,
-    EpochSchedule,
-    Fees,
-    RecentBlockhashes,
-    SlotHashes,
-    SlotHistory,
-    StakeHistory,
-    Instructions,
-    Rewards,
-}
+// #[derive(Debug, PartialEq, Eq)]
+// pub enum SysvarTy {
+//     Clock,
+//     Rent,
+//     EpochSchedule,
+//     Fees,
+//     RecentBlockhashes,
+//     SlotHashes,
+//     SlotHistory,
+//     StakeHistory,
+//     Instructions,
+//     Rewards,
+// }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AccountLoaderTy {
