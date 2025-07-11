@@ -158,30 +158,23 @@ pub enum Command {
     /// Run this command inside a program subdirectory, i.e., in the dir
     /// containing the program's Cargo.toml.
     Verify {
-        /// The deployed program to compare against.
+        /// The program ID to verify.
         program_id: Pubkey,
-        /// The URL of the repository to verify against.
-        #[clap(long)]
-        repo_url: String,
-        /// The commit hash to verify against.
-        #[clap(long)]
+        /// The URL of the repository to verify against. Conflicts with `--current-dir`.
+        #[clap(long, conflicts_with = "current_dir")]
+        repo_url: Option<String>,
+        /// The commit hash to verify against. Requires `--repo-url`.
+        #[clap(long, requires = "repo_url")]
         commit_hash: Option<String>,
-        /// Name of the program to run the command on.
-        #[clap(short, long)]
+        /// Verify against the source code in the current directory. Conflicts with `--repo-url`.
+        #[clap(long)]
+        current_dir: bool,
+        /// Name of the program to run the command on. Defaults to the package name.
+        #[clap(long)]
         program_name: Option<String>,
-        /// The cluster to use for verification.
-        #[clap(long)]
-        url: Option<String>,
-        /// The path to the program directory in the repository.
-        #[clap(long)]
-        mount_path: Option<String>,
-        /// Flag to skip building the program in the workspace,
-        /// use this to save time when running verify and the program code is already built.
-        #[clap(long, required = false)]
-        skip_build: bool,
-        /// Arguments to pass to the underlying `solana-verify` command.
-        #[clap(required = false, last = true)]
-        cargo_args: Vec<String>,
+        /// Any additional arguments to pass to `solana-verify`.
+        #[clap(raw = true)]
+        args: Vec<String>,
     },
     #[clap(name = "test", alias = "t")]
     /// Runs integration tests.
@@ -815,21 +808,17 @@ fn process_command(opts: Opts) -> Result<()> {
             program_id,
             repo_url,
             commit_hash,
+            current_dir,
             program_name,
-            url,
-            mount_path,
-            skip_build,
-            cargo_args,
+            args,
         } => verify(
             &opts.cfg_override,
             program_id,
             repo_url,
             commit_hash,
+            current_dir,
             program_name,
-            url,
-            mount_path,
-            skip_build,
-            cargo_args,
+            args,
         ),
         Command::Clean => clean(&opts.cfg_override),
         Command::Deploy {
@@ -2038,64 +2027,63 @@ fn _build_solidity_cwd(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn verify(
+pub fn verify(
     _cfg_override: &ConfigOverride,
     program_id: Pubkey,
-    repo_url: String,
+    repo_url: Option<String>,
     commit_hash: Option<String>,
+    current_dir: bool,
     program_name: Option<String>,
-    url: Option<String>,
-    mount_path: Option<String>,
-    skip_build: bool,
-    cargo_args: Vec<String>,
+    args: Vec<String>,
 ) -> Result<()> {
-    let mut args = vec!["verify-from-repo".to_string()];
-    args.push("--program-id".to_string());
-    args.push(program_id.to_string());
-    args.push(repo_url);
+    let mut command_args = Vec::new();
 
-    if let Some(commit_hash) = commit_hash {
-        args.push("--commit-hash".to_string());
-        args.push(commit_hash);
+    match (current_dir, repo_url) {
+        (true, _) => {
+            let current_path = std::env::current_dir()?
+                .to_str()
+                .ok_or_else(|| anyhow!("Invalid current directory path"))?
+                .to_owned();
+            command_args.push(current_path);
+            command_args.push("--current-dir".into());
+        }
+        (false, Some(url)) => {
+            command_args.push(url);
+        }
+        (false, None) => {
+            return Err(anyhow!(
+                "You must provide either --repo-url or --current-dir"
+            ));
+        }
     }
 
-    if let Some(url) = url {
-        args.push("--url".to_string());
-        args.push(url);
+    if let Some(commit) = commit_hash {
+        command_args.push("--commit-hash".into());
+        command_args.push(commit);
     }
 
-    if let Some(mount_path) = mount_path {
-        args.push("--mount-path".to_string());
-        args.push(mount_path);
+    if let Some(name) = program_name {
+        command_args.push("--library-name".into());
+        command_args.push(name);
     }
 
-    if let Some(program_name) = program_name {
-        args.push("--library-name".to_string());
-        args.push(program_name);
+    command_args.push("--program-id".into());
+    command_args.push(program_id.to_string());
+
+    command_args.extend(args);
+
+    println!("Verifying program {program_id}");
+    let status = std::process::Command::new("solana-verify")
+        .arg("verify-from-repo")
+        .args(&command_args)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status()
+        .with_context(|| "Failed to run `solana-verify`")?;
+
+    if !status.success() {
+        return Err(anyhow!("Failed to verify program"));
     }
-
-    if skip_build {
-        args.push("--skip-build".to_string());
-    }
-
-    if !cargo_args.is_empty() {
-        args.push("--".to_string());
-        args.extend(cargo_args);
-    }
-
-    let exit = std::process::Command::new("solana-verify")
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
-
-    if !exit.status.success() {
-        std::process::exit(exit.status.code().unwrap_or(1));
-    }
-
-    println!("{program_id} is verified.");
 
     Ok(())
 }

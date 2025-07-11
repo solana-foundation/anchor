@@ -17,6 +17,14 @@ fn main() -> anyhow::Result<()> {
 
     let exit = Command::new(binary_path)
         .args(args)
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                avm::get_bin_dir_path().to_string_lossy(),
+                env::var("PATH").unwrap_or_default()
+            ),
+        )
         .spawn()?
         .wait_with_output()
         .expect("Failed to run anchor-cli");
