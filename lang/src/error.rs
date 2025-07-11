@@ -258,6 +258,10 @@ pub enum ErrorCode {
     #[msg("The account was duplicated for more than one reallocation")]
     AccountDuplicateReallocs,
 
+    /// 3018 - Inner Accounts::try_accounts did not consume any account while processing a shard element
+    #[msg("Inner Accounts::try_accounts did not consume any account while constructing a Shards element")]
+    ShardsInnerDidNotConsume,
+
     // Miscellaneous
     /// 4100 - The declared program id does not match actual program id
     #[msg("The declared program id does not match the actual program id")]

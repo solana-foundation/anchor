@@ -117,6 +117,20 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
 
+        // Allow generic code (e.g. Shards blanket impl) to push/pop shard indices without knowing
+        // the concrete bumps struct type.
+        impl anchor_lang::accounts::shards::ShardIndexBumps for #bumps_name {
+            #[inline]
+            fn push_shard_index(&mut self, idx: u64) {
+                self.__push_shard_index(idx);
+            }
+
+            #[inline]
+            fn pop_shard_index(&mut self) {
+                self.__pop_shard_index();
+            }
+        }
+
         impl<#combined_generics> anchor_lang::Bumps for #name<#struct_generics> #where_clause {
             type Bumps = #bumps_name;
         }

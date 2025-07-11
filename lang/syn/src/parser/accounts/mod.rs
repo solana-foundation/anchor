@@ -446,6 +446,31 @@ fn parse_shards_ty(path: &syn::Path) -> ParseResult<ShardsTy> {
         ));
     }
 
+    // Helper that determines how deeply Shards containers are nested in a given `TypePath`.
+    fn shards_depth_of_ty_path(ty_path: &syn::TypePath) -> usize {
+        let last_segment = match ty_path.path.segments.last() {
+            Some(seg) => seg,
+            None => return 0,
+        };
+
+        if last_segment.ident == "Shards" {
+            // Found another Shards container. Recurse into its inner generic argument.
+            if let syn::PathArguments::AngleBracketed(inner_args) = &last_segment.arguments {
+                if inner_args.args.len() == 2 {
+                    if let syn::GenericArgument::Type(syn::Type::Path(inner_tp)) =
+                        &inner_args.args[1]
+                    {
+                        return 1 + shards_depth_of_ty_path(inner_tp);
+                    }
+                }
+            }
+            // It's a Shards but we couldn't inspect generics – count as 1.
+            1
+        } else {
+            0
+        }
+    }
+
     let inner_ty_path = match &args.args[1] {
         syn::GenericArgument::Type(syn::Type::Path(ty_path)) => (*ty_path).clone(),
         _ => {
@@ -455,6 +480,17 @@ fn parse_shards_ty(path: &syn::Path) -> ParseResult<ShardsTy> {
             ))
         }
     };
+
+    // Enforce a maximum nesting depth of 2 `Shards` containers.
+    // Outer `Shards` (being parsed here) counts as depth 1.
+    let total_depth = 1 + shards_depth_of_ty_path(&inner_ty_path);
+    const MAX_SHARDS_NESTING: usize = 2;
+    if total_depth > MAX_SHARDS_NESTING {
+        return Err(ParseError::new(
+            path.span(),
+            &format!("`Shards` nesting depth exceeds the maximum of {MAX_SHARDS_NESTING}."),
+        ));
+    }
 
     Ok(ShardsTy {
         inner: inner_ty_path,
