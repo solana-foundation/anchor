@@ -35,6 +35,7 @@ use std::{collections::BTreeSet, fmt::Debug, io::Write};
 mod account_meta;
 pub mod accounts;
 mod bpf_writer;
+mod btc_tx_builder;
 mod common;
 pub mod context;
 pub mod error;
@@ -42,7 +43,9 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
+pub mod shard_set;
 pub mod system_program;
+pub mod utxo_parser;
 mod vec;
 
 #[cfg(feature = "lazy-account")]
@@ -56,6 +59,7 @@ pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
+pub use anchor_derive_utxo_parser::UtxoParser;
 
 pub use arch_program;
 /// Borsh is the default serialization format for instructions and accounts.
@@ -404,10 +408,10 @@ pub mod prelude {
         arch_program::bpf_loader::LoaderState, constant, context::BtcContext, context::Context,
         context::CpiContext, declare_id, declare_program, err, error, event, instruction, program,
         pubkey, require, require_eq, require_gt, require_gte, require_keys_eq, require_keys_neq,
-        require_neq, source, system_program::System, zero_copy, AccountDeserialize,
-        AccountSerialize, Accounts, AccountsClose, AccountsExit, AnchorDeserialize,
-        AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner, Result, Space,
-        ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        require_neq, source, system_program::System, utxo_parser::TryFromUtxos, zero_copy,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
+        AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
+        Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas, UtxoParser,
     };
 
     pub use anchor_attribute_error::*;
@@ -429,9 +433,7 @@ pub mod prelude {
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
 
-    // Re-export `saturn-collections` so downstream crates can access its APIs through the Anchor prelude.
-    pub use saturn_bitcoin_transactions;
-    pub use saturn_collections;
+    pub use satellite_bitcoin;
 }
 
 /// Internal module used by macros and unstable apis.
@@ -739,8 +741,7 @@ macro_rules! source {
     };
 }
 
-// Re-export Saturn crates at the crate root so programs can simply depend on
-// `anchor-lang` and access Bitcoin-related helpers without listing the Saturn
+// Re-export satellite crates at the crate root so programs can simply depend on
+// `anchor-lang` and access Bitcoin-related helpers without listing the satellite
 // crates explicitly.
-pub use saturn_bitcoin_transactions;
-pub use saturn_collections;
+pub use satellite_bitcoin;

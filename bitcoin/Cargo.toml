@@ -1,0 +1,24 @@
+[package]
+name = "satellite-bitcoin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+satellite-math = { path = "./math" }
+satellite-collections = { path = "./collections" }
+satellite-bitcoin-transactions = { path = "./transactions" } 
+
+[features]
+# Forward common features to the underlying `satellite-bitcoin-transactions` crate so
+# consumers can enable them directly on `satellite-bitcoin`.
+# We keep the same feature names for convenience.
+
+default = [
+    "satellite-bitcoin-transactions/utxo-consolidation",
+    "satellite-bitcoin-transactions/serde",
+]
+
+runes = ["satellite-bitcoin-transactions/runes"]
+utxo-consolidation = ["satellite-bitcoin-transactions/utxo-consolidation"]
+serde = ["satellite-bitcoin-transactions/serde"]
+utoipa = ["satellite-bitcoin-transactions/utoipa"] 

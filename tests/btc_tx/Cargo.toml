@@ -8,5 +8,3 @@ publish = false
 anchor-lang = { path = "../../lang" }
 arch_program = { path = "../../deps/program" }
 bytemuck = { workspace = true, features = ["derive", "min_const_generics"] }
-saturn-account-shards = { workspace = true }
-saturn-utxo-parser = { workspace = true }

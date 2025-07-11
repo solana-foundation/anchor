@@ -6,47 +6,7 @@ use arch_program::account::AccountMeta;
 use arch_program::pubkey::Pubkey;
 use std::fmt;
 
-/// Marker trait to enable a type-erased reference (`dyn BtcTxBuilderAny`) to any
-/// Bitcoin `TransactionBuilder` variant that the code generator will create
-/// on a per-program basis.  Implemented for **all** types via the blanket impl
-/// below so the generated code can simply cast a concrete builder using
-/// `as &mut dyn BtcTxBuilderAny` without importing additional traits.
-pub trait BtcTxBuilderAny<'info> {
-    /// Add a state transition input for the given account to the underlying
-    /// Bitcoin transaction builder.
-    ///
-    /// Implementations should convert any crate‐specific error into the
-    /// generic [`arch_program::program_error::ProgramError`] so the caller can
-    /// propagate errors using `?` without importing additional error types.
-    fn add_state_transition(
-        &mut self,
-        account: &arch_program::account::AccountInfo<'info>,
-    ) -> core::result::Result<(), arch_program::program_error::ProgramError>;
-}
-
-// === TransactionBuilder implementation =====================================
-
-impl<'info, const MAX_MODIFIED_ACCOUNTS: usize, const MAX_INPUTS_TO_SIGN: usize, RuneSet>
-    BtcTxBuilderAny<'info>
-    for saturn_bitcoin_transactions::TransactionBuilder<
-        'info,
-        MAX_MODIFIED_ACCOUNTS,
-        MAX_INPUTS_TO_SIGN,
-        RuneSet,
-    >
-where
-    RuneSet: saturn_collections::generic::fixed_set::FixedCapacitySet<
-            Item = arch_program::rune::RuneAmount,
-        > + Default,
-{
-    #[inline]
-    fn add_state_transition(
-        &mut self,
-        account: &arch_program::account::AccountInfo<'info>,
-    ) -> core::result::Result<(), arch_program::program_error::ProgramError> {
-        self.add_state_transition(account).map_err(|e| e.into())
-    }
-}
+pub use crate::btc_tx_builder::BtcTxBuilderAny;
 
 /// Provides non-argument inputs to the program.
 ///
@@ -93,15 +53,17 @@ where
 }
 
 // Introduce BtcContext wrapper that carries a guaranteed builder reference.
-pub struct BtcContext<'a, 'b, 'c, 'info, T: Bumps> {
+pub struct BtcContext<'a, 'b, 'c, 'ctx, 'info, T: Bumps> {
     /// All the usual context data.
     pub base: Context<'a, 'b, 'c, 'info, T>,
     /// Mandatory Bitcoin transaction builder.
-    pub btc_tx_builder: &'a mut dyn BtcTxBuilderAny<'info>,
+    pub btc_tx_builder: &'ctx mut dyn BtcTxBuilderAny<'info>,
 }
 
 // Allow transparent access to the underlying `Context` fields.
-impl<'a, 'b, 'c, 'info, T: Bumps> core::ops::Deref for BtcContext<'a, 'b, 'c, 'info, T> {
+impl<'a, 'b, 'c, 'ctx, 'info, T: Bumps> core::ops::Deref
+    for BtcContext<'a, 'b, 'c, 'ctx, 'info, T>
+{
     type Target = Context<'a, 'b, 'c, 'info, T>;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
@@ -109,14 +71,16 @@ impl<'a, 'b, 'c, 'info, T: Bumps> core::ops::Deref for BtcContext<'a, 'b, 'c, 'i
     }
 }
 
-impl<'a, 'b, 'c, 'info, T: Bumps> core::ops::DerefMut for BtcContext<'a, 'b, 'c, 'info, T> {
+impl<'a, 'b, 'c, 'ctx, 'info, T: Bumps> core::ops::DerefMut
+    for BtcContext<'a, 'b, 'c, 'ctx, 'info, T>
+{
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.base
     }
 }
 
-impl<T> fmt::Debug for BtcContext<'_, '_, '_, '_, T>
+impl<T> fmt::Debug for BtcContext<'_, '_, '_, '_, '_, T>
 where
     T: fmt::Debug + Bumps,
 {
@@ -127,7 +91,7 @@ where
     }
 }
 
-impl<'a, 'b, 'c, 'info, T> BtcContext<'a, 'b, 'c, 'info, T>
+impl<'a, 'b, 'c, 'ctx, 'info, T> BtcContext<'a, 'b, 'c, 'ctx, 'info, T>
 where
     T: Bumps + Accounts<'info, T::Bumps>,
 {
@@ -136,7 +100,7 @@ where
         accounts: &'b mut T,
         remaining_accounts: &'c [AccountInfo<'info>],
         bumps: T::Bumps,
-        btc_tx_builder: &'a mut dyn BtcTxBuilderAny<'info>,
+        btc_tx_builder: &'ctx mut dyn BtcTxBuilderAny<'info>,
     ) -> Self {
         Self {
             base: Context::new(program_id, accounts, remaining_accounts, bumps),

@@ -16,12 +16,7 @@ members = [
     "lang/attribute/*",
     "lang/derive/*",
     "lang/syn",
-    "saturn-bitcoin-transactions",
-    "saturn-collections",
-    "saturn-safe-math",
-    "saturn-account-shards",
-    "saturn-utxo-parser",
-    "saturn-utxo-parser-derive",
+    "bitcoin",
     "tests/btc_tx",
 ]
 exclude = [
@@ -33,14 +28,8 @@ resolver = "2"
 [workspace.dependencies]
 borsh-derive-internal = { path = "deps/borsh-derive-internal", version = "0.10.4" }
 arch_program = { path = "deps/program", version = "0.5.3" }
-mempool-oracle-sdk = { path = "./deps/mempool_oracle_sdk" }
 
-saturn-bitcoin-transactions = { path = "./saturn-bitcoin-transactions" }
-saturn-collections = { path = "./saturn-collections" }
-saturn-safe-math = { path = "./saturn-safe-math" }
-saturn-account-shards = { path = "./saturn-account-shards" }
-saturn-utxo-parser = { path = "./saturn-utxo-parser" }
-saturn-utxo-parser-derive = { path = "./saturn-utxo-parser-derive" }
+satellite-bitcoin = { path = "./bitcoin" }
 
 anyhow = "1.0.82"
 base64 = "0.22.1"

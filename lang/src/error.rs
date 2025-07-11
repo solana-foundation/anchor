@@ -1,7 +1,7 @@
 use anchor_lang::error_code;
 use arch_program::{program_error::ProgramError, pubkey::Pubkey};
 use borsh::io::Error as BorshIoError;
-use saturn_collections::generic::fixed_set::FixedSetError;
+use satellite_bitcoin::generic::fixed_set::FixedSetError;
 use std::fmt::{Debug, Display};
 use std::num::TryFromIntError;
 
@@ -14,6 +14,7 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 /// - &gt;= 1000 IDL error codes
 /// - &gt;= 2000 constraint error codes
 /// - &gt;= 3000 account error codes
+/// - &gt;= 3500 shard error codes
 /// - &gt;= 4100 misc error codes
 /// - = 5000 deprecated error code
 ///
@@ -261,6 +262,89 @@ pub enum ErrorCode {
     /// 3018 - Inner Accounts::try_accounts did not consume any account while processing a shard element
     #[msg("Inner Accounts::try_accounts did not consume any account while constructing a Shards element")]
     ShardsInnerDidNotConsume,
+
+    // Shard set
+    /// 3500 - A rune transfer required more runes than were actually present across
+    /// the shards involved in the operation.
+    #[msg("Not enough rune in shards")]
+    NotEnoughRuneInShards = 3500,
+    /// 3501 - A runestone edict refers to an output index that is **not** part of the
+    /// transaction we are processing.
+    #[msg("Output edict is not in transaction")]
+    OutputEdictIsNotInTransaction = 3501,
+
+    /// 3502 - Math error in btc amount
+    #[msg("Math error in btc amount")]
+    MathErrorInBalanceAmountAcrossShards = 3502,
+
+    /// 3503 - Too many runes in utxo
+    ///
+    /// This error is returned when the total amount of runes in the utxo is
+    /// greater than the maximum allowed amount of runes in a utxo.
+    #[msg("Too many runes in utxo")]
+    TooManyRunesInUtxo,
+
+    /// 3504 - Rune amount addition overflow
+    #[msg("Rune amount addition overflow")]
+    RuneAmountAdditionOverflow = 3504,
+
+    /// 3505 - Shards are full of btc utxos
+    #[msg("Shards are full of btc utxos")]
+    ShardsAreFullOfBtcUtxos,
+
+    /// 3506 - Removing more runes than are present in the shards
+    #[msg("Removing more runes than are present in the shards")]
+    RemovingMoreRunesThanPresentInShards,
+
+    /// 3507 - The runestone did not contain the mandatory pointer field.
+    #[msg("Missing pointer in runestone")]
+    MissingPointerInRunestone,
+
+    /// 3508 - The pointer specified inside the runestone does not correspond to any
+    /// output created by the transaction.
+    #[msg("Runestone pointer is not in transaction")]
+    RunestonePointerIsNotInTransaction,
+
+    /// 3509 - The caller attempted to select the same shard index more than once.
+    #[msg("Duplicate shard index in selection")]
+    DuplicateShardSelection,
+
+    /// 3510 - Shard index out of bounds
+    #[msg("Shard index out of bounds")]
+    OutOfBounds,
+
+    /// 3511 - Too many shards selected
+    #[msg("Too many shards selected")]
+    TooManyShardsSelected,
+
+    /// 3512 - Too many rune UTXOs for the selected shards
+    #[msg("Too many rune UTXOs for the selected shards")]
+    ExcessRuneUtxos,
+
+    /// 3600 - Required UTXO matching the predicate was not found
+    #[msg("Required UTXO matching the predicate was not found")]
+    MissingRequiredUtxo = 3600,
+    /// 3601 - There are leftover UTXOs that were not consumed by the parser
+    #[msg("There are leftover UTXOs that were not consumed by the parser")]
+    UnexpectedExtraUtxos,
+    /// 3603 - UTXO value (satoshis) did not match the expected value
+    #[msg("UTXO value (satoshis) did not match the expected value")]
+    InvalidUtxoValue,
+    /// 3604 - UTXO runes presence (none/some) did not match expectation
+    #[msg("UTXO runes presence (none/some) did not match expectation")]
+    InvalidRunesPresence,
+    /// 3605 - Required rune id was not found in the UTXO
+    #[msg("Required rune id was not found in the UTXO")]
+    InvalidRuneId,
+    /// 3606 - Rune amount in UTXO did not match expectation
+    #[msg("Rune amount in UTXO did not match expectation")]
+    InvalidRuneAmount,
+    /// 3607 - Duplicate UTXO meta in the provided inputs list
+    #[msg("Duplicate UTXO meta in the provided inputs list")]
+    DuplicateUtxoMeta,
+    /// 3608 - UTXO did not satisfy the expected predicate at its strict-order position
+    #[msg("UTXO did not satisfy the expected predicate at its strict-order position")]
+    StrictOrderMismatch,
 
     // Miscellaneous
     /// 4100 - The declared program id does not match actual program id

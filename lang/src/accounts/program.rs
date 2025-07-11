@@ -6,7 +6,6 @@ use crate::{
 };
 use arch_program::account::AccountInfo;
 use arch_program::account::AccountMeta;
-use arch_program::bpf_loader::{self, LoaderState};
 use arch_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 use std::fmt;

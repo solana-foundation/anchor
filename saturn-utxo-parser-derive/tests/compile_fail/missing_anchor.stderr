@@ -1,7 +1,0 @@
-error[E0609]: no field `missing` on type `&DummyAccounts<'info>`
-  --> tests/compile_fail/missing_anchor.rs:18:21
-   |
-18 |     #[utxo(anchor = missing)]
-   |                     ^^^^^^^ unknown field
-   |
-   = note: available field is: `acc`

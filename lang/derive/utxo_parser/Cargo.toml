@@ -1,0 +1,17 @@
+[package]
+name = "anchor-derive-utxo-parser"
+version = "0.1.0"
+authors = ["Saturn Labs <contact@saturn.xyz>"]
+repository = "https://github.com/saturnbtc/satellite"
+license = "Apache-2.0"
+description = "Anchor Derive macro to automatically calculate the size of a structure or an enum"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["extra-traits"] }
+anchor-syn = { path = "../../syn", version = "0.31.1" }

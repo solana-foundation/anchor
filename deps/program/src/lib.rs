@@ -99,6 +99,9 @@ extern crate serde_derive;
 /// Rune management
 pub mod rune;
 
+// Rent
+pub mod rent;
+
 /// Maximum size of a Bitcoin transaction in bytes
 pub const MAX_BTC_TX_SIZE: usize = 3976;
 
