@@ -10,7 +10,7 @@ pub mod option;
 pub mod program;
 pub mod signer;
 pub mod system_account;
-// pub mod sysvar;
+pub mod sysvar;
 pub mod unchecked_account;
 
 // Collection type that groups a variable number of account/account-loader items.

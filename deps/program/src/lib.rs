@@ -105,6 +105,9 @@ pub const MAX_BTC_TX_SIZE: usize = 3976;
 /// Maximum size of a Bitcoin rune output in bytes
 pub const MAX_BTC_RUNE_OUTPUT_SIZE: usize = 2048;
 
+/// Sysvar trait and helpers (Clock implements this below)
+pub mod sysvar;
+
 pub mod builtin {
     use super::*;
     use crate::pubkey::Pubkey;
