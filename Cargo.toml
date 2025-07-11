@@ -19,6 +19,9 @@ members = [
     "saturn-bitcoin-transactions",
     "saturn-collections",
     "saturn-safe-math",
+    "saturn-account-shards",
+    "saturn-utxo-parser",
+    "saturn-utxo-parser-derive",
     "tests/btc_tx",
 ]
 exclude = [
@@ -35,6 +38,9 @@ mempool-oracle-sdk = { path = "./deps/mempool_oracle_sdk" }
 saturn-bitcoin-transactions = { path = "./saturn-bitcoin-transactions" }
 saturn-collections = { path = "./saturn-collections" }
 saturn-safe-math = { path = "./saturn-safe-math" }
+saturn-account-shards = { path = "./saturn-account-shards" }
+saturn-utxo-parser = { path = "./saturn-utxo-parser" }
+saturn-utxo-parser-derive = { path = "./saturn-utxo-parser-derive" }
 
 anyhow = "1.0.82"
 base64 = "0.22.1"
