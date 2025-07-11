@@ -48,13 +48,13 @@ pub struct FixedList<T, const SIZE: usize> {
     len: usize,
 }
 
-impl<T: Default + Copy, const SIZE: usize> Default for FixedList<T, SIZE> {
+impl<T: Default + Clone, const SIZE: usize> Default for FixedList<T, SIZE> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Default + Copy, const SIZE: usize> FixedList<T, SIZE> {
+impl<T: Default + Clone, const SIZE: usize> FixedList<T, SIZE> {
     /// Creates a new, empty `FixedList`.
     ///
     /// All elements are initialized to their default values, but only the first `len`
@@ -71,7 +71,7 @@ impl<T: Default + Copy, const SIZE: usize> FixedList<T, SIZE> {
     /// ```
     pub fn new() -> Self {
         Self {
-            items: [T::default(); SIZE],
+            items: core::array::from_fn(|_| T::default()),
             len: 0,
         }
     }
@@ -232,7 +232,7 @@ impl<T: Default + Copy, const SIZE: usize> FixedList<T, SIZE> {
     pub fn pop(&mut self) -> Option<T> {
         if self.len > 0 {
             self.len -= 1;
-            Some(self.items[self.len])
+            Some(self.items[self.len].clone())
         } else {
             None
         }

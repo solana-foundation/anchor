@@ -95,7 +95,7 @@ pub mod utxo_info;
 #[cfg(feature = "serde")]
 pub mod utxo_info_json;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 /// A zero-copy wrapper for tracking modified program accounts.
 ///
 /// `ModifiedAccount` is a lightweight wrapper around [`AccountInfo`] that enables
@@ -126,22 +126,22 @@ pub mod utxo_info_json;
 /// The default value (created with `Default::default()`) contains `None` and will
 /// panic if accessed via `as_ref()`. This is by design since such instances should
 /// never be exposed outside of internal testing.
-struct ModifiedAccount<'a>(Option<&'a AccountInfo<'a>>);
+struct ModifiedAccount<'info>(Option<AccountInfo<'info>>);
 
-impl<'a> ModifiedAccount<'a> {
+impl<'info> ModifiedAccount<'info> {
     #[inline]
     /// Creates a new [`ModifiedAccount`] from a borrowed [`AccountInfo`].
     ///
     /// This is a zero-cost helper used by
     /// [`TransactionBuilder::create_state_account`] and friends.
-    pub fn new(account: &'a AccountInfo<'a>) -> Self {
+    pub fn new(account: AccountInfo<'info>) -> Self {
         Self(Some(account))
     }
 }
 
-impl<'a> AsRef<AccountInfo<'a>> for ModifiedAccount<'a> {
-    fn as_ref(&self) -> &AccountInfo<'a> {
-        self.0.expect("ModifiedAccount is None")
+impl<'info> AsRef<AccountInfo<'info>> for ModifiedAccount<'info> {
+    fn as_ref(&self) -> &AccountInfo<'info> {
+        self.0.as_ref().expect("ModifiedAccount is None")
     }
 }
 
@@ -528,7 +528,7 @@ pub struct NewPotentialInputsAndOutputs {
 /// `TransactionBuilder` is not thread-safe and should not be shared between threads.
 /// Create separate builders for concurrent transaction construction.
 pub struct TransactionBuilder<
-    'a,
+    'info,
     const MAX_MODIFIED_ACCOUNTS: usize,
     const MAX_INPUTS_TO_SIGN: usize,
     RuneSet: FixedCapacitySet<Item = RuneAmount> + Default,
@@ -540,7 +540,7 @@ pub struct TransactionBuilder<
 
     /// This tells Arch which accounts have been modified, and thus required
     /// their data to be saved
-    modified_accounts: FixedList<ModifiedAccount<'a>, MAX_MODIFIED_ACCOUNTS>,
+    modified_accounts: FixedList<ModifiedAccount<'info>, MAX_MODIFIED_ACCOUNTS>,
 
     /// This tells Arch which inputs in [InstructionContext::transaction] still
     /// need to be signed, along with which key needs to sign each of them
@@ -564,11 +564,11 @@ pub struct TransactionBuilder<
 }
 
 impl<
-        'a,
+        'info,
         const MAX_MODIFIED_ACCOUNTS: usize,
         const MAX_INPUTS_TO_SIGN: usize,
         RuneSet: FixedCapacitySet<Item = RuneAmount> + Default,
-    > TransactionBuilder<'a, MAX_MODIFIED_ACCOUNTS, MAX_INPUTS_TO_SIGN, RuneSet>
+    > TransactionBuilder<'info, MAX_MODIFIED_ACCOUNTS, MAX_INPUTS_TO_SIGN, RuneSet>
 {
     /// Creates a new empty transaction builder.
     ///
@@ -807,9 +807,9 @@ impl<
     pub fn create_state_account(
         &mut self,
         utxo: &UtxoInfo<RuneSet>,
-        system_program: &AccountInfo<'a>,
-        fee_payer: &AccountInfo<'a>,
-        account: &'a AccountInfo<'a>,
+        system_program: &AccountInfo<'info>,
+        fee_payer: &AccountInfo<'info>,
+        account: &AccountInfo<'info>,
         program_id: &Pubkey,
         seeds: &[&[u8]],
     ) -> Result<(), ProgramError> {
@@ -832,7 +832,7 @@ impl<
         add_state_transition(&mut self.transaction, account);
 
         self.modified_accounts
-            .push(ModifiedAccount::new(account))
+            .push(ModifiedAccount::new(account.clone()))
             .map_err(|_| BitcoinTxError::ModifiedAccountListFull)?;
 
         self.total_btc_input += utxo.value;
@@ -903,7 +903,7 @@ impl<
     /// - [`Self::insert_state_transition_input`] for position-specific insertions
     pub fn add_state_transition(
         &mut self,
-        account: &'a AccountInfo<'a>,
+        account: &AccountInfo<'info>,
     ) -> Result<(), BitcoinTxError> {
         self.inputs_to_sign
             .push(InputToSign {
@@ -915,7 +915,7 @@ impl<
         add_state_transition(&mut self.transaction, account);
 
         self.modified_accounts
-            .push(ModifiedAccount::new(account))
+            .push(ModifiedAccount::new(account.clone()))
             .map_err(|_| BitcoinTxError::ModifiedAccountListFull)?;
 
         // UTXO accounts always have dust limit amount.
@@ -934,7 +934,7 @@ impl<
     pub fn insert_state_transition_input(
         &mut self,
         tx_index: usize,
-        account: &'a AccountInfo<'a>,
+        account: &AccountInfo<'info>,
     ) -> Result<(), BitcoinTxError> {
         let utxo_outpoint = OutPoint {
             txid: Txid::from_str(&hex::encode(account.utxo.txid())).unwrap(),
@@ -967,7 +967,7 @@ impl<
             .map_err(|_| BitcoinTxError::InputToSignListFull)?;
 
         self.modified_accounts
-            .push(ModifiedAccount::new(account))
+            .push(ModifiedAccount::new(account.clone()))
             .map_err(|_| BitcoinTxError::ModifiedAccountListFull)?;
 
         // UTXO accounts always have dust limit amount.
@@ -1603,12 +1603,13 @@ impl<
     #[cfg(feature = "runes")]
     fn add_rune_input(&mut self, rune: RuneAmount) -> Result<(), BitcoinTxError> {
         add_rune_input(&mut self.total_rune_inputs, rune)?;
+
         Ok(())
     }
 }
 
-impl<'a, const MAX_MODIFIED_ACCOUNTS: usize, const MAX_INPUTS_TO_SIGN: usize, RuneSet> Drop
-    for TransactionBuilder<'a, MAX_MODIFIED_ACCOUNTS, MAX_INPUTS_TO_SIGN, RuneSet>
+impl<'info, const MAX_MODIFIED_ACCOUNTS: usize, const MAX_INPUTS_TO_SIGN: usize, RuneSet> Drop
+    for TransactionBuilder<'info, MAX_MODIFIED_ACCOUNTS, MAX_INPUTS_TO_SIGN, RuneSet>
 where
     RuneSet: FixedCapacitySet<Item = RuneAmount> + Default,
 {
