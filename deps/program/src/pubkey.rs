@@ -331,7 +331,26 @@ impl Pubkey {
         // Inside the BPF program we delegate to the corresponding syscall
         #[cfg(target_os = "solana")]
         {
-            unimplemented!()
+            // The Solana BPF target does not currently expose a dedicated syscall
+            // for `create_with_seed`. Fortunately, the address derivation formula
+            // is pure: `sha256(base || seed || owner)` with no additional
+            // constraints (the result *can* be on-curve). We therefore replicate
+            // the host-side implementation directly using the `sha256` crate that
+            // is already available as a dependency.
+
+            // 1. Assemble the input buffer: base pubkey bytes, seed UTF-8 bytes,
+            //    and owner pubkey bytes.
+            let mut data = Vec::with_capacity(32 + seed.len() + 32);
+            data.extend_from_slice(base.as_ref());
+            data.extend_from_slice(seed.as_bytes());
+            data.extend_from_slice(owner.as_ref());
+
+            // 2. Hash the buffer with SHA-256. The `sha256::digest` helper returns
+            //    a hex-encoded string, so we decode it back into raw bytes before
+            //    constructing the resulting `Pubkey`.
+            let hash = hex::decode(sha256::digest(&data))?;
+
+            Ok(Pubkey::from_slice(&hash))
         }
     }
 }
