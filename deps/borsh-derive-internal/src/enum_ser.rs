@@ -28,7 +28,7 @@ pub fn enum_ser(input: &ItemEnum, cratename: Ident) -> syn::Result<TokenStream2>
                 for field in &fields.named {
                     let field_name = field.ident.as_ref().unwrap();
                     if contains_skip(&field.attrs) {
-                        variant_header.extend(quote! { _#field_name, });
+                        variant_header.extend(quote! { #field_name, });
                         continue;
                     } else {
                         let field_type = &field.ty;
