@@ -11,11 +11,15 @@ declare_id!("11111111111111111111111111111111");
 pub mod btc_tx_test_program {
     use super::*;
 
-    pub fn demo(mut ctx: BtcContext<Demo>, utxos: Vec<UtxoMeta>) -> Result<()> {
-        // Ensure we can access the builder (compile-time guarantee – no unwrap needed)
-        // let builder_ref = &mut ctx.btc_tx_builder;
+    pub fn demo<'info>(
+        mut ctx: BtcContext<'_, '_, '_, '_, 'info, Demo<'info>>,
+        utxos: Vec<UtxoMeta>,
+    ) -> Result<()> {
+        let result = DemoUtxoParser::try_utxos(&mut ctx, &utxos)?;
 
-        let utxos = DemoUtxoParser::try_utxos(&mut ctx, &utxos)?;
+        ctx.btc_tx_builder
+            .add_state_transition(&ctx.accounts.together[0].to_account_info())?;
+
 
         // Build an *unselected* ShardSet from all shard loaders.
         // The lifetime is inferred, so we only need to specify the shard type and
@@ -69,3 +73,55 @@ mod tests {
         assert_eq!(crate::ID, crate::id());
     }
 }
+
+// pub struct DemoUtxoParser {
+//     pub lol: Vec<UtxoInfo>,
+// }
+// impl<'info> anchor_lang::utxo_parser::TryFromUtxos<'info, Demo<'info>>
+//     for DemoUtxoParser
+// {
+//     fn try_utxos(
+//         ctx: &mut BtcContext<'_, '_, '_, '_, 'info, Demo<'info>>,
+//         utxos: &[anchor_lang::arch_program::utxo::UtxoMeta],
+//     ) -> core::result::Result<Self, anchor_lang::arch_program::program_error::ProgramError> {
+//         let mut idx: usize = 0;
+//         let total: usize = utxos.len();
+//         for i in 0..total {
+//             for j in (i + 1)..total {
+//                 if utxos[i] == utxos[j] {
+//                     return Err(ProgramError::Custom(ErrorCode::DuplicateUtxoMeta.into()));
+//                 }
+//             }
+//         }
+//         // let _ = {
+//         //     fn _assert_indexable<T: core::ops::Index<usize>>(_t: &T) {}
+//         //     _assert_indexable(&accounts.together);
+//         // };
+//         let target_len = ctx.accounts.together.len();
+//         let mut lol: Vec<satellite_bitcoin::utxo_info::UtxoInfo> = Vec::with_capacity(target_len);
+//         for i in 0..target_len {
+//             if idx >= total {
+//                 return Err(ProgramError::Custom(ErrorCode::MissingRequiredUtxo.into()));
+//             }
+//             let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx])?;
+//             if !(utxo.value == (546) && utxo.rune_entry_count() == 0) {
+//                 return Err(ProgramError::Custom(ErrorCode::InvalidRunesPresence.into()));
+//             }
+//             let account_info =
+//                 anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
+//             let _anchor_ix = arch_program::system_instruction::anchor(
+//                 account_info.key,
+//                 utxo.meta.txid_big_endian(),
+//                 utxo.meta.vout(),
+//             );
+//             lol.push(utxo);
+//             let together = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
+//             ctx.btc_tx_builder.add_state_transition(&together)?;
+//             idx += 1;
+//         }
+//         if idx < total {
+//             return Err(ProgramError::Custom(ErrorCode::UnexpectedExtraUtxos.into()));
+//         }
+//         Ok(Self { lol })
+//     }
+// }

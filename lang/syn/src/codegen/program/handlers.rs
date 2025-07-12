@@ -107,9 +107,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         quote! {}
     };
 
-    // No alias needed: user handlers should be updated to use `BtcContext` directly.
-    let ctx_alias: proc_macro2::TokenStream = quote! {};
-
     let non_inlined_handlers: Vec<proc_macro2::TokenStream> = program
         .ixs
         .iter()
@@ -207,8 +204,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        // no alias
-
         /// Create a private module to not clutter the program's namespace.
         /// Defines an entrypoint for each individual instruction handler
         /// wrapper.
@@ -227,7 +222,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 use super::*;
 
                 #btc_support
-                // no alias
                 #(#non_inlined_handlers)*
             }
 

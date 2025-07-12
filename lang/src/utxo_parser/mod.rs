@@ -2,6 +2,8 @@ use anchor_lang::Bumps;
 use arch_program::{program_error::ProgramError, utxo::UtxoMeta};
 use satellite_bitcoin::utxo_info::UtxoInfo;
 
+use crate::context::BtcContext;
+
 // -----------------------------------------------------------------------------
 // meta_to_info implementation
 // -----------------------------------------------------------------------------
@@ -39,16 +41,14 @@ pub fn meta_to_info(meta: &UtxoMeta) -> Result<UtxoInfo, ProgramError> {
 /// based on your struct definition and `#[utxo(...)]` attributes.
 ///
 /// [`UtxoInfo`]: satellite_bitcoin::utxo_info::UtxoInfo
-pub trait TryFromUtxos<'info, T: Bumps>: Sized {
+pub trait TryFromUtxos<'info, A: Bumps>: Sized {
     /// Parse and validate a slice of [`UtxoMeta`].
     ///
-    /// * `ctx` – reference to the Anchor [`BtcContext`] holding the validated
-    ///           account struct generated via `#[derive(Accounts)]`.
+    /// * `ctx`  – mutable reference to the [`BtcContext`] carrying the Bitcoin builder and
+    ///            validated `Accounts` struct.
     /// * `utxos` – slice of UTXO metadata to parse.
-    fn try_utxos<'a, 'b, 'c, 'ctx>(
-        ctx: &mut anchor_lang::context::BtcContext<'a, 'b, 'c, 'ctx, 'info, T>,
+    fn try_utxos(
+        ctx: &mut BtcContext<'_, '_, '_, '_, 'info, A>,
         utxos: &[arch_program::utxo::UtxoMeta],
-    ) -> Result<Self, ProgramError>
-    where
-        'b: 'info;
+    ) -> Result<Self, ProgramError>;
 }

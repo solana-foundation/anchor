@@ -9,7 +9,9 @@ use syn::parse_quote;
 /// that `anchor = ...` implies `runes == none` when the user did not provide a
 /// runes constraint.  This preserves legacy semantics without modifying the
 /// parsing stage.
-fn build_predicate_with_anchor_logic(field: &crate::parser::utxo::ir::Field) -> proc_macro2::TokenStream {
+fn build_predicate_with_anchor_logic(
+    field: &crate::parser::utxo::ir::Field,
+) -> proc_macro2::TokenStream {
     let mut attr = field.attr.clone();
     if attr.anchor_ident.is_some() && attr.runes.is_none() {
         attr.runes = Some(RunesPresence::None);
@@ -39,10 +41,8 @@ pub fn expand(ir: &DeriveInputIr) -> proc_macro2::TokenStream {
     //     ensuring all lifetimes required by the `TryFromUtxos` trait are present.
     let mut impl_generics_mut = ir.generics.clone();
 
-    // The trait expects the following lifetimes (in this exact order):
-    //   'a, 'b, 'c, 'ctx, 'info
-    // Insert any that are missing at the *front* so we preserve the order
-    // "'a, 'b, 'c, 'ctx, 'info, <existing generics...>".
+    // We only need to ensure the `'info` lifetime is present, since the auxiliary lifetimes are
+    // now introduced at the *method* level on the generated `try_utxos` function.
     fn ensure_lifetime(generics: &mut syn::Generics, name: &str) {
         let exists = generics.params.iter().any(|param| match param {
             syn::GenericParam::Lifetime(lt) => lt.lifetime.ident == name,
@@ -51,10 +51,6 @@ pub fn expand(ir: &DeriveInputIr) -> proc_macro2::TokenStream {
         if !exists {
             // SAFETY: parse_quote! can take a literal `'ident`.
             let lt: syn::GenericParam = match name {
-                // "a" => parse_quote!('a),
-                // "b" => parse_quote!('b),
-                // "c" => parse_quote!('c),
-                // "ctx" => parse_quote!('ctx),
                 "info" => parse_quote!('info),
                 _ => unreachable!(),
             };
@@ -62,11 +58,8 @@ pub fn expand(ir: &DeriveInputIr) -> proc_macro2::TokenStream {
         }
     }
 
-    // Ensure all required lifetimes exist, processing from most "inner" to most
-    // "outer" so the final order after insertion is correct.
-    for &lt_name in ["info"/*, "ctx", "c", "b", "a" */].iter() {
-        ensure_lifetime(&mut impl_generics_mut, lt_name);
-    }
+    // Ensure `'info` is present.
+    ensure_lifetime(&mut impl_generics_mut, "info");
     let (impl_generics, _phantom, where_clause) = impl_generics_mut.split_for_impl();
 
     // ---------------------------------------------------------------
@@ -112,12 +105,10 @@ pub fn expand(ir: &DeriveInputIr) -> proc_macro2::TokenStream {
     // ---------------------------------------------------------------
     quote! {
         impl #impl_generics anchor_lang::utxo_parser::TryFromUtxos<'info, #accounts_ty<'info>> for #struct_ident #ty_generics #where_clause {
-            fn try_utxos<'a, 'b, 'c, 'ctx>(
-                ctx: &mut anchor_lang::context::BtcContext<'a, 'b, 'c, 'ctx, 'info, #accounts_ty<'info>>,
+            fn try_utxos(
+                ctx: &mut anchor_lang::context::BtcContext<'_, '_, '_, '_, 'info, #accounts_ty<'info>>,
                 utxos: &[anchor_lang::arch_program::utxo::UtxoMeta],
             ) -> core::result::Result<Self, anchor_lang::arch_program::program_error::ProgramError>
-            where
-            'b: 'info,
             {
                 #(#init_snippets)*
 

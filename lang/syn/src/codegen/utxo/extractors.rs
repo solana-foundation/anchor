@@ -50,7 +50,6 @@ pub fn build_extractor(
             let anchor_snippet = if let Some(anchor_ident) = &attr.anchor_ident {
                 let anchor_ident_tok = anchor_ident.clone();
                 quote! {
-                    let _anchor_target = &ctx.accounts.#anchor_ident_tok;
                     // Compile-time assertion: the anchor target for a scalar UTXO field **must** itself
                     // be "scalar‐like", i.e. directly convertible via `ToAccountInfo`.  This produces a
                     // clear error message such as:
@@ -62,16 +61,17 @@ pub fn build_extractor(
                             T: anchor_lang::ToAccountInfo<'info>,
                         {
                         }
-                        _anchor_scalar_check(_anchor_target);
+                        _anchor_scalar_check(&ctx.accounts.#anchor_ident_tok);
                     }
+                    let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
                     let _anchor_ix = arch_program::system_instruction::anchor(
-                        anchor_lang::ToAccountInfo::to_account_info(&_anchor_target).key,
+                        _anchor_target.key,
                         #ident.meta.txid_big_endian(),
                         #ident.meta.vout(),
                     );
                     // Record state transition for this anchored account in the Bitcoin
-                    // transaction builder (if one is present on the `Context`).
-                    ctx.btc_tx_builder.add_state_transition(&anchor_lang::ToAccountInfo::to_account_info(&_anchor_target))?;
+                    // transaction builder.
+                    ctx.btc_tx_builder.add_state_transition(&_anchor_target)?;
                 }
             } else {
                 quote! {}
@@ -132,7 +132,6 @@ pub fn build_extractor(
                 let anchor_ident_tok = anchor_ident.clone();
                 quote! {
                     if let Some(__opt_utxo) = #ident.as_ref() {
-                        let _anchor_target = &ctx.accounts.#anchor_ident_tok;
                         // Compile-time assertion identical to the one for scalar fields – ensure the
                         // anchor target itself is scalar and not a collection.
                         {
@@ -141,14 +140,15 @@ pub fn build_extractor(
                                 T: anchor_lang::ToAccountInfo<'info>,
                             {
                             }
-                            _anchor_scalar_check(_anchor_target);
+                            _anchor_scalar_check(&ctx.accounts.#anchor_ident_tok);
                         }
+                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
                         let _anchor_ix = arch_program::system_instruction::anchor(
-                            anchor_lang::ToAccountInfo::to_account_info(&_anchor_target).key,
+                            _anchor_target.key,
                             __opt_utxo.meta.txid_big_endian(),
                             __opt_utxo.meta.vout(),
                         );
-                        ctx.btc_tx_builder.add_state_transition(&anchor_lang::ToAccountInfo::to_account_info(&_anchor_target))?;
+                        ctx.btc_tx_builder.add_state_transition(&_anchor_target)?;
                     }
                 }
             } else {
@@ -195,13 +195,13 @@ pub fn build_extractor(
                 let anchor_stmt = if let Some(anchor_ident) = &attr.anchor_ident {
                     let anchor_ident_tok = anchor_ident.clone();
                     quote! {
-                        let _anchor_target = &ctx.accounts.#anchor_ident_tok[#i];
+                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[#i]);
                         let _anchor_ix = arch_program::system_instruction::anchor(
-                            anchor_lang::ToAccountInfo::to_account_info(&_anchor_target).key,
+                            _anchor_target.key,
                             utxo.meta.txid_big_endian(),
                             utxo.meta.vout(),
                         );
-                        ctx.btc_tx_builder.add_state_transition(&anchor_lang::ToAccountInfo::to_account_info(&_anchor_target))?;
+                        ctx.btc_tx_builder.add_state_transition(&_anchor_target)?;
                     }
                 } else {
                     quote! {}
@@ -258,15 +258,15 @@ pub fn build_extractor(
                         if !(#predicate) {
                             return Err(ProgramError::Custom(#err_variant.into()));
                         }
-                        let _anchor_target = &ctx.accounts.#anchor_ident_tok[i];
+                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[i]);
                         let _anchor_ix = arch_program::system_instruction::anchor(
-                            anchor_lang::ToAccountInfo::to_account_info(&_anchor_target).key,
+                            _anchor_target.key,
                             utxo.meta.txid_big_endian(),
                             utxo.meta.vout(),
                         );
                         // Record state transition for this anchored account in the Bitcoin
                         // transaction builder (if one is present on the `Context`).
-                        ctx.btc_tx_builder.add_state_transition(&anchor_lang::ToAccountInfo::to_account_info(&_anchor_target))?;
+                        ctx.btc_tx_builder.add_state_transition(&_anchor_target)?;
                         #ident.push(utxo);
                         idx += 1;
                     }
