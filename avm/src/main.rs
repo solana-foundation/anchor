@@ -2,6 +2,7 @@ use anyhow::{anyhow, Error, Result};
 use avm::InstallTarget;
 use clap::{CommandFactory, Parser, Subcommand};
 use semver::Version;
+use std::ffi::OsStr;
 
 #[derive(Parser)]
 #[clap(name = "avm", about = "Anchor version manager", version)]
@@ -97,7 +98,56 @@ pub fn entry(opts: Cli) -> Result<()> {
     }
 }
 
+fn anchor_proxy() -> Result<()> {
+    let args = std::env::args().skip(1).collect::<Vec<String>>();
+
+    let version = avm::current_version()
+        .map_err(|_e| anyhow::anyhow!("Anchor version not set. Please run `avm use latest`."))?;
+
+    let binary_path = avm::version_binary_path(&version);
+    if !binary_path.exists() {
+        anyhow::bail!(
+            "anchor-cli {} not installed. Please run `avm use {}`.",
+            version,
+            version
+        );
+    }
+
+    let exit = std::process::Command::new(binary_path)
+        .args(args)
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                avm::get_bin_dir_path().to_string_lossy(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .spawn()?
+        .wait_with_output()
+        .expect("Failed to run anchor-cli");
+
+    if !exit.status.success() {
+        std::process::exit(exit.status.code().unwrap_or(1));
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
+    // If the binary is named `anchor` then run the proxy.
+    if let Some(stem) = std::env::current_exe()
+        .ok()
+        .as_ref()
+        .map(std::path::Path::new)
+        .and_then(std::path::Path::file_stem)
+        .and_then(OsStr::to_str)
+    {
+        if stem == "anchor" {
+            return anchor_proxy();
+        }
+    }
+
     // Make sure the user's home directory is setup with the paths required by AVM.
     avm::ensure_paths();
 

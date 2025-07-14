@@ -53,7 +53,30 @@ pub fn ensure_paths() {
 
     let bin_dir = get_bin_dir_path();
     if !bin_dir.exists() {
-        fs::create_dir_all(bin_dir).expect("Could not create .avm/bin directory");
+        fs::create_dir_all(&bin_dir).expect("Could not create .avm/bin directory");
+    }
+
+    // Copy the `avm` binary to `~/.avm/bin` so we can create symlinks to it.
+    let avm_in_bin = bin_dir.join("avm");
+    if let Ok(current_avm) = std::env::current_exe() {
+        // Only copy if the paths are different
+        if current_avm != avm_in_bin {
+            if let Err(e) = fs::copy(current_avm, &avm_in_bin) {
+                eprintln!("Failed to copy avm binary: {}", e);
+            }
+        }
+    }
+
+    // Create a symlink from `anchor` to `avm` so that the user can run `anchor`
+    // from the command line.
+    #[cfg(unix)]
+    {
+        let anchor_in_bin = bin_dir.join("anchor");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = std::os::unix::fs::symlink(&avm_in_bin, anchor_in_bin) {
+                eprintln!("Failed to create symlink: {}", e);
+            }
+        }
     }
 
     if !current_version_file_path().exists() {
