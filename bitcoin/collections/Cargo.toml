@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = { workspace = true }
-serde = { workspace = true }
+bytemuck = { version = "1.14", features = ["derive", "min_const_generics"] }
+serde = { version = "1.0.198", features = ["derive"] }
 
 [dev-dependencies]
-proptest = { workspace = true }
+proptest = "1.5.0"

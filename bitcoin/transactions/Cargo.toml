@@ -4,23 +4,27 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = { workspace = true }
 arch_program = { workspace = true }
-bitcoin = { workspace = true }
-hex = { workspace = true }
+bitcoin = { version = "0.32.5", features = ["serde"] }
+hex = "0.4.3"
 satellite-collections = { path = "../collections" }
 satellite-math = { path = "../math" }
-thiserror = { workspace = true }
-num-derive = { workspace = true }
-num-traits = { workspace = true }
-bytemuck = { workspace = true, features = ["derive"] }
-serde = { workspace = true, features = ["derive"], optional = true }
-utoipa = { workspace = true, optional = true }
-ordinals = { workspace = true, optional = true }
-paste = "1"
+thiserror = "1.0.61"
+num-derive = { version = "0.4.0" }
+num-traits = { version = "0.2" }
+bytemuck = { version = "1.14", features = ["derive", "min_const_generics"] }
+serde = { version = "1.0.198", features = ["derive"], optional = true }
+utoipa ={ version = "5.3.1", features = [
+    "axum_extras",
+    "yaml",
+    "preserve_order",
+    "chrono",
+    "decimal",
+], optional = true }
+ordinals = { version = "0.0.14", optional = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
+serde_json = { version = "1.0.116" }
 proptest = "1.5.0"
 
 [features]

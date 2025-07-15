@@ -7,4 +7,4 @@ publish = false
 [dependencies]
 satellite-lang = { path = "../../lang" }
 arch_program = { path = "../../deps/program" }
-bytemuck = { workspace = true, features = ["derive", "min_const_generics"] }
+bytemuck = { version = "1.14", features = ["derive", "min_const_generics"] }

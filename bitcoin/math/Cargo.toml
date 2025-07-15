@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-num = { workspace = true }
-primitive-types = { workspace = true }
-thiserror = { workspace = true }
+num = { version = "0.4.3", features = ["serde"] }
+primitive-types = { version = "0.13.1", default-features = false }
+thiserror = "1.0.61"

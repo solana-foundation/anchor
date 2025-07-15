@@ -1,4 +1,4 @@
-//! Arch/Saturn Bitcoin transaction helpers.
+//! Arch Bitcoin transaction helpers.
 //!
 //! This crate offers zero-heap utilities and a strongly-typed builder – [`TransactionBuilder`] –
 //! for composing, fee–tuning and finalising Bitcoin transactions that will be forwarded through

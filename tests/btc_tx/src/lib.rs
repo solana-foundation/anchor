@@ -1,9 +1,9 @@
+use arch_program::utxo::UtxoMeta;
+use bytemuck::{Pod, Zeroable};
 use satellite_lang::accounts::shards::Shards;
 use satellite_lang::satellite_bitcoin::utxo_info::UtxoInfo;
 use satellite_lang::shard_set::ShardSet;
 use satellite_lang::{context::BtcContext, prelude::*, ZeroCopy};
-use arch_program::utxo::UtxoMeta;
-use bytemuck::{Pod, Zeroable};
 
 declare_id!("11111111111111111111111111111111");
 
@@ -19,7 +19,6 @@ pub mod btc_tx_test_program {
 
         ctx.btc_tx_builder
             .add_state_transition(&ctx.accounts.together[0].to_account_info())?;
-
 
         // Build an *unselected* ShardSet from all shard loaders.
         // The lifetime is inferred, so we only need to specify the shard type and
@@ -38,6 +37,7 @@ pub struct BtcTxBuilder {
 }
 
 impl ZeroCopy for BtcTxBuilder {}
+
 impl Owner for BtcTxBuilder {
     fn owner() -> Pubkey {
         Pubkey::default()

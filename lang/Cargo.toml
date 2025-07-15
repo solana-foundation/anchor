@@ -54,10 +54,9 @@ satellite-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 base64 = "0.21"
 bincode = "1"
 borsh = { version = "1.4.0" }
-bytemuck = "1"
+bytemuck = "1.14"
 arch_program = { path = "../deps/program", version = "0.5.3" }
-thiserror = "1"
-bitcoin = { workspace = true }
+thiserror = "1.0.61"
+bitcoin = "0.32.5"
 
-# Bitcoin transaction support crates (re-exported for user convenience)
 satellite-bitcoin = { workspace = true }

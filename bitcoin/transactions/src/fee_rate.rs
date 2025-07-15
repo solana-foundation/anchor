@@ -1,13 +1,34 @@
-use std::str::FromStr;
+use std::{array::TryFromSliceError, num::ParseFloatError, str::FromStr};
 
-use anyhow::{bail, Error};
 use bitcoin::Amount;
+
+#[derive(Debug, thiserror::Error)]
+pub enum FeeRateError {
+    #[error("invalid fee rate: {0}")]
+    ParseFloatError(ParseFloatError),
+    #[error("invalid fee rate: {0}")]
+    TryFromSliceError(TryFromSliceError),
+    #[error("invalid fee rate: {0}")]
+    InvalidFeeRate(f64),
+}
+
+impl From<ParseFloatError> for FeeRateError {
+    fn from(err: ParseFloatError) -> Self {
+        Self::ParseFloatError(err)
+    }
+}
+
+impl From<TryFromSliceError> for FeeRateError {
+    fn from(err: TryFromSliceError) -> Self {
+        Self::TryFromSliceError(err)
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct FeeRate(pub f64);
 
 impl FromStr for FeeRate {
-    type Err = Error;
+    type Err = FeeRateError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(f64::from_str(s)?)
@@ -15,7 +36,7 @@ impl FromStr for FeeRate {
 }
 
 impl TryFrom<&[u8]> for FeeRate {
-    type Error = Error;
+    type Error = FeeRateError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         Ok(Self(f64::from_le_bytes(bytes[..8].try_into()?)))
@@ -23,11 +44,11 @@ impl TryFrom<&[u8]> for FeeRate {
 }
 
 impl TryFrom<f64> for FeeRate {
-    type Error = Error;
+    type Error = FeeRateError;
 
     fn try_from(rate: f64) -> Result<Self, Self::Error> {
         if rate.is_sign_negative() | rate.is_nan() | rate.is_infinite() {
-            bail!("invalid fee rate: {rate}")
+            return Err(FeeRateError::InvalidFeeRate(rate));
         }
         Ok(Self(rate))
     }

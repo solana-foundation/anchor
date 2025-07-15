@@ -4175,7 +4175,6 @@ dependencies = [
 name = "satellite-bitcoin-transactions"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "arch_program",
  "bitcoin",
  "bytemuck",
@@ -4183,7 +4182,6 @@ dependencies = [
  "num-derive",
  "num-traits",
  "ordinals",
- "paste",
  "proptest",
  "satellite-collections",
  "satellite-math",
