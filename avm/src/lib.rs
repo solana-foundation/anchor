@@ -79,6 +79,21 @@ pub fn ensure_paths() {
         }
     }
 
+// On Windows, we create a symlink named `anchor.exe` pointing to the `avm.exe` binary in the bin directory,
+// so that the user can run `anchor` from the command line.
+// Note: Creating symlinks on Windows may require administrator privileges or that Developer Mode is enabled.    
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::symlink_file;
+        let anchor_in_bin = bin_dir.join("anchor.exe");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = symlink_file(&avm_in_bin, &anchor_in_bin) {
+                eprintln!("Failed to create symlink: {}", e);
+            }
+        }
+    }
+
     if !current_version_file_path().exists() {
         fs::File::create(current_version_file_path()).expect("Could not create .version file");
     }

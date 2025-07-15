@@ -812,7 +812,6 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             args,
         } => verify(
-            &opts.cfg_override,
             program_id,
             repo_url,
             commit_hash,
@@ -2028,7 +2027,6 @@ fn _build_solidity_cwd(
 }
 
 pub fn verify(
-    _cfg_override: &ConfigOverride,
     program_id: Pubkey,
     repo_url: Option<String>,
     commit_hash: Option<String>,
