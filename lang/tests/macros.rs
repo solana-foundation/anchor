@@ -1,9 +1,9 @@
 use core::str::FromStr;
 
-use anchor_lang::arch_program::pubkey::Pubkey;
+use satellite_lang::arch_program::pubkey::Pubkey;
 
 mod id {
-    anchor_lang::declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+    satellite_lang::declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 }
 
 #[test]
@@ -17,8 +17,8 @@ fn test_declare_id() {
 }
 
 mod pk {
-    pub(super) const PUBKEY: anchor_lang::arch_program::pubkey::Pubkey =
-        anchor_lang::pubkey!("A7yUYJNEVYRLE4QWsnc9rE9JRsm7DfqEmLscQVwkffAk");
+    pub(super) const PUBKEY: satellite_lang::arch_program::pubkey::Pubkey =
+        satellite_lang::pubkey!("A7yUYJNEVYRLE4QWsnc9rE9JRsm7DfqEmLscQVwkffAk");
 }
 
 #[test]

@@ -39,7 +39,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// # Example
 /// ```ignore
-/// use anchor_lang::prelude::*;
+/// use satellite_lang::prelude::*;
 /// use other_program::Auth;
 ///
 /// declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -107,7 +107,7 @@ use std::ops::{Deref, DerefMut};
 /// // from this trait. It delegates to
 /// // "try_deserialize_unchecked" by default which is what we want here
 /// // because non-anchor accounts don't have a discriminator to check
-/// impl anchor_lang::AccountDeserialize for Mint {
+/// impl satellite_lang::AccountDeserialize for Mint {
 ///     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
 ///         spl_token::state::Mint::unpack(buf).map(Mint)
 ///     }
@@ -115,9 +115,9 @@ use std::ops::{Deref, DerefMut};
 /// // AccountSerialize defaults to a no-op which is what we want here
 /// // because it's a foreign program, so our program does not
 /// // have permission to write to the foreign program's accounts anyway
-/// impl anchor_lang::AccountSerialize for Mint {}
+/// impl satellite_lang::AccountSerialize for Mint {}
 ///
-/// impl anchor_lang::Owner for Mint {
+/// impl satellite_lang::Owner for Mint {
 ///     fn owner() -> Pubkey {
 ///         // pub use spl_token::ID is used at the top of the file
 ///         ID

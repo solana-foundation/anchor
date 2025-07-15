@@ -5,10 +5,10 @@
 
 use crate::shard_set::StateShard;
 
-use anchor_lang::prelude::AccountLoader;
-use anchor_lang::prelude::Owner;
-use anchor_lang::Discriminator;
-use anchor_lang::ZeroCopy;
+use satellite_lang::prelude::AccountLoader;
+use satellite_lang::prelude::Owner;
+use satellite_lang::Discriminator;
+use satellite_lang::ZeroCopy;
 use arch_program::utxo;
 use arch_program::{account::AccountInfo, pubkey::Pubkey, utxo::UtxoMeta};
 use bytemuck::{Pod, Zeroable};

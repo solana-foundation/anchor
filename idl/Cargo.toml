@@ -1,5 +1,5 @@
 [package]
-name = "anchor-lang-idl"
+name = "satellite-lang-idl"
 version = "0.1.2"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
@@ -16,7 +16,7 @@ build = ["regex"]
 convert = ["heck", "sha2"]
 
 [dependencies]
-anchor-lang-idl-spec = { path = "./spec", version = "0.1.0" }
+satellite-lang-idl-spec = { path = "./spec", version = "0.1.0" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

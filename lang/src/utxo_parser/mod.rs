@@ -1,4 +1,4 @@
-use anchor_lang::Bumps;
+use satellite_lang::Bumps;
 use arch_program::{program_error::ProgramError, utxo::UtxoMeta};
 use satellite_bitcoin::utxo_info::UtxoInfo;
 

@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::Idl;
+use satellite_lang_idl::types::Idl;
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
@@ -53,19 +53,19 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             Some(ty) => {
                 let ty = convert_idl_type_to_syn_type(ty);
                 (
-                    quote! { anchor_lang::Result<Return::<#ty>> },
+                    quote! { satellite_lang::Result<Return::<#ty>> },
                     quote! { Ok(Return::<#ty> { phantom: std::marker::PhantomData }) },
                 )
             },
             None => (
-                quote! { anchor_lang::Result<()> },
+                quote! { satellite_lang::Result<()> },
                 quote! { Ok(()) },
             )
         };
 
         quote! {
             pub fn #method_name<'a, 'b, 'c, 'info>(
-                ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
+                ctx: satellite_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
                 #(#args),*
             ) -> #ret_type {
                 let ix = {
@@ -73,10 +73,10 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                     let mut data = Vec::with_capacity(256);
                     data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
                     AnchorSerialize::serialize(&ix, &mut data)
-                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
+                        .map_err(|_| satellite_lang::error::ErrorCode::InstructionDidNotSerialize)?;
 
                     let accounts = ctx.to_account_metas(None);
-                    anchor_lang::arch_program::instruction::Instruction {
+                    satellite_lang::arch_program::instruction::Instruction {
                         program_id: ctx.program.key(),
                         accounts,
                         data,
@@ -84,7 +84,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 };
 
                 let mut acc_infos = ctx.to_account_infos();
-                anchor_lang::arch_program::program::invoke_signed(
+                satellite_lang::arch_program::program::invoke_signed(
                     &ix,
                     &acc_infos,
                     ctx.signer_seeds,
@@ -109,7 +109,7 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
 
         impl<T: AnchorDeserialize> Return<T> {
             pub fn get(&self) -> T {
-                let (_key, data) = anchor_lang::arch_program::program::get_return_data().unwrap();
+                let (_key, data) = satellite_lang::arch_program::program::get_return_data().unwrap();
                 T::try_from_slice(&data).unwrap()
             }
         }

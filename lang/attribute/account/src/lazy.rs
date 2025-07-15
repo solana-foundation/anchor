@@ -6,8 +6,8 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
     let lazy_ident = format_ident!("Lazy{}", ident);
     let load_common_ident = to_private_ident("load_common");
     let initialize_fields = to_private_ident("initialize_fields");
-    let lazy_acc_ty = quote! { anchor_lang::accounts::lazy_account::LazyAccount };
-    let disc_len = quote! { <#ident as anchor_lang::Discriminator>::DISCRIMINATOR.len() };
+    let lazy_acc_ty = quote! { satellite_lang::accounts::lazy_account::LazyAccount };
+    let disc_len = quote! { <#ident as satellite_lang::Discriminator>::DISCRIMINATOR.len() };
 
     let load_common_docs = quote! {
         /// The deserialized value is cached for future uses i.e. all subsequent calls to this
@@ -57,7 +57,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             });
 
             let ty = &field.ty;
-            let ty_as_lazy = quote! { <#ty as anchor_lang::__private::Lazy> };
+            let ty_as_lazy = quote! { <#ty as satellite_lang::__private::Lazy> };
             let size = quote! {
                 // Calculating the offset is highly wasteful if the type is sized.
                 if #ty_as_lazy::SIZED {
@@ -73,17 +73,17 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 #load_common_docs
                 ///
                 #load_panic_docs
-                fn #load_ident(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ty>>;
+                fn #load_ident(&self) -> satellite_lang::Result<::core::cell::Ref<'_, #ty>>;
 
                 /// Load a mutable reference to the field.
                 ///
                 #load_common_docs
                 ///
                 #load_mut_panic_docs
-                fn #load_mut_ident(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ty>>;
+                fn #load_mut_ident(&self) -> satellite_lang::Result<::core::cell::RefMut<'_, #ty>>;
 
                  #[doc(hidden)]
-                fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> anchor_lang::Result<R>;
+                fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> satellite_lang::Result<R>;
 
                  #[doc(hidden)]
                 fn #offset_of_ident(&self) -> usize;
@@ -93,7 +93,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             };
 
             let impls = quote! {
-                fn #load_ident(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ty>> {
+                fn #load_ident(&self) -> satellite_lang::Result<::core::cell::Ref<'_, #ty>> {
                     self.#load_common_ident(|| {
                         // SAFETY: The common load method makes sure the field is initialized.
                         ::core::cell::Ref::map(self.__account.borrow(), |acc| unsafe {
@@ -102,7 +102,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     })
                 }
 
-                fn #load_mut_ident(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ty>> {
+                fn #load_mut_ident(&self) -> satellite_lang::Result<::core::cell::RefMut<'_, #ty>> {
                     self.#load_common_ident(|| {
                         // SAFETY: The common load method makes sure the field is initialized.
                         ::core::cell::RefMut::map(self.__account.borrow_mut(), |acc| unsafe {
@@ -112,7 +112,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 }
 
                 #[inline(never)]
-                fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> anchor_lang::Result<R> {
+                fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> satellite_lang::Result<R> {
                     self.#initialize_fields();
 
                     // Return early if initialized
@@ -124,7 +124,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     let offset = self.#offset_of_ident();
                     let size = self.#size_of_ident();
                     let data = self.__info.data.borrow();
-                    let val = anchor_lang::AnchorDeserialize::try_from_slice(
+                    let val = satellite_lang::AnchorDeserialize::try_from_slice(
                         &data[offset..offset + size]
                     )?;
                     unsafe {
@@ -173,17 +173,17 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             #load_common_docs
             ///
             #load_panic_docs
-            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident>>;
+            fn load(&self) -> satellite_lang::Result<::core::cell::Ref<'_, #ident>>;
 
             /// Load a mutable reference to the entire account.
             ///
             #load_common_docs
             ///
             #load_mut_panic_docs
-            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident>>;
+            fn load_mut(&self) -> satellite_lang::Result<::core::cell::RefMut<'_, #ident>>;
 
             #[doc(hidden)]
-            fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> anchor_lang::Result<R>;
+            fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> satellite_lang::Result<R>;
 
             #(#loader_signatures)*
 
@@ -192,11 +192,11 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
 
             /// Run the exit routine of the account, similar to [`AccountsExit`] but implemented
             /// as a regular method because we can't implement external traits for external structs.
-            fn exit(&self, program_id: &anchor_lang::prelude::Pubkey) -> anchor_lang::Result<()>;
+            fn exit(&self, program_id: &satellite_lang::prelude::Pubkey) -> satellite_lang::Result<()>;
         }
 
         impl<'info> #lazy_ident for #lazy_acc_ty<'info, #ident> {
-            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident>> {
+            fn load(&self) -> satellite_lang::Result<::core::cell::Ref<'_, #ident>> {
                 self.#load_common_ident(|| {
                     // SAFETY: The common load method makes sure all fields are initialized.
                     ::core::cell::Ref::map(self.__account.borrow(), |acc| unsafe {
@@ -205,7 +205,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
 
-            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident>> {
+            fn load_mut(&self) -> satellite_lang::Result<::core::cell::RefMut<'_, #ident>> {
                 self.#load_common_ident(|| {
                     // SAFETY: The common load method makes sure all fields are initialized.
                     ::core::cell::RefMut::map(self.__account.borrow_mut(), |acc| unsafe {
@@ -215,7 +215,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             }
 
             #[inline(never)]
-            fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> anchor_lang::Result<R> {
+            fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> satellite_lang::Result<R> {
                 self.#initialize_fields();
 
                 // Create a scope to drop the `__fields` borrow
@@ -234,7 +234,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     // Nothing is initialized, initialize all
                     let offset = #disc_len;
                     let mut data = self.__info.data.borrow();
-                    let val = anchor_lang::AnchorDeserialize::deserialize(&mut &data[offset..])?;
+                    let val = satellite_lang::AnchorDeserialize::deserialize(&mut &data[offset..])?;
                     unsafe { self.__account.borrow_mut().as_mut_ptr().write(val) };
 
                     // Set fields to initialized
@@ -269,16 +269,16 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             // TODO: This method can be optimized to *only* serialize the fields that we have
             // initialized rather than deserializing the whole account, and then serializing it
             // back, which consumes a lot more CUs than it should for most accounts.
-            fn exit(&self, program_id: &anchor_lang::prelude::Pubkey) -> anchor_lang::Result<()> {
+            fn exit(&self, program_id: &satellite_lang::prelude::Pubkey) -> satellite_lang::Result<()> {
                 // Only persist if the owner is the current program and the account is not closed
-                if &<#ident as anchor_lang::Owner>::owner() == program_id
-                    && !anchor_lang::__private::is_closed(self.__info)
+                if &<#ident as satellite_lang::Owner>::owner() == program_id
+                    && !satellite_lang::__private::is_closed(self.__info)
                 {
                     // Make sure all fields are initialized
                     let acc = self.load()?;
                     let mut data = self.__info.try_borrow_mut_data()?;
                     let dst: &mut [u8] = &mut data;
-                    let mut writer = anchor_lang::__private::BpfWriter::new(dst);
+                    let mut writer = satellite_lang::__private::BpfWriter::new(dst);
                     acc.try_serialize(&mut writer)?;
                 }
 

@@ -1,6 +1,6 @@
 //! Testing the extraction of doc comments from the IDL.
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("Docs111111111111111111111111111111111111111");
 

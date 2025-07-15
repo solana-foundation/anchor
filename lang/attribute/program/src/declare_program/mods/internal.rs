@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::{
+use satellite_lang_idl::types::{
     Idl, IdlInstruction, IdlInstructionAccountItem, IdlInstructionAccounts,
 };
 use anchor_syn::{
@@ -50,18 +50,18 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
         let discriminator = gen_discriminator(&ix.discriminator);
         let impl_discriminator = quote! {
-            impl anchor_lang::Discriminator for #ix_struct_name {
+            impl satellite_lang::Discriminator for #ix_struct_name {
                 const DISCRIMINATOR: &'static [u8] = &#discriminator;
             }
         };
 
         let impl_ix_data = quote! {
-            impl anchor_lang::InstructionData for #ix_struct_name {}
+            impl satellite_lang::InstructionData for #ix_struct_name {}
         };
 
         let program_id = get_canonical_program_id();
         let impl_owner = quote! {
-            impl anchor_lang::Owner for #ix_struct_name {
+            impl satellite_lang::Owner for #ix_struct_name {
                 fn owner() -> Pubkey {
                     #program_id
                 }

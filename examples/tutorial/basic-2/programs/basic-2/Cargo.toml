@@ -11,7 +11,7 @@ name = "basic_2"
 [features]
 no-entrypoint = []
 cpi = ["no-entrypoint"]
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { path = "../../../../../lang" }
+satellite-lang = { path = "../../../../../lang" }

@@ -158,7 +158,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-lang"
+name = "satellite-lang"
 version = "0.29.0"
 dependencies = [
  "anchor-attribute-access-control",
@@ -184,7 +184,7 @@ dependencies = [
 name = "anchor-spl"
 version = "0.29.0"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
@@ -387,7 +387,7 @@ checksum = "9ba43ea6f343b788c8764558649e08df62f86c6ef251fdaeb1ffd010a9ae50a2"
 name = "bench"
 version = "0.1.0"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "anchor-spl",
 ]
 

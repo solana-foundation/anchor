@@ -2,7 +2,7 @@
 
 use {
     anchor_client::{
-        anchor_lang::Discriminator,
+        satellite_lang::Discriminator,
         solana_sdk::{
             account::Account,
             commitment_config::CommitmentConfig,

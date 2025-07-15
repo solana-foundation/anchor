@@ -6,7 +6,7 @@ pub use arch_program::system_program::SYSTEM_PROGRAM_ID;
 #[derive(Debug, Clone)]
 pub struct System;
 
-impl anchor_lang::Id for System {
+impl satellite_lang::Id for System {
     fn id() -> Pubkey {
         SYSTEM_PROGRAM_ID
     }

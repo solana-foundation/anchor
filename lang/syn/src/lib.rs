@@ -406,7 +406,7 @@ impl Field {
             // }
             Ty::Shards(ty) => {
                 let inner = &ty.inner;
-                quote! { anchor_lang::accounts::shards::Shards<'info, #inner> }
+                quote! { satellite_lang::accounts::shards::Shards<'info, #inner> }
             }
             _ => quote! {
                 #container_ty<#account_ty>
@@ -529,21 +529,21 @@ impl Field {
     pub fn container_ty(&self) -> proc_macro2::TokenStream {
         match &self.ty {
             Ty::Account(_) => quote! {
-                anchor_lang::accounts::account::Account
+                satellite_lang::accounts::account::Account
             },
             Ty::LazyAccount(_) => quote! {
-                anchor_lang::accounts::lazy_account::LazyAccount
+                satellite_lang::accounts::lazy_account::LazyAccount
             },
             Ty::AccountLoader(_) => quote! {
-                anchor_lang::accounts::account_loader::AccountLoader
+                satellite_lang::accounts::account_loader::AccountLoader
             },
-            // Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
-            Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
-            Ty::Interface(_) => quote! { anchor_lang::accounts::interface::Interface },
+            // Ty::Sysvar(_) => quote! { satellite_lang::accounts::sysvar::Sysvar },
+            Ty::Program(_) => quote! { satellite_lang::accounts::program::Program },
+            Ty::Interface(_) => quote! { satellite_lang::accounts::interface::Interface },
             Ty::InterfaceAccount(_) => {
-                quote! { anchor_lang::accounts::interface_account::InterfaceAccount }
+                quote! { satellite_lang::accounts::interface_account::InterfaceAccount }
             }
-            Ty::Shards(_) => quote! { anchor_lang::accounts::shards::Shards },
+            Ty::Shards(_) => quote! { satellite_lang::accounts::shards::Shards },
             Ty::AccountInfo => quote! {},
             Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},

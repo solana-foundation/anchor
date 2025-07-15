@@ -91,7 +91,7 @@ pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// # Example
 ///
 /// ```rust,ignore
-/// use anchor_lang::prelude::*;
+/// use satellite_lang::prelude::*;
 ///
 /// // SPL Transfer Hook Interface: `Execute` instruction.
 /// //
@@ -156,7 +156,7 @@ pub fn interface(
 /// # Example
 ///
 /// ```ignore
-/// use anchor_lang::prelude::*;
+/// use satellite_lang::prelude::*;
 ///
 /// declare_id!("CustomDiscriminator111111111111111111111111");
 ///

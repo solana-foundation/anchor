@@ -3,7 +3,7 @@
 //! reside until they are "cashed" by the intended recipient. The creator of
 //! the check can cancel the check at any time to get back the funds.
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 use std::convert::Into;
 

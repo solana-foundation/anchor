@@ -36,8 +36,8 @@
 //! `Accounts`.
 //!
 //! ```ignore
-//! use anchor_lang::prelude::*;
-//! use anchor_lang::accounts::shards::Shards;
+//! use satellite_lang::prelude::*;
+//! use satellite_lang::accounts::shards::Shards;
 //!
 //! #[account]
 //! pub struct Position { /* … */ }
@@ -94,7 +94,7 @@
 //! ---
 //!
 //! *Module generated automatically – please keep in sync with `#[account(shards = ...)]`
-//! validation logic in `anchor-lang-syn`.*
+//! validation logic in `satellite-lang-syn`.*
 pub struct Shards<'info, T> {
     /// Vector of shards – each shard is itself an account container (Account, AccountLoader, …).
     pub shards: Vec<T>,

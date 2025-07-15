@@ -1,10 +1,10 @@
 //! A relatively advanced example of a staking program. If you're new to Anchor,
 //! it's suggested to start with the other examples.
 
-use anchor_lang::accounts::state::ProgramState;
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::account_info::next_account_info;
-use anchor_lang::solana_program::program_option::COption;
+use satellite_lang::accounts::state::ProgramState;
+use satellite_lang::prelude::*;
+use satellite_lang::solana_program::account_info::next_account_info;
+use satellite_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;

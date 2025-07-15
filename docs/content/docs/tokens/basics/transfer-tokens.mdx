@@ -48,7 +48,7 @@ Token Program or Token Extension Program. This function requires:
    decimals. (e.g. if the mint has 2 decimals, amount of 100 = 1 token)
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
 
 declare_id!("3pX5NKLru1UBDVckynWQxsgnJeUN3N1viy36Gk9TSn8d");
@@ -152,7 +152,7 @@ defined within the program.
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{self, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked},

@@ -1,6 +1,6 @@
 use {
     crate::{AuctionHouse, ErrorCode},
-    anchor_lang::{
+    satellite_lang::{
         prelude::*,
         solana_program::{
             program::invoke_signed,
@@ -68,7 +68,7 @@ pub fn make_ata<'a>(
 
 pub fn assert_metadata_valid<'a>(
     metadata: &UncheckedAccount,
-    token_account: &anchor_lang::accounts::account::Account<'a, TokenAccount>,
+    token_account: &satellite_lang::accounts::account::Account<'a, TokenAccount>,
 ) -> Result<()> {
     assert_derivation(
         &mpl_token_metadata::ID,
@@ -88,7 +88,7 @@ pub fn assert_metadata_valid<'a>(
 
 pub fn get_fee_payer<'a, 'b>(
     authority: &AccountInfo,
-    auction_house: &anchor_lang::accounts::account::Account<AuctionHouse>,
+    auction_house: &satellite_lang::accounts::account::Account<AuctionHouse>,
     wallet: AccountInfo<'a>,
     auction_house_fee_account: AccountInfo<'a>,
     auction_house_seeds: &'b [&'b [u8]],
@@ -116,7 +116,7 @@ pub fn assert_valid_delegation(
     src_wallet: &AccountInfo,
     dst_wallet: &AccountInfo,
     transfer_authority: &AccountInfo,
-    mint: &anchor_lang::accounts::account::Account<Mint>,
+    mint: &satellite_lang::accounts::account::Account<Mint>,
     paysize: u64,
 ) -> Result<()> {
     match Account::unpack(&src_account.data.borrow()) {
@@ -185,7 +185,7 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn pay_auction_house_fees<'a>(
-    auction_house: &anchor_lang::accounts::account::Account<'a, AuctionHouse>,
+    auction_house: &satellite_lang::accounts::account::Account<'a, AuctionHouse>,
     auction_house_treasury: &AccountInfo<'a>,
     escrow_payment_account: &AccountInfo<'a>,
     token_program: &AccountInfo<'a>,
@@ -241,7 +241,7 @@ pub fn create_program_token_account_if_not_present<'a>(
     system_program: &Program<'a, System>,
     fee_payer: &AccountInfo<'a>,
     token_program: &Program<'a, Token>,
-    treasury_mint: &anchor_lang::accounts::account::Account<'a, Mint>,
+    treasury_mint: &satellite_lang::accounts::account::Account<'a, Mint>,
     owner: &AccountInfo<'a>,
     rent: &Sysvar<'a, Rent>,
     signer_seeds: &[&[u8]],

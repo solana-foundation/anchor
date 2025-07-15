@@ -54,7 +54,7 @@ The mint authority passed to the `mint_to` instruction must match the
 must be a signer on the transaction. For example:
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::{
     token_interface::{self, Mint, MintTo, TokenAccount, TokenInterface},
 };
@@ -147,7 +147,7 @@ control token minting.
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{self, Mint, MintTo, TokenAccount, TokenInterface},

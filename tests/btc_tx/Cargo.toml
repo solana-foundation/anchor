@@ -5,6 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-anchor-lang = { path = "../../lang" }
+satellite-lang = { path = "../../lang" }
 arch_program = { path = "../../deps/program" }
 bytemuck = { workspace = true, features = ["derive", "min_const_generics"] }

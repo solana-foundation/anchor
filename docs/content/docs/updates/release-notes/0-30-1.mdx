@@ -40,11 +40,11 @@ A new feature has been added to the IDL crate in order to convert legacy IDLs
 To programmatically convert legacy IDLs, add:
 
 ```
-anchor-lang-idl = { version = "0.1.1", features = ["convert"] }
+satellite-lang-idl = { version = "0.1.1", features = ["convert"] }
 ```
 
 and use the
-[`convert_idl`](https://docs.rs/anchor-lang-idl/0.1.1/anchor_lang_idl/convert/fn.convert_idl.html)
+[`convert_idl`](https://docs.rs/satellite-lang-idl/0.1.1/satellite_lang_idl/convert/fn.convert_idl.html)
 function.
 
 **NOTE:** This functionality has also been implemented as a CLI command for
@@ -130,12 +130,12 @@ Making changes to the IDL crate, e.g. adding features such as the
 require bumping the version to get the changes even if the spec itself doesn't
 change.
 
-To fix this problem, a new [crate](https://docs.rs/anchor-lang-idl-spec) that
+To fix this problem, a new [crate](https://docs.rs/satellite-lang-idl-spec) that
 only includes the IDL spec has been introduced. The new crate's version will be
 used in the `idl.metadata.spec` field to differentiate between various IDLs.
 
 **NOTE:** This crate is accessible via the main IDL crate from
-[`anchor_lang_idl::types`](https://docs.rs/anchor-lang-idl/0.1.1/anchor_lang_idl/types/index.html).
+[`satellite_lang_idl::types`](https://docs.rs/satellite-lang-idl/0.1.1/satellite_lang_idl/types/index.html).
 
 ## CLI
 
@@ -203,7 +203,7 @@ In this release, file system related errors also include the path of the file.
 
 ### Using legacy IDLs with `declare_program!`
 
-[`declare_program!`](https://www.anchor-lang.com/release-notes/0.30.0#dependency-free-program-declaration)
+[`declare_program!`](https://www.satellite-lang.com/release-notes/0.30.0#dependency-free-program-declaration)
 macro can now be used with legacy IDLs (pre Anchor v0.30).
 
 This works great as long as the program can be described correctly with the
@@ -264,18 +264,18 @@ However, because of how the macro is implemented, it wasn't possible to use it
 from Anchor without also including `solana-program` to your dependency list as
 the macro was specifically using `::arch_program`.
 
-You can now directly use `pubkey!` as it's exported from `anchor_lang::prelude`.
+You can now directly use `pubkey!` as it's exported from `satellite_lang::prelude`.
 
-Note that because `arch_program` is exported from `anchor_lang`, you can also
+Note that because `arch_program` is exported from `satellite_lang`, you can also
 remove `solana-program` dependency from your `Cargo.toml` if `pubkey!` was the
 reason for adding it.
 
 ### `ID_CONST` constant
 
 Program ids declared from
-[`declare_id!`](https://docs.rs/anchor-lang/0.30.1/anchor_lang/macro.declare_id.html)
+[`declare_id!`](https://docs.rs/satellite-lang/0.30.1/satellite_lang/macro.declare_id.html)
 and
-[`declare_program!`](https://docs.rs/anchor-lang/0.30.1/anchor_lang/macro.declare_program.html)
+[`declare_program!`](https://docs.rs/satellite-lang/0.30.1/satellite_lang/macro.declare_program.html)
 have `ID` declared as `static` which doesn't allow compile time checks.
 
 Both of these macros now have a new constant (`ID_CONST`), which is essentially
@@ -284,7 +284,7 @@ the same as `ID`, but is declared as `const` instead of `static`.
 ### Stack usage of token extensions
 
 Stack usage of the new
-[token extensions constraints](https://www.anchor-lang.com/release-notes/0.30.0#token-extensions)
+[token extensions constraints](https://www.satellite-lang.com/release-notes/0.30.0#token-extensions)
 has been improved.
 
 ### Error propagation from integer conversion errors
@@ -303,7 +303,7 @@ let n: i32 = u32::MAX.try_into()?;
 crate is now re-exported from `anchor_spl::associated_token`.
 
 Similar to how you can
-[remove](https://www.anchor-lang.com/release-notes/0.29.0#export-mpl-token-metadata)
+[remove](https://www.satellite-lang.com/release-notes/0.29.0#export-mpl-token-metadata)
 the `mpl-token-metadata` crate from your dependency list, you can also remove
 `spl-associated-token-accounts` crate.
 
@@ -318,7 +318,7 @@ anchor-spl = "0.30.1"
 ### ATA resolution
 
 The
-[account resolution](https://www.anchor-lang.com/release-notes/0.30.0#account-resolution)
+[account resolution](https://www.satellite-lang.com/release-notes/0.30.0#account-resolution)
 support has been extended to support associated token accounts in this release.
 
 If you use ATAs in your instruction, you'll get a type error if you call the

@@ -1,4 +1,4 @@
-use anchor_lang::{AnchorDeserialize, AnchorSerialize, Discriminator, InstructionData};
+use satellite_lang::{AnchorDeserialize, AnchorSerialize, Discriminator, InstructionData};
 
 #[test]
 fn test_instruction_data() {

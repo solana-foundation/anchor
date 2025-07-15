@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::Idl;
+use satellite_lang_idl::types::Idl;
 use quote::{format_ident, quote};
 
 pub fn gen_utils_mod(idl: &Idl) -> proc_macro2::TokenStream {
@@ -52,7 +52,7 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
         }
 
         impl TryFrom<&[u8]> for Account {
-            type Error = anchor_lang::error::Error;
+            type Error = satellite_lang::error::Error;
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*
@@ -98,7 +98,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
         }
 
         impl TryFrom<&[u8]> for Event {
-            type Error = anchor_lang::error::Error;
+            type Error = satellite_lang::error::Error;
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*

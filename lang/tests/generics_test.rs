@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use anchor_lang::prelude::borsh::io::Write;
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::borsh::io::Write;
+use satellite_lang::prelude::*;
 use arch_program::pubkey::Pubkey;
 use borsh::{BorshDeserialize, BorshSerialize};
 

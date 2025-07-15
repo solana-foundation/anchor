@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::Idl;
+use satellite_lang_idl::types::Idl;
 use quote::quote;
 
 use super::common::convert_idl_type_def_to_ts;

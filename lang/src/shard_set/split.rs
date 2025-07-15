@@ -62,8 +62,8 @@ use crate::StateShardError;
 #[cfg(feature = "runes")]
 use ordinals::Edict;
 
-use anchor_lang::prelude::Owner;
-use anchor_lang::ZeroCopy;
+use satellite_lang::prelude::Owner;
+use satellite_lang::ZeroCopy;
 
 /// Splits the *remaining* satoshi value that belongs to the provided `shards`
 /// back into brand-new outputs (one per **retained allocation** after
@@ -1200,7 +1200,7 @@ mod tests_loader {
         };
         use crate::shard_set::tests::common::add_btc_utxos_bulk;
         use crate::shard_set::tests::common::random_utxo_meta;
-        use anchor_lang::prelude::AccountLoader;
+        use satellite_lang::prelude::AccountLoader;
         use bitcoin::{OutPoint, ScriptBuf, Sequence, TxIn, Witness};
         use satellite_bitcoin::MathError;
         use satellite_bitcoin::{constants::DUST_LIMIT, fee_rate::FeeRate};

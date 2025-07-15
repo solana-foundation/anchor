@@ -602,7 +602,7 @@ Solana version: 1.17.0
 
 ### Notable changes
 
-- `Box` the `anchor_lang::Result` error variants ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
+- `Box` the `satellite_lang::Result` error variants ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
 
 ---
 

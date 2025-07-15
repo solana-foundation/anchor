@@ -603,7 +603,7 @@ Solana version: 1.17.0
 
 ### Notable changes
 
-- `Box` the `anchor_lang::Result` error variants ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
+- `Box` the `satellite_lang::Result` error variants ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
 - Change all accounts to have a reference to `AccountInfo` instead of cloning ([#2656](https://github.com/coral-xyz/anchor/pull/2656)).
 - Reduce unnecessary cloning ([#2663](https://github.com/coral-xyz/anchor/pull/2663)).
 

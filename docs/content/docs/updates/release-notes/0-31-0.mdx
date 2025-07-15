@@ -94,8 +94,8 @@ dependency list:
 
 ```
 WARNING: Adding `solana-program` as a separate dependency might cause conflicts.
-To solve, remove the `solana-program` dependency and use the exported crate from `anchor-lang`.
-`use arch_program` becomes `use anchor_lang::arch_program`.
+To solve, remove the `solana-program` dependency and use the exported crate from `satellite-lang`.
+`use arch_program` becomes `use satellite_lang::arch_program`.
 Program name: `my-program`
 ```
 
@@ -191,7 +191,7 @@ the number of accounts the instruction has. You might be familiar with it from
 the mangled build logs:
 
 ```
-Error: Function _ZN71_$LT$pr..Test$u20$as$u20$anchor_lang..Accounts$LT$pr..TestBumps$GT$$GT$12try_accounts17h5572074d55b9e638E Stack offset of 4112 exceeded max offset of 4096 by 16 bytes, please minimize large stack variables.
+Error: Function _ZN71_$LT$pr..Test$u20$as$u20$satellite_lang..Accounts$LT$pr..TestBumps$GT$$GT$12try_accounts17h5572074d55b9e638E Stack offset of 4112 exceeded max offset of 4096 by 16 bytes, please minimize large stack variables.
 ```
 
 The problem was made worse with the following external developments:
@@ -312,10 +312,10 @@ space = MyAccount::DISCRIMINATOR.len() + ...
 
 We'll skip the details to keep the release notes as short as possible, but if
 you're interested, check out
-[its documentation](https://docs.rs/anchor-lang/0.31.0/anchor_lang/accounts/lazy_account/struct.LazyAccount.html)
+[its documentation](https://docs.rs/satellite-lang/0.31.0/satellite_lang/accounts/lazy_account/struct.LazyAccount.html)
 to see if it fits your needs.
 
-**Note:** You need to enable `lazy-account` feature of `anchor-lang` to be able
+**Note:** You need to enable `lazy-account` feature of `satellite-lang` to be able
 to use `LazyAccount`.
 
 ### `cfg` attribute on instructions
@@ -447,7 +447,7 @@ let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
 ```
 
 See
-[`IdlBuilder`](https://docs.rs/anchor-lang-idl/0.1.2/anchor_lang_idl/build/struct.IdlBuilder.html)
+[`IdlBuilder`](https://docs.rs/satellite-lang-idl/0.1.2/satellite_lang_idl/build/struct.IdlBuilder.html)
 for more information.
 
 ### Generation improvements

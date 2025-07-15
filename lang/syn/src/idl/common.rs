@@ -29,11 +29,11 @@ pub fn get_program_path() -> Result<PathBuf> {
 }
 
 pub fn get_idl_module_path() -> TokenStream {
-    quote!(anchor_lang::idl::types)
+    quote!(satellite_lang::idl::types)
 }
 
 pub fn get_serde_json_module_path() -> TokenStream {
-    quote!(anchor_lang::idl::serde_json)
+    quote!(satellite_lang::idl::serde_json)
 }
 
 pub fn gen_print_section(name: &str, value: impl ToTokens) -> TokenStream {

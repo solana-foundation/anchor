@@ -13,7 +13,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 .fields
                 .iter()
                 .map(|field| &field.ty)
-                .map(|ty| quote! { <#ty as anchor_lang::__private::Lazy>::SIZED })
+                .map(|ty| quote! { <#ty as satellite_lang::__private::Lazy>::SIZED })
                 .fold(quote!(true), |acc, sized| quote! { #acc && #sized }),
         ),
         Item::Enum(enm) => {
@@ -44,7 +44,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics anchor_lang::__private::Lazy for #name #ty_generics #where_clause {
+        impl #impl_generics satellite_lang::__private::Lazy for #name #ty_generics #where_clause {
             const SIZED: bool = #sized;
 
             #[inline(always)]
@@ -66,7 +66,7 @@ fn sum_fields(fields: &Fields) -> proc_macro2::TokenStream {
         let name = &names[i];
         let sum = &names[..i];
         let buf = quote! { &buf[0 #(+ #sum)*..] };
-        quote! { let #name = <#ty as anchor_lang::__private::Lazy>::size_of(#buf) }
+        quote! { let #name = <#ty as satellite_lang::__private::Lazy>::size_of(#buf) }
     });
 
     quote! {

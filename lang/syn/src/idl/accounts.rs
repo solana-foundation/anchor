@@ -49,7 +49,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     // is supported.
                     //
                     // TODO: Remove this once either `bincode` serialization is supported or
-                    // we wrap the type in order to implement `IdlBuild` in `anchor-lang`.
+                    // we wrap the type in order to implement `IdlBuild` in `satellite-lang`.
                         if !ty
                             .account_type_path
                             .path
@@ -147,9 +147,9 @@ fn get_address(acc: &Field) -> TokenStream {
         Ty::Program(_) /*| Ty::Sysvar(_)*/ => {
             let ty = acc.account_ty();
             let id_trait = matches!(acc.ty, Ty::Program(_))
-                .then(|| quote!(anchor_lang::Id))
+                .then(|| quote!(satellite_lang::Id))
                 .unwrap();
-                // .unwrap_or_else(|| quote!(anchor_lang::arch_program::sysvar::SysvarId));
+                // .unwrap_or_else(|| quote!(satellite_lang::arch_program::sysvar::SysvarId));
             quote! { Some(<#ty as #id_trait>::id().to_string()) }
         }
         _ => acc

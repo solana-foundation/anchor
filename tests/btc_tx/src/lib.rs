@@ -1,7 +1,7 @@
-use anchor_lang::accounts::shards::Shards;
-use anchor_lang::satellite_bitcoin::utxo_info::UtxoInfo;
-use anchor_lang::shard_set::ShardSet;
-use anchor_lang::{context::BtcContext, prelude::*, ZeroCopy};
+use satellite_lang::accounts::shards::Shards;
+use satellite_lang::satellite_bitcoin::utxo_info::UtxoInfo;
+use satellite_lang::shard_set::ShardSet;
+use satellite_lang::{context::BtcContext, prelude::*, ZeroCopy};
 use arch_program::utxo::UtxoMeta;
 use bytemuck::{Pod, Zeroable};
 
@@ -77,13 +77,13 @@ mod tests {
 // pub struct DemoUtxoParser {
 //     pub lol: Vec<UtxoInfo>,
 // }
-// impl<'info> anchor_lang::utxo_parser::TryFromUtxos<'info, Demo<'info>>
+// impl<'info> satellite_lang::utxo_parser::TryFromUtxos<'info, Demo<'info>>
 //     for DemoUtxoParser
 // {
 //     fn try_utxos(
 //         ctx: &mut BtcContext<'_, '_, '_, '_, 'info, Demo<'info>>,
-//         utxos: &[anchor_lang::arch_program::utxo::UtxoMeta],
-//     ) -> core::result::Result<Self, anchor_lang::arch_program::program_error::ProgramError> {
+//         utxos: &[satellite_lang::arch_program::utxo::UtxoMeta],
+//     ) -> core::result::Result<Self, satellite_lang::arch_program::program_error::ProgramError> {
 //         let mut idx: usize = 0;
 //         let total: usize = utxos.len();
 //         for i in 0..total {
@@ -103,19 +103,19 @@ mod tests {
 //             if idx >= total {
 //                 return Err(ProgramError::Custom(ErrorCode::MissingRequiredUtxo.into()));
 //             }
-//             let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx])?;
+//             let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[idx])?;
 //             if !(utxo.value == (546) && utxo.rune_entry_count() == 0) {
 //                 return Err(ProgramError::Custom(ErrorCode::InvalidRunesPresence.into()));
 //             }
 //             let account_info =
-//                 anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
+//                 satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
 //             let _anchor_ix = arch_program::system_instruction::anchor(
 //                 account_info.key,
 //                 utxo.meta.txid_big_endian(),
 //                 utxo.meta.vout(),
 //             );
 //             lol.push(utxo);
-//             let together = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
+//             let together = satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.together[i]);
 //             ctx.btc_tx_builder.add_state_transition(&together)?;
 //             idx += 1;
 //         }

@@ -1,6 +1,6 @@
-use anchor_lang::prelude::AccountLoader;
-use anchor_lang::prelude::Owner;
-use anchor_lang::ZeroCopy;
+use satellite_lang::prelude::AccountLoader;
+use satellite_lang::prelude::Owner;
+use satellite_lang::ZeroCopy;
 use arch_program::program_error::ProgramError;
 
 /// Lightweight handle around an [`AccountLoader`].

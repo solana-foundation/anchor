@@ -12,8 +12,8 @@ name = "relations_derivation"
 no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 default = []
 
 [dependencies]
-anchor-lang = { path = "../../../../lang" }
+satellite-lang = { path = "../../../../lang" }

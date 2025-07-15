@@ -1,8 +1,8 @@
 use core::marker::PhantomData;
 
-use anchor_lang::prelude::AccountLoader;
-use anchor_lang::prelude::Owner;
-use anchor_lang::ZeroCopy;
+use satellite_lang::prelude::AccountLoader;
+use satellite_lang::prelude::Owner;
+use satellite_lang::ZeroCopy;
 use satellite_bitcoin::generic::fixed_list::FixedList;
 
 use crate::error::Error;
@@ -53,14 +53,14 @@ pub struct Selected;
 ///
 /// ```rust,ignore
 /// use saturn_account_shards::{ShardSet, Unselected};
-/// # use anchor_lang::ZeroCopy;
-/// # use anchor_lang::prelude::Owner;
+/// # use satellite_lang::ZeroCopy;
+/// # use satellite_lang::prelude::Owner;
 ///
 /// # #[derive(Default, Clone, Copy)]
 /// # #[repr(C)]
 /// # struct DummyShard; // implements ZeroCopy + Owner
 /// # unsafe impl ZeroCopy for DummyShard {}
-/// # impl Owner for DummyShard { const OWNER: anchor_lang::solana_program::pubkey::Pubkey = anchor_lang::solana_program::pubkey::Pubkey::new_from_array([0u8; 32]); }
+/// # impl Owner for DummyShard { const OWNER: satellite_lang::solana_program::pubkey::Pubkey = satellite_lang::solana_program::pubkey::Pubkey::new_from_array([0u8; 32]); }
 ///
 /// // Imagine these loaders coming from the instruction's account context.
 /// fn example<'info>(loaders: &'info [&'info AccountLoader<'info, DummyShard>]) {

@@ -123,7 +123,7 @@ dependencies = [
 name = "anchor-attribute-program"
 version = "0.30.0"
 dependencies = [
- "anchor-lang-idl",
+ "satellite-lang-idl",
  "anchor-syn",
  "anyhow",
  "bs58 0.5.1",
@@ -164,7 +164,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-lang"
+name = "satellite-lang"
 version = "0.30.0"
 dependencies = [
  "anchor-attribute-access-control",
@@ -176,7 +176,7 @@ dependencies = [
  "anchor-derive-accounts",
  "anchor-derive-serde",
  "anchor-derive-space",
- "anchor-lang-idl",
+ "satellite-lang-idl",
  "arrayref",
  "base64 0.21.7",
  "bincode",
@@ -188,7 +188,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-lang-idl"
+name = "satellite-lang-idl"
 version = "0.1.0"
 dependencies = [
  "anchor-syn",
@@ -202,7 +202,7 @@ dependencies = [
 name = "anchor-spl"
 version = "0.30.0"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "spl-associated-token-account",
  "spl-pod",
  "spl-token",
@@ -402,7 +402,7 @@ checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 name = "bench"
 version = "0.1.0"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "anchor-spl",
 ]
 

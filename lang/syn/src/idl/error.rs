@@ -26,7 +26,7 @@ pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
 
             quote! {
                 #idl::IdlErrorCode {
-                    code: anchor_lang::error::ERROR_CODE_OFFSET + #id,
+                    code: satellite_lang::error::ERROR_CODE_OFFSET + #id,
                     name: #name.into(),
                     msg: #msg,
                 }

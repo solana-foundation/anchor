@@ -39,8 +39,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         #[automatically_derived]
-        impl #impl_gen anchor_lang::ToAccountMetas for #name #ty_gen #where_clause{
-            fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::arch_program::account::AccountMeta> {
+        impl #impl_gen satellite_lang::ToAccountMetas for #name #ty_gen #where_clause{
+            fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<satellite_lang::arch_program::account::AccountMeta> {
                 let mut account_metas = vec![];
 
                 #(#to_acc_metas)*

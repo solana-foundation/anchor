@@ -58,12 +58,12 @@ pub fn build_extractor(
                     {
                         fn _anchor_scalar_check<'info, T>(_: &T)
                         where
-                            T: anchor_lang::ToAccountInfo<'info>,
+                            T: satellite_lang::ToAccountInfo<'info>,
                         {
                         }
                         _anchor_scalar_check(&ctx.accounts.#anchor_ident_tok);
                     }
-                    let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
+                    let _anchor_target = satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
                     let _anchor_ix = arch_program::system_instruction::anchor(
                         _anchor_target.key,
                         #ident.meta.txid_big_endian(),
@@ -117,7 +117,7 @@ pub fn build_extractor(
                 if idx >= total {
                     return Err(ProgramError::Custom(ErrorCode::MissingRequiredUtxo.into()));
                 }
-                let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx])?;
+                let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[idx])?;
                 #rune_mismatch_logic
                 let #ident = utxo;
                 idx += 1;
@@ -137,12 +137,12 @@ pub fn build_extractor(
                         {
                             fn _anchor_scalar_check<'info, T>(_: &T)
                             where
-                                T: anchor_lang::ToAccountInfo<'info>,
+                                T: satellite_lang::ToAccountInfo<'info>,
                             {
                             }
                             _anchor_scalar_check(&ctx.accounts.#anchor_ident_tok);
                         }
-                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
+                        let _anchor_target = satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok);
                         let _anchor_ix = arch_program::system_instruction::anchor(
                             _anchor_target.key,
                             __opt_utxo.meta.txid_big_endian(),
@@ -157,7 +157,7 @@ pub fn build_extractor(
 
             quote! {
                 let #ident: Option<satellite_bitcoin::utxo_info::UtxoInfo> = if idx < total {
-                    let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx])?;
+                    let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[idx])?;
                     if (#predicate) {
                         idx += 1;
                         Some(utxo)
@@ -195,7 +195,7 @@ pub fn build_extractor(
                 let anchor_stmt = if let Some(anchor_ident) = &attr.anchor_ident {
                     let anchor_ident_tok = anchor_ident.clone();
                     quote! {
-                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[#i]);
+                        let _anchor_target = satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[#i]);
                         let _anchor_ix = arch_program::system_instruction::anchor(
                             _anchor_target.key,
                             utxo.meta.txid_big_endian(),
@@ -209,7 +209,7 @@ pub fn build_extractor(
 
                 element_blocks.push(quote! {
                     {
-                        let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx + #i])?;
+                        let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[idx + #i])?;
                         if !(#predicate) {
                             return Err(ProgramError::Custom(#err_variant.into()));
                         }
@@ -254,11 +254,11 @@ pub fn build_extractor(
                         if idx >= total {
                             return Err(ProgramError::Custom(ErrorCode::MissingRequiredUtxo.into()));
                         }
-                        let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[idx])?;
+                        let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[idx])?;
                         if !(#predicate) {
                             return Err(ProgramError::Custom(#err_variant.into()));
                         }
-                        let _anchor_target = anchor_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[i]);
+                        let _anchor_target = satellite_lang::ToAccountInfo::to_account_info(&ctx.accounts.#anchor_ident_tok[i]);
                         let _anchor_ix = arch_program::system_instruction::anchor(
                             _anchor_target.key,
                             utxo.meta.txid_big_endian(),
@@ -285,7 +285,7 @@ pub fn build_extractor(
                     let mut consumed: usize = 0;
 
                     for i in start_idx..total {
-                        let utxo = anchor_lang::utxo_parser::meta_to_info(&utxos[i])?;
+                        let utxo = satellite_lang::utxo_parser::meta_to_info(&utxos[i])?;
                         if (#predicate) {
                             #ident.push(utxo);
                             consumed += 1;

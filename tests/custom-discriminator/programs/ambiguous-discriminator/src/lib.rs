@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("AmbiguousDiscriminator111111111111111111111");
 

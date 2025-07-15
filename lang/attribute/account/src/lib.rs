@@ -131,7 +131,7 @@ pub fn account(
         if namespace.is_empty() {
             quote! {
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::Owner for #account_name #type_gen #where_clause {
+                impl #impl_gen satellite_lang::Owner for #account_name #type_gen #where_clause {
                     fn owner() -> Pubkey {
                         crate::ID
                     }
@@ -146,9 +146,9 @@ pub fn account(
         if unsafe_bytemuck {
             quote! {
                 #[automatically_derived]
-                unsafe impl #impl_gen anchor_lang::__private::bytemuck::Pod for #account_name #type_gen #where_clause {}
+                unsafe impl #impl_gen satellite_lang::__private::bytemuck::Pod for #account_name #type_gen #where_clause {}
                 #[automatically_derived]
-                unsafe impl #impl_gen anchor_lang::__private::bytemuck::Zeroable for #account_name #type_gen #where_clause {}
+                unsafe impl #impl_gen satellite_lang::__private::bytemuck::Zeroable for #account_name #type_gen #where_clause {}
             }
         } else {
             quote! {}
@@ -176,32 +176,32 @@ pub fn account(
                 #unsafe_bytemuck_impl
 
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::ZeroCopy for #account_name #type_gen #where_clause {}
+                impl #impl_gen satellite_lang::ZeroCopy for #account_name #type_gen #where_clause {}
 
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::Discriminator for #account_name #type_gen #where_clause {
+                impl #impl_gen satellite_lang::Discriminator for #account_name #type_gen #where_clause {
                     const DISCRIMINATOR: &'static [u8] = #discriminator;
                 }
 
                 // This trait is useful for clients deserializing accounts.
                 // It's expected on-chain programs deserialize via zero-copy.
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::AccountDeserialize for #account_name #type_gen #where_clause {
-                    fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                impl #impl_gen satellite_lang::AccountDeserialize for #account_name #type_gen #where_clause {
+                    fn try_deserialize(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                         if buf.len() < #disc.len() {
-                            return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
+                            return Err(satellite_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
                         let given_disc = &buf[..#disc.len()];
                         if #disc != given_disc {
-                            return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
+                            return Err(satellite_lang::error!(satellite_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
                         Self::try_deserialize_unchecked(buf)
                     }
 
-                    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                    fn try_deserialize_unchecked(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                         let data: &[u8] = &buf[#disc.len()..];
                         // Re-interpret raw bytes into the POD data structure.
-                        let account = anchor_lang::__private::bytemuck::from_bytes(data);
+                        let account = satellite_lang::__private::bytemuck::from_bytes(data);
                         // Copy out the bytes into a new, owned data structure.
                         Ok(*account)
                     }
@@ -226,41 +226,41 @@ pub fn account(
                 #account_strct
 
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::AccountSerialize for #account_name #type_gen #where_clause {
-                    fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
+                impl #impl_gen satellite_lang::AccountSerialize for #account_name #type_gen #where_clause {
+                    fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> satellite_lang::Result<()> {
                         if writer.write_all(#disc).is_err() {
-                            return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
+                            return Err(satellite_lang::error::ErrorCode::AccountDidNotSerialize.into());
                         }
 
                         if AnchorSerialize::serialize(self, writer).is_err() {
-                            return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
+                            return Err(satellite_lang::error::ErrorCode::AccountDidNotSerialize.into());
                         }
                         Ok(())
                     }
                 }
 
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::AccountDeserialize for #account_name #type_gen #where_clause {
-                    fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                impl #impl_gen satellite_lang::AccountDeserialize for #account_name #type_gen #where_clause {
+                    fn try_deserialize(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                         if buf.len() < #disc.len() {
-                            return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
+                            return Err(satellite_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                         }
                         let given_disc = &buf[..#disc.len()];
                         if #disc != given_disc {
-                            return Err(anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
+                            return Err(satellite_lang::error!(satellite_lang::error::ErrorCode::AccountDiscriminatorMismatch).with_account_name(#account_name_str));
                         }
                         Self::try_deserialize_unchecked(buf)
                     }
 
-                    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                    fn try_deserialize_unchecked(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                         let mut data: &[u8] = &buf[#disc.len()..];
                         AnchorDeserialize::deserialize(&mut data)
-                            .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize.into())
+                            .map_err(|_| satellite_lang::error::ErrorCode::AccountDidNotDeserialize.into())
                     }
                 }
 
                 #[automatically_derived]
-                impl #impl_gen anchor_lang::Discriminator for #account_name #type_gen #where_clause {
+                impl #impl_gen satellite_lang::Discriminator for #account_name #type_gen #where_clause {
                     const DISCRIMINATOR: &'static [u8] = #discriminator;
                 }
 
@@ -384,10 +384,10 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
 
                     quote! {
                         pub fn #get_field(&self) -> #accessor_ty {
-                            anchor_lang::__private::ZeroCopyAccessor::get(&self.#field_name)
+                            satellite_lang::__private::ZeroCopyAccessor::get(&self.#field_name)
                         }
                         pub fn #set_field(&mut self, input: &#accessor_ty) {
-                            self.#field_name = anchor_lang::__private::ZeroCopyAccessor::set(input);
+                            self.#field_name = satellite_lang::__private::ZeroCopyAccessor::set(input);
                         }
                     }
                 })
@@ -491,7 +491,7 @@ pub fn zero_copy(
     };
 
     let ret = quote! {
-        #[derive(anchor_lang::__private::ZeroCopyAccessor, Copy, Clone)]
+        #[derive(satellite_lang::__private::ZeroCopyAccessor, Copy, Clone)]
         #repr
         #pod
         #zeroable

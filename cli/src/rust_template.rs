@@ -53,7 +53,7 @@ fn create_program_template_single(name: &str, program_path: &Path) -> Files {
     vec![(
         program_path.join("src").join("lib.rs"),
         format!(
-            r#"use anchor_lang::prelude::*;
+            r#"use satellite_lang::prelude::*;
 
 declare_id!("{}");
 
@@ -88,7 +88,7 @@ pub mod error;
 pub mod instructions;
 pub mod state;
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 pub use constants::*;
 pub use instructions::*;
@@ -111,7 +111,7 @@ pub mod {} {{
         ),
         (
             src_path.join("constants.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use satellite_lang::prelude::*;
 
 #[constant]
 pub const SEED: &str = "anchor";
@@ -120,7 +120,7 @@ pub const SEED: &str = "anchor";
         ),
         (
             src_path.join("error.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use satellite_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
@@ -140,7 +140,7 @@ pub use initialize::*;
         ),
         (
             src_path.join("instructions").join("initialize.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use satellite_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct Initialize {}
@@ -203,14 +203,14 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
 {2}
 
 [dependencies]
-anchor-lang = "{3}"
+satellite-lang = "{3}"
 {4}
 
 [lints.rust]
@@ -816,7 +816,7 @@ fn create_program_template_mollusk_test(name: &str, tests_path: &Path) -> Files 
             r#"#![cfg(feature = "test-sbf")]
 
 use {{
-    anchor_lang::{{arch_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    satellite_lang::{{arch_program::instruction::Instruction, InstructionData, ToAccountMetas}},
     mollusk_svm::{{result::Check, Mollusk}},
 }};
 

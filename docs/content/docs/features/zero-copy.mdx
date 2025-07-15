@@ -18,7 +18,7 @@ zero-copy types.
 ```toml title="Cargo.toml"
 [dependencies]
 bytemuck = { version = "1.20.0", features = ["min_const_generics"] }
-anchor-lang = "0.31.1"
+satellite-lang = "0.31.1"
 ```
 
 ### Define a Zero Copy Account
@@ -208,7 +208,7 @@ accounts in Anchor:
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("8B7XpDXjPWodpDUWDSzv4q9k73jB5WdNQXZxNBj1hqw1");
 
@@ -317,7 +317,7 @@ are reserved for the account discriminator.
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("CZgWhy3FYPFgKE5v9atSGaiQzbSB7cM38ofwX1XxeCFH");
 

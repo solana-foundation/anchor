@@ -104,11 +104,11 @@ pub fn expand(ir: &DeriveInputIr) -> proc_macro2::TokenStream {
     // Compose the final impl block.
     // ---------------------------------------------------------------
     quote! {
-        impl #impl_generics anchor_lang::utxo_parser::TryFromUtxos<'info, #accounts_ty<'info>> for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics satellite_lang::utxo_parser::TryFromUtxos<'info, #accounts_ty<'info>> for #struct_ident #ty_generics #where_clause {
             fn try_utxos(
-                ctx: &mut anchor_lang::context::BtcContext<'_, '_, '_, '_, 'info, #accounts_ty<'info>>,
-                utxos: &[anchor_lang::arch_program::utxo::UtxoMeta],
-            ) -> core::result::Result<Self, anchor_lang::arch_program::program_error::ProgramError>
+                ctx: &mut satellite_lang::context::BtcContext<'_, '_, '_, '_, 'info, #accounts_ty<'info>>,
+                utxos: &[satellite_lang::arch_program::utxo::UtxoMeta],
+            ) -> core::result::Result<Self, satellite_lang::arch_program::program_error::ProgramError>
             {
                 #(#init_snippets)*
 

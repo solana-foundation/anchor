@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 

@@ -161,7 +161,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-lang"
+name = "satellite-lang"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbbe5d1c7c057c6d63b4f2f538a320e4a22111126c9966340c3d9490e2f15ed1"
@@ -189,7 +189,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75cc8066fbd45e0e03edf48342c79265aa34ca76cefeace48ef6c402b6946665"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
@@ -277,7 +277,7 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 name = "bench"
 version = "0.1.0"
 dependencies = [
- "anchor-lang",
+ "satellite-lang",
  "anchor-spl",
 ]
 

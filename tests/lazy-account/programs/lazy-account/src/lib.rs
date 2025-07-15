@@ -5,7 +5,7 @@
 //!
 //! See the individual instructions for more documentation: [`Init`], [`Read`], [`Write`].
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("LazyAccount11111111111111111111111111111111");
 

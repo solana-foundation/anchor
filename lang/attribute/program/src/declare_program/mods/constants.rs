@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::{Idl, IdlType};
+use satellite_lang_idl::types::{Idl, IdlType};
 use quote::{format_ident, quote, ToTokens};
 
 use super::common::{convert_idl_type_to_syn_type, gen_docs};
@@ -16,8 +16,8 @@ pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
             IdlType::Pubkey => {
                 let pubkey_str = c.value.to_string();
                 (
-                    quote!(anchor_lang::prelude::Pubkey),
-                    quote!(anchor_lang::prelude::Pubkey::from_str_const(#pubkey_str)),
+                    quote!(satellite_lang::prelude::Pubkey),
+                    quote!(satellite_lang::prelude::Pubkey::from_str_const(#pubkey_str)),
                 )
             }
             _ => (convert_idl_type_to_syn_type(&c.ty).to_token_stream(), val),

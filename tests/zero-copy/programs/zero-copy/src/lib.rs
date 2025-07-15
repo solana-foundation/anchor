@@ -5,7 +5,7 @@
 //! With zero-copy, we can create accounts larger than the size of the stack or heap,
 //! as is demonstrated by the event queue in this example.
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

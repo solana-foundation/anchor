@@ -1,7 +1,7 @@
 //! Testing of handling of remaining accounts with anchor Account structs
 
 use account::*;
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use context::*;
 

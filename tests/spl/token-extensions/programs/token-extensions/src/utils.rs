@@ -1,4 +1,4 @@
-use anchor_lang::{
+use satellite_lang::{
     prelude::Result,
     solana_program::{
         account_info::AccountInfo,

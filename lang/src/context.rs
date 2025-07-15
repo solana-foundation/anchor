@@ -134,7 +134,7 @@ where
 /// ```ignore
 /// // Callee Program
 ///
-/// use anchor_lang::prelude::*;
+/// use satellite_lang::prelude::*;
 ///
 /// declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 ///
@@ -177,7 +177,7 @@ where
 ///
 /// // Caller Program
 ///
-/// use anchor_lang::prelude::*;
+/// use satellite_lang::prelude::*;
 /// use callee::{self, program::Callee};
 ///
 /// declare_id!("Sxg7dBh5VLT8S1o6BqncZCPq9nhHHukjfVd6ohQJeAk");

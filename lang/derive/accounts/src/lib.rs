@@ -22,7 +22,7 @@ use syn::parse_macro_input;
 ///
 /// ```ignore
 /// ...
-/// pub fn initialize(ctx: Context<Create>, bump: u8, authority: Pubkey, data: u64) -> anchor_lang::Result<()> {
+/// pub fn initialize(ctx: Context<Create>, bump: u8, authority: Pubkey, data: u64) -> satellite_lang::Result<()> {
 ///     ...
 ///     Ok(())
 /// }
@@ -118,7 +118,7 @@ use syn::parse_macro_input;
 ///                         The given space number is the size of the account in bytes, so accounts that hold
 ///                         a variable number of items such as a <code>Vec</code> should allocate sufficient space for all items that may
 ///                         be added to the data structure because account size is fixed.
-///                         Check out the <a href = "https://www.anchor-lang.com/docs/space" target = "_blank" rel = "noopener noreferrer">space reference</a>
+///                         Check out the <a href = "https://www.satellite-lang.com/docs/space" target = "_blank" rel = "noopener noreferrer">space reference</a>
 ///                         and the <a href = "https://borsh.io/" target = "_blank" rel = "noopener noreferrer">borsh library</a>
 ///                         (which anchor uses under the hood for serialization) specification to learn how much
 ///                         space different data structures require.
@@ -199,7 +199,7 @@ use syn::parse_macro_input;
 ///                 If the account does exist, it still checks whether the given init constraints are correct,
 ///                 e.g. that the account has the expected amount of space and, if it's a PDA, the correct seeds etc.<br><br>
 ///                 This feature should be used with care and is therefore behind a feature flag.
-///                 You can enable it by importing <code>anchor-lang</code> with the <code>init-if-needed</code> cargo feature.<br>
+///                 You can enable it by importing <code>satellite-lang</code> with the <code>init-if-needed</code> cargo feature.<br>
 ///                 When using <code>init_if_needed</code>, you need to make sure you properly protect yourself
 ///                 against re-initialization attacks. You need to include checks in your code that check
 ///                 that the initialized account cannot be reset to its initial settings after the first time it was

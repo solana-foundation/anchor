@@ -1,6 +1,6 @@
 use crate::{get_keypair, is_hidden, keys_sync};
 use anchor_client::Cluster;
-use anchor_lang_idl::types::Idl;
+use satellite_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;

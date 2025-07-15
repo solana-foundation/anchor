@@ -34,7 +34,7 @@ fn impl_idl_build(
 ) -> TokenStream {
     let idl = get_idl_module_path();
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let idl_build_trait = quote!(anchor_lang::idl::build::IdlBuild);
+    let idl_build_trait = quote!(satellite_lang::idl::build::IdlBuild);
 
     let (idl_type_def, insert_defined) = match type_def {
         Ok((ts, defined)) => (

@@ -48,8 +48,8 @@ use crate::error::{Error, ErrorCode};
 
 use super::{Selected as ShardSetSelected, ShardSet, StateShard};
 
-use anchor_lang::prelude::Owner;
-use anchor_lang::ZeroCopy;
+use satellite_lang::prelude::Owner;
+use satellite_lang::ZeroCopy;
 
 /// Removes all `utxos_to_remove` from the shards identified by `shard_indexes`.
 ///

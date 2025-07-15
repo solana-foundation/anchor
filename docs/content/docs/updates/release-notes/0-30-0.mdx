@@ -57,7 +57,7 @@ Without this feature, `anchor build` outputs:
 Error: `idl-build` feature is missing. To solve, add
 
 [features]
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 
 in `<PATH_TO_CARGO_TOML>`.
 ```
@@ -89,7 +89,7 @@ interactions without creating a
 example for on-chain CPI usage.
 
 For more information, see the macro's
-[documentation](https://docs.rs/anchor-lang/0.30.0/anchor_lang/macro.declare_program.html).
+[documentation](https://docs.rs/satellite-lang/0.30.0/satellite_lang/macro.declare_program.html).
 
 ### Token extensions
 
@@ -238,7 +238,7 @@ deactivate_feature = ["GDH5TVdbTPUpRnXaRyQqiKUa7uZAbZ28Q2N9bhbKoMLm", "zkiTNuzBK
 
 ### Crate and package compatibility
 
-Using non-matching versions of `anchor-cli`, `anchor-lang`, and
+Using non-matching versions of `anchor-cli`, `satellite-lang`, and
 `@coral-xyz/anchor` can result in unexpected behavior. In this release, you'll
 get a warning if any of them don't match.
 

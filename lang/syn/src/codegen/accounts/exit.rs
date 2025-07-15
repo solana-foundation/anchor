@@ -21,7 +21,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 let name = &s.ident;
                 let name_str = name.to_string();
                 quote! {
-                    anchor_lang::AccountsExit::exit(&self.#name, program_id)
+                    satellite_lang::AccountsExit::exit(&self.#name, program_id)
                         .map_err(|e| e.with_account_name(#name_str))?;
                 }
             }
@@ -37,7 +37,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         {
                             let #close_target = &self.#close_target;
                             #close_target_optional_check
-                            anchor_lang::AccountsClose::close(
+                            satellite_lang::AccountsClose::close(
                                 &self.#ident,
                                 #close_target.to_account_info(),
                             ).map_err(|e| e.with_account_name(#name_str))?;
@@ -53,7 +53,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                     .map_err(|e| e.with_account_name(#name_str))?;
                             },
                             _ => quote! {
-                                anchor_lang::AccountsExit::exit(&self.#ident, program_id)
+                                satellite_lang::AccountsExit::exit(&self.#ident, program_id)
                                     .map_err(|e| e.with_account_name(#name_str))?;
                             },
                         },
@@ -64,8 +64,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
     quote! {
         #[automatically_derived]
-        impl<#combined_generics> anchor_lang::AccountsExit<#trait_generics> for #name<#struct_generics> #where_clause{
-            fn exit(&self, program_id: &anchor_lang::arch_program::pubkey::Pubkey) -> anchor_lang::Result<()> {
+        impl<#combined_generics> satellite_lang::AccountsExit<#trait_generics> for #name<#struct_generics> #where_clause{
+            fn exit(&self, program_id: &satellite_lang::arch_program::pubkey::Pubkey) -> satellite_lang::Result<()> {
                 #(#on_save)*
                 Ok(())
             }

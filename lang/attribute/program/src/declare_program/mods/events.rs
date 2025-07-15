@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::Idl;
+use satellite_lang_idl::types::Idl;
 use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_def_to_ts, gen_discriminator};
@@ -18,7 +18,7 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
         quote! {
             #ty_def
 
-            impl anchor_lang::Event for #name {
+            impl satellite_lang::Event for #name {
                 fn data(&self) -> Vec<u8> {
                     let mut data = Vec::with_capacity(256);
                     data.extend_from_slice(#name::DISCRIMINATOR);
@@ -27,7 +27,7 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
                 }
             }
 
-            impl anchor_lang::Discriminator for #name {
+            impl satellite_lang::Discriminator for #name {
                 const DISCRIMINATOR: &'static [u8] = &#discriminator;
             }
         }

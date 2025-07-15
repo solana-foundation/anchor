@@ -1,4 +1,4 @@
-use anchor_lang_idl::types::{Idl, IdlSerialization};
+use satellite_lang_idl::types::{Idl, IdlSerialization};
 use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_def_to_ts, gen_discriminator, get_canonical_program_id};
@@ -17,15 +17,15 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
         let impls = {
             let try_deserialize = quote! {
-                fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                fn try_deserialize(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                     if buf.len() < #disc.len() {
-                        return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
+                        return Err(satellite_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                     }
 
                     let given_disc = &buf[..#disc.len()];
                     if #disc != given_disc {
                         return Err(
-                            anchor_lang::error!(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch)
+                            satellite_lang::error!(satellite_lang::error::ErrorCode::AccountDiscriminatorMismatch)
                             .with_account_name(stringify!(#name))
                         );
                     }
@@ -35,26 +35,26 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
             };
             match ty_def.serialization {
                 IdlSerialization::Borsh => quote! {
-                    impl anchor_lang::AccountSerialize for #name {
-                        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
+                    impl satellite_lang::AccountSerialize for #name {
+                        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> satellite_lang::Result<()> {
                             if writer.write_all(#disc).is_err() {
-                                return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
+                                return Err(satellite_lang::error::ErrorCode::AccountDidNotSerialize.into());
                             }
                             if AnchorSerialize::serialize(self, writer).is_err() {
-                                return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
+                                return Err(satellite_lang::error::ErrorCode::AccountDidNotSerialize.into());
                             }
 
                             Ok(())
                         }
                     }
 
-                    impl anchor_lang::AccountDeserialize for #name {
+                    impl satellite_lang::AccountDeserialize for #name {
                         #try_deserialize
 
-                        fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                        fn try_deserialize_unchecked(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                             let mut data: &[u8] = &buf[#disc.len()..];
                             AnchorDeserialize::deserialize(&mut data)
-                                .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize.into())
+                                .map_err(|_| satellite_lang::error::ErrorCode::AccountDidNotDeserialize.into())
                         }
                     }
                 },
@@ -63,21 +63,21 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
                         matches!(ty_def.serialization, IdlSerialization::BytemuckUnsafe)
                             .then(|| {
                                 quote! {
-                                    unsafe impl anchor_lang::__private::bytemuck::Pod for #name {}
-                                    unsafe impl anchor_lang::__private::bytemuck::Zeroable for #name {}
+                                    unsafe impl satellite_lang::__private::bytemuck::Pod for #name {}
+                                    unsafe impl satellite_lang::__private::bytemuck::Zeroable for #name {}
                                 }
                             })
                             .unwrap_or_default();
 
                     quote! {
-                        impl anchor_lang::ZeroCopy for #name {}
+                        impl satellite_lang::ZeroCopy for #name {}
 
-                        impl anchor_lang::AccountDeserialize for #name {
+                        impl satellite_lang::AccountDeserialize for #name {
                             #try_deserialize
 
-                            fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
+                            fn try_deserialize_unchecked(buf: &mut &[u8]) -> satellite_lang::Result<Self> {
                                 let data: &[u8] = &buf[#disc.len()..];
-                                let account = anchor_lang::__private::bytemuck::from_bytes(data);
+                                let account = satellite_lang::__private::bytemuck::from_bytes(data);
                                 Ok(*account)
                             }
                         }
@@ -96,11 +96,11 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
             #impls
 
-            impl anchor_lang::Discriminator for #name {
+            impl satellite_lang::Discriminator for #name {
                 const DISCRIMINATOR: &'static [u8] = &#discriminator;
             }
 
-            impl anchor_lang::Owner for #name {
+            impl satellite_lang::Owner for #name {
                 fn owner() -> Pubkey {
                     #program_id
                 }

@@ -36,13 +36,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                 quote! {
                     #(#ix_cfgs)*
-                    impl anchor_lang::Discriminator for #ix_name_camel {
+                    impl satellite_lang::Discriminator for #ix_name_camel {
                         const DISCRIMINATOR: &'static [u8] = #discriminator;
                     }
                     #(#ix_cfgs)*
-                    impl anchor_lang::InstructionData for #ix_name_camel {}
+                    impl satellite_lang::InstructionData for #ix_name_camel {}
                     #(#ix_cfgs)*
-                    impl anchor_lang::Owner for #ix_name_camel {
+                    impl satellite_lang::Owner for #ix_name_camel {
                         fn owner() -> Pubkey {
                             ID
                         }

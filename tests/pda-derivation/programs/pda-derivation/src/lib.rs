@@ -3,7 +3,7 @@
 
 mod other;
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{Mint, Token, TokenAccount},

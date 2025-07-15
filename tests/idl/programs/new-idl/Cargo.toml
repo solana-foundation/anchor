@@ -13,8 +13,8 @@ no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
 default = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { path = "../../../../lang" }
+satellite-lang = { path = "../../../../lang" }
 external = { path = "../external", features = ["no-entrypoint"] }

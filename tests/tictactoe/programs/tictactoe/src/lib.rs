@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 const BOARD_ITEM_FREE: u8 = 0; // Free slot
 const BOARD_ITEM_X: u8 = 1; // Player X

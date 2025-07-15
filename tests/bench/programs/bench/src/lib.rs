@@ -2,7 +2,7 @@
 //!
 //! If you are making a change to this program, run `anchor run sync`.
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 declare_id!("Bench11111111111111111111111111111111111111");

@@ -1,5 +1,5 @@
 use crate::account::*;
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token::Token;
 
 #[derive(Accounts)]

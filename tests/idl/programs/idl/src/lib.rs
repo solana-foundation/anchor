@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::{token, token_interface};
 
 declare_id!("id11111111111111111111111111111111111111111");

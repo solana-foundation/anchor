@@ -14,5 +14,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { path = "../../../../lang" }
+satellite-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }

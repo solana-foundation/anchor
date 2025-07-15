@@ -68,7 +68,7 @@ instructions.
 <Tabs items={["Callee Program", "IDL"]}>
 
 ```rust tab="Callee Program"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("8HupNBr7SBhBLcBsLhbtes3tCarBm6Bvpqp5AfVjHuj8");
 
@@ -220,7 +220,7 @@ instructions defined in the callee program above.
 <Tabs items={["Caller Program", "Test"]}>
 
 ```rust tab="Caller Program"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("GENmb1D59wqCKRwujq4PJ8461EccQ5srLHrXyXp4HMTH");
 
@@ -465,7 +465,7 @@ module to build the program's instructions.
 <Tabs items={["Callee Program", "IDL"]}>
 
 ```rust tab="Callee Program"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("6khKp4BeJpCjBY1Eh39ybiqbfRnrn2UzWeUARjQLXYRC");
 
@@ -597,7 +597,7 @@ use anchor_client::{
     },
     Client, Cluster,
 };
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use std::rc::Rc;
 
 declare_program!(example);
@@ -680,7 +680,7 @@ edition = "2021"
 
 [dependencies]
 anchor-client = { version = "0.31.1", features = ["async"] }
-anchor-lang = "0.31.1"
+satellite-lang = "0.31.1"
 anyhow = "1.0.93"
 tokio = { version = "1.0", features = ["full"] }
 ```

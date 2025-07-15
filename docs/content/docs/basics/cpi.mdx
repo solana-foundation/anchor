@@ -25,8 +25,8 @@ The `lib.rs` file includes a single `sol_transfer` instruction. When the
 internally invokes the transfer instruction of the System Program.
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
+use satellite_lang::prelude::*;
+use satellite_lang::system_program::{transfer, Transfer};
 
 declare_id!("9AvUNHjxscdkiKQ8tUn12QCMXtcnbR9BVGq3ULNzFMRi");
 
@@ -149,7 +149,7 @@ called. The `CpiContext` is then passed to an Anchor helper function
 to invoke a specific instruction.
 
 ```rust
-use anchor_lang::system_program::{transfer, Transfer};
+use satellite_lang::system_program::{transfer, Transfer};
 ```
 
 ```rust
@@ -205,7 +205,7 @@ Under the hood, the previous example is an abstraction of this implementation.
 The example below is functionally equivalent to the previous example.
 
 ```rust
-use anchor_lang::arch_program::{program::invoke, system_instruction};
+use satellite_lang::arch_program::{program::invoke, system_instruction};
 ```
 
 ```rust
@@ -301,8 +301,8 @@ The `lib.rs` file includes the following program with a single `sol_transfer`
 instruction.
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
+use satellite_lang::prelude::*;
+use satellite_lang::system_program::{transfer, Transfer};
 
 declare_id!("3455LkCS85a4aYmSeNbRrJsduNQfYRY82A7eCD3yQfyR");
 
@@ -549,7 +549,7 @@ This example shows how to use the `invoke_signed()` function to make a CPI
 signed for by a PDA.
 
 ```rust
-use anchor_lang::arch_program::{program::invoke_signed, system_instruction};
+use satellite_lang::arch_program::{program::invoke_signed, system_instruction};
 ```
 
 ```rust

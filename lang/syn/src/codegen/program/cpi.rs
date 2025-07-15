@@ -18,14 +18,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
                 let discriminator = {
                     let name = generate_ix_variant_name(&name_str);
-                    quote! { <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR }
+                    quote! { <instruction::#name as satellite_lang::Discriminator>::DISCRIMINATOR }
                 };
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let ix_cfgs = &ix.cfgs;
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
-                    "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
+                    "()" => (quote! {satellite_lang::Result<()> }, quote! { Ok(()) }),
                     _ => (
-                        quote! { anchor_lang::Result<crate::cpi::Return::<#ret_type>> },
+                        quote! { satellite_lang::Result<crate::cpi::Return::<#ret_type>> },
                         quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData }) }
                     )
                 };
@@ -33,7 +33,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     pub fn #method_name<'a, 'b, 'c, 'info>(
-                        ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                        ctx: satellite_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
                     ) -> #method_ret {
                         let ix = {
@@ -41,16 +41,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             let mut data = Vec::with_capacity(256);
                             data.extend_from_slice(#discriminator);
                             AnchorSerialize::serialize(&ix, &mut data)
-                                .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
+                                .map_err(|_| satellite_lang::error::ErrorCode::InstructionDidNotSerialize)?;
                             let accounts = ctx.to_account_metas(None);
-                            anchor_lang::arch_program::instruction::Instruction {
+                            satellite_lang::arch_program::instruction::Instruction {
                                 program_id: ctx.program.key(),
                                 accounts,
                                 data,
                             }
                         };
                         let mut acc_infos = ctx.to_account_infos();
-                        anchor_lang::arch_program::program::invoke_signed(
+                        satellite_lang::arch_program::program::invoke_signed(
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,
@@ -82,7 +82,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             impl<T: AnchorDeserialize> Return<T> {
                 pub fn get(&self) -> T {
-                    let (_key, data) = anchor_lang::arch_program::program::get_return_data().unwrap();
+                    let (_key, data) = satellite_lang::arch_program::program::get_return_data().unwrap();
                     T::try_from_slice(&data).unwrap()
                 }
             }

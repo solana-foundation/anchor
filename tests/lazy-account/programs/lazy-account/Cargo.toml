@@ -13,7 +13,7 @@ default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["satellite-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { path = "../../../../lang", features = ["lazy-account"] }
+satellite-lang = { path = "../../../../lang", features = ["lazy-account"] }

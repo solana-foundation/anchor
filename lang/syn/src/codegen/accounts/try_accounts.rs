@@ -25,7 +25,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     quote! {
                         #[cfg(feature = "anchor-debug")]
                         ::arch_program::log::sol_log(stringify!(#name));
-                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
+                        let #name: #ty = satellite_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
                 AccountField::Field(f) => {
@@ -55,7 +55,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                 let mut __i: u64 = 0;
                                 while !__accounts.is_empty() {
                                     __bumps.__push_shard_index(__i);
-                                    let item = anchor_lang::Accounts::try_accounts(
+                                    let item = satellite_lang::Accounts::try_accounts(
                                         __program_id,
                                         __accounts,
                                         __ix_data,
@@ -66,14 +66,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                     vec.push(item);
                                     __i += 1;
                                 }
-                                let #typed_ident = anchor_lang::accounts::shards::Shards::new(vec);
+                                let #typed_ident = satellite_lang::accounts::shards::Shards::new(vec);
                             }
                         } else {
                             quote! {
                                 let mut vec = Vec::with_capacity(#len_expr as usize);
                                 for __i in 0u64..#len_expr {
                                     __bumps.__push_shard_index(__i);
-                                    let item = anchor_lang::Accounts::try_accounts(
+                                    let item = satellite_lang::Accounts::try_accounts(
                                         __program_id,
                                         __accounts,
                                         __ix_data,
@@ -83,7 +83,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                     __bumps.__pop_shard_index();
                                     vec.push(item);
                                 }
-                                let #typed_ident = anchor_lang::accounts::shards::Shards::new(vec);
+                                let #typed_ident = satellite_lang::accounts::shards::Shards::new(vec);
                             }
                         };
 
@@ -105,7 +105,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             let empty_behavior = if cfg!(feature = "allow-missing-optionals") {
                                 quote!{ None }
                             } else {
-                                quote!{ return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into()); }
+                                quote!{ return Err(satellite_lang::error::ErrorCode::AccountNotEnoughKeys.into()); }
                             };
                             quote! {
                                 let #name = if __accounts.is_empty() {
@@ -122,7 +122,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         } else {
                             quote!{
                                 if __accounts.is_empty() {
-                                    return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
+                                    return Err(satellite_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                 }
                                 let #name = &__accounts[0];
                                 *__accounts = &__accounts[1..];
@@ -134,7 +134,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         quote! {
                             #[cfg(feature = "anchor-debug")]
                             ::arch_program::log::sol_log(stringify!(#typed_name));
-                            let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
+                            let #typed_name = satellite_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                         }
                     }
@@ -165,29 +165,29 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 .collect();
             quote! {
                 let mut __ix_data = __ix_data;
-                #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
+                #[derive(satellite_lang::AnchorSerialize, satellite_lang::AnchorDeserialize)]
                 struct __Args {
                     #strct_inner
                 }
                 let __Args {
                     #(#field_names),*
                 } = __Args::deserialize(&mut __ix_data)
-                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                    .map_err(|_| satellite_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
             }
         }
     };
 
     quote! {
         #[automatically_derived]
-        impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
+        impl<#combined_generics> satellite_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
             fn try_accounts(
-                __program_id: &anchor_lang::arch_program::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::arch_program::account::AccountInfo<#trait_generics>],
+                __program_id: &satellite_lang::arch_program::pubkey::Pubkey,
+                __accounts: &mut &#trait_generics [satellite_lang::arch_program::account::AccountInfo<#trait_generics>],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::arch_program::pubkey::Pubkey>,
-            ) -> anchor_lang::Result<Self> {
+                __reallocs: &mut std::collections::BTreeSet<satellite_lang::arch_program::pubkey::Pubkey>,
+            ) -> satellite_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de
                 // Deserialize each account.

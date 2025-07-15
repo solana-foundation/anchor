@@ -331,7 +331,7 @@ patch version will be incremented for features.
   ([#3009](https://github.com/coral-xyz/anchor/pull/3009)).
 - cli: Add `idl type` command
   ([#3017](https://github.com/coral-xyz/anchor/pull/3017)).
-- lang: Add `anchor_lang::pubkey` macro for declaring `Pubkey` const values
+- lang: Add `satellite_lang::pubkey` macro for declaring `Pubkey` const values
   ([#3021](https://github.com/coral-xyz/anchor/pull/3021)).
 - cli: Sync program ids on the initial build
   ([#3023](https://github.com/coral-xyz/anchor/pull/3023)).
@@ -408,7 +408,7 @@ patch version will be incremented for features.
   ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
 - ts: Add `.interface(..)` method for instruction discriminator overrides
   ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
-- cli: Check `anchor-lang` and CLI version compatibility
+- cli: Check `satellite-lang` and CLI version compatibility
   ([#2753](https://github.com/coral-xyz/anchor/pull/2753)).
 - ts: Add missing IDL PDA seed types
   ([#2752](https://github.com/coral-xyz/anchor/pull/2752)).
@@ -602,8 +602,8 @@ patch version will be incremented for features.
   ([#2602](https://github.com/coral-xyz/anchor/pull/2602)).
 - bench: Add benchmarking for stack memory usage
   ([#2617](https://github.com/coral-xyz/anchor/pull/2617)).
-- lang: `Box` the inner enums of `anchor_lang::error::Error` to optimize
-  `anchor_lang::Result`
+- lang: `Box` the inner enums of `satellite_lang::error::Error` to optimize
+  `satellite_lang::Result`
   ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
 - ts: Add strong type support for `Program.addEventListener` method
   ([#2627](https://github.com/coral-xyz/anchor/pull/2627)).
@@ -929,7 +929,7 @@ patch version will be incremented for features.
 - lang: Add `realloc`, `realloc::payer`, and `realloc::zero` as a new constraint
   group for program accounts
   ([#1986](https://github.com/coral-xyz/anchor/pull/1986)).
-- lang: Add `PartialEq` and `Eq` for `anchor_lang::Error`
+- lang: Add `PartialEq` and `Eq` for `satellite_lang::Error`
   ([#1544](https://github.com/coral-xyz/anchor/pull/1544)).
 - cli: Add `--skip-build` to `anchor publish`
   ([#1786](https://github.com/coral-xyz/anchor/pull/1841)).
@@ -1097,7 +1097,7 @@ patch version will be incremented for features.
   can use pubkey targets again
   ([#1601](https://github.com/coral-xyz/anchor/pull/1601)).
 - lang: Adjust error code so `#[error_code]` works with just importing
-  `anchor_lang::error_code`
+  `satellite_lang::error_code`
   ([#1610](https://github.com/coral-xyz/anchor/pull/1610)).
 - ts: Fix `spl-token` coder account parsing
   ([#1604](https://github.com/coral-xyz/anchor/pull/1604)).
@@ -1171,9 +1171,9 @@ patch version will be incremented for features.
 - lang: Require doc comments when using AccountInfo or UncheckedAccount types
   ([#1452](https://github.com/coral-xyz/anchor/pull/1452)).
 - lang: add
-  [`error!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.error.html)
+  [`error!`](https://docs.rs/satellite-lang/latest/satellite_lang/prelude/macro.error.html)
   and
-  [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.err.html)
+  [`err!`](https://docs.rs/satellite-lang/latest/satellite_lang/prelude/macro.err.html)
   macro and `Result` type
   ([#1462](https://github.com/coral-xyz/anchor/pull/1462)). This change will
   break most programs. Do the following to upgrade: _ change all
@@ -1952,7 +1952,7 @@ Initial release.
 
 ### Includes
 
-- lang: `anchor-lang` crate providing a Rust eDSL for Solana.
+- lang: `satellite-lang` crate providing a Rust eDSL for Solana.
 - lang/attribute/access-control: Internal attribute macro for function
   modifiers.
 - lang/attribute/account: Internal attribute macro for defining Anchor accounts.

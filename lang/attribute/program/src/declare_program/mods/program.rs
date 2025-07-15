@@ -15,7 +15,7 @@ pub fn gen_program_mod(program_name: &str) -> proc_macro2::TokenStream {
             #[derive(Clone)]
             pub struct #name;
 
-            impl anchor_lang::Id for #name {
+            impl satellite_lang::Id for #name {
                 fn id() -> Pubkey {
                     #id
                 }

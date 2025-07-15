@@ -309,7 +309,7 @@ To use the `init_if_needed` constraint, enable the `init-if-needed` feature in
 
 ```toml title="Cargo.toml"
 [dependencies]
-anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+satellite-lang = { version = "0.31.1", features = ["init-if-needed"] }
 ```
 
 ## Examples
@@ -337,7 +337,7 @@ Create an associated token account for a user.
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -483,7 +483,7 @@ the token account.
 <Tab value="Program">
 
 ```rust title="lib.rs"
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 declare_id!("3pX5NKLru1UBDVckynWQxsgnJeUN3N1viy36Gk9TSn8d");

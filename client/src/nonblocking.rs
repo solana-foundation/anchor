@@ -2,7 +2,7 @@ use crate::{
     AsSigner, ClientError, Config, EventContext, EventUnsubscriber, Program,
     ProgramAccountsIterator, RequestBuilder,
 };
-use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
+use satellite_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
 use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_client::{rpc_config::RpcSendTransactionConfig, rpc_filter::RpcFilterType};
 use solana_sdk::{
@@ -105,7 +105,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     /// Subscribe to program logs.
     ///
     /// Returns an [`EventUnsubscriber`] to unsubscribe and close connection gracefully.
-    pub async fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
+    pub async fn on<T: satellite_lang::Event + satellite_lang::AnchorDeserialize>(
         &self,
         f: impl Fn(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber, ClientError> {

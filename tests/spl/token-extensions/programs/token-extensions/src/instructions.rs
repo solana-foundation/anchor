@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
+use satellite_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
 
 use anchor_spl::{
     associated_token::AssociatedToken,

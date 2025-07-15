@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 use zero_copy::cpi::accounts::UpdateBar;
 use zero_copy::program::ZeroCopy;
 use zero_copy::{self, Bar, Foo};

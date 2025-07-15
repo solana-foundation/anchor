@@ -3,7 +3,7 @@ mod mods;
 
 use std::{env, fs, path::PathBuf};
 
-use anchor_lang_idl::{convert::convert_idl, types::Idl};
+use satellite_lang_idl::{convert::convert_idl, types::Idl};
 use anyhow::anyhow;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
@@ -74,7 +74,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     quote! {
         #docs
         pub mod #name {
-            use anchor_lang::prelude::*;
+            use satellite_lang::prelude::*;
             use accounts::*;
             use events::*;
             use types::*;

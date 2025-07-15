@@ -1,7 +1,7 @@
 //! This example demonstrates how to emit an event, which can be
 //! subscribed to by a client.
 
-use anchor_lang::prelude::*;
+use satellite_lang::prelude::*;
 
 declare_id!("2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy");
 

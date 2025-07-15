@@ -27,7 +27,7 @@ pub fn check_overflow(cargo_toml_path: impl AsRef<Path>) -> Result<bool> {
 
 /// Check whether there is a mismatch between the current CLI version and:
 ///
-/// - `anchor-lang` crate version
+/// - `satellite-lang` crate version
 /// - `@coral-xyz/anchor` package version
 ///
 /// This function logs warnings in the case of a mismatch.
@@ -41,13 +41,13 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         .map(|path| path.join("Cargo.toml"))
         .map(cargo_toml::Manifest::from_path)
         .filter_map(|man| man.ok())
-        .filter_map(|man| man.dependencies.get("anchor-lang").map(|d| d.to_owned()))
+        .filter_map(|man| man.dependencies.get("satellite-lang").map(|d| d.to_owned()))
         .filter_map(|dep| Version::parse(dep.req()).ok())
         .find(|ver| ver != &cli_version); // Only log the warning once
 
     if let Some(ver) = mismatched_lang_version {
         eprintln!(
-            "WARNING: `anchor-lang` version({ver}) and the current CLI version({cli_version}) \
+            "WARNING: `satellite-lang` version({ver}) and the current CLI version({cli_version}) \
                  don't match.\n\n\t\
                  This can lead to unwanted behavior. To use the same CLI version, add:\n\n\t\
                  [toolchain]\n\t\
@@ -91,8 +91,8 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 /// Check for potential dependency improvements.
 ///
 /// The main problem people will run into with Solana v2 is that the `solana-program` version
-/// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
-/// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
+/// specified in users' `Cargo.toml` might be incompatible with `satellite-lang`'s dependency.
+/// To fix this and similar problems, users should use the crates exported from `satellite-lang` or
 /// `anchor-spl` when possible.
 pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
     // Check `solana-program`
@@ -108,8 +108,8 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
             eprintln!(
                 "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
                 To solve, remove the `solana-program` dependency and use the exported crate from \
-                `anchor-lang`.\n\
-                `use arch_program` becomes `use anchor_lang::arch_program`.\n\
+                `satellite-lang`.\n\
+                `use arch_program` becomes `use satellite_lang::arch_program`.\n\
                 Program name: `{}`\n",
                 man.package().name()
             )
@@ -142,7 +142,7 @@ pub fn check_idl_build_feature() -> Result<()> {
             r#"`idl-build` feature is missing. To solve, add
 
 [features]
-idl-build = ["anchor-lang/idl-build"{anchor_spl_idl_build}]
+idl-build = ["satellite-lang/idl-build"{anchor_spl_idl_build}]
 
 in `{manifest_path:?}`."#
         ));

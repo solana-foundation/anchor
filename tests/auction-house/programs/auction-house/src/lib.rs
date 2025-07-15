@@ -2,7 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::*,
-    anchor_lang::{
+    satellite_lang::{
         prelude::*,
         solana_program::{
             program::{invoke, invoke_signed},

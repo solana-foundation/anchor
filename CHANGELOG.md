@@ -197,7 +197,7 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - lang: Support legacy IDLs with `declare_program!` ([#2997](https://github.com/coral-xyz/anchor/pull/2997)).
 - cli: Add `idl convert` command ([#3009](https://github.com/coral-xyz/anchor/pull/3009)).
 - cli: Add `idl type` command ([#3017](https://github.com/coral-xyz/anchor/pull/3017)).
-- lang: Add `anchor_lang::pubkey` macro for declaring `Pubkey` const values ([#3021](https://github.com/coral-xyz/anchor/pull/3021)).
+- lang: Add `satellite_lang::pubkey` macro for declaring `Pubkey` const values ([#3021](https://github.com/coral-xyz/anchor/pull/3021)).
 - cli: Sync program ids on the initial build ([#3023](https://github.com/coral-xyz/anchor/pull/3023)).
 - idl: Remove `anchor-syn` dependency ([#3030](https://github.com/coral-xyz/anchor/pull/3030)).
 - lang: Add `const` of program ID to `declare_id!` and `declare_program!` ([#3019](https://github.com/coral-xyz/anchor/pull/3019)).
@@ -231,7 +231,7 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 
 ## [0.30.0] - 2024-04-15
 
-See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.30.0) for a high-level overview of how to update.
+See the [Anchor 0.30 release notes](https://www.satellite-lang.com/release-notes/0.30.0) for a high-level overview of how to update.
 
 ### Features
 
@@ -241,7 +241,7 @@ See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.
 - lang: Add `InstructionData::write_to` implementation ([#2733](https://github.com/coral-xyz/anchor/pull/2733)).
 - lang: Add `#[interface(..)]` attribute for instruction discriminator overrides ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
 - ts: Add `.interface(..)` method for instruction discriminator overrides ([#2728](https://github.com/coral-xyz/anchor/pull/2728)).
-- cli: Check `anchor-lang` and CLI version compatibility ([#2753](https://github.com/coral-xyz/anchor/pull/2753)).
+- cli: Check `satellite-lang` and CLI version compatibility ([#2753](https://github.com/coral-xyz/anchor/pull/2753)).
 - ts: Add missing IDL PDA seed types ([#2752](https://github.com/coral-xyz/anchor/pull/2752)).
 - cli: `idl close` accepts optional `--idl-address` parameter ([#2760](https://github.com/coral-xyz/anchor/pull/2760)).
 - cli: Add support for simple wildcard patterns in Anchor.toml's `workspace.members` and `workspace.exclude`. ([#2785](https://github.com/coral-xyz/anchor/pull/2785)).
@@ -323,7 +323,7 @@ See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.
 
 ## [0.29.0] - 2023-10-16
 
-See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.29.0) for a high-level overview of how to update.
+See the [Anchor 0.29 release notes](https://www.satellite-lang.com/release-notes/0.29.0) for a high-level overview of how to update.
 
 ### Features
 
@@ -340,7 +340,7 @@ See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.
 - ts: Add support for unnamed(tuple) enum in accounts ([#2601](https://github.com/coral-xyz/anchor/pull/2601)).
 - cli: Add program template with multiple files for instructions, state... ([#2602](https://github.com/coral-xyz/anchor/pull/2602)).
 - bench: Add benchmarking for stack memory usage ([#2617](https://github.com/coral-xyz/anchor/pull/2617)).
-- lang: `Box` the inner enums of `anchor_lang::error::Error` to optimize `anchor_lang::Result` ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
+- lang: `Box` the inner enums of `satellite_lang::error::Error` to optimize `satellite_lang::Result` ([#2600](https://github.com/coral-xyz/anchor/pull/2600)).
 - ts: Add strong type support for `Program.addEventListener` method ([#2627](https://github.com/coral-xyz/anchor/pull/2627)).
 - syn: Add `IdlBuild` trait to implement IDL support for custom types ([#2629](https://github.com/coral-xyz/anchor/pull/2629)).
 - spl: Add `idl-build` feature. IDL build method will not work without enabling this feature when using `anchor-spl` ([#2629](https://github.com/coral-xyz/anchor/pull/2629)).
@@ -500,7 +500,7 @@ See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.
 ### Features
 
 - lang: Add `realloc`, `realloc::payer`, and `realloc::zero` as a new constraint group for program accounts ([#1986](https://github.com/coral-xyz/anchor/pull/1986)).
-- lang: Add `PartialEq` and `Eq` for `anchor_lang::Error` ([#1544](https://github.com/coral-xyz/anchor/pull/1544)).
+- lang: Add `PartialEq` and `Eq` for `satellite_lang::Error` ([#1544](https://github.com/coral-xyz/anchor/pull/1544)).
 - cli: Add `--skip-build` to `anchor publish` ([#1786](https://github.com/coral-xyz/anchor/pull/1841)).
 - cli: Add `--program-keypair` to `anchor deploy` ([#1786](https://github.com/coral-xyz/anchor/pull/1786)).
 - cli: Add compilation optimizations to cli template ([#1807](https://github.com/coral-xyz/anchor/pull/1807)).
@@ -595,7 +595,7 @@ See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.
 - spl: Update `spl/governance` to use new errors ([#1582](https://github.com/coral-xyz/anchor/pull/1582)).
 - client: Fix `Cluster`'s `FromStr` implementation ([#1362](https://github.com/coral-xyz/anchor/pull/1362)).
 - lang: Implement `Key` for `Pubkey` again, so `associated_token::*` constraints can use pubkey targets again ([#1601](https://github.com/coral-xyz/anchor/pull/1601)).
-- lang: Adjust error code so `#[error_code]` works with just importing `anchor_lang::error_code` ([#1610](https://github.com/coral-xyz/anchor/pull/1610)).
+- lang: Adjust error code so `#[error_code]` works with just importing `satellite_lang::error_code` ([#1610](https://github.com/coral-xyz/anchor/pull/1610)).
 - ts: Fix `spl-token` coder account parsing ([#1604](https://github.com/coral-xyz/anchor/pull/1604)).
 - cli: Fix `npm install` fallback if `yarn` install doesn't work ([#1643](https://github.com/coral-xyz/anchor/pull/1643)).
 - lang: Fix bug where `owner = <target>` would not compile because of missing type annotation ([#1648](https://github.com/coral-xyz/anchor/pull/1648)).
@@ -636,7 +636,7 @@ See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.
 - lang: Enforce that the payer for an init-ed account be marked `mut` ([#1271](https://github.com/coral-xyz/anchor/pull/1271)).
 - lang: All error-related code is now in the error module ([#1426](https://github.com/coral-xyz/anchor/pull/1426)).
 - lang: Require doc comments when using AccountInfo or UncheckedAccount types ([#1452](https://github.com/coral-xyz/anchor/pull/1452)).
-- lang: add [`error!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.error.html) and [`err!`](https://docs.rs/anchor-lang/latest/anchor_lang/prelude/macro.err.html) macro and `Result` type ([#1462](https://github.com/coral-xyz/anchor/pull/1462)).
+- lang: add [`error!`](https://docs.rs/satellite-lang/latest/satellite_lang/prelude/macro.error.html) and [`err!`](https://docs.rs/satellite-lang/latest/satellite_lang/prelude/macro.err.html) macro and `Result` type ([#1462](https://github.com/coral-xyz/anchor/pull/1462)).
   This change will break most programs. Do the following to upgrade:
   _ change all `ProgramResult`'s to `Result<()>`
   _ change `#[error]` to `#[error_code]`
@@ -1113,7 +1113,7 @@ Initial release.
 
 ### Includes
 
-- lang: `anchor-lang` crate providing a Rust eDSL for Solana.
+- lang: `satellite-lang` crate providing a Rust eDSL for Solana.
 - lang/attribute/access-control: Internal attribute macro for function modifiers.
 - lang/attribute/account: Internal attribute macro for defining Anchor accounts.
 - lang/attribute/error: Internal attribute macro for defining Anchor program errors.

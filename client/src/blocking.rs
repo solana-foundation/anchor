@@ -2,7 +2,7 @@ use crate::{
     ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
     RequestBuilder,
 };
-use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
+use satellite_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
 #[cfg(not(feature = "mock"))]
 use solana_client::rpc_client::RpcClient;
 use solana_client::{
@@ -98,7 +98,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         self.rt.block_on(self.accounts_lazy_internal(filters))
     }
 
-    pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
+    pub fn on<T: satellite_lang::Event + satellite_lang::AnchorDeserialize>(
         &self,
         f: impl Fn(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber, ClientError> {
