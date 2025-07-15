@@ -46,6 +46,7 @@ use arch_program::{
 };
 use bitcoin::{Amount, ScriptBuf, TxOut};
 use satellite_bitcoin::generic::fixed_set::FixedCapacitySet;
+use satellite_bitcoin::generic::fixed_set::FixedSet;
 use satellite_bitcoin::{
     constants::DUST_LIMIT, fee_rate::FeeRate, utxo_info::UtxoInfoTrait, TransactionBuilder,
 };
@@ -178,44 +179,52 @@ pub fn compute_unsettled_btc_in_shards<
     tx_builder: &TransactionBuilder<MAX_USER_UTXOS, MAX_SHARDS_PER_PROGRAM, RS>,
     shard_set: &ShardSet<'slice, 'info, S, MAX_SELECTED, Selected>,
     removed_from_shards: u64,
-    _fee_rate: &FeeRate,
+    fee_rate: &FeeRate,
 ) -> Result<u64, MathError>
 where
     RS: FixedCapacitySet<Item = RuneAmount> + Default,
     U: UtxoInfoTrait<RS>,
     S: StateShard<U, RS> + ZeroCopy + Owner,
 {
-    let mut total_btc_amount = 0u64;
-
-    let selected = shard_set.selected_indices();
+    // ---------------------------------------------------------------------
+    // 1. Build a de-duplicated set of all metas referenced by the tx-inputs.
+    // ---------------------------------------------------------------------
+    type InputMetaSet<const CAP: usize> = FixedSet<UtxoMeta, CAP>;
+    let mut spent_metas: InputMetaSet<MAX_USER_UTXOS> = InputMetaSet::default();
 
     for input in tx_builder.transaction.input.iter() {
-        let input_meta =
-            UtxoMeta::from_outpoint(input.previous_output.txid, input.previous_output.vout);
-
-        for &idx in selected {
-            let handle = shard_set.handle_by_index(idx);
-            // Borrow immutably just for this check.
-            let utxo_res: Result<Option<u64>, arch_program::program_error::ProgramError> = handle
-                .with_ref(|shard| {
-                    shard
-                        .btc_utxos()
-                        .iter()
-                        .find(|u| *u.meta() == input_meta)
-                        .map(|u| u.value())
-                });
-            let maybe_value = match utxo_res {
-                Ok(v) => v,
-                Err(_) => return Err(MathError::ConversionError),
-            };
-            if let Some(utxo_value) = maybe_value {
-                total_btc_amount = safe_add(total_btc_amount, utxo_value)?;
-                break; // Avoid double-counting identical UTXOs across shards.
-            }
-        }
+        let meta = UtxoMeta::from_outpoint(input.previous_output.txid, input.previous_output.vout);
+        // Ignore the (unlikely) Full error – capacity is guaranteed large enough.
+        let _ = spent_metas.insert(meta);
     }
 
-    // Fees paid by program and consolidation inputs mirror the logic in the legacy helper.
+    // ---------------------------------------------------------------------
+    // 2. Sum the value of every shard-managed UTXO that appears in the set.
+    //    Each shard is borrowed exactly once.
+    // ---------------------------------------------------------------------
+    let mut total_btc_amount: u64 = 0;
+
+    for &idx in shard_set.selected_indices() {
+        let handle = shard_set.handle_by_index(idx);
+        let shard_sum = match handle.with_ref(|shard| {
+            let mut sum: u64 = 0;
+            for utxo in shard.btc_utxos().iter() {
+                if spent_metas.contains(utxo.meta()) {
+                    sum = sum.saturating_add(utxo.value());
+                }
+            }
+            sum
+        }) {
+            Ok(v) => v,
+            Err(_) => return Err(MathError::ConversionError),
+        };
+
+        total_btc_amount = safe_add(total_btc_amount, shard_sum)?;
+    }
+
+    // ---------------------------------------------------------------------
+    // 3. Mirror legacy logic for consolidation & fee bookkeeping.
+    // ---------------------------------------------------------------------
     let fee_paid_by_program = {
         #[cfg(feature = "utxo-consolidation")]
         {
@@ -340,36 +349,36 @@ where
 {
     let num_shards = shard_set.selected_indices().len();
 
+    // Allocate result vectors on the stack.
     let mut assigned_amounts: Vec<u128> = Vec::with_capacity(num_shards);
     let mut total_current_amount: u128 = 0;
 
-    // Helper to detect whether a UTXO is already consumed by the tx-builder.
-    let is_utxo_used = |meta: &UtxoMeta| {
-        tx_builder.transaction.input.iter().any(|input| {
-            UtxoMeta::from_outpoint(input.previous_output.txid, input.previous_output.vout) == *meta
-        })
-    };
+    // --------------------------------------------------
+    // Pre-compute the set of metas already used by the tx
+    // --------------------------------------------------
+    type InputMetaSet<const CAP: usize> = FixedSet<UtxoMeta, CAP>;
+    let mut used_metas: InputMetaSet<MAX_USER_UTXOS> = InputMetaSet::default();
+    for input in tx_builder.transaction.input.iter() {
+        let meta = UtxoMeta::from_outpoint(input.previous_output.txid, input.previous_output.vout);
+        let _ = used_metas.insert(meta);
+    }
 
     // 1. Determine the current amount per shard and overall.
     for &idx in shard_set.selected_indices() {
         let handle = shard_set.handle_by_index(idx);
 
-        // Gather existing amount for this shard.
         let current_res = handle.with_ref(|shard| match rune_amount.id {
-            RuneId::BTC => {
-                // Sum unspent BTC UTXOs.
-                shard
-                    .btc_utxos()
-                    .iter()
-                    .filter_map(|u| {
-                        if is_utxo_used(u.meta()) {
-                            None
-                        } else {
-                            Some(u.value() as u128)
-                        }
-                    })
-                    .sum()
-            }
+            RuneId::BTC => shard
+                .btc_utxos()
+                .iter()
+                .filter_map(|u| {
+                    if used_metas.contains(u.meta()) {
+                        None
+                    } else {
+                        Some(u.value() as u128)
+                    }
+                })
+                .sum(),
             _ => {
                 #[cfg(feature = "runes")]
                 {

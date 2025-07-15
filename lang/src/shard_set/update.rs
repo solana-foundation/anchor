@@ -68,12 +68,17 @@ where
     U: UtxoInfoTrait<RS>,
     S: StateShard<U, RS> + ZeroCopy + Owner,
 {
-    for utxo_to_remove in utxos_to_remove {
-        for &idx in shard_indexes {
-            let handle = shard_set.handle_by_index(idx);
-            // Ignore ProgramError – treat it as a fatal StateShardError.
-            handle
-                .with_mut(|shard| {
+    // Iterate **once per shard** and perform all removals within the same
+    // mutable borrow. This avoids repeatedly loading the same account and
+    // therefore reduces BPF instruction count and runtime borrow checking
+    // overhead.
+    for &idx in shard_indexes {
+        let handle = shard_set.handle_by_index(idx);
+
+        // Ignore ProgramError – treat it as a fatal StateShardError.
+        handle
+            .with_mut(|shard| {
+                for utxo_to_remove in utxos_to_remove {
                     shard.btc_utxos_retain(&mut |utxo| utxo.meta() != utxo_to_remove);
 
                     if let Some(rune_utxo) = shard.rune_utxo() {
@@ -81,10 +86,11 @@ where
                             shard.clear_rune_utxo();
                         }
                     }
-                })
-                .map_err(|_| Error::from(ErrorCode::RuneAmountAdditionOverflow))?;
-        }
+                }
+            })
+            .map_err(|_| Error::from(ErrorCode::RuneAmountAdditionOverflow))?;
     }
+
     Ok(())
 }
 
