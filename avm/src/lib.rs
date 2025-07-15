@@ -79,9 +79,9 @@ pub fn ensure_paths() {
         }
     }
 
-// On Windows, we create a symlink named `anchor.exe` pointing to the `avm.exe` binary in the bin directory,
-// so that the user can run `anchor` from the command line.
-// Note: Creating symlinks on Windows may require administrator privileges or that Developer Mode is enabled.    
+    // On Windows, we create a symlink named `anchor.exe` pointing to the `avm.exe` binary in the bin directory,
+    // so that the user can run `anchor` from the command line.
+    // Note: Creating symlinks on Windows may require administrator privileges or that Developer Mode is enabled.
 
     #[cfg(windows)]
     {
