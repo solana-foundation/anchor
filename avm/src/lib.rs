@@ -361,6 +361,8 @@ pub fn install_version(
             "solana-verify",
             "--git",
             "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+            "--rev",
+            "568cb334709e88b9b45fc24f1f440eecacf5db54",
             "--root",
             AVM_HOME.to_str().unwrap(),
             "--force",
