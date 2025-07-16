@@ -139,8 +139,7 @@ fn main() -> Result<()> {
     if let Some(stem) = std::env::args()
         .next()
         .as_ref()
-        .map(|s| std::path::Path::new(s).file_stem().and_then(OsStr::to_str))
-        .flatten()
+        .and_then(|s| std::path::Path::new(s).file_stem().and_then(OsStr::to_str))
     {
         if stem == "anchor" {
             return anchor_proxy();
