@@ -136,12 +136,11 @@ fn anchor_proxy() -> Result<()> {
 
 fn main() -> Result<()> {
     // If the binary is named `anchor` then run the proxy.
-    if let Some(stem) = std::env::current_exe()
-        .ok()
+    if let Some(stem) = std::env::args()
+        .next()
         .as_ref()
-        .map(std::path::Path::new)
-        .and_then(std::path::Path::file_stem)
-        .and_then(OsStr::to_str)
+        .map(|s| std::path::Path::new(s).file_stem().and_then(OsStr::to_str))
+        .flatten()
     {
         if stem == "anchor" {
             return anchor_proxy();
