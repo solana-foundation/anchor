@@ -69,6 +69,7 @@ step_end
 step_start "Checking verification results"
 if echo "$OUTPUT" | grep -q "Program hash matches ✅"; then
   # This is the expected outcome in a test environment without a funded mainnet wallet.
+  # ⚠️ CAUTION: if you have a mainnet wallet with funds, and configured the CLI to use it, this will fail. And you will lose money.
   if echo "$OUTPUT" | grep -q "Failed to send verification transaction to the blockchain"; then
     echo "✅ Test successful: Verification passed and transaction failed as expected."
   else
