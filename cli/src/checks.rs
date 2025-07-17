@@ -134,7 +134,12 @@ pub fn check_idl_build_feature() -> Result<()> {
         let anchor_spl_idl_build = if manifest
             .dependencies
             .iter()
-            .any(|dep| dep.0 == "anchor-spl") { r#", "anchor-spl/idl-build""# } else { Default::default() };
+            .any(|dep| dep.0 == "anchor-spl")
+        {
+            r#", "anchor-spl/idl-build""#
+        } else {
+            ""
+        };
 
         return Err(anyhow!(
             r#"`idl-build` feature is missing. To solve, add
