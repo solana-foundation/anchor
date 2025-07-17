@@ -7,7 +7,7 @@ use std::fmt::Display;
 use super::constraints;
 
 pub fn generate_bumps_name<T: Display>(anchor_ident: &T) -> Ident {
-    Ident::new(&format!("{}Bumps", anchor_ident), Span::call_site())
+    Ident::new(&format!("{anchor_ident}Bumps"), Span::call_site())
 }
 
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {

@@ -167,14 +167,14 @@ fn gen_internal_accounts_common(
                     let name = format_ident!("{}", acc.name);
 
                     let attrs = {
-                        let signer = acc.signer.then(|| quote!(signer)).unwrap_or_default();
-                        let mt = acc.writable.then(|| quote!(mut)).unwrap_or_default();
-                        if signer.is_empty() {
-                            mt
-                        } else if mt.is_empty() {
-                            signer
-                        } else {
-                            quote! { #signer, #mt }
+                        let signer = acc.signer.then_some(quote!(signer));
+                        let mt = acc.writable.then_some(quote!(mut));
+
+                        match (signer, mt) {
+                            (None, None) => None,
+                            (Some(s), None) => Some(quote!(#s)),
+                            (None, Some(m)) => Some(quote!(#m)),
+                            (Some(s), Some(m)) => Some(quote!(#s, #m)),
                         }
                     };
 
