@@ -25,9 +25,6 @@ use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::account_utils::StateMut;
-use solana_sdk::bpf_loader;
-use solana_sdk::bpf_loader_deprecated;
 use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
@@ -161,34 +158,23 @@ pub enum Command {
     /// Run this command inside a program subdirectory, i.e., in the dir
     /// containing the program's Cargo.toml.
     Verify {
-        /// The deployed program to compare against.
+        /// The program ID to verify.
         program_id: Pubkey,
-        #[clap(short, long)]
+        /// The URL of the repository to verify against. Conflicts with `--current-dir`.
+        #[clap(long, conflicts_with = "current_dir")]
+        repo_url: Option<String>,
+        /// The commit hash to verify against. Requires `--repo-url`.
+        #[clap(long, requires = "repo_url")]
+        commit_hash: Option<String>,
+        /// Verify against the source code in the current directory. Conflicts with `--repo-url`.
+        #[clap(long)]
+        current_dir: bool,
+        /// Name of the program to run the command on. Defaults to the package name.
+        #[clap(long)]
         program_name: Option<String>,
-        /// Version of the Solana toolchain to use. For --verifiable builds
-        /// only.
-        #[clap(short, long)]
-        solana_version: Option<String>,
-        /// Docker image to use. For --verifiable builds only.
-        #[clap(short, long)]
-        docker_image: Option<String>,
-        /// Bootstrap docker image from scratch, installing all requirements for
-        /// verifiable builds. Only works for debian-based images.
-        #[clap(value_enum, short, long, default_value = "none")]
-        bootstrap: BootstrapMode,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
-        /// Environment variables to pass into the docker container
-        #[clap(short, long, required = false)]
-        env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-sbf` command.
-        #[clap(required = false, last = true)]
-        cargo_args: Vec<String>,
-        /// Flag to skip building the program in the workspace,
-        /// use this to save time when running verify and the program code is already built.
-        #[clap(long, required = false)]
-        skip_build: bool,
+        /// Any additional arguments to pass to `solana-verify`.
+        #[clap(raw = true)]
+        args: Vec<String>,
     },
     #[clap(name = "test", alias = "t")]
     /// Runs integration tests.
@@ -820,25 +806,18 @@ fn process_command(opts: Opts) -> Result<()> {
         ),
         Command::Verify {
             program_id,
+            repo_url,
+            commit_hash,
+            current_dir,
             program_name,
-            solana_version,
-            docker_image,
-            bootstrap,
-            env,
-            cargo_args,
-            skip_build,
-            arch,
+            args,
         } => verify(
-            &opts.cfg_override,
             program_id,
+            repo_url,
+            commit_hash,
+            current_dir,
             program_name,
-            solana_version,
-            docker_image,
-            bootstrap,
-            env,
-            cargo_args,
-            skip_build,
-            arch,
+            args,
         ),
         Command::Clean => clean(&opts.cfg_override),
         Command::Deploy {
@@ -2044,81 +2023,62 @@ fn _build_solidity_cwd(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn verify(
-    cfg_override: &ConfigOverride,
+pub fn verify(
     program_id: Pubkey,
+    repo_url: Option<String>,
+    commit_hash: Option<String>,
+    current_dir: bool,
     program_name: Option<String>,
-    solana_version: Option<String>,
-    docker_image: Option<String>,
-    bootstrap: BootstrapMode,
-    env_vars: Vec<String>,
-    cargo_args: Vec<String>,
-    skip_build: bool,
-    arch: ProgramArch,
+    args: Vec<String>,
 ) -> Result<()> {
-    // Change to the workspace member directory, if needed.
-    if let Some(program_name) = program_name.as_ref() {
-        cd_member(cfg_override, program_name)?;
-    }
+    let mut command_args = Vec::new();
 
-    // Proceed with the command.
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let cargo = Manifest::discover()?.ok_or_else(|| anyhow!("Cargo.toml not found"))?;
-
-    // Build the program we want to verify.
-    let cur_dir = std::env::current_dir()?;
-    if !skip_build {
-        build(
-            cfg_override,
-            true,
-            None,
-            None,
-            true,
-            true,
-            None,
-            solana_version.or_else(|| cfg.toolchain.solana_version.clone()),
-            docker_image,
-            bootstrap,
-            None,
-            None,
-            env_vars,
-            cargo_args.clone(),
-            false,
-            arch,
-        )?;
-    }
-    std::env::set_current_dir(cur_dir)?;
-
-    // Verify binary.
-    let binary_name = cargo.lib_name()?;
-    let bin_path = cfg
-        .path()
-        .parent()
-        .ok_or_else(|| anyhow!("Unable to find workspace root"))?
-        .join("target")
-        .join("verifiable")
-        .join(&binary_name)
-        .with_extension("so");
-
-    let url = cluster_url(&cfg, &cfg.test_validator);
-    let bin_ver = verify_bin(program_id, &bin_path, &url)?;
-    if !bin_ver.is_verified {
-        println!("Error: Binaries don't match");
-        std::process::exit(1);
-    }
-
-    // Verify IDL (only if it's not a buffer account).
-    let local_idl = generate_idl(&cfg, true, false, &cargo_args)?;
-    if bin_ver.state != BinVerificationState::Buffer {
-        let deployed_idl = fetch_idl(cfg_override, program_id).map(serde_json::from_value)??;
-        if local_idl != deployed_idl {
-            println!("Error: IDLs don't match");
-            std::process::exit(1);
+    match (current_dir, repo_url) {
+        (true, _) => {
+            let current_path = std::env::current_dir()?
+                .to_str()
+                .ok_or_else(|| anyhow!("Invalid current directory path"))?
+                .to_owned();
+            command_args.push(current_path);
+            command_args.push("--current-dir".into());
+        }
+        (false, Some(url)) => {
+            command_args.push(url);
+        }
+        (false, None) => {
+            return Err(anyhow!(
+                "You must provide either --repo-url or --current-dir"
+            ));
         }
     }
 
-    println!("{program_id} is verified.");
+    if let Some(commit) = commit_hash {
+        command_args.push("--commit-hash".into());
+        command_args.push(commit);
+    }
+
+    if let Some(name) = program_name {
+        command_args.push("--library-name".into());
+        command_args.push(name);
+    }
+
+    command_args.push("--program-id".into());
+    command_args.push(program_id.to_string());
+
+    command_args.extend(args);
+
+    println!("Verifying program {program_id}");
+    let status = std::process::Command::new("solana-verify")
+        .arg("verify-from-repo")
+        .args(&command_args)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status()
+        .with_context(|| "Failed to run `solana-verify`")?;
+
+    if !status.success() {
+        return Err(anyhow!("Failed to verify program"));
+    }
 
     Ok(())
 }
@@ -2153,97 +2113,6 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
     }
 
     Err(anyhow!("{} is not part of the workspace", program_name,))
-}
-
-pub fn verify_bin(program_id: Pubkey, bin_path: &Path, cluster: &str) -> Result<BinVerification> {
-    // Use `finalized` state for verify
-    let client = RpcClient::new_with_commitment(cluster, CommitmentConfig::finalized());
-
-    // Get the deployed build artifacts.
-    let (deployed_bin, state) = {
-        let account = client.get_account(&program_id)?;
-        if account.owner == bpf_loader::id() || account.owner == bpf_loader_deprecated::id() {
-            let bin = account.data.to_vec();
-            let state = BinVerificationState::ProgramData {
-                slot: 0, // Need to look through the transaction history.
-                upgrade_authority_address: None,
-            };
-            (bin, state)
-        } else if account.owner == bpf_loader_upgradeable::id() {
-            match account.state()? {
-                UpgradeableLoaderState::Program {
-                    programdata_address,
-                } => {
-                    let account = client.get_account(&programdata_address)?;
-                    let bin = account.data
-                        [UpgradeableLoaderState::size_of_programdata_metadata()..]
-                        .to_vec();
-
-                    if let UpgradeableLoaderState::ProgramData {
-                        slot,
-                        upgrade_authority_address,
-                    } = account.state()?
-                    {
-                        let state = BinVerificationState::ProgramData {
-                            slot,
-                            upgrade_authority_address,
-                        };
-                        (bin, state)
-                    } else {
-                        return Err(anyhow!("Expected program data"));
-                    }
-                }
-                UpgradeableLoaderState::Buffer { .. } => {
-                    let offset = UpgradeableLoaderState::size_of_buffer_metadata();
-                    (
-                        account.data[offset..].to_vec(),
-                        BinVerificationState::Buffer,
-                    )
-                }
-                _ => {
-                    return Err(anyhow!(
-                        "Invalid program id, not a buffer or program account"
-                    ))
-                }
-            }
-        } else {
-            return Err(anyhow!(
-                "Invalid program id, not owned by any loader program"
-            ));
-        }
-    };
-    let mut local_bin = {
-        let mut f = File::open(bin_path)?;
-        let mut contents = vec![];
-        f.read_to_end(&mut contents)?;
-        contents
-    };
-
-    // The deployed program probably has zero bytes appended. The default is
-    // 2x the binary size in case of an upgrade.
-    if local_bin.len() < deployed_bin.len() {
-        local_bin.append(&mut vec![0; deployed_bin.len() - local_bin.len()]);
-    }
-
-    // Finally, check the bytes.
-    let is_verified = local_bin == deployed_bin;
-
-    Ok(BinVerification { state, is_verified })
-}
-
-#[derive(PartialEq, Eq)]
-pub struct BinVerification {
-    pub state: BinVerificationState,
-    pub is_verified: bool,
-}
-
-#[derive(PartialEq, Eq)]
-pub enum BinVerificationState {
-    Buffer,
-    ProgramData {
-        slot: u64,
-        upgrade_authority_address: Option<Pubkey>,
-    },
 }
 
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
@@ -4822,7 +4691,7 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
-    let median_priority_fee = if fees.len().is_multiple_of(2) {
+    let median_priority_fee = if fees.len() % 2 == 0 {
         (fees[median_index - 1].prioritization_fee + fees[median_index].prioritization_fee) / 2
     } else {
         fees[median_index].prioritization_fee
