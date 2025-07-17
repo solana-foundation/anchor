@@ -365,8 +365,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
         | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => *boxed,
         _ => false,
     }
-    .then(|| quote!(*))
-    .unwrap_or_default();
+    .then_some(quote!(*));
     let owner_address = &c.owner_address;
     let error = generate_custom_error(
         ident,

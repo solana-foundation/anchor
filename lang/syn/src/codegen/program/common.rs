@@ -20,7 +20,7 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
 
 pub fn gen_discriminator(namespace: &str, name: impl ToString) -> proc_macro2::TokenStream {
     let discriminator = sighash(namespace, name.to_string().as_str());
-    format!("&{:?}", discriminator).parse().unwrap()
+    format!("&{discriminator:?}").parse().unwrap()
 }
 
 pub fn generate_ix_variant(name: &str, args: &[IxArg]) -> proc_macro2::TokenStream {

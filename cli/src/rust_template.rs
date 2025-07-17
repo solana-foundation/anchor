@@ -751,10 +751,9 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor-client = "{0}"
-{1} = {{ version = "0.1.0", path = "../programs/{1}" }}
+anchor-client = "{VERSION}"
+{name} = {{ version = "0.1.0", path = "../programs/{name}" }}
 "#,
-        VERSION, name,
     )
 }
 
