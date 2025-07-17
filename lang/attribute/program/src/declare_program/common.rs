@@ -154,7 +154,7 @@ pub fn convert_idl_type_def_to_ts(
         }
     };
 
-    let repr = if let Some(repr) = &ty_def.repr {
+    let repr = ty_def.repr.as_ref().map(|repr| {
         let kind = match repr {
             IdlRepr::Rust(_) => "Rust",
             IdlRepr::C(_) => "C",
@@ -179,16 +179,10 @@ pub fn convert_idl_type_def_to_ts(
                 }
             }
             _ => None,
-        };
-        let modifier = match modifier {
-            None => quote!(),
-            Some(modifier) => quote! { , #modifier },
-        };
-
+        }
+        .map(|m| quote!(, #m));
         quote! { #[repr(#kind #modifier)] }
-    } else {
-        quote!()
-    };
+    });
 
     match &ty_def.ty {
         IdlTypeDefTy::Struct { fields } => {
