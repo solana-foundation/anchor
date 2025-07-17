@@ -62,7 +62,7 @@ pub fn ensure_paths() {
         // Only copy if the paths are different
         if current_avm != avm_in_bin {
             if let Err(e) = fs::copy(current_avm, &avm_in_bin) {
-                eprintln!("Failed to copy avm binary: {}", e);
+                eprintln!("Failed to copy avm binary: {e}");
             }
         }
     }
@@ -74,7 +74,7 @@ pub fn ensure_paths() {
         let anchor_in_bin = bin_dir.join("anchor");
         if !anchor_in_bin.exists() {
             if let Err(e) = std::os::unix::fs::symlink(&avm_in_bin, anchor_in_bin) {
-                eprintln!("Failed to create symlink: {}", e);
+                eprintln!("Failed to create symlink: {e}");
             }
         }
     }
@@ -248,7 +248,7 @@ pub fn install_version(
                     "--git".into(),
                     "https://github.com/coral-xyz/anchor".into(),
                     "--tag".into(),
-                    format!("v{}", version),
+                    format!("v{version}"),
                 ]);
             }
             InstallTarget::Commit(commit) => {
