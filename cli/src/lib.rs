@@ -1086,10 +1086,7 @@ fn init(
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
         if !package_manager_result.status.success() && package_manager_cmd != "npm" {
-            println!(
-                "Failed {} install will attempt to npm install",
-                package_manager_cmd
-            );
+            println!("Failed {package_manager_cmd} install will attempt to npm install");
             install_node_modules("npm")?;
         } else {
             eprintln!("Failed to install node modules");
@@ -2017,7 +2014,7 @@ fn _build_solidity_cwd(
     // idl is written to idl_out or .
     let idl_path = idl_out
         .unwrap_or(PathBuf::from("."))
-        .join(format!("{}.json", name));
+        .join(format!("{name}.json"));
 
     let idl = fs::read(idl_path)?;
     let idl = convert_idl(&idl)?;
@@ -3852,14 +3849,14 @@ fn deploy(
         let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
 
         // Deploy the programs.
-        println!("Deploying cluster: {}", url);
-        println!("Upgrade authority: {}", keypair);
+        println!("Deploying cluster: {url}");
+        println!("Upgrade authority: {keypair}");
 
         for mut program in cfg.get_programs(program_name)? {
             let binary_path = program.binary_path(verifiable).display().to_string();
 
             println!("Deploying program {:?}...", program.lib_name);
-            println!("Program path: {}...", binary_path);
+            println!("Program path: {binary_path}...");
 
             let (program_keypair_filepath, program_id) = match &program_keypair {
                 Some(path) => (path.clone(), get_keypair(path)?.pubkey()),
@@ -4036,7 +4033,7 @@ fn create_idl_account(
                     if retries == 19 {
                         return Err(anyhow!("Error creating IDL account: {}", err));
                     }
-                    println!("Error creating IDL account: {}. Retrying...", err);
+                    println!("Error creating IDL account: {err}. Retrying...");
                 }
             }
         }
@@ -4118,7 +4115,7 @@ fn create_idl_buffer(
                 if retries == 19 {
                     return Err(anyhow!("Error creating buffer account: {}", err));
                 }
-                println!("Error creating buffer account: {}. Retrying...", err);
+                println!("Error creating buffer account: {err}. Retrying...");
             }
         }
     }
@@ -4825,7 +4822,7 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
-    let median_priority_fee = if fees.len() % 2 == 0 {
+    let median_priority_fee = if fees.len().is_multiple_of(2) {
         (fees[median_index - 1].prioritization_fee + fees[median_index].prioritization_fee) / 2
     } else {
         fees[median_index].prioritization_fee

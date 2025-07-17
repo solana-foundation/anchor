@@ -319,7 +319,7 @@ impl From<TryFromIntError> for Error {
         Self::AnchorError(Box::new(AnchorError {
             error_name: ErrorCode::InvalidNumericConversion.name(),
             error_code_number: ErrorCode::InvalidNumericConversion.into(),
-            error_msg: format!("{}", e),
+            error_msg: format!("{e}"),
             error_origin: None,
             compared_values: None,
         }))

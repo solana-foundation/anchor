@@ -38,11 +38,11 @@ impl CrateContext {
         self.modules.iter().flat_map(|(_, ctx)| ctx.type_aliases())
     }
 
-    pub fn modules(&self) -> impl Iterator<Item = ModuleContext> {
+    pub fn modules(&self) -> impl Iterator<Item = ModuleContext<'_>> {
         self.modules.values().map(|detail| ModuleContext { detail })
     }
 
-    pub fn root_module(&self) -> ModuleContext {
+    pub fn root_module(&self) -> ModuleContext<'_> {
         ModuleContext {
             detail: self.modules.get("crate").unwrap(),
         }

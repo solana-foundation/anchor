@@ -151,7 +151,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     }
 
     /// Returns a Ref to the account data structure for reading.
-    pub fn load(&self) -> Result<Ref<T>> {
+    pub fn load(&self) -> Result<Ref<'_, T>> {
         let data = self.acc_info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
@@ -169,7 +169,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     }
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<T>> {
+    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable {
@@ -196,7 +196,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<T>> {
+    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable {

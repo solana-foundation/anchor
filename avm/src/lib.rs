@@ -194,7 +194,7 @@ pub fn install_version(
             AVM_HOME.to_str().unwrap().into(),
         ];
         let conditional_args = match install_target {
-            InstallTarget::Version(version) => ["--tag".into(), format!("v{}", version)],
+            InstallTarget::Version(version) => ["--tag".into(), format!("v{version}")],
             InstallTarget::Commit(commit) => ["--rev".into(), commit],
         };
         args.extend_from_slice(&conditional_args);

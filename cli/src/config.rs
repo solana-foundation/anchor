@@ -318,8 +318,7 @@ impl WithPath<Config> {
                             .map(|entry| self.process_single_path(&entry.path()))
                             .collect(),
                         Err(e) => vec![Err(Error::new(io::Error::other(format!(
-                            "Error reading directory {:?}: {}",
-                            dir, e
+                            "Error reading directory {dir:?}: {e}"
                         ))))],
                     }
                 } else {
@@ -332,8 +331,7 @@ impl WithPath<Config> {
     fn process_single_path(&self, path: &PathBuf) -> Result<PathBuf, Error> {
         path.canonicalize().map_err(|e| {
             Error::new(io::Error::other(format!(
-                "Error canonicalizing path {:?}: {}",
-                path, e
+                "Error canonicalizing path {path:?}: {e}"
             )))
         })
     }
@@ -685,7 +683,7 @@ impl fmt::Display for Config {
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
-        write!(f, "{}", cfg)
+        write!(f, "{cfg}")
     }
 }
 
