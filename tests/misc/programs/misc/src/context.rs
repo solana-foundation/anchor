@@ -835,3 +835,14 @@ pub struct TestInitAndZero<'info> {
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct TestSystemAccount<'info> {
+    #[account(init, payer = user, space = 0)]
+    pub system_account: SystemAccount<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+
