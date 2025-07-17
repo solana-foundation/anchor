@@ -35,7 +35,7 @@ fn current_version_file_path() -> PathBuf {
 }
 
 /// Path to the current version file $AVM_HOME/bin
-fn get_bin_dir_path() -> PathBuf {
+pub fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
 }
 
@@ -53,7 +53,45 @@ pub fn ensure_paths() {
 
     let bin_dir = get_bin_dir_path();
     if !bin_dir.exists() {
-        fs::create_dir_all(bin_dir).expect("Could not create .avm/bin directory");
+        fs::create_dir_all(&bin_dir).expect("Could not create .avm/bin directory");
+    }
+
+    // Copy the `avm` binary to `~/.avm/bin` so we can create symlinks to it.
+    let avm_in_bin = bin_dir.join("avm");
+    if let Ok(current_avm) = std::env::current_exe() {
+        // Only copy if the paths are different
+        if current_avm != avm_in_bin {
+            if let Err(e) = fs::copy(current_avm, &avm_in_bin) {
+                eprintln!("Failed to copy avm binary: {e}");
+            }
+        }
+    }
+
+    // Create a symlink from `anchor` to `avm` so that the user can run `anchor`
+    // from the command line.
+    #[cfg(unix)]
+    {
+        let anchor_in_bin = bin_dir.join("anchor");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = std::os::unix::fs::symlink(&avm_in_bin, anchor_in_bin) {
+                eprintln!("Failed to create symlink: {e}");
+            }
+        }
+    }
+
+    // On Windows, we create a symlink named `anchor.exe` pointing to the `avm.exe` binary in the bin directory,
+    // so that the user can run `anchor` from the command line.
+    // Note: Creating symlinks on Windows may require administrator privileges or that Developer Mode is enabled.
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::symlink_file;
+        let anchor_in_bin = bin_dir.join("anchor.exe");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = symlink_file(&avm_in_bin, &anchor_in_bin) {
+                eprintln!("Failed to create symlink: {}", e);
+            }
+        }
     }
 
     if !current_version_file_path().exists() {
@@ -102,6 +140,7 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
 pub enum InstallTarget {
     Version(Version),
     Commit(String),
+    Path(PathBuf),
 }
 
 /// Update to the latest version
@@ -170,9 +209,21 @@ pub fn install_version(
     force: bool,
     from_source: bool,
 ) -> Result<()> {
-    let version = match &install_target {
-        InstallTarget::Version(version) => version.to_owned(),
-        InstallTarget::Commit(commit) => get_anchor_version_from_commit(commit)?,
+    let (version, from_source) = match &install_target {
+        InstallTarget::Version(version) => (version.to_owned(), from_source),
+        InstallTarget::Commit(commit) => (get_anchor_version_from_commit(commit)?, true),
+        InstallTarget::Path(path) => {
+            let manifest_path = path.join("cli/Cargo.toml");
+            let manifest = Manifest::from_path(&manifest_path).map_err(|e| {
+                anyhow!(
+                    "Failed to read manifest at {}: {}",
+                    manifest_path.display(),
+                    e
+                )
+            })?;
+            let version = manifest.package().version().parse::<Version>()?;
+            (version, true)
+        }
     };
     // Return early if version is already installed
     if !force && read_installed_versions()?.contains(&version) {
@@ -183,21 +234,44 @@ pub fn install_version(
     let is_commit = matches!(install_target, InstallTarget::Commit(_));
     let is_older_than_v0_31_0 = version < Version::parse("0.31.0")?;
     if from_source || is_commit || is_older_than_v0_31_0 {
-        // Build from source using `cargo install --git`
+        // Build from source using `cargo install`
         let mut args: Vec<String> = vec![
             "install".into(),
             "anchor-cli".into(),
-            "--git".into(),
-            "https://github.com/coral-xyz/anchor".into(),
             "--locked".into(),
             "--root".into(),
             AVM_HOME.to_str().unwrap().into(),
         ];
-        let conditional_args = match install_target {
-            InstallTarget::Version(version) => ["--tag".into(), format!("v{version}")],
-            InstallTarget::Commit(commit) => ["--rev".into(), commit],
-        };
-        args.extend_from_slice(&conditional_args);
+        match install_target {
+            InstallTarget::Version(version) => {
+                args.extend_from_slice(&[
+                    "--git".into(),
+                    "https://github.com/coral-xyz/anchor".into(),
+                    "--tag".into(),
+                    format!("v{version}"),
+                ]);
+            }
+            InstallTarget::Commit(commit) => {
+                args.extend_from_slice(&[
+                    "--git".into(),
+                    "https://github.com/coral-xyz/anchor".into(),
+                    "--rev".into(),
+                    commit,
+                ]);
+            }
+            InstallTarget::Path(path) => {
+                let cli_path = path.join("cli");
+                let path_str = cli_path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Invalid path string"))?;
+                args.extend_from_slice(&[
+                    "--path".into(),
+                    path_str.to_string(),
+                    "--bin".into(),
+                    "anchor".into(),
+                ]);
+            }
+        }
 
         // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
         // explained in https://github.com/coral-xyz/anchor/pull/3143
@@ -279,6 +353,30 @@ pub fn install_version(
             <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
         )?;
     }
+
+    println!("Installing solana-verify...");
+    let solana_verify_install_output = Command::new("cargo")
+        .args([
+            "install",
+            "solana-verify",
+            "--git",
+            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+            "--rev",
+            "568cb334709e88b9b45fc24f1f440eecacf5db54",
+            "--root",
+            AVM_HOME.to_str().unwrap(),
+            "--force",
+            "--locked",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
+
+    if !solana_verify_install_output.status.success() {
+        return Err(anyhow!("Failed to install `solana-verify`"));
+    }
+    println!("solana-verify successfully installed.");
 
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
