@@ -4691,7 +4691,7 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
-    let median_priority_fee = if fees.len().is_multiple_of(2) {
+    let median_priority_fee = if fees.len() % 2 == 0 {
         (fees[median_index - 1].prioritization_fee + fees[median_index].prioritization_fee) / 2
     } else {
         fees[median_index].prioritization_fee
