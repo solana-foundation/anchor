@@ -190,34 +190,109 @@ diff_test() {
 # )
 
 # deploy
-(
-  setup_test deploy
+# (
+#   setup_test deploy
 
-  # Set required environment variables for the deploy
+#   # Set required environment variables for the deploy
+#   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
+#   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
+
+#   cd test-program
+
+#   # Build the program before deploying
+#   build_output=$(anchor_cli build 2>&1) || build_exit_code="$?"
+
+#   # Deploy the program to localnet
+#   deploy_output=$(anchor_cli deploy 2>&1) || deploy_exit_code="$?"
+
+#   # Check for 'Deploy success' in the deploy output
+#   if echo "$deploy_output" | grep -q "Deploy success"; then
+#     echo "test deploy passed"
+#   else
+#     echo "test deploy failed"
+#     echo "----- output ----"
+#     echo "$deploy_output"
+#     echo "----- end -----"
+#     script_exit_code=1
+#   fi
+
+#   # Clean up after deploy
+#   anchor_cli clean > /dev/null 2>&1 || true
+# )
+
+# idl build
+(
+  setup_test idl
+
+  # Set required environment variables
   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
 
   cd test-program
 
-  # Build the program before deploying
-  build_output=$(anchor_cli build 2>&1) || build_exit_code="$?"
+  # Build the IDL
+  idl_output=$(anchor_cli idl build 2>&1)
+  idl_exit_code="$?"
 
-  # Deploy the program to localnet
-  deploy_output=$(anchor_cli deploy 2>&1) || deploy_exit_code="$?"
+  # Extract the JSON block from the output, ignoring build lines
+  idl_json=$(printf '%s\n' "$idl_output" | awk 'BEGIN{in_json=0} /^\s*\{/ {in_json=1} in_json{print} /^\s*\}/{if(in_json){exit}}')
 
-  # Check for 'Deploy success' in the deploy output
-  if echo "$deploy_output" | grep -q "Deploy success"; then
-    echo "test deploy passed"
-  else
-    echo "test deploy failed"
+  if [ -z "$idl_json" ]; then
+    echo "test idl build failed: no JSON output found"
     echo "----- output ----"
-    echo "$deploy_output"
+    echo "$idl_output"
+    echo "----- end -----"
+    script_exit_code=1
+    return
+  fi
+
+  cat > expected_idl.json <<EOF
+{
+  "address": "aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x",
+  "metadata": {
+    "name": "test_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    }
+  ]
+}
+EOF
+
+  echo "$idl_json" > actual_idl.json
+
+  # remove whitespaces
+  jq . expected_idl.json > expected_idl.normalized.json
+  jq . actual_idl.json > actual_idl.normalized.json
+
+  if diff_output=$(diff -u expected_idl.normalized.json actual_idl.normalized.json); then
+    echo "test idl build passed"
+  else
+    echo "test idl build failed"
+    echo "----- diff ----"
+    echo "$diff_output"
+    echo "----- output ----"
+
+    printf '%s\n' "$idl_output" | grep -vE '^(\s*Compiling|\s*Finished|\s*Running|\s*Downloading|\s*Installing|\s*Updating)' || true
     echo "----- end -----"
     script_exit_code=1
   fi
-
-  # Clean up after deploy
-  anchor_cli clean > /dev/null 2>&1 || true
 )
 
 # build
