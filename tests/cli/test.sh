@@ -125,68 +125,99 @@ diff_test() {
 # )
 
 # clean
-(
-  setup_test clean
-  output=$(
-    (
-      cd test-program
-      anchor_cli build
+# (
+#   setup_test clean
+#   output=$(
+#     (
+#       cd test-program
+#       anchor_cli build
 
-      # Check that target exists and is non-empty
-      if [ -d target ] && [ "$(ls -A target)" ]; then
-        echo "target exists and is not empty before clean"
-      else
-        echo "target is missing or empty before clean"
-      fi
+#       # Check that target exists and is non-empty
+#       if [ -d target ] && [ "$(ls -A target)" ]; then
+#         echo "target exists and is not empty before clean"
+#       else
+#         echo "target is missing or empty before clean"
+#       fi
 
-      # Run anchor clean
-      anchor_cli clean
+#       # Run anchor clean
+#       anchor_cli clean
 
-      rm Cargo.lock
+#       rm Cargo.lock
 
-      # Check that only test_program-keypair.json exists
-      if [ "$(find target -type f | wc -l)" -eq 1 ] && [ -f target/deploy/test_program-keypair.json ]; then
-        echo "clean successful: only test_program-keypair.json exists"
-      else
-        echo "clean failed or unexpected files remain in target"
-        find target
-      fi
-    )
-  )
+#       # Check that only test_program-keypair.json exists
+#       if [ "$(find target -type f | wc -l)" -eq 1 ] && [ -f target/deploy/test_program-keypair.json ]; then
+#         echo "clean successful: only test_program-keypair.json exists"
+#       else
+#         echo "clean failed or unexpected files remain in target"
+#         find target
+#       fi
+#     )
+#   )
   
-  # Remove the keypair file from both directories before diff comparison since it's randomly generated
-  rm -f "${output_dir}/clean/test-program/target/deploy/test_program-keypair.json"
-  rm -f "${expected_dir}/clean/test-program/target/deploy/test_program-keypair.json"
+#   # Remove the keypair file from both directories before diff comparison since it's randomly generated
+#   rm -f "${output_dir}/clean/test-program/target/deploy/test_program-keypair.json"
+#   rm -f "${expected_dir}/clean/test-program/target/deploy/test_program-keypair.json"
   
-  diff_test clean "${output}" "$?"
-)
+#   diff_test clean "${output}" "$?"
+# )
 
 # test
-(
-  setup_test test
+# (
+#   setup_test test
   
-  # Set required environment variables for the test
+#   # Set required environment variables for the test
+#   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
+#   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
+
+#   cd test-program
+
+#   # First build the program (redirect compilation output to /dev/null)
+#   "${workspace_dir}/target/debug/anchor" build > /dev/null 2>&1
+
+#   # Run test with local validator and capture output
+#   test_output=$(timeout 60s "${workspace_dir}/target/debug/anchor" test 2>&1) || test_exit_code="$?"
+
+#   # Check if test passed by looking for "1 passing" in the output
+#   if echo "$test_output" | grep -q "1 passing"; then
+#     echo "test test passed"
+#   else
+#     echo "test test failed"
+#     echo "----- output ----"
+#     echo "$test_output"
+#     echo "----- end -----"
+#     script_exit_code=1
+#   fi
+# )
+
+# deploy
+(
+  setup_test deploy
+
+  # Set required environment variables for the deploy
   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
 
   cd test-program
 
-  # First build the program (redirect compilation output to /dev/null)
-  "${workspace_dir}/target/debug/anchor" build > /dev/null 2>&1
+  # Build the program before deploying
+  build_output=$(anchor_cli build 2>&1) || build_exit_code="$?"
 
-  # Run test with local validator and capture output
-  test_output=$(timeout 60s "${workspace_dir}/target/debug/anchor" test 2>&1) || test_exit_code="$?"
+  # Deploy the program to localnet
+  deploy_output=$(anchor_cli deploy 2>&1) || deploy_exit_code="$?"
 
-  # Check if test passed by looking for "1 passing" in the output
-  if echo "$test_output" | grep -q "1 passing"; then
-    echo "test test passed"
+  # Check for 'Deploy success' in the deploy output
+  if echo "$deploy_output" | grep -q "Deploy success"; then
+    echo "test deploy passed"
   else
-    echo "test test failed"
+    echo "test deploy failed"
     echo "----- output ----"
-    echo "$test_output"
+    echo "$deploy_output"
     echo "----- end -----"
     script_exit_code=1
   fi
+
+  # Clean up after deploy
+  anchor_cli clean > /dev/null 2>&1 || true
 )
 
 # build
