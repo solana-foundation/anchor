@@ -233,6 +233,11 @@ pub enum Command {
         #[clap(long, action)]
         force: bool,
     },
+    /// Remove a existed program.
+    Remove {
+        /// Program name
+        name: String,
+    },
     /// Commands for interacting with interface definitions.
     Idl {
         #[clap(subcommand)]
@@ -772,6 +777,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             force,
         } => new(&opts.cfg_override, solidity, name, template, force),
+        Command::Remove { name } => remove(&opts.cfg_override, name),
         Command::Build {
             no_idl,
             idl,
@@ -1157,6 +1163,41 @@ fn new(
                 fs::write("Anchor.toml", toml)?;
 
                 println!("Created new program.");
+            }
+        };
+        Ok(())
+    })
+}
+
+// Remove the program crate in the `programs/<name>` directory.
+pub fn remove(cfg_override: &ConfigOverride, name: String) -> Result<()> {
+    with_workspace(cfg_override, |cfg| {
+        match cfg.path().parent() {
+            None => {
+                println!("Unable to make new program");
+            }
+            Some(parent) => {
+                std::env::set_current_dir(parent)?;
+
+                let cluster = cfg.provider.cluster.clone();
+                let programs = cfg.programs.entry(cluster).or_default();
+                if programs.contains_key(&name) {
+                    // Delete all files within the program folder
+                    fs::remove_dir_all(
+                        std::env::current_dir()?
+                            .join("programs")
+                            .join(&name),
+                    )?;
+                }
+
+                print!("There");
+
+                programs.remove(&name);
+
+                let toml = cfg.to_string();
+                fs::write("Anchor.toml", toml)?;
+
+                println!("Removed program.");
             }
         };
         Ok(())
