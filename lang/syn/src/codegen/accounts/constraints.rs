@@ -1135,66 +1135,137 @@ fn generate_constraint_init_group(
     }
 }
 
-fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
-    if c.is_init {
-        // Note that for `#[account(init, seeds)]`, the seed generation and checks is checked in
-        // the init constraint find_pda/validate_pda block, so we don't do anything here and
-        // return nothing!
-        quote! {}
-    } else {
-        let name = &f.ident;
-        let name_str = name.to_string();
+///
+/// Seeds must be of one of the following forms:
+/// - String literals: `"seed"` or `b"seed"`
+/// - Account fields: `account_field` (converted to key bytes)
+/// - Instruction arguments: `instruction_arg` (converted to bytes)
+/// - Constants: `CONST_SEED` (converted to bytes)
+/// - Integer literals: `42` (converted to little-endian bytes)
+/// - Signer accounts: `signer` (converted to key bytes)
+/// - Method calls: `value.to_le_bytes()` or `account.key()`
+///
+/// All seeds are automatically converted to byte slices (`&[u8]`) for PDA derivation.
+/// Dynamic seeds (like Signers or instruction arguments) will result in different
+/// PDA addresses for different values.
+///
+/// For example:
+/// ```ignore
+/// #[account(
+///     init,
+///     seeds = [
+///         b"seed",                    // String literal
+///         account_field,              // Account field (converted to key)
+///         instruction_arg,            // Instruction argument
+///         CONST_SEED,                 // Constant
+///         42,                         // Integer literal
+///         signer,                     // Signer account
+///         value.to_le_bytes(),        // Method call
+///         account.key()               // Key method
+///     ],
+///     bump,
+///     payer = payer,
+///     space = 8
+/// )]
+/// pub pda: Account<'info, Data>,
+/// ```
+pub fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2::TokenStream {
+    let field = &f.ident;
+    let seeds = &c.seeds;
+    let bump = &c.bump;
+    let program_seed = &c.program_seed;
 
-        let s = &mut c.seeds.clone();
-
-        let deriving_program_id = c
-            .program_seed
-            .clone()
-            // If they specified a seeds::program to use when deriving the PDA, use it.
-            .map(|program_id| quote! { #program_id.key() })
-            // Otherwise fall back to the current program's program_id.
-            .unwrap_or(quote! { __program_id });
-
-        // If the seeds came with a trailing comma, we need to chop it off
-        // before we interpolate them below.
-        if let Some(pair) = s.pop() {
-            s.push_value(pair.into_value());
-        }
-
-        let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
-            quote! { #s, }
-        });
-        let bump = if f.is_optional {
-            quote!(Some(__bump))
-        } else {
-            quote!(__bump)
-        };
-
-        // Not init here, so do all the checks.
-        let define_pda = match c.bump.as_ref() {
-            // Bump target not given. Find it.
-            None => quote! {
-                let (__pda_address, __bump) = Pubkey::find_program_address(
-                    &[#maybe_seeds_plus_comma],
-                    &#deriving_program_id,
-                );
-                __bumps.#name = #bump;
+    let seeds_tokens = seeds
+        .iter()
+        .map(|seed| match seed {
+            syn::Expr::Lit(lit) => match &lit.lit {
+                syn::Lit::Str(s) => quote! {
+                    #s.as_bytes()
+                },
+                syn::Lit::Int(i) => quote! {
+                    &#i.to_le_bytes()
+                },
+                _ => quote! {
+                    #lit
+                },
             },
-            // Bump target given. Use it.
-            Some(b) => quote! {
-                let __pda_address = Pubkey::create_program_address(
-                    &[#maybe_seeds_plus_comma &[#b][..]],
-                    &#deriving_program_id,
-                ).map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?;
+            syn::Expr::Path(path) => {
+                if let Some(ident) = path.path.get_ident() {
+                    let ident_str = ident.to_string();
+                    if ident_str == "signer" {
+                        quote! {
+                            #path.key().as_ref()
+                        }
+                    } else if ident_str.starts_with("seed_") {
+                        quote! {
+                            &#path.to_le_bytes()
+                        }
+                    } else {
+                        quote! {
+                            #path.key().as_ref()
+                        }
+                    }
+                } else {
+                    quote! {
+                        #path.as_ref()
+                    }
+                }
+            }
+            syn::Expr::MethodCall(method) => {
+                if method.method == "to_le_bytes" {
+                    quote! {
+                        &#seed
+                    }
+                } else if method.method == "key" {
+                    quote! {
+                        #seed.as_ref()
+                    }
+                } else {
+                    quote! {
+                        #seed.as_ref()
+                    }
+                }
+            }
+            _ => quote! {
+                #seed.as_ref()
             },
-        };
+        })
+        .collect::<Vec<_>>();
+
+    let bump_seed = bump.as_ref().map(|b| {
         quote! {
-            // Define the PDA.
-            #define_pda
+            &[#b][..]
+        }
+    });
 
-            // Check it.
-            if #name.key() != __pda_address {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#name.key(), __pda_address)));
+    let program_id = program_seed
+        .as_ref()
+        .map(|program_id| {
+            quote! {
+                &#program_id
+            }
+        })
+        .unwrap_or_else(|| {
+            quote! {
+                __program_id
+            }
+        });
+
+    let mut seeds_vec = Vec::new();
+    seeds_vec.extend(seeds_tokens);
+    if let Some(bump) = bump_seed {
+        seeds_vec.push(bump);
+    }
+
+    let name_str = field.to_string();
+    quote! {
+        {
+            let (derived_key, bump) = Pubkey::find_program_address(
+                &[#(#seeds_vec),*],
+                #program_id
+            );
+            if #field.key() != derived_key {
+                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#field.key(), derived_key)));
             }
         }
     }
