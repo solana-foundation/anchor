@@ -1,0 +1,2 @@
+Build artifacts generated successfully
+Program binary generated successfully
