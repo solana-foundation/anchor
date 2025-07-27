@@ -322,15 +322,31 @@ diff_test() {
 #   fi
 # )
 
-# keys
+# keys list
 (
   cd "${initialize_dir}/build/test-program"
   output=$(anchor_cli keys list)
-  expected_output="test_program: Bks27initCVRCdR1aYX5jfgb5WNTRfr9UPbcN8S4H5iK"
+  expected_output="test_program: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x"
   if [ "$output" = "$expected_output" ]; then
     echo "test keys list passed"
   else
     echo "test keys list failed"
+    echo "----- output ----"
+    echo "$output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+)
+
+# keys sync
+(
+  cd "${initialize_dir}/build/test-program"
+  output=$(anchor_cli keys sync)
+  expected_output="All program id declarations are synced."
+  if [ "$output" = "$expected_output" ]; then
+    echo "test keys sync passed"
+  else
+    echo "test keys sync failed"
     echo "----- output ----"
     echo "$output"
     echo "----- end -----"
