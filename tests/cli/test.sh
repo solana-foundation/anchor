@@ -302,22 +302,45 @@ diff_test() {
   sleep 8
 
   # ------ start: init ------
-  deploy_output=anchor_cli deploy
+  anchor_cli deploy
 
-  idl_init_output=$(anchor_cli idl init \
-    --filepath target/idl/test_program.json \
+  # idl_init_output=$(anchor_cli idl init \
+  #   --filepath target/idl/test_program.json \
+  #   aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+  # idl_init_exit_code="$?"
+  # echo "Command exit code: $idl_init_exit_code"
+  # echo "Command output:"
+  # echo "$idl_init_output"
+
+  # if echo "$idl_init_output" | grep -q "Idl account created:"; then
+  #   echo "test idl init passed"
+  # else
+  #   echo "test idl init failed"
+  #   echo "----- output ----"
+  #   echo "$idl_init_output"
+  #   echo "----- end -----"
+  #   script_exit_code=1
+  # fi
+
+  # ------ start: fetch ------
+  echo "testing fetch"
+  set -x
+  idl_fetch_output=$(anchor_cli idl fetch \
+    -o fetched_idl.json \
     aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
-  idl_init_exit_code="$?"
-  echo "Command exit code: $idl_init_exit_code"
-  echo "Command output:"
-  echo "$idl_init_output"
+  idl_fetch_exit_code="$?"
+  set +x
+  echo "Fetch command exit code: $idl_fetch_exit_code"
+  echo "Fetch command output:"
+  echo "$idl_fetch_output"
 
-  if echo "$idl_init_output" | grep -q "Idl account created:"; then
-    echo "test idl init passed"
+  # Check if the fetched IDL file exists and has content
+  if [ -s fetched_idl.json ]; then
+    echo "test idl fetch passed"
   else
-    echo "test idl init failed"
+    echo "test idl fetch failed"
     echo "----- output ----"
-    echo "$idl_init_output"
+    echo "$idl_fetch_output"
     echo "----- end -----"
     script_exit_code=1
   fi

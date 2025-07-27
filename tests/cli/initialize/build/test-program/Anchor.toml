@@ -12,7 +12,7 @@ test_program = "aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+`cluster` = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
