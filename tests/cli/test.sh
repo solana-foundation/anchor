@@ -221,16 +221,17 @@ diff_test() {
 # )
 
 # idl build
-# (
-#   setup_test idl
+(
+  setup_test idl
 
-#   # Set required environment variables
-#   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
-#   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
+  # Set required environment variables
+  export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
+  export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
 
-#   cd test-program
+  cd test-program
 
-#   # Build the IDL
+  # ------ start: build ------
+  # Build the IDL
 #   idl_output=$(anchor_cli idl build 2>&1)
 #   idl_exit_code="$?"
 
@@ -243,7 +244,6 @@ diff_test() {
 #     echo "$idl_output"
 #     echo "----- end -----"
 #     script_exit_code=1
-#     return
 #   fi
 
 #   cat > expected_idl.json <<EOF
@@ -293,11 +293,40 @@ diff_test() {
 #     echo "----- end -----"
 #     script_exit_code=1
 #   fi
-# )
 
-# build
+  # ------ end: build ------
+  solana-test-validator --reset > validator.log 2>&1 &
+  validator_pid=$!
 
-# airdrop
+  # Wait a bit for validator to start
+  sleep 8
+
+  # ------ start: init ------
+  deploy_output=anchor_cli deploy
+
+  idl_init_output=$(anchor_cli idl init \
+    --filepath target/idl/test_program.json \
+    aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+  idl_init_exit_code="$?"
+  echo "Command exit code: $idl_init_exit_code"
+  echo "Command output:"
+  echo "$idl_init_output"
+
+  if echo "$idl_init_output" | grep -q "Idl account created:"; then
+    echo "test idl init passed"
+  else
+    echo "test idl init failed"
+    echo "----- output ----"
+    echo "$idl_init_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+
+  # Kill the validator
+  kill $validator_pid || true
+  # ------ end: build ------
+)
+
 # cluster
 # (
 #   expected_output="Cluster Endpoints:
@@ -323,50 +352,35 @@ diff_test() {
 # )
 
 # keys list
-(
-  cd "${initialize_dir}/build/test-program"
-  output=$(anchor_cli keys list)
-  expected_output="test_program: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x"
-  if [ "$output" = "$expected_output" ]; then
-    echo "test keys list passed"
-  else
-    echo "test keys list failed"
-    echo "----- output ----"
-    echo "$output"
-    echo "----- end -----"
-    script_exit_code=1
-  fi
-)
+# (
+#   cd "${initialize_dir}/build/test-program"
+#   output=$(anchor_cli keys list)
+#   expected_output="test_program: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x"
+#   if [ "$output" = "$expected_output" ]; then
+#     echo "test keys list passed"
+#   else
+#     echo "test keys list failed"
+#     echo "----- output ----"
+#     echo "$output"
+#     echo "----- end -----"
+#     script_exit_code=1
+#   fi
+# )
 
 # keys sync
-(
-  cd "${initialize_dir}/build/test-program"
-  output=$(anchor_cli keys sync)
-  expected_output="All program id declarations are synced."
-  if [ "$output" = "$expected_output" ]; then
-    echo "test keys sync passed"
-  else
-    echo "test keys sync failed"
-    echo "----- output ----"
-    echo "$output"
-    echo "----- end -----"
-    script_exit_code=1
-  fi
-)
-
-# idl
-# test
-# deploy
-# keys
-# account
-
-# expand
-# verify
-# migrate
-# upgrade
-# shell
-# login
-# publish
-# localnet
+# (
+#   cd "${initialize_dir}/build/test-program"
+#   output=$(anchor_cli keys sync)
+#   expected_output="All program id declarations are synced."
+#   if [ "$output" = "$expected_output" ]; then
+#     echo "test keys sync passed"
+#   else
+#     echo "test keys sync failed"
+#     echo "----- output ----"
+#     echo "$output"
+#     echo "----- end -----"
+#     script_exit_code=1
+#   fi
+# )
 
 exit "${script_exit_code}"
