@@ -500,13 +500,24 @@ fn generate_constraint_init_group(
 
             // If the seeds came with a trailing comma, we need to chop it off
             // before we interpolate them below.
-            if let Some(pair) = seeds.pop() {
-                seeds.push_value(pair.into_value());
+
+            match seeds {
+                SeedExpr::Puntuated(s) => {
+                    if let Some(pair) = s.pop() {
+                        s.push_value(pair.into_value());
+                    }
+                }
+                _ => {}
             }
 
-            let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| {
-                quote! { #seeds, }
-            });
+            let seeds_defination = match seeds {
+                SeedExpr::Puntuated(s) => {
+                    quote! { [#s] }
+                },
+                SeedExpr::Func(s) => {
+                    quote! { #s }
+                }
+            };
 
             let validate_pda = {
                 // If the bump is provided with init *and target*, then force it to be the
@@ -543,20 +554,24 @@ fn generate_constraint_init_group(
                 quote!(__bump)
             };
 
+            // panic!("{:?}", seeds_defination.to_string());
+
             (
                 quote! {
+                    let __seeds = #seeds_defination; // [&[8, 2, 4, 2], &[2, 2, 2, 2]] or [&[u8]; 2]
+                    let __seed_slices: Vec<&[u8]> = __seeds.iter().map(|s| s.as_ref()).collect(); // [&[b"asdaasas"]]
+                    let __seed_slices_array: &[&[u8]] = __seed_slices.as_slice();
                     let (__pda_address, __bump) = Pubkey::find_program_address(
-                        &[#maybe_seeds_plus_comma],
+                        __seed_slices_array,
                         __program_id,
                     );
                     __bumps.#field = #bump;
                     #validate_pda
                 },
                 quote! {
-                    &[
-                        #maybe_seeds_plus_comma
-                        &[__bump][..]
-                    ][..]
+                    { 
+                        &[__seed_slices_array, &[&[__bump]]].concat()[..]
+                    }
                 },
             )
         }
@@ -1155,13 +1170,24 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
         // If the seeds came with a trailing comma, we need to chop it off
         // before we interpolate them below.
-        if let Some(pair) = s.pop() {
-            s.push_value(pair.into_value());
+        match s {
+            SeedExpr::Puntuated(s) => {
+                if let Some(pair) = s.pop() {
+                    s.push_value(pair.into_value());
+                }
+            }
+            _ => {}
         }
 
-        let maybe_seeds_plus_comma = (!s.is_empty()).then(|| {
-            quote! { #s, }
-        });
+        let seeds_defination = match s {
+            SeedExpr::Puntuated(s) => {
+                quote! { [#s] }
+            },
+            SeedExpr::Func(s) => {
+                quote! { #s }
+            }
+        };
+
         let bump = if f.is_optional {
             quote!(Some(__bump))
         } else {
@@ -1172,16 +1198,18 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let define_pda = match c.bump.as_ref() {
             // Bump target not given. Find it.
             None => quote! {
+                let __seeds = #seeds_defination;
                 let (__pda_address, __bump) = Pubkey::find_program_address(
-                    &[#maybe_seeds_plus_comma],
+                    &__seeds,
                     &#deriving_program_id,
                 );
                 __bumps.#name = #bump;
             },
             // Bump target given. Use it.
             Some(b) => quote! {
+                let __seeds = #seeds_defination;
                 let __pda_address = Pubkey::create_program_address(
-                    &[#maybe_seeds_plus_comma &[#b][..]],
+                    &__seeds,
                     &#deriving_program_id,
                 ).map_err(|_| anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str))?;
             },

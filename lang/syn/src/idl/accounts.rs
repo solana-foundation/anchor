@@ -181,90 +181,90 @@ fn get_address(acc: &Field) -> TokenStream {
 }
 
 fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
-    let idl = get_idl_module_path();
-    let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
+    // let idl = get_idl_module_path();
+    // let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
 
-    // Seeds
-    let seed_constraints = acc.constraints.seeds.as_ref();
-    let pda = seed_constraints
-        .map(|seed| seed.seeds.iter().map(parse_default))
-        .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
-        .and_then(|seeds| {
-            let program = match seed_constraints {
-                Some(ConstraintSeedsGroup {
-                    program_seed: Some(program),
-                    ..
-                }) => parse_default(program)
-                    .map(|program| quote! { Some(#program) })
-                    .ok()?,
-                _ => quote! { None },
-            };
+    // // Seeds
+    // let seed_constraints = acc.constraints.seeds.as_ref();
+    // let pda = seed_constraints
+    //     .map(|seed| seed.seeds.iter().map(parse_default))
+    //     .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
+    //     .and_then(|seeds| {
+    //         let program = match seed_constraints {
+    //             Some(ConstraintSeedsGroup {
+    //                 program_seed: Some(program),
+    //                 ..
+    //             }) => parse_default(program)
+    //                 .map(|program| quote! { Some(#program) })
+    //                 .ok()?,
+    //             _ => quote! { None },
+    //         };
 
-            Some(quote! {
-                Some(
-                    #idl::IdlPda {
-                        seeds: vec![#(#seeds),*],
-                        program: #program,
-                    }
-                )
-            })
-        });
-    if let Some(pda) = pda {
-        return pda;
-    }
+    //         Some(quote! {
+    //             Some(
+    //                 #idl::IdlPda {
+    //                     seeds: vec![#(#seeds),*],
+    //                     program: #program,
+    //                 }
+    //             )
+    //         })
+    //     });
+    // if let Some(pda) = pda {
+    //     return pda;
+    // }
 
-    // Associated token
-    let pda = acc
-        .constraints
-        .init
-        .as_ref()
-        .and_then(|init| match &init.kind {
-            InitKind::AssociatedToken {
-                owner,
-                mint,
-                token_program,
-            } => Some((owner, mint, token_program)),
-            _ => None,
-        })
-        .or_else(|| {
-            acc.constraints
-                .associated_token
-                .as_ref()
-                .map(|ata| (&ata.wallet, &ata.mint, &ata.token_program))
-        })
-        .and_then(|(wallet, mint, token_program)| {
-            // ATA constraints have implicit `.key()` call
-            let parse_expr = |ts| parse_default(&syn::parse2(ts).unwrap()).ok();
-            let parse_ata = |expr| parse_expr(quote! { #expr.key().as_ref() });
+    // // Associated token
+    // let pda = acc
+    //     .constraints
+    //     .init
+    //     .as_ref()
+    //     .and_then(|init| match &init.kind {
+    //         InitKind::AssociatedToken {
+    //             owner,
+    //             mint,
+    //             token_program,
+    //         } => Some((owner, mint, token_program)),
+    //         _ => None,
+    //     })
+    //     .or_else(|| {
+    //         acc.constraints
+    //             .associated_token
+    //             .as_ref()
+    //             .map(|ata| (&ata.wallet, &ata.mint, &ata.token_program))
+    //     })
+    //     .and_then(|(wallet, mint, token_program)| {
+    //         // ATA constraints have implicit `.key()` call
+    //         let parse_expr = |ts| parse_default(&syn::parse2(ts).unwrap()).ok();
+    //         let parse_ata = |expr| parse_expr(quote! { #expr.key().as_ref() });
 
-            let wallet = parse_ata(wallet);
-            let mint = parse_ata(mint);
-            let token_program = token_program
-                .as_ref()
-                .and_then(parse_ata)
-                .or_else(|| parse_expr(quote!(anchor_spl::token::ID)));
+    //         let wallet = parse_ata(wallet);
+    //         let mint = parse_ata(mint);
+    //         let token_program = token_program
+    //             .as_ref()
+    //             .and_then(parse_ata)
+    //             .or_else(|| parse_expr(quote!(anchor_spl::token::ID)));
 
-            let seeds = match (wallet, mint, token_program) {
-                (Some(w), Some(m), Some(tp)) => quote! { vec![#w, #tp, #m] },
-                _ => return None,
-            };
+    //         let seeds = match (wallet, mint, token_program) {
+    //             (Some(w), Some(m), Some(tp)) => quote! { vec![#w, #tp, #m] },
+    //             _ => return None,
+    //         };
 
-            let program = parse_expr(quote!(anchor_spl::associated_token::ID))
-                .map(|program| quote! { Some(#program) })
-                .unwrap();
+    //         let program = parse_expr(quote!(anchor_spl::associated_token::ID))
+    //             .map(|program| quote! { Some(#program) })
+    //             .unwrap();
 
-            Some(quote! {
-                Some(
-                    #idl::IdlPda {
-                        seeds: #seeds,
-                        program: #program,
-                    }
-                )
-            })
-        });
-    if let Some(pda) = pda {
-        return pda;
-    }
+    //         Some(quote! {
+    //             Some(
+    //                 #idl::IdlPda {
+    //                     seeds: #seeds,
+    //                     program: #program,
+    //                 }
+    //             )
+    //         })
+    //     });
+    // if let Some(pda) = pda {
+    //     return pda;
+    // }
 
     quote! { None }
 }

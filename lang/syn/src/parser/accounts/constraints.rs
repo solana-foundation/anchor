@@ -1,6 +1,6 @@
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{bracketed, Token};
+use syn::{bracketed, Token, parenthesized, braced};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
@@ -364,12 +364,42 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     .span()
                     .join(stream.span())
                     .unwrap_or_else(|| ident.span());
-                let seeds;
-                let bracket = bracketed!(seeds in stream);
+
+                    if stream.peek(syn::token::Bracket) {
+                        let seeds;
+                        let bracket = bracketed!(seeds in stream);
+                        
+                        let x = Ok(ConstraintToken::Seeds(Context::new(
+                            span.join(bracket.span).unwrap_or(span),
+                            ConstraintSeeds {
+                                seeds: SeedExpr::Puntuated(seeds.parse_terminated(Expr::parse)?),
+                            },
+                        )));
+                        return x;
+                    } else if stream.peek(syn::token::Paren) {
+                        let seeds;
+                        let paren = parenthesized!(seeds in stream);
+                        return Ok(ConstraintToken::Seeds(Context::new(
+                            span.join(paren.span).unwrap_or(span),
+                            ConstraintSeeds {
+                                seeds: SeedExpr::Puntuated(seeds.parse_terminated(Expr::parse)?),
+                            },
+                        )));
+                    } else if stream.peek(syn::token::Brace) {
+                    let seeds;
+                    let brace = braced!(seeds in stream);
+                    return Ok(ConstraintToken::Seeds(Context::new(
+                        span.join(brace.span).unwrap_or(span),
+                        ConstraintSeeds {
+                            seeds: SeedExpr::Puntuated(seeds.parse_terminated(Expr::parse)?),
+                        },
+                    )))
+                }
+                let expr: ExprCall = stream.parse()?;
                 ConstraintToken::Seeds(Context::new(
-                    span.join(bracket.span).unwrap_or(span),
+                    span,
                     ConstraintSeeds {
-                        seeds: seeds.parse_terminated(Expr::parse)?,
+                        seeds: SeedExpr::Func(expr),
                     },
                 ))
             }

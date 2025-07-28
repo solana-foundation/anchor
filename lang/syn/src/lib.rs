@@ -18,6 +18,7 @@ use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::ToTokens;
+use syn::ExprCall;
 use std::collections::HashMap;
 use std::ops::Deref;
 use syn::ext::IdentExt;
@@ -876,14 +877,21 @@ pub struct ConstraintInitGroup {
 #[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedExpr,
     pub bump: Option<Expr>,         // None => bump was given without a target.
     pub program_seed: Option<Expr>, // None => use the current program's program_id.
 }
 
+
+#[derive(Debug, Clone)]
+pub enum SeedExpr {
+    Puntuated(Punctuated<Expr, Token![,]>),
+    Func(ExprCall)
+}
+
 #[derive(Debug, Clone)]
 pub struct ConstraintSeeds {
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedExpr,
 }
 
 #[derive(Debug, Clone)]
