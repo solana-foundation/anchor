@@ -1399,30 +1399,7 @@ pub struct ProgramWorkspace {
     pub idl: Idl,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AnchorPackage {
-    pub name: String,
-    pub address: String,
-    pub idl: Option<String>,
-}
 
-impl AnchorPackage {
-    pub fn from(name: String, cfg: &WithPath<Config>) -> Result<Self> {
-        let cluster = &cfg.provider.cluster;
-        if cluster != &Cluster::Mainnet {
-            return Err(anyhow!("Publishing requires the mainnet cluster"));
-        }
-        let program_details = cfg
-            .programs
-            .get(cluster)
-            .ok_or_else(|| anyhow!("Program not provided in Anchor.toml"))?
-            .get(&name)
-            .ok_or_else(|| anyhow!("Program not provided in Anchor.toml"))?;
-        let idl = program_details.idl.clone();
-        let address = program_details.address.to_string();
-        Ok(Self { name, address, idl })
-    }
-}
 
 #[macro_export]
 macro_rules! home_path {

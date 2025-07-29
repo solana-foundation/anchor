@@ -153,6 +153,7 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - idl: Fix using account or arg values for `seeds::program` ([#3570](https://github.com/coral-xyz/anchor/pull/3570)).
 - lang: Fix using `data` as an instruction parameter name in `declare_program!` ([#3574](https://github.com/coral-xyz/anchor/pull/3574)).
 - cli: Use camelCase for program name in `anchor.workspace` templates ([#3581](https://github.com/coral-xyz/anchor/pull/3581)).
+- cli: Remove `anchor publish` command and other related code.
 
 ### Breaking
 
