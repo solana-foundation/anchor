@@ -1,7 +1,7 @@
 use crate::config::{
-    get_default_ledger_path, AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride,
-    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
-    TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest,
+    PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
+    WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -20,6 +20,7 @@ use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
+
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde::Deserialize;
@@ -300,24 +301,7 @@ pub enum Command {
         /// API access token.
         token: String,
     },
-    /// Publishes a verified build to the Anchor registry.
-    Publish {
-        /// The name of the program to publish.
-        program: String,
-        /// Environment variables to pass into the docker container
-        #[clap(short, long, required = false)]
-        env: Vec<String>,
-        /// Arguments to pass to the underlying `cargo build-sbf` command.
-        #[clap(required = false, last = true)]
-        cargo_args: Vec<String>,
-        /// Flag to skip building the program in the workspace,
-        /// use this to save time when publishing the program
-        #[clap(long)]
-        skip_build: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
-    },
+
     /// Program keypair commands.
     Keys {
         #[clap(subcommand)]
@@ -887,20 +871,7 @@ fn process_command(opts: Opts) -> Result<()> {
             script_args,
         } => run(&opts.cfg_override, script, script_args),
         Command::Login { token } => login(&opts.cfg_override, token),
-        Command::Publish {
-            program,
-            env,
-            cargo_args,
-            skip_build,
-            arch,
-        } => publish(
-            &opts.cfg_override,
-            program,
-            env,
-            cargo_args,
-            skip_build,
-            arch,
-        ),
+
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
@@ -4233,174 +4204,6 @@ fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
     // Freely overwrite the entire file since it's not used for anything else.
     let mut file = File::create("credentials")?;
     file.write_all(rust_template::credentials(&token).as_bytes())?;
-    Ok(())
-}
-
-fn publish(
-    cfg_override: &ConfigOverride,
-    program_name: String,
-    env_vars: Vec<String>,
-    cargo_args: Vec<String>,
-    skip_build: bool,
-    arch: ProgramArch,
-) -> Result<()> {
-    // Discover the various workspace configs.
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-
-    let program = cfg.get_program(&program_name)?;
-
-    let program_cargo_lock = pathdiff::diff_paths(
-        program.path.join("Cargo.lock"),
-        cfg.path().parent().unwrap(),
-    )
-    .ok_or_else(|| anyhow!("Unable to diff Cargo.lock path"))?;
-    let cargo_lock = Path::new("Cargo.lock");
-
-    // There must be a Cargo.lock
-    if !program_cargo_lock.exists() && !cargo_lock.exists() {
-        return Err(anyhow!("Cargo.lock must exist for a verifiable build"));
-    }
-
-    println!("Publishing will make your code public. Are you sure? Enter (yes)/no:");
-
-    let answer = std::io::stdin().lock().lines().next().unwrap().unwrap();
-    if answer != "yes" {
-        println!("Aborting");
-        return Ok(());
-    }
-
-    let anchor_package = AnchorPackage::from(program_name.clone(), &cfg)?;
-    let anchor_package_bytes = serde_json::to_vec(&anchor_package)?;
-
-    // Set directory to top of the workspace.
-    let workspace_dir = cfg.path().parent().unwrap();
-    std::env::set_current_dir(workspace_dir)?;
-
-    // Create the workspace tarball.
-    let dot_anchor = workspace_dir.join(".anchor");
-    fs::create_dir_all(&dot_anchor)?;
-    let tarball_filename = dot_anchor.join(format!("{program_name}.tar.gz"));
-    let tar_gz = File::create(&tarball_filename)?;
-    let enc = GzEncoder::new(tar_gz, Compression::default());
-    let mut tar = tar::Builder::new(enc);
-
-    // Files that will always be included if they exist.
-    println!("PACKING: Anchor.toml");
-    tar.append_path("Anchor.toml")?;
-    if cargo_lock.exists() {
-        println!("PACKING: Cargo.lock");
-        tar.append_path(cargo_lock)?;
-    }
-    if Path::new("Cargo.toml").exists() {
-        println!("PACKING: Cargo.toml");
-        tar.append_path("Cargo.toml")?;
-    }
-    if Path::new("LICENSE").exists() {
-        println!("PACKING: LICENSE");
-        tar.append_path("LICENSE")?;
-    }
-    if Path::new("README.md").exists() {
-        println!("PACKING: README.md");
-        tar.append_path("README.md")?;
-    }
-    if Path::new("idl.json").exists() {
-        println!("PACKING: idl.json");
-        tar.append_path("idl.json")?;
-    }
-
-    // All workspace programs.
-    for path in cfg.get_rust_program_list()? {
-        let mut dirs = walkdir::WalkDir::new(path)
-            .into_iter()
-            .filter_entry(|e| !is_hidden(e));
-
-        // Skip the parent dir.
-        let _ = dirs.next().unwrap()?;
-
-        for entry in dirs {
-            let e = entry.map_err(|e| anyhow!("{:?}", e))?;
-
-            let e = pathdiff::diff_paths(e.path(), cfg.path().parent().unwrap())
-                .ok_or_else(|| anyhow!("Unable to diff paths"))?;
-
-            let path_str = e.display().to_string();
-
-            // Skip target dir.
-            if !path_str.contains("target/") && !path_str.contains("/target") {
-                // Only add the file if it's not empty.
-                let metadata = fs::File::open(&e)?.metadata()?;
-                if metadata.len() > 0 {
-                    println!("PACKING: {}", e.display());
-                    if e.is_dir() {
-                        tar.append_dir_all(&e, &e)?;
-                    } else {
-                        tar.append_path(&e)?;
-                    }
-                }
-            }
-        }
-    }
-
-    // Tar pack complete.
-    tar.into_inner()?;
-
-    // Create tmp directory for workspace.
-    let ws_dir = dot_anchor.join("workspace");
-    if Path::exists(&ws_dir) {
-        fs::remove_dir_all(&ws_dir)?;
-    }
-    fs::create_dir_all(&ws_dir)?;
-
-    // Unpack the archive into the new workspace directory.
-    std::env::set_current_dir(&ws_dir)?;
-    unpack_archive(&tarball_filename)?;
-
-    // Build the program before sending it to the server.
-    if !skip_build {
-        build(
-            cfg_override,
-            false,
-            None,
-            None,
-            true,
-            false,
-            Some(program_name),
-            None,
-            None,
-            BootstrapMode::None,
-            None,
-            None,
-            env_vars,
-            cargo_args,
-            true,
-            arch,
-        )?;
-    }
-
-    // Upload the tarball to the server.
-    let token = registry_api_token(cfg_override)?;
-    let form = Form::new()
-        .part("manifest", Part::bytes(anchor_package_bytes))
-        .part("workspace", {
-            let file = File::open(&tarball_filename)?;
-            Part::reader(file)
-        });
-    let client = Client::new();
-    let resp = client
-        .post(format!("{}/api/v0/build", cfg.registry.url))
-        .bearer_auth(token)
-        .multipart(form)
-        .send()?;
-
-    if resp.status() == 200 {
-        println!("Build triggered");
-    } else {
-        println!(
-            "{:?}",
-            resp.text().unwrap_or_else(|_| "Server error".to_string())
-        );
-    }
-
     Ok(())
 }
 
