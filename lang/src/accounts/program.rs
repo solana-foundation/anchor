@@ -5,7 +5,7 @@ use crate::{
     AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
-use solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use solana_loader_v3_interface::state::UpgradeableLoaderState;
 use solana_program::instruction::AccountMeta;
 use solana_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
@@ -95,7 +95,7 @@ impl<'a, T> Program<'a, T> {
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if *self.info.owner == bpf_loader_upgradeable::ID {
+        if *self.info.owner == solana_sdk_ids::bpf_loader_upgradeable::ID {
             let mut data: &[u8] = &self.info.try_borrow_data()?;
             let upgradable_loader_state =
                 UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;

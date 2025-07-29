@@ -206,7 +206,10 @@ dependencies = [
  "solana-cli-config",
  "solana-client",
  "solana-faucet",
+ "solana-loader-v3-interface",
+ "solana-rpc-client-api",
  "solana-sdk",
+ "solana-sdk-ids",
  "solang-parser",
  "syn 1.0.109",
  "tar",
@@ -278,7 +281,9 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "bytemuck",
+ "solana-loader-v3-interface",
  "solana-program",
+ "solana-sdk-ids",
  "thiserror 1.0.66",
 ]
 
