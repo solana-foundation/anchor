@@ -1,5 +1,5 @@
 use crate::config::{
-    get_default_ledger_path, AnchorPackage, BootstrapMode, BuildConfig, Config, ConfigOverride,
+    get_default_ledger_path,BootstrapMode, BuildConfig, Config, ConfigOverride,
     Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
     TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
@@ -12,17 +12,13 @@ use anyhow::{anyhow, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
-use flate2::read::GzDecoder;
 use flate2::read::ZlibDecoder;
-use flate2::write::{GzEncoder, ZlibEncoder};
+use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
-use reqwest::blocking::multipart::{Form, Part};
-use reqwest::blocking::Client;
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
-use serde::Deserialize;
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
@@ -44,7 +40,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
-use tar::Archive;
 
 mod checks;
 pub mod config;
@@ -4202,37 +4197,6 @@ fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
     let mut file = File::create("credentials")?;
     file.write_all(rust_template::credentials(&token).as_bytes())?;
     Ok(())
-}
-// Unpacks the tarball into the current directory.
-fn unpack_archive(tar_path: impl AsRef<Path>) -> Result<()> {
-    let tar = GzDecoder::new(std::fs::File::open(tar_path)?);
-    let mut archive = Archive::new(tar);
-    archive.unpack(".")?;
-    archive.into_inner();
-
-    Ok(())
-}
-
-fn registry_api_token(_cfg_override: &ConfigOverride) -> Result<String> {
-    #[derive(Debug, Deserialize)]
-    struct Registry {
-        token: String,
-    }
-    #[derive(Debug, Deserialize)]
-    struct Credentials {
-        registry: Registry,
-    }
-    let filename = Path::new(&*shellexpand::tilde("~"))
-        .join(".config")
-        .join("anchor")
-        .join("credentials");
-    let mut file = File::open(filename)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-
-    let credentials_toml: Credentials = toml::from_str(&contents)?;
-
-    Ok(credentials_toml.registry.token)
 }
 
 fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
