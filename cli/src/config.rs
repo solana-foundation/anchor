@@ -1399,7 +1399,6 @@ pub struct ProgramWorkspace {
     pub idl: Idl,
 }
 
-
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
