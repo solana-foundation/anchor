@@ -11,7 +11,7 @@ pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info
     **info.lamports.borrow_mut() = 0;
 
     info.assign(&system_program::ID);
-    info.realloc(0, false).map_err(Into::into)
+    info.resize(0).map_err(Into::into)
 }
 
 pub fn is_closed(info: &AccountInfo) -> bool {
