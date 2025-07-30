@@ -316,11 +316,7 @@ export const LangErrorCode = {
   InstructionDidNotSerialize:
     errors.ANCHOR_ERROR__INSTRUCTION_DID_NOT_SERIALIZE,
 
-  // IDL instructions.
-  IdlInstructionStub: errors.ANCHOR_ERROR__IDL_INSTRUCTION_STUB,
-  IdlInstructionInvalidProgram:
-    errors.ANCHOR_ERROR__IDL_INSTRUCTION_INVALID_PROGRAM,
-  IdlAccountNotEmpty: errors.ANCHOR_ERROR__IDL_ACCOUNT_NOT_EMPTY,
+  // Legacy IDL instructions have been removed in favor of Program Metadata
 
   // Event instructions.
   EventInstructionStub: errors.ANCHOR_ERROR__EVENT_INSTRUCTION_STUB,
@@ -449,19 +445,7 @@ export const LangErrorMessage = new Map<number, string>([
     "The program could not serialize the given instruction",
   ],
 
-  // Idl instructions.
-  [
-    LangErrorCode.IdlInstructionStub,
-    "The program was compiled without idl instructions",
-  ],
-  [
-    LangErrorCode.IdlInstructionInvalidProgram,
-    "The transaction was given an invalid program for the IDL instruction",
-  ],
-  [
-    LangErrorCode.IdlAccountNotEmpty,
-    "IDL account must be empty in order to resize, try closing first",
-  ],
+  // Legacy IDL instructions have been removed in favor of Program Metadata
 
   // Event instructions.
   [
