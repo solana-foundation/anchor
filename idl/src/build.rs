@@ -138,10 +138,9 @@ fn build(
     no_docs: bool,
     cargo_args: &[String],
 ) -> Result<Idl> {
-    // `nightly` toolchain is currently required for building the IDL.
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
         .map(|toolchain| format!("+{toolchain}"))
-        .unwrap_or_else(|_| "+nightly".to_string());
+        .unwrap_or_else(|_| "+stable".to_string());
 
     install_toolchain_if_needed(&toolchain)?;
     let output = Command::new("cargo")
