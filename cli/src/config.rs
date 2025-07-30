@@ -27,6 +27,9 @@ use std::str::FromStr;
 use std::{fmt, io};
 use walkdir::WalkDir;
 
+/// Default port number for JSON RPC API
+pub const DEFAULT_RPC_PORT: u16 = 8899;
+
 pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
@@ -1174,9 +1177,7 @@ impl From<_Validator> for Validator {
                 .ledger
                 .unwrap_or_else(|| get_default_ledger_path().display().to_string()),
             limit_ledger_size: _validator.limit_ledger_size,
-            rpc_port: _validator
-                .rpc_port
-                .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT),
+            rpc_port: _validator.rpc_port.unwrap_or(DEFAULT_RPC_PORT),
             slots_per_epoch: _validator.slots_per_epoch,
             ticks_per_slot: _validator.ticks_per_slot,
             warp_slot: _validator.warp_slot,

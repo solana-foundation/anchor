@@ -3556,7 +3556,7 @@ fn start_test_validator(
         .test_validator
         .as_ref()
         .and_then(|test| test.validator.as_ref().map(|v| v.rpc_port))
-        .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT);
+        .unwrap_or(config::DEFAULT_RPC_PORT);
     if !portpicker::is_free(rpc_port) {
         return Err(anyhow!(
             "Your configured rpc port: {rpc_port} is already in use"
