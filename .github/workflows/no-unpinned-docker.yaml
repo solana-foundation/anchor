@@ -1,0 +1,15 @@
+name: No Unpinned Docker Images
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - run: chmod 755 ./docker/check-docker-pin.sh
+      - run: ./docker/check-docker-pin.sh
