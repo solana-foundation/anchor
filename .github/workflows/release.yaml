@@ -48,7 +48,9 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+        run: |
+          cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+          cargo build --package avm --release --locked --target ${{ matrix.target }}
 
       - name: Prepare
         if: startsWith(github.ref, 'refs/tags/')
@@ -61,6 +63,7 @@ jobs:
 
           mkdir $DIST
           mv "target/${{ matrix.target }}/release/anchor$ext" $DIST/anchor-$version-${{ matrix.target }}$ext
+          mv "target/${{ matrix.target }}/release/avm$ext" $DIST/avm-$version-${{ matrix.target }}$ext
 
           echo "version=$version" >> $GITHUB_OUTPUT
 
