@@ -64,14 +64,12 @@ diff_test() {
   if [ "${diff_exit_code:-0}" = "0" ] && [ "${test_exit_code}" = "0" ]; then
     echo "test ${test_name} passed"
   else
-    echo
     echo "test ${test_name} failed with code ${test_exit_code}"
     echo "----- output ----"
     echo "${test_output}"
     echo "----- diff ----"
     echo "${diff_output}"
     echo "----- end -----"
-    echo
     exit_code=1
   fi
 }
@@ -198,6 +196,9 @@ diff_test() {
 (
   setup_test deploy
 
+  solana-test-validator --reset > validator.log 2>&1 &
+  validator_pid=$!
+
   # Set required environment variables for the deploy
   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
@@ -223,6 +224,9 @@ diff_test() {
 
   # Clean up after deploy
   anchor_cli clean > /dev/null 2>&1 || true
+  
+  # Kill the validator
+  kill $validator_pid || true
 )
 # ----- end: deploy -----
 
@@ -317,9 +321,6 @@ EOF
     --filepath target/idl/test_program.json \
     aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_init_exit_code="$?"
-  echo "Command exit code: $idl_init_exit_code"
-  echo "Command output:"
-  echo "$idl_init_output"
 
   if echo "$idl_init_output" | grep -q "Idl account created:"; then
     echo "test idl init passed"
@@ -338,9 +339,6 @@ EOF
     -o fetched_idl.json \
     aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_fetch_exit_code="$?"
-  echo "Fetch command exit code: $idl_fetch_exit_code"
-  echo "Fetch command output:"
-  echo "$idl_fetch_output"
 
   # Check if the fetched IDL file exists and has content
   if [ -s fetched_idl.json ]; then
@@ -358,9 +356,6 @@ EOF
   idl_authority_output=$(anchor_cli idl authority \
   aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_authority_exit_code="$?"
-  echo "Command exit code: $idl_authority_exit_code"
-  echo "Command output:"
-  echo "$idl_authority_output"
 
   if echo "$idl_authority_output" | grep -q "9GSqbQeLFQaa49wfsKjxi4Q6v2xUH9pynowkTeCCG2Xr"; then
     echo "test idl authority passed"
@@ -381,9 +376,6 @@ EOF
   idl_upgrade_output=$(anchor_cli idl upgrade aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x \
   --filepath target/idl/test_program.json 2>&1)
   idl_upgrade_exit_code="$?"
-  echo "Command exit code: $idl_upgrade_exit_code"
-  echo "Command output:"
-  echo "$idl_upgrade_output"
 
   if echo "$idl_upgrade_output" | grep -q "successfully upgraded"; then
     echo "test idl upgrade passed"
@@ -400,9 +392,6 @@ EOF
   idl_erase_authority_output=$(echo "y" | anchor_cli idl erase-authority --program-id \
   aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_erase_authority_exit_code="$?"
-  echo "Command exit code: $idl_erase_authority_exit_code"
-  echo "Command output:"
-  echo "$idl_erase_authority_output"
 
   if echo "$idl_erase_authority_output" | grep -q "Authority update complete."; then
     echo "test idl erase-authority passed"
@@ -426,11 +415,11 @@ EOF
 
   cd test-program
 
+  solana-test-validator --reset > validator.log 2>&1 &
+  validator_pid=$!
+
   anchor_migrate_output=$(anchor_cli migrate 2>&1)
   anchor_migrate_exit_code="$?"
-  echo "Command exit code: $anchor_migrate_exit_code"
-  echo "Command output:"
-  echo "$anchor_migrate_output"
 
   if echo "$anchor_migrate_output" | grep -q "Deploy complete."; then
     echo "test migrate passed"
@@ -441,6 +430,9 @@ EOF
     echo "----- end -----"
     script_exit_code=1
   fi
+
+  # Kill the validator
+  kill $validator_pid || true
 )
 # ----- end: migrate -----
 
@@ -451,14 +443,17 @@ EOF
   cd test-program
 
   anchor_cli build
+  
+  solana-test-validator --reset > validator.log 2>&1 &
+  validator_pid=$!
+
   anchor_cli deploy
+  
+  sleep 3
 
   anchor_upgrade_output=$(anchor_cli upgrade target/deploy/test_program.so \
   --program-id aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   anchor_upgrade_exit_code="$?"
-  echo "Command exit code: $anchor_upgrade_exit_code"
-  echo "Command output:"
-  echo "$anchor_upgrade_output"
 
   if echo "$anchor_upgrade_output" | grep -q "Program Id: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x
 
@@ -471,6 +466,9 @@ Signature: "; then
     echo "----- end -----"
     script_exit_code=1
   fi
+
+  # Kill the validator
+  kill $validator_pid || true
 )
 # ----- end: upgrade -----
 
