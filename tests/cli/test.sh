@@ -301,35 +301,37 @@ diff_test() {
   # Wait a bit for validator to start
   sleep 8
 
-  # ------ start: init ------
+
   anchor_cli deploy
+  # wait for confirmation
+  sleep 3
 
-  # idl_init_output=$(anchor_cli idl init \
-  #   --filepath target/idl/test_program.json \
-  #   aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
-  # idl_init_exit_code="$?"
-  # echo "Command exit code: $idl_init_exit_code"
-  # echo "Command output:"
-  # echo "$idl_init_output"
+  # ------ start: init ------
+  idl_init_output=$(anchor_cli idl init \
+    --filepath target/idl/test_program.json \
+    aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+  idl_init_exit_code="$?"
+  echo "Command exit code: $idl_init_exit_code"
+  echo "Command output:"
+  echo "$idl_init_output"
 
-  # if echo "$idl_init_output" | grep -q "Idl account created:"; then
-  #   echo "test idl init passed"
-  # else
-  #   echo "test idl init failed"
-  #   echo "----- output ----"
-  #   echo "$idl_init_output"
-  #   echo "----- end -----"
-  #   script_exit_code=1
-  # fi
+  if echo "$idl_init_output" | grep -q "Idl account created:"; then
+    echo "test idl init passed"
+  else
+    echo "test idl init failed"
+    echo "----- output ----"
+    echo "$idl_init_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+  # ------ end: init ------
 
   # ------ start: fetch ------
   echo "testing fetch"
-  set -x
   idl_fetch_output=$(anchor_cli idl fetch \
     -o fetched_idl.json \
     aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_fetch_exit_code="$?"
-  set +x
   echo "Fetch command exit code: $idl_fetch_exit_code"
   echo "Fetch command output:"
   echo "$idl_fetch_output"
@@ -344,6 +346,45 @@ diff_test() {
     echo "----- end -----"
     script_exit_code=1
   fi
+  # ------ end: fetch ------
+
+  # ----- start: authority ------
+  idl_authority_output=$(anchor_cli idl authority \
+  aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+  idl_authority_exit_code="$?"
+  echo "Command exit code: $idl_authority_exit_code"
+  echo "Command output:"
+  echo "$idl_authority_output"
+
+  if echo "$idl_authority_output" | grep -q "9GSqbQeLFQaa49wfsKjxi4Q6v2xUH9pynowkTeCCG2Xr"; then
+    echo "test idl authority passed"
+  else
+    echo "test idl authority failed"
+    echo "----- output ----"
+    echo "$idl_authority_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+  # ----- end: authority -----
+
+  # ----- start: authority ------
+  idl_erase_authority_output=$(echo "y" | anchor_cli idl erase-authority --program-id \
+  aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+  idl_erase_authority_exit_code="$?"
+  echo "Command exit code: $idl_erase_authority_exit_code"
+  echo "Command output:"
+  echo "$idl_erase_authority_output"
+
+  if echo "$idl_erase_authority_output" | grep -q "Authority update complete."; then
+    echo "test idl erase-authority passed"
+  else
+    echo "test idl erase-authority failed"
+    echo "----- output ----"
+    echo "$idl_erase_authority_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+  # ----- end: authority -----
 
   # Kill the validator
   kill $validator_pid || true
