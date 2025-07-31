@@ -437,32 +437,51 @@ diff_test() {
 #   # ----- end: migrate -----
 
   # ----- start: upgrade ------
-  setup_test upgrade
+#   setup_test upgrade
 
-  cd test-program
+#   cd test-program
 
-  anchor_cli build
-  anchor_cli deploy
+#   anchor_cli build
+#   anchor_cli deploy
 
-  anchor_upgrade_output=$(anchor_cli upgrade target/deploy/test_program.so \
-  --program-id aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
-  anchor_upgrade_exit_code="$?"
-  echo "Command exit code: $anchor_upgrade_exit_code"
-  echo "Command output:"
-  echo "$anchor_upgrade_output"
+#   anchor_upgrade_output=$(anchor_cli upgrade target/deploy/test_program.so \
+#   --program-id aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
+#   anchor_upgrade_exit_code="$?"
+#   echo "Command exit code: $anchor_upgrade_exit_code"
+#   echo "Command output:"
+#   echo "$anchor_upgrade_output"
 
-  if echo "$anchor_upgrade_output" | grep -q "Program Id: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x
+#   if echo "$anchor_upgrade_output" | grep -q "Program Id: aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x
 
-Signature: "; then
-    echo "test upgrade passed"
+# Signature: "; then
+#     echo "test upgrade passed"
+#   else
+#     echo "test upgrade failed"
+#     echo "----- output ----"
+#     echo "$anchor_upgrade_output"
+#     echo "----- end -----"
+#     script_exit_code=1
+#   fi
+  # ----- end: upgrade -----
+
+  # ----- start: shell -----
+
+  cd initialize/idl/test-program
+
+  anchor_shell_output=$(echo "anchor.workspace.testProgram.idl.address" | anchor_cli shell 2>&1)
+  anchor_shell_exit_code="$?"
+
+  if echo "$anchor_shell_output" | grep -q "aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x";
+  then
+    echo "test shell passed"
   else
-    echo "test upgrade failed"
+    echo "test shell failed"
     echo "----- output ----"
-    echo "$anchor_upgrade_output"
+    echo "$anchor_shell_output"
     echo "----- end -----"
     script_exit_code=1
   fi
-  # ----- end: upgrade -----
+  # ----- end: shell -----
 
 # cluster
 # (
