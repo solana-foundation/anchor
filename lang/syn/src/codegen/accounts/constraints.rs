@@ -348,13 +348,11 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
     }
 }
 
-pub fn generate_constraint_raw(ident: &Ident, c: &ConstraintRaw) -> proc_macro2::TokenStream {
-    let raw = &c.raw;
-    let error = generate_custom_error(ident, &c.error, quote! { ConstraintRaw }, &None);
+pub fn generate_constraint_raw(_ident: &Ident, _c: &ConstraintRaw) -> proc_macro2::TokenStream {
+    // This function should never be called since the parser should have already rejected raw constraints
+    // but we'll include a compile-time error just in case
     quote! {
-        if !(#raw) {
-            return #error;
-        }
+        compile_error!("Raw literal constraints are deprecated. Please use typed constraints instead.");
     }
 }
 

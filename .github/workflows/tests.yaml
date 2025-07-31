@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - master
+      - main
   pull_request:
     branches:
       - master
+      - main
+  # Allow manual triggering of workflow
+  workflow_dispatch:
 
 jobs:
   tests:

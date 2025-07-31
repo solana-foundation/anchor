@@ -1469,8 +1469,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     }
 
     fn add_raw(&mut self, c: Context<ConstraintRaw>) -> ParseResult<()> {
-        self.raw.push(c);
-        Ok(())
+        Err(ParseError::new(
+            c.span,
+            "Raw literal constraints are deprecated. Please use typed constraints instead.",
+        ))
     }
 
     fn add_owner(&mut self, c: Context<ConstraintOwner>) -> ParseResult<()> {
