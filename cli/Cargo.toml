@@ -42,7 +42,6 @@ solana-faucet = "2"
 solana-sdk = "2"
 solana-sdk-ids = "2"
 solana-loader-v3-interface = "5"
-solana-rpc-client-api = "2"
 # Pin solang-parser because it may break in a backwards incompatible way in minor versions
 solang-parser = "=0.3.3"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }

@@ -207,7 +207,6 @@ dependencies = [
  "solana-client",
  "solana-faucet",
  "solana-loader-v3-interface",
- "solana-rpc-client-api",
  "solana-sdk",
  "solana-sdk-ids",
  "solang-parser",
