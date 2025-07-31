@@ -230,8 +230,8 @@ diff_test() {
 
   cd test-program
 
-  # ------ start: build ------
-  # Build the IDL
+# ------ start: build ------
+# Build the IDL
 #   idl_output=$(anchor_cli idl build 2>&1)
 #   idl_exit_code="$?"
 
@@ -367,7 +367,30 @@ diff_test() {
   fi
   # ----- end: authority -----
 
-  # ----- start: authority ------
+  # ----- start: upgrade ------
+  sed -i "s/Created with Anchor/Test Program/" target/idl/test_program.json
+
+  sleep 3
+
+  idl_upgrade_output=$(anchor_cli idl upgrade aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x \
+  --filepath target/idl/test_program.json 2>&1)
+  idl_upgrade_exit_code="$?"
+  echo "Command exit code: $idl_upgrade_exit_code"
+  echo "Command output:"
+  echo "$idl_upgrade_output"
+
+  if echo "$idl_upgrade_output" | grep -q "successfully upgraded"; then
+    echo "test idl upgrade passed"
+  else
+    echo "test idl upgrade failed"
+    echo "----- output ----"
+    echo "$idl_upgrade_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+  # ----- end: upgrade -----
+
+  # ----- start: erase-authority ------
   idl_erase_authority_output=$(echo "y" | anchor_cli idl erase-authority --program-id \
   aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   idl_erase_authority_exit_code="$?"
@@ -384,12 +407,34 @@ diff_test() {
     echo "----- end -----"
     script_exit_code=1
   fi
-  # ----- end: authority -----
+  # ----- end: erase-authority -----
 
   # Kill the validator
   kill $validator_pid || true
   # ------ end: build ------
 )
+
+  # ----- start: migrate ------
+  setup_test idl
+
+  cd test-program
+
+  anchor_migrate_output=$(anchor_cli migrate 2>&1)
+  anchor_migrate_exit_code="$?"
+  echo "Command exit code: $anchor_migrate_exit_code"
+  echo "Command output:"
+  echo "$anchor_migrate_output"
+
+  if echo "$anchor_migrate_output" | grep -q "Deploy complete."; then
+    echo "test migrate passed"
+  else
+    echo "test idl migrate failed"
+    echo "----- output ----"
+    echo "$anchor_migrate_output"
+    echo "----- end -----"
+    script_exit_code=1
+  fi
+  # ----- end: migrate -----
 
 # cluster
 # (
