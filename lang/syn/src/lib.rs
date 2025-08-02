@@ -892,9 +892,7 @@ impl SeedsExpr {
         }
     }
 
-    pub fn pop(
-        &mut self,
-    ) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
+    pub fn pop(&mut self) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
         self.list_mut()?.pop()
     }
 

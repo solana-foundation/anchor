@@ -373,10 +373,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     SeedsExpr::Expr(Box::new(stream.parse()?))
                 };
 
-                ConstraintToken::Seeds(Context::new(
-                    span,
-                    ConstraintSeeds { seeds: seeds_expr },
-                ))
+                ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
         "realloc" => {
