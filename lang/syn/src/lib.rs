@@ -910,6 +910,21 @@ impl SeedsExpr {
             SeedsExpr::Expr(_) => false, // Treat as “one seed”
         }
     }
+
+    /// Immutable iteration over every seed expression, regardless of variant
+    pub fn iter(&self) -> Box<dyn Iterator<Item = &Expr> + '_> {
+        match self {
+            SeedsExpr::List(list) => Box::new(list.iter()),
+            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr.as_ref())),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            SeedsExpr::List(list) => list.len(),
+            SeedsExpr::Expr(_) => 1,
+        }
+    }
 }
 
 /// Allow `quote!{ #seeds }`
