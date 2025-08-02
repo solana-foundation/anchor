@@ -199,6 +199,9 @@ diff_test() {
   solana-test-validator --reset > validator.log 2>&1 &
   validator_pid=$!
 
+  # Wait a bit for validator to start
+  sleep 8
+
   # Set required environment variables for the deploy
   export ANCHOR_PROVIDER_URL="http://127.0.0.1:8899"
   export ANCHOR_WALLET="${workspace_dir}/tests/cli/keypairs/test-key.json"
@@ -312,7 +315,7 @@ EOF
   sleep 8
 
 
-  anchor_cli deploy
+  anchor_cli deploy > deploy.log 2>&1
   # wait for confirmation
   sleep 3
 
@@ -418,6 +421,9 @@ EOF
   solana-test-validator --reset > validator.log 2>&1 &
   validator_pid=$!
 
+  # Wait a bit for validator to start
+  sleep 8
+
   anchor_migrate_output=$(anchor_cli migrate 2>&1)
   anchor_migrate_exit_code="$?"
 
@@ -442,15 +448,16 @@ EOF
 
   cd test-program
 
-  anchor_cli build
+  anchor_cli build > build.log 2>&1
   
   solana-test-validator --reset > validator.log 2>&1 &
   validator_pid=$!
 
-  anchor_cli deploy
-  
-  sleep 3
+  # Wait a bit for validator to start
+  sleep 8
 
+  anchor_cli deploy > deploy.log 2>&1
+  
   anchor_upgrade_output=$(anchor_cli upgrade target/deploy/test_program.so \
   --program-id aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x 2>&1)
   anchor_upgrade_exit_code="$?"
