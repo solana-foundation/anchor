@@ -873,17 +873,27 @@ pub struct ConstraintInitGroup {
     pub kind: InitKind,
 }
 
+/// Seeds can be written as a literal slice (`[ a, b ]`) or any
+/// expression that produces `&[&[u8]]` at run time.
+#[derive(Debug, Clone)]
+pub enum SeedsExpr {
+    /// `[ b"prefix".as_ref(), key.as_ref() ]`
+    List(Punctuated<Expr, Token![,]>),
+    /// `pda_seeds(key)`
+    Expr(Box<Expr>),
+}
+
 #[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
     pub bump: Option<Expr>,         // None => bump was given without a target.
     pub program_seed: Option<Expr>, // None => use the current program's program_id.
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintSeeds {
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
 }
 
 #[derive(Debug, Clone)]
