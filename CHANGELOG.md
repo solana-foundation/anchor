@@ -23,6 +23,9 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- spl: Update SPL dependencies to latest ([#3780](https://github.com/solana-foundation/anchor/pull/3780)) by [ziming-zung](https://github.com/ziming-zung)
+- cli: Fix deprecated `solana-sdk::rpc_port::DEFAULT_RPC_PORT` usage by introducing `config::DEFAULT_RPC_PORT` 
+
 ## [0.31.1] - 2025-04-19
 
 This release uses a new docker image found at `solanafoundation/anchor` for the `anchor verify` command. New images will be pushed to this organization in the future.
