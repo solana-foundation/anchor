@@ -877,10 +877,49 @@ pub struct ConstraintInitGroup {
 /// expression that produces `&[&[u8]]` at run time.
 #[derive(Debug, Clone)]
 pub enum SeedsExpr {
-    /// `[ b"prefix".as_ref(), key.as_ref() ]`
+    /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`
     List(Punctuated<Expr, Token![,]>),
-    /// `pda_seeds(key)`
+    /// Exampl: `pda_seeds(key)`
     Expr(Box<Expr>),
+}
+
+impl SeedsExpr {
+    /// Return the underlying `Punctuated` if this is the `List` form
+    fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
+        match self {
+            SeedsExpr::List(list) => Some(list),
+            SeedsExpr::Expr(_) => None,
+        }
+    }
+
+    pub fn pop(
+        &mut self,
+    ) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
+        self.list_mut()?.pop()
+    }
+
+    pub fn push_value(&mut self, value: Expr) {
+        if let Some(list) = self.list_mut() {
+            list.push_value(value);
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            SeedsExpr::List(list) => list.is_empty(),
+            SeedsExpr::Expr(_) => false, // Treat as “one seed”
+        }
+    }
+}
+
+/// Allow `quote!{ #seeds }`
+impl quote::ToTokens for SeedsExpr {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            SeedsExpr::List(list) => list.to_tokens(tokens),
+            SeedsExpr::Expr(expr) => expr.to_tokens(tokens),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
