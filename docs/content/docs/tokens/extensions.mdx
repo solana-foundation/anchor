@@ -166,3 +166,189 @@ in this
   implemented yet. You may need to manually implement CPI calls for some
   extension instructions.
 </Callout>
+
+## Token Extensions Constraints
+
+Anchor provides constraints that make verifying SPL token accounts and mints easier. These constraints can be used to create or validate token accounts, mints, and associated token accounts with specific properties.
+
+### Token Account Constraints
+
+Create or validate token accounts with specified mint and authority.
+
+```rust
+#[account(
+    token::mint = <target_account>,
+    token::authority = <target_account>
+)]
+
+// With optional token program override
+#[account(
+    token::mint = <target_account>,
+    token::authority = <target_account>,
+    token::token_program = <target_account>
+)]
+```
+
+When used as a check, it's possible to only specify a subset of the constraints.
+
+**Example:**
+```rust
+use anchor_spl::{mint, token::{TokenAccount, Mint, Token}};
+
+#[account(
+    init,
+    payer = payer,
+    token::mint = mint,
+    token::authority = payer,
+)]
+pub token: Account<'info, TokenAccount>,
+#[account(address = mint::USDC)]
+pub mint: Account<'info, Mint>,
+#[account(mut)]
+pub payer: Signer<'info>,
+pub token_program: Program<'info, Token>,
+pub system_program: Program<'info, System>
+```
+
+### Mint Account Constraints
+
+Create or validate mint accounts with specified parameters.
+
+```rust
+#[account(
+    mint::authority = <target_account>,
+    mint::decimals = <expr>
+)]
+
+// With optional freeze authority
+#[account(
+    mint::authority = <target_account>,
+    mint::decimals = <expr>,
+    mint::freeze_authority = <target_account>
+)]
+```
+
+The freeze authority is optional when used with init. When used as a check, it's possible to only specify a subset of the constraints.
+
+**Example:**
+```rust
+use anchor_spl::token::{Mint, Token};
+
+#[account(
+    init,
+    payer = payer,
+    mint::decimals = 9,
+    mint::authority = payer,
+)]
+pub mint_one: Account<'info, Mint>,
+
+#[account(
+    init,
+    payer = payer,
+    mint::decimals = 9,
+    mint::authority = payer,
+    mint::freeze_authority = payer
+)]
+pub mint_two: Account<'info, Mint>,
+
+#[account(mut)]
+pub payer: Signer<'info>,
+pub token_program: Program<'info, Token>,
+pub system_program: Program<'info, System>
+```
+
+### Associated Token Account Constraints
+
+Create or validate associated token accounts with specified mint and authority.
+
+```rust
+#[account(
+    associated_token::mint = <target_account>,
+    associated_token::authority = <target_account>
+)]
+
+// With optional token program override
+#[account(
+    associated_token::mint = <target_account>,
+    associated_token::authority = <target_account>,
+    associated_token::token_program = <target_account>
+)]
+```
+
+**Example:**
+```rust
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    mint,
+    token::{TokenAccount, Mint, Token}
+};
+
+#[account(
+    init,
+    payer = payer,
+    associated_token::mint = mint,
+    associated_token::authority = payer,
+)]
+pub token: Account<'info, TokenAccount>,
+
+#[account(
+    associated_token::mint = mint,
+    associated_token::authority = payer,
+)]
+pub second_token: Account<'info, TokenAccount>,
+
+#[account(address = mint::USDC)]
+pub mint: Account<'info, Mint>,
+#[account(mut)]
+pub payer: Signer<'info>,
+pub token_program: Program<'info, Token>,
+pub associated_token_program: Program<'info, AssociatedToken>,
+pub system_program: Program<'info, System>
+```
+
+### Token Program Override
+
+The token program can optionally be overridden for any of the above constraints.
+
+```rust
+#[account(*::token_program = <target_account>)]
+```
+
+**Example:**
+```rust
+use anchor_spl::{mint, token::{TokenAccount, Mint, Token}};
+
+#[account(
+    mint::token_program = token_a_token_program,
+)]
+pub token_a_mint: Box<Account<'info, Mint>>,
+
+#[account(
+    mint::token_program = token_b_token_program,
+)]
+pub token_b_mint: Box<Account<'info, Mint>>,
+
+#[account(
+    init,
+    payer = payer,
+    token::mint = token_a_mint,
+    token::authority = payer,
+    token::token_program = token_a_token_program,
+)]
+pub token_a_account: Box<Account<'info, TokenAccount>>,
+
+#[account(
+    init,
+    payer = payer,
+    token::mint = token_b_mint,
+    token::authority = payer,
+    token::token_program = token_b_token_program,
+)]
+pub token_b_account: Box<Account<'info, TokenAccount>>,
+
+pub token_a_token_program: Interface<'info, TokenInterface>,
+pub token_b_token_program: Interface<'info, TokenInterface>,
+#[account(mut)]
+pub payer: Signer<'info>,
+pub system_program: Program<'info, System>
+```
