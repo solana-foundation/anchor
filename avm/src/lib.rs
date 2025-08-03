@@ -319,7 +319,8 @@ pub fn install_version(
         } else {
             "anchor"
         };
-        fs::rename(bin_dir.join(bin_name), version_binary_path(&version))?;
+        let temp_anchor_path = bin_dir.join(format!("anchor-{version}.tmp"));
+        fs::rename(bin_dir.join(bin_name), &temp_anchor_path)?;
     } else {
         let output = Command::new("rustc").arg("-vV").output()?;
         let target = core::str::from_utf8(&output.stdout)?
@@ -343,13 +344,13 @@ pub fn install_version(
             ));
         }
 
-        let bin_path = version_binary_path(&version);
-        fs::write(&bin_path, res.bytes()?)?;
+        let temp_anchor_path = get_bin_dir_path().join(format!("anchor-{version}.tmp"));
+        fs::write(&temp_anchor_path, res.bytes()?)?;
 
         // Set file to executable on UNIX
         #[cfg(unix)]
         fs::set_permissions(
-            bin_path,
+            temp_anchor_path,
             <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
         )?;
     }
@@ -373,9 +374,18 @@ pub fn install_version(
         .output()
         .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
 
+    let temp_anchor_path = get_bin_dir_path().join(format!("anchor-{version}.tmp"));
+
     if !solana_verify_install_output.status.success() {
+        // Clean up the temporary anchor binary since installation failed
+        if temp_anchor_path.exists() {
+            let _ = fs::remove_file(&temp_anchor_path);
+        }
         return Err(anyhow!("Failed to install `solana-verify`"));
     }
+
+    // Move anchor binary to final location only after solana-verify succeeds
+    fs::rename(&temp_anchor_path, version_binary_path(&version))?;
     println!("solana-verify successfully installed.");
 
     // If .version file is empty or not parseable, write the newly installed version to it
