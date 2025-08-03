@@ -1,0 +1,88 @@
+name: Nightly Release
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      # Generate nightly version
+      - run: |
+          DATE=$(date +%Y%m%d)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          NIGHTLY_VERSION="0.0.0-nightly-${DATE}-${SHORT_SHA}"
+          echo "NIGHTLY_VERSION=${NIGHTLY_VERSION}" >> $GITHUB_ENV
+        shell: bash
+
+      # Build CLI
+      - run: cargo build --package anchor-cli --release
+      - run: cd cli/npm-package && npm pack
+      - run: cp cli/npm-package/*.tgz ./anchor-cli-${NIGHTLY_VERSION}.tgz
+        shell: bash
+
+      # Build TypeScript package
+      - run: cd ts && npm install
+      - run: cd ts/packages/anchor && npm run build && npm pack
+      - run: cp ts/packages/anchor/*.tgz ./anchor-${NIGHTLY_VERSION}.tgz
+        shell: bash
+
+      # Create GitHub release with both packages
+      - name: Create GitHub release
+        run: |
+          gh release create "nightly-${NIGHTLY_VERSION}" \
+            --title "Nightly Build ${NIGHTLY_VERSION}" \
+            --notes "**Nightly Build** - ${NIGHTLY_VERSION}
+
+          This is an automated nightly build from the latest \`master\` branch.
+
+          **⚠️ WARNING: Nightly builds are unstable and may contain breaking changes!**
+
+          ## Installation
+
+          ### CLI
+          \`\`\`bash
+          npm install -g @coral-xyz/anchor-cli@${NIGHTLY_VERSION}
+          \`\`\`
+
+          ### TypeScript Package
+          \`\`\`bash
+          npm install @coral-xyz/anchor@${NIGHTLY_VERSION}
+          \`\`\`
+
+          Or reference the tarballs directly in your package.json:
+
+          \`\`\`json
+          {
+            \"dependencies\": {
+              \"@coral-xyz/anchor\": \"https://github.com/coral-xyz/anchor/releases/download/nightly-${NIGHTLY_VERSION}/anchor-${NIGHTLY_VERSION}.tgz\"
+            }
+          }
+          \`\`\`" \
+            --prerelease \
+            ./anchor-cli-*.tgz \
+            ./anchor-*.tgz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Keep only the 7 most recent nightly releases
+      - name: Delete old nightly releases
+        run: |
+          gh release list --limit 50 | grep "nightly-" | tail -n +8 | while IFS=$'\t' read -r tag rest; do
+            echo "Deleting old nightly release: $tag"
+            gh release delete "$tag" --yes || echo "Failed to delete $tag"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
