@@ -73,6 +73,7 @@ solana-sdk-ids = "2"
 solana-sysvar = { version = "2", features = ["bincode"] }
 solana-sysvar-id = "2"
 solana-system-interface = "1"
+solana-program-option = "2"
 thiserror = "1"
 
 

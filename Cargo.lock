@@ -311,6 +311,7 @@ dependencies = [
  "solana-program-entrypoint",
  "solana-program-error",
  "solana-program-memory",
+ "solana-program-option",
  "solana-program-pack",
  "solana-pubkey",
  "solana-sdk-ids",

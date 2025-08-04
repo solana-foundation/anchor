@@ -69,8 +69,9 @@ pub mod solana_program {
         solana_instruction as instruction, solana_msg::msg,
         solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
         solana_program_error as program_error, solana_program_memory as program_memory,
-        solana_program_pack as program_pack, solana_pubkey as pubkey,
-        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
+        solana_program_option as program_option, solana_program_pack as program_pack,
+        solana_pubkey as pubkey, solana_sdk_ids::system_program,
+        solana_system_interface::instruction as system_instruction,
     };
     pub mod bpf_loader_upgradeable {
         #[allow(deprecated)]
