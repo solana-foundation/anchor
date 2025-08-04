@@ -177,6 +177,9 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - A immutable owner extension constraint was violated
+    #[msg("A immutable owner extension constraint was violated")]
+    ConstraintTokenAccountImmutableOwnerExtension,
 
     // Require
     /// 2500 - A require expression was violated
