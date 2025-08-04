@@ -1,13 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { TokenExtensions } from "../target/types/token_extensions";
-import { ASSOCIATED_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { it } from "node:test";
-
-const TOKEN_2022_PROGRAM_ID = new anchor.web3.PublicKey(
-  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
-);
+import {
+  TOKEN_2022_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
 export function associatedAddress({
   mint,
@@ -18,7 +17,7 @@ export function associatedAddress({
 }): PublicKey {
   return PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_2022_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ASSOCIATED_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID
   )[0];
 }
 
@@ -32,7 +31,10 @@ describe("token extensions", () => {
 
   it("airdrop payer", async () => {
     await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 10000000000),
+      await provider.connection.requestAirdrop(
+        payer.publicKey,
+        10 * LAMPORTS_PER_SOL
+      ),
       "confirmed"
     );
   });
@@ -64,7 +66,7 @@ describe("token extensions", () => {
         }),
         extraMetasAccount: extraMetasAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
-        associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
       .signers([mint, payer])

@@ -7,6 +7,7 @@ import {
   sendAndConfirmTransaction,
   Transaction,
   AccountInfo,
+  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
   getExtraAccountMetaAddress,
@@ -18,9 +19,9 @@ import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
   createMintToInstruction,
-  createTransferCheckedInstruction,
   getAccount,
-  addExtraAccountsToInstruction,
+  createTransferCheckedWithTransferHookInstruction,
+  TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
 import { assert } from "chai";
 import { TransferHook } from "../target/types/transfer_hook";
@@ -29,9 +30,6 @@ describe("transfer hook", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const TOKEN_2022_PROGRAM_ID = new anchor.web3.PublicKey(
-    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
-  );
   const program = anchor.workspace.TransferHook as Program<TransferHook>;
 
   const decimals = 2;
@@ -132,7 +130,10 @@ describe("transfer hook", () => {
     );
 
     await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(payer.publicKey, 10000000000),
+      await provider.connection.requestAirdrop(
+        payer.publicKey,
+        10 * LAMPORTS_PER_SOL
+      ),
       "confirmed"
     );
 
@@ -255,19 +256,15 @@ describe("transfer hook", () => {
         );
       });
 
-    const ix = await addExtraAccountsToInstruction(
+    const ix = await createTransferCheckedWithTransferHookInstruction(
       provider.connection,
-      createTransferCheckedInstruction(
-        source,
-        mint.publicKey,
-        destination,
-        sourceAuthority.publicKey,
-        transferAmount,
-        decimals,
-        undefined,
-        TOKEN_2022_PROGRAM_ID
-      ),
+      source,
       mint.publicKey,
+      destination,
+      sourceAuthority.publicKey,
+      BigInt(transferAmount),
+      decimals,
+      [],
       undefined,
       TOKEN_2022_PROGRAM_ID
     );

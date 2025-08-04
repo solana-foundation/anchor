@@ -1,34 +1,50 @@
 const anchor = require("@coral-xyz/anchor");
-const serumCmn = require("@project-serum/common");
+const { Keypair, SystemProgram, PublicKey } = require("@solana/web3.js");
 const { assert } = require("chai");
-const { TOKEN_PROGRAM_ID } = require("@solana/spl-token");
+const {
+  TOKEN_PROGRAM_ID,
+  createMint,
+  createAccount,
+  mintTo,
+  getAccount,
+  createInitializeAccountInstruction,
+} = require("@solana/spl-token");
+const TOKEN_ACCOUNT_SIZE = 165;
 
 describe("cashiers-check", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
-  // hack so we don't have to update serum-common library
-  // to the new AnchorProvider class and Provider interface
   provider.send = provider.sendAndConfirm;
   anchor.setProvider(provider);
 
   const program = anchor.workspace.CashiersCheck;
+  const connection = provider.connection;
+  const payer = provider.wallet.payer;
+  const walletKey = provider.wallet.publicKey;
 
   let mint = null;
   let god = null;
   let receiver = null;
 
   it("Sets up initial test state", async () => {
-    const [_mint, _god] = await serumCmn.createMintAndVault(
-      program.provider,
-      new anchor.BN(1000000)
-    );
-    mint = _mint;
-    god = _god;
+    mint = await createMint(connection, payer, walletKey, walletKey, 6);
 
-    receiver = await serumCmn.createTokenAccount(
-      program.provider,
+    god = await createAccount(
+      connection,
+      payer,
       mint,
-      program.provider.wallet.publicKey
+      walletKey,
+      Keypair.generate()
+    );
+    // Mint tokens to god account
+    await mintTo(connection, payer, mint, god, payer, 1_000_000);
+
+    receiver = await createAccount(
+      connection,
+      payer,
+      mint,
+      walletKey,
+      Keypair.generate()
     );
   });
 
@@ -38,11 +54,14 @@ describe("cashiers-check", () => {
   let checkSigner = null;
 
   it("Creates a check!", async () => {
-    let [_checkSigner, nonce] = await anchor.web3.PublicKey.findProgramAddress(
+    let [_checkSigner, nonce] = PublicKey.findProgramAddressSync(
       [check.publicKey.toBuffer()],
       program.programId
     );
     checkSigner = _checkSigner;
+    const token_lamports = await connection.getMinimumBalanceForRentExemption(
+      TOKEN_ACCOUNT_SIZE
+    );
 
     await program.rpc.createCheck(new anchor.BN(100), "Hello world", nonce, {
       accounts: {
@@ -51,19 +70,29 @@ describe("cashiers-check", () => {
         checkSigner,
         from: god,
         to: receiver,
-        owner: program.provider.wallet.publicKey,
+        owner: walletKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
       signers: [check, vault],
       instructions: [
-        await program.account.check.createInstruction(check, 300),
-        ...(await serumCmn.createTokenAccountInstrs(
-          program.provider,
-          vault.publicKey,
-          mint,
-          checkSigner
-        )),
+        await program.account.check.createInstruction(
+          check,
+          TOKEN_ACCOUNT_SIZE
+        ),
+        SystemProgram.createAccount({
+          fromPubkey: walletKey,
+          newAccountPubkey: vault.publicKey,
+          space: TOKEN_ACCOUNT_SIZE,
+          programId: TOKEN_PROGRAM_ID,
+          lamports: token_lamports,
+        }),
+
+        createInitializeAccountInstruction(
+          vault.publicKey, // account
+          mint, // mint
+          checkSigner // owner
+        ),
       ],
     });
 
@@ -76,11 +105,8 @@ describe("cashiers-check", () => {
     assert.strictEqual(checkAccount.nonce, nonce);
     assert.isFalse(checkAccount.burned);
 
-    let vaultAccount = await serumCmn.getTokenAccount(
-      program.provider,
-      checkAccount.vault
-    );
-    assert.isTrue(vaultAccount.amount.eq(new anchor.BN(100)));
+    let vaultAccount = await getAccount(connection, checkAccount.vault);
+    assert.equal(vaultAccount.amount, BigInt(100));
   });
 
   it("Cashes a check", async () => {
@@ -98,16 +124,10 @@ describe("cashiers-check", () => {
     const checkAccount = await program.account.check.fetch(check.publicKey);
     assert.isTrue(checkAccount.burned);
 
-    let vaultAccount = await serumCmn.getTokenAccount(
-      program.provider,
-      checkAccount.vault
-    );
-    assert.isTrue(vaultAccount.amount.eq(new anchor.BN(0)));
+    let vaultAccount = await getAccount(connection, checkAccount.vault);
+    assert.equal(vaultAccount.amount, BigInt(0));
 
-    let receiverAccount = await serumCmn.getTokenAccount(
-      program.provider,
-      receiver
-    );
-    assert.isTrue(receiverAccount.amount.eq(new anchor.BN(100)));
+    let receiverAccount = await getAccount(connection, receiver);
+    assert.equal(receiverAccount.amount, BigInt(100));
   });
 });

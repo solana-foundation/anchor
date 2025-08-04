@@ -3,7 +3,6 @@ import { Program } from "@coral-xyz/anchor";
 import { AccountCommand } from "../target/types/account_command";
 import { assert } from "chai";
 import { execSync } from "child_process";
-import { sleep } from "@project-serum/common";
 
 describe("Test CLI account commands", () => {
   // Configure the client to use the local cluster.
@@ -24,11 +23,11 @@ describe("Test CLI account commands", () => {
     await program.methods
       .initialize(
         balance,
-        new anchor.BN(amount),
+        amount,
         memo,
         values.map((x) => new anchor.BN(x))
       )
-      .accounts({
+      .accountsPartial({
         myAccount: myAccount.publicKey,
         user: provider.wallet.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -51,26 +50,32 @@ describe("Test CLI account commands", () => {
           throw e;
         }
       }
-
-      await sleep(5000);
     }
 
-    assert(output.balance === balance, "Balance deserialized incorrectly");
-    assert(
-      output.delegate_pubkey === provider.wallet.publicKey.toBase58(),
+    assert.strictEqual(
+      output.balance,
+      balance,
+      "Balance deserialized incorrectly"
+    );
+    assert.strictEqual(
+      output.delegate_pubkey,
+      provider.wallet.publicKey.toBase58(),
       "delegatePubkey deserialized incorrectly"
     );
-    assert(
-      output.sub.state.Confirmed.amount === amount,
+    assert.strictEqual(
+      output.sub.state.Confirmed.amount,
+      amount,
       "Amount deserialized incorrectly"
     );
-    assert(
-      output.sub.state.Confirmed.memo === memo,
+    assert.strictEqual(
+      output.sub.state.Confirmed.memo,
+      memo,
       "Memo deserialized incorrectly"
     );
     for (let i = 0; i < values.length; i++) {
-      assert(
-        output.sub.values[i] == values[i],
+      assert.equal(
+        output.sub.values[i],
+        values[i],
         "Values deserialized incorrectly"
       );
     }

@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program, getProvider } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import { Keypair, SystemProgram } from "@solana/web3.js";
 import { Floats } from "../target/types/floats";
 import { assert } from "chai";
@@ -16,7 +16,7 @@ describe("floats", () => {
 
     await program.methods
       .create(1.0, 2.0)
-      .accounts({
+      .accountsPartial({
         account: accountKeypair.publicKey,
         authority: provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
@@ -38,7 +38,7 @@ describe("floats", () => {
 
     await program.methods
       .create(1.0, 2.0)
-      .accounts({
+      .accountsStrict({
         account: accountKeypair.publicKey,
         authority: authorityPublicKey,
         systemProgram: SystemProgram.programId,
@@ -52,7 +52,7 @@ describe("floats", () => {
 
     await program.methods
       .update(3.0, 4.0)
-      .accounts({
+      .accountsStrict({
         account: accountKeypair.publicKey,
         authority: authorityPublicKey,
       })

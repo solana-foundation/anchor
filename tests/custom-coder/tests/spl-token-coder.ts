@@ -23,7 +23,7 @@ describe("spl-token", () => {
   it("Creates a mint", async () => {
     await program.methods
       .initializeMint(6, provider.wallet.publicKey, null)
-      .accounts({
+      .accountsPartial({
         mint: mintKeypair.publicKey,
         rent,
       })
@@ -45,7 +45,7 @@ describe("spl-token", () => {
   it("Creates a token account for alice", async () => {
     await program.methods
       .initializeAccount()
-      .accounts({
+      .accountsPartial({
         account: aliceTokenKeypair.publicKey,
         mint: mintKeypair.publicKey,
         owner: provider.wallet.publicKey,
@@ -90,7 +90,7 @@ describe("spl-token", () => {
   it("Creates a token for bob", async () => {
     await program.methods
       .initializeAccount()
-      .accounts({
+      .accountsPartial({
         account: bobTokenKeypair.publicKey,
         mint: mintKeypair.publicKey,
         owner: provider.wallet.publicKey,

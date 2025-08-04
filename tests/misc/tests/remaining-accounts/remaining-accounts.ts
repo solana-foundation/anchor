@@ -1,7 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 
-import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
+import {
+  createWrappedNativeAccount,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { assert } from "chai";
 import { RemainingAccounts } from "../../target/types/remaining_accounts";
 
@@ -20,12 +23,15 @@ describe("remaining-accounts", () => {
       .accounts({ data: data.publicKey })
       .signers([data])
       .rpc();
-    const ata = await Token.createWrappedNativeAccount(
+
+    const ata = await createWrappedNativeAccount(
       program.provider.connection,
-      TOKEN_PROGRAM_ID,
-      payer.publicKey,
       payer,
-      0
+      payer.publicKey,
+      0,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
     );
 
     // Data is not initialized

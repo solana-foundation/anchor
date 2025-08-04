@@ -34,7 +34,7 @@ describe("spl-associated-token-coder", () => {
     // act
     await program.methods
       .create()
-      .accounts({
+      .accountsPartial({
         associatedAccountAddress: associatedToken,
         fundingAddress: provider.wallet.publicKey,
         systemProgram: systemProgram.programId,
@@ -47,7 +47,7 @@ describe("spl-associated-token-coder", () => {
           tokenProgram.account.mint.createInstruction(mintKeypair),
           tokenProgram.methods
             .initializeMint(mintDecimals, provider.wallet.publicKey, null)
-            .accounts({
+            .accountsPartial({
               mint: mintKeypair.publicKey,
               rent: SYSVAR_RENT_PUBKEY,
             })
