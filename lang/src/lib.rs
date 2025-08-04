@@ -126,7 +126,7 @@ pub mod solana_program {
             )]
             pub use solana_instructions_sysvar::{
                 get_instruction_relative, load_current_index_checked, load_instruction_at_checked,
-                store_current_index, Instructions,
+                store_current_index_checked, Instructions,
             };
             #[deprecated(since = "2.2.0", note = "Use solana-sdk-ids crate instead")]
             pub use solana_sdk_ids::sysvar::instructions::{check_id, id, ID};
