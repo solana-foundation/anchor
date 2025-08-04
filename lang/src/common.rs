@@ -1,7 +1,7 @@
 use crate::prelude::{Id, System};
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::system_program;
 use crate::Result;
-use solana_program::account_info::AccountInfo;
-use solana_program::system_program;
 
 pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info>) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.

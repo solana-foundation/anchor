@@ -25,11 +25,11 @@
 
 extern crate self as anchor_lang;
 
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
+use crate::solana_program::program_error::ProgramError;
+use crate::solana_program::pubkey::Pubkey;
 use bytemuck::{Pod, Zeroable};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
 use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
 mod account_meta;
@@ -63,7 +63,76 @@ pub use anchor_derive_space::InitSpace;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
-pub use solana_program;
+pub mod solana_program {
+    pub use {
+        solana_account_info as account_info, solana_clock as clock, solana_cpi as program,
+        solana_instruction as instruction, solana_msg::msg,
+        solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
+        solana_program_error as program_error, solana_program_memory as program_memory,
+        solana_program_pack as program_pack, solana_pubkey as pubkey,
+        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
+    };
+    pub mod bpf_loader_upgradeable {
+        #[allow(deprecated)]
+        pub use solana_loader_v3_interface::{
+            get_program_data_address,
+            instruction::{
+                close, close_any, create_buffer, deploy_with_max_program_len, extend_program,
+                is_close_instruction, is_set_authority_checked_instruction,
+                is_set_authority_instruction, is_upgrade_instruction, set_buffer_authority,
+                set_buffer_authority_checked, set_upgrade_authority, set_upgrade_authority_checked,
+                upgrade, write,
+            },
+            state::UpgradeableLoaderState,
+        };
+        pub use solana_sdk_ids::bpf_loader_upgradeable::{check_id, id, ID};
+    }
+
+    pub mod log {
+        pub use solana_msg::{msg, sol_log};
+        /// Print some slices as base64.
+        pub fn sol_log_data(data: &[&[u8]]) {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_define_syscall::definitions::sol_log_data(
+                    data as *const _ as *const u8,
+                    data.len() as u64,
+                )
+            };
+
+            #[cfg(not(target_os = "solana"))]
+            core::hint::black_box(data);
+        }
+    }
+    pub mod sysvar {
+        pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
+        #[deprecated(since = "2.2.0", note = "Use `solana-sysvar` crate instead")]
+        #[allow(deprecated)]
+        pub use {
+            solana_sdk_ids::sysvar::{check_id, id, ID},
+            solana_sysvar::{
+                clock, epoch_rewards, epoch_schedule, fees, is_sysvar_id, last_restart_slot,
+                recent_blockhashes, rent, rewards, slot_hashes, slot_history, stake_history,
+                Sysvar, ALL_IDS,
+            },
+        };
+        pub mod instructions {
+            pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
+            #[cfg(not(target_os = "solana"))]
+            pub use solana_instructions_sysvar::construct_instructions_data;
+            #[deprecated(
+                since = "2.2.0",
+                note = "Use solana-instructions-sysvar crate instead"
+            )]
+            pub use solana_instructions_sysvar::{
+                get_instruction_relative, load_current_index_checked, load_instruction_at_checked,
+                store_current_index, Instructions,
+            };
+            #[deprecated(since = "2.2.0", note = "Use solana-sdk-ids crate instead")]
+            pub use solana_sdk_ids::sysvar::instructions::{check_id, id, ID};
+        }
+    }
+}
 
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
@@ -416,23 +485,23 @@ pub mod prelude {
         InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
         ToAccountMetas,
     };
+    pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
+    pub use crate::solana_program::instruction::AccountMeta;
+    pub use crate::solana_program::msg;
+    pub use crate::solana_program::program_error::ProgramError;
+    pub use crate::solana_program::pubkey::Pubkey;
+    pub use crate::solana_program::sysvar::clock::Clock;
+    pub use crate::solana_program::sysvar::epoch_schedule::EpochSchedule;
+    pub use crate::solana_program::sysvar::instructions::Instructions;
+    pub use crate::solana_program::sysvar::rent::Rent;
+    pub use crate::solana_program::sysvar::rewards::Rewards;
+    pub use crate::solana_program::sysvar::slot_hashes::SlotHashes;
+    pub use crate::solana_program::sysvar::slot_history::SlotHistory;
+    pub use crate::solana_program::sysvar::stake_history::StakeHistory;
+    pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
-    pub use solana_program::account_info::{next_account_info, AccountInfo};
-    pub use solana_program::instruction::AccountMeta;
-    pub use solana_program::msg;
-    pub use solana_program::program_error::ProgramError;
-    pub use solana_program::pubkey::Pubkey;
-    pub use solana_program::sysvar::clock::Clock;
-    pub use solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_program::sysvar::instructions::Instructions;
-    pub use solana_program::sysvar::rent::Rent;
-    pub use solana_program::sysvar::rewards::Rewards;
-    pub use solana_program::sysvar::slot_hashes::SlotHashes;
-    pub use solana_program::sysvar::slot_history::SlotHistory;
-    pub use solana_program::sysvar::stake_history::StakeHistory;
-    pub use solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
 
     #[cfg(feature = "event-cpi")]
@@ -457,7 +526,7 @@ pub mod __private {
 
     pub use crate::{bpf_writer::BpfWriter, common::is_closed};
 
-    use solana_program::pubkey::Pubkey;
+    use crate::solana_program::pubkey::Pubkey;
 
     // Used to calculate the maximum between two expressions.
     // It is necessary for the calculation of the enum space.

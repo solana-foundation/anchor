@@ -2,13 +2,13 @@
 
 use crate::accounts::program::Program;
 use crate::error::{Error, ErrorCode};
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
+use crate::solana_program::pubkey::Pubkey;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
     ToAccountMetas,
 };
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 use std::ops::Deref;
 
@@ -59,9 +59,9 @@ use std::ops::Deref;
 /// The required constraints are as follows:
 ///
 /// - `program` is the account of the program itself.
-///   Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
-///   Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
-///   will be `None` if it's not).
+///    Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
+///    Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
+///    will be `None` if it's not).
 /// - `program_data`'s constraint checks that its upgrade authority is the `authority` account.
 /// - Finally, `authority` needs to sign the transaction.
 ///

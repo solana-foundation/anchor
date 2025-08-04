@@ -55,6 +55,29 @@ anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 base64 = "0.21"
 bincode = "1"
 borsh = "0.10.3"
-bytemuck = "1"
-solana-program = "2"
+bytemuck = { version = "1", features = ["derive"] }
+solana-account-info = "2"
+solana-clock = "2"
+solana-cpi = "2"
+solana-define-syscall = "2"
+solana-instruction = "2"
+solana-instructions-sysvar = "2"
+solana-loader-v3-interface = { version = "3", features = ["bincode"] }
+solana-msg = "2"
+solana-program-entrypoint = "2"
+solana-program-error = { version = "2", features = ["borsh"] }
+solana-program-memory = "2"
+solana-program-pack = "2"
+solana-pubkey = { version = "2", features = ["borsh", "bytemuck", "serde"] }
+solana-sdk-ids = "2"
+solana-sysvar = { version = "2", features = ["bincode"] }
+solana-sysvar-id = "2"
+solana-system-interface = "1"
 thiserror = "1"
+
+
+ [lints.rust.unexpected_cfgs]
+ level = "warn"
+ check-cfg = [
+     'cfg(target_os, values("solana"))',
+ ]
