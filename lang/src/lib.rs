@@ -45,10 +45,12 @@ pub mod event;
 pub mod idl;
 pub mod system_program;
 mod vec;
+mod address_lookup_table_program;
 
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
+pub use crate::address_lookup_table_program::*;
 pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
@@ -402,6 +404,7 @@ impl Key for Pubkey {
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
     pub use super::{
+        address_lookup_table_program::{AddressLookupTable, AddressLookupTableAccount},
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
         accounts::interface_account::InterfaceAccount, accounts::program::Program,
