@@ -1,0 +1,9 @@
+[build]
+# Exclude test files with conditional compilation from general cargo check/build
+# This prevents rust-analyzer from trying to analyze test-specific features
+# across the main workspace
+rustflags = []
+
+[target.'cfg(all())']
+# Configure specific behavior for SBF tests
+# This tells cargo to not require all features to be available in all workspace members
