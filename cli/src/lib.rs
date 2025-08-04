@@ -4373,11 +4373,10 @@ pub fn target_dir() -> Result<PathBuf> {
 
 /// Return the directory where cargo is storing build artifacts.
 fn target_dir_no_cache() -> Result<PathBuf> {
-    // `cargo metadata` only has 1 output format, but adding `--format-version=1`
-    // ensures future compatibility. It produces a large JSON blob from which we
-    // extract the `target_directory` field.
+    // `cargo metadata` produces a JSON blob from which we extract the
+    // `target_directory` field.
     let output = std::process::Command::new("cargo")
-        .args(["metadata", "--format-version=1"])
+        .args(["metadata", "--no-deps", "--format-version=1"])
         .stderr(Stdio::inherit())
         .output()
         .context("Failed to execute 'cargo metadata'")?;
