@@ -1,5 +1,6 @@
 import * as toml from "toml";
 import camelcase from "camelcase";
+import { execSync } from "child_process";
 import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
 import { Idl } from "./idl.js";
@@ -54,7 +55,9 @@ const workspace = new Proxy(
         //
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
-        const idlDirPath = path.join("target", "idl");
+        const output = execSync("cargo metadata --no-deps --format-version 1", {encoding: "utf8"});
+        const metadata = JSON.parse(output);
+        const idlDirPath = path.join(metadata.target_directory, "idl");
         const fileName = fs
           .readdirSync(idlDirPath)
           .find((name) => camelcase(path.parse(name).name) === programName);
