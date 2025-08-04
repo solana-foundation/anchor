@@ -1,0 +1,11 @@
+[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+anchor-client = { path = "../../../../client" }
+puppet = { version = "0.1.0", path = "../programs/puppet" }
+puppet-master = { version = "0.1.0", path = "../programs/puppet-master" }
