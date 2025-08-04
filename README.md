@@ -4,7 +4,7 @@
   <h1>Anchor</h1>
 
   <p>
-    <strong>Solana Sealevel Framework</strong>
+    <strong>Solana Program Framework</strong>
   </p>
 
   <p>
@@ -15,19 +15,23 @@
   </p>
 </div>
 
-Anchor is a framework for Solana's [Sealevel](https://medium.com/solana-labs/sealevel-parallel-processing-thousands-of-smart-contracts-d814b378192) runtime providing several convenient developer tools for writing smart contracts.
+[Anchor](https://www.anchor-lang.com/) is a framework providing several convenient developer tools for writing Solana programs (sometimes called 'smart contracts').
 
 - Rust eDSL for writing Solana programs
 - [IDL](https://en.wikipedia.org/wiki/Interface_description_language) specification
 - TypeScript package for generating clients from IDL
 - CLI and workspace management for developing complete applications
 
-If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/v0.7.4/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js), then the experience will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
+Anchor is the most popular framework for Solana programs.
+
+> [!NOTE]
+> If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js), then using Anchor will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
 
 ## Getting Started
 
-For a quickstart guide and in depth tutorials, see the [anchor book](https://book.anchor-lang.com) and the older [documentation](https://anchor-lang.com) that is being phased out.
-To jump straight to examples, go [here](https://github.com/coral-xyz/anchor/tree/master/examples). For the latest Rust and TypeScript API documentation, see [docs.rs](https://docs.rs/anchor-lang) and the [typedoc](https://coral-xyz.github.io/anchor/ts/index.html).
+For a quickstart guide and in depth tutorials, see the [Anchor book](https://book.anchor-lang.com) and the [Anchor documentation](https://anchor-lang.com).
+
+To jump straight to examples, go [here](https://github.com/coral-xyz/anchor/tree/master/examples). For the latest Rust and TypeScript API documentation, see [docs.rs](https://docs.rs/anchor-lang) and the [typedoc](https://www.anchor-lang.com/docs/clients/typescript).
 
 ## Packages
 

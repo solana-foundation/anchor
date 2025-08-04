@@ -1,5 +1,8 @@
 extern crate proc_macro;
 
+#[cfg(feature = "lazy-account")]
+mod lazy;
+
 use borsh_derive_internal::*;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -73,5 +76,24 @@ fn gen_borsh_deserialize(input: TokenStream) -> TokenStream2 {
 
 #[proc_macro_derive(AnchorDeserialize, attributes(borsh_skip, borsh_init))]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
-    TokenStream::from(gen_borsh_deserialize(input))
+    #[cfg(feature = "lazy-account")]
+    {
+        let deser = gen_borsh_deserialize(input.clone());
+        let lazy = lazy::gen_lazy(input).unwrap_or_else(|e| e.to_compile_error());
+        quote::quote! {
+            #deser
+            #lazy
+        }
+        .into()
+    }
+    #[cfg(not(feature = "lazy-account"))]
+    gen_borsh_deserialize(input).into()
+}
+
+#[cfg(feature = "lazy-account")]
+#[proc_macro_derive(Lazy)]
+pub fn lazy(input: TokenStream) -> TokenStream {
+    lazy::gen_lazy(input)
+        .unwrap_or_else(|e| e.to_compile_error())
+        .into()
 }

@@ -6,7 +6,7 @@ use anchor_lang::{context::CpiContext, Accounts};
 pub fn token_group_initialize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenGroupInitialize<'info>>,
     update_authority: Option<Pubkey>,
-    max_size: u32,
+    max_size: u64,
 ) -> Result<()> {
     let ix = spl_token_group_interface::instruction::initialize_group(
         ctx.accounts.program_id.key,

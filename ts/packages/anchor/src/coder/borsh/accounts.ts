@@ -107,9 +107,9 @@ export class BorshAccountsCoder<A extends string = string>
   }
 
   /**
-   * Calculates and returns a unique 8 byte discriminator prepended to all anchor accounts.
+   * Get the unique discriminator prepended to all anchor accounts.
    *
-   * @param name The name of the account to calculate the discriminator.
+   * @param name The name of the account to get the discriminator of.
    */
   public accountDiscriminator(name: string): Buffer {
     const account = this.idl.accounts?.find((acc) => acc.name === name);

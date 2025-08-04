@@ -7,8 +7,10 @@ use dirs::home_dir;
 use heck::ToSnakeCase;
 use reqwest::Url;
 use serde::de::{self, MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
+use solana_sdk::clock::Slot;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use solang_parser::pt::{ContractTy, SourceUnitPart};
@@ -77,24 +79,15 @@ impl Manifest {
     }
 
     pub fn lib_name(&self) -> Result<String> {
-        if self.lib.is_some() && self.lib.as_ref().unwrap().name.is_some() {
-            Ok(self
-                .lib
-                .as_ref()
-                .unwrap()
-                .name
-                .as_ref()
-                .unwrap()
-                .to_string()
-                .to_snake_case())
-        } else {
-            Ok(self
+        match &self.lib {
+            Some(cargo_toml::Product {
+                name: Some(name), ..
+            }) => Ok(name.to_owned()),
+            _ => self
                 .package
                 .as_ref()
-                .ok_or_else(|| anyhow!("package section not provided"))?
-                .name
-                .to_string()
-                .to_snake_case())
+                .ok_or_else(|| anyhow!("package section not provided"))
+                .map(|pkg| pkg.name.to_snake_case()),
         }
     }
 
@@ -242,7 +235,10 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = format!("target/idl/{lib_name}.json");
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&lib_name)
+                .with_extension("json");
             let idl = fs::read(idl_filepath)
                 .ok()
                 .map(|bytes| serde_json::from_reader(&*bytes))
@@ -256,7 +252,10 @@ impl WithPath<Config> {
             });
         }
         for (lib_name, path) in self.get_solidity_program_list()? {
-            let idl_filepath = format!("target/idl/{lib_name}.json");
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&lib_name)
+                .with_extension("json");
             let idl = fs::read(idl_filepath)
                 .ok()
                 .map(|bytes| serde_json::from_reader(&*bytes))
@@ -318,10 +317,9 @@ impl WithPath<Config> {
                             .filter_map(|entry| entry.ok())
                             .map(|entry| self.process_single_path(&entry.path()))
                             .collect(),
-                        Err(e) => vec![Err(Error::new(io::Error::new(
-                            io::ErrorKind::Other,
-                            format!("Error reading directory {:?}: {}", dir, e),
-                        )))],
+                        Err(e) => vec![Err(Error::new(io::Error::other(format!(
+                            "Error reading directory {dir:?}: {e}"
+                        ))))],
                     }
                 } else {
                     vec![self.process_single_path(&path)]
@@ -332,10 +330,9 @@ impl WithPath<Config> {
 
     fn process_single_path(&self, path: &PathBuf) -> Result<PathBuf, Error> {
         path.canonicalize().map_err(|e| {
-            Error::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Error canonicalizing path {:?}: {}", path, e),
-            ))
+            Error::new(io::Error::other(format!(
+                "Error canonicalizing path {path:?}: {e}"
+            )))
         })
     }
 }
@@ -373,6 +370,35 @@ pub struct Config {
 pub struct ToolchainConfig {
     pub anchor_version: Option<String>,
     pub solana_version: Option<String>,
+    pub package_manager: Option<PackageManager>,
+}
+
+/// Package manager to use for the project.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageManager {
+    /// Use npm as the package manager.
+    NPM,
+    /// Use yarn as the package manager.
+    #[default]
+    Yarn,
+    /// Use pnpm as the package manager.
+    PNPM,
+    /// Use bun as the package manager.
+    Bun,
+}
+
+impl std::fmt::Display for PackageManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let pkg_manager_str = match self {
+            PackageManager::NPM => "npm",
+            PackageManager::Yarn => "yarn",
+            PackageManager::PNPM => "pnpm",
+            PackageManager::Bun => "bun",
+        };
+
+        write!(f, "{pkg_manager_str}")
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -479,7 +505,7 @@ impl Config {
             .anchor_version
             .as_deref()
             .unwrap_or(crate::DOCKER_BUILDER_VERSION);
-        format!("backpackapp/build:v{version}")
+        format!("solanafoundation/anchor:v{version}")
     }
 
     pub fn discover(cfg_override: &ConfigOverride) -> Result<Option<WithPath<Config>>> {
@@ -558,9 +584,27 @@ struct _Config {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Provider {
-    #[serde(deserialize_with = "des_cluster")]
+    #[serde(serialize_with = "ser_cluster", deserialize_with = "des_cluster")]
     cluster: Cluster,
     wallet: String,
+}
+
+fn ser_cluster<S: Serializer>(cluster: &Cluster, s: S) -> Result<S::Ok, S::Error> {
+    match cluster {
+        Cluster::Custom(http, ws) => {
+            match (Url::parse(http), Url::parse(ws)) {
+                // If `ws` was derived from `http`, serialize `http` as string
+                (Ok(h), Ok(w)) if h.domain() == w.domain() => s.serialize_str(http),
+                _ => {
+                    let mut map = s.serialize_map(Some(2))?;
+                    map.serialize_entry("http", http)?;
+                    map.serialize_entry("ws", ws)?;
+                    map.end()
+                }
+            }
+        }
+        _ => s.serialize_str(&cluster.to_string()),
+    }
 }
 
 fn des_cluster<'de, D>(deserializer: D) -> Result<Cluster, D::Error>
@@ -639,7 +683,7 @@ impl fmt::Display for Config {
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
-        write!(f, "{}", cfg)
+        write!(f, "{cfg}")
     }
 }
 
@@ -832,8 +876,6 @@ pub struct _TestToml {
 }
 
 impl _TestToml {
-    // TODO: Remove if/when false positive gets fixed
-    #[allow(clippy::needless_borrows_for_generic_args)]
     fn from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let s = fs::read_to_string(&path)?;
         let parsed_toml: Self = toml::from_str(&s)?;
@@ -1069,7 +1111,7 @@ pub struct _Validator {
     pub ticks_per_slot: Option<u16>,
     // Warp the ledger to WARP_SLOT after starting the validator.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub warp_slot: Option<String>,
+    pub warp_slot: Option<Slot>,
     // Deactivate one or more features.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deactivate_feature: Option<Vec<String>>,
@@ -1107,7 +1149,7 @@ pub struct Validator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ticks_per_slot: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub warp_slot: Option<String>,
+    pub warp_slot: Option<Slot>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deactivate_feature: Option<Vec<String>>,
 }
@@ -1130,7 +1172,7 @@ impl From<_Validator> for Validator {
             url: _validator.url,
             ledger: _validator
                 .ledger
-                .unwrap_or_else(|| DEFAULT_LEDGER_PATH.to_string()),
+                .unwrap_or_else(|| get_default_ledger_path().display().to_string()),
             limit_ledger_size: _validator.limit_ledger_size,
             rpc_port: _validator
                 .rpc_port
@@ -1168,7 +1210,10 @@ impl From<Validator> for _Validator {
     }
 }
 
-pub const DEFAULT_LEDGER_PATH: &str = ".anchor/test-ledger";
+pub fn get_default_ledger_path() -> PathBuf {
+    Path::new(".anchor").join("test-ledger")
+}
+
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
 
 impl Merge for _Validator {
@@ -1281,12 +1326,12 @@ impl Program {
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        let deploy_dir_path = "target/deploy/";
-        fs::create_dir_all(deploy_dir_path)
-            .with_context(|| format!("Error creating directory with path: {deploy_dir_path}"))?;
+        let deploy_dir_path = Path::new("target").join("deploy");
+        fs::create_dir_all(&deploy_dir_path)
+            .with_context(|| format!("Error creating directory with path: {deploy_dir_path:?}"))?;
         let path = std::env::current_dir()
             .expect("Must have current dir")
-            .join(format!("target/deploy/{}-keypair.json", self.lib_name));
+            .join(deploy_dir_path.join(format!("{}-keypair.json", self.lib_name)));
         if path.exists() {
             return Ok(WithPath::new(
                 File::open(&path)
@@ -1302,11 +1347,10 @@ impl Program {
     }
 
     pub fn binary_path(&self, verifiable: bool) -> PathBuf {
-        let path = if verifiable {
-            format!("target/verifiable/{}.so", self.lib_name)
-        } else {
-            format!("target/deploy/{}.so", self.lib_name)
-        };
+        let path = Path::new("target")
+            .join(if verifiable { "verifiable" } else { "deploy" })
+            .join(&self.lib_name)
+            .with_extension("so");
 
         std::env::current_dir()
             .expect("Must have current dir")
@@ -1388,7 +1432,13 @@ macro_rules! home_path {
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(home_dir().unwrap().join($path).display().to_string())
+                $my_struct(
+                    home_dir()
+                        .unwrap()
+                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
+                        .display()
+                        .to_string(),
+                )
             }
         }
 
@@ -1427,15 +1477,34 @@ mod tests {
         wallet = \"id.json\"
     ";
 
-    const CUSTOM_CONFIG: &str = "
+    #[test]
+    fn parse_custom_cluster_str() {
+        let config = Config::from_str(
+            "
+        [provider]
+        cluster = \"http://my-url.com\"
+        wallet = \"id.json\"
+    ",
+        )
+        .unwrap();
+        assert!(!config.features.skip_lint);
+
+        // Make sure the layout of `provider.cluster` stays the same after serialization
+        assert!(config
+            .to_string()
+            .contains(r#"cluster = "http://my-url.com""#));
+    }
+
+    #[test]
+    fn parse_custom_cluster_map() {
+        let config = Config::from_str(
+            "
         [provider]
         cluster = { http = \"http://my-url.com\", ws = \"ws://my-url.com\" }
         wallet = \"id.json\"
-    ";
-
-    #[test]
-    fn parse_custom_cluster() {
-        let config = Config::from_str(CUSTOM_CONFIG).unwrap();
+    ",
+        )
+        .unwrap();
         assert!(!config.features.skip_lint);
     }
 

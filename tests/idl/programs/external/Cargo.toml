@@ -18,4 +18,3 @@ default = []
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl" }

@@ -132,7 +132,7 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
 
                         quote!((1 + #type_len))
                     } else {
-                        quote_spanned!(ident.span() => compile_error!("Invalid argument in Vec"))
+                        quote_spanned!(ident.span() => compile_error!("Invalid argument in Option"))
                     }
                 }
                 "Vec" => {
@@ -149,6 +149,15 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                     let ty = &ty_path.path;
                     quote!(<#ty as anchor_lang::Space>::INIT_SPACE)
                 }
+            }
+        }
+        Type::Tuple(ty_tuple) => {
+            let recurse = ty_tuple
+                .elems
+                .iter()
+                .map(|t| len_from_type(t.clone(), attrs));
+            quote! {
+                (0 #(+ #recurse)*)
             }
         }
         _ => panic!("Type {ty:?} is not supported"),

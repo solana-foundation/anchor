@@ -9,9 +9,6 @@ on:
       solana_cli_version:
         required: true
         type: string
-      solang_version:
-        required: true
-        type: string
       node_version:
         required: true
         type: string
@@ -22,9 +19,8 @@ on:
         required: true
         type: string
 env:
-  CACHE: inputs.cache
+  CACHE: ${{ inputs.cache }}
   SOLANA_CLI_VERSION: ${{ inputs.solana_cli_version }}
-  SOLANG_VERSION: ${{ inputs.solang_version }}
   NODE_VERSION: ${{ inputs.node_version }}
   CARGO_PROFILE: ${{ inputs.cargo_profile }}
   ANCHOR_BINARY_NAME: ${{ inputs.anchor_binary_name }}
@@ -56,9 +52,9 @@ jobs:
       - run: cargo build
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo test --workspace --exclude avm
       # using singlethreaded testing for avm so that tests that change files do not conflict with each other
-      - run: cd avm && cargo fmt -- --check && cargo clippy --all-targets -- -D warnings && cargo test -- --test-threads=1
+      - run: cargo test --package avm -- --test-threads=1
       # Init local borsh package
       - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build
       - run: cd ts/packages/anchor-errors && yarn --frozen-lockfile && yarn build
@@ -92,7 +88,7 @@ jobs:
         if: env.CARGO_PROFILE != 'debug'
 
       - run: chmod +x ~/.cargo/bin/anchor
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/anchor
@@ -106,7 +102,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
@@ -183,14 +179,14 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
 
       - run: cd ${{ matrix.node.path }} && anchor build --skip-lint
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.node.name }}
           path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
@@ -206,29 +202,29 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: optional.so
           path: tests/optional/target/deploy/
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: events.so
           path: tests/events/target/deploy/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: basic_4.so
           path: examples/tutorial/basic-4/target/deploy/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: basic_2.so
           path: examples/tutorial/basic-2/target/deploy/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: composite.so
           path: tests/composite/target/deploy/
@@ -262,7 +258,7 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
@@ -319,7 +315,7 @@ jobs:
   #       shell: bash
   #     - run: solana config set --url localhost
   #       shell: bash
-  #     - uses: actions/download-artifact@v3
+  #     - uses: actions/download-artifact@v4
   #       with:
   #         name: ${{ env.ANCHOR_BINARY_NAME }}
   #         path: ~/.cargo/bin/
@@ -342,6 +338,9 @@ jobs:
     name: Test Anchor Init
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      matrix:
+        template: [mocha, jest, rust, mollusk]
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
@@ -356,15 +355,14 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      # TODO: Re-enable once https://github.com/solana-labs/solana/issues/33504 is resolved
-      # - run: cd "$(mktemp -d)" && anchor init hello-anchor && cd hello-anchor && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
-      # - uses: ./.github/actions/git-diff/
+      - run: cd "$(mktemp -d)" && anchor init --test-template ${{ matrix.template }} hello-anchor-${{ matrix.template }} && cd hello-anchor-${{ matrix.template }} && yarn link @coral-xyz/anchor && yarn && anchor test && yarn lint:fix
+      - uses: ./.github/actions/git-diff/
 
   test-programs:
     needs: setup-anchor-cli
@@ -395,10 +393,9 @@ jobs:
             path: tests/multisig
           # - cmd: cd tests/lockup && anchor test --skip-lint
           #   path: tests/lockup
-          # TODO: Remove `1.14.18` installation if/when https://github.com/solana-labs/solana/issues/31960 is solved
-          # `swap` tests don't work with Solana `1.16.0`, downgrade to `1.14.18`
-          - cmd: cd tests/swap/deps/openbook-dex/dex && solana-install init 1.14.18 && cargo build-bpf -- --locked && cd ../../../ && solana-install init $SOLANA_CLI_VERSION && anchor test --skip-lint
-            path: tests/swap
+          # TODO: Re-enable after making it work with Solana v2
+          # - cmd: cd tests/swap && anchor test --skip-lint
+          #   path: tests/swap
           - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
             path: tests/escrow
           - cmd: cd tests/pyth && anchor test --skip-lint && npx tsc --noEmit
@@ -463,6 +460,8 @@ jobs:
             path: tests/bench
           - cmd: cd tests/idl && ./test.sh
             path: tests/idl
+          - cmd: cd tests/lazy-account && anchor test
+            path: tests/lazy-account
           # TODO: Enable when `solang` becomes compatible with the new IDL spec
           # - cmd: cd tests/solang && anchor test
           #   path: tests/solang
@@ -480,7 +479,7 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/

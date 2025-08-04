@@ -126,9 +126,8 @@ pub fn convert_idl_type_def_to_ts(
     let attrs = {
         let debug_attr = quote!(#[derive(Debug)]);
 
-        let default_attr = can_derive_default(ty_def, ty_defs)
-            .then(|| quote!(#[derive(Default)]))
-            .unwrap_or_default();
+        let default_attr =
+            can_derive_default(ty_def, ty_defs).then_some(quote!(#[derive(Default)]));
 
         let ser_attr = match &ty_def.serialization {
             IdlSerialization::Borsh => quote!(#[derive(AnchorSerialize, AnchorDeserialize)]),
@@ -155,7 +154,7 @@ pub fn convert_idl_type_def_to_ts(
         }
     };
 
-    let repr = if let Some(repr) = &ty_def.repr {
+    let repr = ty_def.repr.as_ref().map(|repr| {
         let kind = match repr {
             IdlRepr::Rust(_) => "Rust",
             IdlRepr::C(_) => "C",
@@ -166,38 +165,29 @@ pub fn convert_idl_type_def_to_ts(
 
         let modifier = match repr {
             IdlRepr::Rust(modifier) | IdlRepr::C(modifier) => {
-                let packed = modifier.packed.then(|| quote!(packed)).unwrap_or_default();
+                let packed = modifier.packed.then_some(quote!(packed));
                 let align = modifier
                     .align
                     .map(Literal::usize_unsuffixed)
-                    .map(|align| quote!(align(#align)))
-                    .unwrap_or_default();
+                    .map(|align| quote!(align(#align)));
 
-                if packed.is_empty() {
-                    align
-                } else if align.is_empty() {
-                    packed
-                } else {
-                    quote! { #packed, #align }
+                match (packed, align) {
+                    (None, None) => None,
+                    (Some(p), None) => Some(quote!(#p)),
+                    (None, Some(a)) => Some(quote!(#a)),
+                    (Some(p), Some(a)) => Some(quote!(#p, #a)),
                 }
             }
-            _ => quote!(),
-        };
-        let modifier = if modifier.is_empty() {
-            modifier
-        } else {
-            quote! { , #modifier }
-        };
-
+            _ => None,
+        }
+        .map(|m| quote!(, #m));
         quote! { #[repr(#kind #modifier)] }
-    } else {
-        quote!()
-    };
+    });
 
-    let ty = match &ty_def.ty {
+    match &ty_def.ty {
         IdlTypeDefTy::Struct { fields } => {
             let declare_struct = quote! { pub struct #name #generics };
-            handle_defined_fields(
+            let ty = handle_defined_fields(
                 fields.as_ref(),
                 || quote! { #declare_struct; },
                 |fields| {
@@ -222,7 +212,14 @@ pub fn convert_idl_type_def_to_ts(
                         #declare_struct (#(#tys,)*);
                     }
                 },
-            )
+            );
+
+            quote! {
+                #docs
+                #attrs
+                #repr
+                #ty
+            }
         }
         IdlTypeDefTy::Enum { variants } => {
             let variants = variants.iter().map(|variant| {
@@ -252,6 +249,9 @@ pub fn convert_idl_type_def_to_ts(
             });
 
             quote! {
+                #docs
+                #attrs
+                #repr
                 pub enum #name #generics {
                     #(#variants,)*
                 }
@@ -259,15 +259,11 @@ pub fn convert_idl_type_def_to_ts(
         }
         IdlTypeDefTy::Type { alias } => {
             let alias = convert_idl_type_to_syn_type(alias);
-            quote! { pub type #name = #alias; }
+            quote! {
+                #docs
+                pub type #name = #alias;
+            }
         }
-    };
-
-    quote! {
-        #docs
-        #attrs
-        #repr
-        #ty
     }
 }
 

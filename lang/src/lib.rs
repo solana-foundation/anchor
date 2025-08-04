@@ -44,8 +44,11 @@ pub mod event;
 #[doc(hidden)]
 pub mod idl;
 pub mod system_program;
-
 mod vec;
+
+#[cfg(feature = "lazy-account")]
+mod lazy;
+
 pub use crate::bpf_upgradeable_state::*;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
@@ -273,9 +276,8 @@ pub trait AccountDeserialize: Sized {
 pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 
 /// Calculates the data for an instruction invocation, where the data is
-/// `Sha256(<namespace>:<method_name>)[..8] || BorshSerialize(args)`.
-/// `args` is a borsh serialized struct of named fields for each argument given
-/// to an instruction.
+/// `Discriminator + BorshSerialize(args)`. `args` is a borsh serialized
+/// struct of named fields for each argument given to an instruction.
 pub trait InstructionData: Discriminator + AnchorSerialize {
     fn data(&self) -> Vec<u8> {
         let mut data = Vec::with_capacity(256);
@@ -300,8 +302,25 @@ pub trait Event: AnchorSerialize + AnchorDeserialize + Discriminator {
     fn data(&self) -> Vec<u8>;
 }
 
-/// 8 byte unique identifier for a type.
+/// Unique identifier for a type.
+///
+/// This is not a trait you should derive manually, as various Anchor macros already derive it
+/// internally.
+///
+/// Prior to Anchor v0.31, discriminators were always 8 bytes in size. However, starting with Anchor
+/// v0.31, it is possible to override the default discriminators, and discriminator length is no
+/// longer fixed, which means this trait can also be implemented for non-Anchor programs.
+///
+/// It's important that the discriminator is always unique for the type you're implementing it
+/// for. While the discriminator can be at any length (including zero), the IDL generation does not
+/// currently allow empty discriminators for safety and convenience reasons. However, the trait
+/// definition still allows empty discriminators because some non-Anchor programs, e.g. the SPL
+/// Token program, don't have account discriminators. In that case, safety checks should never
+/// depend on the discriminator.
 pub trait Discriminator {
+    /// Discriminator slice.
+    ///
+    /// See [`Discriminator`] trait documentation for more information.
     const DISCRIMINATOR: &'static [u8];
 }
 
@@ -424,18 +443,19 @@ pub mod prelude {
 
     #[cfg(feature = "interface-instructions")]
     pub use super::interface;
+
+    #[cfg(feature = "lazy-account")]
+    pub use super::accounts::lazy_account::LazyAccount;
 }
 
 /// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
     pub use anchor_attribute_account::ZeroCopyAccessor;
-
-    pub use anchor_attribute_event::EventIndex;
-
     pub use base64;
-
     pub use bytemuck;
+
+    pub use crate::{bpf_writer::BpfWriter, common::is_closed};
 
     use solana_program::pubkey::Pubkey;
 
@@ -462,6 +482,11 @@ pub mod __private {
             input.to_bytes()
         }
     }
+
+    #[cfg(feature = "lazy-account")]
+    pub use crate::lazy::Lazy;
+    #[cfg(feature = "lazy-account")]
+    pub use anchor_derive_serde::Lazy;
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.

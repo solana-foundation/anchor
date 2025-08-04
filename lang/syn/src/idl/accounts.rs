@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
 use super::common::{get_idl_module_path, get_no_docs};
-use crate::{AccountField, AccountsStruct, Field, InitKind, Ty};
+use crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty};
 
 /// Generate the IDL build impl for the Accounts struct.
 pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStream {
@@ -59,6 +59,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     {
                         Some(&ty.account_type_path)
                     }
+                    Ty::LazyAccount(ty) => Some(&ty.account_type_path),
                     Ty::AccountLoader(ty) => Some(&ty.account_type_path),
                     Ty::InterfaceAccount(ty) => Some(&ty.account_type_path),
                     _ => None,
@@ -143,25 +144,37 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
 
 fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
-        Ty::Program(ty) => ty
-            .account_type_path
-            .path
-            .segments
-            .last()
-            .map(|seg| &seg.ident)
-            .map(|ident| quote! { Some(#ident::id().to_string()) })
-            .unwrap_or_else(|| quote! { None }),
-        Ty::Sysvar(_) => {
+        Ty::Program(_) | Ty::Sysvar(_) => {
             let ty = acc.account_ty();
-            let sysvar_id_trait = quote!(anchor_lang::solana_program::sysvar::SysvarId);
-            quote! { Some(<#ty as #sysvar_id_trait>::id().to_string()) }
+            let id_trait = matches!(acc.ty, Ty::Program(_))
+                .then(|| quote!(anchor_lang::Id))
+                .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
+            quote! { Some(<#ty as #id_trait>::id().to_string()) }
         }
         _ => acc
             .constraints
             .address
             .as_ref()
             .map(|constraint| &constraint.address)
-            .filter(|address| !matches!(address, syn::Expr::Field(_)))
+            .filter(|address| {
+                match address {
+                    // Allow constants (assume the identifier follows the Rust naming convention)
+                    // e.g. `crate::ID`
+                    syn::Expr::Path(expr) => expr
+                        .path
+                        .segments
+                        .last()
+                        .unwrap()
+                        .ident
+                        .to_string()
+                        .chars()
+                        .all(|c| c.is_uppercase() || c == '_'),
+                    // Allow `const fn`s (assume any stand-alone function call without an argument)
+                    // e.g. `crate::id()`
+                    syn::Expr::Call(expr) => expr.args.is_empty(),
+                    _ => false,
+                }
+            })
             .map(|address| quote! { Some(#address.to_string()) })
             .unwrap_or_else(|| quote! { None }),
     }
@@ -176,21 +189,25 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let pda = seed_constraints
         .map(|seed| seed.seeds.iter().map(parse_default))
         .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
-        .map(|seeds| {
-            let program = seed_constraints
-                .and_then(|seed| seed.program_seed.as_ref())
-                .and_then(|program| parse_default(program).ok())
-                .map(|program| quote! { Some(#program) })
-                .unwrap_or_else(|| quote! { None });
+        .and_then(|seeds| {
+            let program = match seed_constraints {
+                Some(ConstraintSeedsGroup {
+                    program_seed: Some(program),
+                    ..
+                }) => parse_default(program)
+                    .map(|program| quote! { Some(#program) })
+                    .ok()?,
+                _ => quote! { None },
+            };
 
-            quote! {
+            Some(quote! {
                 Some(
                     #idl::IdlPda {
                         seeds: vec![#(#seeds),*],
                         program: #program,
                     }
                 )
-            }
+            })
         });
     if let Some(pda) = pda {
         return pda;
@@ -325,40 +342,43 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                 })
             }
         }
+        // Support call expressions that don't have any arguments e.g. `System::id()`
+        syn::Expr::Call(call) if call.args.is_empty() => Ok(quote! {
+            #idl::IdlSeed::Const(
+                #idl::IdlSeedConst {
+                    value: AsRef::<[u8]>::as_ref(&#seed).into(),
+                }
+            )
+        }),
         syn::Expr::Path(path) => {
-            let seed = path
-                .path
-                .get_ident()
-                .map(|ident| ident.to_string())
-                .filter(|ident| args.contains_key(ident))
-                .map(|path| {
+            let seed = match path.path.get_ident() {
+                Some(ident) if args.contains_key(&ident.to_string()) => {
                     quote! {
                         #idl::IdlSeed::Arg(
                             #idl::IdlSeedArg {
-                                path: #path.into(),
+                                path: stringify!(#ident).into(),
                             }
                         )
                     }
-                })
-                .unwrap_or_else(|| {
-                    // Not all types can be converted to `Vec<u8>` with `.into` call e.g. `Pubkey`.
-                    // This is problematic for `seeds::program` but a hacky way to handle this
-                    // scenerio is to check whether the last segment of the path ends with `ID`.
-                    let seed = path
-                        .path
-                        .segments
-                        .last()
-                        .filter(|seg| seg.ident.to_string().ends_with("ID"))
-                        .map(|_| quote! { #seed.as_ref() })
-                        .unwrap_or_else(|| quote! { #seed });
+                }
+                Some(ident) if accounts.field_names().contains(&ident.to_string()) => {
                     quote! {
-                        #idl::IdlSeed::Const(
-                            #idl::IdlSeedConst {
-                                value: #seed.into(),
+                        #idl::IdlSeed::Account(
+                            #idl::IdlSeedAccount {
+                                path: stringify!(#ident).into(),
+                                account: None,
                             }
                         )
                     }
-                });
+                }
+                _ => quote! {
+                    #idl::IdlSeed::Const(
+                        #idl::IdlSeedConst {
+                            value: AsRef::<[u8]>::as_ref(&#path).into(),
+                        }
+                    )
+                },
+            };
             Ok(seed)
         }
         syn::Expr::Lit(_) => Ok(quote! {

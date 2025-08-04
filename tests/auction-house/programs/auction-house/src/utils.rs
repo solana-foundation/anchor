@@ -10,12 +10,16 @@ use {
         },
     },
     anchor_spl::{
+        associated_token::spl_associated_token_account::{
+            create_associated_token_account, get_associated_token_address,
+        },
         metadata::mpl_token_metadata,
-        token::{Mint, Token, TokenAccount},
+        token::{
+            spl_token::{self, instruction::initialize_account2, state::Account},
+            Mint, Token, TokenAccount,
+        },
     },
     arrayref::array_ref,
-    spl_associated_token_account::get_associated_token_address,
-    spl_token::{instruction::initialize_account2, state::Account},
     std::{convert::TryInto, slice::Iter},
 };
 pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Result<Account> {
@@ -46,11 +50,7 @@ pub fn make_ata<'a>(
     }
 
     invoke_signed(
-        &spl_associated_token_account::create_associated_token_account(
-            &fee_payer.key,
-            &wallet.key,
-            &mint.key,
-        ),
+        &create_associated_token_account(&fee_payer.key, &wallet.key, &mint.key),
         &[
             ata,
             wallet,

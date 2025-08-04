@@ -1,10 +1,10 @@
 use crate::{
     config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
-    VERSION,
+    PackageManager, VERSION,
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use heck::{ToPascalCase, ToSnakeCase};
+use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
@@ -29,12 +29,15 @@ pub enum ProgramTemplate {
 }
 
 /// Create a program from the given name and template.
-pub fn create_program(name: &str, template: ProgramTemplate) -> Result<()> {
+pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
-        (program_path.join("Cargo.toml"), cargo_toml(name)),
-        (program_path.join("Xargo.toml"), xargo_toml().into()),
+        (
+            program_path.join("Cargo.toml"),
+            cargo_toml(name, with_mollusk),
+        ),
+        // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
     ];
 
     let template_files = match template {
@@ -143,7 +146,7 @@ pub use initialize::*;
 pub struct Initialize {}
 
 pub fn handler(ctx: Context<Initialize>) -> Result<()> {
-    msg!("Greetings from: {{:?}}", ctx.program_id);
+    msg!("Greetings from: {:?}", ctx.program_id);
     Ok(())
 }
 "#
@@ -171,7 +174,17 @@ codegen-units = 1
 "#
 }
 
-fn cargo_toml(name: &str) -> String {
+fn cargo_toml(name: &str, with_mollusk: bool) -> String {
+    let test_sbf_feature = if with_mollusk { r#"test-sbf = []"# } else { "" };
+    let dev_dependencies = if with_mollusk {
+        r#"
+[dev-dependencies]
+mollusk-svm = "~0.4"
+"#
+    } else {
+        ""
+    };
+
     format!(
         r#"[package]
 name = "{0}"
@@ -190,20 +203,24 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+{2}
 
 [dependencies]
-anchor-lang = "{2}"
+anchor-lang = "{3}"
+{4}
+
+[lints.rust]
+unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }}
 "#,
         name,
         name.to_snake_case(),
+        test_sbf_feature,
         VERSION,
+        dev_dependencies,
     )
-}
-
-fn xargo_toml() -> &'static str {
-    r#"[target.bpfel-unknown-unknown.dependencies.std]
-features = []
-"#
 }
 
 /// Read the program keypair file or create a new one if it doesn't exist.
@@ -238,15 +255,12 @@ const anchor = require('@coral-xyz/anchor');
 const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{cluster_url}";
-    const preflightCommitment = 'recent';
-    const connection = new anchor.web3.Connection(url, preflightCommitment);
+    const connection = new anchor.web3.Connection(
+      "{cluster_url}",
+      anchor.AnchorProvider.defaultOptions().commitment
+    );
     const wallet = anchor.Wallet.local();
-
-    const provider = new anchor.AnchorProvider(connection, wallet, {{
-        preflightCommitment,
-        commitment: 'recent',
-    }});
+    const provider = new anchor.AnchorProvider(connection, wallet);
 
     // Run the user's deploy script.
     userScript(provider);
@@ -264,15 +278,12 @@ pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
 const userScript = require("{script_path}");
 
 async function main() {{
-    const url = "{cluster_url}";
-    const preflightCommitment = 'recent';
-    const connection = new anchor.web3.Connection(url, preflightCommitment);
+    const connection = new anchor.web3.Connection(
+      "{cluster_url}",
+      anchor.AnchorProvider.defaultOptions().commitment
+    );
     const wallet = anchor.Wallet.local();
-
-    const provider = new anchor.AnchorProvider(connection, wallet, {{
-        preflightCommitment,
-        commitment: 'recent',
-    }});
+    const provider = new anchor.AnchorProvider(connection, wallet);
 
     // Run the user's deploy script.
     userScript(provider);
@@ -303,9 +314,9 @@ pub fn ts_deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-const anchor = require("@coral-xyz/anchor");
+import * as anchor from "@coral-xyz/anchor";
 
-module.exports = async function (provider) {
+module.exports = async function (provider: anchor.AnchorProvider) {
   // Configure client to use the provider.
   anchor.setProvider(provider);
 
@@ -331,7 +342,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
     )
 }
 
@@ -352,7 +363,7 @@ describe("{}", () => {{
 }});
 "#,
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
     )
 }
 
@@ -401,7 +412,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
             r#"{{
-  "license": "{license}",              
+  "license": "{license}",
   "scripts": {{
     "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
@@ -415,7 +426,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "jest": "^29.0.3",
     "prettier": "^2.6.2",
     "ts-jest": "^29.0.2",
-    "typescript": "^4.3.5"
+    "typescript": "^5.7.3"
   }}
 }}
 "#
@@ -423,7 +434,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     } else {
         format!(
             r#"{{
-  "license": "{license}",  
+  "license": "{license}",
   "scripts": {{
     "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
@@ -438,7 +449,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
-    "typescript": "^4.3.5",
+    "typescript": "^5.7.3",
     "prettier": "^2.6.2"
   }}
 }}
@@ -469,7 +480,7 @@ describe("{}", () => {{
         name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
         name.to_pascal_case(),
     )
 }
@@ -496,7 +507,7 @@ describe("{}", () => {{
         name.to_pascal_case(),
         name.to_snake_case(),
         name,
-        name.to_pascal_case(),
+        name.to_lower_camel_case(),
         name.to_pascal_case(),
     )
 }
@@ -590,11 +601,10 @@ anchor.setProvider(provider);
         write!(
             &mut eval_string,
             r#"
-anchor.workspace.{} = new anchor.Program({}, new PublicKey("{}"), provider);
+anchor.workspace.{} = new anchor.Program({}, provider);
 "#,
-            program.name.to_pascal_case(),
+            program.name.to_lower_camel_case(),
             serde_json::to_string(&program.idl)?,
-            program.program_id
         )?;
     }
 
@@ -607,30 +617,40 @@ pub enum TestTemplate {
     /// Generate template for Mocha unit-test
     #[default]
     Mocha,
-    /// Generate template for Jest unit-test    
+    /// Generate template for Jest unit-test
     Jest,
     /// Generate template for Rust unit-test
     Rust,
+    /// Generate template for Mollusk Rust unit-test
+    Mollusk,
 }
 
 impl TestTemplate {
-    pub fn get_test_script(&self, js: bool) -> &str {
+    pub fn get_test_script(&self, js: bool, pkg_manager: &PackageManager) -> String {
+        let pkg_manager_exec_cmd = match pkg_manager {
+            PackageManager::Yarn => "yarn run",
+            PackageManager::NPM => "npx",
+            PackageManager::PNPM => "pnpm exec",
+            PackageManager::Bun => "bunx",
+        };
+
         match &self {
             Self::Mocha => {
                 if js {
-                    "yarn run mocha -t 1000000 tests/"
+                    format!("{pkg_manager_exec_cmd} mocha -t 1000000 tests/")
                 } else {
-                    "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+                    format!("{pkg_manager_exec_cmd} ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts")
                 }
             }
             Self::Jest => {
                 if js {
-                    "yarn run jest"
+                    format!("{pkg_manager_exec_cmd} jest")
                 } else {
-                    "yarn run jest --preset ts-jest"
+                    format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
-            Self::Rust => "cargo test",
+            Self::Rust => "cargo test".to_owned(),
+            Self::Mollusk => "cargo test-sbf".to_owned(),
         }
     }
 
@@ -674,7 +694,7 @@ impl TestTemplate {
                 }
             }
             Self::Rust => {
-                // Do not initilize git repo
+                // Do not initialize git repo
                 let exit = std::process::Command::new("cargo")
                     .arg("new")
                     .arg("--vcs")
@@ -702,6 +722,19 @@ impl TestTemplate {
                 ));
                 override_or_create_files(&files)?;
             }
+            Self::Mollusk => {
+                // Build the test suite.
+                let tests_path_str = format!("programs/{}/tests", &project_name);
+                let tests_path = Path::new(&tests_path_str);
+                fs::create_dir_all(tests_path)?;
+
+                let mut files = Vec::new();
+                files.extend(create_program_template_mollusk_test(
+                    project_name,
+                    tests_path,
+                ));
+                override_or_create_files(&files)?;
+            }
         }
 
         Ok(())
@@ -717,10 +750,9 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor-client = "{0}"
-{1} = {{ version = "0.1.0", path = "../programs/{1}" }}
+anchor-client = "{VERSION}"
+{name} = {{ version = "0.1.0", path = "../programs/{name}" }}
 "#,
-        VERSION, name,
     )
 }
 
@@ -772,4 +804,36 @@ fn test_initialize() {{
             ),
         ),
     ]
+}
+
+/// Generate template for Mollusk Rust unit-test
+fn create_program_template_mollusk_test(name: &str, tests_path: &Path) -> Files {
+    vec![(
+        tests_path.join("test_initialize.rs"),
+        format!(
+            r#"#![cfg(feature = "test-sbf")]
+
+use {{
+    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    mollusk_svm::{{result::Check, Mollusk}},
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = {0}::id();
+
+    let mollusk = Mollusk::new(&program_id, "{0}");
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Initialize {{}}.data(),
+        {0}::accounts::Initialize {{}}.to_account_metas(None),
+    );
+
+    mollusk.process_and_validate_instruction(&instruction, &[], &[Check::success()]);
+}}
+"#,
+            name.to_snake_case(),
+        ),
+    )]
 }

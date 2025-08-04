@@ -46,13 +46,11 @@ pub struct TestEventCpi {}
 #[event]
 pub struct MyEvent {
     pub data: u64,
-    #[index]
     pub label: String,
 }
 
 #[event]
 pub struct MyOtherEvent {
     pub data: u64,
-    #[index]
     pub label: String,
 }

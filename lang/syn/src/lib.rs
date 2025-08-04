@@ -25,6 +25,7 @@ use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult}
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::Attribute;
 use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
@@ -64,6 +65,7 @@ pub struct Ix {
     pub raw_method: ItemFn,
     pub ident: Ident,
     pub docs: Option<Vec<String>>,
+    pub cfgs: Vec<Attribute>,
     pub args: Vec<IxArg>,
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
@@ -261,6 +263,7 @@ impl AccountField {
         let qualified_ty_name = match self {
             AccountField::Field(field) => match &field.ty {
                 Ty::Account(account) => Some(parser::tts_to_string(&account.account_type_path)),
+                Ty::LazyAccount(account) => Some(parser::tts_to_string(&account.account_type_path)),
                 _ => None,
             },
             AccountField::CompositeField(field) => Some(field.symbol.clone()),
@@ -404,6 +407,23 @@ impl Field {
                     stream
                 }
             }
+            Ty::LazyAccount(_) => {
+                if checked {
+                    quote! {
+                        match #container_ty::try_from(&#field) {
+                            Ok(val) => val,
+                            Err(e) => return Err(e.with_account_name(#field_str))
+                        }
+                    }
+                } else {
+                    quote! {
+                        match #container_ty::try_from_unchecked(&#field) {
+                            Ok(val) => val,
+                            Err(e) => return Err(e.with_account_name(#field_str))
+                        }
+                    }
+                }
+            }
             Ty::AccountLoader(_) => {
                 if checked {
                     quote! {
@@ -446,6 +466,9 @@ impl Field {
             Ty::Account(_) => quote! {
                 anchor_lang::accounts::account::Account
             },
+            Ty::LazyAccount(_) => quote! {
+                anchor_lang::accounts::lazy_account::LazyAccount
+            },
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
@@ -482,6 +505,12 @@ impl Field {
                 ProgramData
             },
             Ty::Account(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::LazyAccount(ty) => {
                 let ident = &ty.account_type_path;
                 quote! {
                     #ident
@@ -545,6 +574,7 @@ pub enum Ty {
     AccountLoader(AccountLoaderTy),
     Sysvar(SysvarTy),
     Account(AccountTy),
+    LazyAccount(LazyAccountTy),
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
@@ -579,6 +609,12 @@ pub struct AccountTy {
     pub account_type_path: TypePath,
     // True if the account has been boxed via `Box<T>`.
     pub boxed: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct LazyAccountTy {
+    // The struct type of the account.
+    pub account_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1051,7 +1087,7 @@ pub struct ConstraintTokenMintGroup {
     pub transfer_hook_program_id: Option<Expr>,
 }
 
-// Syntaxt context object for preserving metadata about the inner item.
+// Syntax context object for preserving metadata about the inner item.
 #[derive(Debug, Clone)]
 pub struct Context<T> {
     span: Span,

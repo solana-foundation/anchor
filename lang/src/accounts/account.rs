@@ -229,15 +229,13 @@ pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     info: &'info AccountInfo<'info>,
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
-    for Account<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Account<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.fmt_with_name("Account", f)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'info, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, T> {
     pub(crate) fn fmt_with_name(&self, name: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct(name)
             .field("account", &self.account)
@@ -369,7 +367,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'info, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
         let meta = match self.info.is_writable {
@@ -396,13 +394,13 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'info, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'_, T> {
     fn as_ref(&self) -> &T {
         &self.account
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'a, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -410,7 +408,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'a,
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'a, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
@@ -421,7 +419,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'info, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }

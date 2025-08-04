@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::clock::UnixTimestamp};
+use anchor_lang::prelude::*;
 
 declare_id!("Newid11111111111111111111111111111111111111");
 
@@ -144,6 +144,15 @@ pub mod new_idl {
     }
 }
 
+/// IDL test for the issue explained in https://github.com/coral-xyz/anchor/issues/3358
+///
+/// For example, using [`SimpleAccount`] and adding the full path at the end of a doc comment
+/// used to result in a false-positive when detecting conflicts.
+///
+/// [`SimpleAccount`]: crate::SimpleAccount
+#[constant]
+pub const TEST_CONVERT_MODULE_PATHS: &[u8] = b"convert_module_paths";
+
 #[account]
 #[derive(InitSpace)]
 pub struct SimpleAccount {
@@ -275,6 +284,12 @@ pub type AliasOptionVec<T> = Vec<Option<T>>;
 pub type AliasGenericConst<const N: usize> = [u32; N];
 pub type AliasMultipleGenericMixed<T, const N: usize> = Vec<[T; N]>;
 
+// TODO: Remove this declaration and automatically resolve it from `solana-program`.
+// Splitting `solana-program` into multiple parts in Solana v2.1 broke resolution of type
+// aliases such as `UnixTimestamp` due to the resolution logic not being smart enough to figure
+// out where the declaration of the type comes from.
+pub type UnixTimestamp = i64;
+
 #[derive(Accounts)]
 pub struct AccountAndEventArgAndField<'info> {
     #[account(zero)]
@@ -291,6 +306,7 @@ pub struct AccountAndEventFieldAccount {
 pub struct FullPath<'info> {
     #[account(zero)]
     pub account: Account<'info, FullPathAccount>,
+    pub external_program: Program<'info, external::program::External>,
 }
 
 #[account]
@@ -353,10 +369,14 @@ pub struct SomeStruct {
     pub field: u16,
 }
 
+/// Compilation check for the issue described in https://github.com/coral-xyz/anchor/issues/3520
+// TODO: Use this from client-side (instead of hardcoding) once `program.constants` is supported
+const GENERIC_CONST: usize = 8;
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct GenericStruct<T, const N: usize> {
     arr: [T; N],
-    sub_field: SubGenericStruct<8, T, Vec<Option<T>>>,
+    sub_field: SubGenericStruct<GENERIC_CONST, T, Vec<Option<T>>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]

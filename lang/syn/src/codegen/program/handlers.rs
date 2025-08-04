@@ -1,7 +1,6 @@
 use crate::codegen::program::common::*;
 use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
-use heck::CamelCase;
 use quote::{quote, ToTokens};
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
@@ -98,12 +97,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .iter()
         .map(|ix| {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
-            let ix_name = generate_ix_variant_name(ix.raw_method.sig.ident.to_string());
             let ix_method_name = &ix.raw_method.sig.ident;
-            let anchor = &ix.anchor_ident;
-            let variant_arm = generate_ix_variant(ix.raw_method.sig.ident.to_string(), &ix.args);
+            let ix_method_name_str = ix_method_name.to_string();
+            let ix_name = generate_ix_variant_name(&ix_method_name_str);
+            let variant_arm = generate_ix_variant(&ix_method_name_str, &ix.args);
             let ix_name_log = format!("Instruction: {ix_name}");
+            let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
+            let cfgs = &ix.cfgs;
             let maybe_set_return_data = match ret_type.to_string().as_str() {
                 "()" => quote! {},
                 _ => quote! {
@@ -113,6 +114,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 },
             };
             quote! {
+                #(#cfgs)*
                 #[inline(never)]
                 pub fn #ix_method_name<'info>(
                     __program_id: &Pubkey,
@@ -187,11 +189,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #event_cpi_mod
         }
     }
-}
-
-fn generate_ix_variant_name(name: String) -> proc_macro2::TokenStream {
-    let n = name.to_camel_case();
-    n.parse().unwrap()
 }
 
 /// Generate the event module based on whether the `event-cpi` feature is enabled.

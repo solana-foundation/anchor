@@ -812,3 +812,26 @@ pub struct TestBoxedOwnerConstraint<'info> {
     pub my_account: Box<Account<'info, Data>>,
     pub program: Program<'info, Misc>,
 }
+
+#[cfg(feature = "my-feature")]
+#[derive(Accounts)]
+pub struct Empty {}
+
+#[derive(Accounts)]
+pub struct TestMultipleZeroConstraint<'info> {
+    #[account(zero)]
+    pub one: Account<'info, Data>,
+    #[account(zero)]
+    pub two: Account<'info, Data>,
+}
+
+#[derive(Accounts)]
+pub struct TestInitAndZero<'info> {
+    #[account(init, payer = payer, space = Data::DISCRIMINATOR.len() + Data::LEN)]
+    pub init: Account<'info, Data>,
+    #[account(zero)]
+    pub zero: Account<'info, Data>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}

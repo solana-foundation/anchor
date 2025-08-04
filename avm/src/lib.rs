@@ -1,18 +1,18 @@
 use anyhow::{anyhow, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
-use once_cell::sync::Lazy;
 use reqwest::header::USER_AGENT;
 use reqwest::StatusCode;
 use semver::{Prerelease, Version};
 use serde::{de, Deserialize};
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
+use std::sync::LazyLock;
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
-pub static AVM_HOME: Lazy<PathBuf> = Lazy::new(|| {
+pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     cfg_if::cfg_if! {
         if #[cfg(test)] {
             let dir = tempfile::tempdir().expect("Could not create temporary directory");
@@ -35,7 +35,7 @@ fn current_version_file_path() -> PathBuf {
 }
 
 /// Path to the current version file $AVM_HOME/bin
-fn get_bin_dir_path() -> PathBuf {
+pub fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
 }
 
@@ -53,7 +53,45 @@ pub fn ensure_paths() {
 
     let bin_dir = get_bin_dir_path();
     if !bin_dir.exists() {
-        fs::create_dir_all(bin_dir).expect("Could not create .avm/bin directory");
+        fs::create_dir_all(&bin_dir).expect("Could not create .avm/bin directory");
+    }
+
+    // Copy the `avm` binary to `~/.avm/bin` so we can create symlinks to it.
+    let avm_in_bin = bin_dir.join("avm");
+    if let Ok(current_avm) = std::env::current_exe() {
+        // Only copy if the paths are different
+        if current_avm != avm_in_bin {
+            if let Err(e) = fs::copy(current_avm, &avm_in_bin) {
+                eprintln!("Failed to copy avm binary: {e}");
+            }
+        }
+    }
+
+    // Create a symlink from `anchor` to `avm` so that the user can run `anchor`
+    // from the command line.
+    #[cfg(unix)]
+    {
+        let anchor_in_bin = bin_dir.join("anchor");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = std::os::unix::fs::symlink(&avm_in_bin, anchor_in_bin) {
+                eprintln!("Failed to create symlink: {e}");
+            }
+        }
+    }
+
+    // On Windows, we create a symlink named `anchor.exe` pointing to the `avm.exe` binary in the bin directory,
+    // so that the user can run `anchor` from the command line.
+    // Note: Creating symlinks on Windows may require administrator privileges or that Developer Mode is enabled.
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::symlink_file;
+        let anchor_in_bin = bin_dir.join("anchor.exe");
+        if !anchor_in_bin.exists() {
+            if let Err(e) = symlink_file(&avm_in_bin, &anchor_in_bin) {
+                eprintln!("Failed to create symlink: {}", e);
+            }
+        }
     }
 
     if !current_version_file_path().exists() {
@@ -80,16 +118,16 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
     // Make sure the requested version is installed
     let installed_versions = read_installed_versions()?;
     if !installed_versions.contains(&version) {
-        if let Ok(current) = current_version() {
-            println!("Version {version} is not installed, staying on version {current}.");
-        } else {
-            println!("Version {version} is not installed, no current version.");
-        }
-
-        return Err(anyhow!(
-            "You need to run 'avm install {}' to install it before using it.",
-            version
-        ));
+        println!("Version {version} is not installed. Would you like to install? [y/n]");
+        let input = std::io::stdin()
+            .lock()
+            .lines()
+            .next()
+            .expect("Expected input")?;
+        match input.as_str() {
+            "y" | "yes" => return install_version(InstallTarget::Version(version), false, false),
+            _ => return Err(anyhow!("Installation rejected.")),
+        };
     }
 
     let mut current_version_file = fs::File::create(current_version_file_path())?;
@@ -102,12 +140,13 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
 pub enum InstallTarget {
     Version(Version),
     Commit(String),
+    Path(PathBuf),
 }
 
 /// Update to the latest version
 pub fn update() -> Result<()> {
     let latest_version = get_latest_version()?;
-    install_version(InstallTarget::Version(latest_version), false)
+    install_version(InstallTarget::Version(latest_version), false, false)
 }
 
 /// The commit sha provided can be shortened,
@@ -165,52 +204,179 @@ fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
 }
 
 /// Install a version of anchor-cli
-pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()> {
-    let mut args: Vec<String> = vec![
-        "install".into(),
-        "--git".into(),
-        "https://github.com/coral-xyz/anchor".into(),
-        "anchor-cli".into(),
-        "--locked".into(),
-        "--root".into(),
-        AVM_HOME.to_str().unwrap().into(),
-    ];
-    let version = match install_target {
-        InstallTarget::Version(version) => {
-            args.extend(["--tag".into(), format!("v{}", version), "anchor-cli".into()]);
-            version
-        }
-        InstallTarget::Commit(commit) => {
-            args.extend(["--rev".into(), commit.clone()]);
-            get_anchor_version_from_commit(&commit)?
+pub fn install_version(
+    install_target: InstallTarget,
+    force: bool,
+    from_source: bool,
+) -> Result<()> {
+    let (version, from_source) = match &install_target {
+        InstallTarget::Version(version) => (version.to_owned(), from_source),
+        InstallTarget::Commit(commit) => (get_anchor_version_from_commit(commit)?, true),
+        InstallTarget::Path(path) => {
+            let manifest_path = path.join("cli/Cargo.toml");
+            let manifest = Manifest::from_path(&manifest_path).map_err(|e| {
+                anyhow!(
+                    "Failed to read manifest at {}: {}",
+                    manifest_path.display(),
+                    e
+                )
+            })?;
+            let version = manifest.package().version().parse::<Version>()?;
+            (version, true)
         }
     };
-
-    // If version is already installed we ignore the request.
-    let installed_versions = read_installed_versions()?;
-    if installed_versions.contains(&version) && !force {
-        println!("Version {version} is already installed");
+    // Return early if version is already installed
+    if !force && read_installed_versions()?.contains(&version) {
+        eprintln!("Version `{version}` is already installed");
         return Ok(());
     }
 
-    let exit = std::process::Command::new("cargo")
-        .args(args)
+    let is_commit = matches!(install_target, InstallTarget::Commit(_));
+    let is_older_than_v0_31_0 = version < Version::parse("0.31.0")?;
+    if from_source || is_commit || is_older_than_v0_31_0 {
+        // Build from source using `cargo install`
+        let mut args: Vec<String> = vec![
+            "install".into(),
+            "anchor-cli".into(),
+            "--locked".into(),
+            "--root".into(),
+            AVM_HOME.to_str().unwrap().into(),
+        ];
+        match install_target {
+            InstallTarget::Version(version) => {
+                args.extend_from_slice(&[
+                    "--git".into(),
+                    "https://github.com/coral-xyz/anchor".into(),
+                    "--tag".into(),
+                    format!("v{version}"),
+                ]);
+            }
+            InstallTarget::Commit(commit) => {
+                args.extend_from_slice(&[
+                    "--git".into(),
+                    "https://github.com/coral-xyz/anchor".into(),
+                    "--rev".into(),
+                    commit,
+                ]);
+            }
+            InstallTarget::Path(path) => {
+                let cli_path = path.join("cli");
+                let path_str = cli_path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Invalid path string"))?;
+                args.extend_from_slice(&[
+                    "--path".into(),
+                    path_str.to_string(),
+                    "--bin".into(),
+                    "anchor".into(),
+                ]);
+            }
+        }
+
+        // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
+        // explained in https://github.com/coral-xyz/anchor/pull/3143
+        if is_older_than_v0_31_0 {
+            const REQUIRED_VERSION: &str = "1.79.0";
+            let is_installed = Command::new("rustup")
+                .args(["toolchain", "list"])
+                .output()
+                .map(|output| String::from_utf8(output.stdout))??
+                .lines()
+                .any(|line| line.starts_with(REQUIRED_VERSION));
+            if !is_installed {
+                let exit_status = Command::new("rustup")
+                    .args(["toolchain", "install", REQUIRED_VERSION])
+                    .spawn()?
+                    .wait()?;
+                if !exit_status.success() {
+                    return Err(anyhow!(
+                        "Installation of `rustc {REQUIRED_VERSION}` failed. \
+                    `rustc <1.80` is required to install Anchor v{version} from source. \
+                    See https://github.com/coral-xyz/anchor/pull/3143 for more information."
+                    ));
+                }
+            }
+
+            // Prepend the toolchain to use with the `cargo install` command
+            args.insert(0, format!("+{REQUIRED_VERSION}"));
+        }
+
+        let output = Command::new("cargo")
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow!("`cargo install` for version `{version}` failed: {e}"))?;
+        if !output.status.success() {
+            return Err(anyhow!(
+                "Failed to install {version}, is it a valid version?"
+            ));
+        }
+
+        let bin_dir = get_bin_dir_path();
+        let bin_name = if cfg!(target_os = "windows") {
+            "anchor.exe"
+        } else {
+            "anchor"
+        };
+        fs::rename(bin_dir.join(bin_name), version_binary_path(&version))?;
+    } else {
+        let output = Command::new("rustc").arg("-vV").output()?;
+        let target = core::str::from_utf8(&output.stdout)?
+            .lines()
+            .find(|line| line.starts_with("host:"))
+            .and_then(|line| line.split(':').next_back())
+            .ok_or_else(|| anyhow!("`host` not found from `rustc -vV` output"))?
+            .trim();
+        let ext = if cfg!(target_os = "windows") {
+            ".exe"
+        } else {
+            ""
+        };
+        let res = reqwest::blocking::get(format!(
+            "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
+        ))?;
+        if !res.status().is_success() {
+            return Err(anyhow!(
+                "Failed to download the binary for version `{version}` (status code: {})",
+                res.status()
+            ));
+        }
+
+        let bin_path = version_binary_path(&version);
+        fs::write(&bin_path, res.bytes()?)?;
+
+        // Set file to executable on UNIX
+        #[cfg(unix)]
+        fs::set_permissions(
+            bin_path,
+            <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
+        )?;
+    }
+
+    println!("Installing solana-verify...");
+    let solana_verify_install_output = Command::new("cargo")
+        .args([
+            "install",
+            "solana-verify",
+            "--git",
+            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+            "--rev",
+            "568cb334709e88b9b45fc24f1f440eecacf5db54",
+            "--root",
+            AVM_HOME.to_str().unwrap(),
+            "--force",
+            "--locked",
+        ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow!("Cargo install for {} failed: {}", version, e.to_string()))?;
-    if !exit.status.success() {
-        return Err(anyhow!(
-            "Failed to install {}, is it a valid version?",
-            version
-        ));
-    }
+        .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
 
-    let bin_dir = get_bin_dir_path();
-    fs::rename(
-        bin_dir.join("anchor"),
-        bin_dir.join(format!("anchor-{version}")),
-    )?;
+    if !solana_verify_install_output.status.success() {
+        return Err(anyhow!("Failed to install `solana-verify`"));
+    }
+    println!("solana-verify successfully installed.");
 
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
@@ -223,7 +389,7 @@ pub fn install_version(install_target: InstallTarget, force: bool) -> Result<()>
 
 /// Remove an installed version of anchor-cli
 pub fn uninstall_version(version: &Version) -> Result<()> {
-    let version_path = get_bin_dir_path().join(format!("anchor-{version}"));
+    let version_path = version_binary_path(version);
     if !version_path.exists() {
         return Err(anyhow!("anchor-cli {} is not installed", version));
     }

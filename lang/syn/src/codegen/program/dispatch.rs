@@ -12,8 +12,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
         let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
+        let ix_cfgs = &ix.cfgs;
 
         quote! {
+            #(#ix_cfgs)*
             if data.starts_with(#discriminator) {
                 return __private::__global::#ix_method_name(
                     program_id,
@@ -61,19 +63,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     quote! {
         /// Performs method dispatch.
         ///
-        /// Each method in an anchor program is uniquely defined by a namespace
-        /// and a rust identifier (i.e., the name given to the method). These
-        /// two pieces can be combined to create a method identifier,
-        /// specifically, Anchor uses
+        /// Each instruction's discriminator is checked until the given instruction data starts with
+        /// the current discriminator.
         ///
-        /// Sha256("<namespace>:<rust-identifier>")[..8],
+        /// If a match is found, the instruction handler is called using the given instruction data
+        /// excluding the prepended discriminator bytes.
         ///
-        /// where the namespace can be one type. "global" for a
-        /// regular instruction.
-        ///
-        /// With this 8 byte identifier, Anchor performs method dispatch,
-        /// matching the given 8 byte identifier to the associated method
-        /// handler, which leads to user defined code being eventually invoked.
+        /// If no match is found, the fallback function is executed if it exists, or an error is
+        /// returned if it doesn't exist.
         fn dispatch<'info>(
             program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],

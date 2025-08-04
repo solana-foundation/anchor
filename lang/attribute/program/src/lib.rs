@@ -50,7 +50,7 @@ pub fn program(
 ///
 /// A full on-chain CPI usage example can be found [here].
 ///
-/// [here]: https://github.com/coral-xyz/anchor/tree/v0.30.1/tests/declare-program
+/// [here]: https://github.com/coral-xyz/anchor/tree/v0.31.1/tests/declare-program
 #[proc_macro]
 pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as DeclareProgram)
@@ -91,6 +91,11 @@ pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// }
 /// ```
 #[cfg(feature = "interface-instructions")]
+#[deprecated(
+    since = "0.31.1",
+    note = "Use `#[instruction(discriminator = <EXPR>)]` instead.
+    See examples in https://github.com/coral-xyz/anchor/tree/v0.31.1/tests/spl/transfer-hook"
+)]
 #[proc_macro_attribute]
 pub fn interface(
     _args: proc_macro::TokenStream,
@@ -106,7 +111,7 @@ pub fn interface(
 
 /// This attribute is used to override the Anchor defaults of program instructions.
 ///
-/// # Args
+/// # Arguments
 ///
 /// - `discriminator`: Override the default 8-byte discriminator
 ///

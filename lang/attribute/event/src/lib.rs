@@ -2,7 +2,7 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
-use anchor_syn::Overrides;
+use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -11,7 +11,7 @@ use syn::parse_macro_input;
 /// their programs that clients can subscribe to. Currently, this macro is for
 /// structs only.
 ///
-/// # Args
+/// # Arguments
 ///
 /// - `discriminator`: Override the default 8-byte discriminator
 ///
@@ -37,16 +37,12 @@ pub fn event(
     let event_strct = parse_macro_input!(input as syn::ItemStruct);
     let event_name = &event_strct.ident;
 
-    let discriminator = args.discriminator.unwrap_or_else(|| {
-        let discriminator_preimage = format!("event:{event_name}").into_bytes();
-        let discriminator = anchor_syn::hash::hash(&discriminator_preimage);
-        let discriminator: proc_macro2::TokenStream =
-            format!("{:?}", &discriminator.0[..8]).parse().unwrap();
-        quote! { &#discriminator }
-    });
+    let discriminator = args
+        .discriminator
+        .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
-        #[derive(anchor_lang::__private::EventIndex, AnchorSerialize, AnchorDeserialize)]
+        #[derive(AnchorSerialize, AnchorDeserialize)]
         #event_strct
 
         impl anchor_lang::Event for #event_name {
@@ -74,14 +70,6 @@ pub fn event(
 
     #[allow(unreachable_code)]
     proc_macro::TokenStream::from(ret)
-}
-
-// EventIndex is a marker macro. It functionally does nothing other than
-// allow one to mark fields with the `#[index]` inert attribute, which is
-// used to add metadata to IDLs.
-#[proc_macro_derive(EventIndex, attributes(index))]
-pub fn derive_event(_item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::from(quote! {})
 }
 
 /// Logs an event that can be subscribed to by clients.

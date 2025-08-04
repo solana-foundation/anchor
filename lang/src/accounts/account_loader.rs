@@ -23,7 +23,7 @@ use std::ops::DerefMut;
 /// for example, the [`Account`](crate::accounts::account::Account). Namely,
 /// one must call
 /// - `load_init` after initializing an account (this will ignore the missing
-///    account discriminator that gets added only after the user's instruction code)
+///   account discriminator that gets added only after the user's instruction code)
 /// - `load` when the account is not mutable
 /// - `load_mut` when the account is mutable
 ///
@@ -98,7 +98,7 @@ pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
     phantom: PhantomData<&'info T>,
 }
 
-impl<'info, T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccountLoader")
             .field("acc_info", &self.acc_info)
@@ -151,7 +151,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     }
 
     /// Returns a Ref to the account data structure for reading.
-    pub fn load(&self) -> Result<Ref<T>> {
+    pub fn load(&self) -> Result<Ref<'_, T>> {
         let data = self.acc_info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
@@ -169,7 +169,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     }
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<T>> {
+    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable {
@@ -196,7 +196,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<T>> {
+    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable {
@@ -260,7 +260,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer);
         let meta = match self.acc_info.is_writable {
@@ -283,7 +283,7 @@ impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, 
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> Key for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> Key for AccountLoader<'_, T> {
     fn key(&self) -> Pubkey {
         *self.acc_info.key
     }

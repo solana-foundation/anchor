@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-use anchor_syn::Overrides;
+use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
 use quote::{quote, ToTokens};
 use syn::{
     parenthesized,
@@ -11,6 +11,9 @@ use syn::{
 };
 
 mod id;
+
+#[cfg(feature = "lazy-account")]
+mod lazy;
 
 /// An attribute for a data structure representing a Solana account.
 ///
@@ -25,14 +28,16 @@ mod id;
 /// - [`Owner`](./trait.Owner.html)
 ///
 /// When implementing account serialization traits the first 8 bytes are
-/// reserved for a unique account discriminator, self described by the first 8
-/// bytes of the SHA256 of the account's Rust ident.
+/// reserved for a unique account discriminator by default, self described by
+/// the first 8 bytes of the SHA256 of the account's Rust ident. This is unless
+/// the discriminator was overridden with the `discriminator` argument (see
+/// [Arguments](#arguments)).
 ///
 /// As a result, any calls to `AccountDeserialize`'s `try_deserialize` will
 /// check this discriminator. If it doesn't match, an invalid account was given,
 /// and the account deserialization will exit with an error.
 ///
-/// # Args
+/// # Arguments
 ///
 /// - `discriminator`: Override the default 8-byte discriminator
 ///
@@ -83,8 +88,11 @@ mod id;
 /// [`safety`](https://docs.rs/bytemuck/latest/bytemuck/trait.Pod.html#safety)
 /// section before using.
 ///
-/// Using `zero_copy` requires adding the following to your `cargo.toml` file:
-/// `bytemuck = { version = "1.4.0", features = ["derive", "min_const_generics"]}`
+/// Using `zero_copy` requires adding the following dependency to your `Cargo.toml` file:
+///
+/// ```toml
+/// bytemuck = { version = "1.17", features = ["derive", "min_const_generics"] }
+/// ```
 #[proc_macro_attribute]
 pub fn account(
     args: proc_macro::TokenStream,
@@ -105,19 +113,13 @@ pub fn account(
         .and_then(|ov| ov.discriminator)
         .unwrap_or_else(|| {
             // Namespace the discriminator to prevent collisions.
-            let discriminator_preimage = if namespace.is_empty() {
-                format!("account:{account_name}")
+            let namespace = if namespace.is_empty() {
+                "account"
             } else {
-                format!("{namespace}:{account_name}")
+                &namespace
             };
 
-            let mut discriminator = [0u8; 8];
-            discriminator.copy_from_slice(
-                &anchor_syn::hash::hash(discriminator_preimage.as_bytes()).to_bytes()[..8],
-            );
-            let discriminator: proc_macro2::TokenStream =
-                format!("{discriminator:?}").parse().unwrap();
-            quote! { &#discriminator }
+            gen_discriminator(namespace, account_name)
         });
     let disc = if account_strct.generics.lt_token.is_some() {
         quote! { #account_name::#type_gen::DISCRIMINATOR }
@@ -208,6 +210,17 @@ pub fn account(
                 #owner_impl
             }
         } else {
+            let lazy = {
+                #[cfg(feature = "lazy-account")]
+                match namespace.is_empty().then(|| lazy::gen_lazy(&account_strct)) {
+                    Some(Ok(lazy)) => lazy,
+                    // If lazy codegen fails for whatever reason, return empty tokenstream which
+                    // will make the account unusable with `LazyAccount<T>`
+                    _ => Default::default(),
+                }
+                #[cfg(not(feature = "lazy-account"))]
+                proc_macro2::TokenStream::default()
+            };
             quote! {
                 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
                 #account_strct
@@ -252,6 +265,8 @@ pub fn account(
                 }
 
                 #owner_impl
+
+                #lazy
             }
         }
     })
@@ -441,7 +456,7 @@ pub fn zero_copy(
         Some(_attr) => quote! {},
         None => {
             if is_unsafe {
-                quote! {#[repr(packed)]}
+                quote! {#[repr(Rust, packed)]}
             } else {
                 quote! {#[repr(C)]}
             }

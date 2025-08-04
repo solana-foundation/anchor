@@ -2,7 +2,7 @@ use anchor_lang_idl::types::Idl;
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
-use super::common::{convert_idl_type_to_syn_type, gen_accounts_common, gen_discriminator};
+use super::common::{convert_idl_type_to_syn_type, gen_accounts_common};
 
 pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let cpi_instructions = gen_cpi_instructions(idl);
@@ -26,6 +26,12 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
         let method_name = format_ident!("{}", ix.name);
         let accounts_ident = format_ident!("{}", ix.name.to_camel_case());
 
+        let accounts_generic = if ix.accounts.is_empty() {
+           quote!()
+        } else {
+            quote!(<'info>)
+        };
+
         let args = ix.args.iter().map(|arg| {
             let name = format_ident!("{}", arg.name);
             let ty = convert_idl_type_to_syn_type(&arg.ty);
@@ -43,8 +49,6 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             }
         };
 
-        let discriminator = gen_discriminator(&ix.discriminator);
-
         let (ret_type, ret_value) = match ix.returns.as_ref() {
             Some(ty) => {
                 let ty = convert_idl_type_to_syn_type(ty);
@@ -61,13 +65,14 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
 
         quote! {
             pub fn #method_name<'a, 'b, 'c, 'info>(
-                ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident<'info>>,
+                ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
                 #(#args),*
             ) -> #ret_type {
                 let ix = {
+                    let ix = internal::args::#arg_value;
                     let mut data = Vec::with_capacity(256);
-                    data.extend_from_slice(&#discriminator);
-                    AnchorSerialize::serialize(&internal::args::#arg_value, &mut data)
+                    data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
+                    AnchorSerialize::serialize(&ix, &mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
 
                     let accounts = ctx.to_account_metas(None);
