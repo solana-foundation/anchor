@@ -64,15 +64,37 @@ pub use anchor_derive_space::InitSpace;
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
 pub mod solana_program {
+    pub use solana_feature_gate_interface as feature;
+
     pub use {
         solana_account_info as account_info, solana_clock as clock, solana_cpi as program,
-        solana_instruction as instruction, solana_msg::msg,
-        solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
-        solana_program_error as program_error, solana_program_memory as program_memory,
-        solana_program_option as program_option, solana_program_pack as program_pack,
-        solana_pubkey as pubkey, solana_sdk_ids::system_program,
-        solana_system_interface::instruction as system_instruction,
+        solana_msg::msg, solana_program_entrypoint as entrypoint,
+        solana_program_entrypoint::entrypoint, solana_program_error as program_error,
+        solana_program_memory as program_memory, solana_program_option as program_option,
+        solana_program_pack as program_pack, solana_pubkey as pubkey,
+        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
     };
+    pub mod instruction {
+        pub use solana_instruction::*;
+        /// Get the current stack height, transaction-level instructions are height
+        /// TRANSACTION_LEVEL_STACK_HEIGHT, fist invoked inner instruction is height
+        /// TRANSACTION_LEVEL_STACK_HEIGHT + 1, etc...
+        pub fn get_stack_height() -> usize {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_instruction::syscalls::sol_get_stack_height() as usize
+            }
+
+            #[cfg(not(target_os = "solana"))]
+            {
+                solana_sysvar::program_stubs::sol_get_stack_height() as usize
+            }
+        }
+    }
+    pub mod rent {
+        pub use solana_sysvar::rent::*;
+    }
+
     pub mod bpf_loader_upgradeable {
         #[allow(deprecated)]
         pub use solana_loader_v3_interface::{

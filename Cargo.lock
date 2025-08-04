@@ -304,6 +304,7 @@ dependencies = [
  "solana-clock",
  "solana-cpi",
  "solana-define-syscall",
+ "solana-feature-gate-interface",
  "solana-instruction",
  "solana-instructions-sysvar",
  "solana-loader-v3-interface",
