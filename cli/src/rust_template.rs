@@ -1,5 +1,5 @@
 use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, solidity_template, Files,
+    config::ProgramWorkspace, create_files, override_or_create_files, Files,
     PackageManager, VERSION,
 };
 use anyhow::Result;
@@ -658,7 +658,7 @@ impl TestTemplate {
         &self,
         project_name: &str,
         js: bool,
-        solidity: bool,
+        _solidity: bool,
         program_id: &str,
     ) -> Result<()> {
         match self {
@@ -668,18 +668,10 @@ impl TestTemplate {
 
                 if js {
                     let mut test = File::create(format!("tests/{}.js", &project_name))?;
-                    if solidity {
-                        test.write_all(solidity_template::mocha(project_name).as_bytes())?;
-                    } else {
-                        test.write_all(mocha(project_name).as_bytes())?;
-                    }
+                    test.write_all(mocha(project_name).as_bytes())?;
                 } else {
                     let mut mocha = File::create(format!("tests/{}.ts", &project_name))?;
-                    if solidity {
-                        mocha.write_all(solidity_template::ts_mocha(project_name).as_bytes())?;
-                    } else {
-                        mocha.write_all(ts_mocha(project_name).as_bytes())?;
-                    }
+                    mocha.write_all(ts_mocha(project_name).as_bytes())?;
                 }
             }
             Self::Jest => {
@@ -687,11 +679,7 @@ impl TestTemplate {
                 fs::create_dir_all("tests")?;
 
                 let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-                if solidity {
-                    test.write_all(solidity_template::jest(project_name).as_bytes())?;
-                } else {
-                    test.write_all(jest(project_name).as_bytes())?;
-                }
+                test.write_all(jest(project_name).as_bytes())?;
             }
             Self::Rust => {
                 // Do not initialize git repo
