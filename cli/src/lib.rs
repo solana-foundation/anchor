@@ -2617,7 +2617,7 @@ fn idl_ts_errors(idl: &Idl) -> Option<String> {
 
     let idl_name = &idl.metadata.name;
     let type_name = idl_name.to_pascal_case();
-    let error_code_name = format!("{}ErrorCode", type_name);
+    let error_code_name = format!("{type_name}ErrorCode");
 
     let error_entries: Vec<String> = idl
         .errors
