@@ -181,6 +181,7 @@ dependencies = [
  "dirs",
  "flate2",
  "heck 0.4.1",
+ "once_cell",
  "pathdiff",
  "portpicker",
  "regex",
