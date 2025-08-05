@@ -180,7 +180,6 @@ impl WithPath<Config> {
             .collect())
     }
 
-
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
         let mut r = vec![];
         for path in self.get_rust_program_list()? {

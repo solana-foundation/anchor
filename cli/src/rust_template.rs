@@ -1,6 +1,6 @@
 use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files,
-    PackageManager, VERSION,
+    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
+    VERSION,
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -654,12 +654,7 @@ impl TestTemplate {
         }
     }
 
-    pub fn create_test_files(
-        &self,
-        project_name: &str,
-        js: bool,
-        program_id: &str,
-    ) -> Result<()> {
+    pub fn create_test_files(&self, project_name: &str, js: bool, program_id: &str) -> Result<()> {
         match self {
             Self::Mocha => {
                 // Build the test suite.

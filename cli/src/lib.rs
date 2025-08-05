@@ -1002,11 +1002,7 @@ fn init(
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
     }
 
-    test_template.create_test_files(
-        &project_name,
-        javascript,
-        &program_id.to_string(),
-    )?;
+    test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
@@ -1077,11 +1073,7 @@ fn new(
                     }
 
                     // Delete all files within the program folder
-                    fs::remove_dir_all(
-                        std::env::current_dir()?
-                            .join("programs")
-                            .join(&name),
-                    )?;
+                    fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
                 rust_template::create_program(&name, template, false)?;
@@ -1457,7 +1449,6 @@ fn build_rust_cwd(
         ),
     }
 }
-
 
 // Builds an anchor program in a docker image and copies the build artifacts
 // into the `target/` directory.
@@ -1852,7 +1843,6 @@ fn _build_rust_cwd(
 
     Ok(())
 }
-
 
 pub fn verify(
     program_id: Pubkey,
