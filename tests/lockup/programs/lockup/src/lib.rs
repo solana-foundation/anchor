@@ -154,7 +154,7 @@ pub mod lockup {
             return err!(ErrorCode::WhitelistWithdrawLimit);
         }
 
-        // Bookeeping.
+        // Bookkeeping.
         ctx.accounts.transfer.vesting.whitelist_owned += withdraw_amount;
 
         Ok(())
