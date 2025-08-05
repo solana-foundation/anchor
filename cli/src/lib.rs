@@ -4377,12 +4377,18 @@ fn target_dir_no_cache() -> Result<PathBuf> {
     // `target_directory` field.
     let output = std::process::Command::new("cargo")
         .args(["metadata", "--no-deps", "--format-version=1"])
-        .stderr(Stdio::inherit())
         .output()
         .context("Failed to execute 'cargo metadata'")?;
 
     if !output.status.success() {
-        eprintln!("'cargo metadata' failed with: {}", String::from_utf8_lossy(&output.stderr));
+        let stderr_msg = String::from_utf8_lossy(&output.stderr);
+        if stderr_msg.contains("Cargo.toml") {
+            // `anchor init` starts populating the cargo artifacts dir
+            // before creating `Cargo.toml`, in which case "target" in
+            // the current dir is the desired behavior.
+            return Ok(PathBuf::from("target"));
+        }
+        eprintln!("'cargo metadata' failed with: {}", stderr_msg);
         std::process::exit(output.status.code().unwrap_or(1));
     }
 
