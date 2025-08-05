@@ -21,7 +21,7 @@ use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use solana_loader_v3_interface::state::UpgradeableLoaderState;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -3390,7 +3390,7 @@ fn validator_flags(
                             Some(account) => {
                                 // Use a different flag for program accounts to fix the problem
                                 // described in https://github.com/anza-xyz/agave/issues/522
-                                if account.owner == bpf_loader_upgradeable::id()
+                                if account.owner == solana_sdk_ids::bpf_loader_upgradeable::id()
                                     // Only programs are supported with `--clone-upgradeable-program`
                                     && matches!(
                                         account.deserialize_data::<UpgradeableLoaderState>()?,
