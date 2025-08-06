@@ -322,12 +322,8 @@ pub fn set_authority<'info>(
 
 pub fn sync_native<'info>(ctx: CpiContext<'_, '_, '_, 'info, SyncNative<'info>>) -> Result<()> {
     let ix = spl_token::instruction::sync_native(&spl_token::ID, ctx.accounts.account.key)?;
-    anchor_lang::solana_invoke::invoke_signed(
-        &ix,
-        &[ctx.accounts.account],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    anchor_lang::solana_invoke::invoke_signed(&ix, &[ctx.accounts.account], ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]

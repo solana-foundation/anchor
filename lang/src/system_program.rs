@@ -46,12 +46,8 @@ pub fn allocate<'info>(
         ctx.accounts.account_to_allocate.key,
         space,
     );
-    crate::solana_invoke::invoke_signed(
-        &ix,
-        &[ctx.accounts.account_to_allocate],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    crate::solana_invoke::invoke_signed(&ix, &[ctx.accounts.account_to_allocate], ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]
@@ -94,12 +90,8 @@ pub fn assign<'info>(
         ctx.accounts.account_to_assign.key,
         owner,
     );
-    crate::solana_invoke::invoke_signed(
-        &ix,
-        &[ctx.accounts.account_to_assign],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    crate::solana_invoke::invoke_signed(&ix, &[ctx.accounts.account_to_assign], ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]
