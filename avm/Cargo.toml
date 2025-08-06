@@ -1,15 +1,11 @@
 [package]
 name = "avm"
-version = "0.30.1"
+version = "0.31.1"
 edition = "2021"
 
 [[bin]]
 name = "avm"
 path = "src/main.rs"
-
-[[bin]]
-name = "anchor"
-path = "src/anchor/main.rs"
 
 [dependencies]
 anyhow = "1.0.32"

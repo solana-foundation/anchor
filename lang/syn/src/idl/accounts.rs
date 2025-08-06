@@ -351,29 +351,34 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
             )
         }),
         syn::Expr::Path(path) => {
-            let seed = path
-                .path
-                .get_ident()
-                .map(|ident| ident.to_string())
-                .filter(|ident| args.contains_key(ident))
-                .map(|path| {
+            let seed = match path.path.get_ident() {
+                Some(ident) if args.contains_key(&ident.to_string()) => {
                     quote! {
                         #idl::IdlSeed::Arg(
                             #idl::IdlSeedArg {
-                                path: #path.into(),
+                                path: stringify!(#ident).into(),
                             }
                         )
                     }
-                })
-                .unwrap_or_else(|| {
+                }
+                Some(ident) if accounts.field_names().contains(&ident.to_string()) => {
                     quote! {
-                        #idl::IdlSeed::Const(
-                            #idl::IdlSeedConst {
-                                value: AsRef::<[u8]>::as_ref(&#seed).into(),
+                        #idl::IdlSeed::Account(
+                            #idl::IdlSeedAccount {
+                                path: stringify!(#ident).into(),
+                                account: None,
                             }
                         )
                     }
-                });
+                }
+                _ => quote! {
+                    #idl::IdlSeed::Const(
+                        #idl::IdlSeedConst {
+                            value: AsRef::<[u8]>::as_ref(&#path).into(),
+                        }
+                    )
+                },
+            };
             Ok(seed)
         }
         syn::Expr::Lit(_) => Ok(quote! {

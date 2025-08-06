@@ -12,6 +12,39 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- lang: Add `#[error]` attribute to `declare_program!` ([#3757](https://github.com/coral-xyz/anchor/pull/3757)).
+- cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
+
+### Fixes
+
+- docker: Upgrade `node` to 20.18.0 LTS ([#3687](https://github.com/solana-foundation/anchor/pull/3687)).
+- cli: Fix using deprecated commitment `recent` in migration scripts ([#3725](https://github.com/coral-xyz/anchor/pull/3725)).
+- cli: Fix not respecting `provider.cluster` in `keys sync` command ([#3761](https://github.com/coral-xyz/anchor/pull/3761)).
+
+### Breaking
+
+## [0.31.1] - 2025-04-19
+
+This release uses a new docker image found at `solanafoundation/anchor` for the `anchor verify` command. New images will be pushed to this organization in the future.
+
+Releases for anchor will also be published under the `solanafoundation` Github organization from now on.
+
+### Features
+
+- cli, docker: Replace `backpackapp/build` Docker image with `solanafoundation/anchor` ([#3619](https://github.com/coral-xyz/anchor/pull/3619)).
+- ts: Make `Provider` require publicKey instead of wallet in accounts resolver ([#3613](https://github.com/coral-xyz/anchor/pull/3613))
+
+### Fixes
+
+- idl: Update `proc-macro2` usage for latest nightly ([#3663](https://github.com/solana-foundation/anchor/pull/3663))
+- ts: Fix parsing IDL with multiple const generics ([#3665](https://github.com/solana-foundation/anchor/pull/3665))
+
+### Breaking
+
+## [0.31.0] - 2025-03-08
+
+### Features
+
 - client: Make `solana_account_decoder` dep public in anchor client ([#3455](https://github.com/coral-xyz/anchor/pull/3455)).
 - ts: Add optional `options.blockhash` to `Provider.sendAndConfirm` ([#3070](https://github.com/coral-xyz/anchor/pull/3070)).
 - ts: Add optional `commitment` parameter to `Program.addEventListener` ([#3052](https://github.com/coral-xyz/anchor/pull/3052)).
@@ -27,7 +60,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Remove the fallback function shortcut in `try_entry` function ([#3109](https://github.com/coral-xyz/anchor/pull/3109)).
 - ts: Get discriminator lengths dynamically ([#3120](https://github.com/coral-xyz/anchor/pull/3120)).
 - client: Support non-8-byte discriminators ([#3125](https://github.com/coral-xyz/anchor/pull/3125)).
-- spl: Add `withdraw_withheld_tokens_from_accounts` instruction ([#3128]([https://github.com/coral-xyz/anchor/pull/3128)).
+- spl: Add `withdraw_withheld_tokens_from_accounts` instruction ([#3128](https://github.com/coral-xyz/anchor/pull/3128)).
 - ts: Add optional `wallet` property to the `Provider` interface ([#3130](https://github.com/coral-xyz/anchor/pull/3130)).
 - cli: Warn if `anchor-spl/idl-build` is missing ([#3133](https://github.com/coral-xyz/anchor/pull/3133)).
 - client: Add `internal_rpc` method for `mock` feature ([#3135](https://github.com/coral-xyz/anchor/pull/3135)).
@@ -40,7 +73,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Support non-8-byte discriminators ([#3165](https://github.com/coral-xyz/anchor/pull/3165)).
 - idl: Disallow empty discriminators ([#3166](https://github.com/coral-xyz/anchor/pull/3166)).
 - cli: Add `--no-idl` option to the `test` command ([#3175](https://github.com/coral-xyz/anchor/pull/3175)).
-- spl: Add `burn_checked`, `mint_to_checked` and `approve_checked` instructions ([#3186]([https://github.com/coral-xyz/anchor/pull/3186)).
+- spl: Add `burn_checked`, `mint_to_checked` and `approve_checked` instructions ([#3186](https://github.com/coral-xyz/anchor/pull/3186)).
 - cli: Migrate to `agave-install` when `solana_version` is `>= 1.18.19` ([#3185](https://github.com/coral-xyz/anchor/pull/3185)).
 - idl: Add `IdlBuilder` ([#3188](https://github.com/coral-xyz/anchor/pull/3188)).
 - cli: Make `clean` command also remove the `.anchor` directory ([#3192](https://github.com/coral-xyz/anchor/pull/3192)).
@@ -116,6 +149,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix using constant identifiers as generic arguments ([#3522](https://github.com/coral-xyz/anchor/pull/3522)).
 - client: Remove `std::process::exit` usage ([#3544](https://github.com/coral-xyz/anchor/pull/3544)).
 - idl: Fix using `Pubkey` constants with `seeds::program` ([#3559](https://github.com/coral-xyz/anchor/pull/3559)).
+- lang: Fix instructions with no accounts causing compilation errors when using `declare_program!` ([#3567](https://github.com/coral-xyz/anchor/pull/3567)).
+- idl: Fix using account or arg values for `seeds::program` ([#3570](https://github.com/coral-xyz/anchor/pull/3570)).
+- lang: Fix using `data` as an instruction parameter name in `declare_program!` ([#3574](https://github.com/coral-xyz/anchor/pull/3574)).
+- cli: Use camelCase for program name in `anchor.workspace` templates ([#3581](https://github.com/coral-xyz/anchor/pull/3581)).
 
 ### Breaking
 

@@ -6,11 +6,14 @@ use crate::*;
 pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let constraints = linearize(&f.constraints);
 
-    let rent = constraints
+    let rent = if constraints
         .iter()
         .any(|c| matches!(c, Constraint::RentExempt(ConstraintRentExempt::Enforce)))
-        .then(|| quote! { let __anchor_rent = Rent::get()?; })
-        .unwrap_or_else(|| quote! {});
+    {
+        quote! { let __anchor_rent = Rent::get()?; }
+    } else {
+        quote! {}
+    };
 
     let checks: Vec<proc_macro2::TokenStream> = constraints
         .iter()
@@ -357,13 +360,15 @@ pub fn generate_constraint_raw(ident: &Ident, c: &ConstraintRaw) -> proc_macro2:
 
 pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2::TokenStream {
     let ident = &f.ident;
-    let maybe_deref = match &f.ty {
+    let maybe_deref = if match &f.ty {
         Ty::Account(AccountTy { boxed, .. })
         | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => *boxed,
         _ => false,
-    }
-    .then(|| quote!(*))
-    .unwrap_or_default();
+    } {
+        quote!(*)
+    } else {
+        Default::default()
+    };
     let owner_address = &c.owner_address;
     let error = generate_custom_error(
         ident,

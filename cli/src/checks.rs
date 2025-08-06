@@ -74,6 +74,7 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
             PackageManager::NPM => "npm update",
             PackageManager::Yarn => "yarn upgrade",
             PackageManager::PNPM => "pnpm update",
+            PackageManager::Bun => "bun update",
         };
 
         eprintln!(
@@ -130,12 +131,15 @@ pub fn check_idl_build_feature() -> Result<()> {
         .iter()
         .any(|(feature, _)| feature == "idl-build");
     if !has_idl_build_feature {
-        let anchor_spl_idl_build = manifest
+        let anchor_spl_idl_build = if manifest
             .dependencies
             .iter()
             .any(|dep| dep.0 == "anchor-spl")
-            .then_some(r#", "anchor-spl/idl-build""#)
-            .unwrap_or_default();
+        {
+            r#", "anchor-spl/idl-build""#
+        } else {
+            ""
+        };
 
         return Err(anyhow!(
             r#"`idl-build` feature is missing. To solve, add

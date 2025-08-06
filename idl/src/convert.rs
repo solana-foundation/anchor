@@ -431,11 +431,13 @@ mod legacy {
         fn from(value: IdlTypeDefinitionTy) -> Self {
             match value {
                 IdlTypeDefinitionTy::Struct { fields } => Self::Struct {
-                    fields: fields.is_empty().then_some(None).unwrap_or_else(|| {
+                    fields: if fields.is_empty() {
+                        None
+                    } else {
                         Some(t::IdlDefinedFields::Named(
                             fields.into_iter().map(Into::into).collect(),
                         ))
-                    }),
+                    },
                 },
                 IdlTypeDefinitionTy::Enum { variants } => Self::Enum {
                     variants: variants

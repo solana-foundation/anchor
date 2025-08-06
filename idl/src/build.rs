@@ -140,7 +140,7 @@ fn build(
 ) -> Result<Idl> {
     // `nightly` toolchain is currently required for building the IDL.
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
-        .map(|toolchain| format!("+{}", toolchain))
+        .map(|toolchain| format!("+{toolchain}"))
         .unwrap_or_else(|_| "+nightly".to_string());
 
     install_toolchain_if_needed(&toolchain)?;
@@ -174,7 +174,7 @@ fn build(
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if env::var("ANCHOR_LOG").is_ok() {
-        eprintln!("{}", stdout);
+        eprintln!("{stdout}");
     }
 
     if !output.status.success() {
