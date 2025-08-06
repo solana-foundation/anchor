@@ -5,8 +5,6 @@ use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
-pub const SEED: &[u8] = b"contant-seed";
-
 #[program]
 pub mod relations_derivation {
     use super::*;
@@ -16,10 +14,12 @@ pub mod relations_derivation {
         ctx.accounts.account.bump = ctx.bumps.account;
         Ok(())
     }
+
     pub fn test_relation(_ctx: Context<TestRelation>) -> Result<()> {
         Ok(())
     }
-    pub fn test_seed_constant(_ctx: Context<TestSeedConstant>) -> Result<()> {
+
+    pub fn test_address(_ctx: Context<TestAddress>) -> Result<()> {
         Ok(())
     }
 }
@@ -66,22 +66,32 @@ pub struct TestRelation<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestSeedConstant<'info> {
-    #[account(mut)]
-    my_account: Signer<'info>,
-    #[account(
-      init,
-      payer = my_account,
-      seeds = [SEED],
-      space = 100,
-      bump,
-    )]
-    account: Account<'info, MyAccount>,
-    system_program: Program<'info, System>,
+pub struct TestAddress<'info> {
+    // Included wit the `address` field in IDL
+    // It's actually `static` but it doesn't matter for our purposes
+    #[account(address = crate::ID)]
+    constant: UncheckedAccount<'info>,
+    #[account(address = crate::id())]
+    const_fn: UncheckedAccount<'info>,
+
+    // Not included with the `address` field in IDL
+    #[account(address = my_account.my_account)]
+    field: UncheckedAccount<'info>,
+    #[account(address = my_account.my_account())]
+    method: UncheckedAccount<'info>,
+
+    #[account(seeds = [b"seed"], bump = my_account.bump)]
+    my_account: Account<'info, MyAccount>,
 }
 
 #[account]
 pub struct MyAccount {
     pub my_account: Pubkey,
     pub bump: u8,
+}
+
+impl MyAccount {
+    pub fn my_account(&self) -> Pubkey {
+        self.my_account
+    }
 }

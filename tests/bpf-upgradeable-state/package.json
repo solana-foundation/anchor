@@ -1,16 +1,16 @@
 {
-    "name": "bpf-upgradeable-state",
-    "version": "0.24.0",
-    "license": "(MIT OR Apache-2.0)",
-    "homepage": "https://github.com/coral-xyz/anchor#readme",
-    "bugs": {
-        "url": "https://github.com/coral-xyz/anchor/issues"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/coral-xyz/anchor.git"
-    },
-    "engines": {
-        "node": ">=11"
-    }
+  "name": "bpf-upgradeable-state",
+  "version": "0.24.0",
+  "license": "(MIT OR Apache-2.0)",
+  "homepage": "https://github.com/coral-xyz/anchor#readme",
+  "bugs": {
+    "url": "https://github.com/coral-xyz/anchor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coral-xyz/anchor.git"
+  },
+  "engines": {
+    "node": ">=17"
+  }
 }

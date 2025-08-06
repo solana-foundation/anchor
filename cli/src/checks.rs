@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use semver::{Version, VersionReq};
 
 use crate::{
-    config::{Config, Manifest, WithPath},
+    config::{Config, Manifest, PackageManager, WithPath},
     VERSION,
 };
 
@@ -70,13 +70,119 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         .filter(|ver| !ver.matches(&cli_version));
 
     if let Some(ver) = mismatched_ts_version {
+        let update_cmd = match cfg.toolchain.package_manager.clone().unwrap_or_default() {
+            PackageManager::NPM => "npm update",
+            PackageManager::Yarn => "yarn upgrade",
+            PackageManager::PNPM => "pnpm update",
+            PackageManager::Bun => "bun update",
+        };
+
         eprintln!(
             "WARNING: `@coral-xyz/anchor` version({ver}) and the current CLI version\
                 ({cli_version}) don't match.\n\n\t\
                 This can lead to unwanted behavior. To fix, upgrade the package by running:\n\n\t\
-                yarn upgrade @coral-xyz/anchor@{cli_version}\n"
+                {update_cmd} @coral-xyz/anchor@{cli_version}\n"
         );
     }
+
+    Ok(())
+}
+
+/// Check for potential dependency improvements.
+///
+/// The main problem people will run into with Solana v2 is that the `solana-program` version
+/// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
+/// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
+/// `anchor-spl` when possible.
+pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
+    // Check `solana-program`
+    cfg.get_rust_program_list()?
+        .into_iter()
+        .map(|path| path.join("Cargo.toml"))
+        .map(cargo_toml::Manifest::from_path)
+        .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .filter(|man| man.dependencies.contains_key("solana-program"))
+        .for_each(|man| {
+            eprintln!(
+                "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
+                To solve, remove the `solana-program` dependency and use the exported crate from \
+                `anchor-lang`.\n\
+                `use solana_program` becomes `use anchor_lang::solana_program`.\n\
+                Program name: `{}`\n",
+                man.package().name()
+            )
+        });
+
+    Ok(())
+}
+
+/// Check whether the `idl-build` feature is being used correctly.
+///
+/// **Note:** The check expects the current directory to be a program directory.
+pub fn check_idl_build_feature() -> Result<()> {
+    let manifest_path = Path::new("Cargo.toml").canonicalize()?;
+    let manifest = Manifest::from_path(&manifest_path)?;
+
+    // Check whether the manifest has `idl-build` feature
+    let has_idl_build_feature = manifest
+        .features
+        .iter()
+        .any(|(feature, _)| feature == "idl-build");
+    if !has_idl_build_feature {
+        let anchor_spl_idl_build = if manifest
+            .dependencies
+            .iter()
+            .any(|dep| dep.0 == "anchor-spl")
+        {
+            r#", "anchor-spl/idl-build""#
+        } else {
+            ""
+        };
+
+        return Err(anyhow!(
+            r#"`idl-build` feature is missing. To solve, add
+
+[features]
+idl-build = ["anchor-lang/idl-build"{anchor_spl_idl_build}]
+
+in `{manifest_path:?}`."#
+        ));
+    }
+
+    // Check if `idl-build` is enabled by default
+    manifest
+        .dependencies
+        .iter()
+        .filter(|(_, dep)| dep.req_features().contains(&"idl-build".into()))
+        .for_each(|(name, _)| {
+            eprintln!(
+                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. \
+                    This is not the intended usage.\n\n\t\
+                    To solve, do not enable the `idl-build` feature and include crates that have \
+                    `idl-build` feature in the `idl-build` feature list:\n\n\t\
+                    [features]\n\t\
+                    idl-build = [\"{name}/idl-build\", ...]\n"
+            )
+        });
+
+    // Check `anchor-spl`'s `idl-build` feature
+    manifest
+        .dependencies
+        .get("anchor-spl")
+        .and_then(|_| manifest.features.get("idl-build"))
+        .map(|feature_list| !feature_list.contains(&"anchor-spl/idl-build".into()))
+        .unwrap_or_default()
+        .then(|| {
+            eprintln!(
+                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. \
+                This is likely to result in cryptic compile errors.\n\n\t\
+                To solve, add `anchor-spl/idl-build` to the `idl-build` feature list:\n\n\t\
+                [features]\n\t\
+                idl-build = [\"anchor-spl/idl-build\", ...]\n"
+            )
+        });
 
     Ok(())
 }

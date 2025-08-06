@@ -1,11 +1,10 @@
 [package]
 name = "anchor-attribute-program"
-version = "0.30.0"
+version = "0.31.1"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 license = "Apache-2.0"
 description = "Anchor attribute macro for defining a program"
-rust-version = "1.60"
 edition = "2021"
 
 [lib]
@@ -17,8 +16,8 @@ idl-build = ["anchor-syn/idl-build"]
 interface-instructions = ["anchor-syn/interface-instructions"]
 
 [dependencies]
-anchor-lang-idl = { path = "../../../idl", version = "0.1.0" }
-anchor-syn = { path = "../../syn", version = "0.30.0" }
+anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["convert"] }
+anchor-syn = { path = "../../syn", version = "0.31.1" }
 anyhow = "1"
 bs58 = "0.5"
 heck = "0.3"

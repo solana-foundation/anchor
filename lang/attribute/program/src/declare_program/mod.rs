@@ -1,7 +1,9 @@
 mod common;
 mod mods;
 
-use anchor_lang_idl::types::Idl;
+use std::{env, fs, path::PathBuf};
+
+use anchor_lang_idl::{convert::convert_idl, types::Idl};
 use anyhow::anyhow;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
@@ -9,8 +11,8 @@ use syn::parse::{Parse, ParseStream};
 use common::gen_docs;
 use mods::{
     accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
-    cpi::gen_cpi_mod, events::gen_events_mod, internal::gen_internal_mod, program::gen_program_mod,
-    types::gen_types_mod, utils::gen_utils_mod,
+    cpi::gen_cpi_mod, errors::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
+    program::gen_program_mod, types::gen_types_mod, utils::gen_utils_mod,
 };
 
 pub struct DeclareProgram {
@@ -34,20 +36,19 @@ impl ToTokens for DeclareProgram {
 }
 
 fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("Failed to get manifest dir");
-    let path = std::path::Path::new(&manifest_dir)
+    env::var("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .map_err(|e| anyhow!("Failed to get environment variable `CARGO_MANIFEST_DIR`: {e}"))?
         .ancestors()
         .find_map(|ancestor| {
             let idl_dir = ancestor.join("idls");
-            std::fs::metadata(&idl_dir).map(|_| idl_dir).ok()
+            idl_dir.exists().then_some(idl_dir)
         })
         .ok_or_else(|| anyhow!("`idls` directory not found"))
-        .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))?;
-
-    std::fs::read(path)
-        .map_err(|e| anyhow!("Failed to read IDL: {e}"))
-        .map(|idl| serde_json::from_slice(&idl))?
-        .map_err(|e| anyhow!("Failed to parse IDL: {e}"))
+        .map(|idl_dir| idl_dir.join(name.to_string()).with_extension("json"))
+        .map(fs::read)?
+        .map_err(|e| anyhow!("Failed to read IDL `{name}`: {e}"))
+        .map(|buf| convert_idl(&buf))?
 }
 
 fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
@@ -60,6 +61,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     let accounts_mod = gen_accounts_mod(idl);
     let events_mod = gen_events_mod(idl);
     let types_mod = gen_types_mod(idl);
+    let errors_mod = gen_errors_mod(idl);
 
     // Clients
     let cpi_mod = gen_cpi_mod(idl);
@@ -73,6 +75,9 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
         #docs
         pub mod #name {
             use anchor_lang::prelude::*;
+            use accounts::*;
+            use events::*;
+            use types::*;
 
             #id
             #program_mod
@@ -81,6 +86,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
             #accounts_mod
             #events_mod
             #types_mod
+            #errors_mod
 
             #cpi_mod
             #client_mod
@@ -113,8 +119,12 @@ fn gen_id(idl: &Idl) -> proc_macro2::TokenStream {
         #[doc = #doc]
         pub static ID: Pubkey = __ID;
 
+        /// Const version of `ID`
+        pub const ID_CONST: Pubkey = __ID_CONST;
+
         /// The name is intentionally prefixed with `__` in order to reduce to possibility of name
         /// clashes with the crate's `ID`.
         static __ID: Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
+        const __ID_CONST : Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
     }
 }

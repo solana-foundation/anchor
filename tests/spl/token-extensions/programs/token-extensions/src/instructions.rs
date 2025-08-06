@@ -8,14 +8,14 @@ use anchor_spl::{
         transfer_hook::TransferHook,
     },
     token_interface::{
-        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
-        Token2022, TokenAccount, TokenMetadataInitialize,
+        get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
+        token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
     },
 };
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
 
 use crate::{
-    get_meta_list_size, get_mint_extensible_extension_data, get_mint_extension_data,
+    get_meta_list_size, get_mint_extensible_extension_data,
     update_account_lamports_to_minimum_balance, META_LIST_ACCOUNT_SEED,
 };
 
@@ -85,7 +85,7 @@ impl<'info> CreateMintAccount<'info> {
         uri: String,
     ) -> ProgramResult {
         let cpi_accounts = TokenMetadataInitialize {
-            token_program_id: self.token_program.to_account_info(),
+            program_id: self.token_program.to_account_info(),
             mint: self.mint.to_account_info(),
             metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
             mint_authority: self.authority.to_account_info(),

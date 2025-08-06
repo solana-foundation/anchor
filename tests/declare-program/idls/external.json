@@ -45,6 +45,96 @@
       "args": []
     },
     {
+      "name": "test_compilation_data_as_parameter_name",
+      "discriminator": [
+        225,
+        145,
+        68,
+        92,
+        146,
+        206,
+        248,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "test_compilation_defined_type_param",
+      "discriminator": [
+        61,
+        118,
+        87,
+        242,
+        137,
+        97,
+        90,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "_my_account",
+          "type": {
+            "defined": {
+              "name": "MyAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "test_compilation_no_accounts",
+      "discriminator": [
+        194,
+        91,
+        205,
+        217,
+        51,
+        10,
+        247,
+        201
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "test_compilation_return_type",
+      "discriminator": [
+        174,
+        51,
+        51,
+        121,
+        52,
+        61,
+        38,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [],
+      "returns": "bool"
+    },
+    {
       "name": "update",
       "discriminator": [
         219,
@@ -122,6 +212,52 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "update_non_instruction_composite",
+      "discriminator": [
+        49,
+        218,
+        69,
+        196,
+        204,
+        66,
+        36,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "non_instruction_update",
+          "accounts": [
+            {
+              "name": "authority",
+              "signer": true
+            },
+            {
+              "name": "my_account",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "authority"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "program",
+              "address": "Externa111111111111111111111111111111111111"
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -178,6 +314,16 @@
           }
         ]
       }
+    }
+  ],
+  "constants": [
+    {
+      "name": "MASTER_SEED",
+      "docs": [
+        "Master seed slice"
+      ],
+      "type": "bytes",
+      "value": "[109, 97, 115, 116, 101, 114]"
     }
   ]
 }

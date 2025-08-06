@@ -1,0 +1,140 @@
+{
+  "version": "0.1.0",
+  "name": "external",
+  "constants": [
+    {
+      "name": "MASTER_SEED",
+      "type": "bytes",
+      "value": "[109, 97, 115, 116, 101, 114]"
+    }
+  ],
+  "instructions": [
+    {
+      "name": "init",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "myAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "myAccount",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "updateComposite",
+      "accounts": [
+        {
+          "name": "update",
+          "accounts": [
+            {
+              "name": "authority",
+              "isMut": false,
+              "isSigner": true
+            },
+            {
+              "name": "myAccount",
+              "isMut": true,
+              "isSigner": false
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "testCompilationDefinedTypeParam",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "myAccount",
+          "type": {
+            "defined": "MyAccount"
+          }
+        }
+      ]
+    },
+    {
+      "name": "testCompilationReturnType",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [],
+      "returns": "bool"
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MyAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "MyEvent",
+      "fields": [
+        {
+          "name": "value",
+          "type": "u32",
+          "index": false
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "address": "Externa111111111111111111111111111111111111"
+  }
+}

@@ -2,6 +2,7 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
+use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -10,37 +11,51 @@ use syn::parse_macro_input;
 /// their programs that clients can subscribe to. Currently, this macro is for
 /// structs only.
 ///
+/// # Arguments
+///
+/// - `discriminator`: Override the default 8-byte discriminator
+///
+///     **Usage:** `discriminator = <CONST_EXPR>`
+///
+///     All constant expressions are supported.
+///
+///     **Examples:**
+///
+///     - `discriminator = 1` (shortcut for `[1]`)
+///     - `discriminator = [1, 2, 3, 4]`
+///     - `discriminator = b"hi"`
+///     - `discriminator = MY_DISC`
+///     - `discriminator = get_disc(...)`
+///
 /// See the [`emit!` macro](emit!) for an example.
 #[proc_macro_attribute]
 pub fn event(
-    _args: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
+    let args = parse_macro_input!(args as Overrides);
     let event_strct = parse_macro_input!(input as syn::ItemStruct);
-
     let event_name = &event_strct.ident;
 
-    let discriminator: proc_macro2::TokenStream = {
-        let discriminator_preimage = format!("event:{event_name}").into_bytes();
-        let discriminator = anchor_syn::hash::hash(&discriminator_preimage);
-        format!("{:?}", &discriminator.0[..8]).parse().unwrap()
-    };
+    let discriminator = args
+        .discriminator
+        .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
-        #[derive(anchor_lang::__private::EventIndex, AnchorSerialize, AnchorDeserialize)]
+        #[derive(AnchorSerialize, AnchorDeserialize)]
         #event_strct
 
         impl anchor_lang::Event for #event_name {
             fn data(&self) -> Vec<u8> {
                 let mut data = Vec::with_capacity(256);
-                data.extend_from_slice(&#discriminator);
+                data.extend_from_slice(#event_name::DISCRIMINATOR);
                 self.serialize(&mut data).unwrap();
                 data
             }
         }
 
         impl anchor_lang::Discriminator for #event_name {
-            const DISCRIMINATOR: [u8; 8] = #discriminator;
+            const DISCRIMINATOR: &'static [u8] = #discriminator;
         }
     };
 
@@ -55,14 +70,6 @@ pub fn event(
 
     #[allow(unreachable_code)]
     proc_macro::TokenStream::from(ret)
-}
-
-// EventIndex is a marker macro. It functionally does nothing other than
-// allow one to mark fields with the `#[index]` inert attribute, which is
-// used to add metadata to IDLs.
-#[proc_macro_derive(EventIndex, attributes(index))]
-pub fn derive_event(_item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::from(quote! {})
 }
 
 /// Logs an event that can be subscribed to by clients.
@@ -161,7 +168,11 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);
-            let ix_data: Vec<u8> = disc.into_iter().chain(inner_data.into_iter()).collect();
+            let ix_data: Vec<u8> = disc
+                .into_iter()
+                .map(|b| *b)
+                .chain(inner_data.into_iter())
+                .collect();
 
             let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
                 crate::ID,

@@ -1,20 +1,18 @@
 # Anchor Docs
 
-## Getting started
+Created with [Fumadocs](https://fumadocs.vercel.app). Page contents located in
+[`docs/content/docs`](/docs/content/docs).
 
-```bash
-npm install
-cp .env.example .env.local
-```
-
-Next, run the development server:
+Run development server:
 
 ```bash
 npm run dev
+# or
+pnpm dev
+# or
+yarn dev
+# or
+bun run dev
 ```
 
-Finally, open [http://localhost:3000](http://localhost:3000) in your browser to view the website.
-
-## Customizing
-
-You can start editing this template by modifying the files in the `/src` folder. The site will auto-update as you edit these files.
+Open http://localhost:3000 with your browser to see the result.

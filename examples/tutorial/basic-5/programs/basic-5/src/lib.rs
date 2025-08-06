@@ -61,7 +61,7 @@ pub struct Create<'info> {
         bump
     )]
     pub action_state: Account<'info, ActionState>,
-    // mut makes it changeble (mutable)
+    // mut makes it changeable (mutable)
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -72,7 +72,7 @@ pub struct Walk<'info> {
     // Only the user on account action_state, should be able to change state
     #[account(mut, has_one = user)]
     pub action_state: Account<'info, ActionState>,
-    // mut makes it changeble (mutable)
+    // mut makes it changeable (mutable)
     #[account(mut)]
     pub user: Signer<'info>,
 }
@@ -82,7 +82,7 @@ pub struct Run<'info> {
     // Only the user on account action_state, should be able to change state
     #[account(mut, has_one = user)]
     pub action_state: Account<'info, ActionState>,
-    // mut makes it changeble (mutable)
+    // mut makes it changeable (mutable)
     #[account(mut)]
     pub user: Signer<'info>,
 }
@@ -92,7 +92,7 @@ pub struct Jump<'info> {
     // Only the user on account action_state, should be able to change state
     #[account(mut, has_one = user)]
     pub action_state: Account<'info, ActionState>,
-    // mut makes it changeble (mutable)
+    // mut makes it changeable (mutable)
     #[account(mut)]
     pub user: Signer<'info>,
 }
@@ -102,7 +102,7 @@ pub struct Reset<'info> {
     // Only the user on account action_state, should be able to change state
     #[account(mut, has_one = user)]
     pub action_state: Account<'info, ActionState>,
-    // mut makes it changeble (mutable)
+    // mut makes it changeable (mutable)
     #[account(mut)]
     pub user: Signer<'info>,
 }

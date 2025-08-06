@@ -86,6 +86,7 @@ use std::ops::{Deref, DerefMut};
 /// those programs are not annotated with `#[account]` so you have to
 /// - create a wrapper type around the structs you want to wrap with InterfaceAccount
 /// - implement the functions required by InterfaceAccount yourself
+///
 /// instead of using `#[account]`. You only have to implement a fraction of the
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
@@ -164,8 +165,8 @@ pub struct InterfaceAccount<'info, T: AccountSerialize + AccountDeserialize + Cl
     owner: Pubkey,
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
-    for InterfaceAccount<'info, T>
+impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
+    for InterfaceAccount<'_, T>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.account.fmt_with_name("InterfaceAccount", f)
@@ -275,9 +276,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas
-    for InterfaceAccount<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for InterfaceAccount<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.account.to_account_metas(is_signer)
     }
@@ -299,15 +298,13 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<T>
-    for InterfaceAccount<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for InterfaceAccount<'_, T> {
     fn as_ref(&self) -> &T {
         self.account.as_ref()
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAccount<'a, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAccount<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -315,13 +312,13 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAc
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> DerefMut for InterfaceAccount<'a, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for InterfaceAccount<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.account.deref_mut()
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> Key for InterfaceAccount<'info, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Key for InterfaceAccount<'_, T> {
     fn key(&self) -> Pubkey {
         self.account.key()
     }

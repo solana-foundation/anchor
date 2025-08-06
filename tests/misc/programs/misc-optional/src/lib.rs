@@ -395,4 +395,19 @@ pub mod misc_optional {
     ) -> Result<()> {
         Ok(())
     }
+
+    #[allow(unused_variables)]
+    pub fn test_init_many_associated_token_accounts(
+        _ctx: Context<InitManyAssociatedTokenAccounts>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_multiple_zero_constraint(_ctx: Context<TestMultipleZeroConstraint>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test_init_and_zero(_ctx: Context<TestInitAndZero>) -> Result<()> {
+        Ok(())
+    }
 }

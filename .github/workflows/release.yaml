@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+  pull_request:
+    branches:
+      - master
+    paths:
+      - VERSION
+      - ./github/workflows/release.yaml
+
+env:
+  DIST: dist-${{ github.ref_name }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-msvc
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+
+      - name: Prepare
+        if: startsWith(github.ref, 'refs/tags/')
+        id: prepare
+        shell: bash
+        run: |
+          version=$(echo $GITHUB_REF_NAME | cut -dv -f2)
+          ext=""
+          [[ "${{ matrix.os }}" == windows-latest ]] && ext=".exe"
+
+          mkdir $DIST
+          mv "target/${{ matrix.target }}/release/anchor$ext" $DIST/anchor-$version-${{ matrix.target }}$ext
+
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: anchor-${{ steps.prepare.outputs.version }}-${{ matrix.target }}
+          path: ${{ env.DIST }}
+          overwrite: true
+          retention-days: 1
+
+  upload:
+    name: Upload binaries to release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.DIST }}
+
+      - name: Upload
+        shell: bash
+        run: GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release upload $GITHUB_REF_NAME $DIST/*/* --clobber

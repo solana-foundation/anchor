@@ -18,12 +18,14 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
-pub fn generate_ix_variant(name: String, args: &[IxArg]) -> proc_macro2::TokenStream {
+pub fn gen_discriminator(namespace: &str, name: impl ToString) -> proc_macro2::TokenStream {
+    let discriminator = sighash(namespace, name.to_string().as_str());
+    format!("&{discriminator:?}").parse().unwrap()
+}
+
+pub fn generate_ix_variant(name: &str, args: &[IxArg]) -> proc_macro2::TokenStream {
     let ix_arg_names: Vec<&syn::Ident> = args.iter().map(|arg| &arg.name).collect();
-    let ix_name_camel: proc_macro2::TokenStream = {
-        let n = name.to_camel_case();
-        n.parse().unwrap()
-    };
+    let ix_name_camel = generate_ix_variant_name(name);
 
     if args.is_empty() {
         quote! {
@@ -36,4 +38,9 @@ pub fn generate_ix_variant(name: String, args: &[IxArg]) -> proc_macro2::TokenSt
             }
         }
     }
+}
+
+pub fn generate_ix_variant_name(name: &str) -> proc_macro2::TokenStream {
+    let n = name.to_camel_case();
+    n.parse().unwrap()
 }

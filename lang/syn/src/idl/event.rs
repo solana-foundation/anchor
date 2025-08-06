@@ -61,7 +61,7 @@ fn impl_idl_build_event(event_struct: &syn::ItemStruct) -> TokenStream {
             let ty = #ts;
             let event = #idl::IdlEvent {
                 name: ty.name.clone(),
-                discriminator: <Self as anchor_lang::Discriminator>::DISCRIMINATOR.into(),
+                discriminator: Self::DISCRIMINATOR.into(),
             };
             types.insert(ty.name.clone(), ty);
             Some(event)

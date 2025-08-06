@@ -59,9 +59,9 @@ use std::ops::Deref;
 /// The required constraints are as follows:
 ///
 /// - `program` is the account of the program itself.
-/// Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
-/// Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
-/// will be `None` if it's not).
+///   Its constraint checks that `program_data` is the account that contains the program's upgrade authority.
+///   Implicitly, this checks that `program` is a BPFUpgradeable program (`program.programdata_address()?`
+///   will be `None` if it's not).
 /// - `program_data`'s constraint checks that its upgrade authority is the `authority` account.
 /// - Finally, `authority` needs to sign the transaction.
 ///
@@ -80,7 +80,7 @@ pub struct Program<'info, T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'info, T: fmt::Debug> fmt::Debug for Program<'info, T> {
+impl<T: fmt::Debug> fmt::Debug for Program<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Program").field("info", &self.info).finish()
     }
@@ -157,7 +157,7 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
     }
 }
 
-impl<'info, T> ToAccountMetas for Program<'info, T> {
+impl<T> ToAccountMetas for Program<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer);
         let meta = match self.info.is_writable {
@@ -190,7 +190,7 @@ impl<'info, T> Deref for Program<'info, T> {
 
 impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
 
-impl<'info, T: AccountDeserialize> Key for Program<'info, T> {
+impl<T: AccountDeserialize> Key for Program<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
     }

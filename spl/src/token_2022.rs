@@ -79,6 +79,28 @@ pub fn mint_to<'info>(
     .map_err(Into::into)
 }
 
+pub fn mint_to_checked<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, MintToChecked<'info>>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let ix = spl_token_2022::instruction::mint_to_checked(
+        ctx.program.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.to.key,
+        ctx.accounts.authority.key,
+        &[],
+        amount,
+        decimals,
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[ctx.accounts.to, ctx.accounts.mint, ctx.accounts.authority],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
 pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64) -> Result<()> {
     let ix = spl_token_2022::instruction::burn(
         ctx.program.key,
@@ -89,6 +111,28 @@ pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64)
         amount,
     )?;
     anchor_lang::solana_invoke::invoke_signed(
+        &ix,
+        &[ctx.accounts.from, ctx.accounts.mint, ctx.accounts.authority],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn burn_checked<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, BurnChecked<'info>>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let ix = spl_token_2022::instruction::burn_checked(
+        ctx.program.key,
+        ctx.accounts.from.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.authority.key,
+        &[],
+        amount,
+        decimals,
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[ctx.accounts.from, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -112,6 +156,34 @@ pub fn approve<'info>(
         &ix,
         &[
             ctx.accounts.to,
+            ctx.accounts.delegate,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn approve_checked<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, ApproveChecked<'info>>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let ix = spl_token_2022::instruction::approve_checked(
+        ctx.program.key,
+        ctx.accounts.to.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.delegate.key,
+        ctx.accounts.authority.key,
+        &[],
+        amount,
+        decimals,
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.to,
+            ctx.accounts.mint,
             ctx.accounts.delegate,
             ctx.accounts.authority,
         ],
@@ -269,15 +341,10 @@ pub fn set_authority<'info>(
     authority_type: spl_token_2022::instruction::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
-    let mut spl_new_authority: Option<&Pubkey> = None;
-    if new_authority.is_some() {
-        spl_new_authority = new_authority.as_ref()
-    }
-
     let ix = spl_token_2022::instruction::set_authority(
         ctx.program.key,
         ctx.accounts.account_or_mint.key,
-        spl_new_authority,
+        new_authority.as_ref(),
         authority_type,
         ctx.accounts.current_authority.key,
         &[], // TODO: Support multisig signers.
@@ -412,7 +479,21 @@ pub struct MintTo<'info> {
 }
 
 #[derive(Accounts)]
+pub struct MintToChecked<'info> {
+    pub mint: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct Burn<'info> {
+    pub mint: AccountInfo<'info>,
+    pub from: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BurnChecked<'info> {
     pub mint: AccountInfo<'info>,
     pub from: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
@@ -421,6 +502,14 @@ pub struct Burn<'info> {
 #[derive(Accounts)]
 pub struct Approve<'info> {
     pub to: AccountInfo<'info>,
+    pub delegate: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ApproveChecked<'info> {
+    pub to: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
     pub delegate: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
 }

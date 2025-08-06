@@ -1,4 +1,4 @@
-//! This example demonstrates how custom errors and associated error messsages
+//! This example demonstrates how custom errors and associated error messages
 //! can be defined and transparently propagated to clients.
 
 use anchor_lang::prelude::*;
@@ -130,6 +130,10 @@ mod errors {
     pub fn require_gte_default_error(_ctx: Context<RequireGt>) -> Result<()> {
         require_gte!(5, 10);
         Ok(())
+    }
+
+    pub fn try_into_integer(_ctx: Context<Hello>) -> Result<i64> {
+        Ok(u64::MAX.try_into()?)
     }
 }
 

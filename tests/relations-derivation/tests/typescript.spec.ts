@@ -41,7 +41,13 @@ describe("typescript", () => {
     await tx.rpc();
   });
 
-  it("Can use relations derivation with seed constant", async () => {
-    await program.methods.testSeedConstant().accounts({}).rpc();
+  it("Can use `address` constraint", () => {
+    const ix = program.idl.instructions.find(
+      (ix) => ix.name === "testAddress"
+    )!;
+    expect(ix.accounts.find((acc) => acc.name === "constant")!.address).to.not
+      .be.undefined;
+    expect(ix.accounts.find((acc) => acc.name === "constFn")!.address).to.not.be
+      .undefined;
   });
 });

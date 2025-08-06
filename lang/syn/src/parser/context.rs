@@ -38,11 +38,11 @@ impl CrateContext {
         self.modules.iter().flat_map(|(_, ctx)| ctx.type_aliases())
     }
 
-    pub fn modules(&self) -> impl Iterator<Item = ModuleContext> {
+    pub fn modules(&self) -> impl Iterator<Item = ModuleContext<'_>> {
         self.modules.values().map(|detail| ModuleContext { detail })
     }
 
-    pub fn root_module(&self) -> ModuleContext {
+    pub fn root_module(&self) -> ModuleContext<'_> {
         ModuleContext {
             detail: self.modules.get("crate").unwrap(),
         }
@@ -70,6 +70,8 @@ impl CrateContext {
         {}:{}:{}
         Struct field "{}" is unsafe, but is not documented.
         Please add a `/// CHECK:` doc comment explaining why no checks through types are necessary.
+        Alternatively, for reasons like quick prototyping, you may disable the safety checks
+        by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/the-accounts-struct#safety-checks for more information.
                     "#,
                         ctx.file.canonicalize().unwrap().display(),
@@ -92,7 +94,7 @@ pub struct ModuleContext<'krate> {
     detail: &'krate ParsedModule,
 }
 
-impl<'krate> ModuleContext<'krate> {
+impl ModuleContext<'_> {
     pub fn items(&self) -> impl Iterator<Item = &syn::Item> {
         self.detail.items.iter()
     }

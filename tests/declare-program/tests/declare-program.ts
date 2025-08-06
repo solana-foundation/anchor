@@ -47,6 +47,10 @@ describe("declare-program", () => {
     assert.strictEqual(myAccount.field, value);
   });
 
+  it("Can use account utils", async () => {
+    await program.methods.accountUtils().rpc();
+  });
+
   it("Can use event utils", async () => {
     await program.methods.eventUtils().rpc();
   });

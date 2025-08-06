@@ -2,6 +2,7 @@ use anchor_lang::error_code;
 use borsh::maybestd::io::Error as BorshIoError;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::fmt::{Debug, Display};
+use std::num::TryFromIntError;
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -20,8 +21,8 @@ pub const ERROR_CODE_OFFSET: u32 = 6000;
 #[error_code(offset = 0)]
 pub enum ErrorCode {
     // Instructions
-    /// 100 - 8 byte instruction identifier not provided
-    #[msg("8 byte instruction identifier not provided")]
+    /// 100 - Instruction discriminator not provided
+    #[msg("Instruction discriminator not provided")]
     InstructionMissing = 100,
     /// 101 - Fallback functions are not supported
     #[msg("Fallback functions are not supported")]
@@ -204,11 +205,11 @@ pub enum ErrorCode {
     /// 3000 - The account discriminator was already set on this account
     #[msg("The account discriminator was already set on this account")]
     AccountDiscriminatorAlreadySet = 3000,
-    /// 3001 - No 8 byte discriminator was found on the account
-    #[msg("No 8 byte discriminator was found on the account")]
+    /// 3001 - No discriminator was found on the account
+    #[msg("No discriminator was found on the account")]
     AccountDiscriminatorNotFound,
-    /// 3002 - 8 byte discriminator did not match what was expected
-    #[msg("8 byte discriminator did not match what was expected")]
+    /// 3002 - Account discriminator did not match what was expected
+    #[msg("Account discriminator did not match what was expected")]
     AccountDiscriminatorMismatch,
     /// 3003 - Failed to deserialize the account
     #[msg("Failed to deserialize the account")]
@@ -263,6 +264,9 @@ pub enum ErrorCode {
     /// 4101 - You cannot/should not initialize the payer account as a program account
     #[msg("You cannot/should not initialize the payer account as a program account")]
     TryingToInitPayerAsProgramAccount = 4101,
+    /// 4102 - Invalid numeric conversion error
+    #[msg("Error during numeric conversion")]
+    InvalidNumericConversion = 4102,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
@@ -307,6 +311,18 @@ impl From<BorshIoError> for Error {
 impl From<ProgramErrorWithOrigin> for Error {
     fn from(pe: ProgramErrorWithOrigin) -> Self {
         Self::ProgramError(Box::new(pe))
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        Self::AnchorError(Box::new(AnchorError {
+            error_name: ErrorCode::InvalidNumericConversion.name(),
+            error_code_number: ErrorCode::InvalidNumericConversion.into(),
+            error_msg: format!("{e}"),
+            error_origin: None,
+            compared_values: None,
+        }))
     }
 }
 

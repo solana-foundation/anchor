@@ -10,6 +10,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .iter()
         .map(|ix| {
             let name = &ix.raw_method.sig.ident.to_string();
+            let ix_cfgs = &ix.cfgs;
             let ix_name_camel =
                 proc_macro2::Ident::new(&name.to_camel_case(), ix.raw_method.sig.ident.span());
             let raw_args: Vec<proc_macro2::TokenStream> = ix
@@ -21,17 +22,26 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         .unwrap()
                 })
                 .collect();
-            let ix_data_trait = {
-                let sighash_arr = ix
-                    .interface_discriminator
-                    .unwrap_or(sighash(SIGHASH_GLOBAL_NAMESPACE, name));
-                let sighash_tts: proc_macro2::TokenStream =
-                    format!("{sighash_arr:?}").parse().unwrap();
-                quote! {
-                    impl anchor_lang::Discriminator for #ix_name_camel {
-                        const DISCRIMINATOR: [u8; 8] = #sighash_tts;
+            let impls = {
+                let discriminator = match ix.overrides.as_ref() {
+                    Some(overrides) if overrides.discriminator.is_some() => {
+                        overrides.discriminator.as_ref().unwrap().to_owned()
                     }
+                    // TODO: Remove `interface_discriminator`
+                    _ => match &ix.interface_discriminator {
+                        Some(disc) => format!("&{disc:?}").parse().unwrap(),
+                        _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
+                    },
+                };
+
+                quote! {
+                    #(#ix_cfgs)*
+                    impl anchor_lang::Discriminator for #ix_name_camel {
+                        const DISCRIMINATOR: &'static [u8] = #discriminator;
+                    }
+                    #(#ix_cfgs)*
                     impl anchor_lang::InstructionData for #ix_name_camel {}
+                    #(#ix_cfgs)*
                     impl anchor_lang::Owner for #ix_name_camel {
                         fn owner() -> Pubkey {
                             ID
@@ -42,21 +52,23 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             // If no args, output a "unit" variant instead of a struct variant.
             if ix.args.is_empty() {
                 quote! {
+                    #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct #ix_name_camel;
 
-                    #ix_data_trait
+                    #impls
                 }
             } else {
                 quote! {
+                    #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
                     pub struct #ix_name_camel {
                         #(#raw_args),*
                     }
 
-                    #ix_data_trait
+                    #impls
                 }
             }
         })
@@ -67,11 +79,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// instructions, where each method handler in the `#[program]` mod is
         /// associated with a struct defining the input arguments to the
         /// method. These should be used directly, when one wants to serialize
-        /// Anchor instruction data, for example, when speciying
+        /// Anchor instruction data, for example, when specifying
         /// instructions on a client.
         pub mod instruction {
             use super::*;
-
 
             #(#variants)*
         }

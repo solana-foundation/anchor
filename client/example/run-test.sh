@@ -28,6 +28,17 @@ main() {
     local events_pid="2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
     local optional_pid="FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
 
+    cd ../../tests/composite && anchor build && cd -
+    [ $? -ne 0 ] && exit 1
+    cd ../../examples/tutorial/basic-2 && anchor build && cd -
+    [ $? -ne 0 ] && exit 1
+    cd ../../examples/tutorial/basic-4 && anchor build && cd -
+    [ $? -ne 0 ] && exit 1
+    cd ../../tests/events && anchor build && cd -
+    [ $? -ne 0 ] && exit 1
+    cd ../../tests/optional && anchor build && cd -
+    [ $? -ne 0 ] && exit 1
+
     #
     # Bootup validator.
     #
@@ -38,7 +49,10 @@ main() {
 				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
 				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
 				> test-validator.log &
+    test_validator_pid=$!
+
     sleep 5
+    check_solana_validator_running $test_validator_pid
 
     #
     # Run single threaded test.
@@ -61,7 +75,10 @@ main() {
 				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
 				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
 				> test-validator.log &
+    test_validator_pid=$!
+
     sleep 5
+    check_solana_validator_running $test_validator_pid
 
     #
     # Run multi threaded test.
@@ -85,7 +102,10 @@ main() {
 				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
 				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
 				> test-validator.log &
+    test_validator_pid=$!
+
     sleep 5
+    check_solana_validator_running $test_validator_pid
 
     #
     # Run async test.
@@ -115,6 +135,15 @@ trap_add() {
         )" "${trap_add_name}" \
             || fatal "unable to add to trap ${trap_add_name}"
     done
+}
+
+check_solana_validator_running() {
+    local pid=$1
+    exit_state=$(kill -0 "$pid" && echo 'living' || echo 'exited')
+    if [ "$exit_state" == 'exited' ]; then
+        echo "Cannot start test validator, see ./test-validator.log"
+        exit 1
+    fi
 }
 
 declare -f -t trap_add

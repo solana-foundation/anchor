@@ -1,13 +1,9 @@
-use crate::program_codegen::dispatch;
 use crate::Program;
 use heck::CamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
-    let fallback_maybe = dispatch::gen_fallback(program).unwrap_or(quote! {
-        Err(anchor_lang::error::ErrorCode::InstructionMissing.into())
-    });
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
@@ -29,17 +25,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// The execution flow of the generated code can be roughly outlined:
         ///
         /// * Start program via the entrypoint.
-        /// * Strip method identifier off the first 8 bytes of the instruction
-        ///   data and invoke the identified method. The method identifier
-        ///   is a variant of sighash. See docs.rs for `anchor_lang` for details.
-        /// * If the method identifier is an IDL identifier, execute the IDL
-        ///   instructions, which are a special set of hardcoded instructions
-        ///   baked into every Anchor program. Then exit.
-        /// * Otherwise, the method identifier is for a user defined
-        ///   instruction, i.e., one of the methods in the user defined
-        ///   `#[program]` module. Perform method dispatch, i.e., execute the
-        ///   big match statement mapping method identifier to method handler
-        ///   wrapper.
+        /// * Check whether the declared program id matches the input program
+        ///   id. If it's not, return an error.
+        /// * Find and invoke the method based on whether the instruction data
+        ///   starts with the method's discriminator.
         /// * Run the method handler wrapper. This wraps the code the user
         ///   actually wrote, deserializing the accounts, constructing the
         ///   context, invoking the user's code, and finally running the exit
@@ -61,9 +50,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
             if *program_id != ID {
                 return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into());
-            }
-            if data.len() < 8 {
-                return #fallback_maybe;
             }
 
             dispatch(program_id, accounts, data)

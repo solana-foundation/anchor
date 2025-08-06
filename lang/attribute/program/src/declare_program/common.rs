@@ -2,6 +2,7 @@ use anchor_lang_idl::types::{
     Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlRepr, IdlSerialization,
     IdlType, IdlTypeDef, IdlTypeDefGeneric, IdlTypeDefTy,
 };
+use proc_macro2::Literal;
 use quote::{format_ident, quote};
 
 /// This function should ideally return the absolute path to the declared program's id but because
@@ -59,7 +60,7 @@ pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
         IdlType::I128 => "i128".into(),
         IdlType::U256 => "u256".into(),
         IdlType::I256 => "i256".into(),
-        IdlType::Bytes => "bytes".into(),
+        IdlType::Bytes => "Vec<u8>".into(),
         IdlType::String => "String".into(),
         IdlType::Pubkey => "Pubkey".into(),
         IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty)),
@@ -104,8 +105,15 @@ pub fn convert_idl_type_def_to_ts(
             .generics
             .iter()
             .map(|generic| match generic {
-                IdlTypeDefGeneric::Type { name } => format_ident!("{name}"),
-                IdlTypeDefGeneric::Const { name, ty } => format_ident!("{name}: {ty}"),
+                IdlTypeDefGeneric::Type { name } => {
+                    let name = format_ident!("{}", name);
+                    quote! { #name }
+                }
+                IdlTypeDefGeneric::Const { name, ty } => {
+                    let name = format_ident!("{}", name);
+                    let ty = format_ident!("{}", ty);
+                    quote! { const #name: #ty }
+                }
             })
             .collect::<Vec<_>>();
         if generics.is_empty() {
@@ -118,9 +126,8 @@ pub fn convert_idl_type_def_to_ts(
     let attrs = {
         let debug_attr = quote!(#[derive(Debug)]);
 
-        let default_attr = can_derive_default(ty_def, ty_defs)
-            .then(|| quote!(#[derive(Default)]))
-            .unwrap_or_default();
+        let default_attr =
+            can_derive_default(ty_def, ty_defs).then_some(quote!(#[derive(Default)]));
 
         let ser_attr = match &ty_def.serialization {
             IdlSerialization::Borsh => quote!(#[derive(AnchorSerialize, AnchorDeserialize)]),
@@ -147,7 +154,7 @@ pub fn convert_idl_type_def_to_ts(
         }
     };
 
-    let repr = if let Some(repr) = &ty_def.repr {
+    let repr = ty_def.repr.as_ref().map(|repr| {
         let kind = match repr {
             IdlRepr::Rust(_) => "Rust",
             IdlRepr::C(_) => "C",
@@ -158,37 +165,29 @@ pub fn convert_idl_type_def_to_ts(
 
         let modifier = match repr {
             IdlRepr::Rust(modifier) | IdlRepr::C(modifier) => {
-                let packed = modifier.packed.then(|| quote!(packed)).unwrap_or_default();
+                let packed = modifier.packed.then_some(quote!(packed));
                 let align = modifier
                     .align
-                    .map(|align| quote!(align(#align)))
-                    .unwrap_or_default();
+                    .map(Literal::usize_unsuffixed)
+                    .map(|align| quote!(align(#align)));
 
-                if packed.is_empty() {
-                    align
-                } else if align.is_empty() {
-                    packed
-                } else {
-                    quote! { #packed, #align }
+                match (packed, align) {
+                    (None, None) => None,
+                    (Some(p), None) => Some(quote!(#p)),
+                    (None, Some(a)) => Some(quote!(#a)),
+                    (Some(p), Some(a)) => Some(quote!(#p, #a)),
                 }
             }
-            _ => quote!(),
-        };
-        let modifier = if modifier.is_empty() {
-            modifier
-        } else {
-            quote! { , #modifier }
-        };
-
+            _ => None,
+        }
+        .map(|m| quote!(, #m));
         quote! { #[repr(#kind #modifier)] }
-    } else {
-        quote!()
-    };
+    });
 
-    let ty = match &ty_def.ty {
+    match &ty_def.ty {
         IdlTypeDefTy::Struct { fields } => {
             let declare_struct = quote! { pub struct #name #generics };
-            handle_defined_fields(
+            let ty = handle_defined_fields(
                 fields.as_ref(),
                 || quote! { #declare_struct; },
                 |fields| {
@@ -204,12 +203,23 @@ pub fn convert_idl_type_def_to_ts(
                     }
                 },
                 |tys| {
-                    let tys = tys.iter().map(convert_idl_type_to_syn_type);
+                    let tys = tys
+                        .iter()
+                        .map(convert_idl_type_to_syn_type)
+                        .map(|ty| quote! { pub #ty });
+
                     quote! {
                         #declare_struct (#(#tys,)*);
                     }
                 },
-            )
+            );
+
+            quote! {
+                #docs
+                #attrs
+                #repr
+                #ty
+            }
         }
         IdlTypeDefTy::Enum { variants } => {
             let variants = variants.iter().map(|variant| {
@@ -239,6 +249,9 @@ pub fn convert_idl_type_def_to_ts(
             });
 
             quote! {
+                #docs
+                #attrs
+                #repr
                 pub enum #name #generics {
                     #(#variants,)*
                 }
@@ -246,15 +259,11 @@ pub fn convert_idl_type_def_to_ts(
         }
         IdlTypeDefTy::Type { alias } => {
             let alias = convert_idl_type_to_syn_type(alias);
-            quote! { pub type #name = #alias; }
+            quote! {
+                #docs
+                pub type #name = #alias;
+            }
         }
-    };
-
-    quote! {
-        #docs
-        #attrs
-        #repr
-        #ty
     }
 }
 

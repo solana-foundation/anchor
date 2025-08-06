@@ -496,10 +496,12 @@ pub fn gen_idl_type(
                 use crate::parser::context::CrateContext;
                 use quote::ToTokens;
 
-                let source_path = proc_macro2::Span::call_site().source_file().path();
-                let lib_path = find_path("lib.rs", &source_path).expect("lib.rs should exist");
+                // If no path was found, just return an empty path and let the find_path function handle it
+                let source_path = proc_macro2::Span::call_site()
+                    .local_file()
+                    .unwrap_or_default();
 
-                if let Ok(ctx) = CrateContext::parse(lib_path) {
+                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
                     let alias = ctx.type_aliases().find(|ty| ty.ident == name);
                     if let Some(alias) = alias {
@@ -583,17 +585,36 @@ pub fn gen_idl_type(
             if let Some(segment) = path.path.segments.last() {
                 if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                     for arg in &args.args {
-                        match arg {
+                        let generic = match arg {
+                            syn::GenericArgument::Const(c) => {
+                                quote! { #idl::IdlGenericArg::Const { value: #c.to_string() } }
+                            }
+                            // `MY_CONST` in `Foo<MY_CONST>` is parsed as `GenericArgument::Type`
+                            // instead of `GenericArgument::Const` because they're indistinguishable
+                            // syntactically, as mentioned in
+                            // https://github.com/dtolnay/syn/blob/bfa790b8e445dc67b7ab94d75adb1a92d6296c9a/src/path.rs#L113-L115
+                            //
+                            // As a workaround, we're manually checking to see if it *looks* like a
+                            // constant identifier to fix the issue mentioned in
+                            // https://github.com/coral-xyz/anchor/issues/3520
+                            syn::GenericArgument::Type(syn::Type::Path(p))
+                                if p.path
+                                    .segments
+                                    .last()
+                                    .map(|seg| seg.ident.to_string())
+                                    .map(|ident| ident.len() > 1 && ident == ident.to_uppercase())
+                                    .unwrap_or_default() =>
+                            {
+                                quote! { #idl::IdlGenericArg::Const { value: #p.to_string() } }
+                            }
                             syn::GenericArgument::Type(ty) => {
                                 let (ty, def) = gen_idl_type(ty, generic_params)?;
-                                generics.push(quote! { #idl::IdlGenericArg::Type { ty: #ty } });
                                 defined.extend(def);
+                                quote! { #idl::IdlGenericArg::Type { ty: #ty } }
                             }
-                            syn::GenericArgument::Const(c) => generics.push(
-                                quote! { #idl::IdlGenericArg::Const { value: #c.to_string() } },
-                            ),
-                            _ => (),
-                        }
+                            _ => return Err(anyhow!("Unsupported generic argument: {arg:#?}")),
+                        };
+                        generics.push(generic);
                     }
                 }
             }

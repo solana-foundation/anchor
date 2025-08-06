@@ -1,28 +1,28 @@
+import { Commitment, PublicKey } from "@solana/web3.js";
 import { inflate } from "pako";
-import { PublicKey } from "@solana/web3.js";
-import Provider, { getProvider } from "../provider.js";
+import { BorshCoder, Coder } from "../coder/index.js";
 import {
   Idl,
-  idlAddress,
-  decodeIdlAccount,
   IdlInstruction,
   convertIdlToCamelCase,
+  decodeIdlAccount,
+  idlAddress,
 } from "../idl.js";
-import { Coder, BorshCoder } from "../coder/index.js";
-import NamespaceFactory, {
-  RpcNamespace,
-  InstructionNamespace,
-  TransactionNamespace,
-  AccountNamespace,
-  SimulateNamespace,
-  MethodsNamespace,
-  ViewNamespace,
-  IdlEvents,
-} from "./namespace/index.js";
+import Provider, { getProvider } from "../provider.js";
 import { utf8 } from "../utils/bytes/index.js";
-import { EventManager } from "./event.js";
-import { Address, translateAddress } from "./common.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
+import { Address, translateAddress } from "./common.js";
+import { EventManager } from "./event.js";
+import NamespaceFactory, {
+  AccountNamespace,
+  IdlEvents,
+  InstructionNamespace,
+  MethodsNamespace,
+  RpcNamespace,
+  SimulateNamespace,
+  TransactionNamespace,
+  ViewNamespace,
+} from "./namespace/index.js";
 
 export * from "./common.js";
 export * from "./context.js";
@@ -279,27 +279,25 @@ export class Program<IDL extends Idl = Idl> {
    *                          public keys of missing accounts when building instructions
    */
   public constructor(
-    idl: IDL,
+    idl: any,
     provider: Provider = getProvider(),
     coder?: Coder,
     getCustomResolver?: (
       instruction: IdlInstruction
     ) => CustomAccountResolver<IDL> | undefined
   ) {
-    const camelCasedIdl = convertIdlToCamelCase(idl);
-
     // Fields.
-    this._idl = camelCasedIdl;
+    this._idl = convertIdlToCamelCase(idl);
     this._rawIdl = idl;
     this._provider = provider;
     this._programId = translateAddress(idl.address);
-    this._coder = coder ?? new BorshCoder(camelCasedIdl);
+    this._coder = coder ?? new BorshCoder(this._idl);
     this._events = new EventManager(this._programId, provider, this._coder);
 
     // Dynamic namespaces.
     const [rpc, instruction, transaction, account, simulate, methods, views] =
       NamespaceFactory.build(
-        camelCasedIdl,
+        this._idl,
         this._coder,
         this._programId,
         provider,
@@ -377,9 +375,10 @@ export class Program<IDL extends Idl = Idl> {
       event: IdlEvents<IDL>[E],
       slot: number,
       signature: string
-    ) => void
+    ) => void,
+    commitment?: Commitment
   ): number {
-    return this._events.addEventListener(eventName, callback);
+    return this._events.addEventListener(eventName, callback, commitment);
   }
 
   /**

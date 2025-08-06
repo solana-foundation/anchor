@@ -1,6 +1,6 @@
 use crate::accounts_codegen::constraints::OptionalCheckScope;
 use crate::codegen::accounts::{generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct};
+use crate::{AccountField, AccountsStruct, Ty};
 use quote::quote;
 
 // Generates the `Exit` trait implementation.
@@ -46,9 +46,16 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 } else {
                     match f.constraints.is_mutable() {
                         false => quote! {},
-                        true => quote! {
-                            anchor_lang::AccountsExit::exit(&self.#ident, program_id)
-                                .map_err(|e| e.with_account_name(#name_str))?;
+                        true => match &f.ty {
+                            // `LazyAccount` is special because it has a custom `exit` method.
+                            Ty::LazyAccount(_) => quote! {
+                                self.#ident.exit(program_id)
+                                    .map_err(|e| e.with_account_name(#name_str))?;
+                            },
+                            _ => quote! {
+                                anchor_lang::AccountsExit::exit(&self.#ident, program_id)
+                                    .map_err(|e| e.with_account_name(#name_str))?;
+                            },
                         },
                     }
                 }
