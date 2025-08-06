@@ -36,7 +36,7 @@ pub fn authorize<'info>(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::solana_invoke::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -62,7 +62,7 @@ pub fn withdraw<'info>(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::solana_invoke::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -70,7 +70,7 @@ pub fn deactivate_stake<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, DeactivateStake<'info>>,
 ) -> Result<()> {
     let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.stake, ctx.accounts.clock, ctx.accounts.staker],
         ctx.signer_seeds,

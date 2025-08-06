@@ -15,7 +15,7 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
         ctx.accounts.mint.key,
         ctx.accounts.token_program.key,
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,
@@ -39,7 +39,7 @@ pub fn create_idempotent<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.token_program.key,
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,

@@ -14,7 +14,7 @@ pub fn interest_bearing_mint_initialize<'info>(
         rate_authority,
         rate,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -39,7 +39,7 @@ pub fn interest_bearing_mint_update_rate<'info>(
         &[],
         rate,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

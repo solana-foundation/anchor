@@ -50,7 +50,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             }
                         };
                         let mut acc_infos = ctx.to_account_infos();
-                        anchor_lang::solana_program::program::invoke_signed(
+                        anchor_lang::solana_invoke::invoke_signed(
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,

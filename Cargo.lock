@@ -263,6 +263,7 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "bytemuck",
+ "solana-invoke",
  "solana-program",
  "thiserror",
 ]
@@ -4051,6 +4052,15 @@ dependencies = [
  "solana-define-syscall",
  "solana-pubkey",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "solana-invoke"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa261b38140f228b972b3f3a1d3f6c279ea1bd165300107f99c1d6aa82631d78"
+dependencies = [
+ "solana-program",
 ]
 
 [[package]]

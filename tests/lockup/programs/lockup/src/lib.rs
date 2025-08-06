@@ -3,7 +3,7 @@
 
 use anchor_lang::accounts::state::ProgramState;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program;
+use anchor_lang::solana_invoke;
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_spl::token::{self, TokenAccount, Transfer};
 
@@ -476,7 +476,7 @@ pub fn whitelist_relay_cpi<'info>(
     let signer = &[&seeds[..]];
     let mut accounts = transfer.to_account_infos();
     accounts.extend_from_slice(&remaining_accounts);
-    solana_program::program::invoke_signed(&relay_instruction, &accounts, signer)
+    solana_invoke::invoke_signed(&relay_instruction, &accounts, signer)
         .map_err(Into::into)
 }
 

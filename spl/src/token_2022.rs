@@ -23,7 +23,7 @@ pub fn transfer<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.from, ctx.accounts.to, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -46,7 +46,7 @@ pub fn transfer_checked<'info>(
         amount,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.from,
@@ -71,7 +71,7 @@ pub fn mint_to<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.to, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -110,7 +110,7 @@ pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64)
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.from, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -152,7 +152,7 @@ pub fn approve<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.to,
@@ -199,7 +199,7 @@ pub fn revoke<'info>(ctx: CpiContext<'_, '_, '_, 'info, Revoke<'info>>) -> Resul
         ctx.accounts.authority.key,
         &[],
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.source, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -216,7 +216,7 @@ pub fn initialize_account<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
     )?;
-    anchor_lang::solana_program::program::invoke(
+    anchor_lang::solana_invoke::invoke(
         &ix,
         &[
             ctx.accounts.account,
@@ -237,7 +237,7 @@ pub fn initialize_account3<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account, ctx.accounts.mint])
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.account, ctx.accounts.mint])
         .map_err(Into::into)
 }
 
@@ -249,7 +249,7 @@ pub fn close_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, CloseAccount<'inf
         ctx.accounts.authority.key,
         &[], // TODO: support multisig
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -271,7 +271,7 @@ pub fn freeze_account<'info>(
         ctx.accounts.authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -291,7 +291,7 @@ pub fn thaw_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, ThawAccount<'info>
         ctx.accounts.authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -316,7 +316,7 @@ pub fn initialize_mint<'info>(
         freeze_authority,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint, ctx.accounts.rent])
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.mint, ctx.accounts.rent])
         .map_err(Into::into)
 }
 
@@ -333,7 +333,7 @@ pub fn initialize_mint2<'info>(
         freeze_authority,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint]).map_err(Into::into)
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.mint]).map_err(Into::into)
 }
 
 pub fn set_authority<'info>(
@@ -349,7 +349,7 @@ pub fn set_authority<'info>(
         ctx.accounts.current_authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.account_or_mint, ctx.accounts.current_authority],
         ctx.signer_seeds,
@@ -359,7 +359,7 @@ pub fn set_authority<'info>(
 
 pub fn sync_native<'info>(ctx: CpiContext<'_, '_, '_, 'info, SyncNative<'info>>) -> Result<()> {
     let ix = spl_token_2022::instruction::sync_native(ctx.program.key, ctx.accounts.account.key)?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account]).map_err(Into::into)
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.account]).map_err(Into::into)
 }
 
 pub fn get_account_data_size<'info>(
@@ -371,7 +371,7 @@ pub fn get_account_data_size<'info>(
         ctx.accounts.mint.key,
         extension_types,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint])?;
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.mint])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
@@ -395,7 +395,7 @@ pub fn initialize_mint_close_authority<'info>(
         ctx.accounts.mint.key,
         close_authority,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint]).map_err(Into::into)
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.mint]).map_err(Into::into)
 }
 
 pub fn initialize_immutable_owner<'info>(
@@ -405,7 +405,7 @@ pub fn initialize_immutable_owner<'info>(
         ctx.program.key,
         ctx.accounts.account.key,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account]).map_err(Into::into)
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.account]).map_err(Into::into)
 }
 
 pub fn amount_to_ui_amount<'info>(
@@ -417,7 +417,7 @@ pub fn amount_to_ui_amount<'info>(
         ctx.accounts.account.key,
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])?;
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.account])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
@@ -441,7 +441,7 @@ pub fn ui_amount_to_amount<'info>(
         ctx.accounts.account.key,
         ui_amount,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])?;
+    anchor_lang::solana_invoke::invoke(&ix, &[ctx.accounts.account])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
