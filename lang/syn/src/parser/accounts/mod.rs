@@ -94,14 +94,11 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         .collect();
 
     for field in &init_fields {
-        match &field.ty {
-            Ty::SystemAccount => {
-                return Err(ParseError::new(
-                    field.ident.span(),
-                    "cannot use `init` on a SystemAccount; Remove `init` or change the type to `UncheckedAccount`.",
-                ));
-            }
-            _ => {},
+        if matches!(field.ty, Ty::SystemAccount) {
+            return Err(ParseError::new(
+                field.ident.span(),
+                "cannot use `init` on a SystemAccount; Remove `init` or change the type to `UncheckedAccount`.",
+            ));
         }
     }
 
