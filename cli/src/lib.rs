@@ -2131,12 +2131,6 @@ fn idl_fetch(
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
         .args(&args)
-        .stdout(if out.is_some() {
-            Stdio::inherit()
-        } else {
-            Stdio::piped()
-        })
-        .stderr(Stdio::inherit())
         .status()?;
 
     if !status.success() {
