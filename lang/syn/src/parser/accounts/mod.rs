@@ -97,7 +97,11 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         if matches!(field.ty, Ty::SystemAccount) {
             return Err(ParseError::new(
                 field.ident.span(),
-                "cannot use `init` on a SystemAccount; Remove `init` or change the type to `UncheckedAccount`.",
+                "Cannot use `init` on a `SystemAccount`. \
+                    The `SystemAccount` type represents an already-existing account \
+                    owned by the system program and cannot be initialized. \
+                    If you need to create a new account, use a more specific account type \
+                    or `UncheckedAccount` and perform manual initialization instead.",
             ));
         }
     }
