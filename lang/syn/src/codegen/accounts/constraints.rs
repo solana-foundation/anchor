@@ -495,8 +495,12 @@ fn generate_constraint_init_group(
     let account_ref = generate_account_ref(f);
 
     // Program id to use for PDA derivation during init.
-    let program_id_expr = if let Some(prog) = &c.program_seed {
-        quote! { &(#prog).key() }
+    let program_id_expr = if let Some(seeds_group) = &c.seeds {
+        if let Some(prog) = &seeds_group.program_seed {
+            quote! { &(#prog).key() }
+        } else {
+            quote! { __program_id }
+        }
     } else {
         quote! { __program_id }
     };
@@ -505,14 +509,15 @@ fn generate_constraint_init_group(
     let (find_pda, seeds_with_bump) = match &c.seeds {
         None => (quote! {}, quote! {}),
         Some(c) => match &c.seeds {
-            SeedsExpr::List(_) => {
-                let seeds = &mut c.seeds.clone();
+            SeedsExpr::List(seeds_list) => {
+                let mut seeds = seeds_list.clone();
 
                 if seeds.trailing_punct() {
                     if let Some(pair) = seeds.pop() {
                         seeds.push_value(pair.into_value());
                     }
                 }
+
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 let validate_pda = if c.bump.is_some() {
