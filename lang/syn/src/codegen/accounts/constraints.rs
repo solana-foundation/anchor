@@ -1206,18 +1206,15 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                     }
                 }
 
-                let bump_tok = if f.is_optional {
-                    quote!(Some(__bump))
-                } else {
-                    quote!(__bump)
-                };
+                if seeds.is_empty() {
+                    return quote! {};
+                }
 
                 quote! {
-                    let (__pda_address, __bump) = Pubkey::find_program_address(
+                    let (__pda_address, _) = Pubkey::find_program_address(
                         &[ #seeds ],
                         #program_id_expr,
                     );
-                    __bumps.#name = #bump_tok;
 
                     if #name.key() != __pda_address {
                         return Err(
@@ -1233,28 +1230,23 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // Arbitrary expr that yields `&[&[u8]]`
             SeedsExpr::Expr(expr) => {
-                let bump_tok = if f.is_optional {
-                    quote!(Some(__bump))
-                } else {
-                    quote!(__bump)
-                };
-
                 quote! {
                     let __user_seeds: &[&[u8]] = #expr;
 
-                    // Call with user seeds as-is; no bump appended needed for validation.
-                    let (__pda_address, __bump) =
-                        Pubkey::find_program_address(__user_seeds, #program_id_expr);
-                    __bumps.#name = #bump_tok;
+                    // If it ends up empty, skip
+                    if !__user_seeds.is_empty() {
+                        let (__pda_address, _) =
+                            Pubkey::find_program_address(__user_seeds, #program_id_expr);
 
-                    if #name.key() != __pda_address {
-                        return Err(
-                            anchor_lang::error::Error::from(
-                                anchor_lang::error::ErrorCode::ConstraintSeeds
-                            )
-                            .with_account_name(#name_str)
-                            .with_pubkeys((#name.key(), __pda_address))
-                        );
+                        if #name.key() != __pda_address {
+                            return Err(
+                                anchor_lang::error::Error::from(
+                                    anchor_lang::error::ErrorCode::ConstraintSeeds
+                                )
+                                .with_account_name(#name_str)
+                                .with_pubkeys((#name.key(), __pda_address))
+                            );
+                        }
                     }
                 }
             }
