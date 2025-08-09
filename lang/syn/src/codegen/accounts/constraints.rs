@@ -507,7 +507,7 @@ fn generate_constraint_init_group(
 
     // PDA bump seeds.
     let (find_pda, seeds_with_bump) = match &c.seeds {
-        None => (quote! {}, quote! {}),
+        None => (quote! {}, quote! { &[] as &[&[u8]] }),
         Some(c) => match &c.seeds {
             SeedsExpr::List(seeds_list) => {
                 let mut seeds = seeds_list.clone();
