@@ -519,7 +519,14 @@ fn generate_constraint_init_group(
                 }
 
                 if seeds.is_empty() {
-                    (quote! {}, quote! {});
+                    // No seeds: no PDA derivation, no bump, and an empty signer slice.
+                    (
+                        quote! {
+                            let __signer_seeds: &[&[u8]] = &[];
+                        },
+                        // Use a slice expression so we can safely call `.len()` later.
+                        quote! { &__signer_seeds[..] },
+                    );
                 }
 
                 let validate_pda = if c.bump.is_some() {
@@ -583,19 +590,13 @@ fn generate_constraint_init_group(
                     quote! {
                         let __seeds_slice: &[&[u8]] = #expr;
 
-                        // If empty, relax to a no-op: no PDA/bump; still expose an empty signer slice.
-                        if __seeds_slice.is_empty() {
-                            let __signer_seeds: &[&[u8]] = &[];
+                        // Build a Vec so it’s visible after the conditional.
+                        let __signer_seeds: ::std::vec::Vec<&[u8]> = if __seeds_slice.is_empty() {
+                            ::std::vec::Vec::new()
                         } else {
                             let (__pda_address, __bump) =
                                 Pubkey::find_program_address(__seeds_slice, #program_id_expr);
                             __bumps.#field = #bump_tok;
-
-                            /* build signer slice at run-time */
-                            let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> =
-                                __seeds_slice.to_vec();
-                            __signer_seeds_vec.push(&[__bump][..]);
-                            let __signer_seeds = __signer_seeds_vec;
 
                             if #field.key() != __pda_address {
                                 return Err(anchor_lang::error::Error::from(
@@ -603,8 +604,13 @@ fn generate_constraint_init_group(
                                 ).with_account_name(#name_str)
                                 .with_pubkeys((#field.key(), __pda_address)));
                             }
-                        }
+
+                            let mut v: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
+                            v.push(&[__bump][..]);
+                            v
+                        };
                     },
+                    // Slice view for downstream CPIs and length checks.
                     quote! { &__signer_seeds[..] },
                 )
             }
@@ -1708,7 +1714,13 @@ fn generate_create_account(
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.to_account_info(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
+
+            // Build the outer signer slice only if there’s at least one seed set.
+            let __inner_signer_seeds: &[&[u8]] = #seeds_with_nonce;
+            let __signers: &[&[&[u8]]] =
+                if __inner_signer_seeds.len() == 0 { &[] } else { &[__inner_signer_seeds] };
+
+            anchor_lang::system_program::create_account(cpi_context.with_signer(__signers), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1729,13 +1741,19 @@ fn generate_create_account(
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.to_account_info(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
+            let __inner_signer_seeds: &[&[u8]] = #seeds_with_nonce;
+            let __signers: &[&[&[u8]]] =
+                if __inner_signer_seeds.len() == 0 { &[] } else { &[__inner_signer_seeds] };
+            anchor_lang::system_program::allocate(cpi_context.with_signer(__signers), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.to_account_info(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
+            let __inner_signer_seeds: &[&[u8]] = #seeds_with_nonce;
+            let __signers: &[&[&[u8]]] =
+                if __inner_signer_seeds.len() == 0 { &[] } else { &[__inner_signer_seeds] };
+            anchor_lang::system_program::assign(cpi_context.with_signer(__signers), #owner)?;
         }
     }
 }
