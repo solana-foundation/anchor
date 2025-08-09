@@ -519,7 +519,7 @@ fn generate_constraint_init_group(
                 }
 
                 if seeds.is_empty() {
-                    return (quote! {}, quote! {});
+                    (quote! {}, quote! {});
                 }
 
                 let validate_pda = if c.bump.is_some() {

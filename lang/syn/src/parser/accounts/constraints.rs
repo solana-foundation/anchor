@@ -373,11 +373,6 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     SeedsExpr::Expr(Box::new(stream.parse()?))
                 };
 
-                // Forbids `seeds = []` as it produces an invalid PDA.
-                if matches!(&seeds_expr, SeedsExpr::List(list) if list.is_empty()) {
-                    return Err(ParseError::new(span, "`seeds` list may not be empty"));
-                }
-
                 ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
@@ -734,7 +729,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     "payer must be provided when creating a program derived address",
                 ));
             }
-            if self.bump.is_none() {
+            // Require bump unless the seeds are a literal empty list.
+            let literal_empty = matches!(&i.seeds, SeedsExpr::List(list) if list.is_empty());
+            if self.bump.is_none() && !literal_empty {
                 return Err(ParseError::new(
                     i.span(),
                     "bump must be provided with seeds",
@@ -829,9 +826,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         let seeds = seeds.map(|c| ConstraintSeedsGroup {
             is_init,
             seeds: c.seeds.clone(),
-            bump: into_inner!(bump)
-                .map(|b| b.bump)
-                .expect("bump must be provided with seeds"),
+            bump: into_inner!(bump).and_then(|b| b.bump),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
         let associated_token = match (
