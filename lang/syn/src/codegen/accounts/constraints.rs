@@ -518,7 +518,9 @@ fn generate_constraint_init_group(
                     }
                 }
 
-                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
+                if seeds.is_empty() {
+                    return (quote! {}, quote! {});
+                }
 
                 let validate_pda = if c.bump.is_some() {
                     let b = c.bump.as_ref().unwrap();
@@ -527,13 +529,13 @@ fn generate_constraint_init_group(
                             return Err(anchor_lang::error::Error::from(
                                 anchor_lang::error::ErrorCode::ConstraintSeeds
                             ).with_account_name(#name_str)
-                             .with_pubkeys((#field.key(), __pda_address)));
+                            .with_pubkeys((#field.key(), __pda_address)));
                         }
                         if __bump != #b {
                             return Err(anchor_lang::error::Error::from(
                                 anchor_lang::error::ErrorCode::ConstraintSeeds
                             ).with_account_name(#name_str)
-                             .with_values((__bump, #b)));
+                            .with_values((__bump, #b)));
                         }
                     }
                 } else {
@@ -542,7 +544,7 @@ fn generate_constraint_init_group(
                             return Err(anchor_lang::error::Error::from(
                                 anchor_lang::error::ErrorCode::ConstraintSeeds
                             ).with_account_name(#name_str)
-                             .with_pubkeys((#field.key(), __pda_address)));
+                            .with_pubkeys((#field.key(), __pda_address)));
                         }
                     }
                 };
@@ -556,7 +558,7 @@ fn generate_constraint_init_group(
                 (
                     quote! {
                         let (__pda_address, __bump) = Pubkey::find_program_address(
-                            &[#maybe_seeds_plus_comma],
+                            &[ #seeds, ],
                             #program_id_expr,
                         );
                         __bumps.#field = #bump_tok;
@@ -564,7 +566,7 @@ fn generate_constraint_init_group(
                     },
                     quote! {
                         &[
-                            #maybe_seeds_plus_comma
+                            #seeds,
                             &[__bump][..]
                         ][..]
                     },
@@ -580,21 +582,27 @@ fn generate_constraint_init_group(
                 (
                     quote! {
                         let __seeds_slice: &[&[u8]] = #expr;
-                        let (__pda_address, __bump) =
-                            Pubkey::find_program_address(__seeds_slice, #program_id_expr);
-                        __bumps.#field = #bump_tok;
 
-                        /* build signer slice at run‑time */
-                        let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> =
-                            __seeds_slice.to_vec();
-                        __signer_seeds_vec.push(&[__bump][..]);
-                        let __signer_seeds = __signer_seeds_vec;
+                        // If empty, relax to a no-op: no PDA/bump; still expose an empty signer slice.
+                        if __seeds_slice.is_empty() {
+                            let __signer_seeds: &[&[u8]] = &[];
+                        } else {
+                            let (__pda_address, __bump) =
+                                Pubkey::find_program_address(__seeds_slice, #program_id_expr);
+                            __bumps.#field = #bump_tok;
 
-                        if #field.key() != __pda_address {
-                            return Err(anchor_lang::error::Error::from(
-                                anchor_lang::error::ErrorCode::ConstraintSeeds
-                            ).with_account_name(#name_str)
-                             .with_pubkeys((#field.key(), __pda_address)));
+                            /* build signer slice at run-time */
+                            let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> =
+                                __seeds_slice.to_vec();
+                            __signer_seeds_vec.push(&[__bump][..]);
+                            let __signer_seeds = __signer_seeds_vec;
+
+                            if #field.key() != __pda_address {
+                                return Err(anchor_lang::error::Error::from(
+                                    anchor_lang::error::ErrorCode::ConstraintSeeds
+                                ).with_account_name(#name_str)
+                                .with_pubkeys((#field.key(), __pda_address)));
+                            }
                         }
                     },
                     quote! { &__signer_seeds[..] },
