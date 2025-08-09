@@ -494,6 +494,13 @@ fn generate_constraint_init_group(
 
     let account_ref = generate_account_ref(f);
 
+    // Program id to use for PDA derivation during init.
+    let program_id_expr = if let Some(prog) = &c.program_seed {
+        quote! { &(#prog).key() }
+    } else {
+        quote! { __program_id }
+    };
+
     // PDA bump seeds.
     let (find_pda, seeds_with_bump) = match &c.seeds {
         None => (quote! {}, quote! {}),
@@ -501,10 +508,11 @@ fn generate_constraint_init_group(
             SeedsExpr::List(_) => {
                 let seeds = &mut c.seeds.clone();
 
-                if let Some(pair) = seeds.pop() {
-                    seeds.push_value(pair.into_value());
+                if seeds.trailing_punct() {
+                    if let Some(pair) = seeds.pop() {
+                        seeds.push_value(pair.into_value());
+                    }
                 }
-
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 let validate_pda = if c.bump.is_some() {
@@ -544,7 +552,7 @@ fn generate_constraint_init_group(
                     quote! {
                         let (__pda_address, __bump) = Pubkey::find_program_address(
                             &[#maybe_seeds_plus_comma],
-                            __program_id,
+                            #program_id_expr,
                         );
                         __bumps.#field = #bump_tok;
                         #validate_pda
@@ -568,7 +576,7 @@ fn generate_constraint_init_group(
                     quote! {
                         let __seeds_slice: &[&[u8]] = #expr;
                         let (__pda_address, __bump) =
-                            Pubkey::find_program_address(__seeds_slice, __program_id);
+                            Pubkey::find_program_address(__seeds_slice, #program_id_expr);
                         __bumps.#field = #bump_tok;
 
                         /* build signer slice at run‑time */
@@ -1175,7 +1183,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         // - if `seeds::program = <prog>` is present, use &<prog>.key()
         // - otherwise use `__program_id` (already an &Pubkey in generated code)
         let program_id_expr = if let Some(prog) = &c.program_seed {
-            quote! { &#prog }
+            quote! { &(#prog).key() }
         } else {
             quote! { __program_id }
         };
@@ -1185,10 +1193,12 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             SeedsExpr::List(seeds_list) => {
                 // Copy and trim a trailing comma if present.
                 let mut seeds = seeds_list.clone();
-                if let Some(pair) = seeds.pop() {
-                    // If there was a trailing comma, pop() returns the (value, comma) pair.
-                    // Push the value back without the comma.
-                    seeds.push_value(pair.into_value());
+                if seeds.trailing_punct() {
+                    if let Some(pair) = seeds.pop() {
+                        // If there was a trailing comma, pop() returns the (value, comma) pair.
+                        // Push the value back without the comma.
+                        seeds.push_value(pair.into_value());
+                    }
                 }
 
                 let bump_tok = if f.is_optional {
@@ -1227,7 +1237,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                 quote! {
                     let __user_seeds: &[&[u8]] = #expr;
 
-                    // Call with user seeds as-is with no bump appended needed for validation.
+                    // Call with user seeds as-is; no bump appended needed for validation.
                     let (__pda_address, __bump) =
                         Pubkey::find_program_address(__user_seeds, #program_id_expr);
                     __bumps.#name = #bump_tok;
