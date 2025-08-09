@@ -1171,21 +1171,32 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let name = &f.ident;
         let name_str = name.to_string();
 
-        match &c.seeds {
-            // Literal list
-            SeedsExpr::List(mut seeds) => {
-                // Strip trailing comma, if present.
-                if seeds.trailing_punct() {
-                    seeds.pop_punct();
-                }
+        // Choose the program id used for derivation:
+        // - if `seeds::program = <prog>` is present, use &<prog>.key()
+        // - otherwise use `__program_id` (already an &Pubkey in generated code)
+        let program_id_expr = if let Some(prog) = &c.program_seed {
+            quote! { &#prog }
+        } else {
+            quote! { __program_id }
+        };
 
-                let maybe_seeds = quote! { #seeds, };
-                let bump_tok    = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
+        match &c.seeds {
+            // Literal list: `seeds = [ ... ]`
+            SeedsExpr::List(seeds_list) => {
+                // Copy and trim a trailing comma if present.
+                let mut seeds = seeds_list.clone();
+                if let Some(pair) = seeds.pop() {
+                    // If there was a trailing comma, pop() returns the (value, comma) pair.
+                    // Push the value back without the comma.
+                    seeds.push_value(pair.into_value());
+                }
+                
+                let bump_tok = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
 
                 quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
-                        &[ #maybe_seeds ],
-                        &#deriving_program_id,
+                        &[ #seeds ],
+                        #program_id_expr,
                     );
                     __bumps.#name = #bump_tok;
 
@@ -1203,18 +1214,15 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // Arbitrary expr that yields `&[&[u8]]`
             SeedsExpr::Expr(expr) => {
-                // `Vec` keeps the code simple; 1 allocation, then push the bump.
+                let bump_tok = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
+
                 quote! {
                     let __user_seeds: &[&[u8]] = #expr;
-                    let mut __seeds_vec: ::std::vec::Vec<&[u8]> =
-                        Vec::with_capacity(__user_seeds.len() + 1);
 
-                    __seeds_vec.extend_from_slice(__user_seeds);
-                    __seeds_vec.push(&[__bump][..]);
-
+                    // Call with user seeds as-is with no bump appended needed for validation.
                     let (__pda_address, __bump) =
-                        Pubkey::find_program_address(&__seeds_vec, &#deriving_program_id);
-                    __bumps.#name = if #f.is_optional { Some(__bump) } else { __bump };
+                        Pubkey::find_program_address(__user_seeds, #program_id_expr);
+                    __bumps.#name = #bump_tok;
 
                     if #name.key() != __pda_address {
                         return Err(
