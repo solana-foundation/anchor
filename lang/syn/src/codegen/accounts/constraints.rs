@@ -1171,103 +1171,61 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let name = &f.ident;
         let name_str = name.to_string();
 
-        let deriving_program_id = c
-            .program_seed
-            .clone()
-            // If they specified a seeds::program to use when deriving the PDA, use it.
-            .map(|program_id| quote! { #program_id.key() })
-            // Otherwise fall back to the current program's program_id.
-            .unwrap_or(quote! { __program_id });
-        // Convenience: how we store the bump so the caller can access it later.
-        let bump_store = if f.is_optional {
-            quote!(Some(__bump))
-        } else {
-            quote!(__bump)
-        };
+        match &c.seeds {
+            // Literal list
+            SeedsExpr::List(mut seeds) => {
+                // Strip trailing comma, if present.
+                if seeds.trailing_punct() {
+                    seeds.pop_punct();
+                }
 
-        if let SeedsExpr::List(list) = &c.seeds {
-            // Work on a *mutable* clone so we can pop / push safely.
-            let mut seeds = list.clone();
+                let maybe_seeds = quote! { #seeds, };
+                let bump_tok    = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
 
-            // If the list ends with a trailing comma, `pop()` returns `Pair::Punct`
-            // which we need to turn back into a value before pushing it again.
-            if let Some(pair) = seeds.pop() {
-                seeds.push_value(pair.into_value());
-            }
-
-            let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
-
-            // How we obtain / validate the PDA depends on whether the user gave an
-            // explicit bump inside the attribute (`bump = <expr>`).
-            let define_pda = match &c.bump {
-                // Bump **not** supplied: use `find_program_address`.
-                None => quote! {
+                quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
-                        &[ #maybe_seeds_plus_comma ],
+                        &[ #maybe_seeds ],
                         &#deriving_program_id,
                     );
-                    __bumps.#name = #bump_store;
-                },
+                    __bumps.#name = #bump_tok;
 
-                // Bump supplied: use `create_program_address`.
-                Some(b) => quote! {
-                    let __pda_address = Pubkey::create_program_address(
-                        &[ #maybe_seeds_plus_comma &[#b][..] ],
-                        &#deriving_program_id,
-                    ).map_err(|_| anchor_lang::error::Error::from(
-                        anchor_lang::error::ErrorCode::ConstraintSeeds
-                    ).with_account_name(#name_str))?;
-                },
-            };
-
-            return quote! {
-                #define_pda
-
-                if #name.key() != __pda_address {
-                    return Err(anchor_lang::error::Error::from(
-                        anchor_lang::error::ErrorCode::ConstraintSeeds
-                    ).with_account_name(#name_str)
-                     .with_pubkeys((#name.key(), __pda_address)));
+                    if #name.key() != __pda_address {
+                        return Err(
+                            anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintSeeds
+                            )
+                            .with_account_name(#name_str)
+                            .with_pubkeys((#name.key(), __pda_address))
+                        );
+                    }
                 }
-            };
-        }
+            }
 
-        let expr = match &c.seeds {
-            SeedsExpr::Expr(e) => e, // The user‑supplied expression.
-            _ => unreachable!("handled list case above"),
-        };
+            // Arbitrary expr that yields `&[&[u8]]`
+            SeedsExpr::Expr(expr) => {
+                // `Vec` keeps the code simple; 1 allocation, then push the bump.
+                quote! {
+                    let __user_seeds: &[&[u8]] = #expr;
+                    let mut __seeds_vec: ::std::vec::Vec<&[u8]> =
+                        Vec::with_capacity(__user_seeds.len() + 1);
 
-        // Build the PDA and (when needed) append the bump to create the signer
-        // slice used by downstream CPI helper functions.
-        let define_pda = match &c.bump {
-            // Bump not supplied
-            None => quote! {
-                let __seeds_slice: &[&[u8]] = #expr;
-                let (__pda_address, __bump) =
-                    Pubkey::find_program_address(__seeds_slice, &#deriving_program_id);
-                __bumps.#name = #bump_store;
-            },
+                    __seeds_vec.extend_from_slice(__user_seeds);
+                    __seeds_vec.push(&[__bump][..]);
 
-            // Bump supplied.
-            Some(b) => quote! {
-                // Copy into a Vec so we can push the provided bump.
-                let mut __seeds_vec: ::std::vec::Vec<&[u8]> = #expr.to_vec();
-                __seeds_vec.push(&[#b][..]);
-                let __pda_address = Pubkey::create_program_address(
-                    &__seeds_vec[..],
-                    &#deriving_program_id,
-                ).map_err(|_| anchor_lang::error::Error::from(
-                    anchor_lang::error::ErrorCode::ConstraintSeeds
-                ).with_account_name(#name_str))?;
-            },
-        };
-        quote! {
-            // Define the PDA.
-            #define_pda
+                    let (__pda_address, __bump) =
+                        Pubkey::find_program_address(&__seeds_vec, &#deriving_program_id);
+                    __bumps.#name = if #f.is_optional { Some(__bump) } else { __bump };
 
-            // Check it.
-            if #name.key() != __pda_address {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#name.key(), __pda_address)));
+                    if #name.key() != __pda_address {
+                        return Err(
+                            anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintSeeds
+                            )
+                            .with_account_name(#name_str)
+                            .with_pubkeys((#name.key(), __pda_address))
+                        );
+                    }
+                }
             }
         }
     }
