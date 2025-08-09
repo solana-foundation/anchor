@@ -373,6 +373,11 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     SeedsExpr::Expr(Box::new(stream.parse()?))
                 };
 
+                // Forbids `seeds = []` as it produces an invalid PDA.
+                if matches!(&seeds_expr, SeedsExpr::List(list) if list.is_empty()) {
+                    return Err(ParseError::new(span, "`seeds` list may not be empty"));
+                }
+
                 ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
