@@ -1190,8 +1190,12 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                     // Push the value back without the comma.
                     seeds.push_value(pair.into_value());
                 }
-                
-                let bump_tok = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
+
+                let bump_tok = if f.is_optional {
+                    quote!(Some(__bump))
+                } else {
+                    quote!(__bump)
+                };
 
                 quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
@@ -1214,7 +1218,11 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // Arbitrary expr that yields `&[&[u8]]`
             SeedsExpr::Expr(expr) => {
-                let bump_tok = if f.is_optional { quote!(Some(__bump)) } else { quote!(__bump) };
+                let bump_tok = if f.is_optional {
+                    quote!(Some(__bump))
+                } else {
+                    quote!(__bump)
+                };
 
                 quote! {
                     let __user_seeds: &[&[u8]] = #expr;
