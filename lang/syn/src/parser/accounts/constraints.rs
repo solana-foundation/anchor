@@ -1,6 +1,6 @@
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{bracketed, Token};
+use syn::{bracketed, token, Expr, Ident, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
@@ -364,14 +364,16 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     .span()
                     .join(stream.span())
                     .unwrap_or_else(|| ident.span());
-                let seeds;
-                let bracket = bracketed!(seeds in stream);
-                ConstraintToken::Seeds(Context::new(
-                    span.join(bracket.span).unwrap_or(span),
-                    ConstraintSeeds {
-                        seeds: seeds.parse_terminated(Expr::parse)?,
-                    },
-                ))
+
+                let seeds_expr = if stream.peek(token::Bracket) {
+                    let content;
+                    let _bracket = bracketed!(content in stream);
+                    SeedsExpr::List(content.parse_terminated(Expr::parse)?)
+                } else {
+                    SeedsExpr::Expr(Box::new(stream.parse()?))
+                };
+
+                ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
         "realloc" => {
@@ -727,7 +729,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     "payer must be provided when creating a program derived address",
                 ));
             }
-            if self.bump.is_none() {
+            // Require bump unless the seeds are a literal empty list.
+            let literal_empty = matches!(&i.seeds, SeedsExpr::List(list) if list.is_empty());
+            if self.bump.is_none() && !literal_empty {
                 return Err(ParseError::new(
                     i.span(),
                     "bump must be provided with seeds",
@@ -822,9 +826,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         let seeds = seeds.map(|c| ConstraintSeedsGroup {
             is_init,
             seeds: c.seeds.clone(),
-            bump: into_inner!(bump)
-                .map(|b| b.bump)
-                .expect("bump must be provided with seeds"),
+            bump: into_inner!(bump).and_then(|b| b.bump),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
         let associated_token = match (
