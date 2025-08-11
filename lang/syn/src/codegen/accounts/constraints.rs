@@ -1250,9 +1250,11 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // Bump supplied.
             Some(b) => quote! {
-                // Copy into a Vec so we can push the provided bump.
-                let mut __seeds_vec: ::std::vec::Vec<&[u8]> = #expr.to_vec();
-                __seeds_vec.push(&[#b][..]);
+                // Build a Vec<&[u8]> by concatenating the existing seed slice with the bump as its own seed.
+                let __bump_bytes = [#b];
+                let __seeds_vec: ::std::vec::Vec<&[u8]> =
+                    [#expr, &[&__bump_bytes[..]]].concat();
+
                 let __pda_address = Pubkey::create_program_address(
                     &__seeds_vec[..],
                     &#deriving_program_id,
