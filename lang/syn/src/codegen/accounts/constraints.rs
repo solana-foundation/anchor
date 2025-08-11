@@ -1185,75 +1185,56 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             quote!(__bump)
         };
 
-        if let SeedsExpr::List(list) = &c.seeds {
-            // Work on a *mutable* clone so we can pop / push safely.
-            let mut seeds = list.clone();
+        // Build the PDA.
+        let define_pda = match (&c.seeds, &c.bump) {
+            // [list], no bump -> find_program_address + store __bump.
+            (SeedsExpr::List(list), None) => {
+                let mut seeds = list.clone();
+                if let Some(pair) = seeds.pop() {
+                    seeds.push_value(pair.into_value());
+                }
+                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
-            // If the list ends with a trailing comma, `pop()` returns `Pair::Punct`
-            // which we need to turn back into a value before pushing it again.
-            if let Some(pair) = seeds.pop() {
-                seeds.push_value(pair.into_value());
-            }
-
-            let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
-
-            // How we obtain / validate the PDA depends on whether the user gave an
-            // explicit bump inside the attribute (`bump = <expr>`).
-            let define_pda = match &c.bump {
-                // Bump **not** supplied: use `find_program_address`.
-                None => quote! {
+                quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
                         &[ #maybe_seeds_plus_comma ],
                         &#deriving_program_id,
                     );
                     __bumps.#name = #bump_store;
-                },
+                }
+            }
 
-                // Bump supplied: use `create_program_address`.
-                Some(b) => quote! {
+            // [list], explicit bump -> create_program_address.
+            (SeedsExpr::List(list), Some(b)) => {
+                let mut seeds = list.clone();
+                if let Some(pair) = seeds.pop() {
+                    seeds.push_value(pair.into_value());
+                }
+                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
+
+                quote! {
                     let __pda_address = Pubkey::create_program_address(
                         &[ #maybe_seeds_plus_comma &[#b][..] ],
                         &#deriving_program_id,
                     ).map_err(|_| anchor_lang::error::Error::from(
                         anchor_lang::error::ErrorCode::ConstraintSeeds
                     ).with_account_name(#name_str))?;
-                },
-            };
-
-            return quote! {
-                #define_pda
-
-                if #name.key() != __pda_address {
-                    return Err(anchor_lang::error::Error::from(
-                        anchor_lang::error::ErrorCode::ConstraintSeeds
-                    ).with_account_name(#name_str)
-                     .with_pubkeys((#name.key(), __pda_address)));
                 }
-            };
-        }
+            }
 
-        let expr = match &c.seeds {
-            SeedsExpr::Expr(e) => e, // The user‑supplied expression.
-            _ => unreachable!("handled list case above"),
-        };
-
-        // Build the PDA and (when needed) append the bump to create the signer
-        // slice used by downstream CPI helper functions.
-        let define_pda = match &c.bump {
-            // Bump not supplied
-            None => quote! {
+            // expr, no bump -> find_program_address + store __bump.
+            (SeedsExpr::Expr(expr), None) => quote! {
                 let __seeds_slice: &[&[u8]] = #expr;
                 let (__pda_address, __bump) =
                     Pubkey::find_program_address(__seeds_slice, &#deriving_program_id);
                 __bumps.#name = #bump_store;
             },
 
-            // Bump supplied.
-            Some(b) => quote! {
-                // Build a Vec<&[u8]> by concatenating the existing seed slice with the bump as its own seed.
+            // expr, explicit bump -> concat slice + bump, then create_program_address.
+            (SeedsExpr::Expr(expr), Some(b)) => quote! {
+                // Build a Vec<&[u8]> by concatenating the seed slice with the bump as its own seed.
                 let __bump_bytes = [#b];
-                let __seeds_vec: ::std::vec::Vec<&[u8]> =
-                    [#expr, &[&__bump_bytes[..]]].concat();
+                let __seeds_vec: ::std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
 
                 let __pda_address = Pubkey::create_program_address(
                     &__seeds_vec[..],
@@ -1263,6 +1244,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                 ).with_account_name(#name_str))?;
             },
         };
+
         quote! {
             // Define the PDA.
             #define_pda
