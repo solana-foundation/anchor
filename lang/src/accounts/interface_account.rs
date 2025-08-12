@@ -229,12 +229,14 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     /// Deserializes the given `info` into a `InterfaceAccount`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        T::check_owner(info.owner)?;
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Self::new(info, T::try_deserialize(&mut data)?))
+        // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
+        // accounts) that do not have Anchor discriminators. Because of that, we
+        // intentionally skip the Anchor discriminator check here and instead:
+        //
+        // 1) Validate program ownership via `T::check_owner(info.owner)?`
+        // 2) Deserialize without a discriminator by delegating to
+        //    `T::try_deserialize_unchecked`
+        Self::try_from_unchecked(info)
     }
 
     /// Deserializes the given `info` into a `InterfaceAccount` without checking
