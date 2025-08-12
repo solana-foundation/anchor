@@ -4214,7 +4214,7 @@ fn localnet(
 /// result assuming that a single run will only work with a single rust
 /// workspace.
 pub fn target_dir() -> Result<PathBuf> {
-    static TARGET_DIR: Lazy<Result<PathBuf>> = Lazy::new(|| target_dir_no_cache());
+    static TARGET_DIR: Lazy<Result<PathBuf>> = Lazy::new(target_dir_no_cache);
     match &*TARGET_DIR {
         Ok(path) => Ok(path.clone()),
         Err(e) => Err(anyhow::anyhow!(e.to_string())),
@@ -4238,7 +4238,7 @@ fn target_dir_no_cache() -> Result<PathBuf> {
             // the current dir is the desired behavior.
             return Ok(PathBuf::from("target"));
         }
-        eprintln!("'cargo metadata' failed with: {}", stderr_msg);
+        eprintln!("'cargo metadata' failed with: {stderr_msg}");
         std::process::exit(output.status.code().unwrap_or(1));
     }
 
