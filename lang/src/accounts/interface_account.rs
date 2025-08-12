@@ -1,10 +1,10 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
-    Owners, Result, ToAccountInfos, ToAccountMetas,
+    Owners, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
@@ -185,7 +185,19 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
     pub fn reload(&mut self) -> Result<()> {
-        self.account.reload()
+        let info = self.account.to_account_info();
+
+        // Enforce owner stability: must match the one validated at construction.
+        if info.owner != &self.owner {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, self.owner)));
+        }
+
+        // Re-deserialize fresh data into the inner account.
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        let new_val = T::try_deserialize(&mut data)?;
+        self.account.set_inner(new_val);
+        Ok(())
     }
 
     pub fn into_inner(self) -> T {
