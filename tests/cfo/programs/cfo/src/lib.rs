@@ -669,7 +669,7 @@ pub struct DropStakeRewardPool<'info> {
 /// PDA - [dex_program_id].
 #[account]
 pub struct Officer {
-    // Priviledged account.
+    // Privileged account.
     pub authority: Pubkey, // 32
     // Vault holding the officer's SRM tokens prior to distribution.
     pub srm_vault: Pubkey, // 32

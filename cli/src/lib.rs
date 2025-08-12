@@ -46,7 +46,6 @@ use once_cell::sync::Lazy;
 mod checks;
 pub mod config;
 pub mod rust_template;
-pub mod solidity_template;
 
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -70,9 +69,6 @@ pub enum Command {
         /// Use JavaScript instead of TypeScript
         #[clap(short, long)]
         javascript: bool,
-        /// Use Solidity instead of Rust
-        #[clap(short, long)]
-        solidity: bool,
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
@@ -220,9 +216,6 @@ pub enum Command {
     New {
         /// Program name
         name: String,
-        /// Use Solidity instead of Rust
-        #[clap(short, long)]
-        solidity: bool,
         /// Rust program template to use
         #[clap(value_enum, short, long, default_value = "single")]
         template: ProgramTemplate,
@@ -726,7 +719,6 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::Init {
             name,
             javascript,
-            solidity,
             no_install,
             package_manager,
             no_git,
@@ -737,7 +729,6 @@ fn process_command(opts: Opts) -> Result<()> {
             &opts.cfg_override,
             name,
             javascript,
-            solidity,
             no_install,
             package_manager,
             no_git,
@@ -746,11 +737,10 @@ fn process_command(opts: Opts) -> Result<()> {
             force,
         ),
         Command::New {
-            solidity,
             name,
             template,
             force,
-        } => new(&opts.cfg_override, solidity, name, template, force),
+        } => new(&opts.cfg_override, name, template, force),
         Command::Build {
             no_idl,
             idl,
@@ -905,7 +895,6 @@ fn init(
     cfg_override: &ConfigOverride,
     name: String,
     javascript: bool,
-    solidity: bool,
     no_install: bool,
     package_manager: PackageManager,
     no_git: bool,
@@ -977,21 +966,17 @@ fn init(
     if force {
         fs::remove_dir_all(
             std::env::current_dir()?
-                .join(if solidity { "solidity" } else { "programs" })
+                .join("programs")
                 .join(&project_name),
         )?;
     }
 
     // Build the program.
-    if solidity {
-        solidity_template::create_program(&project_name)?;
-    } else {
-        rust_template::create_program(
-            &project_name,
-            template,
-            TestTemplate::Mollusk == test_template,
-        )?;
-    }
+    rust_template::create_program(
+        &project_name,
+        template,
+        TestTemplate::Mollusk == test_template,
+    )?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1019,12 +1004,7 @@ fn init(
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
     }
 
-    test_template.create_test_files(
-        &project_name,
-        javascript,
-        solidity,
-        &program_id.to_string(),
-    )?;
+    test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
@@ -1075,7 +1055,6 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
 // Creates a new program crate in the `programs/<name>` directory.
 fn new(
     cfg_override: &ConfigOverride,
-    solidity: bool,
     name: String,
     template: ProgramTemplate,
     force: bool,
@@ -1096,18 +1075,10 @@ fn new(
                     }
 
                     // Delete all files within the program folder
-                    fs::remove_dir_all(
-                        std::env::current_dir()?
-                            .join(if solidity { "solidity" } else { "programs" })
-                            .join(&name),
-                    )?;
+                    fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                if solidity {
-                    solidity_template::create_program(&name)?;
-                } else {
-                    rust_template::create_program(&name, template, false)?;
-                }
+                rust_template::create_program(&name, template, false)?;
 
                 programs.insert(
                     name.clone(),
@@ -1434,19 +1405,6 @@ fn build_all(
                     &arch,
                 )?;
             }
-            for (name, path) in cfg.get_solidity_program_list()? {
-                build_solidity_cwd(
-                    cfg,
-                    name,
-                    path,
-                    idl_out.clone(),
-                    idl_ts_out.clone(),
-                    build_config,
-                    stdout.as_ref().map(|f| f.try_clone()).transpose()?,
-                    stderr.as_ref().map(|f| f.try_clone()).transpose()?,
-                    cargo_args.clone(),
-                )?;
-            }
             Ok(())
         }
     };
@@ -1491,31 +1449,6 @@ fn build_rust_cwd(
             no_docs,
             arch,
         ),
-    }
-}
-
-// Runs the build command outside of a workspace.
-#[allow(clippy::too_many_arguments)]
-fn build_solidity_cwd(
-    cfg: &WithPath<Config>,
-    name: String,
-    path: PathBuf,
-    idl_out: Option<PathBuf>,
-    idl_ts_out: Option<PathBuf>,
-    build_config: &BuildConfig,
-    stdout: Option<File>,
-    stderr: Option<File>,
-    cargo_args: Vec<String>,
-) -> Result<()> {
-    match path.parent() {
-        None => return Err(anyhow!("Unable to find parent")),
-        Some(p) => std::env::set_current_dir(p)?,
-    };
-    match build_config.verifiable {
-        false => _build_solidity_cwd(
-            cfg, &name, &path, idl_out, idl_ts_out, stdout, stderr, cargo_args,
-        ),
-        true => panic!("verifiable solidity not supported"),
     }
 }
 
@@ -1911,81 +1844,6 @@ fn _build_rust_cwd(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn _build_solidity_cwd(
-    cfg: &WithPath<Config>,
-    name: &str,
-    path: &Path,
-    idl_out: Option<PathBuf>,
-    idl_ts_out: Option<PathBuf>,
-    stdout: Option<File>,
-    stderr: Option<File>,
-    solang_args: Vec<String>,
-) -> Result<()> {
-    let mut cmd = std::process::Command::new("solang");
-    let cmd = cmd.args(["compile", "--target", "solana", "--contract", name]);
-
-    if let Some(idl_out) = &idl_out {
-        cmd.arg("--output-meta");
-        cmd.arg(idl_out);
-    }
-
-    let target_bin = cfg.path().parent().unwrap().join("target").join("deploy");
-
-    cmd.arg("--output");
-    cmd.arg(target_bin);
-    cmd.arg("--verbose");
-    cmd.arg(path);
-
-    let exit = cmd
-        .args(solang_args)
-        .stdout(match stdout {
-            None => Stdio::inherit(),
-            Some(f) => f.into(),
-        })
-        .stderr(match stderr {
-            None => Stdio::inherit(),
-            Some(f) => f.into(),
-        })
-        .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
-    if !exit.status.success() {
-        std::process::exit(exit.status.code().unwrap_or(1));
-    }
-
-    // idl is written to idl_out or .
-    let idl_path = idl_out
-        .unwrap_or(PathBuf::from("."))
-        .join(format!("{name}.json"));
-
-    let idl = fs::read(idl_path)?;
-    let idl = convert_idl(&idl)?;
-
-    // TS out path.
-    let ts_out = match idl_ts_out {
-        None => PathBuf::from(".")
-            .join(&idl.metadata.name)
-            .with_extension("ts"),
-        Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("ts")),
-    };
-
-    // Write out the TypeScript type.
-    fs::write(&ts_out, idl_ts(&idl)?)?;
-    // Copy out the TypeScript type.
-    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
-    if !&cfg.workspace.types.is_empty() {
-        fs::copy(
-            &ts_out,
-            cfg_parent
-                .join(&cfg.workspace.types)
-                .join(&idl.metadata.name)
-                .with_extension("ts"),
-        )?;
-    }
-
-    Ok(())
-}
-
 pub fn verify(
     program_id: Pubkey,
     repo_url: Option<String>,
@@ -2051,27 +1909,20 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
     for program in cfg.read_all_programs()? {
-        if program.solidity {
-            if let Some(path) = program.path.parent() {
-                std::env::set_current_dir(path)?;
-                return Ok(());
-            }
-        } else {
-            let cargo_toml = program.path.join("Cargo.toml");
-            if !cargo_toml.exists() {
-                return Err(anyhow!(
-                    "Did not find Cargo.toml at the path: {}",
-                    program.path.display()
-                ));
-            }
+        let cargo_toml = program.path.join("Cargo.toml");
+        if !cargo_toml.exists() {
+            return Err(anyhow!(
+                "Did not find Cargo.toml at the path: {}",
+                program.path.display()
+            ));
+        }
 
-            let manifest = Manifest::from_path(&cargo_toml)?;
-            let pkg_name = manifest.package().name();
-            let lib_name = manifest.lib_name()?;
-            if program_name == pkg_name || program_name == lib_name {
-                std::env::set_current_dir(&program.path)?;
-                return Ok(());
-            }
+        let manifest = Manifest::from_path(&cargo_toml)?;
+        let pkg_name = manifest.package().name();
+        let lib_name = manifest.lib_name()?;
+        if program_name == pkg_name || program_name == lib_name {
+            std::env::set_current_dir(&program.path)?;
+            return Ok(());
         }
     }
 
@@ -4574,7 +4425,6 @@ mod tests {
             },
             "await".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
@@ -4595,7 +4445,6 @@ mod tests {
             },
             "fn".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
@@ -4616,7 +4465,6 @@ mod tests {
             },
             "1project".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
