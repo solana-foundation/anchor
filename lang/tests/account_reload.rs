@@ -93,10 +93,9 @@ fn reload_owner_changed_fails() {
     }
 
     // reload() must now error with AccountOwnedByWrongProgram
-    let err: Error = acc.reload().unwrap_err();
-    let coded: anchor_lang::error::Error = err.into();
+    let err: anchor_lang::error::Error = acc.reload().unwrap_err();
     assert_eq!(
-        coded,
+        err,
         anchor_lang::error::ErrorCode::AccountOwnedByWrongProgram.into()
     );
 }
@@ -164,10 +163,9 @@ fn reload_error_does_not_mutate_cached_state() {
         *owner_ptr = Pubkey::new_unique();
     }
 
-    let err: Error = acc.reload().unwrap_err();
-    let coded: anchor_lang::error::Error = err.into();
+    let err: anchor_lang::error::Error = acc.reload().unwrap_err();
     assert_eq!(
-        coded,
+        err,
         anchor_lang::error::ErrorCode::AccountOwnedByWrongProgram.into()
     );
 
