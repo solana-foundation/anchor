@@ -16,9 +16,11 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
+use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
+use serde::Deserialize;
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
@@ -40,8 +42,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
-use serde::Deserialize;
-use once_cell::sync::Lazy;
 
 mod checks;
 pub mod config;
@@ -4220,7 +4220,6 @@ pub fn target_dir() -> Result<PathBuf> {
         Err(e) => Err(anyhow::anyhow!(e.to_string())),
     }
 }
-
 
 /// Return the directory where cargo is storing build artifacts.
 fn target_dir_no_cache() -> Result<PathBuf> {
