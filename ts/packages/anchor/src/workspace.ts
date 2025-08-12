@@ -55,7 +55,9 @@ const workspace = new Proxy(
         //
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
-        const output = execSync("cargo metadata --no-deps --format-version 1", {encoding: "utf8"});
+        const output = execSync("cargo metadata --no-deps --format-version 1", {
+          encoding: "utf8",
+        });
         const metadata = JSON.parse(output);
         const idlDirPath = path.join(metadata.target_directory, "idl");
         const fileName = fs
