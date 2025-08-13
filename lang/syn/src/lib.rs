@@ -880,7 +880,7 @@ pub enum SeedsExpr {
     /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`
     List(Punctuated<Expr, Token![,]>),
     /// Example: `pda_seeds(key)`
-    Expr(Expr),
+    Expr(Box<Expr>),
 }
 
 impl syn::parse::Parse for SeedsExpr {
@@ -898,7 +898,7 @@ impl syn::parse::Parse for SeedsExpr {
 
             Ok(SeedsExpr::List(list))
         } else {
-            Ok(SeedsExpr::Expr(stream.parse()?))
+            Ok(SeedsExpr::Expr(Box::new(stream.parse()?)))
         }
     }
 }
