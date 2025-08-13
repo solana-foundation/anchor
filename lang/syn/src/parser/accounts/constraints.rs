@@ -370,7 +370,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     let _bracket = bracketed!(content in stream);
                     SeedsExpr::List(content.parse_terminated(Expr::parse)?)
                 } else {
-                    SeedsExpr::Expr(Box::new(stream.parse()?))
+                    SeedsExpr::Expr(stream.parse()?)
                 };
 
                 ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))

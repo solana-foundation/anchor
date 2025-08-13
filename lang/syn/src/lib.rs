@@ -879,8 +879,8 @@ pub struct ConstraintInitGroup {
 pub enum SeedsExpr {
     /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`
     List(Punctuated<Expr, Token![,]>),
-    /// Exampl: `pda_seeds(key)`
-    Expr(Box<Expr>),
+    /// Example: `pda_seeds(key)`
+    Expr(Expr),
 }
 
 impl SeedsExpr {
@@ -913,7 +913,7 @@ impl SeedsExpr {
     pub fn iter(&self) -> Box<dyn Iterator<Item = &Expr> + '_> {
         match self {
             SeedsExpr::List(list) => Box::new(list.iter()),
-            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr.as_ref())),
+            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr)),
         }
     }
 
