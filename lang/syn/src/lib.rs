@@ -883,6 +883,26 @@ pub enum SeedsExpr {
     Expr(Expr),
 }
 
+impl syn::parse::Parse for SeedsExpr {
+    fn parse(stream: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        if stream.peek(syn::token::Bracket) {
+            let content;
+            syn::bracketed!(content in stream);
+            let mut list: Punctuated<Expr, Token![,]> = content.parse_terminated(Expr::parse)?;
+
+            // Strip a trailing comma if present.
+            // Use `pop_punct` when we update to syn 2.0
+            if let Some(pair) = list.pop() {
+                list.push_value(pair.into_value());
+            }
+
+            Ok(SeedsExpr::List(list))
+        } else {
+            Ok(SeedsExpr::Expr(stream.parse()?))
+        }
+    }
+}
+
 impl SeedsExpr {
     /// Return the underlying `Punctuated` if this is the `List` form
     fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
