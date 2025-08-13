@@ -498,17 +498,16 @@ fn generate_constraint_init_group(
     let (find_pda, seeds_with_bump) = match &c.seeds {
         None => (quote! {}, quote! {}),
         Some(c) => match &c.seeds {
-            SeedsExpr::List(_) => {
-                let seeds = &mut c.seeds.clone();
-                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
+            // If the bump is provided with init *and target*, then force it to be the
+            // canonical bump.
+            //
+            // Note that for `#[account(init, seeds)]`, find_program_address has already
+            // been run in the init constraint find_pda variable.
+            SeedsExpr::List(list) => {
+                // Optional prefix (either empty or "<list>,")
+                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
 
-                let validate_pda = if c.bump.is_some() {
-                    // If the bump is provided with init *and target*, then force it to be the
-                    // canonical bump.
-                    //
-                    // Note that for `#[account(init, seeds)]`, find_program_address has already
-                    // been run in the init constraint find_pda variable.
-                    let b = c.bump.as_ref().unwrap();
+                let validate_pda = if let Some(b) = &c.bump {
                     quote! {
                         if #field.key() != __pda_address {
                             return Err(anchor_lang::error::Error::from(
@@ -543,7 +542,7 @@ fn generate_constraint_init_group(
                 (
                     quote! {
                         let (__pda_address, __bump) = Pubkey::find_program_address(
-                            &[#maybe_seeds_plus_comma],
+                            &[ #maybe_seeds_plus_comma ],
                             __program_id,
                         );
                         __bumps.#field = #bump_tok;
@@ -571,9 +570,8 @@ fn generate_constraint_init_group(
                             Pubkey::find_program_address(__seeds_slice, __program_id);
                         __bumps.#field = #bump_tok;
 
-                        /* build signer slice at run‑time */
-                        let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> =
-                            __seeds_slice.to_vec();
+                        // Build signer seeds at runtime = seeds + bump
+                        let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
                         __signer_seeds_vec.push(&[__bump][..]);
                         let __signer_seeds = __signer_seeds_vec;
 
@@ -1189,9 +1187,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let define_pda = match (&c.seeds, &c.bump) {
             // [list], no bump -> find_program_address + store __bump.
             (SeedsExpr::List(list), None) => {
-                let seeds = list.clone();
-                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
-
+                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
                 quote! {
                     let (__pda_address, __bump) = Pubkey::find_program_address(
                         &[ #maybe_seeds_plus_comma ],
@@ -1201,11 +1197,9 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
                 }
             }
 
-            // [list], explicit bump -> create_program_address.
+            // [list], explicit bump -> create_program_address with list + bump.
             (SeedsExpr::List(list), Some(b)) => {
-                let seeds = list.clone();
-                let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
-
+                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
                 quote! {
                     let __pda_address = Pubkey::create_program_address(
                         &[ #maybe_seeds_plus_comma &[#b][..] ],
@@ -1226,10 +1220,8 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // expr, explicit bump -> concat slice + bump, then create_program_address.
             (SeedsExpr::Expr(expr), Some(b)) => quote! {
-                // Build a Vec<&[u8]> by concatenating the seed slice with the bump as its own seed.
                 let __bump_bytes = [#b];
                 let __seeds_vec: ::std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
-
                 let __pda_address = Pubkey::create_program_address(
                     &__seeds_vec[..],
                     &#deriving_program_id,

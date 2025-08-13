@@ -903,58 +903,6 @@ impl syn::parse::Parse for SeedsExpr {
     }
 }
 
-impl SeedsExpr {
-    /// Return the underlying `Punctuated` if this is the `List` form
-    fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
-        match self {
-            SeedsExpr::List(list) => Some(list),
-            SeedsExpr::Expr(_) => None,
-        }
-    }
-
-    pub fn pop(&mut self) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
-        self.list_mut()?.pop()
-    }
-
-    pub fn push_value(&mut self, value: Expr) {
-        if let Some(list) = self.list_mut() {
-            list.push_value(value);
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        match self {
-            SeedsExpr::List(list) => list.is_empty(),
-            SeedsExpr::Expr(_) => false, // Treat as “one seed”
-        }
-    }
-
-    /// Immutable iteration over every seed expression, regardless of variant
-    pub fn iter(&self) -> Box<dyn Iterator<Item = &Expr> + '_> {
-        match self {
-            SeedsExpr::List(list) => Box::new(list.iter()),
-            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr)),
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        match self {
-            SeedsExpr::List(list) => list.len(),
-            SeedsExpr::Expr(_) => 1,
-        }
-    }
-}
-
-/// Allow `quote!{ #seeds }`
-impl quote::ToTokens for SeedsExpr {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match self {
-            SeedsExpr::List(list) => list.to_tokens(tokens),
-            SeedsExpr::Expr(expr) => expr.to_tokens(tokens),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
