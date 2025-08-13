@@ -32,6 +32,11 @@ pub struct LiteralSeeds<'info> {
         bump
     )]
     pda: Account<'info, Dummy>,
+    #[account(
+        // Literal list with a trailing comma parsed as `SeedsExpr::List`
+        seeds = [PREFIX, user.key().as_ref(),],
+        bump
+    )]
     user: Signer<'info>,
 }
 
