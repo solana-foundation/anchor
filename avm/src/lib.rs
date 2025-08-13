@@ -44,6 +44,15 @@ pub fn version_binary_path(version: &Version) -> PathBuf {
     get_bin_dir_path().join(format!("anchor-{version}"))
 }
 
+/// Path to the cargo binary directory, defaults to `~/.cargo/bin` if `CARGO_HOME`
+#[cfg(not(test))] // this prevents tests from running this function so we don't change the developer environment during tests
+fn cargo_bin_dir() -> Option<PathBuf> {
+    if let Ok(cargo_home) = std::env::var("CARGO_HOME") {
+        return Some(PathBuf::from(cargo_home).join("bin"));
+    }
+    dirs::home_dir().map(|home| home.join(".cargo").join("bin"))
+}
+
 /// Ensure the users home directory is setup with the paths required by AVM.
 pub fn ensure_paths() {
     let home_dir = AVM_HOME.to_path_buf();
@@ -90,6 +99,73 @@ pub fn ensure_paths() {
         if !anchor_in_bin.exists() {
             if let Err(e) = symlink_file(&avm_in_bin, &anchor_in_bin) {
                 eprintln!("Failed to create symlink: {}", e);
+            }
+        }
+    }
+
+    // Try to make `anchor` available on PATH by placing it into $CARGO_HOME/bin (or ~/.cargo/bin).
+    #[cfg(not(test))]
+    {
+        if let Some(cargo_bin) = cargo_bin_dir() {
+            if cargo_bin.exists() {
+                let anchor_in_cargo = cargo_bin.join(if cfg!(target_os = "windows") {
+                    "anchor.exe"
+                } else {
+                    "anchor"
+                });
+                if !anchor_in_cargo.exists() {
+                    let target = avm_in_bin.clone(); // ~/.avm/bin/avm
+
+                    let mut linked = false;
+                    #[cfg(unix)]
+                    {
+                        if let Err(e) = std::os::unix::fs::symlink(&target, &anchor_in_cargo) {
+                            eprintln!(
+                                "Failed to create cargo-bin symlink: {e}. Falling back to copy."
+                            );
+                        } else {
+                            linked = true;
+                        }
+                    }
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::fs::symlink_file;
+                        if let Err(e) = symlink_file(&target, &anchor_in_cargo) {
+                            eprintln!(
+                                "Failed to create cargo-bin symlink: {e}. Falling back to copy."
+                            );
+                        } else {
+                            linked = true;
+                        }
+                    }
+
+                    if !linked {
+                        if let Err(e) = fs::copy(&target, &anchor_in_cargo) {
+                            eprintln!(
+                                "Failed to place `anchor` in {}: {}.\nAdd {} to your PATH or create a symlink manually.",
+                                cargo_bin.display(),
+                                e,
+                                bin_dir.display()
+                            );
+                        } else {
+                            // Ensure executable bit on UNIX when copying.
+                            #[cfg(unix)]
+                            {
+                                use std::os::unix::fs::PermissionsExt;
+                                if let Err(e) = fs::set_permissions(
+                                    &anchor_in_cargo,
+                                    fs::Permissions::from_mode(0o775),
+                                ) {
+                                    eprintln!(
+                                        "Failed to set executable permissions on {}: {}",
+                                        anchor_in_cargo.display(),
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
