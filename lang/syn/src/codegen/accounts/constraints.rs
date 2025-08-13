@@ -503,6 +503,11 @@ fn generate_constraint_init_group(
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 let validate_pda = if c.bump.is_some() {
+                    // If the bump is provided with init *and target*, then force it to be the
+                    // canonical bump.
+                    //
+                    // Note that for `#[account(init, seeds)]`, find_program_address has already
+                    // been run in the init constraint find_pda variable.
                     let b = c.bump.as_ref().unwrap();
                     quote! {
                         if #field.key() != __pda_address {
