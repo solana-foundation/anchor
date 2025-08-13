@@ -500,11 +500,6 @@ fn generate_constraint_init_group(
         Some(c) => match &c.seeds {
             SeedsExpr::List(_) => {
                 let seeds = &mut c.seeds.clone();
-
-                if let Some(pair) = seeds.pop() {
-                    seeds.push_value(pair.into_value());
-                }
-
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 let validate_pda = if c.bump.is_some() {
@@ -1189,10 +1184,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let define_pda = match (&c.seeds, &c.bump) {
             // [list], no bump -> find_program_address + store __bump.
             (SeedsExpr::List(list), None) => {
-                let mut seeds = list.clone();
-                if let Some(pair) = seeds.pop() {
-                    seeds.push_value(pair.into_value());
-                }
+                let seeds = list.clone();
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 quote! {
@@ -1206,10 +1198,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // [list], explicit bump -> create_program_address.
             (SeedsExpr::List(list), Some(b)) => {
-                let mut seeds = list.clone();
-                if let Some(pair) = seeds.pop() {
-                    seeds.push_value(pair.into_value());
-                }
+                let seeds = list.clone();
                 let maybe_seeds_plus_comma = (!seeds.is_empty()).then(|| quote! { #seeds, });
 
                 quote! {
