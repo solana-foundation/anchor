@@ -884,7 +884,7 @@ pub enum SeedsExpr {
 }
 
 impl SeedsExpr {
-    /// Return the underlying `Punctuated` if this is the `List` form
+    /// Return the underlying `Punctuated` if this is the `List` form.
     fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
         match self {
             SeedsExpr::List(list) => Some(list),
@@ -892,6 +892,10 @@ impl SeedsExpr {
         }
     }
 
+    /// Mirrors `Punctuated::pop`: removes and returns the last element and its
+    /// trailing punctuation when this is the `List` variant. For the `Expr variant`,
+    /// which represents a single non-list seed expression, returns `None` because
+    /// there is no list to pop from.
     pub fn pop(&mut self) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
         self.list_mut()?.pop()
     }
@@ -902,6 +906,9 @@ impl SeedsExpr {
         }
     }
 
+    /// Mirrors `Punctuated::push_value`: pushes a value without punctuation onto
+    /// the underlying list when this is the `List` variant. No-op for the `Expr`
+    /// variant.
     pub fn is_empty(&self) -> bool {
         match self {
             SeedsExpr::List(list) => list.is_empty(),
@@ -917,6 +924,7 @@ impl SeedsExpr {
         }
     }
 
+    /// The number of seeds represented: `list.len()` for `List` and `1` for `Expr`.
     pub fn len(&self) -> usize {
         match self {
             SeedsExpr::List(list) => list.len(),
