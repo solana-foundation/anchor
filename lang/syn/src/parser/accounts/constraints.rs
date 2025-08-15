@@ -1,6 +1,6 @@
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{bracketed, Token};
+use syn::{Expr, Ident, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
@@ -364,14 +364,9 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     .span()
                     .join(stream.span())
                     .unwrap_or_else(|| ident.span());
-                let seeds;
-                let bracket = bracketed!(seeds in stream);
-                ConstraintToken::Seeds(Context::new(
-                    span.join(bracket.span).unwrap_or(span),
-                    ConstraintSeeds {
-                        seeds: seeds.parse_terminated(Expr::parse)?,
-                    },
-                ))
+
+                let seeds_expr: SeedsExpr = stream.parse()?;
+                ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
         "realloc" => {
