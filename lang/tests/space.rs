@@ -1,3 +1,6 @@
+
+#![allow(dead_code)]
+
 use anchor_lang::prelude::*;
 
 // Needed to declare accounts.
