@@ -21,3 +21,6 @@ anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl", features = ["metadata"] }
 thiserror = "1.0"
 arrayref = "0.3.6"
+# FIXME: We transitively depend on base64ct, which switched to edition 2024 in 1.8.0
+# This pin can be removed when our toolchain is bumped to a compatbile compiler
+# base64ct = "=1.7.3"
