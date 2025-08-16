@@ -18,7 +18,7 @@ pub fn transfer_fee_initialize<'info>(
         transfer_fee_basis_points,
         maximum_fee,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -45,7 +45,7 @@ pub fn transfer_fee_set<'info>(
         transfer_fee_basis_points,
         maximum_fee,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -81,7 +81,7 @@ pub fn transfer_checked_with_fee<'info>(
         decimals,
         fee,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -117,7 +117,7 @@ pub fn harvest_withheld_tokens_to_mint<'info>(
     let mut account_infos = vec![ctx.accounts.token_program_id, ctx.accounts.mint];
     account_infos.extend_from_slice(&sources);
 
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::solana_invoke::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -138,7 +138,7 @@ pub fn withdraw_withheld_tokens_from_mint<'info>(
             ctx.accounts.authority.key,
             &[],
         )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

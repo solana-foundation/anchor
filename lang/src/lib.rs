@@ -63,6 +63,7 @@ pub use anchor_derive_space::InitSpace;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
+pub use solana_invoke;
 pub use solana_program;
 
 #[cfg(feature = "event-cpi")]

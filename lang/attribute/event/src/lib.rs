@@ -184,7 +184,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     ),
                 ],
             );
-            anchor_lang::solana_program::program::invoke_signed(
+            anchor_lang::solana_invoke::invoke_signed(
                 &ix,
                 &[authority_info],
                 &[&[#authority_seeds, &[authority_bump]]],

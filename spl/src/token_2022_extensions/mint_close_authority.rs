@@ -12,7 +12,7 @@ pub fn mint_close_authority_initialize<'info>(
         ctx.accounts.mint.key,
         authority,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,

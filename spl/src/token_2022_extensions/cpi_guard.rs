@@ -10,7 +10,7 @@ pub fn cpi_guard_enable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'info
         ctx.accounts.account.owner,
         &[],
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
@@ -30,7 +30,7 @@ pub fn cpi_guard_disable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'inf
         &[],
     )?;
 
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::solana_invoke::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,
