@@ -783,6 +783,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionImmutableOwner(Context<ConstraintExtensionImmutableOwner>),
 }
 
 impl Parse for ConstraintToken {
@@ -931,6 +932,11 @@ pub struct ConstraintExtensionPermanentDelegate {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintExtensionImmutableOwner {
+    pub immutable_owner: bool,
+}
+
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
     Program {
@@ -945,6 +951,8 @@ pub enum InitKind {
         owner: Expr,
         mint: Expr,
         token_program: Option<Expr>,
+        // extensions
+        immutable_owner: Option<bool>,
     },
     AssociatedToken {
         owner: Expr,
@@ -1067,6 +1075,7 @@ pub struct ConstraintTokenAccountGroup {
     pub mint: Option<Expr>,
     pub authority: Option<Expr>,
     pub token_program: Option<Expr>,
+    pub immutable_owner: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
