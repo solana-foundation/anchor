@@ -16,9 +16,11 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
+use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
+use serde::Deserialize;
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
@@ -1289,13 +1291,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(cfg_parent.join("target").join("idl")),
+        None => Some(target_dir()?.join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(cfg_parent.join("target").join("types")),
+        None => Some(target_dir()?.join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -1467,7 +1469,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    let target_dir = workspace_dir.join("target");
+    let target_dir = target_dir()?;
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
@@ -1500,8 +1502,7 @@ fn build_cwd_verifiable(
             let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
             // Write out the JSON file.
             println!("Writing the IDL file");
-            let out_file = workspace_dir
-                .join("target")
+            let out_file = target_dir
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -1509,8 +1510,7 @@ fn build_cwd_verifiable(
 
             // Write out the TypeScript type.
             println!("Writing the .ts file");
-            let ts_file = workspace_dir
-                .join("target")
+            let ts_file = target_dir
                 .join("types")
                 .join(&idl.metadata.name)
                 .with_extension("ts");
@@ -3162,7 +3162,7 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = Path::new("target")
+            let idl_out = target_dir()?
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3301,7 +3301,7 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
 
     let mut handles = vec![];
     for program in config.read_all_programs()? {
-        let idl_path = Path::new("target")
+        let idl_path = target_dir()?
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
@@ -3477,7 +3477,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
     let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
     let dot_anchor_dir = cfg_parent.join(".anchor");
-    let target_dir = cfg_parent.join("target");
+    let target_dir = target_dir()?;
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -3577,7 +3577,7 @@ fn deploy(
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = Path::new("target")
+                let idl_out = target_dir()?
                     .join("idl")
                     .join(&idl.metadata.name)
                     .with_extension("json");
@@ -4210,9 +4210,51 @@ fn localnet(
     })
 }
 
+/// Return the directory where cargo is storing build artifacts. Caches the
+/// result assuming that a single run will only work with a single rust
+/// workspace.
+pub fn target_dir() -> Result<PathBuf> {
+    static TARGET_DIR: Lazy<Result<PathBuf>> = Lazy::new(target_dir_no_cache);
+    match &*TARGET_DIR {
+        Ok(path) => Ok(path.clone()),
+        Err(e) => Err(anyhow::anyhow!(e.to_string())),
+    }
+}
+
+/// Return the directory where cargo is storing build artifacts.
+fn target_dir_no_cache() -> Result<PathBuf> {
+    // `cargo metadata` produces a JSON blob from which we extract the
+    // `target_directory` field.
+    let output = std::process::Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version=1"])
+        .output()
+        .context("Failed to execute 'cargo metadata'")?;
+
+    if !output.status.success() {
+        let stderr_msg = String::from_utf8_lossy(&output.stderr);
+        if stderr_msg.contains("Cargo.toml") {
+            // `anchor init` starts populating the cargo artifacts dir
+            // before creating `Cargo.toml`, in which case "target" in
+            // the current dir is the desired behavior.
+            return Ok(PathBuf::from("target"));
+        }
+        eprintln!("'cargo metadata' failed with: {stderr_msg}");
+        std::process::exit(output.status.code().unwrap_or(1));
+    }
+
+    #[derive(Deserialize)]
+    struct CargoMetadata {
+        target_directory: PathBuf,
+    }
+
+    let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)?;
+
+    Ok(metadata.target_directory)
+}
+
 // with_workspace ensures the current working directory is always the top level
-// workspace directory, i.e., where the `Anchor.toml` file is located, before
-// and after the closure invocation.
+// where the `Anchor.toml` file is located, before and after the closure
+// invocation.
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
