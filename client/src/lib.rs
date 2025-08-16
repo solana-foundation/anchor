@@ -604,7 +604,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self
     }
 
-    pub fn instructions(&self) -> Result<Vec<Instruction>, ClientError> {
+    pub fn instructions(&self) -> Vec<Instruction> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
             instructions.push(Instruction {
@@ -614,32 +614,26 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             });
         }
 
-        Ok(instructions)
+        instructions
     }
 
-    fn signed_transaction_with_blockhash(
-        &self,
-        latest_hash: Hash,
-    ) -> Result<Transaction, ClientError> {
-        let instructions = self.instructions()?;
+    fn signed_transaction_with_blockhash(&self, latest_hash: Hash) -> Transaction {
+        let instructions = self.instructions();
         let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
         let mut all_signers = signers;
         all_signers.push(&*self.payer);
 
-        let tx = Transaction::new_signed_with_payer(
+        Transaction::new_signed_with_payer(
             &instructions,
             Some(&self.payer.pubkey()),
             &all_signers,
             latest_hash,
-        );
-
-        Ok(tx)
+        )
     }
 
-    pub fn transaction(&self) -> Result<Transaction, ClientError> {
+    pub fn transaction(&self) -> Transaction {
         let instructions = &self.instructions;
-        let tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
-        Ok(tx)
+        Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
     }
 
     async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
@@ -649,7 +643,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             .await
             .map_err(Box::new)?;
 
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash);
         Ok(tx)
     }
 
@@ -659,7 +653,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash);
 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
@@ -676,7 +670,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let tx = self.signed_transaction_with_blockhash(latest_hash);
 
         self.internal_rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
