@@ -1,3 +1,5 @@
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(deprecated)]
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
 use solana_program::account_info::AccountInfo;
 use solana_program::instruction::AccountMeta;
