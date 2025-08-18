@@ -27,7 +27,7 @@ token_2022_extensions = ["spl-token-2022", "spl-token-group-interface", "spl-tok
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.31.1", features = ["derive"] }
-borsh = { version = "0.10.3", optional = true }
+borsh = { version = "1.5.7", optional = true }
 mpl-token-metadata = { version = "5", optional = true }
 spl-associated-token-account = { version = "6", features = ["no-entrypoint"], optional = true }
 spl-memo = { version = "6", features = ["no-entrypoint"], optional = true }
