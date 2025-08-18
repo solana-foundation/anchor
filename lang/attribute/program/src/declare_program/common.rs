@@ -290,7 +290,31 @@ fn can_derive_default(ty_def: &IdlTypeDef, ty_defs: &[IdlTypeDef]) -> bool {
     }
 }
 
-fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
+fn can_derive_clone(ty_def: &IdlTypeDef, ty_defs: &[IdlTypeDef]) -> bool {
+    match &ty_def.ty {
+        IdlTypeDefTy::Struct { fields } => {
+            can_derive_common(fields.as_ref(), ty_defs, can_derive_clone_ty)
+        }
+        IdlTypeDefTy::Enum { variants } => variants.iter().all(|variant| {
+            can_derive_common(variant.fields.as_ref(), ty_defs, can_derive_clone_ty)
+        }),
+        IdlTypeDefTy::Type { alias } => can_derive_clone_ty(alias, ty_defs),
+    }
+}
+
+fn can_derive_debug(ty_def: &IdlTypeDef, ty_defs: &[IdlTypeDef]) -> bool {
+    match &ty_def.ty {
+        IdlTypeDefTy::Struct { fields } => {
+            can_derive_common(fields.as_ref(), ty_defs, can_derive_debug_ty)
+        }
+        IdlTypeDefTy::Enum { variants } => variants.iter().all(|variant| {
+            can_derive_common(variant.fields.as_ref(), ty_defs, can_derive_debug_ty)
+        }),
+        IdlTypeDefTy::Type { alias } => can_derive_debug_ty(alias, ty_defs),
+    }
+}
+
+pub(super) fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
     match ty {
         IdlType::Option(inner) => can_derive_copy_ty(inner, ty_defs),
         IdlType::Array(inner, len) => {
@@ -313,7 +337,7 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
     }
 }
 
-fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
+pub(super) fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
     match ty {
         IdlType::Option(inner) => can_derive_default_ty(inner, ty_defs),
         IdlType::Vec(inner) => can_derive_default_ty(inner, ty_defs),
@@ -337,7 +361,36 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
     }
 }
 
-fn can_derive_common(
+pub(super) fn can_derive_clone_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
+    match ty {
+        IdlType::Option(inner) => can_derive_clone_ty(inner, ty_defs),
+        IdlType::Array(inner, _len) => can_derive_clone_ty(inner, ty_defs),
+        IdlType::Defined { name, .. } => ty_defs
+            .iter()
+            .find(|ty_def| &ty_def.name == name)
+            .map(|ty_def| can_derive_clone(ty_def, ty_defs))
+            .expect("Type def must exist"),
+        IdlType::Generic(_) => false,
+        _ => true,
+    }
+}
+
+pub(super) fn can_derive_debug_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
+    match ty {
+        IdlType::Option(inner) => can_derive_debug_ty(inner, ty_defs),
+        IdlType::Vec(inner) => can_derive_debug_ty(inner, ty_defs),
+        IdlType::Array(inner, _len) => can_derive_debug_ty(inner, ty_defs),
+        IdlType::Defined { name, .. } => ty_defs
+            .iter()
+            .find(|ty_def| &ty_def.name == name)
+            .map(|ty_def| can_derive_debug(ty_def, ty_defs))
+            .expect("Type def must exist"),
+        IdlType::Generic(_) => false,
+        _ => true,
+    }
+}
+
+pub(super) fn can_derive_common(
     fields: Option<&IdlDefinedFields>,
     ty_defs: &[IdlTypeDef],
     can_derive_ty: fn(&IdlType, &[IdlTypeDef]) -> bool,
