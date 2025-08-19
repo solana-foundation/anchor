@@ -239,6 +239,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
+        /// Skip IDL upload during deployment
+        #[clap(long)]
+        skip_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -791,12 +794,14 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
+            skip_idl,
             solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
+            skip_idl,
             solana_args,
         ),
         Command::Expand {
@@ -2953,7 +2958,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, vec![])?;
+            deploy(cfg_override, None, None, false, true, vec![])?;
         }
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
@@ -3520,6 +3525,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
+    skip_idl: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3572,16 +3578,28 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
+            // Get the IDL filepath
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&program.lib_name)
+                .with_extension("json");
+
             if let Some(idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = Path::new("target")
-                    .join("idl")
-                    .join(&idl.metadata.name)
-                    .with_extension("json");
-                write_idl(idl, OutFile::File(idl_out))?;
+                write_idl(idl, OutFile::File(idl_filepath.clone()))?;
+            }
+
+            // Upload the IDL to the cluster
+            if !skip_idl {
+                idl_init(
+                    cfg_override,
+                    program_id,
+                    idl_filepath.display().to_string(),
+                    None,
+                )?;
             }
         }
 
