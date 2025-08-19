@@ -1011,7 +1011,7 @@ pub struct ExpireReward<'info> {
 
 #[account]
 pub struct Registrar {
-    /// Priviledged account.
+    /// Privileged account.
     pub authority: Pubkey,
     /// Nonce to derive the program-derived address owning the vaults.
     pub nonce: u8,
