@@ -243,7 +243,7 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
-        /// Skip IDL upload during deployment
+        /// Skip IDL upload during deployment (IDL is uploaded by default)
         #[clap(long)]
         skip_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
@@ -3594,16 +3594,16 @@ fn deploy(
 
                 // Persist it.
                 write_idl(idl, OutFile::File(idl_filepath.clone()))?;
-            }
 
-            // Upload the IDL to the cluster
-            if !skip_idl {
-                idl_init(
-                    cfg_override,
-                    program_id,
-                    idl_filepath.display().to_string(),
-                    None,
-                )?;
+                // Upload the IDL to the cluster by default (unless skip_idl is set)
+                if !skip_idl {
+                    idl_init(
+                        cfg_override,
+                        program_id,
+                        idl_filepath.display().to_string(),
+                        None,
+                    )?;
+                }
             }
         }
 
