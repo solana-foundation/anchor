@@ -1,7 +1,7 @@
 use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest,
-    PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
-    WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
+    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+    TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -1333,6 +1333,8 @@ pub fn build(
         fs::create_dir_all(cfg_parent.join(&cfg.workspace.types))?;
     };
 
+    cfg.run_hooks(HookType::PreBuild)?;
+
     let cargo = Manifest::discover()?;
     let build_config = BuildConfig {
         verifiable,
@@ -1390,6 +1392,7 @@ pub fn build(
             &arch,
         )?,
     }
+    cfg.run_hooks(HookType::PostBuild)?;
 
     set_workspace_dir_or_exit();
 
@@ -2989,6 +2992,9 @@ fn test(
         if (!is_localnet || skip_local_validator) && !skip_deploy {
             deploy(cfg_override, None, None, false, true, vec![])?;
         }
+
+        cfg.run_hooks(HookType::PreTest)?;
+
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
             is_first_suite = false;
@@ -3057,6 +3063,7 @@ fn test(
                 )?;
             }
         }
+        cfg.run_hooks(HookType::PostTest)?;
         Ok(())
     })
 }
@@ -3566,6 +3573,7 @@ fn deploy(
         let client = create_client(&url);
         let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
 
+        cfg.run_hooks(HookType::PreDeploy)?;
         // Deploy the programs.
         println!("Deploying cluster: {url}");
         println!("Upgrade authority: {keypair}");
@@ -3676,6 +3684,7 @@ fn deploy(
         }
 
         println!("Deploy success");
+        cfg.run_hooks(HookType::PostDeploy)?;
 
         Ok(())
     })
