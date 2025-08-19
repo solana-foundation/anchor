@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - lang: Add `#[error]` attribute to `declare_program!` ([#3757](https://github.com/coral-xyz/anchor/pull/3757)).
+- lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 
 ### Fixes
@@ -20,8 +21,11 @@ The minor version will be incremented upon a breaking change and the patch versi
 - docker: Upgrade `node` to 20.18.0 LTS ([#3687](https://github.com/solana-foundation/anchor/pull/3687)).
 - cli: Fix using deprecated commitment `recent` in migration scripts ([#3725](https://github.com/coral-xyz/anchor/pull/3725)).
 - cli: Fix not respecting `provider.cluster` in `keys sync` command ([#3761](https://github.com/coral-xyz/anchor/pull/3761)).
+- lang: Fix deprecated `realloc`, `store_current_index` and clippy warnings ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 
 ### Breaking
+
+- spl: Update SPL dependencies to latest compatible versions ([#3860](https://github.com/solana-foundation/anchor/pull/3860)).
 
 ## [0.31.1] - 2025-04-19
 
