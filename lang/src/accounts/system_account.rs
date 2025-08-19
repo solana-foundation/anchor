@@ -1,8 +1,8 @@
 //! Type validating that the account is owned by the system program
 
 use crate::error::ErrorCode;
+use crate::solana_program::system_program;
 use crate::*;
-use solana_program::system_program;
 use std::ops::Deref;
 
 /// Type validating that the account is owned by the system program
