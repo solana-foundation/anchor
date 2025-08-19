@@ -243,9 +243,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
-        /// Skip IDL upload during deployment (IDL is uploaded by default)
+        /// Don't upload IDL during deployment (IDL is uploaded by default)
         #[clap(long)]
-        skip_idl: bool,
+        no_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -798,14 +798,14 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
-            skip_idl,
+            no_idl,
             solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
-            skip_idl,
+            no_idl,
             solana_args,
         ),
         Command::Expand {
@@ -3529,7 +3529,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
-    skip_idl: bool,
+    no_idl: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3595,8 +3595,8 @@ fn deploy(
                 // Persist it.
                 write_idl(idl, OutFile::File(idl_filepath.clone()))?;
 
-                // Upload the IDL to the cluster by default (unless skip_idl is set)
-                if !skip_idl {
+                // Upload the IDL to the cluster by default (unless no_idl is set)
+                if !no_idl {
                     idl_init(
                         cfg_override,
                         program_id,
