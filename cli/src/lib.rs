@@ -1921,7 +1921,8 @@ pub fn verify(
     println!("Verifying program {program_id}");
     let verify_path = AVM_HOME.join("bin").join("solana-verify");
     if !verify_path.exists() {
-        install_with_avm(env!("CARGO_PKG_VERSION"), true).context("installing Anchor with solana-verify")?;
+        install_with_avm(env!("CARGO_PKG_VERSION"), true)
+            .context("installing Anchor with solana-verify")?;
     }
 
     let status = std::process::Command::new(verify_path)

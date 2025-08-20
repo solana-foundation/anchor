@@ -36,7 +36,6 @@ pub enum Commands {
         #[clap(long)]
         /// Install `solana-verify` as well
         verify: bool,
-
     },
     #[clap(about = "Uninstall a version of Anchor")]
     Uninstall {
