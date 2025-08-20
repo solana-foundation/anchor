@@ -497,12 +497,12 @@ pub enum ClientError {
     SolanaClientError(#[from] Box<SolanaClientError>),
     #[error("{0}")]
     SolanaClientPubsubError(#[from] Box<PubsubClientError>),
-    #[error("{0}")]
-    SignerError(#[from] SignerError),
     #[error("Unable to parse log: {0}")]
     LogParseError(String),
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+    #[error("{0}")]
+    SignerError(#[from] SignerError),
 }
 
 pub trait AsSigner {
