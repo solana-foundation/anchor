@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
 use reqwest::header::USER_AGENT;
@@ -432,6 +432,9 @@ pub fn install_version(
 
     let is_at_least_0_32 = version >= Version::new(0, 32, 0);
     if is_at_least_0_32 {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        install_solana_verify()?;
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         install_solana_verify_from_source()?;
         println!("solana-verify successfully installed.");
     }
@@ -445,7 +448,38 @@ pub fn install_version(
     use_version(Some(version))
 }
 
+/// Install `solana-verify` from binary releases. Only available on Linux and Mac
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn install_solana_verify() -> Result<()> {
+    const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 7);
+    println!("Installing solana-verify...");
+    let os = std::env::consts::OS;
+    let url = format!(
+        "https://github.com/Ellipsis-Labs/solana-verifiable-build/releases/download/v{SOLANA_VERIFY_VERSION}/solana-verify-{os}"
+    );
+    let res = reqwest::blocking::get(url)?;
+    if !res.status().is_success() {
+        bail!(
+            "Failed to download `solana-verify-{os} v{SOLANA_VERIFY_VERSION} (status code: {})",
+            res.status()
+        );
+    } else {
+        let bin_path = get_bin_dir_path().join("solana-verify");
+        fs::write(&bin_path, res.bytes()?)?;
+        #[cfg(unix)]
+        fs::set_permissions(
+            bin_path,
+            <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
+        )?;
+        Ok(())
+    }
+}
+
+/// Install `solana-verify` by building from Git sources
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn install_solana_verify_from_source() -> Result<()> {
+    use anyhow::Context;
+    const SOLANA_VERIFY_COMMIT: &str = "568cb334709e88b9b45fc24f1f440eecacf5db54";
     println!("Installing solana-verify from source...");
     let status = Command::new("cargo")
         .args([
@@ -454,7 +488,7 @@ fn install_solana_verify_from_source() -> Result<()> {
             "--git",
             "https://github.com/Ellipsis-Labs/solana-verifiable-build",
             "--rev",
-            "568cb334709e88b9b45fc24f1f440eecacf5db54",
+            SOLANA_VERIFY_COMMIT,
             "--root",
             AVM_HOME.to_str().unwrap(),
             "--force",
