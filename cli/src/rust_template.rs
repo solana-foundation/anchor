@@ -639,7 +639,9 @@ impl TestTemplate {
                 if js {
                     format!("{pkg_manager_exec_cmd} mocha -t 1000000 tests/")
                 } else {
-                    format!("{pkg_manager_exec_cmd} ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts")
+                    format!(
+                        r#"{pkg_manager_exec_cmd} ts-mocha -p ./tsconfig.json -t 1000000 "tests/**/*.ts""#
+                    )
                 }
             }
             Self::Jest => {
