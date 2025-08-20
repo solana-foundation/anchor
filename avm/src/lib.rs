@@ -430,29 +430,32 @@ pub fn install_version(
         )?;
     }
 
-    println!("Installing solana-verify...");
-    let solana_verify_install_output = Command::new("cargo")
-        .args([
-            "install",
-            "solana-verify",
-            "--git",
-            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
-            "--rev",
-            "568cb334709e88b9b45fc24f1f440eecacf5db54",
-            "--root",
-            AVM_HOME.to_str().unwrap(),
-            "--force",
-            "--locked",
-        ])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
+    let is_at_least_0_32 = version >= Version::new(0, 32, 0);
+    if is_at_least_0_32 {
+        println!("Installing solana-verify...");
+        let solana_verify_install_output = Command::new("cargo")
+            .args([
+                "install",
+                "solana-verify",
+                "--git",
+                "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+                "--rev",
+                "568cb334709e88b9b45fc24f1f440eecacf5db54",
+                "--root",
+                AVM_HOME.to_str().unwrap(),
+                "--force",
+                "--locked",
+            ])
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
 
-    if !solana_verify_install_output.status.success() {
-        return Err(anyhow!("Failed to install `solana-verify`"));
+        if !solana_verify_install_output.status.success() {
+            return Err(anyhow!("Failed to install `solana-verify`"));
+        }
+        println!("solana-verify successfully installed.");
     }
-    println!("solana-verify successfully installed.");
 
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
