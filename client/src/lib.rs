@@ -91,6 +91,7 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::hash::Hash;
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::signature::{Signature, Signer};
+use solana_sdk::signer::SignerError;
 use solana_sdk::transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
@@ -496,6 +497,8 @@ pub enum ClientError {
     SolanaClientError(#[from] Box<SolanaClientError>),
     #[error("{0}")]
     SolanaClientPubsubError(#[from] Box<PubsubClientError>),
+    #[error("{0}")]
+    SignerError(#[from] SignerError),
     #[error("Unable to parse log: {0}")]
     LogParseError(String),
     #[error(transparent)]
@@ -621,17 +624,12 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         &self,
         latest_hash: Hash,
     ) -> Result<Transaction, ClientError> {
-        let instructions = self.instructions()?;
         let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
         let mut all_signers = signers;
         all_signers.push(&*self.payer);
 
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&self.payer.pubkey()),
-            &all_signers,
-            latest_hash,
-        );
+        let mut tx = self.transaction()?;
+        tx.try_sign(&all_signers, latest_hash)?;
 
         Ok(tx)
     }
