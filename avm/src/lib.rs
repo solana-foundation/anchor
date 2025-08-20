@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
 use reqwest::header::USER_AGENT;
@@ -432,28 +432,7 @@ pub fn install_version(
 
     let is_at_least_0_32 = version >= Version::new(0, 32, 0);
     if is_at_least_0_32 {
-        println!("Installing solana-verify...");
-        let solana_verify_install_output = Command::new("cargo")
-            .args([
-                "install",
-                "solana-verify",
-                "--git",
-                "https://github.com/Ellipsis-Labs/solana-verifiable-build",
-                "--rev",
-                "568cb334709e88b9b45fc24f1f440eecacf5db54",
-                "--root",
-                AVM_HOME.to_str().unwrap(),
-                "--force",
-                "--locked",
-            ])
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
-
-        if !solana_verify_install_output.status.success() {
-            return Err(anyhow!("Failed to install `solana-verify`"));
-        }
+        install_solana_verify_from_source()?;
         println!("solana-verify successfully installed.");
     }
 
@@ -464,6 +443,30 @@ pub fn install_version(
     }
 
     use_version(Some(version))
+}
+
+fn install_solana_verify_from_source() -> Result<()> {
+    println!("Installing solana-verify from source...");
+    let status = Command::new("cargo")
+        .args([
+            "install",
+            "solana-verify",
+            "--git",
+            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+            "--rev",
+            "568cb334709e88b9b45fc24f1f440eecacf5db54",
+            "--root",
+            AVM_HOME.to_str().unwrap(),
+            "--force",
+            "--locked",
+        ])
+        .status()
+        .context("executing `cargo install solana-verify`")?;
+    if status.success() {
+        Ok(())
+    } else {
+        bail!("failed to install `solana-verify`");
+    }
 }
 
 /// Remove an installed version of anchor-cli
