@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
 use reqwest::header::USER_AGENT;
@@ -436,11 +436,15 @@ pub fn install_version(
     let is_at_least_0_32 = version >= Version::new(0, 32, 0);
     if with_solana_verify {
         if is_at_least_0_32 {
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
-            install_solana_verify()?;
-            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-            install_solana_verify_from_source()?;
-            println!("solana-verify successfully installed.");
+            if !solana_verify_installed().is_ok_and(|v| v) {
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                install_solana_verify()?;
+                #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                install_solana_verify_from_source()?;
+                println!("solana-verify successfully installed");
+            } else {
+                println!("solana-verify already installed");
+            }
         } else {
             println!("Not installing solana-verify for anchor < 0.32");
         }
@@ -455,10 +459,35 @@ pub fn install_version(
     use_version(Some(version))
 }
 
+const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 7);
+
+/// Check if `solana-verify` is both installed and >= [`SOLANA_VERIFY_VERSION`].
+fn solana_verify_installed() -> Result<bool> {
+    let bin_path = get_bin_dir_path().join("solana-verify");
+    if !bin_path.exists() {
+        return Ok(false);
+    }
+    let output = Command::new(bin_path)
+        .arg("-V")
+        .output()
+        .context("executing `solana-verify` to check version")?;
+    let stdout =
+        String::from_utf8(output.stdout).context("expected `solana-verify` to output utf8")?;
+    let Some(("solana-verify", version)) = stdout.trim().split_once(" ") else {
+        bail!("invalid `solana-verify` output: `{stdout}`");
+    };
+    if Version::parse(version).with_context(|| "parsing solana-verify version `{version}")?
+        >= SOLANA_VERIFY_VERSION
+    {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 /// Install `solana-verify` from binary releases. Only available on Linux and Mac
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_solana_verify() -> Result<()> {
-    const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 7);
     println!("Installing solana-verify...");
     let os = std::env::consts::OS;
     let url = format!(
@@ -485,7 +514,6 @@ fn install_solana_verify() -> Result<()> {
 /// Install `solana-verify` by building from Git sources
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn install_solana_verify_from_source() -> Result<()> {
-    use anyhow::Context;
     const SOLANA_VERIFY_COMMIT: &str = "568cb334709e88b9b45fc24f1f440eecacf5db54";
     println!("Installing solana-verify from source...");
     let status = Command::new("cargo")
