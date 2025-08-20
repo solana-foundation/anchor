@@ -514,7 +514,6 @@ fn install_solana_verify() -> Result<()> {
 /// Install `solana-verify` by building from Git sources
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn install_solana_verify_from_source() -> Result<()> {
-    const SOLANA_VERIFY_COMMIT: &str = "568cb334709e88b9b45fc24f1f440eecacf5db54";
     println!("Installing solana-verify from source...");
     let status = Command::new("cargo")
         .args([
@@ -523,7 +522,7 @@ fn install_solana_verify_from_source() -> Result<()> {
             "--git",
             "https://github.com/Ellipsis-Labs/solana-verifiable-build",
             "--rev",
-            SOLANA_VERIFY_COMMIT,
+            &format!("v{SOLANA_VERIFY_VERSION}"),
             "--root",
             AVM_HOME.to_str().unwrap(),
             "--force",
