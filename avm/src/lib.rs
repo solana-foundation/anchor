@@ -308,7 +308,7 @@ pub fn install_version(
     }
 
     let is_commit = matches!(install_target, InstallTarget::Commit(_));
-    let is_older_than_v0_31_0 = version < Version::parse("0.31.0")?;
+    let is_older_than_v0_31_0 = version < Version::new(0, 31, 0);
     if from_source || is_commit || is_older_than_v0_31_0 {
         // Build from source using `cargo install`
         let mut args: Vec<String> = vec![
