@@ -1,4 +1,4 @@
-use crate::{get_keypair, is_hidden, keys_sync};
+use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, Context, Error, Result};
@@ -1107,9 +1107,7 @@ impl From<_Validator> for Validator {
                 .ledger
                 .unwrap_or_else(|| get_default_ledger_path().display().to_string()),
             limit_ledger_size: _validator.limit_ledger_size,
-            rpc_port: _validator
-                .rpc_port
-                .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT),
+            rpc_port: _validator.rpc_port.unwrap_or(DEFAULT_RPC_PORT),
             slots_per_epoch: _validator.slots_per_epoch,
             ticks_per_slot: _validator.ticks_per_slot,
             warp_slot: _validator.warp_slot,

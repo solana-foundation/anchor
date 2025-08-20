@@ -5,6 +5,8 @@ use crate::config::{
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
+use anchor_lang::prelude::UpgradeableLoaderState;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
@@ -21,7 +23,6 @@ use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -48,6 +49,9 @@ pub mod rust_template;
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
+
+/// Default RPC port
+pub const DEFAULT_RPC_PORT: u16 = 8899;
 
 #[derive(Debug, Parser)]
 #[clap(version = VERSION)]
@@ -239,6 +243,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
+        /// Don't upload IDL during deployment (IDL is uploaded by default)
+        #[clap(long)]
+        no_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -791,12 +798,14 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         ),
         Command::Expand {
@@ -2953,7 +2962,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, vec![])?;
+            deploy(cfg_override, None, None, false, true, vec![])?;
         }
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
@@ -3370,7 +3379,7 @@ fn start_test_validator(
         .test_validator
         .as_ref()
         .and_then(|test| test.validator.as_ref().map(|v| v.rpc_port))
-        .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT);
+        .unwrap_or(DEFAULT_RPC_PORT);
     if !portpicker::is_free(rpc_port) {
         return Err(anyhow!(
             "Your configured rpc port: {rpc_port} is already in use"
@@ -3520,6 +3529,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
+    no_idl: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3572,16 +3582,28 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
+            // Get the IDL filepath
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&program.lib_name)
+                .with_extension("json");
+
             if let Some(idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = Path::new("target")
-                    .join("idl")
-                    .join(&idl.metadata.name)
-                    .with_extension("json");
-                write_idl(idl, OutFile::File(idl_out))?;
+                write_idl(idl, OutFile::File(idl_filepath.clone()))?;
+
+                // Upload the IDL to the cluster by default (unless no_idl is set)
+                if !no_idl {
+                    idl_init(
+                        cfg_override,
+                        program_id,
+                        idl_filepath.display().to_string(),
+                        None,
+                    )?;
+                }
             }
         }
 
