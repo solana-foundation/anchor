@@ -201,7 +201,9 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
             .next()
             .expect("Expected input")?;
         match input.as_str() {
-            "y" | "yes" => return install_version(InstallTarget::Version(version), false, false),
+            "y" | "yes" => {
+                return install_version(InstallTarget::Version(version), false, false, false)
+            }
             _ => return Err(anyhow!("Installation rejected.")),
         };
     }
@@ -222,7 +224,7 @@ pub enum InstallTarget {
 /// Update to the latest version
 pub fn update() -> Result<()> {
     let latest_version = get_latest_version()?;
-    install_version(InstallTarget::Version(latest_version), false, false)
+    install_version(InstallTarget::Version(latest_version), false, false, false)
 }
 
 /// The commit sha provided can be shortened,
@@ -284,6 +286,7 @@ pub fn install_version(
     install_target: InstallTarget,
     force: bool,
     from_source: bool,
+    with_solana_verify: bool,
 ) -> Result<()> {
     let (version, from_source) = match &install_target {
         InstallTarget::Version(version) => (version.to_owned(), from_source),
@@ -431,12 +434,16 @@ pub fn install_version(
     }
 
     let is_at_least_0_32 = version >= Version::new(0, 32, 0);
-    if is_at_least_0_32 {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
-        install_solana_verify()?;
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-        install_solana_verify_from_source()?;
-        println!("solana-verify successfully installed.");
+    if with_solana_verify {
+        if is_at_least_0_32 {
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            install_solana_verify()?;
+            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+            install_solana_verify_from_source()?;
+            println!("solana-verify successfully installed.");
+        } else {
+            println!("Not installing solana-verify for anchor < 0.32");
+        }
     }
 
     // If .version file is empty or not parseable, write the newly installed version to it
