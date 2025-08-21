@@ -4,6 +4,8 @@ use crate::config::{
     WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
+use anchor_lang::prelude::UpgradeableLoaderState;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::AnchorDeserialize;
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
@@ -2007,6 +2009,11 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     }
 }
 
+fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
+    Ok(cluster_url(&cfg, &cfg.test_validator))
+}
+
 fn idl_init(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
@@ -2014,8 +2021,7 @@ fn idl_init(
     priority_fee: Option<u64>,
     non_canonical: bool,
 ) -> Result<()> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
-    let url = cluster_url(&cfg, &cfg.test_validator);
+    let url = rpc_url(cfg_override)?;
 
     let program_id_str = program_id.to_string();
     let mut args = vec!["write", "idl", &program_id_str, &idl_filepath];
@@ -2109,7 +2115,7 @@ fn generate_idl(
 }
 
 fn idl_fetch(
-    _cfg_override: &ConfigOverride,
+    cfg_override: &ConfigOverride,
     address: Pubkey,
     out: Option<String>,
     non_canonical: bool,
@@ -2128,6 +2134,10 @@ fn idl_fetch(
         args.push("-o");
         args.push(out);
     }
+    let url = rpc_url(cfg_override)?;
+    args.push("--rpc");
+    args.push(&url);
+
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
         .args(&args)
@@ -2177,7 +2187,7 @@ fn idl_type(path: String, out: Option<String>) -> Result<()> {
 }
 
 fn idl_close_metadata(
-    _cfg_override: &ConfigOverride,
+    cfg_override: &ConfigOverride,
     program_id: Pubkey,
     seed: String,
     priority_fee: Option<u64>,
@@ -2191,6 +2201,10 @@ fn idl_close_metadata(
         args.push("--priority-fees");
         args.push(&priority_fee_str);
     }
+
+    let url = rpc_url(cfg_override)?;
+    args.push("--rpc");
+    args.push(&url);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2208,7 +2222,7 @@ fn idl_close_metadata(
 }
 
 fn idl_create_buffer(
-    _cfg_override: &ConfigOverride,
+    cfg_override: &ConfigOverride,
     filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
@@ -2220,6 +2234,10 @@ fn idl_create_buffer(
         args.push("--priority-fees");
         args.push(&priority_fee_str);
     }
+
+    let url = rpc_url(cfg_override)?;
+    args.push("--rpc");
+    args.push(&url);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2237,7 +2255,7 @@ fn idl_create_buffer(
 }
 
 fn idl_set_buffer_authority(
-    _cfg_override: &ConfigOverride,
+    cfg_override: &ConfigOverride,
     buffer: Pubkey,
     new_authority: Pubkey,
     priority_fee: Option<u64>,
@@ -2258,6 +2276,10 @@ fn idl_set_buffer_authority(
         args.push(&priority_fee_str);
     }
 
+    let url = rpc_url(cfg_override)?;
+    args.push("--rpc");
+    args.push(&url);
+
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
         .args(&args)
@@ -2274,7 +2296,7 @@ fn idl_set_buffer_authority(
 }
 
 fn idl_write_buffer_metadata(
-    _cfg_override: &ConfigOverride,
+    cfg_override: &ConfigOverride,
     program_id: Pubkey,
     buffer: Pubkey,
     seed: String,
@@ -2295,6 +2317,10 @@ fn idl_write_buffer_metadata(
         args.push("--priority-fees");
         args.push(&priority_fee_str);
     }
+
+    let url = rpc_url(cfg_override)?;
+    args.push("--rpc");
+    args.push(&url);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -3309,6 +3335,7 @@ fn deploy(
 
                 // Upload the IDL to the cluster by default (unless no_idl is set)
                 if !no_idl {
+<<<<<<< HEAD
                     // Wait for the program to be confirmed before initializing IDL to prevent
                     // race condition where the program isn't yet available in validator cache
                     let client = create_client(&url);
@@ -3358,6 +3385,15 @@ fn deploy(
                             None,
                         )?;
                     }
+=======
+                    idl_init(
+                        cfg_override,
+                        program_id,
+                        idl_filepath.display().to_string(),
+                        None,
+                        false,
+                    )?;
+>>>>>>> e55f8ae8 (feat: Refactor RPC URL handling in IDL commands)
                 }
             }
         }
