@@ -1,7 +1,7 @@
-use crate::{get_keypair, is_hidden, keys_sync};
+use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;
 use heck::ToSnakeCase;
@@ -13,10 +13,8 @@ use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::clock::Slot;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use solang_parser::pt::{ContractTy, SourceUnitPart};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
-use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -182,53 +180,6 @@ impl WithPath<Config> {
             .collect())
     }
 
-    /// Parse all the files with the .sol extension, and get a list of the all
-    /// contracts defined in them along with their path. One Solidity file may
-    /// define multiple contracts.
-    pub fn get_solidity_program_list(&self) -> Result<Vec<(String, PathBuf)>> {
-        let path = self.path().parent().unwrap().join("solidity");
-        let mut res = Vec::new();
-
-        if let Ok(entries) = fs::read_dir(path) {
-            for entry in entries {
-                let path = entry?.path();
-
-                if !path.is_file() || path.extension() != Some(OsStr::new("sol")) {
-                    continue;
-                }
-
-                let source = fs::read_to_string(&path)?;
-
-                let tree = match solang_parser::parse(&source, 0) {
-                    Ok((tree, _)) => tree,
-                    Err(diag) => {
-                        // The parser can return multiple errors, however this is exceedingly rare.
-                        // Just use the first one, else the formatting will be a mess.
-                        bail!(
-                            "{}: {}: {}",
-                            path.display(),
-                            diag[0].level.to_string(),
-                            diag[0].message
-                        );
-                    }
-                };
-
-                tree.0.iter().for_each(|part| {
-                    if let SourceUnitPart::ContractDefinition(contract) = part {
-                        // Must be a contract, not library/interface/abstract contract
-                        if matches!(&contract.ty, ContractTy::Contract(..)) {
-                            if let Some(name) = &contract.name {
-                                res.push((name.name.clone(), path.clone()));
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        Ok(res)
-    }
-
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
         let mut r = vec![];
         for path in self.get_rust_program_list()? {
@@ -246,24 +197,6 @@ impl WithPath<Config> {
 
             r.push(Program {
                 lib_name,
-                solidity: false,
-                path,
-                idl,
-            });
-        }
-        for (lib_name, path) in self.get_solidity_program_list()? {
-            let idl_filepath = Path::new("target")
-                .join("idl")
-                .join(&lib_name)
-                .with_extension("json");
-            let idl = fs::read(idl_filepath)
-                .ok()
-                .map(|bytes| serde_json::from_reader(&*bytes))
-                .transpose()?;
-
-            r.push(Program {
-                lib_name,
-                solidity: true,
                 path,
                 idl,
             });
@@ -1174,9 +1107,7 @@ impl From<_Validator> for Validator {
                 .ledger
                 .unwrap_or_else(|| get_default_ledger_path().display().to_string()),
             limit_ledger_size: _validator.limit_ledger_size,
-            rpc_port: _validator
-                .rpc_port
-                .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT),
+            rpc_port: _validator.rpc_port.unwrap_or(DEFAULT_RPC_PORT),
             slots_per_epoch: _validator.slots_per_epoch,
             ticks_per_slot: _validator.ticks_per_slot,
             warp_slot: _validator.warp_slot,
@@ -1308,8 +1239,7 @@ impl Merge for _Validator {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub lib_name: String,
-    pub solidity: bool,
-    // Canonicalized path to the program directory or Solidity source file
+    // Canonicalized path to the program directory
     pub path: PathBuf,
     pub idl: Option<Idl>,
 }

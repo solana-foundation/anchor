@@ -43,7 +43,7 @@ describe("auction-house", () => {
   const wallet = getProvider().wallet as Wallet;
 
   // Clients.
-  let authorityClient: Program<AuctionHouse>; // Reprents the exchange authority.
+  let authorityClient: Program<AuctionHouse>; // Represents the exchange authority.
   let sellerClient: Program<AuctionHouse>; // Represents the seller.
   let buyerClient: Program<AuctionHouse>; // Represents the buyer.
   let nftMintClient: Token; // Represents the NFT to be traded.
