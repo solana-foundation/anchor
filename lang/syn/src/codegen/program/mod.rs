@@ -9,6 +9,8 @@ mod entry;
 mod handlers;
 mod idl;
 mod instruction;
+#[cfg(feature = "instrument-compute-units")]
+mod instrument;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let mod_name = &program.name;
@@ -16,7 +18,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let entry = entry::generate(program);
     let dispatch = dispatch::generate(program);
     let handlers = handlers::generate(program);
+    #[cfg(not(feature = "instrument-compute-units"))]
     let user_defined_program = &program.program_mod;
+    #[cfg(feature = "instrument-compute-units")]
+    let user_defined_program = &instrument::generate(program.program_mod.clone());
+
     let instruction = instruction::generate(program);
     let cpi = cpi::generate(program);
     let accounts = accounts::generate(program);
