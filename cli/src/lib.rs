@@ -1,3 +1,4 @@
+use crate::checks::check_instrument_compute_units_build_feature;
 use crate::config::{
     get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest,
     PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
@@ -134,6 +135,9 @@ pub enum Command {
         /// Architecture to use when building the program
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
+        /// Add log messages to each line to instrument CU usage
+        #[clap(long)]
+        instrument_compute_units: bool,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -203,6 +207,9 @@ pub enum Command {
         /// to be able to check the transactions.
         #[clap(long)]
         detach: bool,
+        /// Add log messages to each line to instrument CU usage
+        #[clap(long)]
+        instrument_compute_units: bool,
         /// Run the test suites under the specified path
         #[clap(long)]
         run: Vec<String>,
@@ -750,6 +757,7 @@ fn process_command(opts: Opts) -> Result<()> {
             no_idl,
             idl,
             idl_ts,
+            instrument_compute_units,
             verifiable,
             program_name,
             solana_version,
@@ -765,6 +773,7 @@ fn process_command(opts: Opts) -> Result<()> {
             no_idl,
             idl,
             idl_ts,
+            instrument_compute_units,
             verifiable,
             skip_lint,
             program_name,
@@ -832,6 +841,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_local_validator,
             skip_build,
             no_idl,
+            instrument_compute_units,
             detach,
             run,
             args,
@@ -847,6 +857,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_build,
             skip_lint,
             no_idl,
+            instrument_compute_units,
             detach,
             run,
             args,
@@ -1266,6 +1277,7 @@ pub fn build(
     no_idl: bool,
     idl: Option<String>,
     idl_ts: Option<String>,
+    instrument_compute_units: bool,
     verifiable: bool,
     skip_lint: bool,
     program_name: Option<String>,
@@ -1327,6 +1339,7 @@ pub fn build(
             no_idl,
             idl_out,
             idl_ts_out,
+            instrument_compute_units,
             &build_config,
             stdout,
             stderr,
@@ -1343,6 +1356,7 @@ pub fn build(
             no_idl,
             idl_out,
             idl_ts_out,
+            instrument_compute_units,
             &build_config,
             stdout,
             stderr,
@@ -1359,6 +1373,7 @@ pub fn build(
             no_idl,
             idl_out,
             idl_ts_out,
+            instrument_compute_units,
             &build_config,
             stdout,
             stderr,
@@ -1382,6 +1397,7 @@ fn build_all(
     no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
+    instrument_compute_units: bool,
     build_config: &BuildConfig,
     stdout: Option<File>, // Used for the package registry server.
     stderr: Option<File>, // Used for the package registry server.
@@ -1402,6 +1418,7 @@ fn build_all(
                     no_idl,
                     idl_out.clone(),
                     idl_ts_out.clone(),
+                    instrument_compute_units,
                     build_config,
                     stdout.as_ref().map(|f| f.try_clone()).transpose()?,
                     stderr.as_ref().map(|f| f.try_clone()).transpose()?,
@@ -1427,6 +1444,7 @@ fn build_rust_cwd(
     no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
+    instrument_compute_units: bool,
     build_config: &BuildConfig,
     stdout: Option<File>,
     stderr: Option<File>,
@@ -1442,7 +1460,15 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+            cfg,
+            no_idl,
+            idl_out,
+            idl_ts_out,
+            instrument_compute_units,
+            skip_lint,
+            no_docs,
+            arch,
+            cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1797,11 +1823,18 @@ fn _build_rust_cwd(
     no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
+    instrument_compute_units: bool,
     skip_lint: bool,
     no_docs: bool,
     arch: &ProgramArch,
-    cargo_args: Vec<String>,
+    mut cargo_args: Vec<String>,
 ) -> Result<()> {
+    if instrument_compute_units {
+        check_instrument_compute_units_build_feature()?;
+        cargo_args.insert(0, "--features".to_string());
+        cargo_args.insert(1, "instrument-compute-units".to_string());
+    }
+
     let exit = std::process::Command::new("cargo")
         .arg(arch.build_subcommand())
         .args(cargo_args.clone())
@@ -2912,6 +2945,7 @@ fn test(
     skip_build: bool,
     skip_lint: bool,
     no_idl: bool,
+    instrument_compute_units: bool,
     detach: bool,
     tests_to_run: Vec<String>,
     extra_args: Vec<String>,
@@ -2936,6 +2970,7 @@ fn test(
                 no_idl,
                 None,
                 None,
+                instrument_compute_units,
                 false,
                 skip_lint,
                 program_name.clone(),
@@ -4185,6 +4220,7 @@ fn localnet(
                 false,
                 None,
                 None,
+                false,
                 false,
                 skip_lint,
                 None,
