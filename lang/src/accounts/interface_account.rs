@@ -184,6 +184,14 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
+    ///
+    /// No Anchor discriminator is checked during reload. Instead, this method enforces
+    /// owner stability by verifying that `info.owner == self.owner` (i.e., the pubkey
+    /// validated at construction) to avoid TOCTOU issues, and then re-deserializes `T`
+    /// from the updated bytes.
+    ///
+    /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
+    /// #[account] type.
     pub fn reload(&mut self) -> Result<()> {
         let info = self.account.to_account_info();
 
@@ -195,7 +203,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 
         // Re-deserialize fresh data into the inner account.
         let mut data: &[u8] = &info.try_borrow_data()?;
-        let new_val = T::try_deserialize(&mut data)?;
+        let new_val = T::try_deserialize_unchecked(&mut data)?;
         self.account.set_inner(new_val);
         Ok(())
     }
@@ -227,6 +235,10 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 
 impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> InterfaceAccount<'a, T> {
     /// Deserializes the given `info` into a `InterfaceAccount`.
+    ///
+    /// This **does not** check an Anchor discriminator. It first validates
+    /// program ownership via `T::check_owner`, then deserializes using
+    /// `AccountDeserialize::try_deserialize_unchecked`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
         // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
@@ -239,9 +251,11 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         Self::try_from_unchecked(info)
     }
 
-    /// Deserializes the given `info` into a `InterfaceAccount` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
+    /// Deserializes the given `info` into a `InterfaceAccount` **without** checking
+    /// the account discriminator. This is intended for foreign program accounts.
+    /// Prefer `Self::try_from` when you also want the ownership check, but note
+    /// that both skip Anchor discriminator checks, and `try_from` additionally
+    /// enforces ownership.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
