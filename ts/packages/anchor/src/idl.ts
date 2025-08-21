@@ -321,7 +321,11 @@ export function convertIdlToCamelCase<I extends Idl>(idl: I) {
 
   // `my_account.field` is getting converted to `myAccountField` but we
   // need `myAccount.field`.
-  const toCamelCase = (s: any) => s.split(".").map(camelCase).join(".");
+  const toCamelCase = (s: any) =>
+    s
+      .split(".")
+      .map((part: any) => camelCase(part, { locale: false }))
+      .join(".");
 
   const recursivelyConvertNamesToCamelCase = (obj: Record<string, any>) => {
     for (const key in obj) {

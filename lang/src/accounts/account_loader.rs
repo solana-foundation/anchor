@@ -2,13 +2,13 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
+use crate::solana_program::pubkey::Pubkey;
 use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
     ToAccountMetas, ZeroCopy,
 };
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
 use std::cell::{Ref, RefMut};
 use std::collections::BTreeSet;
 use std::fmt;
