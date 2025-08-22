@@ -35,7 +35,7 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
-        ("rust-toolchain.toml".into(), rust_toolchain_toml().into()),
+        ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
             cargo_toml(name, with_mollusk),
