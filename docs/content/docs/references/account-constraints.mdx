@@ -289,6 +289,72 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 #[account(*::token_program = <target_account>)]
 ```
 
+## Token Extensions Constraints
+
+### `#[account(extensions::close_authority::*)]`
+
+Description: Create or validate close authority extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::close_authority::authority = <target_account>
+)]
+```
+
+### `#[account(extensions::permanent_delegate::*)]`
+
+Description: Create or validate permanent delegate extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::permanent_delegate::delegate = <target_account>
+)]
+```
+
+### `#[account(extensions::transfer_hook::*)]`
+
+Description: Create or validate transfer hook extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::transfer_hook::authority = <target_account>,
+    extensions::transfer_hook::program_id = <target_account>
+)]
+```
+
+### `#[account(extensions::group_pointer::*)]`
+
+Description: Create or validate group pointer extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::group_pointer::authority = <target_account>,
+    extensions::group_pointer::group_address = <target_account>
+)]
+```
+
+### `#[account(extensions::group_member_pointer::*)]`
+
+Description: Create or validate group member pointer extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::group_member_pointer::authority = <target_account>,
+    extensions::group_member_pointer::member_address = <target_account>
+)]
+```
+
+### `#[account(extensions::metadata_pointer::*)]`
+
+Description: Create or validate metadata pointer extension on the mint account.
+
+```rust title="attribute"
+#[account(
+    extensions::metadata_pointer::authority = <target_account>,
+    extensions::metadata_pointer::metadata_address = <target_account>
+)]
+```
+
 ## Instruction Attribute
 
 ### `#[instruction(...)]`
