@@ -10,7 +10,7 @@ use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
@@ -41,6 +41,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
+use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
@@ -52,6 +53,16 @@ pub const DOCKER_BUILDER_VERSION: &str = VERSION;
 
 /// Default RPC port
 pub const DEFAULT_RPC_PORT: u16 = 8899;
+
+pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(avm_home) = std::env::var("AVM_HOME") {
+        PathBuf::from(avm_home)
+    } else {
+        let mut user_home = dirs::home_dir().expect("Could not find home directory");
+        user_home.push(".avm");
+        user_home
+    }
+});
 
 #[derive(Debug, Parser)]
 #[clap(version = VERSION)]
@@ -662,17 +673,10 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         "`anchor` {anchor_version} is not installed with `avm`. Installing...\n"
                     );
 
-                    let exit_status = std::process::Command::new("avm")
-                        .arg("install")
-                        .arg(anchor_version)
-                        .spawn()?
-                        .wait()?;
-                    if !exit_status.success() {
+                    if let Err(e) = install_with_avm(anchor_version, false) {
                         eprintln!(
-                            "Failed to install `anchor` {anchor_version}, \
-                            using {current_version} instead"
+                            "Failed to install `anchor`: {e}, using {current_version} instead"
                         );
-
                         return Ok(restore_cbs);
                     }
                 }
@@ -690,6 +694,23 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
     }
 
     Ok(restore_cbs)
+}
+
+/// Installs Anchor using AVM, passing `--force` (and optionally) installing
+/// `solana-verify`.
+fn install_with_avm(version: &str, verify: bool) -> Result<()> {
+    let mut cmd = std::process::Command::new("avm");
+    cmd.arg("install");
+    cmd.arg(version);
+    cmd.arg("--force");
+    if verify {
+        cmd.arg("--verify");
+    }
+    let status = cmd.status().context("running AVM")?;
+    if !status.success() {
+        bail!("failed to install `anchor` {version} with avm");
+    }
+    Ok(())
 }
 
 /// Restore toolchain to how it was before the command was run.
@@ -1898,7 +1919,13 @@ pub fn verify(
     command_args.extend(args);
 
     println!("Verifying program {program_id}");
-    let status = std::process::Command::new("solana-verify")
+    let verify_path = AVM_HOME.join("bin").join("solana-verify");
+    if !verify_path.exists() {
+        install_with_avm(env!("CARGO_PKG_VERSION"), true)
+            .context("installing Anchor with solana-verify")?;
+    }
+
+    let status = std::process::Command::new(verify_path)
         .arg("verify-from-repo")
         .args(&command_args)
         .stdout(std::process::Stdio::inherit())
