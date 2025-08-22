@@ -61,6 +61,12 @@ fn id_to_tokens(
             ID_CONST
         }
 
+        // This should be tied to the event-cpi feature, how?
+        pub const EVENT_AUTHORITY_AND_BUMP: (#pubkey_type, u8) = {
+            let (address, bump) = anchor_lang::derive_program_address(&[b"__event_authority"], &ID_CONST.to_bytes());
+            (#pubkey_type::new_from_array(address), bump)
+        };
+
         #[cfg(test)]
         #[test]
         fn test_id() {
