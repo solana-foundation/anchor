@@ -206,7 +206,6 @@ name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
-rust-version = "{5}"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -236,7 +235,6 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
         test_sbf_feature,
         VERSION,
         dev_dependencies,
-        ANCHOR_MSRV
     )
 }
 
