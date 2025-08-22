@@ -459,7 +459,7 @@ pub fn install_version(
     use_version(Some(version))
 }
 
-const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 7);
+const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 11);
 
 /// Check if `solana-verify` is both installed and >= [`SOLANA_VERIFY_VERSION`].
 fn solana_verify_installed() -> Result<bool> {
