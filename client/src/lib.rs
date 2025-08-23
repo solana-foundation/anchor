@@ -748,7 +748,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
-    use solana_rpc_client::response::RpcResponseContext;
+    use solana_rpc_client_api::response::RpcResponseContext;
 
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
