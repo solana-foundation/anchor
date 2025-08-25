@@ -18,7 +18,7 @@ use std::{
     process::Stdio,
 };
 
-const ANCHOR_MSRV: &str = "1.83.0";
+const ANCHOR_MSRV: &str = "1.89.0";
 
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
