@@ -229,17 +229,23 @@ struct DeepNestedVec {
 #[test]
 fn test_option_vec_struct() {
     assert_eq!(OptionVecStruct::INIT_SPACE, 1 + 4 + 8);
-    let _ = OptionVecStruct {
+    let option_vec = OptionVecStruct {
         maybe_data: Some(vec![1, 2, 3, 4]),
     };
+    
+    // Use the field to avoid warning
+    assert_eq!(option_vec.maybe_data, Some(vec![1, 2, 3, 4]));
 }
 
 #[test]
 fn test_deeply_nested_vec() {
     assert_eq!(DeepNestedVec::INIT_SPACE, 4 + (2 * (4 + (3 * (4 + 4)))));
-    let _ = DeepNestedVec {
+    let deep_nested = DeepNestedVec {
         data: vec![vec![vec![1, 2, 3, 4]]],
     };
+    
+    // Use the field to avoid warning
+    assert_eq!(deep_nested.data, vec![vec![vec![1, 2, 3, 4]]]);
 }
 
 #[test]
