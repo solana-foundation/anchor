@@ -90,11 +90,33 @@ pub struct TestFullPath {
 
 const MAX_LEN: u8 = 10;
 
+// Common size constants to reduce duplication
+const PUBKEY_SIZE: usize = 32;
+const VEC_LEN_SIZE: usize = 4;
+
 #[derive(InitSpace)]
 pub struct TestConst {
     #[max_len(MAX_LEN)]
     pub test_string: String,
     pub test_array: [u8; MAX_LEN as usize],
+}
+
+pub mod data {
+    pub const SIZE: usize = 100;
+}
+
+#[derive(InitSpace)]
+pub struct TestModuleConst {
+    #[max_len(data::SIZE)]
+    pub test_string: String,
+    pub test_array: [u8; data::SIZE],
+}
+
+#[derive(InitSpace)]
+pub struct TestModuleConstArithmetic {
+    #[max_len(data::SIZE + 20)]
+    pub test_string: String,
+    pub test_array: [u8; data::SIZE + 20],
 }
 
 #[derive(InitSpace)]
@@ -190,6 +212,133 @@ fn test_full_path() {
 #[test]
 fn test_const() {
     assert_eq!(TestConst::INIT_SPACE, (4 + 10) + 10)
+}
+
+#[derive(InitSpace)]
+struct OptionVecStruct {
+    #[max_len(8)]
+    pub maybe_data: Option<Vec<u8>>,
+}
+
+#[derive(InitSpace)]
+struct DeepNestedVec {
+    #[max_len(2, 3, 4)]
+    pub data: Vec<Vec<Vec<u8>>>,
+}
+
+#[test]
+fn test_option_vec_struct() {
+    assert_eq!(OptionVecStruct::INIT_SPACE, 1 + 4 + 8);
+    let _ = OptionVecStruct {
+        maybe_data: Some(vec![1, 2, 3, 4]),
+    };
+}
+
+#[test]
+fn test_deeply_nested_vec() {
+    assert_eq!(DeepNestedVec::INIT_SPACE, 4 + (2 * (4 + (3 * (4 + 4)))));
+    let _ = DeepNestedVec {
+        data: vec![vec![vec![1, 2, 3, 4]]],
+    };
+}
+
+#[test]
+fn test_empty_enum() {
+    #[derive(InitSpace)]
+    enum EmptyEnum {}
+    assert_eq!(EmptyEnum::INIT_SPACE, 1);
+}
+
+#[test]
+fn test_module_const() {
+    assert_eq!(
+        TestModuleConst::INIT_SPACE,
+        (VEC_LEN_SIZE + data::SIZE) + data::SIZE
+    )
+}
+
+#[test]
+fn test_module_const_arithmetic() {
+    assert_eq!(
+        TestModuleConstArithmetic::INIT_SPACE,
+        (VEC_LEN_SIZE + (data::SIZE + 20)) + (data::SIZE + 20)
+    )
+}
+
+#[test]
+fn test_module_const_comprehensive() {
+    // Test the exact scenario from the GitHub issue using the top-level data module
+    #[derive(InitSpace)]
+    pub struct SomeData {
+        pub owner: Pubkey,
+        #[max_len(data::SIZE)]
+        pub data: Vec<u8>,
+    }
+
+    // The space should be: 32 (Pubkey) + 4 (Vec length) + 100 (max data size) = 136
+    assert_eq!(
+        SomeData::INIT_SPACE,
+        PUBKEY_SIZE + VEC_LEN_SIZE + data::SIZE
+    );
+
+    // Test that we can create an instance and use the fields
+    let test_pubkey = Pubkey::new_unique();
+    let test_data = vec![1, 2, 3, 4, 5];
+    let some_data = SomeData {
+        owner: test_pubkey,
+        data: test_data.clone(),
+    };
+
+    // Verify the fields work correctly
+    assert_eq!(some_data.owner, test_pubkey);
+    assert_eq!(some_data.data, test_data);
+
+    // Test that simple constants still work
+    const SIZE: usize = 50;
+
+    #[derive(InitSpace)]
+    pub struct SomeDataSimple {
+        pub owner: Pubkey,
+        #[max_len(SIZE)]
+        pub data: Vec<u8>,
+    }
+
+    assert_eq!(
+        SomeDataSimple::INIT_SPACE,
+        PUBKEY_SIZE + VEC_LEN_SIZE + SIZE
+    );
+
+    // Test that const assignments work
+    const SIZE_ASSIGNED: usize = data::SIZE;
+
+    #[derive(InitSpace)]
+    pub struct SomeDataAssigned {
+        pub owner: Pubkey,
+        #[max_len(SIZE_ASSIGNED)]
+        pub data: Vec<u8>,
+    }
+
+    assert_eq!(
+        SomeDataAssigned::INIT_SPACE,
+        PUBKEY_SIZE + VEC_LEN_SIZE + data::SIZE
+    );
+
+    // Test that we can create instances of these structs too
+    let simple_data = SomeDataSimple {
+        owner: test_pubkey,
+        data: test_data.clone(),
+    };
+
+    let assigned_data = SomeDataAssigned {
+        owner: test_pubkey,
+        data: test_data,
+    };
+
+    // Verify all instances work correctly
+    assert_eq!(simple_data.owner, test_pubkey);
+    assert_eq!(assigned_data.owner, test_pubkey);
+    assert_eq!(simple_data.data, vec![1, 2, 3, 4, 5]);
+    assert_eq!(assigned_data.data, vec![1, 2, 3, 4, 5]);
 }
 
 #[test]
