@@ -23,7 +23,7 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi"]
+event-cpi = ["anchor-attribute-event/event-cpi","anchor-attribute-account/event-cpi"]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
