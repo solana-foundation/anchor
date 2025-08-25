@@ -232,7 +232,7 @@ fn test_option_vec_struct() {
     let option_vec = OptionVecStruct {
         maybe_data: Some(vec![1, 2, 3, 4]),
     };
-    
+
     // Use the field to avoid warning
     assert_eq!(option_vec.maybe_data, Some(vec![1, 2, 3, 4]));
 }
@@ -243,7 +243,7 @@ fn test_deeply_nested_vec() {
     let deep_nested = DeepNestedVec {
         data: vec![vec![vec![1, 2, 3, 4]]],
     };
-    
+
     // Use the field to avoid warning
     assert_eq!(deep_nested.data, vec![vec![vec![1, 2, 3, 4]]]);
 }
