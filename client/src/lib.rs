@@ -67,7 +67,7 @@
 //! This feature allows passing in a custom RPC client when creating program instances, which is
 //! useful for mocking RPC responses, e.g. via [`RpcClient::new_mock`].
 //!
-//! [`RpcClient::new_mock`]: https://docs.rs/solana-client/2.1.0/solana_client/rpc_client/struct.RpcClient.html#method.new_mock
+//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/2.1.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
@@ -75,16 +75,16 @@ use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountM
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::UiAccountEncoding;
-use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
-use solana_client::rpc_config::{
-    RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-    RpcTransactionLogsConfig, RpcTransactionLogsFilter,
-};
-use solana_client::rpc_filter::{Memcmp, RpcFilterType};
-use solana_client::{
-    client_error::ClientError as SolanaClientError,
-    nonblocking::pubsub_client::{PubsubClient, PubsubClientError},
-    rpc_response::{Response as RpcResponse, RpcLogsResponse},
+use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
+use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
+use solana_rpc_client_api::{
+    client_error::Error as SolanaClientError,
+    config::{
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
+    },
+    filter::{Memcmp, RpcFilterType},
+    response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_sdk::account::Account;
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -113,7 +113,6 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
-pub use solana_client;
 pub use solana_sdk;
 
 mod cluster;
@@ -749,7 +748,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
-    use solana_client::rpc_response::RpcResponseContext;
+    use solana_rpc_client_api::response::RpcResponseContext;
 
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
