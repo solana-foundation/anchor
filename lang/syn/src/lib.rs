@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg(not(target_os = "solana"))]
 
 pub mod codegen;
 pub mod parser;
