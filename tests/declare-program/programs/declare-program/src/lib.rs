@@ -132,3 +132,49 @@ pub struct Cpi<'info> {
 pub struct Utils<'info> {
     pub authority: Signer<'info>,
 }
+
+#[allow(dead_code)]
+// Compilation check for derived trait impls
+fn check_impls() {
+    check::<amm_v3::client::accounts::ClosePosition>();
+    check::<amm_v3::client::accounts::CollectFundFee>();
+    check::<amm_v3::client::accounts::CollectProtocolFee>();
+    check::<amm_v3::client::accounts::CollectRemainingRewards>();
+    check::<amm_v3::client::accounts::CreateOperationAccount>();
+    check::<amm_v3::client::accounts::DecreaseLiquidity>();
+    check::<amm_v3::client::accounts::DecreaseLiquidityV2>();
+    check::<amm_v3::client::accounts::DecreaseLiquidityV2>();
+    check::<amm_v3::client::accounts::IncreaseLiquidity>();
+    check::<amm_v3::client::accounts::IncreaseLiquidityV2>();
+    check::<amm_v3::client::accounts::InitializeReward>();
+    check::<amm_v3::client::accounts::OpenPosition>();
+    check::<amm_v3::client::accounts::OpenPositionV2>();
+    check::<amm_v3::client::accounts::OpenPositionWithToken22Nft>();
+    check::<amm_v3::client::accounts::UpdateAmmConfig>();
+    check::<amm_v3::client::accounts::UpdateOperationAccount>();
+    check::<amm_v3::client::accounts::UpdatePoolStatus>();
+    check::<amm_v3::client::accounts::UpdateRewardInfos>();
+
+    check::<amm_v3::client::args::ClosePosition>();
+    check::<amm_v3::client::args::CollectFundFee>();
+    check::<amm_v3::client::args::CollectProtocolFee>();
+    check::<amm_v3::client::args::CollectRemainingRewards>();
+    check::<amm_v3::client::args::CreateOperationAccount>();
+    check::<amm_v3::client::args::DecreaseLiquidity>();
+    check::<amm_v3::client::args::DecreaseLiquidityV2>();
+    check::<amm_v3::client::args::DecreaseLiquidityV2>();
+    check::<amm_v3::client::args::IncreaseLiquidity>();
+    check::<amm_v3::client::args::IncreaseLiquidityV2>();
+    check::<amm_v3::client::args::InitializeReward>();
+    check::<amm_v3::client::args::OpenPosition>();
+    check::<amm_v3::client::args::OpenPositionV2>();
+    check::<amm_v3::client::args::OpenPositionWithToken22Nft>();
+    check::<amm_v3::client::args::UpdateAmmConfig>();
+    check::<amm_v3::client::args::UpdatePoolStatus>();
+    check::<amm_v3::client::args::UpdateRewardInfos>();
+
+    // Compilation fails for the following:
+    // check::<amm_v3::client::args::UpdateOperationAccount>();
+}
+
+fn check<T: std::fmt::Debug + Default + Clone + Copy>() {}
