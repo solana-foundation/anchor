@@ -18,6 +18,10 @@ impl<'info> UncheckedAccount<'info> {
     pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Self {
         Self(acc_info)
     }
+
+    pub fn account_info(&self) -> &'info AccountInfo<'info> {
+        self.0
+    }
 }
 
 impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
