@@ -52,8 +52,8 @@ checks on the result. In both cases, the result is also returned.
 ```rust
 use {
     mollusk_svm::Mollusk,
-    solana_account::Account,
-    solana_sdk::{instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
+    solana_pubkey::Pubkey,
+    solana_sdk::{account::Account, instruction::{AccountMeta, Instruction}},
 };
 
 let program_id = Pubkey::new_unique();
@@ -86,10 +86,9 @@ To apply checks via `process_and_validate_instruction`, developers can use the
 ```rust
 use {
     mollusk_svm::{Mollusk, result::Check},
-    solana_account::Account,
+    solana_pubkey::Pubkey,
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
-        pubkey::Pubkey
         system_instruction,
         system_program,
     },
@@ -146,8 +145,8 @@ the final result is also returned.
 ```rust
 use {
     mollusk_svm::Mollusk,
-    solana_account::Account,
-    solana_sdk::{pubkey::Pubkey, system_instruction},
+    solana_pubkey::Pubkey,
+    solana_sdk::{account::Account, system_instruction},
 };
 
 let mollusk = Mollusk::default();
@@ -188,8 +187,8 @@ returned by the method is the final result of the last instruction in the chain.
 ```rust
 use {
     mollusk_svm::{Mollusk, result::Check},
-    solana_account::Account,
-    solana_sdk::{pubkey::Pubkey, system_instruction},
+    solana_pubkey::Pubkey,
+    solana_sdk::{account::Account, system_instruction},
 };
 
 let mollusk = Mollusk::default();

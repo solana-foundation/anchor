@@ -11,7 +11,7 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::clock::Slot;
-use solana_sdk::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;

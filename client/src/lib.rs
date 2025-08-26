@@ -114,6 +114,7 @@ pub use cluster::Cluster;
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
 pub use solana_sdk;
+pub use solana_pubkey;
 
 mod cluster;
 
