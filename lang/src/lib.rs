@@ -126,6 +126,15 @@ pub mod solana_program {
             #[cfg(not(target_os = "solana"))]
             core::hint::black_box(data);
         }
+
+        // FIXME: `solana_msg` does not currently expose `sol_log_compute_units`
+        #[inline]
+        pub fn sol_log_compute_units() {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_define_syscall::definitions::sol_log_compute_units_();
+            }
+        }
     }
     pub mod sysvar {
         pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
