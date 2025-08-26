@@ -8,8 +8,8 @@ use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
 };
+use solana_signer::Signer;
 use std::{
     fmt::Write as _,
     fs::{self, File},

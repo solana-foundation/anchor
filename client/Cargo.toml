@@ -24,6 +24,7 @@ serde = { version = "1", features = ["derive"] }
 solana-account-decoder = "2"
 solana-client = "2"
 solana-sdk = "2"
+solana-signer = "2"
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"
