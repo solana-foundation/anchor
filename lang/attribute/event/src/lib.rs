@@ -164,7 +164,6 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::from(quote! {
         {
             let authority_info = ctx.accounts.#authority_name.to_account_info();
-            let authority_bump = ctx.bumps.#authority_name;
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);
@@ -187,7 +186,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             anchor_lang::solana_program::program::invoke_signed(
                 &ix,
                 &[authority_info],
-                &[&[#authority_seeds, &[authority_bump]]],
+                &[&[#authority_seeds, &[crate::EVENT_AUTHORITY_AND_BUMP.1]]],
             )
             .map_err(anchor_lang::error::Error::from)?;
         }
