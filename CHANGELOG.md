@@ -27,6 +27,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Breaking
 
 - spl: Update SPL dependencies to latest compatible versions ([#3860](https://github.com/solana-foundation/anchor/pull/3860)).
+- lang: Remove `rent_exempt` constraint ([#3870](https://github.com/coral-xyz/anchor/pull/3870)).
 
 ## [0.31.1] - 2025-04-19
 

@@ -331,7 +331,6 @@ export const LangErrorCode = {
   ConstraintSigner: errors.ANCHOR_ERROR__CONSTRAINT_SIGNER,
   ConstraintRaw: errors.ANCHOR_ERROR__CONSTRAINT_RAW,
   ConstraintOwner: errors.ANCHOR_ERROR__CONSTRAINT_OWNER,
-  ConstraintRentExempt: errors.ANCHOR_ERROR__CONSTRAINT_RENT_EXEMPT,
   ConstraintSeeds: errors.ANCHOR_ERROR__CONSTRAINT_SEEDS,
   ConstraintExecutable: errors.ANCHOR_ERROR__CONSTRAINT_EXECUTABLE,
   ConstraintState: errors.ANCHOR_ERROR__CONSTRAINT_STATE,
@@ -475,10 +474,6 @@ export const LangErrorMessage = new Map<number, string>([
   [LangErrorCode.ConstraintSigner, "A signer constraint was violated"],
   [LangErrorCode.ConstraintRaw, "A raw constraint was violated"],
   [LangErrorCode.ConstraintOwner, "An owner constraint was violated"],
-  [
-    LangErrorCode.ConstraintRentExempt,
-    "A rent exemption constraint was violated",
-  ],
   [LangErrorCode.ConstraintSeeds, "A seeds constraint was violated"],
   [LangErrorCode.ConstraintExecutable, "An executable constraint was violated"],
   [

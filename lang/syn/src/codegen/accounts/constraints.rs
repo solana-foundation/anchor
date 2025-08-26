@@ -6,15 +6,6 @@ use crate::*;
 pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let constraints = linearize(&f.constraints);
 
-    let rent = if constraints
-        .iter()
-        .any(|c| matches!(c, Constraint::RentExempt(ConstraintRentExempt::Enforce)))
-    {
-        quote! { let __anchor_rent = Rent::get()?; }
-    } else {
-        quote! {}
-    };
-
     let checks: Vec<proc_macro2::TokenStream> = constraints
         .iter()
         .map(|c| generate_constraint(f, c, accs))
@@ -50,7 +41,6 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     }
 
     quote! {
-        #rent
         #all_checks
     }
 }
@@ -80,7 +70,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         has_one,
         raw,
         owner,
-        rent_exempt,
         seeds,
         executable,
         close,
@@ -119,9 +108,6 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = owner {
         constraints.push(Constraint::Owner(c));
     }
-    if let Some(c) = rent_exempt {
-        constraints.push(Constraint::RentExempt(c));
-    }
     if let Some(c) = executable {
         constraints.push(Constraint::Executable(c));
     }
@@ -153,7 +139,6 @@ fn generate_constraint(
         Constraint::Signer(c) => generate_constraint_signer(f, c),
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
         Constraint::Owner(c) => generate_constraint_owner(f, c),
-        Constraint::RentExempt(c) => generate_constraint_rent_exempt(f, c),
         Constraint::Seeds(c) => generate_constraint_seeds(f, c),
         Constraint::Executable(c) => generate_constraint_executable(f, c),
         Constraint::Close(c) => generate_constraint_close(f, c, accs),
@@ -385,25 +370,6 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
                 return #error;
             }
         }
-    }
-}
-
-pub fn generate_constraint_rent_exempt(
-    f: &Field,
-    c: &ConstraintRentExempt,
-) -> proc_macro2::TokenStream {
-    let ident = &f.ident;
-    let name_str = ident.to_string();
-    let info = quote! {
-        #ident.to_account_info()
-    };
-    match c {
-        ConstraintRentExempt::Skip => quote! {},
-        ConstraintRentExempt::Enforce => quote! {
-            if !__anchor_rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
-                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
-            }
-        },
     }
 }
 
@@ -1118,13 +1084,6 @@ fn generate_constraint_init_group(
                         if actual_owner != #owner {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintOwner).with_account_name(#name_str).with_pubkeys((*actual_owner, *#owner)));
                         }
-
-                        {
-                            let required_lamports = __anchor_rent.minimum_balance(space);
-                            if pa.to_account_info().lamports() < required_lamports {
-                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
-                            }
-                        }
                     }
 
                     // Done.
@@ -1637,6 +1596,7 @@ fn generate_create_account(
         // zero lamports when the system program's create instruction
         // is eventually called.
         let __current_lamports = #field.lamports();
+        let __anchor_rent = Rent::get()?;
         if __current_lamports == 0 {
             // Create the token account with right amount of lamports and space, and the correct owner.
             let space = #space;
