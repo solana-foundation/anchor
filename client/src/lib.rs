@@ -108,14 +108,12 @@ use tokio::{
     task::JoinHandle,
 };
 
+pub use anchor_cluster::Cluster;
 pub use anchor_lang;
-pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
 pub use solana_sdk;
-
-mod cluster;
 
 #[cfg(not(feature = "async"))]
 mod blocking;

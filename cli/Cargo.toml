@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 dev = []
 
 [dependencies]
-anchor-client = { path = "../client", version = "0.31.1" }
+anchor-cluster = { path = "../cluster", version = "0.1.0" }
 anchor-lang = { path = "../lang", version = "0.31.1" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }
 anyhow = "1.0.32"
