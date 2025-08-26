@@ -26,6 +26,17 @@ impl Write for BpfWriter<&mut [u8]> {
         );
         sol_memcpy(&mut self.inner[(self.pos as usize)..], buf, amt);
         self.pos += amt as u64;
+        // Set remaining bytes to 0
+        if pos < self.inner.len() {
+            let remaining_bytes = self.inner.len() - pos;
+            sol_memcpy(
+                &mut self.inner[pos..],
+                vec![0; remaining_bytes].as_ref(),
+                remaining_bytes,
+            );
+            self.pos += remaining_bytes as u64;
+        }
+
         Ok(amt)
     }
 
