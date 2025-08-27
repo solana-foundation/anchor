@@ -18,7 +18,6 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
@@ -4263,7 +4262,7 @@ fn localnet(
 /// result assuming that a single run will only work with a single rust
 /// workspace.
 pub fn target_dir() -> Result<PathBuf> {
-    static TARGET_DIR: Lazy<Result<PathBuf>> = Lazy::new(target_dir_no_cache);
+    static TARGET_DIR: LazyLock<Result<PathBuf>> = LazyLock::new(target_dir_no_cache);
     match &*TARGET_DIR {
         Ok(path) => Ok(path.clone()),
         Err(e) => Err(anyhow::anyhow!(e.to_string())),
