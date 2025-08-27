@@ -33,6 +33,9 @@ pub enum Commands {
         #[clap(long)]
         /// Build from source code rather than downloading prebuilt binaries
         from_source: bool,
+        #[clap(long)]
+        /// Install `solana-verify` as well
+        verify: bool,
     },
     #[clap(about = "Uninstall a version of Anchor")]
     Uninstall {
@@ -80,13 +83,14 @@ pub fn entry(opts: Cli) -> Result<()> {
             path,
             force,
             from_source,
+            verify,
         } => {
             let install_target = if let Some(path) = path {
                 InstallTarget::Path(path.into())
             } else {
                 parse_install_target(&version_or_commit.unwrap())?
             };
-            avm::install_version(install_target, force, from_source)
+            avm::install_version(install_target, force, from_source, verify)
         }
         Commands::Uninstall { version } => avm::uninstall_version(&version),
         Commands::List {} => avm::list_versions(),

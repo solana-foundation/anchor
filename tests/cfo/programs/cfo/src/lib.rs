@@ -964,7 +964,7 @@ fn is_stake_reward_ready(accounts: &DropStakeReward) -> Result<()> {
     Ok(())
 }
 
-// Redefintions.
+// Redefinitions.
 //
 // The following types are redefined so that they can be parsed into the IDL,
 // since Anchor doesn't yet support idl parsing across multiple crates.

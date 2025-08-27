@@ -37,8 +37,8 @@ serde = { version = "1.0.122", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 solana-cli-config = "2"
-solana-client = "2"
 solana-faucet = "2"
+solana-rpc-client = "2"
 solana-sdk = "2"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
