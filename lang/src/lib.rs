@@ -421,6 +421,63 @@ pub trait Space {
     const INIT_SPACE: usize;
 }
 
+// Implement Space for primitive types
+impl Space for bool {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for u32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for u64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for u128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for i8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for i16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for i32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for i64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for i128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for f32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for f64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for Pubkey {
+    const INIT_SPACE: usize = 32;
+}
+
 /// Bump seed for program derived addresses.
 pub trait Bump {
     fn seed(&self) -> u8;
