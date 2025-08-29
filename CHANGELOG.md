@@ -16,6 +16,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
+- lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
 
 ### Fixes
 

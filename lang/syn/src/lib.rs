@@ -343,6 +343,20 @@ impl Field {
                     Sysvar<#account>
                 }
             }
+            Ty::Program(ty) => {
+                let program = &ty.account_type_path;
+                // Check if this is the generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {
+                        #container_ty<'info>
+                    }
+                } else {
+                    quote! {
+                        #container_ty<'info, #program>
+                    }
+                }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -542,8 +556,14 @@ impl Field {
             },
             Ty::Program(ty) => {
                 let program = &ty.account_type_path;
-                quote! {
-                    #program
+                // Check if this is the special marker for generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {}
+                } else {
+                    quote! {
+                        #program
+                    }
                 }
             }
             Ty::Interface(ty) => {
