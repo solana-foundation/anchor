@@ -282,6 +282,7 @@ pub struct Field {
     pub constraints: ConstraintGroup,
     pub ty: Ty,
     pub is_optional: bool,
+    pub ty_span: Span,
     /// IDL Doc comment
     pub docs: Option<Vec<String>>,
 }
