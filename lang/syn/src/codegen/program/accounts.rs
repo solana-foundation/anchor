@@ -3,7 +3,7 @@ use heck::SnakeCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
-    let mut accounts = std::collections::HashMap::new();
+    let mut accounts = std::collections::BTreeMap::new();
 
     // Go through instruction accounts.
     for ix in &program.ixs {

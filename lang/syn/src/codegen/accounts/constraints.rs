@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use crate::*;
 
@@ -1560,14 +1560,14 @@ fn generate_constraint_mint(
 
 #[derive(Clone, Debug)]
 pub struct OptionalCheckScope<'a> {
-    seen: HashSet<String>,
+    seen: BTreeSet<String>,
     accounts: &'a AccountsStruct,
 }
 
 impl<'a> OptionalCheckScope<'a> {
     pub fn new(accounts: &'a AccountsStruct) -> Self {
         Self {
-            seen: HashSet::new(),
+            seen: BTreeSet::new(),
             accounts,
         }
     }

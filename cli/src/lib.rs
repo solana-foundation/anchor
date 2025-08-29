@@ -31,9 +31,7 @@ use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::EncodableKey;
 use solana_sdk::transaction::Transaction;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -3267,7 +3265,7 @@ fn validator_flags(
                             Pubkey::from_str(address)
                                 .map_err(|_| anyhow!("Invalid pubkey {}", address))
                         })
-                        .collect::<Result<HashSet<Pubkey>>>()?
+                        .collect::<Result<BTreeSet<Pubkey>>>()?
                         .into_iter()
                         .collect::<Vec<_>>();
                     let accounts = client.get_multiple_accounts(&pubkeys)?;
@@ -3998,7 +3996,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         let programs = {
             // Create idl map from all workspace programs.
-            let mut idls: HashMap<String, Idl> = cfg
+            let mut idls: BTreeMap<String, Idl> = cfg
                 .read_all_programs()?
                 .iter()
                 .filter(|program| program.idl.is_some())
