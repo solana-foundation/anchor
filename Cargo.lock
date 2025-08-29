@@ -308,6 +308,7 @@ dependencies = [
  "solana-feature-gate-interface",
  "solana-instruction 2.2.1",
  "solana-instructions-sysvar 2.2.2",
+ "solana-invoke",
  "solana-loader-v3-interface",
  "solana-msg 2.2.1",
  "solana-program-entrypoint 2.3.0",
@@ -4363,6 +4364,19 @@ dependencies = [
  "solana-sdk-ids 3.0.0",
  "solana-serialize-utils 3.0.0",
  "solana-sysvar-id 3.0.0",
+]
+
+[[package]]
+name = "solana-invoke"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58f5693c6de226b3626658377168b0184e94e8292ff16e3d31d4766e65627565"
+dependencies = [
+ "solana-account-info 2.3.0",
+ "solana-define-syscall 2.3.0",
+ "solana-instruction 2.2.1",
+ "solana-program-entrypoint 2.3.0",
+ "solana-stable-layout 2.2.1",
 ]
 
 [[package]]
