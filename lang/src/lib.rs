@@ -67,12 +67,12 @@ pub mod solana_program {
     pub use solana_feature_gate_interface as feature;
 
     pub use {
-        solana_account_info as account_info, solana_clock as clock, solana_cpi as program,
-        solana_msg::msg, solana_program_entrypoint as entrypoint,
-        solana_program_entrypoint::entrypoint, solana_program_error as program_error,
-        solana_program_memory as program_memory, solana_program_option as program_option,
-        solana_program_pack as program_pack, solana_pubkey as pubkey,
-        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
+        solana_account_info as account_info, solana_clock as clock, solana_msg::msg,
+        solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
+        solana_program_error as program_error, solana_program_memory as program_memory,
+        solana_program_option as program_option, solana_program_pack as program_pack,
+        solana_pubkey as pubkey, solana_sdk_ids::system_program,
+        solana_system_interface::instruction as system_instruction,
     };
     pub mod instruction {
         pub use solana_instruction::*;
@@ -93,6 +93,10 @@ pub mod solana_program {
     }
     pub mod rent {
         pub use solana_sysvar::rent::*;
+    }
+    pub mod program {
+        pub use solana_cpi::*;
+        pub use solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked};
     }
 
     pub mod bpf_loader_upgradeable {

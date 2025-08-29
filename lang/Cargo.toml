@@ -63,6 +63,7 @@ solana-define-syscall = "2"
 solana-feature-gate-interface = "2"
 solana-instruction = "2"
 solana-instructions-sysvar = "2"
+solana-invoke = "0.4.0"
 solana-loader-v3-interface = { version = "3", features = ["bincode"] }
 solana-msg = "2"
 solana-program-entrypoint = "2"
