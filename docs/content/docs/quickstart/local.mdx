@@ -145,8 +145,9 @@ The Rust test file will be at `/tests/src/test_initialize.rs`.
 use std::str::FromStr;
 
 use anchor_client::{
+    solana_pubkey::Pubkey,
     solana_sdk::{
-        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
+        commitment_config::CommitmentConfig,  signature::read_keypair_file,
     },
     Client, Cluster,
 };

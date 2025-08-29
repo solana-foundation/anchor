@@ -26,6 +26,7 @@ solana-pubsub-client = "2"
 solana-rpc-client = "2"
 solana-rpc-client-api = "2"
 solana-sdk = "2"
+solana-pubkey = "2"
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"
