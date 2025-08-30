@@ -3,7 +3,7 @@ use crate::config::{
     PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
     WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
-use anchor_client::Cluster;
+use anchor_cluster::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
 use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::solana_program::bpf_loader_upgradeable;

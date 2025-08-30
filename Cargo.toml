@@ -4,6 +4,7 @@ members = [
     "avm",
     "cli",
     "client",
+    "cluster",
     "idl",
     "lang",
     "lang/attribute/*",

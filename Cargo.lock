@@ -204,7 +204,7 @@ dependencies = [
 name = "anchor-cli"
 version = "0.31.1"
 dependencies = [
- "anchor-client",
+ "anchor-cluster",
  "anchor-lang",
  "anchor-lang-idl",
  "anyhow",
@@ -239,11 +239,10 @@ dependencies = [
 name = "anchor-client"
 version = "0.31.1"
 dependencies = [
+ "anchor-cluster",
  "anchor-lang",
- "anyhow",
  "futures",
  "regex",
- "serde",
  "solana-account-decoder",
  "solana-pubsub-client",
  "solana-rpc-client",
@@ -251,6 +250,14 @@ dependencies = [
  "solana-sdk",
  "thiserror 1.0.66",
  "tokio",
+]
+
+[[package]]
+name = "anchor-cluster"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
  "url",
 ]
 
