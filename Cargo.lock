@@ -244,6 +244,7 @@ dependencies = [
  "futures",
  "regex",
  "serde",
+ "solana-account",
  "solana-account-decoder",
  "solana-pubsub-client",
  "solana-rpc-client",
