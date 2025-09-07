@@ -52,34 +52,66 @@ impl CrateContext {
     pub fn safety_checks(&self) -> Result<()> {
         // Check all structs for unsafe field types, i.e. AccountInfo and UncheckedAccount.
         for ctx in self.modules.values() {
-            for unsafe_field in ctx.unsafe_struct_fields() {
-                // Check if unsafe field type has been documented with a /// SAFETY: doc string.
-                let is_documented = unsafe_field.attrs.iter().any(|attr| {
-                    attr.tokens.clone().into_iter().any(|token| match token {
-                        // Check for doc comments containing CHECK
-                        proc_macro2::TokenTree::Literal(s) => s.to_string().contains("CHECK"),
-                        _ => false,
-                    })
+            for struct_item in ctx.structs() {
+                // Only check structs with #[derive(Accounts)]
+                let has_accounts_derive = struct_item.attrs.iter().any(|attr| {
+                    match attr.parse_meta() {
+                        Ok(syn::Meta::List(syn::MetaList{path, nested, ..})) => {
+                            path.is_ident("derive") && nested.iter().any(|nested| {
+                                matches!(nested, syn::NestedMeta::Meta(syn::Meta::Path(path)) if path.is_ident("Accounts"))
+                            })
+                        }
+                        _ => false
+                    }
                 });
-                if !is_documented {
-                    let ident = unsafe_field.ident.as_ref().unwrap();
-                    let span = ident.span();
-                    // Error if undocumented.
-                    return Err(anyhow!(
-                        r#"
+                
+                if has_accounts_derive {
+                    for field in &struct_item.fields {
+                        // Check if this field is an unsafe type
+                        let is_unsafe_type = match &field.ty {
+                            syn::Type::Path(syn::TypePath {
+                                path: syn::Path { segments, .. },
+                                ..
+                            }) => {
+                                segments.len() == 1 && segments[0].ident == "UncheckedAccount"
+                                    || segments[0].ident == "AccountInfo"
+                            }
+                            _ => false,
+                        };
+                        
+                        if is_unsafe_type {
+                            // Check if unsafe field type has been documented with a /// CHECK: doc string.
+                            let is_documented = field.attrs.iter().any(|attr| {
+                                attr.tokens.clone().into_iter().any(|token| match token {
+                                    // Check for doc comments containing CHECK
+                                    proc_macro2::TokenTree::Literal(s) => s.to_string().contains("CHECK"),
+                                    _ => false,
+                                })
+                            });
+                            
+                            if !is_documented {
+                                let ident = field.ident.as_ref().unwrap();
+                                let span = ident.span();
+                                // Error if undocumented.
+                                return Err(anyhow!(
+                                    r#"
         {}:{}:{}
-        Struct field "{}" is unsafe, but is not documented.
+        Struct field "{}" in struct "{}" is unsafe, but is not documented.
         Please add a `/// CHECK:` doc comment explaining why no checks through types are necessary.
         Alternatively, for reasons like quick prototyping, you may disable the safety checks
         by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/the-accounts-struct#safety-checks for more information.
                     "#,
-                        ctx.file.canonicalize().unwrap().display(),
-                        span.start().line,
-                        span.start().column,
-                        ident.to_string()
-                    ));
-                };
+                                    ctx.file.canonicalize().unwrap().display(),
+                                    span.start().line,
+                                    span.start().column,
+                                    ident.to_string(),
+                                    struct_item.ident.to_string()
+                                ));
+                            }
+                        }
+                    }
+                }
             }
         }
         Ok(())
@@ -221,34 +253,6 @@ impl ParsedModule {
         })
     }
 
-    fn unsafe_struct_fields(&self) -> impl Iterator<Item = &syn::Field> {
-        let accounts_filter = |item_struct: &&syn::ItemStruct| {
-            item_struct.attrs.iter().any(|attr| {
-                match attr.parse_meta() {
-                    Ok(syn::Meta::List(syn::MetaList{path, nested, ..})) => {
-                        path.is_ident("derive") && nested.iter().any(|nested| {
-                            matches!(nested, syn::NestedMeta::Meta(syn::Meta::Path(path)) if path.is_ident("Accounts"))
-                        })
-                    }
-                    _ => false
-                }
-            })
-        };
-
-        self.structs()
-            .filter(accounts_filter)
-            .flat_map(|s| &s.fields)
-            .filter(|f| match &f.ty {
-                syn::Type::Path(syn::TypePath {
-                    path: syn::Path { segments, .. },
-                    ..
-                }) => {
-                    segments.len() == 1 && segments[0].ident == "UncheckedAccount"
-                        || segments[0].ident == "AccountInfo"
-                }
-                _ => false,
-            })
-    }
 
     fn enums(&self) -> impl Iterator<Item = &syn::ItemEnum> {
         self.items.iter().filter_map(|i| match i {
