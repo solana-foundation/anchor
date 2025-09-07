@@ -64,7 +64,7 @@ impl CrateContext {
                         _ => false
                     }
                 });
-                
+
                 if has_accounts_derive {
                     for field in &struct_item.fields {
                         // Check if this field is an unsafe type
@@ -78,17 +78,19 @@ impl CrateContext {
                             }
                             _ => false,
                         };
-                        
+
                         if is_unsafe_type {
                             // Check if unsafe field type has been documented with a /// CHECK: doc string.
                             let is_documented = field.attrs.iter().any(|attr| {
                                 attr.tokens.clone().into_iter().any(|token| match token {
                                     // Check for doc comments containing CHECK
-                                    proc_macro2::TokenTree::Literal(s) => s.to_string().contains("CHECK"),
+                                    proc_macro2::TokenTree::Literal(s) => {
+                                        s.to_string().contains("CHECK")
+                                    }
                                     _ => false,
                                 })
                             });
-                            
+
                             if !is_documented {
                                 let ident = field.ident.as_ref().unwrap();
                                 let span = ident.span();
@@ -252,7 +254,6 @@ impl ParsedModule {
             _ => None,
         })
     }
-
 
     fn enums(&self) -> impl Iterator<Item = &syn::ItemEnum> {
         self.items.iter().filter_map(|i| match i {
