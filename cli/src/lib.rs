@@ -1087,7 +1087,7 @@ fn new(
     template: ProgramTemplate,
     force: bool,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         match cfg.path().parent() {
             None => {
                 println!("Unable to make new program");
@@ -2105,10 +2105,16 @@ fn idl_init(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, original_dir| {
         let keypair = cfg.provider.wallet.to_string();
 
-        let idl = fs::read(idl_filepath)?;
+        let idl: Vec<u8> = match fs::read(&idl_filepath) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                let full_path = original_dir.join(&idl_filepath);
+                fs::read(full_path)?
+            }
+        } ;
         let idl = convert_idl(&idl)?;
 
         let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
@@ -2125,7 +2131,7 @@ fn idl_close(
     print_only: bool,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let idl_address = idl_address.unwrap_or_else(|| IdlAccount::address(&program_id));
         idl_close_account(cfg, &program_id, idl_address, print_only, priority_fee)?;
 
@@ -2139,7 +2145,7 @@ fn idl_write_buffer(
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let keypair = cfg.provider.wallet.to_string();
 
         let idl = fs::read(idl_filepath)?;
@@ -2159,7 +2165,7 @@ fn idl_set_buffer(
     print_only: bool,
     priority_fee: Option<u64>,
 ) -> Result<Pubkey> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let keypair = get_keypair(&cfg.provider.wallet.to_string())?;
         let url = cluster_url(cfg, &cfg.test_validator);
         let client = create_client(url);
@@ -2247,7 +2253,7 @@ fn idl_upgrade(
 }
 
 fn idl_authority(cfg_override: &ConfigOverride, program_id: Pubkey) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let client = create_client(url);
         let idl_address = {
@@ -2275,7 +2281,7 @@ fn idl_set_authority(
     print_only: bool,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         // Misc.
         let idl_address = match address {
             None => IdlAccount::address(&program_id),
@@ -2955,7 +2961,7 @@ fn test(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         // Build if needed.
         if !skip_build {
             build(
@@ -3560,7 +3566,7 @@ fn deploy(
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let keypair = cfg.provider.wallet.to_string();
 
@@ -3650,7 +3656,7 @@ fn upgrade(
     let path: PathBuf = program_filepath.parse().unwrap();
     let program_filepath = path.canonicalize()?.display().to_string();
 
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let client = create_client(&url);
         let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
@@ -3871,7 +3877,7 @@ fn serialize_idl_ix(ix_inner: anchor_lang::idl::IdlInstruction) -> Result<Vec<u8
 }
 
 fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         println!("Running migration deploy script");
 
         let url = cluster_url(cfg, &cfg.test_validator);
@@ -3932,7 +3938,8 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
     })
 }
 
-fn set_workspace_dir_or_exit() {
+fn set_workspace_dir_or_exit() -> PathBuf {
+    let original_dir = std::env::current_dir().unwrap();
     let d = match Config::discover(&ConfigOverride::default()) {
         Err(err) => {
             println!("Workspace configuration error: {err}");
@@ -3959,6 +3966,7 @@ fn set_workspace_dir_or_exit() {
             };
         }
     }
+    original_dir
 }
 
 #[cfg(feature = "dev")]
@@ -3995,7 +4003,7 @@ fn cluster(_cmd: ClusterCommand) -> Result<()> {
 }
 
 fn shell(cfg_override: &ConfigOverride) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let programs = {
             // Create idl map from all workspace programs.
             let mut idls: HashMap<String, Idl> = cfg
@@ -4060,7 +4068,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
 }
 
 fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let url = cluster_url(cfg, &cfg.test_validator);
         let script = cfg
             .scripts
@@ -4107,7 +4115,7 @@ fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
 }
 
 fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         for program in cfg.read_all_programs()? {
             let pubkey = program.pubkey()?;
             println!("{}: {}", program.lib_name, pubkey);
@@ -4118,7 +4126,7 @@ fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
 
 /// Sync program `declare_id!` pubkeys with the pubkey from `target/deploy/<KEYPAIR>.json`.
 fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         let declare_id_regex = RegexBuilder::new(r#"^(([\w]+::)*)declare_id!\("(\w*)"\)"#)
             .multi_line(true)
             .build()
@@ -4204,7 +4212,7 @@ fn localnet(
     cargo_args: Vec<String>,
     arch: ProgramArch,
 ) -> Result<()> {
-    with_workspace(cfg_override, |cfg| {
+    with_workspace(cfg_override, |cfg, _| {
         // Build if needed.
         if !skip_build {
             build(
@@ -4265,17 +4273,19 @@ fn localnet(
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
+//
+// The original directory, from which anchor is running, is passed as a second argument.
 fn with_workspace<R>(
     cfg_override: &ConfigOverride,
-    f: impl FnOnce(&mut WithPath<Config>) -> R,
+    f: impl FnOnce(&mut WithPath<Config>, &PathBuf) -> R,
 ) -> R {
-    set_workspace_dir_or_exit();
+    let original_dir = set_workspace_dir_or_exit();
 
     let mut cfg = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
         .expect("Anchor.toml must always exist");
 
-    let r = f(&mut cfg);
+    let r = f(&mut cfg, &original_dir);
 
     set_workspace_dir_or_exit();
 
