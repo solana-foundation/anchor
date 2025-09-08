@@ -65,12 +65,12 @@ pub fn generate(
                 if f.is_optional {
                     quote! {
                         #docs
-                        pub #name: Option<Pubkey>
+                        pub #name: Option<anchor_lang::solana_program::pubkey::Pubkey>
                     }
                 } else {
                     quote! {
                         #docs
-                        pub #name: Pubkey
+                        pub #name: anchor_lang::solana_program::pubkey::Pubkey
                     }
                 }
             }
