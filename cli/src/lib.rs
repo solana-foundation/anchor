@@ -2114,7 +2114,7 @@ fn idl_init(
                 let full_path = original_dir.join(&idl_filepath);
                 fs::read(full_path)?
             }
-        } ;
+        };
         let idl = convert_idl(&idl)?;
 
         let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
