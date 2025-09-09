@@ -29,3 +29,5 @@ pub struct NonBorshStruct {
 
 #[derive(Accounts)]
 pub struct Initialize {}
+
+// pub use external as program;

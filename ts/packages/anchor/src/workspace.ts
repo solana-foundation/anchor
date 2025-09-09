@@ -3,6 +3,7 @@ import camelcase from "camelcase";
 import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
 import { Idl } from "./idl.js";
+import { harmonizedCamelCase } from './utils/common.js';
 
 /**
  * The `workspace` namespace provides a convenience API to automatically
@@ -22,7 +23,7 @@ const workspace = new Proxy(
       // Converting `programName` to camelCase enables the ability to use any
       // of the following to access the workspace program:
       // `workspace.myProgram`, `workspace.MyProgram`, `workspace["my-program"]`...
-      programName = camelcase(programName);
+      programName = harmonizedCamelCase(programName);
 
       // Return early if the program is in cache
       if (workspaceCache[programName]) return workspaceCache[programName];
@@ -37,7 +38,7 @@ const workspace = new Proxy(
       let programEntry;
       if (programs) {
         programEntry = Object.entries(programs).find(
-          ([key]) => camelcase(key) === programName
+          ([key]) => harmonizedCamelCase(key) === programName
         )?.[1];
       }
 
@@ -57,7 +58,7 @@ const workspace = new Proxy(
         const idlDirPath = path.join("target", "idl");
         const fileName = fs
           .readdirSync(idlDirPath)
-          .find((name) => camelcase(path.parse(name).name) === programName);
+          .find((name) => harmonizedCamelCase(path.parse(name).name) === programName);
         if (!fileName) {
           throw new Error(`Failed to find IDL of program \`${programName}\``);
         }

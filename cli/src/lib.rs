@@ -42,7 +42,6 @@ use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::LazyLock;
-
 mod checks;
 pub mod config;
 pub mod rust_template;
@@ -2591,6 +2590,20 @@ fn idl_type(path: String, out: Option<String>) -> Result<()> {
     Ok(())
 }
 
+/// Harmonized camelCase conversion that handles number+letter patterns consistently
+/// /// with JavaScript's camelcase library behavior (a1b → a1B)
+fn harmonized_camel_case(input: &str) -> String {
+    let result = input.to_lower_camel_case(); // proper camel case
+
+    // Fix number+letter patterns
+    let pattern = regex::Regex::new(r"(\d)([a-zA-Z])").unwrap();
+    pattern
+        .replace_all(&result, |caps: &regex::Captures| {
+            format!("{}{}", &caps[1], caps[2].to_uppercase())
+        })
+        .to_string()
+}
+
 fn idl_ts(idl: &Idl) -> Result<String> {
     let idl_name = &idl.metadata.name;
     let type_name = idl_name.to_pascal_case();
@@ -2607,7 +2620,7 @@ fn idl_ts(idl: &Idl) -> Result<String> {
                 return acc;
             }
 
-            let camel_name = name.to_lower_camel_case();
+            let camel_name = harmonized_camel_case(name);
             acc.replace(&format!(r#""{name}""#), &format!(r#""{camel_name}""#))
         });
 

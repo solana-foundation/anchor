@@ -1,9 +1,14 @@
 use crate::Program;
-use heck::CamelCase;
+use heck::ToLowerCamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
-    let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
+    let name: proc_macro2::TokenStream = program
+        .name
+        .to_string()
+        .to_lower_camel_case()
+        .parse()
+        .unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);

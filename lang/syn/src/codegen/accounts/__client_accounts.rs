@@ -1,5 +1,5 @@
 use crate::{AccountField, AccountsStruct, Ty};
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use quote::quote;
 use std::str::FromStr;
 

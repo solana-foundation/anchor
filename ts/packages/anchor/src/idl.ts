@@ -2,6 +2,7 @@ import camelCase from "camelcase";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 import * as borsh from "@coral-xyz/borsh";
+import { harmonizedCamelCase } from './utils/common.js';
 
 export type Idl = {
   address: string;
@@ -324,7 +325,7 @@ export function convertIdlToCamelCase<I extends Idl>(idl: I) {
   const toCamelCase = (s: any) =>
     s
       .split(".")
-      .map((part: any) => camelCase(part, { locale: false }))
+      .map((part: any) => harmonizedCamelCase(part))
       .join(".");
 
   const recursivelyConvertNamesToCamelCase = (obj: Record<string, any>) => {
