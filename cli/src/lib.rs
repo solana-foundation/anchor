@@ -350,6 +350,16 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    #[clap(name = "balance", alias = "balance")]
+    /// Get your balance
+    Balance {
+        /// Account balance to check (defaults to configured wallet)
+        #[clap(index = 1, value_name = "ACCOUNT_ADDRESS")]
+        pubkey: Option<Pubkey>,
+        /// Display balance in lamports instead of SOL
+        #[clap(long)]
+        lamports: bool,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -915,6 +925,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::Balance { pubkey, lamports } => balance(&opts.cfg_override, pubkey, lamports),
     }
 }
 
@@ -4415,6 +4426,36 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+fn balance(cfg_override: &ConfigOverride, pubkey: Option<Pubkey>, lamports: bool) -> Result<()> {
+    // Get the config
+    let cfg = Config::discover(cfg_override)?.expect("Not in anchor workspace.");
+
+    // Create RPC client from cluster URL
+    let client = RpcClient::new(cfg.provider.cluster.url());
+
+    // Determine the actual pubkey to check
+    let actual_pubkey = if let Some(pubkey) = pubkey {
+        pubkey
+    } else {
+        // Load keypair from wallet path and get pubkey
+        let keypair = Keypair::read_from_file(cfg.provider.wallet.to_string())
+            .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
+        keypair.pubkey()
+    };
+
+    // Get balance
+    let balance = client.get_balance(&actual_pubkey)?;
+
+    // Format and display output
+    if lamports {
+        println!("{}", balance);
+    } else {
+        println!("{:.9} SOL", balance as f64 / 1_000_000_000.0);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
