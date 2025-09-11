@@ -350,15 +350,12 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
-    #[clap(name = "balance", alias = "balance")]
-    /// Get your balance
-    Balance {
-        /// Account balance to check (defaults to configured wallet)
-        #[clap(index = 1, value_name = "ACCOUNT_ADDRESS")]
-        pubkey: Option<Pubkey>,
-        /// Display balance in lamports instead of SOL
-        #[clap(long)]
-        lamports: bool,
+    #[clap(name = "address")]
+    /// Get your public key
+    Address {
+        /// Confirm key on device; only relevant if using remote wallet
+        #[clap(long = "confirm-key")]
+        confirm_key: bool,
     },
 }
 
@@ -925,7 +922,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
-        Command::Balance { pubkey, lamports } => balance(&opts.cfg_override, pubkey, lamports),
+        Command::Address { confirm_key } => address(&opts.cfg_override, confirm_key),
     }
 }
 
@@ -4428,49 +4425,31 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
 }
 
-fn balance(cfg_override: &ConfigOverride, pubkey: Option<Pubkey>, lamports: bool) -> Result<()> {
-    // Get config or use defaults when outside workspace
-    let (cluster_url, wallet_path) = match Config::discover(cfg_override) {
-        Ok(Some(cfg)) => (
-            cfg.provider.cluster.url().to_string(),
-            cfg.provider.wallet.to_string(),
-        ),
+fn address(
+    cfg_override: &ConfigOverride,
+    _confirm_key: bool, // Currently unused in original implementation
+) -> Result<()> {
+    // Get wallet path, handling both workspace and standalone scenarios
+    let wallet_path = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.wallet.to_string(),
         _ => {
-            // Default to mainnet and standard Solana CLI keypair path
-            let default_cluster = "https://api.mainnet-beta.solana.com".to_string();
-            let default_keypair = dirs::home_dir()
+            // Not in workspace or config not found - use default Solana CLI path
+            dirs::home_dir()
                 .map(|home| {
                     home.join(".config/solana/id.json")
                         .to_string_lossy()
                         .to_string()
                 })
-                .unwrap_or_else(|| "~/.config/solana/id.json".to_string());
-            (default_cluster, default_keypair)
+                .unwrap_or_else(|| "~/.config/solana/id.json".to_string())
         }
     };
 
-    // Create RPC client from cluster URL
-    let client = RpcClient::new(cluster_url);
+    // Load keypair from wallet path and get pubkey
+    let keypair = Keypair::read_from_file(wallet_path.clone())
+        .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
 
-    // Determine the actual pubkey to check
-    let actual_pubkey = if let Some(pubkey) = pubkey {
-        pubkey
-    } else {
-        // Load keypair from wallet path and get pubkey
-        let keypair = Keypair::read_from_file(wallet_path)
-            .map_err(|e| anyhow!("Failed to read keypair: {}", e))?;
-        keypair.pubkey()
-    };
-
-    // Get balance
-    let balance = client.get_balance(&actual_pubkey)?;
-
-    // Format and display output
-    if lamports {
-        println!("{}", balance);
-    } else {
-        println!("{:.9} SOL", balance as f64 / 1_000_000_000.0);
-    }
+    // Print the public key
+    println!("{}", keypair.pubkey());
 
     Ok(())
 }
