@@ -11,9 +11,11 @@ use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discri
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, bail, Context, Result};
+use bip39::{Language, Mnemonic, Seed};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
+use ed25519_dalek_bip32::{DerivationPath, ExtendedSigningKey};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
@@ -28,6 +30,7 @@ use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
+use solana_sdk::signature::SeedDerivable;
 use solana_sdk::signature::Signer;
 use solana_sdk::signer::EncodableKey;
 use solana_sdk::transaction::Transaction;
@@ -350,9 +353,12 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
-    #[clap(name = "epoch-info", alias = "get-epoch-info")]
-    /// Get information about the current epoch
-    EpochInfo,
+    #[clap(name = "keygen")]
+    /// Keypair generation and management
+    Keygen {
+        #[clap(subcommand)]
+        subcmd: KeygenCommands,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -507,6 +513,40 @@ pub enum IdlCommand {
 pub enum ClusterCommand {
     /// Prints common cluster urls.
     List,
+}
+
+#[derive(Debug, Parser)]
+pub enum KeygenCommands {
+    /// Generate a new keypair
+    New {
+        /// Path to generated keypair file
+        #[clap(short = 'o', long = "outfile", value_name = "PATH")]
+        outfile: Option<String>,
+        /// Overwrite the output file if it exists
+        #[clap(short = 'f', long = "force")]
+        force: bool,
+        /// Do not prompt for a passphrase
+        #[clap(long = "no-passphrase")]
+        no_passphrase: bool,
+        /// Do not display the generated pubkey
+        #[clap(long = "silent")]
+        silent: bool,
+    },
+    /// Display the pubkey for a given keypair
+    Pubkey {
+        /// Path to keypair file
+        #[clap(index = 1, value_name = "KEYPAIR")]
+        keypair: Option<String>,
+    },
+    /// Recover a keypair from a seed phrase
+    Recover {
+        /// Seed phrase to recover from
+        #[clap(long = "seed-phrase", value_name = "PHRASE")]
+        seed_phrase: Option<String>,
+        /// Path to recovered keypair file
+        #[clap(short = 'o', long = "outfile", value_name = "PATH")]
+        outfile: Option<String>,
+    },
 }
 
 fn get_keypair(path: &str) -> Result<Keypair> {
@@ -918,7 +958,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
-        Command::EpochInfo => epoch_info(&opts.cfg_override),
+        Command::Keygen { subcmd } => keygen(&opts.cfg_override, subcmd),
     }
 }
 
@@ -4421,40 +4461,154 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
 }
 
-fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
-    // Get cluster URL, handling both workspace and standalone scenarios
-    let cluster_url = match Config::discover(cfg_override) {
-        Ok(Some(cfg)) => cfg.provider.cluster.url().to_string(),
-        _ => {
-            // Not in workspace - check for cluster override or use default
-            if let Some(ref cluster_override) = cfg_override.cluster {
-                cluster_override.url().to_string()
-            } else {
-                "https://api.mainnet-beta.solana.com".to_string()
+fn keygen(cfg_override: &ConfigOverride, subcmd: KeygenCommands) -> Result<()> {
+    match subcmd {
+        KeygenCommands::New {
+            outfile,
+            force,
+            no_passphrase,
+            silent,
+        } => keygen_new(cfg_override, outfile, force, no_passphrase, silent),
+        KeygenCommands::Pubkey { keypair } => keygen_pubkey(cfg_override, keypair),
+        KeygenCommands::Recover {
+            seed_phrase,
+            outfile,
+        } => keygen_recover(cfg_override, seed_phrase, outfile),
+    }
+}
+
+fn keygen_new(
+    _cfg_override: &ConfigOverride,
+    outfile: Option<String>,
+    force: bool,
+    _no_passphrase: bool,
+    silent: bool,
+) -> Result<()> {
+    let keypair = Keypair::new();
+
+    if let Some(outfile) = &outfile {
+        let path = Path::new(outfile);
+        if path.exists() && !force {
+            return Err(anyhow!(
+                "Output file {} already exists. Use --force to overwrite",
+                outfile
+            ));
+        }
+
+        keypair
+            .write_to_file(path)
+            .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile, e))?;
+
+        if !silent {
+            println!("Wrote new keypair to {}", outfile);
+        }
+    }
+
+    if !silent {
+        println!("pubkey: {}", keypair.pubkey());
+    }
+
+    Ok(())
+}
+
+fn keygen_pubkey(cfg_override: &ConfigOverride, keypair_path: Option<String>) -> Result<()> {
+    let path = match keypair_path {
+        Some(path) => path,
+        None => {
+            // Try workspace config, fall back to default Solana CLI path
+            match Config::discover(cfg_override) {
+                Ok(Some(cfg)) => cfg.provider.wallet.to_string(),
+                _ => dirs::home_dir()
+                    .map(|home| {
+                        home.join(".config/solana/id.json")
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                    .unwrap_or_else(|| "~/.config/solana/id.json".to_string()),
             }
         }
     };
 
-    let client = RpcClient::new(cluster_url);
-    let epoch_info = client.get_epoch_info()?;
+    let keypair = Keypair::read_from_file(path.clone()) // ✅ Fixed needless borrow
+        .map_err(|e| anyhow!("Failed to read keypair from {}: {}", path, e))?;
 
-    let epoch_completed_percent =
-        epoch_info.slot_index as f64 / epoch_info.slots_in_epoch as f64 * 100.0;
-
-    println!("Epoch: {}", epoch_info.epoch);
-    println!(
-        "Slot: {} ({})",
-        epoch_info.absolute_slot, epoch_info.slot_index
-    );
-    println!("Slots in epoch: {}", epoch_info.slots_in_epoch);
-    println!("Epoch progress: {:.2}%", epoch_completed_percent);
-    println!("Block height: {}", epoch_info.block_height);
-    println!(
-        "Transaction count: {}",
-        epoch_info.transaction_count.unwrap_or(0)
-    );
+    println!("{}", keypair.pubkey());
 
     Ok(())
+}
+
+fn keygen_recover(
+    _cfg_override: &ConfigOverride,
+    seed_phrase: Option<String>,
+    outfile: Option<String>,
+) -> Result<()> {
+    // Get seed phrase - either from parameter or prompt user
+    let mnemonic_str = match seed_phrase {
+        Some(phrase) => phrase,
+        None => {
+            print!("[recover] seed phrase: ");
+            std::io::stdout().flush()?;
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            input.trim().to_string()
+        }
+    };
+
+    if mnemonic_str.is_empty() {
+        return Err(anyhow!("Seed phrase cannot be empty"));
+    }
+
+    // Get optional passphrase
+    print!("[recover] If this seed phrase has an associated passphrase, enter it now. Otherwise, press ENTER to continue: ");
+    std::io::stdout().flush()?;
+    let mut passphrase = String::new();
+    std::io::stdin().read_line(&mut passphrase)?;
+    let passphrase = passphrase.trim();
+
+    // Restore keypair using proper BIP44 derivation
+    let keypair = restore_keypair_from_mnemonic_bip44(&mnemonic_str, passphrase)?;
+
+    // Save to file if specified
+    if let Some(outfile) = &outfile {
+        let path = Path::new(outfile);
+        keypair
+            .write_to_file(path)
+            .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile, e))?;
+        println!("Wrote recovered keypair to {}", outfile);
+    }
+
+    // Show recovered pubkey
+    println!("pubkey: {}", keypair.pubkey());
+
+    Ok(())
+}
+
+fn restore_keypair_from_mnemonic_bip44(mnemonic_str: &str, passphrase: &str) -> Result<Keypair> {
+    // Parse mnemonic phrase
+    let mnemonic = Mnemonic::from_phrase(mnemonic_str, Language::English)
+        .map_err(|e| anyhow!("Invalid mnemonic: {}", e))?;
+
+    // Generate seed from mnemonic with optional passphrase
+    let seed = Seed::new(&mnemonic, passphrase);
+
+    // Create extended signing key from seed
+    let extended_signing_key = ExtendedSigningKey::from_seed(seed.as_bytes())
+        .map_err(|e| anyhow!("Failed to create extended signing key: {}", e))?;
+
+    // Use Solana's BIP44 derivation path: m/44'/501'/0'/0'
+    let derivation_path = DerivationPath::from_str("m/44'/501'/0'/0'")
+        .map_err(|e| anyhow!("Invalid derivation path: {}", e))?;
+
+    // Derive the child key using the path
+    let derived_key = extended_signing_key
+        .derive(&derivation_path)
+        .map_err(|e| anyhow!("Failed to derive key: {}", e))?;
+
+    // Create Solana keypair from the derived signing key
+    let keypair = Keypair::from_seed(&derived_key.signing_key.to_bytes())
+        .map_err(|e| anyhow!("Failed to create keypair from derived key: {}", e))?;
+
+    Ok(keypair)
 }
 
 #[cfg(test)]

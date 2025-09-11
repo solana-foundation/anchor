@@ -44,3 +44,5 @@ syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 toml = "0.7.6"
 walkdir = "2.3.2"
+tiny-bip39 = "2.0"
+ed25519-dalek-bip32 = "0.3"
