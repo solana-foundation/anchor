@@ -4429,19 +4429,36 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
 }
 
 fn balance(cfg_override: &ConfigOverride, pubkey: Option<Pubkey>, lamports: bool) -> Result<()> {
-    // Get the config
-    let cfg = Config::discover(cfg_override)?.expect("Not in anchor workspace.");
+    // Get config or use defaults when outside workspace
+    let (cluster_url, wallet_path) = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => (
+            cfg.provider.cluster.url().to_string(),
+            cfg.provider.wallet.to_string(),
+        ),
+        _ => {
+            // Default to mainnet and standard Solana CLI keypair path
+            let default_cluster = "https://api.mainnet-beta.solana.com".to_string();
+            let default_keypair = dirs::home_dir()
+                .map(|home| {
+                    home.join(".config/solana/id.json")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "~/.config/solana/id.json".to_string());
+            (default_cluster, default_keypair)
+        }
+    };
 
     // Create RPC client from cluster URL
-    let client = RpcClient::new(cfg.provider.cluster.url());
+    let client = RpcClient::new(cluster_url);
 
     // Determine the actual pubkey to check
     let actual_pubkey = if let Some(pubkey) = pubkey {
         pubkey
     } else {
         // Load keypair from wallet path and get pubkey
-        let keypair = Keypair::read_from_file(cfg.provider.wallet.to_string())
-            .map_err(|e| anyhow::anyhow!("Failed to read keypair: {}", e))?;
+        let keypair = Keypair::read_from_file(wallet_path)
+            .map_err(|e| anyhow!("Failed to read keypair: {}", e))?;
         keypair.pubkey()
     };
 
