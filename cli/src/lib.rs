@@ -350,9 +350,9 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
-    #[clap(name = "epoch")]
-    /// Get current epoch
-    Epoch,
+    #[clap(name = "epoch-info", alias = "get-epoch-info")]
+    /// Get information about the current epoch
+    EpochInfo,
 }
 
 #[derive(Debug, Parser)]
@@ -918,7 +918,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
-        Command::Epoch => epoch(&opts.cfg_override),
+        Command::EpochInfo => epoch_info(&opts.cfg_override),
     }
 }
 
@@ -4421,7 +4421,7 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
 }
 
-fn epoch(cfg_override: &ConfigOverride) -> Result<()> {
+fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
     // Get cluster URL, handling both workspace and standalone scenarios
     let cluster_url = match Config::discover(cfg_override) {
         Ok(Some(cfg)) => cfg.provider.cluster.url().to_string(),
@@ -4435,14 +4435,24 @@ fn epoch(cfg_override: &ConfigOverride) -> Result<()> {
         }
     };
 
-    // Create RPC client from cluster URL
     let client = RpcClient::new(cluster_url);
-
-    // Get epoch info
     let epoch_info = client.get_epoch_info()?;
 
-    // Print just the epoch number (matching original behavior)
-    println!("{}", epoch_info.epoch);
+    let epoch_completed_percent =
+        epoch_info.slot_index as f64 / epoch_info.slots_in_epoch as f64 * 100.0;
+
+    println!("Epoch: {}", epoch_info.epoch);
+    println!(
+        "Slot: {} ({})",
+        epoch_info.absolute_slot, epoch_info.slot_index
+    );
+    println!("Slots in epoch: {}", epoch_info.slots_in_epoch);
+    println!("Epoch progress: {:.2}%", epoch_completed_percent);
+    println!("Block height: {}", epoch_info.block_height);
+    println!(
+        "Transaction count: {}",
+        epoch_info.transaction_count.unwrap_or(0)
+    );
 
     Ok(())
 }
