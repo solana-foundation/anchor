@@ -350,13 +350,9 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
-    #[clap(name = "address")]
-    /// Get your public key
-    Address {
-        /// Confirm key on device; only relevant if using remote wallet
-        #[clap(long = "confirm-key")]
-        confirm_key: bool,
-    },
+    #[clap(name = "epoch")]
+    /// Get current epoch
+    Epoch,
 }
 
 #[derive(Debug, Parser)]
@@ -922,7 +918,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
-        Command::Address { confirm_key } => address(&opts.cfg_override, confirm_key),
+        Command::Epoch => epoch(&opts.cfg_override),
     }
 }
 
@@ -4425,31 +4421,28 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
 }
 
-fn address(
-    cfg_override: &ConfigOverride,
-    _confirm_key: bool, // Currently unused in original implementation
-) -> Result<()> {
-    // Get wallet path, handling both workspace and standalone scenarios
-    let wallet_path = match Config::discover(cfg_override) {
-        Ok(Some(cfg)) => cfg.provider.wallet.to_string(),
+fn epoch(cfg_override: &ConfigOverride) -> Result<()> {
+    // Get cluster URL, handling both workspace and standalone scenarios
+    let cluster_url = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.cluster.url().to_string(),
         _ => {
-            // Not in workspace or config not found - use default Solana CLI path
-            dirs::home_dir()
-                .map(|home| {
-                    home.join(".config/solana/id.json")
-                        .to_string_lossy()
-                        .to_string()
-                })
-                .unwrap_or_else(|| "~/.config/solana/id.json".to_string())
+            // Not in workspace - check for cluster override or use default
+            if let Some(ref cluster_override) = cfg_override.cluster {
+                cluster_override.url().to_string()
+            } else {
+                "https://api.mainnet-beta.solana.com".to_string()
+            }
         }
     };
 
-    // Load keypair from wallet path and get pubkey
-    let keypair = Keypair::read_from_file(wallet_path.clone())
-        .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
+    // Create RPC client from cluster URL
+    let client = RpcClient::new(cluster_url);
 
-    // Print the public key
-    println!("{}", keypair.pubkey());
+    // Get epoch info
+    let epoch_info = client.get_epoch_info()?;
+
+    // Print just the epoch number (matching original behavior)
+    println!("{}", epoch_info.epoch);
 
     Ok(())
 }
