@@ -44,10 +44,16 @@ describe("Test CLI IDL commands", () => {
 
   it("Can write a new IDL using write-buffer and set-buffer", async () => {
     // "Upgrade" back to program one via write-buffer set-buffer
-    let buffer = execSync(
+    const out = execSync(
       `anchor idl write-buffer --filepath target/idl/idl_commands_one.json ${programOne.programId}`
     ).toString();
-    buffer = buffer.replace("Idl buffer created: ", "").trim();
+    const line = out
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => l.startsWith("Idl buffer created:"));
+    const buffer = line
+      ? line.replace("Idl buffer created:", "").trim()
+      : out.trim().split(/\s+/).pop()!;
     execSync(
       `anchor idl set-buffer --buffer ${buffer} ${programOne.programId}`,
       { stdio: "inherit" }

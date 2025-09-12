@@ -11,7 +11,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let name = &ix.raw_method.sig.ident.to_string();
             let ix_cfgs = &ix.cfgs;
             let ix_name_camel = proc_macro2::Ident::new(
-                &harmonized_camel_case(name),
+                &harmonized_pascal_case(name),
                 ix.raw_method.sig.ident.span(),
             );
 

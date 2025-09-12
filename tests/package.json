@@ -56,7 +56,7 @@
     "@project-serum/common": "^0.0.1-beta.3",
     "@project-serum/serum": "^0.13.60",
     "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.68.0"
+    "@solana/web3.js": "1.69.0"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.1",
@@ -69,5 +69,9 @@
     "ts-mocha": "^10.0.0",
     "tsc": "^2.0.4",
     "typescript": "^4.4.4"
+  },
+  "resolutions": {
+    "@solana/web3.js": "1.69.0",
+    "**/@solana/web3.js": "1.69.0"
   }
 }

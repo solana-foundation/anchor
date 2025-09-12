@@ -9,6 +9,7 @@ use super::{
     defined::gen_idl_type,
 };
 use crate::{
+    codegen::program::common::{harmonized_camel_case, harmonized_pascal_case},
     parser::{context::CrateContext, docs},
     Program,
 };
@@ -31,7 +32,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
         .iter()
         .map(|ix| {
             let name = ix.ident.to_string();
-            let name_pascal = format_ident!("{}", name.to_lower_camel_case());
+            let name_pascal = format_ident!("{}", harmonized_pascal_case(&name));
             let ctx_ident = &ix.anchor_ident;
             let cfgs = &ix.cfgs;
 

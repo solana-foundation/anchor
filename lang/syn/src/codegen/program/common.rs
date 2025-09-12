@@ -1,5 +1,5 @@
 use crate::IxArg;
-use heck::ToLowerCamelCase;
+use heck::{ToLowerCamelCase, ToPascalCase};
 use quote::quote;
 use regex::Regex;
 use std::sync::OnceLock;
@@ -43,7 +43,7 @@ pub fn generate_ix_variant(name: &str, args: &[IxArg]) -> proc_macro2::TokenStre
 }
 
 pub fn generate_ix_variant_name(name: &str) -> proc_macro2::TokenStream {
-    let n = harmonized_camel_case(name);
+    let n = harmonized_pascal_case(name);
     n.parse().unwrap()
 }
 
@@ -70,6 +70,21 @@ pub fn harmonized_camel_case(input: &str) -> String {
     let result = input.to_lower_camel_case(); // gives proper camelCase
 
     // Fix number+letter patterns
+    pattern
+        .replace_all(&result, |caps: &regex::Captures| {
+            format!("{}{}", &caps[1], caps[2].to_uppercase())
+        })
+        .to_string()
+}
+
+/// Harmonized PascalCase conversion for Rust type identifiers.
+/// Mirrors `harmonized_camel_case` rules but produces PascalCase, so generated
+/// Rust struct/enum names follow Rust naming conventions and avoid lints.
+pub fn harmonized_pascal_case(input: &str) -> String {
+    let pattern = NUMBER_LETTER_PATTERN.get_or_init(|| Regex::new(r"(\d)([a-zA-Z])").unwrap());
+
+    let result = input.to_pascal_case(); // base PascalCase
+
     pattern
         .replace_all(&result, |caps: &regex::Captures| {
             format!("{}{}", &caps[1], caps[2].to_uppercase())
@@ -113,5 +128,16 @@ mod tests {
         assert_eq!(harmonized_camel_case("a1"), "a1");
         assert_eq!(harmonized_camel_case("1a"), "1A");
         assert_eq!(harmonized_camel_case("a1b2c3d"), "a1B2C3D");
+    }
+
+    #[test]
+    fn test_harmonized_pascal_case() {
+        assert_eq!(harmonized_pascal_case("a1b_receive"), "A1BReceive");
+        assert_eq!(
+            harmonized_pascal_case("test2var_function"),
+            "Test2VarFunction"
+        );
+        assert_eq!(harmonized_pascal_case("initialize"), "Initialize");
+        assert_eq!(harmonized_pascal_case("my_3x_param"), "My3XParam");
     }
 }

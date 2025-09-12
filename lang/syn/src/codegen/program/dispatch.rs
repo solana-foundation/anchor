@@ -1,16 +1,14 @@
 use crate::Program;
-use heck::ToLowerCamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
     let global_ixs = program.ixs.iter().map(|ix| {
         let ix_method_name = &ix.raw_method.sig.ident;
-        let ix_name_camel: proc_macro2::TokenStream = ix_method_name
-            .to_string()
-            .to_lower_camel_case()
-            .parse()
-            .expect("Failed to parse ix method name in camel as `TokenStream`");
+        let ix_name_camel: proc_macro2::TokenStream =
+            crate::codegen::program::common::harmonized_pascal_case(&ix_method_name.to_string())
+                .parse()
+                .expect("Failed to parse ix method name in pascal as `TokenStream`");
         let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
         let ix_cfgs = &ix.cfgs;
 

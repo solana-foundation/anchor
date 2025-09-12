@@ -344,10 +344,11 @@ mod legacy {
 
     impl From<IdlInstruction> for t::IdlInstruction {
         fn from(value: IdlInstruction) -> Self {
-            let name = harmonized_camel_case(&value.name);
+            let snake_name = value.name.to_snake_case();
+            let harmonized_name = harmonized_camel_case(&snake_name);
             Self {
-                discriminator: get_disc("global", &name),
-                name,
+                discriminator: get_disc("global", &snake_name), // use original for discriminator
+                name: harmonized_name,                          // and harmonized for interface
                 docs: value.docs.unwrap_or_default(),
                 accounts: value.accounts.into_iter().map(Into::into).collect(),
                 args: value.args.into_iter().map(Into::into).collect(),
