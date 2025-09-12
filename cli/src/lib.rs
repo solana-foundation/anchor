@@ -350,6 +350,22 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+
+    /// Show the contents of the account
+    #[clap(alias = "account_new")]
+    Account_New {
+        ///Account contents to show
+        #[clap(value_name = "ACCOUNT_ADDRESS")]
+        account_pubkey: String,
+
+        ///Write the account data to this file
+        #[clap(short, long, value_name = "FILEPATH")]
+        output_file: Option<String>,
+
+        ///Display balance in lamports instead of SOL
+        #[clap(long, action)]
+        lamports: bool,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -906,6 +922,11 @@ fn process_command(opts: Opts) -> Result<()> {
             address,
             idl,
         } => account(&opts.cfg_override, account_type, address, idl),
+        Command::Account_New {
+            account_pubkey,
+            output_file,
+            lamports,
+        } => show_account(&opts.cfg_override, account_pubkey, output_file, lamports),
         Command::Completions { shell } => {
             clap_complete::generate(
                 shell,
@@ -2738,6 +2759,51 @@ fn account(
     Ok(())
 }
 
+fn show_account(
+    cfg_override: &ConfigOverride,
+    account_pubkey: String,
+    output_file: Option<String>,
+    lamports: bool,
+) -> Result<()> {
+    println!("show account");
+
+    // Convert address string into Pubkey
+    let pubkey: Pubkey = account_pubkey.parse()?;
+
+    // Pick the right cluster (same as in your `account` command)
+    let cluster = match &cfg_override.cluster {
+        Some(cluster) => cluster.clone(),
+        None => Config::discover(cfg_override)?
+            .map(|cfg| cfg.provider.cluster.clone())
+            .unwrap_or(Cluster::Localnet),
+    };
+
+    // Create RPC client and fetch account
+    let rpc_client = create_client(cluster.url());
+    let account = rpc_client.get_account(&pubkey)?;
+    let data = &account.data;
+
+    // Show balance
+    if lamports {
+        println!("Balance (lamports): {}", account.lamports);
+    } else {
+        println!(
+            "Balance (SOL): {}",
+            account.lamports as f64 / solana_sdk::native_token::LAMPORTS_PER_SOL as f64
+        );
+    }
+
+    // Handle writing or dumping account data
+    if let Some(output_file) = output_file {
+        let mut f = File::create(output_file.clone())?;
+        f.write_all(data)?;
+        println!("Wrote account data to {output_file}");
+    } else if !data.is_empty() {
+        use pretty_hex::*;
+        println!("{:?}", data.hex_dump());
+    }
+    Ok(())
+}
 // Deserializes user defined IDL types by munching the account data(recursively).
 fn deserialize_idl_defined_type_to_json(
     idl: &Idl,
