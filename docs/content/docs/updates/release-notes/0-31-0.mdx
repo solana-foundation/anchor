@@ -274,7 +274,7 @@ still allows empty discriminators because some non-Anchor programs, e.g. the SPL
 Token program, don't have account discriminators. In that case, safety checks
 should never depend on the discriminator.
 
-Additionally, the IDL generation step also checks whether you have ambigious
+Additionally, the IDL generation step also checks whether you have ambiguous
 discriminators i.e. discriminators that can be used for multiple types. However,
 you should still consider future possibilities, especially when working with
 1-byte discriminators. For example, having an account with discriminator `[1]`
