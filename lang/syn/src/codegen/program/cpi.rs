@@ -92,9 +92,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #accounts
         }
 
-        // Re-export CPI accounts as `accounts` for downstream macros expecting `crate::accounts::*`.
-        #[cfg(feature = "cpi")]
-        pub use cpi::accounts as accounts;
     }
 }
 

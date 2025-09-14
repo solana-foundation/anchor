@@ -2,9 +2,9 @@ use anchor_lang_idl::types::{
     Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlRepr, IdlSerialization,
     IdlType, IdlTypeDef, IdlTypeDefGeneric, IdlTypeDefTy,
 };
+use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use proc_macro2::Literal;
 use quote::{format_ident, quote};
-use heck::ToSnakeCase;
 
 /// This function should ideally return the absolute path to the declared program's id but because
 /// `proc_macro2::Span::call_site().source_file().path()` is behind an unstable feature flag, we
@@ -14,9 +14,7 @@ pub fn get_canonical_program_id() -> proc_macro2::TokenStream {
 }
 
 pub fn gen_docs(docs: &[String]) -> proc_macro2::TokenStream {
-    let docs = docs
-        .iter()
-        .map(|doc| quote! { #[doc = #doc] });
+    let docs = docs.iter().map(|doc| quote! { #[doc = #doc] });
 
     quote! { #(#docs)* }
 }
@@ -30,24 +28,53 @@ pub fn gen_discriminator(discriminator: &[u8]) -> proc_macro2::TokenStream {
     quote! { [#(#discriminator),*] }
 }
 
-pub fn gen_accounts_common(
-    idl: &Idl,
-    prefix: &str,
-) -> proc_macro2::TokenStream {
-    let accounts: Vec<proc_macro2::TokenStream> = idl
-        .instructions
+pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream {
+    use anchor_lang_idl::types::IdlInstructionAccountItem;
+
+    // Helper function to collect composite account names recursively
+    fn collect_composite_names(
+        accounts: &[IdlInstructionAccountItem],
+        names: &mut std::collections::HashSet<String>,
+    ) {
+        for acc in accounts {
+            match acc {
+                IdlInstructionAccountItem::Composite(composite) => {
+                    names.insert(composite.name.clone());
+                    collect_composite_names(&composite.accounts, names);
+                }
+                IdlInstructionAccountItem::Single(_) => {}
+            }
+        }
+    }
+
+    // Collect all instruction names
+    let mut all_account_names = std::collections::HashSet::new();
+    for ix in &idl.instructions {
+        all_account_names.insert(ix.name.clone());
+        collect_composite_names(&ix.accounts, &mut all_account_names);
+    }
+
+    let accounts: Vec<proc_macro2::TokenStream> = all_account_names
         .iter()
-        .map(|ix| {
-            let anchor_ident_mod = format_ident!(
-                "__{}_accounts_{}",
-                prefix,
-                ix.name.to_snake_case(),
-            );
-            quote! { pub use super::internal::#anchor_ident_mod::*; }
+        .map(|name| {
+            let anchor_ident_mod = format_ident!("__{}_accounts_{}", prefix, name.to_snake_case());
+            let camel_case_name = format_ident!("{}", name.to_lower_camel_case());
+            let pascal_case_name = format_ident!("{}", name.to_pascal_case());
+            quote! {
+                pub use super::internal::#anchor_ident_mod::*;
+                // Re-export with PascalCase name for compatibility
+                pub use super::internal::#anchor_ident_mod::#camel_case_name as #pascal_case_name;
+            }
         })
         .collect();
 
-    quote! { #(#accounts)* }
+    quote! {
+        /// Accounts module.
+        pub mod accounts {
+            use super::*;
+            #(#accounts)*
+        }
+    }
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
