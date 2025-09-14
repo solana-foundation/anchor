@@ -1,4 +1,7 @@
 use anchor_lang::prelude::*;
+use external::program::external as ExternalProgram;
+
+use external::{MyEnum, MyStruct};
 
 declare_id!("Newid11111111111111111111111111111111111111");
 
@@ -130,7 +133,7 @@ pub mod new_idl {
         Ok(())
     }
 
-    pub fn external(ctx: Context<External>, my_struct: external::MyStruct) -> Result<()> {
+    pub fn external(ctx: Context<External>, my_struct: MyStruct) -> Result<()> {
         ctx.accounts.account.my_struct = my_struct;
         Ok(())
     }
@@ -140,6 +143,24 @@ pub mod new_idl {
         feature: wrapped::Feature,
     ) -> Result<()> {
         ctx.accounts.account.feature = feature;
+        Ok(())
+    }
+
+    pub fn a1_b_receive(_ctx: Context<Empty>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn test2_var_function(_ctx: Context<Empty>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn my3_param_handler(
+        _ctx: Context<Empty>,
+        _value: u32,
+        _pubkey: Pubkey, // for testing parameter passing
+    ) -> Result<()> {
+        // log the values to verify they arrive correctly
+        msg!("Received value: {}, pubkey: {}", _value, _pubkey);
         Ok(())
     }
 }
@@ -306,7 +327,7 @@ pub struct AccountAndEventFieldAccount {
 pub struct FullPath<'info> {
     #[account(zero)]
     pub account: Account<'info, FullPathAccount>,
-    pub external_program: Program<'info, external::program::External>,
+    pub external_program: Program<'info, ExternalProgram>,
 }
 
 #[account]
@@ -400,7 +421,7 @@ pub struct External<'info> {
 
 #[account]
 pub struct AccountWithExternalField {
-    pub my_struct: external::MyStruct,
+    pub my_struct: MyStruct,
 }
 
 #[derive(Accounts)]
