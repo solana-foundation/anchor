@@ -4,6 +4,7 @@ use anchor_lang_idl::types::{
 };
 use proc_macro2::Literal;
 use quote::{format_ident, quote};
+use heck::ToSnakeCase;
 
 /// This function should ideally return the absolute path to the declared program's id but because
 /// `proc_macro2::Span::call_site().source_file().path()` is behind an unstable feature flag, we
@@ -15,27 +16,38 @@ pub fn get_canonical_program_id() -> proc_macro2::TokenStream {
 pub fn gen_docs(docs: &[String]) -> proc_macro2::TokenStream {
     let docs = docs
         .iter()
-        .map(|doc| format!("{}{doc}", if doc.is_empty() { "" } else { " " }))
         .map(|doc| quote! { #[doc = #doc] });
+
     quote! { #(#docs)* }
 }
 
-pub fn gen_discriminator(disc: &[u8]) -> proc_macro2::TokenStream {
-    quote! { [#(#disc), *] }
+pub fn gen_discriminator(discriminator: &[u8]) -> proc_macro2::TokenStream {
+    let discriminator: Vec<_> = discriminator
+        .iter()
+        .map(|byte| Literal::u8_unsuffixed(*byte))
+        .collect();
+
+    quote! { [#(#discriminator),*] }
 }
 
-pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream {
-    let re_exports = idl
+pub fn gen_accounts_common(
+    idl: &Idl,
+    prefix: &str,
+) -> proc_macro2::TokenStream {
+    let accounts: Vec<proc_macro2::TokenStream> = idl
         .instructions
         .iter()
-        .map(|ix| format_ident!("__{}_accounts_{}", prefix, ix.name))
-        .map(|ident| quote! { pub use super::internal::#ident::*; });
+        .map(|ix| {
+            let anchor_ident_mod = format_ident!(
+                "__{}_accounts_{}",
+                prefix,
+                ix.name.to_snake_case(),
+            );
+            quote! { pub use super::internal::#anchor_ident_mod::*; }
+        })
+        .collect();
 
-    quote! {
-        pub mod accounts {
-            #(#re_exports)*
-        }
-    }
+    quote! { #(#accounts)* }
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {

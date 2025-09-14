@@ -1,0 +1,163 @@
+Starting at Sun Sep 14 10:45:59 AM WAT 2025
+=== ./anchor-cli-account ===
+   Compiling anchor-syn v0.31.1 (/home/dvrvsimi/projects/anchor/lang/syn)
+   Compiling anchor-attribute-account v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/account)
+   Compiling anchor-derive-accounts v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/accounts)
+   Compiling anchor-attribute-error v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/error)
+   Compiling anchor-derive-serde v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/serde)
+   Compiling anchor-attribute-access-control v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/access-control)
+   Compiling anchor-attribute-event v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/event)
+   Compiling anchor-attribute-program v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/program)
+   Compiling anchor-attribute-constant v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/constant)
+   Compiling anchor-lang v0.31.1 (/home/dvrvsimi/projects/anchor/lang)
+   Compiling account-command v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-account/programs/account-command)
+warning: use of deprecated method `anchor_lang::prelude::AccountInfo::<'a>::realloc`: Use AccountInfo::resize() instead
+ --> programs/account-command/src/lib.rs:5:1
+  |
+5 | #[program]
+  | ^^^^^^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default
+  = note: this warning originates in the attribute macro `program` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `account-command` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 22.31s
+   Compiling anchor-syn v0.31.1 (/home/dvrvsimi/projects/anchor/lang/syn)
+   Compiling anchor-derive-serde v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/serde)
+   Compiling anchor-attribute-account v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/account)
+   Compiling anchor-derive-accounts v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/accounts)
+   Compiling anchor-attribute-event v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/event)
+   Compiling anchor-attribute-access-control v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/access-control)
+   Compiling anchor-attribute-error v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/error)
+   Compiling anchor-attribute-constant v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/constant)
+   Compiling anchor-attribute-program v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/program)
+   Compiling anchor-lang v0.31.1 (/home/dvrvsimi/projects/anchor/lang)
+   Compiling account-command v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-account/programs/account-command)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 31.38s
+     Running unittests src/lib.rs (/home/dvrvsimi/projects/anchor/tests/anchor-cli-account/target/debug/deps/account_command-00d94bcd89cc0183)
+
+Found a 'test' script in the Anchor.toml. Running it as a test suite!
+
+Running test suite: "/home/dvrvsimi/projects/anchor/tests/anchor-cli-account/Anchor.toml"
+
+yarn run v1.22.22
+$ /home/dvrvsimi/projects/anchor/tests/node_modules/.bin/ts-mocha -p ./tsconfig.json -t 1000000 'tests/**/*.ts'
+(node:24061) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/dvrvsimi/projects/anchor/tests/anchor-cli-account/tests/account.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/dvrvsimi/projects/anchor/tests/anchor-cli-account/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+  Test CLI account commands
+    ✔ Can fetch and deserialize account using the account command (439ms)
+
+
+  1 passing (444ms)
+
+Done in 7.42s.
+=== ./anchor-cli-idl ===
+   Compiling anchor-syn v0.31.1 (/home/dvrvsimi/projects/anchor/lang/syn)
+   Compiling anchor-attribute-account v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/account)
+   Compiling anchor-derive-serde v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/serde)
+   Compiling anchor-derive-accounts v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/accounts)
+   Compiling anchor-attribute-event v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/event)
+   Compiling anchor-attribute-constant v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/constant)
+   Compiling anchor-attribute-access-control v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/access-control)
+   Compiling anchor-attribute-error v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/error)
+   Compiling anchor-attribute-program v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/program)
+   Compiling anchor-lang v0.31.1 (/home/dvrvsimi/projects/anchor/lang)
+   Compiling idl-commands-one v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/programs/idl-commands-one)
+warning: use of deprecated method `anchor_lang::prelude::AccountInfo::<'a>::realloc`: Use AccountInfo::resize() instead
+ --> programs/idl-commands-one/src/lib.rs:5:1
+  |
+5 | #[program]
+  | ^^^^^^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default
+  = note: this warning originates in the attribute macro `program` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `idl-commands-one` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 19.52s
+   Compiling anchor-syn v0.31.1 (/home/dvrvsimi/projects/anchor/lang/syn)
+   Compiling anchor-attribute-account v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/account)
+   Compiling anchor-attribute-event v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/event)
+   Compiling anchor-attribute-error v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/error)
+   Compiling anchor-attribute-constant v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/constant)
+   Compiling anchor-attribute-access-control v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/access-control)
+   Compiling anchor-derive-serde v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/serde)
+   Compiling anchor-attribute-program v0.31.1 (/home/dvrvsimi/projects/anchor/lang/attribute/program)
+   Compiling anchor-derive-accounts v0.31.1 (/home/dvrvsimi/projects/anchor/lang/derive/accounts)
+   Compiling anchor-lang v0.31.1 (/home/dvrvsimi/projects/anchor/lang)
+   Compiling idl-commands-one v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/programs/idl-commands-one)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 20.13s
+     Running unittests src/lib.rs (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/target/debug/deps/idl_commands_one-4031068f5b9e192a)
+   Compiling idl-commands-two v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/programs/idl-commands-two)
+warning: use of deprecated method `anchor_lang::prelude::AccountInfo::<'a>::realloc`: Use AccountInfo::resize() instead
+ --> programs/idl-commands-two/src/lib.rs:5:1
+  |
+5 | #[program]
+  | ^^^^^^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default
+  = note: this warning originates in the attribute macro `program` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `idl-commands-two` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 2.80s
+   Compiling idl-commands-two v0.1.0 (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/programs/idl-commands-two)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.06s
+     Running unittests src/lib.rs (/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/target/debug/deps/idl_commands_two-e0eedca095f04a58)
+
+Found a 'test' script in the Anchor.toml. Running it as a test suite!
+
+Running test suite: "/home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/Anchor.toml"
+
+yarn run v1.22.22
+$ /home/dvrvsimi/projects/anchor/tests/node_modules/.bin/ts-mocha -p ./tsconfig.json -t 1000000 'tests/**/*.ts'
+(node:26276) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/tests/idl.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+  Test CLI IDL commands
+Idl data length: 217 bytes
+Step 0/217 
+Idl account created: 2zu1ju6TZuXph7ddZiuLR47yo99gxx69m63z1KpEHqoP
+    ✔ Can initialize IDL account (1076ms)
+    ✔ Can fetch an IDL using the TypeScript client
+    ✔ Can fetch an IDL via the CLI
+Idl data length: 222 bytes
+Step 0/222 
+Idl account 2zu1ju6TZuXph7ddZiuLR47yo99gxx69m63z1KpEHqoP successfully upgraded
+    ✔ Can write a new IDL using the upgrade command (2100ms)
+    ✔ Can write a new IDL using write-buffer and set-buffer (1565ms)
+    ✔ Can fetch an IDL authority via the CLI
+Idl account closed: 2zu1ju6TZuXph7ddZiuLR47yo99gxx69m63z1KpEHqoP
+    ✔ Can close IDL account (538ms)
+Error: No such file or directory (os error 2)
+    1) Can initialize super massive IDL account
+
+
+  7 passing (5s)
+  1 failing
+
+  1) Test CLI IDL commands
+       Can initialize super massive IDL account:
+     Error: Command failed: anchor idl init --filepath testLargeIdl.json 2uA3amp95zsEHUpo8qnLMhcFAUsiKVEcKHXS1JetFjU5
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:924:11)
+      at execSync (node:child_process:996:15)
+      at /home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/tests/idl.ts:80:13
+      at Generator.next (<anonymous>)
+      at /home/dvrvsimi/projects/anchor/tests/anchor-cli-idl/tests/idl.ts:27:71
+      at new Promise (<anonymous>)
+      at __awaiter (tests/idl.ts:23:12)
+      at Context.<anonymous> (tests/idl.ts:79:61)
+      at processImmediate (node:internal/timers:505:21)
+
+
+
+error Command failed with exit code 1.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
+FAILED: ./anchor-cli-idl

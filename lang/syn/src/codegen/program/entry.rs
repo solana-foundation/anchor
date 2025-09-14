@@ -1,12 +1,12 @@
 use crate::Program;
-use heck::ToLowerCamelCase;
+use heck::ToPascalCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program
         .name
         .to_string()
-        .to_lower_camel_case()
+        .to_pascal_case()
         .parse()
         .unwrap();
     quote! {
