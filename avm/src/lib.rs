@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use cargo_toml::Manifest;
 use chrono::{TimeZone, Utc};
 use reqwest::header::USER_AGENT;
@@ -201,7 +201,9 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
             .next()
             .expect("Expected input")?;
         match input.as_str() {
-            "y" | "yes" => return install_version(InstallTarget::Version(version), false, false),
+            "y" | "yes" => {
+                return install_version(InstallTarget::Version(version), false, false, false)
+            }
             _ => return Err(anyhow!("Installation rejected.")),
         };
     }
@@ -222,7 +224,7 @@ pub enum InstallTarget {
 /// Update to the latest version
 pub fn update() -> Result<()> {
     let latest_version = get_latest_version()?;
-    install_version(InstallTarget::Version(latest_version), false, false)
+    install_version(InstallTarget::Version(latest_version), false, false, false)
 }
 
 /// The commit sha provided can be shortened,
@@ -284,6 +286,7 @@ pub fn install_version(
     install_target: InstallTarget,
     force: bool,
     from_source: bool,
+    with_solana_verify: bool,
 ) -> Result<()> {
     let (version, from_source) = match &install_target {
         InstallTarget::Version(version) => (version.to_owned(), from_source),
@@ -308,7 +311,7 @@ pub fn install_version(
     }
 
     let is_commit = matches!(install_target, InstallTarget::Commit(_));
-    let is_older_than_v0_31_0 = version < Version::parse("0.31.0")?;
+    let is_older_than_v0_31_0 = version < Version::new(0, 31, 0);
     if from_source || is_commit || is_older_than_v0_31_0 {
         // Build from source using `cargo install`
         let mut args: Vec<String> = vec![
@@ -430,29 +433,22 @@ pub fn install_version(
         )?;
     }
 
-    println!("Installing solana-verify...");
-    let solana_verify_install_output = Command::new("cargo")
-        .args([
-            "install",
-            "solana-verify",
-            "--git",
-            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
-            "--rev",
-            "568cb334709e88b9b45fc24f1f440eecacf5db54",
-            "--root",
-            AVM_HOME.to_str().unwrap(),
-            "--force",
-            "--locked",
-        ])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow!("`cargo install` for `solana-verify` failed: {e}"))?;
-
-    if !solana_verify_install_output.status.success() {
-        return Err(anyhow!("Failed to install `solana-verify`"));
+    let is_at_least_0_32 = version >= Version::new(0, 32, 0);
+    if with_solana_verify {
+        if is_at_least_0_32 {
+            if !solana_verify_installed().is_ok_and(|v| v) {
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                install_solana_verify()?;
+                #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                install_solana_verify_from_source()?;
+                println!("solana-verify successfully installed");
+            } else {
+                println!("solana-verify already installed");
+            }
+        } else {
+            println!("Not installing solana-verify for anchor < 0.32");
+        }
     }
-    println!("solana-verify successfully installed.");
 
     // If .version file is empty or not parseable, write the newly installed version to it
     if current_version().is_err() {
@@ -461,6 +457,84 @@ pub fn install_version(
     }
 
     use_version(Some(version))
+}
+
+const SOLANA_VERIFY_VERSION: Version = Version::new(0, 4, 11);
+
+/// Check if `solana-verify` is both installed and >= [`SOLANA_VERIFY_VERSION`].
+fn solana_verify_installed() -> Result<bool> {
+    let bin_path = get_bin_dir_path().join("solana-verify");
+    if !bin_path.exists() {
+        return Ok(false);
+    }
+    let output = Command::new(bin_path)
+        .arg("-V")
+        .output()
+        .context("executing `solana-verify` to check version")?;
+    let stdout =
+        String::from_utf8(output.stdout).context("expected `solana-verify` to output utf8")?;
+    let Some(("solana-verify", version)) = stdout.trim().split_once(" ") else {
+        bail!("invalid `solana-verify` output: `{stdout}`");
+    };
+    if Version::parse(version).with_context(|| "parsing solana-verify version `{version}")?
+        >= SOLANA_VERIFY_VERSION
+    {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Install `solana-verify` from binary releases. Only available on Linux and Mac
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn install_solana_verify() -> Result<()> {
+    println!("Installing solana-verify...");
+    let os = std::env::consts::OS;
+    let url = format!(
+        "https://github.com/Ellipsis-Labs/solana-verifiable-build/releases/download/v{SOLANA_VERIFY_VERSION}/solana-verify-{os}"
+    );
+    let res = reqwest::blocking::get(url)?;
+    if !res.status().is_success() {
+        bail!(
+            "Failed to download `solana-verify-{os} v{SOLANA_VERIFY_VERSION} (status code: {})",
+            res.status()
+        );
+    } else {
+        let bin_path = get_bin_dir_path().join("solana-verify");
+        fs::write(&bin_path, res.bytes()?)?;
+        #[cfg(unix)]
+        fs::set_permissions(
+            bin_path,
+            <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o775),
+        )?;
+        Ok(())
+    }
+}
+
+/// Install `solana-verify` by building from Git sources
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn install_solana_verify_from_source() -> Result<()> {
+    println!("Installing solana-verify from source...");
+    let status = Command::new("cargo")
+        .args([
+            "install",
+            "solana-verify",
+            "--git",
+            "https://github.com/Ellipsis-Labs/solana-verifiable-build",
+            "--rev",
+            &format!("v{SOLANA_VERIFY_VERSION}"),
+            "--root",
+            AVM_HOME.to_str().unwrap(),
+            "--force",
+            "--locked",
+        ])
+        .status()
+        .context("executing `cargo install solana-verify`")?;
+    if status.success() {
+        Ok(())
+    } else {
+        bail!("failed to install `solana-verify`");
+    }
 }
 
 /// Remove an installed version of anchor-cli
@@ -492,6 +566,7 @@ pub fn fetch_versions() -> Result<Vec<Version>, Error> {
     struct Release {
         #[serde(rename = "name", deserialize_with = "version_deserializer")]
         version: Version,
+        draft: bool,
     }
 
     fn version_deserializer<'de, D>(deserializer: D) -> Result<Version, D::Error>
@@ -503,13 +578,20 @@ pub fn fetch_versions() -> Result<Vec<Version>, Error> {
     }
 
     let response = reqwest::blocking::Client::new()
-        .get("https://api.github.com/repos/coral-xyz/anchor/tags")
-        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .get("https://api.github.com/repos/solana-foundation/anchor/releases")
+        .header(
+            USER_AGENT,
+            "avm https://github.com/solana-foundation/anchor",
+        )
         .send()?;
 
     if response.status().is_success() {
         let releases: Vec<Release> = response.json()?;
-        let versions = releases.into_iter().map(|r| r.version).collect();
+        let versions = releases
+            .into_iter()
+            .filter(|r| !r.draft)
+            .map(|r| r.version)
+            .collect();
         Ok(versions)
     } else {
         let reset_time_header = response
@@ -533,8 +615,7 @@ pub fn list_versions() -> Result<()> {
     let mut installed_versions = read_installed_versions()?;
 
     let mut available_versions = fetch_versions()?;
-    // Reverse version list so latest versions are printed last
-    available_versions.reverse();
+    available_versions.sort();
 
     let print_versions =
         |versions: Vec<Version>, installed_versions: &mut Vec<Version>, show_latest: bool| {
