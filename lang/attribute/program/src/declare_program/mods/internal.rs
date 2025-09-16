@@ -9,7 +9,10 @@ use anchor_syn::{
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
-use super::common::{convert_idl_type_to_syn_type, gen_discriminator, get_canonical_program_id};
+use super::common::{
+    can_derive_clone_ty, can_derive_copy_ty, can_derive_debug_ty, can_derive_default_ty,
+    convert_idl_type_to_syn_type, gen_discriminator, get_canonical_program_id,
+};
 
 pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let internal_args_mod = gen_internal_args_mod(idl);
@@ -68,11 +71,39 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
             }
         };
 
+        let copy_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_copy_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Copy)]));
+        let clone_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_clone_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Clone)]));
+        let debug_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_debug_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Debug)]));
+        let default_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_default_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Default)]));
+
         quote! {
             /// Instruction argument
             #[derive(AnchorSerialize, AnchorDeserialize)]
+            #clone_attr
+            #copy_attr
+            #debug_attr
+            #default_attr
             #ix_struct
-
             #impl_discriminator
             #impl_ix_data
             #impl_owner
