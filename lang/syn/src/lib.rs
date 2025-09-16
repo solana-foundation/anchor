@@ -18,7 +18,7 @@ use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::ToTokens;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
@@ -192,7 +192,7 @@ impl AccountsStruct {
     // Return value maps instruction name to type.
     // E.g. if we have `#[instruction(data: u64)]` then returns
     // { "data": "u64"}.
-    pub fn instruction_args(&self) -> Option<HashMap<String, String>> {
+    pub fn instruction_args(&self) -> Option<BTreeMap<String, String>> {
         self.instruction_api.as_ref().map(|instruction_api| {
             instruction_api
                 .iter()

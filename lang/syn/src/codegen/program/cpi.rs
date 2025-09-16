@@ -95,7 +95,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 }
 
 pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
-    let mut accounts = std::collections::HashMap::new();
+    let mut accounts = std::collections::BTreeMap::new();
 
     // Go through instruction accounts.
     for ix in &program.ixs {
