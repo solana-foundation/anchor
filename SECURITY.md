@@ -7,8 +7,7 @@ problems](#reporting)
 Process](#process)
 
 <a name="reporting"></a>
-## Reporting security problems for
-Anchor Lang
+## Reporting security problems for Anchor
 
 **DO NOT CREATE A GITHUB ISSUE** to
 report a security problem.
@@ -59,13 +58,7 @@ we will pay up to $X according to the
 following guidelines. This is exclusive
 to any bounties claimed from the
 protocol. In other words, reports can’t
-double-dip. 
-- Critical: X. Bypass of fundamental
-Anchor checks, such as account
-ownership, discriminator, memory
-safety, etc. 
-- Medium: X. Denial of service 
-- Low: X: All remaining issues
+double-dip.
 
 
 ---
@@ -124,9 +117,9 @@ the issue. If necessary, members of the
 group may add other github users to the
 advisory to assist.
 If it is determined that this is not a
-critical network issue then the
+critical Anchor issue then the
 advisory should be closed and if more
-follow-up is required a normal Solana
+follow-up is required a normal Anchor
 public github issue should be created.
 
 ### 3. Prepare Fixes
@@ -180,14 +173,9 @@ security advisory with one of the
 following, depending on the severity:
 
 - [Bounty Category:
-Critical](#critical): X. Bypass of
-fundamental Anchor checks, such as
-account ownership, discriminator,
-memory safety, etc. 
-- [Bounty Category: Medium](#medium):
-X. Denial of service 
-- [Bounty Category: Low](#low): X: All
-remaining issues
+Critical](#critical): X
+- [Bounty Category: Medium](#medium): X
+- [Bounty Category: Low](#low): X
 
 Confirm with the reporter that they
 agree with the severity assessment, and
@@ -206,9 +194,8 @@ and can be closed.
 ## Security Bug Bounties
 At its sole discretion, the Solana
 Foundation may offer a bounty for
-[valid reports](#reporting) of critical
-Solana vulnerabilities. Please see
-below
+[valid reports](#reporting) of Anchor 
+vulnerabilities. Please see below
 for more details. The submitter is not
 required to provide a
 mitigation to qualify.
