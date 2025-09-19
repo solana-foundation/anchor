@@ -50,7 +50,8 @@
     "cpi-returns",
     "multiple-suites",
     "multiple-suites-run-single",
-    "bpf-upgradeable-state"
+    "bpf-upgradeable-state",
+    "duplicate-mutable-accounts"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",

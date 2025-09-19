@@ -50,6 +50,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
         "executable" => {
             ConstraintToken::Executable(Context::new(ident.span(), ConstraintExecutable {}))
         }
+        "dup" => ConstraintToken::Dup(Context::new(ident.span(), ConstraintDup {})),
         "mint" => {
             stream.parse::<Token![:]>()?;
             stream.parse::<Token![:]>()?;
@@ -543,6 +544,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub realloc: Option<Context<ConstraintRealloc>>,
     pub realloc_payer: Option<Context<ConstraintReallocPayer>>,
     pub realloc_zero: Option<Context<ConstraintReallocZero>>,
+    pub dup: Option<Context<ConstraintDup>>,
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
@@ -588,6 +590,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc: None,
             realloc_payer: None,
             realloc_zero: None,
+            dup: None,
         }
     }
 
@@ -800,6 +803,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc,
             realloc_payer,
             realloc_zero,
+            dup,
         } = self;
 
         // Converts Option<Context<T>> -> Option<T>.
@@ -1031,6 +1035,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             seeds,
             token_account: if !is_init {token_account} else {None},
             mint: if !is_init {mint} else {None},
+            dup: into_inner!(dup),
         })
     }
 
@@ -1093,6 +1098,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
             }
+            ConstraintToken::Dup(c) => self.add_dup(c),
         }
     }
 
@@ -1673,6 +1679,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_permanent_delegate.replace(c);
+        Ok(())
+    }
+
+    fn add_dup(&mut self, c: Context<ConstraintDup>) -> ParseResult<()> {
+        if self.dup.is_some() {
+            return Err(ParseError::new(c.span(), "dup already provided"));
+        }
+        self.dup.replace(c);
         Ok(())
     }
 }

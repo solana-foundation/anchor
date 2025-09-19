@@ -76,6 +76,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         init,
         zeroed,
         mutable,
+        dup,
         signer,
         has_one,
         raw,
@@ -110,6 +111,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     }
     if let Some(c) = mutable {
         constraints.push(Constraint::Mut(c));
+    }
+    if let Some(c) = dup {
+        constraints.push(Constraint::Dup(c));
     }
     if let Some(c) = signer {
         constraints.push(Constraint::Signer(c));
@@ -149,6 +153,7 @@ fn generate_constraint(
         Constraint::Init(c) => generate_constraint_init(f, c, accs),
         Constraint::Zeroed(c) => generate_constraint_zeroed(f, c, accs),
         Constraint::Mut(c) => generate_constraint_mut(f, c),
+        Constraint::Dup(_) => quote! {}, // No-op: dup is handled by duplicate checking logic
         Constraint::HasOne(c) => generate_constraint_has_one(f, c, accs),
         Constraint::Signer(c) => generate_constraint_signer(f, c),
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),

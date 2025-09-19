@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `#[error]` attribute to `declare_program!` ([#3757](https://github.com/coral-xyz/anchor/pull/3757)).
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
+- lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
 - lang: Use `solana-invoke` instead of `solana_cpi::invoke` ([#3900](https://github.com/solana-foundation/anchor/pull/3900)).
 - client: remove `solana-client` from `anchor-client` and `cli` ([#3877](https://github.com/solana-foundation/anchor/pull/3877)).
 - idl: Build IDL on stable Rustc ([#3842](https://github.com/solana-foundation/anchor/pull/3842)).

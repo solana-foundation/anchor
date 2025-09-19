@@ -416,6 +416,8 @@ jobs:
             path: tests/declare-program
           - cmd: cd tests/typescript && anchor test --skip-lint && npx tsc --noEmit
             path: tests/typescript
+          - cmd: cd tests/duplicate-mutable-accounts && anchor test --skip-lint
+            path: tests/duplicate-mutable-accounts
           # zero-copy tests cause `/usr/bin/ld: final link failed: No space left on device`
           # on GitHub runners. It is likely caused by `cargo test-sbf` since all other tests
           # don't have this problem.
