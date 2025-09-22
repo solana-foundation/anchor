@@ -1,4 +1,4 @@
-use anchor_lang::signature_verifications::{verify_ed25519_ix, verify_secp256k1_ix};
+use anchor_lang::signature_verification::{verify_ed25519_ix, verify_secp256k1_ix};
 use anchor_lang::solana_program::instruction::Instruction;
 use solana_sdk_ids::{ed25519_program, secp256k1_program};
 

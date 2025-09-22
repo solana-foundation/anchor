@@ -462,6 +462,8 @@ jobs:
             path: tests/idl
           - cmd: cd tests/lazy-account && anchor test
             path: tests/lazy-account
+          - cmd: cd tests/signature-verification && anchor test --skip-lint
+            path: tests/signature-verification
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

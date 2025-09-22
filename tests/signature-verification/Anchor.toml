@@ -1,0 +1,9 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+signature_verification_test = "9q9StGMtVHQtz14vH8YhPtED9MxnBj2mnVpBhYeTeRhj"
+
+[scripts]
+test = "yarn --cwd ../.. run ts-mocha -t 1000000 tests/*.ts"
