@@ -178,6 +178,29 @@ pub enum ErrorCode {
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
 
+    // Signature verification errors
+    /// 2040 - Invalid Ed25519 program id for signature verification
+    #[msg("Invalid Ed25519 program id for signature verification")]
+    Ed25519InvalidProgram,
+    /// 2041 - Invalid Secp256k1 program id for signature verification
+    #[msg("Invalid Secp256k1 program id for signature verification")]
+    Secp256k1InvalidProgram,
+    /// 2042 - Instruction unexpectedly had account metas
+    #[msg("Instruction unexpectedly had account metas")]
+    InstructionHasAccounts,
+    /// 2043 - Message length exceeds allowed maximum
+    #[msg("Message length exceeds allowed maximum")]
+    MessageTooLong,
+    /// 2044 - Instruction data length mismatch
+    #[msg("Instruction data length mismatch")]
+    DataLengthMismatch,
+    /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
+    #[msg("Invalid Secp256k1 recovery id")]
+    InvalidRecoveryId,
+    /// 2046 - Number of signatures and addresses mismatch in Secp256k1 header
+    #[msg("Number of signatures and addresses mismatch")]
+    NumSigsAddrsMismatch,
+
     // Require
     /// 2500 - A require expression was violated
     #[msg("A require expression was violated")]
