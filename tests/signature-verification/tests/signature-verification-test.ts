@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import * as fs from "fs";
 const signatureVerificationTestIDL = JSON.parse(
-  fs.readFileSync("./target/idl/signature_verification_test.json", "utf8"),
+  fs.readFileSync("./target/idl/signature_verification_test.json", "utf8")
 );
 import { Buffer } from "buffer";
 import {
@@ -27,13 +27,13 @@ describe("signature-verification-test", () => {
   anchor.setProvider(provider);
   const program = new anchor.Program(
     signatureVerificationTestIDL as anchor.Idl,
-    provider,
+    provider
   );
 
   it("Verify Ed25519 signature with valid signature", async () => {
     const signer = Keypair.generate();
     const message = Buffer.from(
-      "Hello, Anchor Signature Verification Test with valid signature!",
+      "Hello, Anchor Signature Verification Test with valid signature!"
     );
     const signature = await sign(message, signer.secretKey.slice(0, 32));
 
@@ -57,7 +57,7 @@ describe("signature-verification-test", () => {
   it("Verify Ed25519 signature with invalid signature", async () => {
     const signer = Keypair.generate();
     const message = Buffer.from(
-      "Hello, Anchor Signature Verification Test with invalid signature!",
+      "Hello, Anchor Signature Verification Test with invalid signature!"
     );
     // Create a fake signature (all zeros)
     const fakeSignature = new Uint8Array(64).fill(0);
@@ -87,7 +87,7 @@ describe("signature-verification-test", () => {
     // keccak256(name, age)
     const messageHashHex: string = ethers.utils.solidityKeccak256(
       ["string", "uint16"],
-      [PERSON.name, PERSON.age],
+      [PERSON.name, PERSON.age]
     );
     const messageHashBytes: Uint8Array = ethers.utils.arrayify(messageHashHex);
 
@@ -107,7 +107,7 @@ describe("signature-verification-test", () => {
       .computeAddress(ethSigner.publicKey)
       .slice(2);
     const ethAddressBytes = Array.from(
-      ethers.utils.arrayify("0x" + ethAddressHexNo0x),
+      ethers.utils.arrayify("0x" + ethAddressHexNo0x)
     ) as [
       number,
       number,
@@ -128,7 +128,7 @@ describe("signature-verification-test", () => {
       number,
       number,
       number,
-      number,
+      number
     ];
 
     const verifyIx = await program.methods
@@ -198,10 +198,10 @@ describe("signature-verification-test", () => {
           number,
           number,
           number,
-          number,
+          number
         ],
         recoveryId,
-        ethAddressBytes,
+        ethAddressBytes
       )
       .accounts({
         ixSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -233,7 +233,7 @@ describe("signature-verification-test", () => {
     // keccak256(name, age)
     const messageHashHex: string = ethers.utils.solidityKeccak256(
       ["string", "uint16"],
-      [PERSON.name, PERSON.age],
+      [PERSON.name, PERSON.age]
     );
     const messageHashBytes: Uint8Array = ethers.utils.arrayify(messageHashHex);
 
@@ -250,7 +250,7 @@ describe("signature-verification-test", () => {
       .computeAddress(ethSigner.publicKey)
       .slice(2);
     const ethAddressBytes = Array.from(
-      ethers.utils.arrayify("0x" + ethAddressHexNo0x),
+      ethers.utils.arrayify("0x" + ethAddressHexNo0x)
     ) as [
       number,
       number,
@@ -271,7 +271,7 @@ describe("signature-verification-test", () => {
       number,
       number,
       number,
-      number,
+      number
     ];
 
     const verifyIx = await program.methods
@@ -341,10 +341,10 @@ describe("signature-verification-test", () => {
           number,
           number,
           number,
-          number,
+          number
         ],
         fakeRecoveryId,
-        ethAddressBytes,
+        ethAddressBytes
       )
       .accounts({
         ixSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -365,7 +365,7 @@ describe("signature-verification-test", () => {
       assert.fail("Expected transaction to fail with invalid signature");
     } catch (error) {
       console.log(
-        "Ethereum Secp256k1 verification correctly failed with invalid signature",
+        "Ethereum Secp256k1 verification correctly failed with invalid signature"
       );
     }
   });
