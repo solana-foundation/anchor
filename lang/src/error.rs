@@ -191,15 +191,12 @@ pub enum ErrorCode {
     /// 2043 - Message length exceeds allowed maximum
     #[msg("Message length exceeds allowed maximum")]
     MessageTooLong,
-    /// 2044 - Instruction data length mismatch
-    #[msg("Instruction data length mismatch")]
-    DataLengthMismatch,
     /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
     #[msg("Invalid Secp256k1 recovery id")]
     InvalidRecoveryId,
-    /// 2046 - Number of signatures and addresses mismatch in Secp256k1 header
-    #[msg("Number of signatures and addresses mismatch")]
-    NumSigsAddrsMismatch,
+    /// 2047 - Signature verification failed
+    #[msg("Signature verification failed")]
+    SignatureVerificationFailed,
 
     // Require
     /// 2500 - A require expression was violated

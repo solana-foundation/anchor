@@ -3,7 +3,6 @@ use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;
 use solana_sdk_ids::ed25519_program;
 
-/// Verify that `ix.data` is an Ed25519 syscall verifying `sig` over `msg` by `pubkey`.
 pub fn verify_ed25519_ix(
     ix: &Instruction,
     pubkey: &[u8; 32],
@@ -18,40 +17,33 @@ pub fn verify_ed25519_ix(
     require_eq!(ix.accounts.len(), 0usize, ErrorCode::InstructionHasAccounts);
     require!(msg.len() <= u16::MAX as usize, ErrorCode::MessageTooLong);
 
-    let num_signatures: u8 = 1;
-    let padding: u8 = 0;
-    let header_len: usize = 2;
-    let offsets_len: usize = 14; // 7 * u16
-    let base: usize = header_len + offsets_len;
+    const DATA_START: usize = 16; // 2 header + 14 offset bytes
+    let pubkey_len = pubkey.len() as u16;
+    let sig_len = sig.len() as u16;
+    let msg_len = msg.len() as u16;
 
-    let signature_offset: u16 = base as u16;
-    let signature_instruction_index: u16 = u16::MAX;
-    let public_key_offset: u16 = (base + 64) as u16;
-    let public_key_instruction_index: u16 = u16::MAX;
-    let message_data_offset: u16 = (base + 64 + 32) as u16; // 32 bytes for pubkey
-    let message_data_size: u16 = msg.len() as u16;
-    let message_instruction_index: u16 = u16::MAX;
+    let sig_offset: u16 = DATA_START as u16;
+    let pubkey_offset: u16 = sig_offset + sig_len;
+    let msg_offset: u16 = pubkey_offset + pubkey_len;
 
-    // [header][offsets][signature][public_key][msg]
-    let mut expected = Vec::with_capacity(base + 64 + 32 + msg.len());
-    expected.push(num_signatures);
-    expected.push(padding);
-    expected.extend_from_slice(&signature_offset.to_le_bytes());
-    expected.extend_from_slice(&signature_instruction_index.to_le_bytes());
-    expected.extend_from_slice(&public_key_offset.to_le_bytes());
-    expected.extend_from_slice(&public_key_instruction_index.to_le_bytes());
-    expected.extend_from_slice(&message_data_offset.to_le_bytes());
-    expected.extend_from_slice(&message_data_size.to_le_bytes());
-    expected.extend_from_slice(&message_instruction_index.to_le_bytes());
+    let mut expected = Vec::with_capacity(DATA_START + sig.len() + pubkey.len() + msg.len());
+
+    expected.push(1u8); // num signatures
+    expected.push(0u8); // padding
+    expected.extend_from_slice(&sig_offset.to_le_bytes());
+    expected.push(0u8); // sig ix idx
+    expected.extend_from_slice(&pubkey_offset.to_le_bytes());
+    expected.push(0u8); // pubkey ix idx
+    expected.extend_from_slice(&msg_offset.to_le_bytes());
+    expected.extend_from_slice(&msg_len.to_le_bytes());
+    expected.push(0u8); // msg ix idx
+
     expected.extend_from_slice(sig);
     expected.extend_from_slice(pubkey);
     expected.extend_from_slice(msg);
 
-    if ix.data.len() != expected.len() {
-        return Err(error!(ErrorCode::DataLengthMismatch));
-    }
-    if ix.data != expected {
-        return Err(error!(ErrorCode::ConstraintRaw));
+    if expected != ix.data {
+        return Err(ErrorCode::SignatureVerificationFailed.into());
     }
     Ok(())
 }

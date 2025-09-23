@@ -15,5 +15,8 @@
     },
     "scripts": {
         "test": "anchor test"
+    },
+    "dependencies": {
+        "ethers": "^5.7.2"
     }
 }

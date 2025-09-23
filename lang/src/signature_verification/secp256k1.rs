@@ -3,7 +3,6 @@ use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;
 use solana_sdk_ids::secp256k1_program;
 
-/// Verify that `ix.data` is a Secp256k1 syscall verifying `sig` over `msg` by `eth_address` with `recovery_id`.
 pub fn verify_secp256k1_ix(
     ix: &Instruction,
     eth_address: &[u8; 20],
@@ -20,45 +19,34 @@ pub fn verify_secp256k1_ix(
     require!(recovery_id <= 1, ErrorCode::InvalidRecoveryId);
     require!(msg.len() <= u16::MAX as usize, ErrorCode::MessageTooLong);
 
-    let num_signatures: u8 = 1;
-    let num_eth_addresses: u8 = 1;
-    let header_len: usize = 2;
-    let offsets_len: usize = 18; // 9 * u16
-    let base: usize = header_len + offsets_len;
+    const DATA_START: usize = 12; // 1 header + 11 offset bytes
+    let eth_len = eth_address.len() as u16;
+    let sig_len = sig.len() as u16;
+    let msg_len = msg.len() as u16;
 
-    let signature_offset: u16 = base as u16;
-    let signature_instruction_index: u16 = u16::MAX;
-    let eth_address_offset: u16 = (base + 64) as u16;
-    let eth_address_instruction_index: u16 = u16::MAX;
-    let message_data_offset: u16 = (base + 64 + 20) as u16; // 20 bytes for eth_address
-    let message_data_size: u16 = msg.len() as u16;
-    let message_instruction_index: u16 = u16::MAX;
-    let recovery_id_offset: u16 = (base + 64 + 20 + msg.len()) as u16;
-    let recovery_id_instruction_index: u16 = u16::MAX;
+    let eth_offset: u16 = DATA_START as u16;
+    let sig_offset: u16 = eth_offset + eth_len;
+    let msg_offset: u16 = sig_offset + sig_len + 1; // +1 for recovery id
 
-    // [header][offsets][signature][eth_address][msg][recovery_id]
-    let mut expected = Vec::with_capacity(base + 64 + 20 + msg.len() + 1);
-    expected.push(num_signatures);
-    expected.push(num_eth_addresses);
-    expected.extend_from_slice(&signature_offset.to_le_bytes());
-    expected.extend_from_slice(&signature_instruction_index.to_le_bytes());
-    expected.extend_from_slice(&eth_address_offset.to_le_bytes());
-    expected.extend_from_slice(&eth_address_instruction_index.to_le_bytes());
-    expected.extend_from_slice(&message_data_offset.to_le_bytes());
-    expected.extend_from_slice(&message_data_size.to_le_bytes());
-    expected.extend_from_slice(&message_instruction_index.to_le_bytes());
-    expected.extend_from_slice(&recovery_id_offset.to_le_bytes());
-    expected.extend_from_slice(&recovery_id_instruction_index.to_le_bytes());
-    expected.extend_from_slice(sig);
+    let mut expected =
+        Vec::with_capacity(DATA_START + eth_address.len() + sig.len() + 1 + msg.len());
+
+    expected.push(1u8); // num signatures
+    expected.extend_from_slice(&sig_offset.to_le_bytes());
+    expected.push(0u8); // sig ix idx
+    expected.extend_from_slice(&eth_offset.to_le_bytes());
+    expected.push(0u8); // eth ix idx
+    expected.extend_from_slice(&msg_offset.to_le_bytes());
+    expected.extend_from_slice(&msg_len.to_le_bytes());
+    expected.push(0u8); // msg ix idx
+
     expected.extend_from_slice(eth_address);
-    expected.extend_from_slice(msg);
+    expected.extend_from_slice(sig);
     expected.push(recovery_id);
+    expected.extend_from_slice(msg);
 
-    if ix.data.len() != expected.len() {
-        return Err(error!(ErrorCode::DataLengthMismatch));
-    }
-    if ix.data != expected {
-        return Err(error!(ErrorCode::ConstraintRaw));
+    if expected != ix.data {
+        return Err(ErrorCode::SignatureVerificationFailed.into());
     }
     Ok(())
 }

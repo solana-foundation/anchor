@@ -1,99 +1,372 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { SignatureVerificationTest } from "../target/types/signature_verification_test";
+import * as fs from "fs";
+const signatureVerificationTestIDL = JSON.parse(
+  fs.readFileSync("./target/idl/signature_verification_test.json", "utf8"),
+);
 import { Buffer } from "buffer";
-import { PublicKey, Keypair, Transaction, SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY, Ed25519Program, Secp256k1Program } from "@solana/web3.js";
+import {
+  PublicKey,
+  Keypair,
+  Transaction,
+  SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
+  Ed25519Program,
+  Secp256k1Program,
+} from "@solana/web3.js";
 import * as crypto from "crypto";
+import { ethers } from "ethers";
+import * as assert from "assert";
+import { sign } from "@noble/ed25519";
 
 describe("signature-verification-test", () => {
-  const provider = anchor.AnchorProvider.local();
+  const provider = anchor.AnchorProvider.local(undefined, {
+    commitment: `confirmed`,
+  });
+
   anchor.setProvider(provider);
-  const program = anchor.workspace.SignatureVerificationTest as Program<SignatureVerificationTest>;
+  const program = new anchor.Program(
+    signatureVerificationTestIDL as anchor.Idl,
+    provider,
+  );
 
-  it("Verify Ed25519 signature with actual signature", async () => {
-    // Create a keypair for testing
+  it("Verify Ed25519 signature with valid signature", async () => {
     const signer = Keypair.generate();
+    const message = Buffer.from(
+      "Hello, Anchor Signature Verification Test with valid signature!",
+    );
+    const signature = await sign(message, signer.secretKey.slice(0, 32));
 
-    // Create a test message
-    const message = Buffer.from("Hello, Anchor Signature Verification Test!");
-
-    // Create a mock signature (in real implementation, this would be properly signed)
-    const signature = new Uint8Array(64).fill(1); // Mock signature
-
-    // Create instruction to call the program
-    const instruction = await program.methods
-      .verifyEd25519Signature(message, Array.from(signature) as [number, ...number[]])
-      .accounts({
-        signer: signer.publicKey,
-        ixSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
-      })
-      .instruction();
-
-    // Create transaction with the signature verification instruction
-    const transaction = new Transaction().add(instruction);
-
-    // Add the Ed25519 signature instruction to the transaction
+    // Create transaction with just the Ed25519Program instruction
     const ed25519Instruction = Ed25519Program.createInstructionWithPublicKey({
       publicKey: signer.publicKey.toBytes(),
       message: message,
       signature: signature,
     });
 
-    transaction.add(ed25519Instruction);
+    const transaction = new Transaction().add(ed25519Instruction);
 
     try {
-      await provider.sendAndConfirm(transaction, [signer]);
-      console.log("✅ Ed25519 signature verified successfully using custom helper!");
+      await provider.sendAndConfirm(transaction, []);
+      console.log("Ed25519 signature verified successfully!");
     } catch (error) {
-      console.log("❌ Ed25519 verification failed:", error.message);
-      // This test demonstrates the structure even if signature verification fails
+      assert.fail("Valid Ed25519 signature should be verified");
     }
   });
 
-  it("Verify Secp256k1 signature with actual signature", async () => {
-    // Create ETH address (20 bytes)
-    const ethAddress = crypto.randomBytes(20);
+  it("Verify Ed25519 signature with invalid signature", async () => {
+    const signer = Keypair.generate();
+    const message = Buffer.from(
+      "Hello, Anchor Signature Verification Test with invalid signature!",
+    );
+    // Create a fake signature (all zeros)
+    const fakeSignature = new Uint8Array(64).fill(0);
 
-    // Create a test message hash (32 bytes)
-    const messageHash = crypto.randomBytes(32);
+    // Create transaction with just the Ed25519Program instruction
+    const ed25519Instruction = Ed25519Program.createInstructionWithPublicKey({
+      publicKey: signer.publicKey.toBytes(),
+      message: message,
+      signature: fakeSignature,
+    });
 
-    // Create a mock signature
-    const signature = new Uint8Array(64).fill(2);
-    const recoveryId = 0;
+    const transaction = new Transaction().add(ed25519Instruction);
 
-    // Create instruction to call the program
-    const instruction = await program.methods
-      .verifySecp256k1Signature(
-        Array.from(messageHash) as [number, ...number[]],
-        Array.from(signature) as [number, ...number[]],
+    // This should fail
+    try {
+      await provider.sendAndConfirm(transaction, []);
+      assert.fail("Invalid Signature of Ed25519 should not be verified");
+    } catch (error) {
+      console.log("Invalid Signature of Ed25519 is not verified");
+    }
+  });
+
+  it("Verify Ethereum Secp256k1 signature with valid signature", async () => {
+    const ethSigner: ethers.Wallet = ethers.Wallet.createRandom();
+    const PERSON = { name: "ben", age: 49 };
+
+    // keccak256(name, age)
+    const messageHashHex: string = ethers.utils.solidityKeccak256(
+      ["string", "uint16"],
+      [PERSON.name, PERSON.age],
+    );
+    const messageHashBytes: Uint8Array = ethers.utils.arrayify(messageHashHex);
+
+    // Sign with Ethereum prefix
+    const fullSig: string = await ethSigner.signMessage(messageHashBytes);
+    const fullSigBytes = ethers.utils.arrayify(fullSig);
+    const signature = fullSigBytes.slice(0, 64);
+    const recoveryId = fullSigBytes[64] - 27;
+
+    const actualMessage = Buffer.concat([
+      Buffer.from("\x19Ethereum Signed Message:\n32"),
+      Buffer.from(messageHashBytes),
+    ]);
+
+    // 20-byte ETH address (hex without 0x)
+    const ethAddressHexNo0x = ethers.utils
+      .computeAddress(ethSigner.publicKey)
+      .slice(2);
+    const ethAddressBytes = Array.from(
+      ethers.utils.arrayify("0x" + ethAddressHexNo0x),
+    ) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+
+    const verifyIx = await program.methods
+      .verifySecp(
+        actualMessage,
+        Array.from(signature) as [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+        ],
         recoveryId,
-        Array.from(ethAddress) as [number, ...number[]]
+        ethAddressBytes,
       )
       .accounts({
         ixSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       })
       .instruction();
 
-    // Create transaction with the signature verification instruction
-    const transaction = new Transaction().add(instruction);
-
-    // Add the Secp256k1 signature instruction to the transaction
-    const secp256k1Instruction = Secp256k1Program.createInstructionWithPublicKey({
-      publicKey: Buffer.from(ethAddress), // Use ETH address as public key
-      message: messageHash,
-      signature: signature,
-      recoveryId: recoveryId,
+    // Secp precompile verification against ETH address
+    const secpIx = Secp256k1Program.createInstructionWithEthAddress({
+      ethAddress: ethAddressHexNo0x,
+      message: actualMessage,
+      signature: Uint8Array.from(signature),
+      recoveryId,
     });
 
-    transaction.add(secp256k1Instruction);
-
+    const tx = new Transaction().add(secpIx).add(verifyIx);
+    // This should succeed
     try {
-      await provider.sendAndConfirm(transaction, []);
-      console.log("✅ Secp256k1 signature verified successfully using custom helper!");
+      await provider.sendAndConfirm(tx, []);
+      console.log("Ethereum Secp256k1 signature verified successfully!");
     } catch (error) {
-      console.log("❌ Secp256k1 verification failed:", error.message);
-      // This test demonstrates the structure even if signature verification fails
+      assert.fail("Valid Signature of Ethereum Secp256k1 should be verified");
     }
   });
 
+  it("Verify Ethereum Secp256k1 signature with invalid signature", async () => {
+    const ethSigner: ethers.Wallet = ethers.Wallet.createRandom();
+    const PERSON = { name: "ben", age: 49 };
+
+    // keccak256(name, age)
+    const messageHashHex: string = ethers.utils.solidityKeccak256(
+      ["string", "uint16"],
+      [PERSON.name, PERSON.age],
+    );
+    const messageHashBytes: Uint8Array = ethers.utils.arrayify(messageHashHex);
+
+    // Create a fake signature (all zeros)
+    const fakeSignature = new Uint8Array(64).fill(0);
+    const fakeRecoveryId = 0;
+
+    const actualMessage = Buffer.concat([
+      Buffer.from("\x19Ethereum Signed Message:\n32"),
+      Buffer.from(messageHashBytes),
+    ]);
+
+    const ethAddressHexNo0x = ethers.utils
+      .computeAddress(ethSigner.publicKey)
+      .slice(2);
+    const ethAddressBytes = Array.from(
+      ethers.utils.arrayify("0x" + ethAddressHexNo0x),
+    ) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+
+    const verifyIx = await program.methods
+      .verifySecp(
+        actualMessage,
+        Array.from(fakeSignature) as [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+        ],
+        fakeRecoveryId,
+        ethAddressBytes,
+      )
+      .accounts({
+        ixSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+      })
+      .instruction();
+    const secpIx = Secp256k1Program.createInstructionWithEthAddress({
+      ethAddress: ethAddressHexNo0x,
+      message: actualMessage,
+      signature: fakeSignature,
+      recoveryId: fakeRecoveryId,
+    });
+
+    const tx = new Transaction().add(secpIx).add(verifyIx);
+
+    // This should fail
+    try {
+      await provider.sendAndConfirm(tx, []);
+      assert.fail("Expected transaction to fail with invalid signature");
+    } catch (error) {
+      console.log(
+        "Ethereum Secp256k1 verification correctly failed with invalid signature",
+      );
+    }
+  });
 });
