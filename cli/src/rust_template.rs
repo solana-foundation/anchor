@@ -18,6 +18,8 @@ use std::{
     process::Stdio,
 };
 
+const ANCHOR_MSRV: &str = "1.89.0";
+
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum ProgramTemplate {
@@ -33,6 +35,7 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
+        ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
             cargo_toml(name, with_mollusk),
@@ -46,6 +49,18 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     };
 
     create_files(&[common_files, template_files].concat())
+}
+
+/// Helper to create a rust-toolchain.toml at the workspace root
+fn rust_toolchain_toml() -> String {
+    format!(
+        r#"[toolchain]
+channel = "{msrv}"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+"#,
+        msrv = ANCHOR_MSRV
+    )
 }
 
 /// Create a program with a single `lib.rs` file.
@@ -732,11 +747,15 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
+rust-version = "{msrv}"
 
 [dependencies]
-anchor-client = "{VERSION}"
+anchor-client = "{version}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
 "#,
+        msrv = ANCHOR_MSRV,
+        version = VERSION,
+        name = name,
     )
 }
 

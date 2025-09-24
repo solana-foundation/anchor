@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - lang: Add `#[error]` attribute to `declare_program!` ([#3757](https://github.com/coral-xyz/anchor/pull/3757)).
+- cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
 - lang: Use `solana-invoke` instead of `solana_cpi::invoke` ([#3900](https://github.com/solana-foundation/anchor/pull/3900)).
@@ -23,6 +24,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Add support for Bun as a package manager ([#3586](https://github.com/solana-foundation/anchor/pull/3586)).
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
+- cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
 
 ### Fixes
 
