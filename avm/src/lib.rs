@@ -566,6 +566,7 @@ pub fn fetch_versions() -> Result<Vec<Version>, Error> {
     struct Release {
         #[serde(rename = "name", deserialize_with = "version_deserializer")]
         version: Version,
+        draft: bool,
     }
 
     fn version_deserializer<'de, D>(deserializer: D) -> Result<Version, D::Error>
@@ -577,13 +578,20 @@ pub fn fetch_versions() -> Result<Vec<Version>, Error> {
     }
 
     let response = reqwest::blocking::Client::new()
-        .get("https://api.github.com/repos/coral-xyz/anchor/tags")
-        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .get("https://api.github.com/repos/solana-foundation/anchor/releases")
+        .header(
+            USER_AGENT,
+            "avm https://github.com/solana-foundation/anchor",
+        )
         .send()?;
 
     if response.status().is_success() {
         let releases: Vec<Release> = response.json()?;
-        let versions = releases.into_iter().map(|r| r.version).collect();
+        let versions = releases
+            .into_iter()
+            .filter(|r| !r.draft)
+            .map(|r| r.version)
+            .collect();
         Ok(versions)
     } else {
         let reset_time_header = response
@@ -607,8 +615,7 @@ pub fn list_versions() -> Result<()> {
     let mut installed_versions = read_installed_versions()?;
 
     let mut available_versions = fetch_versions()?;
-    // Reverse version list so latest versions are printed last
-    available_versions.reverse();
+    available_versions.sort();
 
     let print_versions =
         |versions: Vec<Version>, installed_versions: &mut Vec<Version>, show_latest: bool| {
