@@ -462,7 +462,7 @@ jobs:
             path: tests/idl
           - cmd: cd tests/lazy-account && anchor test
             path: tests/lazy-account
-          - cmd: cd tests/signature-verification && anchor test --skip-lint
+          - cmd: cd tests/signature-verification && anchor test
             path: tests/signature-verification
     steps:
       - uses: actions/checkout@v3
