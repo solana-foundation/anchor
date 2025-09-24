@@ -5,10 +5,12 @@ use crate::config::{
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
+use anchor_lang::prelude::UpgradeableLoaderState;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
@@ -20,8 +22,7 @@ use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
-use solana_client::rpc_client::RpcClient;
-use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -40,15 +41,28 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
+use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
 pub mod rust_template;
-pub mod solidity_template;
 
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
+
+/// Default RPC port
+pub const DEFAULT_RPC_PORT: u16 = 8899;
+
+pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(avm_home) = std::env::var("AVM_HOME") {
+        PathBuf::from(avm_home)
+    } else {
+        let mut user_home = dirs::home_dir().expect("Could not find home directory");
+        user_home.push(".avm");
+        user_home
+    }
+});
 
 #[derive(Debug, Parser)]
 #[clap(version = VERSION)]
@@ -68,9 +82,6 @@ pub enum Command {
         /// Use JavaScript instead of TypeScript
         #[clap(short, long)]
         javascript: bool,
-        /// Use Solidity instead of Rust
-        #[clap(short, long)]
-        solidity: bool,
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
@@ -218,9 +229,6 @@ pub enum Command {
     New {
         /// Program name
         name: String,
-        /// Use Solidity instead of Rust
-        #[clap(short, long)]
-        solidity: bool,
         /// Rust program template to use
         #[clap(value_enum, short, long, default_value = "single")]
         template: ProgramTemplate,
@@ -246,6 +254,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
+        /// Don't upload IDL during deployment (IDL is uploaded by default)
+        #[clap(long)]
+        no_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -662,17 +673,10 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         "`anchor` {anchor_version} is not installed with `avm`. Installing...\n"
                     );
 
-                    let exit_status = std::process::Command::new("avm")
-                        .arg("install")
-                        .arg(anchor_version)
-                        .spawn()?
-                        .wait()?;
-                    if !exit_status.success() {
+                    if let Err(e) = install_with_avm(anchor_version, false) {
                         eprintln!(
-                            "Failed to install `anchor` {anchor_version}, \
-                            using {current_version} instead"
+                            "Failed to install `anchor`: {e}, using {current_version} instead"
                         );
-
                         return Ok(restore_cbs);
                     }
                 }
@@ -690,6 +694,23 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
     }
 
     Ok(restore_cbs)
+}
+
+/// Installs Anchor using AVM, passing `--force` (and optionally) installing
+/// `solana-verify`.
+fn install_with_avm(version: &str, verify: bool) -> Result<()> {
+    let mut cmd = std::process::Command::new("avm");
+    cmd.arg("install");
+    cmd.arg(version);
+    cmd.arg("--force");
+    if verify {
+        cmd.arg("--verify");
+    }
+    let status = cmd.status().context("running AVM")?;
+    if !status.success() {
+        bail!("failed to install `anchor` {version} with avm");
+    }
+    Ok(())
 }
 
 /// Restore toolchain to how it was before the command was run.
@@ -724,7 +745,6 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::Init {
             name,
             javascript,
-            solidity,
             no_install,
             package_manager,
             no_git,
@@ -735,7 +755,6 @@ fn process_command(opts: Opts) -> Result<()> {
             &opts.cfg_override,
             name,
             javascript,
-            solidity,
             no_install,
             package_manager,
             no_git,
@@ -744,11 +763,10 @@ fn process_command(opts: Opts) -> Result<()> {
             force,
         ),
         Command::New {
-            solidity,
             name,
             template,
             force,
-        } => new(&opts.cfg_override, solidity, name, template, force),
+        } => new(&opts.cfg_override, name, template, force),
         Command::Build {
             no_idl,
             idl,
@@ -801,12 +819,14 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         ),
         Command::Expand {
@@ -903,7 +923,6 @@ fn init(
     cfg_override: &ConfigOverride,
     name: String,
     javascript: bool,
-    solidity: bool,
     no_install: bool,
     package_manager: PackageManager,
     no_git: bool,
@@ -975,21 +994,17 @@ fn init(
     if force {
         fs::remove_dir_all(
             std::env::current_dir()?
-                .join(if solidity { "solidity" } else { "programs" })
+                .join("programs")
                 .join(&project_name),
         )?;
     }
 
     // Build the program.
-    if solidity {
-        solidity_template::create_program(&project_name)?;
-    } else {
-        rust_template::create_program(
-            &project_name,
-            template,
-            TestTemplate::Mollusk == test_template,
-        )?;
-    }
+    rust_template::create_program(
+        &project_name,
+        template,
+        TestTemplate::Mollusk == test_template,
+    )?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1017,12 +1032,7 @@ fn init(
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
     }
 
-    test_template.create_test_files(
-        &project_name,
-        javascript,
-        solidity,
-        &program_id.to_string(),
-    )?;
+    test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
@@ -1073,7 +1083,6 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
 // Creates a new program crate in the `programs/<name>` directory.
 fn new(
     cfg_override: &ConfigOverride,
-    solidity: bool,
     name: String,
     template: ProgramTemplate,
     force: bool,
@@ -1094,18 +1103,10 @@ fn new(
                     }
 
                     // Delete all files within the program folder
-                    fs::remove_dir_all(
-                        std::env::current_dir()?
-                            .join(if solidity { "solidity" } else { "programs" })
-                            .join(&name),
-                    )?;
+                    fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                if solidity {
-                    solidity_template::create_program(&name)?;
-                } else {
-                    rust_template::create_program(&name, template, false)?;
-                }
+                rust_template::create_program(&name, template, false)?;
 
                 programs.insert(
                     name.clone(),
@@ -1432,19 +1433,6 @@ fn build_all(
                     &arch,
                 )?;
             }
-            for (name, path) in cfg.get_solidity_program_list()? {
-                build_solidity_cwd(
-                    cfg,
-                    name,
-                    path,
-                    idl_out.clone(),
-                    idl_ts_out.clone(),
-                    build_config,
-                    stdout.as_ref().map(|f| f.try_clone()).transpose()?,
-                    stderr.as_ref().map(|f| f.try_clone()).transpose()?,
-                    cargo_args.clone(),
-                )?;
-            }
             Ok(())
         }
     };
@@ -1489,31 +1477,6 @@ fn build_rust_cwd(
             no_docs,
             arch,
         ),
-    }
-}
-
-// Runs the build command outside of a workspace.
-#[allow(clippy::too_many_arguments)]
-fn build_solidity_cwd(
-    cfg: &WithPath<Config>,
-    name: String,
-    path: PathBuf,
-    idl_out: Option<PathBuf>,
-    idl_ts_out: Option<PathBuf>,
-    build_config: &BuildConfig,
-    stdout: Option<File>,
-    stderr: Option<File>,
-    cargo_args: Vec<String>,
-) -> Result<()> {
-    match path.parent() {
-        None => return Err(anyhow!("Unable to find parent")),
-        Some(p) => std::env::set_current_dir(p)?,
-    };
-    match build_config.verifiable {
-        false => _build_solidity_cwd(
-            cfg, &name, &path, idl_out, idl_ts_out, stdout, stderr, cargo_args,
-        ),
-        true => panic!("verifiable solidity not supported"),
     }
 }
 
@@ -1911,81 +1874,6 @@ fn _build_rust_cwd(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn _build_solidity_cwd(
-    cfg: &WithPath<Config>,
-    name: &str,
-    path: &Path,
-    idl_out: Option<PathBuf>,
-    idl_ts_out: Option<PathBuf>,
-    stdout: Option<File>,
-    stderr: Option<File>,
-    solang_args: Vec<String>,
-) -> Result<()> {
-    let mut cmd = std::process::Command::new("solang");
-    let cmd = cmd.args(["compile", "--target", "solana", "--contract", name]);
-
-    if let Some(idl_out) = &idl_out {
-        cmd.arg("--output-meta");
-        cmd.arg(idl_out);
-    }
-
-    let target_bin = cfg.path().parent().unwrap().join("target").join("deploy");
-
-    cmd.arg("--output");
-    cmd.arg(target_bin);
-    cmd.arg("--verbose");
-    cmd.arg(path);
-
-    let exit = cmd
-        .args(solang_args)
-        .stdout(match stdout {
-            None => Stdio::inherit(),
-            Some(f) => f.into(),
-        })
-        .stderr(match stderr {
-            None => Stdio::inherit(),
-            Some(f) => f.into(),
-        })
-        .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
-    if !exit.status.success() {
-        std::process::exit(exit.status.code().unwrap_or(1));
-    }
-
-    // idl is written to idl_out or .
-    let idl_path = idl_out
-        .unwrap_or(PathBuf::from("."))
-        .join(format!("{name}.json"));
-
-    let idl = fs::read(idl_path)?;
-    let idl = convert_idl(&idl)?;
-
-    // TS out path.
-    let ts_out = match idl_ts_out {
-        None => PathBuf::from(".")
-            .join(&idl.metadata.name)
-            .with_extension("ts"),
-        Some(o) => PathBuf::from(&o.join(&idl.metadata.name).with_extension("ts")),
-    };
-
-    // Write out the TypeScript type.
-    fs::write(&ts_out, idl_ts(&idl)?)?;
-    // Copy out the TypeScript type.
-    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
-    if !&cfg.workspace.types.is_empty() {
-        fs::copy(
-            &ts_out,
-            cfg_parent
-                .join(&cfg.workspace.types)
-                .join(&idl.metadata.name)
-                .with_extension("ts"),
-        )?;
-    }
-
-    Ok(())
-}
-
 pub fn verify(
     program_id: Pubkey,
     repo_url: Option<String>,
@@ -2031,7 +1919,13 @@ pub fn verify(
     command_args.extend(args);
 
     println!("Verifying program {program_id}");
-    let status = std::process::Command::new("solana-verify")
+    let verify_path = AVM_HOME.join("bin").join("solana-verify");
+    if !verify_path.exists() {
+        install_with_avm(env!("CARGO_PKG_VERSION"), true)
+            .context("installing Anchor with solana-verify")?;
+    }
+
+    let status = std::process::Command::new(verify_path)
         .arg("verify-from-repo")
         .args(&command_args)
         .stdout(std::process::Stdio::inherit())
@@ -2051,27 +1945,20 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
     let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
 
     for program in cfg.read_all_programs()? {
-        if program.solidity {
-            if let Some(path) = program.path.parent() {
-                std::env::set_current_dir(path)?;
-                return Ok(());
-            }
-        } else {
-            let cargo_toml = program.path.join("Cargo.toml");
-            if !cargo_toml.exists() {
-                return Err(anyhow!(
-                    "Did not find Cargo.toml at the path: {}",
-                    program.path.display()
-                ));
-            }
+        let cargo_toml = program.path.join("Cargo.toml");
+        if !cargo_toml.exists() {
+            return Err(anyhow!(
+                "Did not find Cargo.toml at the path: {}",
+                program.path.display()
+            ));
+        }
 
-            let manifest = Manifest::from_path(&cargo_toml)?;
-            let pkg_name = manifest.package().name();
-            let lib_name = manifest.lib_name()?;
-            if program_name == pkg_name || program_name == lib_name {
-                std::env::set_current_dir(&program.path)?;
-                return Ok(());
-            }
+        let manifest = Manifest::from_path(&cargo_toml)?;
+        let pkg_name = manifest.package().name();
+        let lib_name = manifest.lib_name()?;
+        if program_name == pkg_name || program_name == lib_name {
+            std::env::set_current_dir(&program.path)?;
+            return Ok(());
         }
     }
 
@@ -3102,7 +2989,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, vec![])?;
+            deploy(cfg_override, None, None, false, true, vec![])?;
         }
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
@@ -3519,7 +3406,7 @@ fn start_test_validator(
         .test_validator
         .as_ref()
         .and_then(|test| test.validator.as_ref().map(|v| v.rpc_port))
-        .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT);
+        .unwrap_or(DEFAULT_RPC_PORT);
     if !portpicker::is_free(rpc_port) {
         return Err(anyhow!(
             "Your configured rpc port: {rpc_port} is already in use"
@@ -3669,6 +3556,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
+    no_idl: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3721,16 +3609,28 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
+            // Get the IDL filepath
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&program.lib_name)
+                .with_extension("json");
+
             if let Some(idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = Path::new("target")
-                    .join("idl")
-                    .join(&idl.metadata.name)
-                    .with_extension("json");
-                write_idl(idl, OutFile::File(idl_out))?;
+                write_idl(idl, OutFile::File(idl_filepath.clone()))?;
+
+                // Upload the IDL to the cluster by default (unless no_idl is set)
+                if !no_idl {
+                    idl_init(
+                        cfg_override,
+                        program_id,
+                        idl_filepath.display().to_string(),
+                        None,
+                    )?;
+                }
             }
         }
 
@@ -4531,7 +4431,6 @@ mod tests {
             },
             "await".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
@@ -4552,7 +4451,6 @@ mod tests {
             },
             "fn".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
@@ -4573,7 +4471,6 @@ mod tests {
             },
             "1project".to_string(),
             true,
-            false,
             true,
             PackageManager::default(),
             false,
