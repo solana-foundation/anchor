@@ -350,6 +350,9 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    #[clap(name = "epoch")]
+    /// Get current epoch
+    Epoch,
 }
 
 #[derive(Debug, Parser)]
@@ -915,6 +918,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::Epoch => epoch(&opts.cfg_override),
     }
 }
 
@@ -4415,6 +4419,32 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+fn epoch(cfg_override: &ConfigOverride) -> Result<()> {
+    // Get cluster URL, handling both workspace and standalone scenarios
+    let cluster_url = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.cluster.url().to_string(),
+        _ => {
+            // Not in workspace - check for cluster override or use default
+            if let Some(ref cluster_override) = cfg_override.cluster {
+                cluster_override.url().to_string()
+            } else {
+                "https://api.mainnet-beta.solana.com".to_string()
+            }
+        }
+    };
+
+    // Create RPC client from cluster URL
+    let client = RpcClient::new(cluster_url);
+
+    // Get epoch info
+    let epoch_info = client.get_epoch_info()?;
+
+    // Print just the epoch number (matching original behavior)
+    println!("{}", epoch_info.epoch);
+
+    Ok(())
 }
 
 #[cfg(test)]
