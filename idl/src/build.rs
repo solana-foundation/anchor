@@ -138,10 +138,9 @@ fn build(
     no_docs: bool,
     cargo_args: &[String],
 ) -> Result<Idl> {
-    // `nightly` toolchain is currently required for building the IDL.
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
-        .map(|toolchain| format!("+{}", toolchain))
-        .unwrap_or_else(|_| "+nightly".to_string());
+        .map(|toolchain| format!("+{toolchain}"))
+        .unwrap_or_else(|_| "+stable".to_string());
 
     install_toolchain_if_needed(&toolchain)?;
     let output = Command::new("cargo")
@@ -167,14 +166,14 @@ fn build(
             if skip_lint { "TRUE" } else { "FALSE" },
         )
         .env("ANCHOR_IDL_BUILD_PROGRAM_PATH", program_path)
-        .env("RUSTFLAGS", "--cfg procmacro2_semver_exempt -A warnings")
+        .env("RUSTFLAGS", "-A warnings")
         .current_dir(program_path)
         .stderr(Stdio::inherit())
         .output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if env::var("ANCHOR_LOG").is_ok() {
-        eprintln!("{}", stdout);
+        eprintln!("{stdout}");
     }
 
     if !output.status.success() {

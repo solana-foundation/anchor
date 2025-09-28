@@ -123,7 +123,7 @@ the reward is automatically received by owners of the staking pool token upon re
 known as "gulping"--since dropping rewards increases the total value of the pool
 while their proportion of the pool remained constant.
 
-However, there are enough downsides with using an AMM style pool to offset the convience.
+However, there are enough downsides with using an AMM style pool to offset the convenience.
 Unfortunately, it loses the nice balance isolation property **Member** accounts have, because
 tokens have to be pooled into the same vault, which is an additional security concern that could
 easily lead to loss of funds, e.g., if there's a bug in the redemption calculation. Moreover, dropping

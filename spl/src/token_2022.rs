@@ -341,15 +341,10 @@ pub fn set_authority<'info>(
     authority_type: spl_token_2022::instruction::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
-    let mut spl_new_authority: Option<&Pubkey> = None;
-    if new_authority.is_some() {
-        spl_new_authority = new_authority.as_ref()
-    }
-
     let ix = spl_token_2022::instruction::set_authority(
         ctx.program.key,
         ctx.accounts.account_or_mint.key,
-        spl_new_authority,
+        new_authority.as_ref(),
         authority_type,
         ctx.accounts.current_authority.key,
         &[], // TODO: Support multisig signers.

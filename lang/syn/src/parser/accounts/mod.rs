@@ -93,6 +93,19 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         })
         .collect();
 
+    for field in &init_fields {
+        if matches!(field.ty, Ty::SystemAccount) {
+            return Err(ParseError::new(
+                field.ident.span(),
+                "Cannot use `init` on a `SystemAccount`. \
+                    The `SystemAccount` type represents an already-existing account \
+                    owned by the system program and cannot be initialized. \
+                    If you need to create a new account, use a more specific account type \
+                    or `UncheckedAccount` and perform manual initialization instead.",
+            ));
+        }
+    }
+
     if !init_fields.is_empty() {
         // init needs system program.
 
@@ -198,7 +211,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     }
                 }
 
-                // Make sure initialiazed token accounts are always declared after their corresponding mint.
+                // Make sure initialized token accounts are always declared after their corresponding mint.
                 InitKind::Mint { .. } => {
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
                         match &f.constraints.init.as_ref().unwrap().kind {

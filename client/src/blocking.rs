@@ -3,12 +3,10 @@ use crate::{
     RequestBuilder,
 };
 use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
+use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 #[cfg(not(feature = "mock"))]
-use solana_client::rpc_client::RpcClient;
-use solana_client::{
-    nonblocking::rpc_client::RpcClient as AsyncRpcClient, rpc_config::RpcSendTransactionConfig,
-    rpc_filter::RpcFilterType,
-};
+use solana_rpc_client::rpc_client::RpcClient;
+use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
 use solana_sdk::{
     commitment_config::CommitmentConfig, signature::Signature, signer::Signer,
     transaction::Transaction,
@@ -101,7 +99,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
         f: impl Fn(&EventContext, T) + Send + 'static,
-    ) -> Result<EventUnsubscriber, ClientError> {
+    ) -> Result<EventUnsubscriber<'_>, ClientError> {
         let (handle, rx) = self.rt.block_on(self.on_internal(f))?;
 
         Ok(EventUnsubscriber {

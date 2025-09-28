@@ -1,7 +1,7 @@
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
+use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::AccountMeta;
-use solana_program::pubkey::Pubkey;
 use std::collections::BTreeSet;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
@@ -37,8 +37,8 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use solana_program::clock::Epoch;
-    use solana_program::pubkey::Pubkey;
+    use crate::solana_program::clock::Epoch;
+    use crate::solana_program::pubkey::Pubkey;
 
     use super::*;
 

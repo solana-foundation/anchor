@@ -669,7 +669,7 @@ pub struct DropStakeRewardPool<'info> {
 /// PDA - [dex_program_id].
 #[account]
 pub struct Officer {
-    // Priviledged account.
+    // Privileged account.
     pub authority: Pubkey, // 32
     // Vault holding the officer's SRM tokens prior to distribution.
     pub srm_vault: Pubkey, // 32
@@ -964,7 +964,7 @@ fn is_stake_reward_ready(accounts: &DropStakeReward) -> Result<()> {
     Ok(())
 }
 
-// Redefintions.
+// Redefinitions.
 //
 // The following types are redefined so that they can be parsed into the IDL,
 // since Anchor doesn't yet support idl parsing across multiple crates.

@@ -7,10 +7,6 @@ edition = "2021"
 name = "avm"
 path = "src/main.rs"
 
-[[bin]]
-name = "anchor"
-path = "src/anchor/main.rs"
-
 [dependencies]
 anyhow = "1.0.32"
 cargo_toml = "0.19.2"

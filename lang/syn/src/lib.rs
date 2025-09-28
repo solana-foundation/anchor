@@ -1087,7 +1087,7 @@ pub struct ConstraintTokenMintGroup {
     pub transfer_hook_program_id: Option<Expr>,
 }
 
-// Syntaxt context object for preserving metadata about the inner item.
+// Syntax context object for preserving metadata about the inner item.
 #[derive(Debug, Clone)]
 pub struct Context<T> {
     span: Span,
