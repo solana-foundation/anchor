@@ -16,11 +16,10 @@ debug = []
 mock = []
 
 [dependencies]
+anchor-cluster = { path = "../cluster", version = "0.1.0" }
 anchor-lang = { path = "../lang", version = "0.31.1" }
-anyhow = "1"
 futures = "0.3"
 regex = "1"
-serde = { version = "1", features = ["derive"] }
 solana-account-decoder = "2"
 solana-pubsub-client = "2"
 solana-rpc-client = "2"
@@ -28,4 +27,3 @@ solana-rpc-client-api = "2"
 solana-sdk = "2"
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
-url = "2"
