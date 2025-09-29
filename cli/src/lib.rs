@@ -350,6 +350,13 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    #[clap(name = "address")]
+    /// Get your public key
+    Address {
+        /// Confirm key on device; only relevant if using remote wallet
+        #[clap(long = "confirm-key")]
+        confirm_key: bool,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -915,6 +922,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::Address { confirm_key } => address(&opts.cfg_override, confirm_key),
     }
 }
 
@@ -4415,6 +4423,35 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+fn address(
+    cfg_override: &ConfigOverride,
+    _confirm_key: bool, // Currently unused in original implementation
+) -> Result<()> {
+    // Get wallet path, handling both workspace and standalone scenarios
+    let wallet_path = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.wallet.to_string(),
+        _ => {
+            // Not in workspace or config not found - use default Solana CLI path
+            dirs::home_dir()
+                .map(|home| {
+                    home.join(".config/solana/id.json")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "~/.config/solana/id.json".to_string())
+        }
+    };
+
+    // Load keypair from wallet path and get pubkey
+    let keypair = Keypair::read_from_file(wallet_path.clone())
+        .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
+
+    // Print the public key
+    println!("{}", keypair.pubkey());
+
+    Ok(())
 }
 
 #[cfg(test)]
