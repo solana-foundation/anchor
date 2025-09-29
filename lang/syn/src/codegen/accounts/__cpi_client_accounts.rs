@@ -159,11 +159,13 @@ pub fn generate(
             })
             .collect()
     };
-    let generics = if account_struct_fields.is_empty() {
-        quote! {}
+
+    let phantom_data = if account_struct_fields.is_empty() {
+        quote! { phantom: std::marker::PhantomData<&'info ()> }
     } else {
-        quote! {<'info>}
+        quote! {}
     };
+
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))
@@ -182,12 +184,13 @@ pub fn generate(
             #(#re_exports)*
 
             #struct_doc
-            pub struct #name #generics {
+            pub struct #name<'info> {
                 #(#account_struct_fields),*
+                #phantom_data
             }
 
             #[automatically_derived]
-            impl #generics anchor_lang::ToAccountMetas for #name #generics {
+            impl<'info> anchor_lang::ToAccountMetas for #name<'info> {
                 fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
                     let mut account_metas = vec![];
                     #(#account_struct_metas)*
@@ -196,7 +199,7 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl<'info> anchor_lang::ToAccountInfos<'info> for #name #generics {
+            impl<'info> anchor_lang::ToAccountInfos<'info> for #name<'info> {
                 fn to_account_infos(&self) -> Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
