@@ -10,6 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - run: chmod 755 ./docker/check-docker-pin.sh
       - run: ./docker/check-docker-pin.sh
