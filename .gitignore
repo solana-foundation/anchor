@@ -12,7 +12,7 @@ examples/*/Cargo.lock
 examples/**/Cargo.lock
 */example/Cargo.lock
 tests/*/Cargo.lock
-tests/**/Cargo.lock
+tests/**/Cargo.lockaad
 tests/*/yarn.lock
 tests/**/yarn.lock
 .DS_Store
