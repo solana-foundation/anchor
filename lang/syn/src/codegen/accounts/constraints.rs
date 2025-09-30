@@ -1685,7 +1685,7 @@ pub fn generate_constraint_executable(
     let name_str = f.ident.to_string();
     let account_ref = generate_account_ref(f);
 
-    // because we are only acting on the field, we know it isnt optional at this point
+    // because we are only acting on the field, we know it isn't optional at this point
     // as it was unwrapped in `generate_constraint`
     quote! {
         if !#account_ref.executable {

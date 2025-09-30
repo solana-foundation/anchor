@@ -297,7 +297,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if rec_acct.delegate.is_some() {
                 return err!(ErrorCode::BuyerATACannotHaveDelegate);
             }
@@ -832,7 +832,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if seller_rec_acct.delegate.is_some() {
                 return err!(ErrorCode::SellerATACannotHaveDelegate);
             }
