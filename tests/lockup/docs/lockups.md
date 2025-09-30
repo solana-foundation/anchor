@@ -91,7 +91,7 @@ if any at all.
 
 To create a whitelisted program that receives withdrawals/deposits from/to the Lockup program,
 one needs to implement the whitelist transfer interface, which assumes nothing about the
-`instruction_data` but requires accounts to be provided in a specific [order]().
+`instruction_data` but requires accounts to be provided in a specific order.
 
 Take staking locked tokens as a working example.
 
