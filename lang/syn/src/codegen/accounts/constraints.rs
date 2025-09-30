@@ -1616,7 +1616,7 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with with system program with the
+// Generated code to create an account with system program with the
 // given `space` amount of data, owned by `owner`.
 //
 // `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
