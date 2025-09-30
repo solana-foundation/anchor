@@ -773,7 +773,7 @@ pub mod auction_house {
             &[auction_house.bump],
         ];
 
-        // with the native account, the escrow is it's own owner,
+        // with the native account, the escrow is its own owner,
         // whereas with token, it is the auction house that is owner.
         let signer_seeds_for_royalties = if is_native {
             escrow_signer_seeds
