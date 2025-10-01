@@ -350,6 +350,9 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    #[clap(name = "epoch-info", alias = "get-epoch-info")]
+    /// Get information about the current epoch
+    EpochInfo,
 }
 
 #[derive(Debug, Parser)]
@@ -915,6 +918,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::EpochInfo => epoch_info(&opts.cfg_override),
     }
 }
 
@@ -4415,6 +4419,42 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
+    // Get cluster URL, handling both workspace and standalone scenarios
+    let cluster_url = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.cluster.url().to_string(),
+        _ => {
+            // Not in workspace - check for cluster override or use default
+            if let Some(ref cluster_override) = cfg_override.cluster {
+                cluster_override.url().to_string()
+            } else {
+                "https://api.mainnet-beta.solana.com".to_string()
+            }
+        }
+    };
+
+    let client = RpcClient::new(cluster_url);
+    let epoch_info = client.get_epoch_info()?;
+
+    let epoch_completed_percent =
+        epoch_info.slot_index as f64 / epoch_info.slots_in_epoch as f64 * 100.0;
+
+    println!("Epoch: {}", epoch_info.epoch);
+    println!(
+        "Slot: {} ({})",
+        epoch_info.absolute_slot, epoch_info.slot_index
+    );
+    println!("Slots in epoch: {}", epoch_info.slots_in_epoch);
+    println!("Epoch progress: {:.2}%", epoch_completed_percent);
+    println!("Block height: {}", epoch_info.block_height);
+    println!(
+        "Transaction count: {}",
+        epoch_info.transaction_count.unwrap_or(0)
+    );
+
+    Ok(())
 }
 
 #[cfg(test)]
