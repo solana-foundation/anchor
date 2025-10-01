@@ -44,12 +44,12 @@ publish:
 
 .PHONY: spellcheck
 spellcheck:
-	cspell **/*.mdx **/*.md --config cspell.config.yaml --no-progress
+	cspell *.md **/*.md **/*.mdx --config cspell.config.yaml --no-progress
 
 .PHONY: update-dictionary
 update-dictionary:
 	echo $(DICTIONARY_FILE)
-	cspell **/*.md **/*.mdx --config cspell.config.yaml --words-only --unique --no-progress --quiet 2>/dev/null | sort --ignore-case > .new-dictionary-words
+	cspell *.md **/*.md **/*.mdx --config cspell.config.yaml --words-only --unique --no-progress --quiet 2>/dev/null | sort --ignore-case > .new-dictionary-words
 	cat .new-dictionary-words $(DICTIONARY_FILE) | sort --ignore-case > .new-$(DICTIONARY_FILE)
 	mv .new-$(DICTIONARY_FILE) $(DICTIONARY_FILE)
 	rm -f .new-dictionary-words
