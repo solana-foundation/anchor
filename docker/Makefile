@@ -1,5 +1,5 @@
 # Anchor version.
-ANCHOR_CLI=v0.31.1
+ANCHOR_CLI=v0.32.0
 # Solana toolchain.
 SOLANA_CLI=v2.1.0
 # Build version should match the Anchor cli version.
