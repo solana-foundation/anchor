@@ -59,7 +59,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
                     pub struct #ix_name_camel;
 
                     #impls
@@ -68,7 +68,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize)]
+                    #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
                     pub struct #ix_name_camel {
                         #(#raw_args),*
                     }
