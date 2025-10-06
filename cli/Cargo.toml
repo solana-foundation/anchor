@@ -29,6 +29,7 @@ console = "0.15"
 dirs = "4.0"
 ed25519-dalek = "2"
 flate2 = "1.0.19"
+hex = "0.4"
 heck = "0.4.0"
 pathdiff = "0.2.0"
 portpicker = "0.1.1"
@@ -58,6 +59,7 @@ solana-transaction.workspace = true
 solana-rpc-client.workspace = true
 solana-rpc-client-api.workspace = true
 solana-pubsub-client.workspace = true
+solana-transaction-status-client-types = "3.0.0"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 tempfile = "3"
