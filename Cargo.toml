@@ -38,6 +38,7 @@ dirs = "4.0.0"
 flate2 = "1.0.19"
 futures = "0.3"
 heck = "0.4.0"
+mpl-token-metadata = { version = "5" }
 pathdiff = "0.2.0"
 portpicker = "0.1.1"
 proc-macro2 = "1.0"
@@ -76,6 +77,13 @@ solana-sdk-ids = "2"
 solana-system-interface = "1"
 solana-sysvar = { version = "2", features = ["bincode"] }
 solana-sysvar-id = "2"
+spl-associated-token-account = { version = "7" }
+spl-memo = { version = "6" }
+spl-pod = { version = "0.5" }
+spl-token = { version = "8" }
+spl-token-2022 = { version = "8" }
+spl-token-group-interface = { version = "0.6" }
+spl-token-metadata-interface = { version = "0.7" }
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 tempfile = "3.3.0"

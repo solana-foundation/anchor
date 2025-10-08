@@ -1,9 +1,9 @@
 [package]
 name = "anchor-spl"
-version = "0.31.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "CPI clients for SPL programs"
 
 [package.metadata.docs.rs]
@@ -32,12 +32,12 @@ token_2022_extensions = [
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.31.1", features = ["derive"] }
-borsh = { version = "0.10.3", optional = true }
-mpl-token-metadata = { version = "5", optional = true }
-spl-associated-token-account = { version = "7", features = ["no-entrypoint"], optional = true }
-spl-memo = { version = "6", features = ["no-entrypoint"], optional = true }
-spl-pod = { version = "0.5", optional = true }
-spl-token = { version = "8", features = ["no-entrypoint"], optional = true }
-spl-token-2022 = { version = "8", features = ["no-entrypoint"], optional = true }
-spl-token-group-interface = { version = "0.6", optional = true }
-spl-token-metadata-interface = { version = "0.7", optional = true }
+borsh = { workspace = true, optional = true }
+mpl-token-metadata = { workspace = true, optional = true }
+spl-associated-token-account = {workspace = true, features = ["no-entrypoint"], optional = true }
+spl-memo = { workspace = true, features = ["no-entrypoint"], optional = true }
+spl-pod = { workspace = true, optional = true }
+spl-token = { workspace = true, features = ["no-entrypoint"], optional = true }
+spl-token-2022 = { workspace = true, features = ["no-entrypoint"], optional = true }
+spl-token-group-interface = { workspace = true, optional = true }
+spl-token-metadata-interface = { workspace = true, optional = true }
