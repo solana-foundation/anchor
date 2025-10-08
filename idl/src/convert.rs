@@ -64,6 +64,8 @@ mod legacy {
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    // FIXME: Can this be removed?
+    #[allow(dead_code)]
     pub struct IdlState {
         #[serde(rename = "struct")]
         pub strct: IdlTypeDefinition,
