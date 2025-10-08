@@ -330,7 +330,7 @@ version = "0.1.2"
 dependencies = [
  "anchor-lang-idl-spec",
  "anyhow",
- "heck 0.3.3",
+ "heck 0.4.1",
  "regex",
  "serde",
  "serde_json",

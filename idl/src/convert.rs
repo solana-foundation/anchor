@@ -31,7 +31,7 @@ pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
 mod legacy {
     use crate::types as t;
     use anyhow::{anyhow, Result};
-    use heck::SnakeCase;
+    use heck::ToSnakeCase;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
