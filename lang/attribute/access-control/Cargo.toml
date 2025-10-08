@@ -1,11 +1,11 @@
 [package]
 name = "anchor-attribute-access-control"
-version = "0.31.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
-license = "Apache-2.0"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Anchor attribute macro for instruction access control"
-edition = "2021"
+edition.workspace = true
 
 [lib]
 proc-macro = true
@@ -15,6 +15,6 @@ anchor-debug = ["anchor-syn/anchor-debug"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.31.1" }
-proc-macro2 = "1"
-quote = "1"
-syn = { version = "1", features = ["full"] }
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }

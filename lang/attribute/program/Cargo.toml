@@ -1,11 +1,11 @@
 [package]
 name = "anchor-attribute-program"
-version = "0.31.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
-license = "Apache-2.0"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Anchor attribute macro for defining a program"
-edition = "2021"
+edition.workspace = true
 
 [lib]
 proc-macro = true
@@ -18,10 +18,10 @@ interface-instructions = ["anchor-syn/interface-instructions"]
 [dependencies]
 anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["convert"] }
 anchor-syn = { path = "../../syn", version = "0.31.1" }
-anyhow = "1"
-bs58 = "0.5"
-heck = "0.3"
-proc-macro2 = "1"
-quote = "1"
-serde_json = "1"
-syn = { version = "1", features = ["full"] }
+anyhow.workspace = true
+bs58.workspace = true
+heck.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+serde_json.workspace = true
+syn = { workspace = true, features = ["full"] }

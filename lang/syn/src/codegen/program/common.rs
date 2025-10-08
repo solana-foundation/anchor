@@ -1,5 +1,5 @@
 use crate::IxArg;
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use quote::quote;
 
 // Namespace for calculating instruction sighash signatures for any instruction
@@ -41,6 +41,6 @@ pub fn generate_ix_variant(name: &str, args: &[IxArg]) -> proc_macro2::TokenStre
 }
 
 pub fn generate_ix_variant_name(name: &str) -> proc_macro2::TokenStream {
-    let n = name.to_camel_case();
+    let n = name.to_upper_camel_case();
     n.parse().unwrap()
 }

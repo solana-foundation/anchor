@@ -1,5 +1,5 @@
 use crate::Program;
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {

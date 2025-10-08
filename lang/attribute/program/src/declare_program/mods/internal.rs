@@ -6,7 +6,7 @@ use anchor_syn::{
     parser::accounts,
     AccountsStruct,
 };
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_to_syn_type, gen_discriminator, get_canonical_program_id};
@@ -28,7 +28,7 @@ pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
 fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let ixs = idl.instructions.iter().map(|ix| {
-        let ix_struct_name = format_ident!("{}", ix.name.to_camel_case());
+        let ix_struct_name = format_ident!("{}", ix.name.to_upper_camel_case());
 
         let fields = ix.args.iter().map(|arg| {
             let name = format_ident!("{}", arg.name);
@@ -156,7 +156,7 @@ fn gen_internal_accounts_common(
     let accounts = combined_ixs
         .iter()
         .map(|ix| {
-            let ident = format_ident!("{}", ix.name.to_camel_case());
+            let ident = format_ident!("{}", ix.name.to_upper_camel_case());
             let generics = if ix.accounts.is_empty() {
                 quote!()
             } else {
@@ -194,7 +194,7 @@ fn gen_internal_accounts_common(
                     let ty_name = combined_ixs
                         .iter()
                         .find(|ix| ix.accounts == accs.accounts)
-                        .map(|ix| format_ident!("{}", ix.name.to_camel_case()))
+                        .map(|ix| format_ident!("{}", ix.name.to_upper_camel_case()))
                         .expect("Instruction must exist");
 
                     quote! {

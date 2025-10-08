@@ -1,5 +1,5 @@
 use crate::Program;
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -8,7 +8,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         let ix_method_name = &ix.raw_method.sig.ident;
         let ix_name_camel: proc_macro2::TokenStream = ix_method_name
             .to_string()
-            .to_camel_case()
+            .to_upper_camel_case()
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
         let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };

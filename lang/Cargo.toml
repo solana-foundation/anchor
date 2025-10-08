@@ -1,10 +1,10 @@
 [package]
 name = "anchor-lang"
-version = "0.31.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "Solana Sealevel eDSL"
 
 [package.metadata.docs.rs]
@@ -52,31 +52,31 @@ anchor-derive-space = { path = "./derive/space", version = "0.31.1" }
 # `anchor-lang-idl` should only be included with `idl-build` feature
 anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 
-base64 = "0.21"
-bincode = "1"
-borsh = "0.10.3"
-bytemuck = { version = "1", features = ["derive"] }
-solana-account-info = "2"
-solana-clock = "2"
-solana-cpi = "2"
-solana-define-syscall = "2"
-solana-feature-gate-interface = "2"
-solana-instruction = "2"
-solana-instructions-sysvar = "2"
-solana-invoke = "0.4.0"
-solana-loader-v3-interface = { version = "3", features = ["bincode"] }
-solana-msg = "2"
-solana-program-entrypoint = "2"
-solana-program-error = { version = "2", features = ["borsh"] }
-solana-program-memory = "2"
-solana-program-option = "2"
-solana-program-pack = "2"
-solana-pubkey = { version = "2", features = ["borsh", "bytemuck", "serde"] }
-solana-sdk-ids = "2"
-solana-system-interface = "1"
-solana-sysvar = { version = "2", features = ["bincode"] }
-solana-sysvar-id = "2"
-thiserror = "1"
+base64.workspace = true
+bincode.workspace = true
+borsh.workspace = true
+bytemuck = {workspace = true, features = ["derive"] }
+solana-account-info.workspace = true
+solana-clock.workspace = true
+solana-cpi.workspace = true
+solana-define-syscall.workspace = true
+solana-feature-gate-interface.workspace = true
+solana-instruction.workspace = true
+solana-instructions-sysvar.workspace = true
+solana-invoke.workspace = true
+solana-loader-v3-interface = { workspace = true, features = ["bincode"] }
+solana-msg.workspace = true
+solana-program-entrypoint.workspace = true
+solana-program-error = { workspace = true, features = ["borsh"] }
+solana-program-memory.workspace = true
+solana-program-option.workspace = true
+solana-program-pack.workspace = true
+solana-pubkey = { workspace = true, features = ["borsh", "bytemuck", "serde"] }
+solana-sdk-ids.workspace = true
+solana-system-interface.workspace = true
+solana-sysvar = { workspace = true, features = ["bincode"] }
+solana-sysvar-id.workspace = true
+thiserror.workspace = true
 
 [lints.rust.unexpected_cfgs]
  level = "warn"

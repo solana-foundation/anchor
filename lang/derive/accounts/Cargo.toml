@@ -1,11 +1,11 @@
 [package]
 name = "anchor-derive-accounts"
-version = "0.31.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
-license = "Apache-2.0"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Anchor Derive macro for accounts"
-edition = "2021"
+edition.workspace = true
 
 [lib]
 proc-macro = true
@@ -18,5 +18,5 @@ init-if-needed = ["anchor-syn/init-if-needed"]
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.31.1" }
-quote = "1"
-syn = { version = "1", features = ["full"] }
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }
