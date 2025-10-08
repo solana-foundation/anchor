@@ -3966,14 +3966,14 @@ fn airdrop(cfg_override: &ConfigOverride) -> Result<()> {
     let url = cfg_override
         .cluster
         .as_ref()
-        .unwrap_or_else(|| &Cluster::Devnet)
+        .unwrap_or(&Cluster::Devnet)
         .url();
     loop {
         let exit = std::process::Command::new("solana")
             .arg("airdrop")
             .arg("10")
             .arg("--url")
-            .arg(&url)
+            .arg(url)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
