@@ -84,7 +84,7 @@ spl-token = { version = "8" }
 spl-token-2022 = { version = "8" }
 spl-token-group-interface = { version = "0.6" }
 spl-token-metadata-interface = { version = "0.7" }
-syn = { version = "1.0.60", features = ["full", "extra-traits"] }
+syn = { version = "2", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 tempfile = "3.3.0"
 thiserror = "1"
@@ -92,7 +92,6 @@ tokio = { version = "1", features = ["rt", "sync"] }
 toml = "0.7.6"
 url = "2"
 walkdir = "2.3.2"
-
 
 [profile.release]
 lto = true

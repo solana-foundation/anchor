@@ -23,7 +23,6 @@ use std::ops::Deref;
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Attribute;
 use syn::Lit;
@@ -87,7 +86,7 @@ pub struct Overrides {
 impl Parse for Overrides {
     fn parse(input: ParseStream) -> ParseResult<Self> {
         let mut attr = Self::default();
-        let args = input.parse_terminated::<_, Comma>(NamedArg::parse)?;
+        let args = input.parse_terminated(NamedArg::parse, Token![,])?;
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
@@ -151,7 +150,7 @@ pub struct AccountsStruct {
     // Fields on the accounts struct.
     pub fields: Vec<AccountField>,
     // Instruction data api expression.
-    instruction_api: Option<Punctuated<Expr, Comma>>,
+    instruction_api: Option<Punctuated<PatType, Comma>>,
 }
 
 impl Parse for AccountsStruct {
@@ -177,7 +176,7 @@ impl AccountsStruct {
     pub fn new(
         strct: ItemStruct,
         fields: Vec<AccountField>,
-        instruction_api: Option<Punctuated<Expr, Comma>>,
+        instruction_api: Option<Punctuated<PatType, Comma>>,
     ) -> Self {
         let ident = strct.ident.clone();
         let generics = strct.generics;
@@ -1112,8 +1111,8 @@ impl<T> Deref for Context<T> {
     }
 }
 
-impl<T> Spanned for Context<T> {
-    fn span(&self) -> Span {
-        self.span
+impl<T: ToTokens> ToTokens for Context<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.inner.to_tokens(tokens);
     }
 }

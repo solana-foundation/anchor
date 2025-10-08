@@ -5,18 +5,19 @@ pub mod event_cpi;
 use crate::parser::docs;
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
+use syn::spanned::Spanned;
 use syn::Path;
 
 pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
-    let instruction_api: Option<Punctuated<Expr, Comma>> = accounts_struct
+    let instruction_api: Option<Punctuated<PatType, Comma>> = accounts_struct
         .attrs
         .iter()
         .find(|a| {
-            a.path
+            a.path()
                 .get_ident()
                 .is_some_and(|ident| ident == "instruction")
         })
-        .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<Expr, Comma>::parse_terminated))
+        .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<PatType, Comma>::parse_terminated))
         .transpose()?;
 
     #[cfg(feature = "event-cpi")]

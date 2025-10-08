@@ -194,7 +194,7 @@ fn parse_len_arg(item: ParseStream) -> Result<VecDeque<TokenStream2>, syn::Error
 fn get_max_len_args(attributes: &[Attribute]) -> Option<VecDeque<TokenStream2>> {
     attributes
         .iter()
-        .find(|a| a.path.is_ident("max_len"))
+        .find(|a| a.path().is_ident("max_len"))
         .and_then(|a| a.parse_args_with(parse_len_arg).ok())
 }
 

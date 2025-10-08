@@ -50,7 +50,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                         _ => quote! { vec![] },
                     };
                     let (ty, defined) = gen_idl_type(&arg.raw_arg.ty, &[])
-                        .map_err(|_| syn::Error::new(arg.raw_arg.ty.span(), "Unsupported type"))?;
+                        .map_err(|_| syn::Error::new(arg.raw_arg.ty.span, "Unsupported type"))?;
 
                     Ok((
                         quote! {

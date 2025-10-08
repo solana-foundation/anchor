@@ -54,13 +54,7 @@ impl CrateContext {
         for ctx in self.modules.values() {
             for unsafe_field in ctx.unsafe_struct_fields() {
                 // Check if unsafe field type has been documented with a /// SAFETY: doc string.
-                let is_documented = unsafe_field.attrs.iter().any(|attr| {
-                    attr.tokens.clone().into_iter().any(|token| match token {
-                        // Check for doc comments containing CHECK
-                        proc_macro2::TokenTree::Literal(s) => s.to_string().contains("CHECK"),
-                        _ => false,
-                    })
-                });
+                let is_documented = crate::parser::docs::has_check(&unsafe_field.attrs);
                 if !is_documented {
                     let ident = unsafe_field.ident.as_ref().unwrap();
                     let span = ident.span();
@@ -224,14 +218,16 @@ impl ParsedModule {
     fn unsafe_struct_fields(&self) -> impl Iterator<Item = &syn::Field> {
         let accounts_filter = |item_struct: &&syn::ItemStruct| {
             item_struct.attrs.iter().any(|attr| {
-                match attr.parse_meta() {
-                    Ok(syn::Meta::List(syn::MetaList{path, nested, ..})) => {
-                        path.is_ident("derive") && nested.iter().any(|nested| {
-                            matches!(nested, syn::NestedMeta::Meta(syn::Meta::Path(path)) if path.is_ident("Accounts"))
-                        })
-                    }
-                    _ => false
+                let mut is_account = false;
+                if attr.path().is_ident("derive") {
+                    let _ = attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("Accounts") {
+                            is_account = true;
+                        }
+                        Ok(())
+                    });
                 }
+                is_account
             })
         };
 

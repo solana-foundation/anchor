@@ -143,7 +143,7 @@ dependencies = [
  "anchor-syn",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -154,7 +154,7 @@ dependencies = [
  "bs58",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -163,7 +163,7 @@ version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -172,7 +172,7 @@ version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -182,7 +182,7 @@ dependencies = [
  "anchor-syn",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -197,7 +197,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -229,7 +229,7 @@ dependencies = [
  "solana-faucet",
  "solana-rpc-client",
  "solana-sdk",
- "syn 1.0.109",
+ "syn 2.0.104",
  "tar",
  "toml 0.7.8",
  "walkdir",
@@ -260,7 +260,7 @@ version = "0.31.1"
 dependencies = [
  "anchor-syn",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -280,7 +280,7 @@ version = "0.31.1"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -374,7 +374,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.8",
- "syn 1.0.109",
+ "syn 2.0.104",
  "thiserror 1.0.66",
 ]
 

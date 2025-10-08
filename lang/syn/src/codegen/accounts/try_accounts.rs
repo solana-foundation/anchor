@@ -1,7 +1,7 @@
 use crate::codegen::accounts::{bumps, constraints, generics, ParsedGenerics};
 use crate::{AccountField, AccountsStruct};
 use quote::quote;
-use syn::Expr;
+use syn::PatType;
 
 // Generates the `Accounts` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
@@ -90,15 +90,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             let strct_inner = &ix_api;
             let field_names: Vec<proc_macro2::TokenStream> = ix_api
                 .iter()
-                .map(|expr: &Expr| match expr {
-                    Expr::Type(expr_type) => {
-                        let field = &expr_type.expr;
-                        quote! {
-                            #field
-                        }
-                    }
-                    _ => panic!("Invalid instruction declaration"),
-                })
+                .map(|pat: &PatType| quote! { #pat } )
                 .collect();
             quote! {
                 let mut __ix_data = __ix_data;

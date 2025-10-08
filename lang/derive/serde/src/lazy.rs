@@ -37,7 +37,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 quote!(false),
             )
         }
-        Item::Union(_) => return Err(syn::Error::new(item.span(), "Unions are not supported")),
+        Item::Union(_) => return Err(syn::Error::new(item.span, "Unions are not supported")),
         _ => unreachable!(),
     };
 

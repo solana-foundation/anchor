@@ -1,5 +1,6 @@
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
+use syn::spanned::Spanned;
 use syn::{bracketed, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
@@ -15,7 +16,7 @@ pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> 
 }
 
 pub fn is_account(attr: &&syn::Attribute) -> bool {
-    attr.path
+    attr.path()
         .get_ident()
         .is_some_and(|ident| ident == "account")
 }
@@ -367,9 +368,9 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 let seeds;
                 let bracket = bracketed!(seeds in stream);
                 ConstraintToken::Seeds(Context::new(
-                    span.join(bracket.span).unwrap_or(span),
+                    span.join(bracket.span.join()).unwrap_or(span),
                     ConstraintSeeds {
-                        seeds: seeds.parse_terminated(Expr::parse)?,
+                        seeds: seeds.parse_terminated(Expr::parse, Token![,])?,
                     },
                 ))
             }
@@ -596,7 +597,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if let Some(i) = &self.init {
             if cfg!(not(feature = "init-if-needed")) && i.if_needed {
                 return Err(ParseError::new(
-                    i.span(),
+                    i.span,
                     "init_if_needed requires that anchor-lang be imported \
                     with the init-if-needed cargo feature enabled. \
                     Carefully read the init_if_needed docs before using this feature \
@@ -608,22 +609,22 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             match self.mutable {
                 Some(m) => {
                     return Err(ParseError::new(
-                        m.span(),
+                        m.span,
                         "mut cannot be provided with init",
                     ))
                 }
                 None => self
                     .mutable
-                    .replace(Context::new(i.span(), ConstraintMut { error: None })),
+                    .replace(Context::new(i.span, ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
             if self.rent_exempt.is_none() {
                 self.rent_exempt
-                    .replace(Context::new(i.span(), ConstraintRentExempt::Enforce));
+                    .replace(Context::new(i.span, ConstraintRentExempt::Enforce));
             }
             if self.payer.is_none() {
                 return Err(ParseError::new(
-                    i.span(),
+                    i.span,
                     "payer must be provided when initializing an account",
                 ));
             }
@@ -633,14 +634,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if self.signer.is_none() && self.seeds.is_none() && self.associated_token_mint.is_none()
             {
                 self.signer
-                    .replace(Context::new(i.span(), ConstraintSigner { error: None }));
+                    .replace(Context::new(i.span, ConstraintSigner { error: None }));
             }
 
             // Assert a bump target is not given on init.
             if let Some(b) = &self.bump {
                 if b.bump.is_some() {
                     return Err(ParseError::new(
-                        b.span(),
+                        b.span,
                         "bump targets should not be provided with init. Please use bump without a target."
                     ));
                 }
@@ -650,7 +651,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if let Some(token_mint) = &self.token_mint {
                 if self.token_authority.is_none() {
                     return Err(ParseError::new(
-                        token_mint.span(),
+                        token_mint.span,
                         "when initializing, token authority must be provided if token mint is",
                     ));
                 }
@@ -658,7 +659,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if let Some(token_authority) = &self.token_authority {
                 if self.token_mint.is_none() {
                     return Err(ParseError::new(
-                        token_authority.span(),
+                        token_authority.span,
                         "when initializing, token mint must be provided if token authority is",
                     ));
                 }
@@ -668,7 +669,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if let Some(mint_decimals) = &self.mint_decimals {
                 if self.mint_authority.is_none() {
                     return Err(ParseError::new(
-                        mint_decimals.span(),
+                        mint_decimals.span,
                         "when initializing, mint authority must be provided if mint decimals is",
                     ));
                 }
@@ -676,7 +677,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             if let Some(mint_authority) = &self.mint_authority {
                 if self.mint_decimals.is_none() {
                     return Err(ParseError::new(
-                        mint_authority.span(),
+                        mint_authority.span,
                         "when initializing, mint decimals must be provided if mint authority is",
                     ));
                 }
@@ -687,13 +688,13 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if let Some(r) = &self.realloc {
             if self.realloc_payer.is_none() {
                 return Err(ParseError::new(
-                    r.span(),
+                    r.span,
                     "realloc::payer must be provided when using realloc",
                 ));
             }
             if self.realloc_zero.is_none() {
                 return Err(ParseError::new(
-                    r.span(),
+                    r.span,
                     "realloc::zero must be provided when using realloc",
                 ));
             }
@@ -704,18 +705,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             match self.mutable {
                 Some(m) => {
                     return Err(ParseError::new(
-                        m.span(),
+                        m.span,
                         "mut cannot be provided with zeroed",
                     ))
                 }
                 None => self
                     .mutable
-                    .replace(Context::new(z.span(), ConstraintMut { error: None })),
+                    .replace(Context::new(z.span, ConstraintMut { error: None })),
             };
             // Rent exempt if not explicitly skipped.
             if self.rent_exempt.is_none() {
                 self.rent_exempt
-                    .replace(Context::new(z.span(), ConstraintRentExempt::Enforce));
+                    .replace(Context::new(z.span, ConstraintRentExempt::Enforce));
             }
         }
 
@@ -723,13 +724,13 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if let Some(i) = &self.seeds {
             if self.init.is_some() && self.payer.is_none() {
                 return Err(ParseError::new(
-                    i.span(),
+                    i.span,
                     "payer must be provided when creating a program derived address",
                 ));
             }
             if self.bump.is_none() {
                 return Err(ParseError::new(
-                    i.span(),
+                    i.span,
                     "bump must be provided with seeds",
                 ));
             }
@@ -745,13 +746,13 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             match (self.space.is_some(), initializing_token_program_acc) {
                 (true, true) => {
                     return Err(ParseError::new(
-                        self.space.as_ref().unwrap().span(),
+                        self.space.as_ref().unwrap().span,
                         "space is not required for initializing an spl account",
                     ));
                 }
                 (false, false) => {
                     return Err(ParseError::new(
-                        i.span(),
+                        i.span,
                         "space must be provided with init",
                     ));
                 }
@@ -840,18 +841,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .map(|a| a.clone().into_inner().token_program),
             }),
             (Some(mint), None, _) => return Err(ParseError::new(
-                mint.span(),
+                mint.span,
                 "authority must be provided to specify an associated token program derived address",
             )),
             (None, Some(auth), _) => {
                 return Err(ParseError::new(
-                    auth.span(),
+                    auth.span,
                     "mint must be provided to specify an associated token program derived address",
                 ))
             },
             (None, None, Some(token_program)) => {
                 return Err(ParseError::new(
-                    token_program.span(),
+                    token_program.span,
                     "mint and authority must be provided to specify an associated token program derived address",
                 ))
             }
@@ -970,7 +971,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                         owner: match &token_authority {
                             Some(a) => a.clone().into_inner().auth,
                             None => return Err(ParseError::new(
-                                tm.span(),
+                                tm.span,
                                 "authority must be provided to initialize a token program derived address"
                             )),
                         },
@@ -988,7 +989,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                         owner: match &mint_authority {
                             Some(a) => a.clone().into_inner().mint_auth,
                             None => return Err(ParseError::new(
-                                d.span(),
+                                d.span,
                                 "authority must be provided to initialize a mint program derived address"
                             ))
                         },
@@ -1098,68 +1099,68 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_init(&mut self, c: Context<ConstraintInit>) -> ParseResult<()> {
         if self.init.is_some() {
-            return Err(ParseError::new(c.span(), "init already provided"));
+            return Err(ParseError::new(c.span, "init already provided"));
         }
         if self.zeroed.is_some() {
-            return Err(ParseError::new(c.span(), "zeroed already provided"));
+            return Err(ParseError::new(c.span, "zeroed already provided"));
         }
         if self.token_mint.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before token mint",
             ));
         }
         if self.token_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before token authority",
             ));
         }
         if self.token_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before token account token program",
             ));
         }
         if self.mint_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before mint authority",
             ));
         }
         if self.mint_freeze_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before mint freeze authority",
             ));
         }
         if self.mint_decimals.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before mint decimals",
             ));
         }
         if self.mint_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before mint token program",
             ));
         }
         if self.associated_token_mint.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before associated token mint",
             ));
         }
         if self.associated_token_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before associated token authority",
             ));
         }
         if self.associated_token_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before associated token account token program",
             ));
         }
@@ -1169,10 +1170,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_zeroed(&mut self, c: Context<ConstraintZeroed>) -> ParseResult<()> {
         if self.zeroed.is_some() {
-            return Err(ParseError::new(c.span(), "zeroed already provided"));
+            return Err(ParseError::new(c.span, "zeroed already provided"));
         }
         if self.init.is_some() {
-            return Err(ParseError::new(c.span(), "init already provided"));
+            return Err(ParseError::new(c.span, "init already provided"));
         }
 
         // Require a known account type that implements the `Discriminator` trait so that we can
@@ -1182,7 +1183,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             Some(Ty::Account(_) | Ty::LazyAccount(_) | Ty::AccountLoader(_))
         ) {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "`zero` constraint requires the type to implement the `Discriminator` trait",
             ));
         }
@@ -1196,18 +1197,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             && !matches!(self.f_ty, Some(Ty::AccountLoader(_)))
         {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "realloc must be on an Account, LazyAccount or AccountLoader",
             ));
         }
         if self.mutable.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "mut must be provided before realloc",
             ));
         }
         if self.realloc.is_some() {
-            return Err(ParseError::new(c.span(), "realloc already provided"));
+            return Err(ParseError::new(c.span, "realloc already provided"));
         }
         self.realloc.replace(c);
         Ok(())
@@ -1216,12 +1217,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_realloc_payer(&mut self, c: Context<ConstraintReallocPayer>) -> ParseResult<()> {
         if self.realloc.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "realloc must be provided before realloc::payer",
             ));
         }
         if self.realloc_payer.is_some() {
-            return Err(ParseError::new(c.span(), "realloc::payer already provided"));
+            return Err(ParseError::new(c.span, "realloc::payer already provided"));
         }
         self.realloc_payer.replace(c);
         Ok(())
@@ -1230,12 +1231,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_realloc_zero(&mut self, c: Context<ConstraintReallocZero>) -> ParseResult<()> {
         if self.realloc.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "realloc must be provided before realloc::zero",
             ));
         }
         if self.realloc_zero.is_some() {
-            return Err(ParseError::new(c.span(), "realloc::zero already provided"));
+            return Err(ParseError::new(c.span, "realloc::zero already provided"));
         }
         self.realloc_zero.replace(c);
         Ok(())
@@ -1247,18 +1248,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             && !matches!(self.f_ty, Some(Ty::AccountLoader(_)))
         {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "close must be on an Account, LazyAccount or AccountLoader",
             ));
         }
         if self.mutable.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "mut must be provided before close",
             ));
         }
         if self.close.is_some() {
-            return Err(ParseError::new(c.span(), "close already provided"));
+            return Err(ParseError::new(c.span, "close already provided"));
         }
         self.close.replace(c);
         Ok(())
@@ -1266,7 +1267,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_address(&mut self, c: Context<ConstraintAddress>) -> ParseResult<()> {
         if self.address.is_some() {
-            return Err(ParseError::new(c.span(), "address already provided"));
+            return Err(ParseError::new(c.span, "address already provided"));
         }
         self.address.replace(c);
         Ok(())
@@ -1274,11 +1275,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
         if self.token_mint.is_some() {
-            return Err(ParseError::new(c.span(), "token mint already provided"));
+            return Err(ParseError::new(c.span, "token mint already provided"));
         }
         if self.associated_token_mint.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "associated token mint already provided",
             ));
         }
@@ -1289,12 +1290,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_associated_token_mint(&mut self, c: Context<ConstraintTokenMint>) -> ParseResult<()> {
         if self.associated_token_mint.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "associated token mint already provided",
             ));
         }
         if self.token_mint.is_some() {
-            return Err(ParseError::new(c.span(), "token mint already provided"));
+            return Err(ParseError::new(c.span, "token mint already provided"));
         }
         self.associated_token_mint.replace(c);
         Ok(())
@@ -1302,11 +1303,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_bump(&mut self, c: Context<ConstraintTokenBump>) -> ParseResult<()> {
         if self.bump.is_some() {
-            return Err(ParseError::new(c.span(), "bump already provided"));
+            return Err(ParseError::new(c.span, "bump already provided"));
         }
         if self.seeds.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "seeds must be provided before bump",
             ));
         }
@@ -1316,23 +1317,23 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_program_seed(&mut self, c: Context<ConstraintProgramSeed>) -> ParseResult<()> {
         if self.program_seed.is_some() {
-            return Err(ParseError::new(c.span(), "seeds::program already provided"));
+            return Err(ParseError::new(c.span, "seeds::program already provided"));
         }
         if self.seeds.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "seeds must be provided before seeds::program",
             ));
         }
         if let Some(ref init) = self.init {
             if init.if_needed {
                 return Err(ParseError::new(
-                    c.span(),
+                    c.span,
                     "seeds::program cannot be used with init_if_needed",
                 ));
             } else {
                 return Err(ParseError::new(
-                    c.span(),
+                    c.span,
                     "seeds::program cannot be used with init",
                 ));
             }
@@ -1344,7 +1345,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_token_authority(&mut self, c: Context<ConstraintTokenAuthority>) -> ParseResult<()> {
         if self.token_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "token authority already provided",
             ));
         }
@@ -1358,13 +1359,13 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.associated_token_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "associated token authority already provided",
             ));
         }
         if self.token_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "token authority already provided",
             ));
         }
@@ -1375,7 +1376,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_token_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
         if self.token_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "token token_program already provided",
             ));
         }
@@ -1389,7 +1390,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.associated_token_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "associated token token_program already provided",
             ));
         }
@@ -1399,7 +1400,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_mint_authority(&mut self, c: Context<ConstraintMintAuthority>) -> ParseResult<()> {
         if self.mint_authority.is_some() {
-            return Err(ParseError::new(c.span(), "mint authority already provided"));
+            return Err(ParseError::new(c.span, "mint authority already provided"));
         }
         self.mint_authority.replace(c);
         Ok(())
@@ -1411,7 +1412,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.mint_freeze_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "mint freeze_authority already provided",
             ));
         }
@@ -1421,7 +1422,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_mint_decimals(&mut self, c: Context<ConstraintMintDecimals>) -> ParseResult<()> {
         if self.mint_decimals.is_some() {
-            return Err(ParseError::new(c.span(), "mint decimals already provided"));
+            return Err(ParseError::new(c.span, "mint decimals already provided"));
         }
         self.mint_decimals.replace(c);
         Ok(())
@@ -1430,7 +1431,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_mint_token_program(&mut self, c: Context<ConstraintTokenProgram>) -> ParseResult<()> {
         if self.mint_token_program.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "mint token_program already provided",
             ));
         }
@@ -1440,7 +1441,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_mut(&mut self, c: Context<ConstraintMut>) -> ParseResult<()> {
         if self.mutable.is_some() {
-            return Err(ParseError::new(c.span(), "mut already provided"));
+            return Err(ParseError::new(c.span, "mut already provided"));
         }
         self.mutable.replace(c);
         Ok(())
@@ -1448,7 +1449,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_signer(&mut self, c: Context<ConstraintSigner>) -> ParseResult<()> {
         if self.signer.is_some() {
-            return Err(ParseError::new(c.span(), "signer already provided"));
+            return Err(ParseError::new(c.span, "signer already provided"));
         }
         self.signer.replace(c);
         Ok(())
@@ -1462,7 +1463,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             .count()
             > 0
         {
-            return Err(ParseError::new(c.span(), "has_one target already provided"));
+            return Err(ParseError::new(c.span, "has_one target already provided"));
         }
         self.has_one.push(c);
         Ok(())
@@ -1475,7 +1476,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_owner(&mut self, c: Context<ConstraintOwner>) -> ParseResult<()> {
         if self.owner.is_some() {
-            return Err(ParseError::new(c.span(), "owner already provided"));
+            return Err(ParseError::new(c.span, "owner already provided"));
         }
         self.owner.replace(c);
         Ok(())
@@ -1483,7 +1484,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_rent_exempt(&mut self, c: Context<ConstraintRentExempt>) -> ParseResult<()> {
         if self.rent_exempt.is_some() {
-            return Err(ParseError::new(c.span(), "rent already provided"));
+            return Err(ParseError::new(c.span, "rent already provided"));
         }
         self.rent_exempt.replace(c);
         Ok(())
@@ -1491,7 +1492,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_seeds(&mut self, c: Context<ConstraintSeeds>) -> ParseResult<()> {
         if self.seeds.is_some() {
-            return Err(ParseError::new(c.span(), "seeds already provided"));
+            return Err(ParseError::new(c.span, "seeds already provided"));
         }
         self.seeds.replace(c);
         Ok(())
@@ -1499,7 +1500,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
     fn add_executable(&mut self, c: Context<ConstraintExecutable>) -> ParseResult<()> {
         if self.executable.is_some() {
-            return Err(ParseError::new(c.span(), "executable already provided"));
+            return Err(ParseError::new(c.span, "executable already provided"));
         }
         self.executable.replace(c);
         Ok(())
@@ -1508,12 +1509,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_payer(&mut self, c: Context<ConstraintPayer>) -> ParseResult<()> {
         if self.init.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before payer",
             ));
         }
         if self.payer.is_some() {
-            return Err(ParseError::new(c.span(), "payer already provided"));
+            return Err(ParseError::new(c.span, "payer already provided"));
         }
         self.payer.replace(c);
         Ok(())
@@ -1522,12 +1523,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     fn add_space(&mut self, c: Context<ConstraintSpace>) -> ParseResult<()> {
         if self.init.is_none() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "init must be provided before space",
             ));
         }
         if self.space.is_some() {
-            return Err(ParseError::new(c.span(), "space already provided"));
+            return Err(ParseError::new(c.span, "space already provided"));
         }
         self.space.replace(c);
         Ok(())
@@ -1541,7 +1542,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_group_pointer_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension group pointer authority already provided",
             ));
         }
@@ -1555,7 +1556,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_group_pointer_group_address.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension group pointer group address already provided",
             ));
         }
@@ -1569,7 +1570,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_group_member_pointer_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension group member pointer authority already provided",
             ));
         }
@@ -1583,7 +1584,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_group_member_pointer_member_address.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension group member pointer member address already provided",
             ));
         }
@@ -1598,7 +1599,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_metadata_pointer_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension metadata pointer authority already provided",
             ));
         }
@@ -1612,7 +1613,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_metadata_pointer_metadata_address.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension metadata pointer metadata address already provided",
             ));
         }
@@ -1626,7 +1627,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_close_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension close authority already provided",
             ));
         }
@@ -1640,7 +1641,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_transfer_hook_authority.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension transfer hook authority already provided",
             ));
         }
@@ -1654,7 +1655,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_transfer_hook_program_id.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension transfer hook program id already provided",
             ));
         }
@@ -1668,7 +1669,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     ) -> ParseResult<()> {
         if self.extension_permanent_delegate.is_some() {
             return Err(ParseError::new(
-                c.span(),
+                c.span,
                 "extension permanent delegate already provided",
             ));
         }

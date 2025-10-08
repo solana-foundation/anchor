@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     token::{Comma, Paren},
-    Ident, LitStr,
+    Ident, LitStr, Token,
 };
 
 mod id;
@@ -285,7 +285,7 @@ struct AccountArgs {
 impl Parse for AccountArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut parsed = Self::default();
-        let args = input.parse_terminated::<_, Comma>(AccountArg::parse)?;
+        let args = input.parse_terminated(AccountArg::parse, Token![,])?;
         for arg in args {
             match arg {
                 AccountArg::ZeroCopy { is_unsafe } => {
@@ -363,18 +363,11 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
             field
                 .attrs
                 .iter()
-                .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "accessor")
+                .find(|attr| attr.path().is_ident("accessor"))
                 .map(|attr| {
-                    let mut tts = attr.tokens.clone().into_iter();
-                    let g_stream = match tts.next().expect("Must have a token group") {
-                        proc_macro2::TokenTree::Group(g) => g.stream(),
-                        _ => panic!("Invalid syntax"),
+                    let Ok(accessor_ty) = attr.parse_args::<syn::Type>() else {
+                        panic!("Invalid syntax for accessor");
                     };
-                    let accessor_ty = match g_stream.into_iter().next() {
-                        Some(token) => token,
-                        _ => panic!("Missing accessor type"),
-                    };
-
                     let field_name = field.ident.as_ref().unwrap();
 
                     let get_field: proc_macro2::TokenStream =
@@ -449,7 +442,7 @@ pub fn zero_copy(
     let attr = account_strct
         .attrs
         .iter()
-        .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "repr");
+        .find(|attr| attr.path().is_ident("repr"));
 
     let repr = match attr {
         // Users might want to manually specify repr modifiers e.g. repr(C, packed)
@@ -466,13 +459,17 @@ pub fn zero_copy(
     let mut has_pod_attr = false;
     let mut has_zeroable_attr = false;
     for attr in account_strct.attrs.iter() {
-        let token_string = attr.tokens.to_string();
-        if token_string.contains("bytemuck :: Pod") {
-            has_pod_attr = true;
-        }
-        if token_string.contains("bytemuck :: Zeroable") {
-            has_zeroable_attr = true;
-        }
+        let _ = attr.parse_nested_meta(|meta| {
+            let segments = meta.path.segments.into_iter().collect::<Vec<_>>();
+            if segments.len() == 2 && segments[0].ident.to_string() == "bytemuck" {
+                match segments[1].ident.to_string().as_str() {
+                    "Pod" => has_pod_attr = true,
+                    "Zeroable" => has_zeroable_attr = true,
+                    _ => ()
+                }
+            }
+            Ok(())
+        });
     }
 
     // Once the Pod derive macro is expanded the compiler has to use the local crate's

@@ -1,6 +1,6 @@
 use crate::{Error, ErrorArgs, ErrorCode};
 use syn::parse::{Parse, Result as ParseResult};
-use syn::Expr;
+use syn::{Expr, LitStr};
 
 // Removes any internal #[msg] attributes, as they are inert.
 pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
@@ -29,7 +29,7 @@ pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Error {
             // Remove any non-doc attributes on the error variant.
             variant
                 .attrs
-                .retain(|attr| attr.path.segments[0].ident == "doc");
+                .retain(|attr| attr.path().segments[0].ident == "doc");
 
             ErrorCode { id, ident, msg }
         })
@@ -47,27 +47,21 @@ fn parse_error_attribute(variant: &syn::Variant) -> Option<String> {
     let attrs = variant
         .attrs
         .iter()
-        .filter(|attr| attr.path.segments[0].ident != "doc")
+        .filter(|attr| attr.path().segments[0].ident != "doc")
         .collect::<Vec<_>>();
-    match attrs.len() {
-        0 => None,
-        1 => {
-            let attr = &attrs[0];
-            let attr_str = attr.path.segments[0].ident.to_string();
-            assert!(&attr_str == "msg", "Use msg to specify error strings");
-
-            let mut tts = attr.tokens.clone().into_iter();
-            let g_stream = match tts.next().expect("Must have a token group") {
-                proc_macro2::TokenTree::Group(g) => g.stream(),
-                _ => panic!("Invalid syntax"),
-            };
-
-            let msg = match g_stream.into_iter().next() {
-                None => panic!("Must specify a message string"),
-                Some(msg) => msg.to_string().replace('\"', ""),
-            };
-
-            Some(msg)
+    match attrs.as_slice() {
+        &[] => None,
+        &[attr] => {
+            let path = attr.path();
+            assert!(
+                path.is_ident("msg"),
+                "Use `msg` to specify error strings (not `{:?}`)",
+                path
+            );
+            let msg: LitStr = attr
+                .parse_args()
+                .expect("expected a string literal error message");
+            Some(msg.value())
         }
         _ => {
             panic!("Too many attributes found. Use `msg` to specify error strings");
