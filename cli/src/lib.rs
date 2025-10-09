@@ -3627,7 +3627,7 @@ fn deploy(
                     // Wait for the program to be confirmed before initializing IDL to prevent
                     // race condition where the program isn't yet available in validator cache
                     let client = create_client(&url);
-                    let max_retries = 30;
+                    let max_retries = 5;
                     let retry_delay = std::time::Duration::from_millis(500);
                     let cache_delay = std::time::Duration::from_secs(2);
 
@@ -3652,12 +3652,27 @@ fn deploy(
                         std::thread::sleep(retry_delay);
                     }
 
-                    idl_init(
-                        cfg_override,
-                        program_id,
-                        idl_filepath.display().to_string(),
-                        None,
-                    )?;
+                    // Check if IDL account already exists
+                    let idl_address = IdlAccount::address(&program_id);
+                    let idl_account_exists = client.get_account(&idl_address).is_ok();
+
+                    if idl_account_exists {
+                        // IDL account exists, upgrade it
+                        idl_upgrade(
+                            cfg_override,
+                            program_id,
+                            idl_filepath.display().to_string(),
+                            None,
+                        )?;
+                    } else {
+                        // IDL account doesn't exist, create it
+                        idl_init(
+                            cfg_override,
+                            program_id,
+                            idl_filepath.display().to_string(),
+                            None,
+                        )?;
+                    }
                 }
             }
         }
