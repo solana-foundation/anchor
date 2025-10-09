@@ -416,7 +416,6 @@ fn generate_constraint_realloc(
     let account_name = field.to_string();
     let new_space = &c.space;
     let payer = &c.payer;
-    let zero = &c.zero;
 
     let mut optional_check_scope = OptionalCheckScope::new_with_field(accs, field);
     let payer_optional_check = optional_check_scope.generate_check(payer);
@@ -465,7 +464,7 @@ fn generate_constraint_realloc(
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
             }
 
-            __field_info.realloc(#new_space, #zero)?;
+            __field_info.resize(#new_space)?;
             __reallocs.insert(#field.key());
         }
     }

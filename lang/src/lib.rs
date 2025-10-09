@@ -514,7 +514,6 @@ pub mod prelude {
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
-    pub use crate::solana_program::msg;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
     pub use crate::solana_program::sysvar::clock::Clock;
@@ -526,6 +525,7 @@ pub mod prelude {
     pub use crate::solana_program::sysvar::slot_history::SlotHistory;
     pub use crate::solana_program::sysvar::stake_history::StakeHistory;
     pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
+    pub use crate::solana_program::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
