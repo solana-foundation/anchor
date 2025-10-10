@@ -22,6 +22,11 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- lang: Fix deprecation warnings on alloc and add solana-program to prelude
+  ([#3975](https://github.com/solana-foundation/anchor/pull/3975)).
+- cli: Fix race condition that could happen when deploying a program 
+  ([#3976](https://github.com/solana-foundation/anchor/pull/3976)).
+
 ### Breaking
 
 ## [0.32.0] - 2025-10-08
