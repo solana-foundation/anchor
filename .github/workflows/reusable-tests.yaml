@@ -462,6 +462,9 @@ jobs:
             path: tests/idl
           - cmd: cd tests/lazy-account && anchor test
             path: tests/lazy-account
+          - cmd: cd tests/misc && cargo test --doc --package misc
+            path: tests/misc
+
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

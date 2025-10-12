@@ -55,21 +55,21 @@ mod lazy;
 ///
 /// - `id`: Override the program ID used for the `Owner` trait
 ///
-///     **Usage:** `id = <EXPR>`
+///   **Usage:** `id = <EXPR>`
 ///
-///     **SECURITY WARNING:**
-///     This parameter is **ONLY intended for doctests and test code**.
-///     **DO NOT use in production programs** unless you fully understand the implications.
-///     Using the wrong program ID makes your accounts owned by a different program,
-///     creating critical security vulnerabilities and making your program unusable.
+///   **SECURITY WARNING:**
+///   This parameter is ONLY intended for doctests and test code.
+///   DO NOT use in production programs unless you fully understand the implications.
+///   Using the wrong program ID makes your accounts owned by a different program,
+///   creating critical security vulnerabilities and making your program unusable.
 ///
-///     **In production code:** Always use `#[account]` without the `id` parameter.
-///     **In doctests:** Use `#[account(id = ID)]` after `declare_id!`.
+///   In production code: Always use `#[account]` without the `id` parameter.
+///   In doctests: Use `#[account(id = ID)]` after `declare_id!`.
 ///
-///     **Examples:**
+///   **Examples:**
 ///
-///     - `id = ID` (after `declare_id!` in doctests)
-///     - `id = system_program::ID` (for documentation examples)
+///   - `id = ID` (after `declare_id!` in doctests)
+///   - `id = system_program::ID` (for documentation examples)
 ///
 /// # Zero Copy Deserialization
 ///
