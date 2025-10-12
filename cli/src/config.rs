@@ -13,7 +13,7 @@ use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::clock::Slot;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -766,11 +766,11 @@ impl From<TestValidator> for _TestValidator {
 
 #[derive(Debug, Clone)]
 pub struct TestConfig {
-    pub test_suite_configs: HashMap<PathBuf, TestToml>,
+    pub test_suite_configs: BTreeMap<PathBuf, TestToml>,
 }
 
 impl Deref for TestConfig {
-    type Target = HashMap<PathBuf, TestToml>;
+    type Target = BTreeMap<PathBuf, TestToml>;
 
     fn deref(&self) -> &Self::Target {
         &self.test_suite_configs
@@ -780,7 +780,7 @@ impl Deref for TestConfig {
 impl TestConfig {
     pub fn discover(root: impl AsRef<Path>, test_paths: Vec<PathBuf>) -> Result<Option<Self>> {
         let walker = WalkDir::new(root).into_iter();
-        let mut test_suite_configs = HashMap::new();
+        let mut test_suite_configs = BTreeMap::new();
         for entry in walker.filter_entry(|e| !is_hidden(e)) {
             let entry = entry?;
             if entry.file_name() == "Test.toml" {
