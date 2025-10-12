@@ -8,6 +8,7 @@ use event::*;
 
 mod account;
 mod context;
+mod doctest_example;
 mod event;
 
 declare_id!("3TEqcc8xhrhdspwbvoamUJe2borm4Nr72JxL66k6rgrh");

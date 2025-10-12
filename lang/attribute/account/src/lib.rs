@@ -53,6 +53,24 @@ mod lazy;
 ///     - `discriminator = MY_DISC`
 ///     - `discriminator = get_disc(...)`
 ///
+/// - `id`: Override the program ID used for the `Owner` trait
+///
+///     **Usage:** `id = <EXPR>`
+///
+///     **SECURITY WARNING:**
+///     This parameter is **ONLY intended for doctests and test code**.
+///     **DO NOT use in production programs** unless you fully understand the implications.
+///     Using the wrong program ID makes your accounts owned by a different program,
+///     creating critical security vulnerabilities and making your program unusable.
+///
+///     **In production code:** Always use `#[account]` without the `id` parameter.
+///     **In doctests:** Use `#[account(id = ID)]` after `declare_id!`.
+///
+///     **Examples:**
+///
+///     - `id = ID` (after `declare_id!` in doctests)
+///     - `id = system_program::ID` (for documentation examples)
+///
 /// # Zero Copy Deserialization
 ///
 /// **WARNING**: Zero copy deserialization is an experimental feature. It's
@@ -129,11 +147,17 @@ pub fn account(
 
     let owner_impl = {
         if namespace.is_empty() {
+            let id_expr = if let Some(id) = &args.id {
+                quote! { #id }
+            } else {
+                quote! { crate::ID }
+            };
+
             quote! {
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::Owner for #account_name #type_gen #where_clause {
                     fn owner() -> Pubkey {
-                        crate::ID
+                        #id_expr
                     }
                 }
             }
@@ -280,6 +304,8 @@ struct AccountArgs {
     namespace: Option<String>,
     /// Named overrides
     overrides: Option<Overrides>,
+    /// Optional program ID override for the Owner trait (test/doctest only)
+    id: Option<syn::Expr>,
 }
 
 impl Parse for AccountArgs {
@@ -297,6 +323,9 @@ impl Parse for AccountArgs {
                 AccountArg::Overrides(ov) => {
                     parsed.overrides.replace(ov);
                 }
+                AccountArg::Id(id) => {
+                    parsed.id.replace(*id);
+                }
             }
         }
 
@@ -308,6 +337,7 @@ enum AccountArg {
     ZeroCopy { is_unsafe: bool },
     Namespace(String),
     Overrides(Overrides),
+    Id(Box<syn::Expr>),
 }
 
 impl Parse for AccountArg {
@@ -319,27 +349,41 @@ impl Parse for AccountArg {
             ));
         }
 
-        // Zero copy
-        if input.fork().parse::<Ident>()? == "zero_copy" {
-            input.parse::<Ident>()?;
-            let is_unsafe = if input.peek(Paren) {
-                let content;
-                parenthesized!(content in input);
-                let content = content.parse::<proc_macro2::TokenStream>()?;
-                if content.to_string().as_str().trim() != "unsafe" {
-                    return Err(syn::Error::new(
-                        syn::spanned::Spanned::span(&content),
-                        "Expected `unsafe`",
-                    ));
-                }
+        // Check for named arguments (id = ..., zero_copy)
+        let lookahead = input.lookahead1();
+        if lookahead.peek(Ident) {
+            let ident = input.fork().parse::<Ident>()?;
 
-                true
-            } else {
-                false
-            };
+            // id = <expr>
+            if ident == "id" {
+                input.parse::<Ident>()?;
+                input.parse::<syn::Token![=]>()?;
+                let id_expr = input.parse::<syn::Expr>()?;
+                return Ok(Self::Id(Box::new(id_expr)));
+            }
 
-            return Ok(Self::ZeroCopy { is_unsafe });
-        };
+            // Zero copy
+            if ident == "zero_copy" {
+                input.parse::<Ident>()?;
+                let is_unsafe = if input.peek(Paren) {
+                    let content;
+                    parenthesized!(content in input);
+                    let content = content.parse::<proc_macro2::TokenStream>()?;
+                    if content.to_string().as_str().trim() != "unsafe" {
+                        return Err(syn::Error::new(
+                            syn::spanned::Spanned::span(&content),
+                            "Expected `unsafe`",
+                        ));
+                    }
+
+                    true
+                } else {
+                    false
+                };
+
+                return Ok(Self::ZeroCopy { is_unsafe });
+            }
+        }
 
         // Overrides
         input.parse::<Overrides>().map(Self::Overrides)
