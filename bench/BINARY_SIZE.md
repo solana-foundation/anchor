@@ -14,6 +14,32 @@ The programs and their tests are located in [/tests/bench](https://github.com/co
 
 ## [Unreleased]
 
+Solana version: 2.3.0
+
+| Program | Binary Size | -   |
+| ------- | ----------- | --- |
+| bench   | 1,126,840   | -   |
+
+### Notable changes
+
+---
+
+## [0.32.1]
+
+Solana version: 2.3.0
+
+| Program | Binary Size | -                      |
+| ------- | ----------- | ---------------------- |
+| bench   | 1,126,840   | 🔴 **+84,912 (8.15%)** |
+
+### Notable changes
+
+- Upgrade to Solana `2.3.0`. This upgrade increased the binary size by 8.15% (84912 bytes) ([#3967](https://github.com/solana-foundation/anchor/pull/3967)).
+
+---
+
+## [0.32.0]
+
 Solana version: 2.1.0
 
 | Program | Binary Size | -   |

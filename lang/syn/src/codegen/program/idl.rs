@@ -236,7 +236,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                         .checked_sub(idl_ref.lamports())
                         .unwrap(),
                 )?;
-                idl_ref.realloc(new_account_space, false)?;
+                idl_ref.resize(new_account_space)?;
             }
 
             Ok(())

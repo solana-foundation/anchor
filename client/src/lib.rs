@@ -50,7 +50,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.31.1/client/example/src
+//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
 //!
 //! # Features
 //!
@@ -59,15 +59,15 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.31.1 ", features = ["async"] }
-//! ```
+//! anchor-client = { version = "0.32.1 ", features = ["async"] }
+//! ````
 //!
 //! ## `mock`
 //!
 //! This feature allows passing in a custom RPC client when creating program instances, which is
 //! useful for mocking RPC responses, e.g. via [`RpcClient::new_mock`].
 //!
-//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/2.1.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
+//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/2.3.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
