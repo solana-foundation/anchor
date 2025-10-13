@@ -18,6 +18,7 @@ event-cpi = []
 hash = []
 idl-build = ["cargo_toml"]
 init-if-needed = []
+instrument-compute-units = []
 interface-instructions = []
 
 [dependencies]
