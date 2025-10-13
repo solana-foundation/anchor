@@ -1,0 +1,10 @@
+[package]
+name = "tests"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+anchor-client = { path = "../../../../client" }
+basic-2 = { version = "0.1.0", path = "../programs/basic-2" }
