@@ -416,6 +416,15 @@ pub fn gen_idl_type(
         syn::Type::Path(path) if the_only_segment_is(path, "i128") => {
             Ok((quote! { #idl::IdlType::I128 }, vec![]))
         }
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZero") => {
+            let segment = get_first_segment(path);
+            let arg = get_angle_bracketed_type_args(segment)
+                .into_iter()
+                .next()
+                .unwrap();
+            let (inner, defined) = gen_idl_type(arg, generic_params)?;
+            Ok((quote! { #idl::IdlType::NonZero(Box::new(#inner)) }, defined))
+        }
         syn::Type::Path(path)
             if the_only_segment_is(path, "String") || the_only_segment_is(path, "str") =>
         {

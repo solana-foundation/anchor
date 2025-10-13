@@ -244,6 +244,7 @@ mod legacy {
         Array(Box<IdlType>, usize),
         GenericLenArray(Box<IdlType>, String),
         Generic(String),
+        NonZero(Box<IdlType>),
         DefinedWithTypeArgs {
             name: String,
             args: Vec<IdlDefinedTypeArg>,
@@ -491,6 +492,7 @@ mod legacy {
                 IdlType::GenericLenArray(ty, generic) => {
                     t::IdlType::Array(ty.into(), t::IdlArrayLen::Generic(generic))
                 }
+                IdlType::NonZero(ty) => t::IdlType::NonZero(ty.into()),
                 _ => serde_json::to_value(value)
                     .and_then(serde_json::from_value)
                     .unwrap(),

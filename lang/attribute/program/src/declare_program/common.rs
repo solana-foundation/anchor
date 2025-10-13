@@ -89,6 +89,7 @@ pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
             .map(|generics| format!("{name}<{generics}>"))
             .unwrap_or(name.into()),
         IdlType::Generic(ty) => ty.into(),
+        IdlType::NonZero(ty) => format!("NonZero<{}>", convert_idl_type_to_str(ty)),
         _ => unimplemented!("{ty:?}"),
     }
 }
@@ -309,6 +310,7 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .map(|ty_def| can_derive_copy(ty_def, ty_defs))
             .expect("Type def must exist"),
         IdlType::Bytes | IdlType::String | IdlType::Vec(_) | IdlType::Generic(_) => false,
+        IdlType::NonZero(inner) => can_derive_copy_ty(inner, ty_defs),
         _ => true,
     }
 }
@@ -333,6 +335,7 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .map(|ty_def| can_derive_default(ty_def, ty_defs))
             .expect("Type def must exist"),
         IdlType::Generic(_) => false,
+        IdlType::NonZero(_) => false,
         _ => true,
     }
 }
