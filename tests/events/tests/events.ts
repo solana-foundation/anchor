@@ -48,7 +48,7 @@ describe("Events", () => {
   describe("CPI event", () => {
     it("Works without accounts being specified", async () => {
       const tx = await program.methods.testEventCpi().transaction();
-      const config = { commitment: "confirmed" } as const;
+      const config = { commitment: "confirmed", maxRetries: 3 } as const;
       const txHash = await program.provider.sendAndConfirm(tx, [], config);
       const txResult = await program.provider.connection.getTransaction(
         txHash,
@@ -91,7 +91,7 @@ describe("Events", () => {
       );
 
       try {
-        await program.provider.sendAndConfirm(tx, []);
+        await program.provider.sendAndConfirm(tx, [], { maxRetries: 3 });
       } catch (e) {
         if (e.logs.some((log) => log.includes("ConstraintSigner"))) return;
         console.log(e);
