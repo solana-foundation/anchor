@@ -136,11 +136,12 @@ describe("transfer hook", () => {
       "confirmed"
     );
 
-    await sendAndConfirmTransaction(provider.connection, transaction, [
-      payer,
-      mint,
-      mintAuthority,
-    ], { maxRetries: 3 });
+    await sendAndConfirmTransaction(
+      provider.connection,
+      transaction,
+      [payer, mint, mintAuthority],
+      { maxRetries: 3 }
+    );
   });
 
   it("can create an `InitializeExtraAccountMetaList` instruction with the proper discriminator", async () => {
@@ -276,7 +277,8 @@ describe("transfer hook", () => {
       provider.connection,
       new Transaction().add(ix),
       [payer, sourceAuthority],
-     { maxRetries: 3 });
+      { maxRetries: 3 }
+    );
 
     // Check the resulting token balances
     await getAccount(

@@ -421,7 +421,9 @@ describe("auction-house", () => {
         .instruction()
     );
 
-    const txSig = await authorityClient.provider.sendAndConfirm(tx, [], { maxRetries: 3 });
+    const txSig = await authorityClient.provider.sendAndConfirm(tx, [], {
+      maxRetries: 3,
+    });
     console.log("updateAuctionHouse:", txSig);
 
     const newAh = await authorityClient.account.auctionHouse.fetch(

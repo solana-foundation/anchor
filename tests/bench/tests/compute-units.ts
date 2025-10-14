@@ -141,7 +141,9 @@ describe("Compute units", () => {
       .instruction();
     tx.add(createTokenIx, initTokenIx);
 
-    await tokenProgram.provider.sendAndConfirm!(tx, [mintKp, tokenKp], { maxRetries: 3 });
+    await tokenProgram.provider.sendAndConfirm!(tx, [mintKp, tokenKp], {
+      maxRetries: 3,
+    });
   });
 
   it("AccountInfo", async () => {
