@@ -90,9 +90,7 @@ describe("Optional", () => {
         .add(initializeIx);
       try {
         await anchorProvider
-          .sendAndConfirm(initializeTxn, [requiredKeypair], {
-            skipPreflight: true,
-          })
+          .sendAndConfirm(initializeTxn, [requiredKeypair])
           .catch((e) => {
             throw translateError(e, parseIdlErrors(program.idl));
           });
@@ -126,9 +124,7 @@ describe("Optional", () => {
       doStuffIx.keys.pop();
       doStuffIx.keys.pop();
       const doStuffTxn = new web3.Transaction().add(doStuffIx);
-      await anchorProvider.sendAndConfirm(doStuffTxn, [], {
-        skipPreflight: true,
-      });
+      await anchorProvider.sendAndConfirm(doStuffTxn);
     });
   });
 
@@ -406,9 +402,7 @@ describe("Optional", () => {
             meta.isSigner = false;
           }
         });
-        await anchorProvider.sendAndConfirm(txn, [], {
-          skipPreflight: true,
-        });
+        await anchorProvider.sendAndConfirm(txn);
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ConstraintSigner` error"
         );
