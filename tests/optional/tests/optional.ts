@@ -91,7 +91,6 @@ describe("Optional", () => {
       try {
         await anchorProvider
           .sendAndConfirm(initializeTxn, [requiredKeypair], {
-            maxRetries: 3,
             skipPreflight: true,
           })
           .catch((e) => {
@@ -128,7 +127,6 @@ describe("Optional", () => {
       doStuffIx.keys.pop();
       const doStuffTxn = new web3.Transaction().add(doStuffIx);
       await anchorProvider.sendAndConfirm(doStuffTxn, [], {
-        maxRetries: 3,
         skipPreflight: true,
       });
     });
@@ -409,7 +407,6 @@ describe("Optional", () => {
           }
         });
         await anchorProvider.sendAndConfirm(txn, [], {
-          maxRetries: 3,
           skipPreflight: true,
         });
         assert.fail(
