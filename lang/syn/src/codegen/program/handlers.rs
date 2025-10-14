@@ -197,7 +197,6 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
     {
         let authority = crate::parser::accounts::event_cpi::EventAuthority::get();
         let authority_name = authority.name;
-        let authority_seeds = authority.seeds;
 
         quote! {
             /// __events mod defines handler for self-cpi based event logging
@@ -218,14 +217,12 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
                         .with_account_name(#authority_name));
                     }
 
-                    let (expected_event_authority, _) =
-                        Pubkey::find_program_address(&[#authority_seeds], &program_id);
-                    if given_event_authority.key() != expected_event_authority {
+                    if given_event_authority.key() != crate::EVENT_AUTHORITY_AND_BUMP.0 {
                         return Err(anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::ConstraintSeeds,
                         )
                         .with_account_name(#authority_name)
-                        .with_pubkeys((given_event_authority.key(), expected_event_authority)));
+                        .with_pubkeys((given_event_authority.key(), crate::EVENT_AUTHORITY_AND_BUMP.0)));
                     }
 
                     Ok(())
