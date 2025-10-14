@@ -30,6 +30,8 @@ describe("CPI return", () => {
 
   const confirmOptions: ConfirmOptions = {
     commitment: "confirmed",
+    preflightCommitment: "confirmed",
+    skipPreflight: true,
     maxRetries: 3,
   };
 

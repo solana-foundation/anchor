@@ -140,7 +140,7 @@ describe("transfer hook", () => {
       provider.connection,
       transaction,
       [payer, mint, mintAuthority],
-      { maxRetries: 3 }
+      { maxRetries: 3, skipPreflight: true }
     );
   });
 
@@ -277,7 +277,7 @@ describe("transfer hook", () => {
       provider.connection,
       new Transaction().add(ix),
       [payer, sourceAuthority],
-      { maxRetries: 3 }
+      { maxRetries: 3, skipPreflight: true }
     );
 
     // Check the resulting token balances

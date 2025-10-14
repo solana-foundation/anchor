@@ -90,7 +90,10 @@ describe("Optional", () => {
         .add(initializeIx);
       try {
         await anchorProvider
-          .sendAndConfirm(initializeTxn, [requiredKeypair], { maxRetries: 3 })
+          .sendAndConfirm(initializeTxn, [requiredKeypair], {
+            maxRetries: 3,
+            skipPreflight: true,
+          })
           .catch((e) => {
             throw translateError(e, parseIdlErrors(program.idl));
           });
@@ -124,7 +127,10 @@ describe("Optional", () => {
       doStuffIx.keys.pop();
       doStuffIx.keys.pop();
       const doStuffTxn = new web3.Transaction().add(doStuffIx);
-      await anchorProvider.sendAndConfirm(doStuffTxn, [], { maxRetries: 3 });
+      await anchorProvider.sendAndConfirm(doStuffTxn, [], {
+        maxRetries: 3,
+        skipPreflight: true,
+      });
     });
   });
 
@@ -402,7 +408,10 @@ describe("Optional", () => {
             meta.isSigner = false;
           }
         });
-        await anchorProvider.sendAndConfirm(txn, [], { maxRetries: 3 });
+        await anchorProvider.sendAndConfirm(txn, [], {
+          maxRetries: 3,
+          skipPreflight: true,
+        });
         assert.fail(
           "Unexpected success in creating a transaction that should have failed with `ConstraintSigner` error"
         );

@@ -143,6 +143,7 @@ describe("Compute units", () => {
 
     await tokenProgram.provider.sendAndConfirm!(tx, [mintKp, tokenKp], {
       maxRetries: 3,
+      skipPreflight: true,
     });
   });
 
