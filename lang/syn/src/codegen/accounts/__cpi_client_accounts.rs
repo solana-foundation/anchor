@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{AccountField, AccountsStruct, Ty};
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use quote::quote;
 
 // Generates the private `__cpi_client_accounts` mod implementation, containing

@@ -1,9 +1,10 @@
 use crate::Program;
-use heck::CamelCase;
+use heck::ToPascalCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
-    let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
+    let name: proc_macro2::TokenStream = program.name.to_string().to_pascal_case().parse().unwrap();
+    let mod_name = &program.name;
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
@@ -68,6 +69,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     ID
                 }
             }
+
+            /// Re-export the program struct with the module name for external access.
+            /// This allows `external::program::external` to resolve to the program struct.
+            pub use #name as #mod_name;
         }
     }
 }

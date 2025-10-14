@@ -1,6 +1,5 @@
-use anyhow::{anyhow, Result};
-
 use crate::types::Idl;
+use anyhow::{anyhow, Result};
 
 /// Create an [`Idl`] value with additional support for older specs based on the
 /// `idl.metadata.spec` field.
@@ -31,8 +30,10 @@ pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
 mod legacy {
     use crate::types as t;
     use anyhow::{anyhow, Result};
-    use heck::SnakeCase;
+    use heck::{ToLowerCamelCase, ToSnakeCase};
+    use regex::Regex;
     use serde::{Deserialize, Serialize};
+    use std::sync::OnceLock;
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     pub struct Idl {
@@ -325,12 +326,30 @@ mod legacy {
         hasher.finalize()[..8].into()
     }
 
+    static NUMBER_LETTER_PATTERN: OnceLock<Regex> = OnceLock::new();
+
+    /// Harmonized camelCase conversion that handles number+letter patterns consistently
+    /// with JavaScript's camelcase library behavior (a1b → a1B)
+    fn harmonized_camel_case(input: &str) -> String {
+        let pattern = NUMBER_LETTER_PATTERN.get_or_init(|| Regex::new(r"(\d)([a-zA-Z])").unwrap());
+
+        let result = input.to_lower_camel_case(); // gives proper camel case
+
+        // Fix number+letter patterns
+        pattern
+            .replace_all(&result, |caps: &regex::Captures| {
+                format!("{}{}", &caps[1], caps[2].to_uppercase())
+            })
+            .to_string()
+    }
+
     impl From<IdlInstruction> for t::IdlInstruction {
         fn from(value: IdlInstruction) -> Self {
-            let name = value.name.to_snake_case();
+            let snake_name = value.name.to_snake_case();
+            let harmonized_name = harmonized_camel_case(&snake_name);
             Self {
-                discriminator: get_disc("global", &name),
-                name,
+                discriminator: get_disc("global", &snake_name), // use original for discriminator
+                name: harmonized_name,                          // and harmonized for interface
                 docs: value.docs.unwrap_or_default(),
                 accounts: value.accounts.into_iter().map(Into::into).collect(),
                 args: value.args.into_iter().map(Into::into).collect(),
@@ -556,6 +575,17 @@ mod legacy {
                 }),
             };
             Ok(seed)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::harmonized_camel_case;
+        #[test]
+        fn test_legacy_harmonized_camel_case() {
+            // Test cases for legacy IDL conversion
+            assert_eq!(harmonized_camel_case("a1b_receive"), "a1BReceive");
+            assert_eq!(harmonized_camel_case("test2var"), "test2Var");
         }
     }
 }
