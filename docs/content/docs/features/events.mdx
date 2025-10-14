@@ -118,6 +118,8 @@ describe("event", () => {
 </Tab>
 </Tabs>
 
+<!-- cspell:disable -->
+
 The following is the output of the program logs. The event data is base64
 encoded as `Zb1eU3aiYdwOAAAASGVsbG8sIFNvbGFuYSE=`.
 
@@ -129,6 +131,8 @@ Log Messages:
   Program 8T7MsCZyzxboviPJg5Rc7d8iqEcDReYR2pkQKrmbg7dy consumed 1012 of 200000 compute units
   Program 8T7MsCZyzxboviPJg5Rc7d8iqEcDReYR2pkQKrmbg7dy success
 ```
+
+<!-- cspell:enable -->
 
 <Callout type="info">
   Ensure the RPC provider you use does not truncate the program logs from the
@@ -273,6 +277,8 @@ In the example transaction below, the encoded event data is
 `"data": "6AJcBqZP8afBKheoif1oA6UAiLAcqYr2RaR33pFnEY1taQp"` in the
 `innerInstructions` array.
 
+<!-- cspell:disable -->
+
 ```shell title="Transaction Data"
 {
   "blockTime": 1735854530,
@@ -358,6 +364,8 @@ In the example transaction below, the encoded event data is
   }
 }
 ```
+
+<!-- cspell:enable -->
 
 <Callout type="info">
   Currently, event data emitted through CPIs cannot be directly subscribed to.
