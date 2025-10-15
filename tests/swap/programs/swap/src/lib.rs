@@ -347,7 +347,7 @@ impl<'info> OrderbookClient<'info> {
             token_program: self.token_program.clone(),
             rent: self.rent.clone(),
         };
-        let mut ctx = CpiContext::new(self.dex_program.clone(), dex_accs);
+        let mut ctx = CpiContext::new(dex_accs);
         if let Some(referral) = referral {
             ctx = ctx.with_remaining_accounts(vec![referral]);
         }
@@ -376,7 +376,7 @@ impl<'info> OrderbookClient<'info> {
             vault_signer: self.market.vault_signer.clone(),
             token_program: self.token_program.clone(),
         };
-        let mut ctx = CpiContext::new(self.dex_program.clone(), settle_accs);
+        let mut ctx = CpiContext::new(settle_accs);
         if let Some(referral) = referral {
             ctx = ctx.with_remaining_accounts(vec![referral]);
         }
