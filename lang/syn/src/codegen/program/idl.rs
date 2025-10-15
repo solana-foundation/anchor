@@ -226,7 +226,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                 let new_rent_minimum = sysvar_rent.minimum_balance(new_account_space);
                 anchor_lang::system_program::transfer(
                     anchor_lang::context::CpiContext::new(
-                        accounts.system_program.to_account_info(),
+                        accounts.system_program.key(),
                         anchor_lang::system_program::Transfer {
                             from: accounts.authority.to_account_info(),
                             to: accounts.idl.to_account_info(),
