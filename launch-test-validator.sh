@@ -3,7 +3,7 @@
 # Launches the test validator in the background, waiting for it to be ready
 # If the validator is not ready and healthy after 5 retries, exit with failure
 
-set -o pipefail
+# set -o pipefail
 
 solana-test-validator -r --quiet 2>&1 >/dev/null &
 curl http://localhost:8899 \
