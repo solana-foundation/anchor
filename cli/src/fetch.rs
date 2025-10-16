@@ -142,7 +142,6 @@ impl<'a> IdlFetcher<'a> {
                             continue;
                         }
 
-
                         chunks.push((sig.slot, chunk.clone()));
 
                         if chunk.len() < FULL_CHUNK_THRESHOLD {
@@ -383,6 +382,7 @@ fn output_idl_data(idl_data: &[u8], slot: u64, out: Option<String>) -> Result<()
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
@@ -461,12 +461,12 @@ fn apply_date_filters(
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     if let Some(before_date) = before {
         let before_timestamp = parse_date_to_timestamp(&before_date)?;
-        signatures.retain(|sig| sig.block_time.map_or(false, |bt| bt <= before_timestamp));
+        signatures.retain(|sig| sig.block_time.is_some_and(|bt| bt <= before_timestamp));
     }
 
     if let Some(after_date) = after {
         let after_timestamp = parse_date_to_timestamp(&after_date)?;
-        signatures.retain(|sig| sig.block_time.map_or(false, |bt| bt >= after_timestamp));
+        signatures.retain(|sig| sig.block_time.is_some_and(|bt| bt >= after_timestamp));
     }
 
     Ok(signatures)
@@ -614,7 +614,7 @@ fn extract_from_raw_instructions(instructions: &[UiCompiledInstruction]) -> Resu
 fn decompress_idl_data(compressed_data: &[u8]) -> Result<Option<Vec<u8>>> {
     const ZLIB_HEADER: u8 = 0x78;
 
-    if compressed_data.is_empty() || compressed_data.get(0) != Some(&ZLIB_HEADER) {
+    if compressed_data.is_empty() || compressed_data.first() != Some(&ZLIB_HEADER) {
         return Ok(None);
     }
 
@@ -657,7 +657,7 @@ fn is_valid_idl_write_instruction(data: &[u8]) -> bool {
         return false;
     }
 
-    if &data[0..8] != IDL_IX_TAG {
+    if data[0..8] != IDL_IX_TAG {
         println!("Not an IDL instruction (tag mismatch)");
         return false;
     }
