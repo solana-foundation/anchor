@@ -27,8 +27,8 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Keypair;
 use solana_sdk::signature::Signer;
+use solana_sdk::signer::keypair::Keypair;
 use solana_sdk::signer::EncodableKey;
 use solana_sdk::transaction::Transaction;
 use std::collections::BTreeMap;
@@ -45,6 +45,7 @@ use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
+mod fetch;
 pub mod rust_template;
 
 // Version of the docker image.
@@ -473,11 +474,30 @@ pub enum IdlCommand {
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
+    ///
+    /// Note: Historical filters can be supplied to fetch historical IDL versions.
+    /// If any historical flag is provided, this command will fetch historical
+    /// IDLs for the given program id (the `address` is interpreted as a program id).
     Fetch {
         address: Pubkey,
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
+        /// Fetch all historical versions (historical mode)
+        #[clap(long)]
+        all: bool,
+        /// Fetch IDL at specific slot (historical mode)
+        #[clap(long)]
+        slot: Option<u64>,
+        /// Fetch IDL before this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        before: Option<String>,
+        /// Fetch IDL after this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        after: Option<String>,
+        /// Output directory for multiple versions (historical mode)
+        #[clap(long)]
+        out_dir: Option<String>,
     },
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
@@ -495,29 +515,6 @@ pub enum IdlCommand {
         /// Path to the IDL file
         path: String,
         /// Output file for the IDL (stdout if not specified)
-        #[clap(short, long)]
-        out: Option<String>,
-    },
-    /// Fetches historical IDL versions for the given program
-    FetchHistorical {
-        /// The program ID to fetch historical IDLs for
-        program_id: Pubkey,
-        /// Fetch all historical versions
-        #[clap(long)]
-        all: bool,
-        /// Fetch IDL at specific slot
-        #[clap(long)]
-        slot: Option<u64>,
-        /// Fetch IDL before this date (YYYY-MM-DD format)
-        #[clap(long)]
-        before: Option<String>,
-        /// Fetch IDL after this date (YYYY-MM-DD format)
-        #[clap(long)]
-        after: Option<String>,
-        /// Output directory for multiple IDL versions
-        #[clap(long)]
-        out_dir: Option<String>,
-        /// Output file for single IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
     },
@@ -2068,22 +2065,37 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             skip_lint,
             cargo_args,
         ),
-        IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
+        IdlCommand::Fetch {
+            address,
+            out,
+            all,
+            slot,
+            before,
+            after,
+            out_dir,
+        } => {
+            // If any historical flag is provided, route to historical fetch
+            if slot.is_some() || before.is_some() || after.is_some() || all {
+                fetch::idl_fetch_historical(
+                    cfg_override,
+                    address,
+                    all,
+                    slot,
+                    before,
+                    after,
+                    out_dir,
+                    out,
+                )
+            } else {
+                idl_fetch(cfg_override, address, out)
+            }
+        }
         IdlCommand::Convert {
             path,
             out,
             program_id,
         } => idl_convert(path, out, program_id),
         IdlCommand::Type { path, out } => idl_type(path, out),
-        IdlCommand::FetchHistorical {
-            program_id,
-            all,
-            slot,
-            before,
-            after,
-            out_dir,
-            out,
-        } => idl_fetch_historical(cfg_override, program_id, all, slot, before, after, out_dir, out),
     }
 }
 
@@ -2110,6 +2122,7 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<serde_js
     let mut account = client.get_account(&idl_addr)?;
     if account.executable {
         let idl_addr = IdlAccount::address(&idl_addr);
+        println!("IDL account address: {}", idl_addr);
         account = client.get_account(&idl_addr)?;
     }
 
@@ -2584,384 +2597,6 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
     };
 
     Ok(())
-}
-
-fn idl_fetch_historical(
-    cfg_override: &ConfigOverride,
-    program_id: Pubkey,
-    _all: bool,
-    slot: Option<u64>,
-    before: Option<String>,
-    after: Option<String>,
-    out_dir: Option<String>,
-    out: Option<String>,
-) -> Result<()> {
-    // 1. Get RPC client (similar to fetch_idl)
-    let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
-        None => {
-            if let Some(cluster) = cfg_override.cluster.as_ref() {
-                cluster.url().to_string()
-            } else {
-                config::get_solana_cfg_url()?
-            }
-        }
-    };
-    let client = create_client(url);
-
-    // 2. Get IDL account address
-    let idl_account_address = IdlAccount::address(&program_id);
-    println!("IDL account address: {}", idl_account_address);
-
-    // 3. Fetch transaction history
-    println!("Fetching transaction history...");
-    let signatures = client.get_signatures_for_address(&idl_account_address)?;
-    println!("Found {} transactions for IDL account", signatures.len());
-
-    if signatures.is_empty() {
-        println!("No transactions found for IDL account. This could mean:");
-        println!("  - The program doesn't have an IDL account");
-        println!("  - The IDL has never been upgraded");
-        println!("  - The program is not deployed on this cluster");
-        return Ok(());
-    }
-
-    // 4. Filter transactions based on criteria
-    let mut filtered_signatures = signatures.clone();
-    
-    // Filter by slot if specified
-    if let Some(target_slot) = slot {
-        filtered_signatures.retain(|sig| sig.slot == target_slot);
-    }
-    
-    // Filter by date if specified (basic implementation)
-    if before.is_some() || after.is_some() {
-        println!("Date filtering not yet implemented - showing all transactions");
-    }
-    
-    println!("After filtering: {} transactions", filtered_signatures.len());
-
-    if filtered_signatures.is_empty() {
-        println!("No transactions match the specified criteria.");
-        return Ok(());
-    }
-
-    // 5. Show sample transactions
-    let sample_count = std::cmp::min(5, filtered_signatures.len());
-    println!("Sample transactions:");
-    for (i, sig) in filtered_signatures.iter().take(sample_count).enumerate() {
-        println!("  {}: {} (slot: {})", i + 1, sig.signature, sig.slot);
-    }
-
-    // 6. Extract IDL data from transactions
-    println!("Extracting IDL data from transactions...");
-    let mut extracted_idls = Vec::new();
-    
-    for (i, sig) in filtered_signatures.iter().enumerate() {
-        println!("Processing transaction {}/{}: {}", i + 1, filtered_signatures.len(), sig.signature);
-        
-        match extract_idl_from_transaction(&client, &sig.signature, &program_id) {
-            Ok(Some(idl_data)) => {
-                println!("  ✅ Successfully extracted IDL data ({} bytes)", idl_data.len());
-                extracted_idls.push((sig.clone(), idl_data));
-            }
-            Ok(None) => {
-                println!("  ⚠️  No IDL data found in transaction");
-            }
-            Err(e) => {
-                println!("  ❌ Error extracting IDL: {}", e);
-            }
-        }
-    }
-    
-    if extracted_idls.is_empty() {
-        println!("No IDL data could be extracted from the transactions.");
-        return Ok(());
-    }
-    
-    println!("Successfully extracted {} IDL versions!", extracted_idls.len());
-    
-    // 7. Output the extracted IDLs
-    if let Some(out_dir) = out_dir {
-        // Output to directory structure
-        std::fs::create_dir_all(&out_dir)?;
-        for (i, (sig, idl_data)) in extracted_idls.iter().enumerate() {
-            let filename = format!("{}/idl_v{}_{}.json", out_dir, i + 1, sig.slot);
-            std::fs::write(&filename, idl_data)?;
-            println!("Saved IDL to: {}", filename);
-        }
-    } else if let Some(out_file) = out {
-        // Output single file (latest or specified)
-        let (_, idl_data) = &extracted_idls[0]; // Use the first (most recent) IDL
-        std::fs::write(&out_file, idl_data)?;
-        println!("Saved IDL to: {}", out_file);
-    } else {
-        // Output to stdout (latest IDL)
-        let (_, idl_data) = &extracted_idls[0];
-        println!("Latest IDL:");
-        println!("{}", String::from_utf8_lossy(idl_data));
-    }
-    
-    Ok(())
-}
-
-/// Extract IDL data from a transaction by parsing instruction data
-fn extract_idl_from_transaction(
-    client: &RpcClient,
-    signature: &str,
-    program_id: &Pubkey,
-) -> Result<Option<Vec<u8>>> {
-    use solana_sdk::signature::Signature;
-    
-    // Parse the signature string
-    let sig = signature.parse::<Signature>()?;
-    
-    // Get the transaction details - try with different encoding options
-    let tx_response = match client.get_transaction(&sig, solana_transaction_status_client_types::UiTransactionEncoding::Json) {
-        Ok(response) => response,
-        Err(e) => {
-            println!("  ❌ Failed to fetch transaction: {}", e);
-            return Ok(None);
-        }
-    };
-    
-    println!("  🔍 Analyzing transaction structure...");
-    
-    // Parse the transaction to extract IDL data
-    println!("  🔍 Parsing transaction instructions...");
-    
-    // Access the transaction data and parse instructions
-    match &tx_response.transaction.transaction {
-        solana_transaction_status_client_types::EncodedTransaction::Json(ui_tx) => {
-            // Get the message which contains instructions
-            let message = &ui_tx.message;
-            
-            // Handle both Parsed and Raw message types
-            match message {
-                solana_transaction_status_client_types::UiMessage::Parsed(parsed_msg) => {
-                    println!("  📋 Found parsed message with {} instructions", parsed_msg.instructions.len());
-                    
-                    // Parse instructions from the parsed message
-                    for (i, instruction) in parsed_msg.instructions.iter().enumerate() {
-                        // Debug: Print instruction structure to understand available fields
-                        println!("  🔍 Instruction {} structure: {:?}", i + 1, instruction);                 
-                        // Try to extract IDL data from any instruction that might contain it
-                        // We'll use a more generic approach to handle the actual instruction structure
-                        if let Some(idl_data) = try_extract_idl_from_instruction(instruction, &parsed_msg.account_keys, program_id)? {
-                            println!("  ✅ Successfully extracted IDL data ({} bytes)", idl_data.len());
-                            return Ok(Some(idl_data));
-                        }
-                    }
-                }
-                solana_transaction_status_client_types::UiMessage::Raw(raw_msg) => {
-                    println!("  📋 Found raw message with {} instructions", raw_msg.instructions.len());
-                    
-                    // Parse instructions from the raw message
-                    for (i, instruction) in raw_msg.instructions.iter().enumerate() {
-                        // Debug: Print instruction structure to understand available fields
-                        println!("  🔍 Raw instruction {} structure: {:?}", i + 1, instruction);
-                        
-                        // Try to extract IDL data from any instruction that might contain it
-                        // We'll use a more generic approach to handle the actual instruction structure
-                        if let Some(idl_data) = try_extract_idl_from_compiled_instruction(instruction, &raw_msg.account_keys, program_id)? {
-                            println!("  ✅ Successfully extracted IDL data ({} bytes)", idl_data.len());
-                            return Ok(Some(idl_data));
-                        }
-                    }
-                }
-            }
-        }
-        _ => {
-            println!("  ⚠️  Unsupported transaction format");
-        }
-    }
-    
-    // Also check transaction logs for any IDL-related information
-    if let Some(meta) = &tx_response.transaction.meta {
-        match &meta.log_messages {
-            solana_transaction_status_client_types::option_serializer::OptionSerializer::Some(logs) => {
-                println!("  📝 Checking {} transaction logs for IDL data", logs.len());
-                for log in logs {
-                    if log.contains("IDL") || log.contains("idl") {
-                        println!("  🔍 Found IDL-related log: {}", log);
-                    }
-                }
-            }
-            _ => {
-                println!("  ⚠️  No log messages available");
-            }
-        }
-    }
-    
-    
-    Ok(None)
-}
-
-// TODO: Implement full transaction parsing
-// This function will be implemented in the next iteration
-
-/// Extract IDL data from instruction data by checking for IDL instruction patterns
-fn extract_idl_from_instruction_data(instruction_data: &str) -> Result<Option<Vec<u8>>> {
-    // Decode base64 instruction data
-    let data = match base64::decode(instruction_data) {
-        Ok(data) => data,
-        Err(_) => {
-            // If not base64, try to parse as hex or raw bytes
-            return Ok(None);
-        }
-    };
-    
-    println!("  🔍 Decoded instruction data: {} bytes", data.len());
-    println!("  🔍 Raw data (hex): {}", hex::encode(&data));
-    
-    // Check if this looks like an IDL instruction
-    if data.len() < 8 {
-        println!("  ⚠️  Instruction data too short ({} bytes)", data.len());
-        return Ok(None);
-    }
-    
-    // Check for IDL instruction tag (first 8 bytes)
-    let tag = u64::from_le_bytes([
-        data[0], data[1], data[2], data[3],
-        data[4], data[5], data[6], data[7],
-    ]);
-    
-    println!("  🔍 Instruction tag: 0x{:x}", tag);
-    
-    // IDL_IX_TAG = 0x0a69e9a778bcf440
-    if tag != 0x0a69e9a778bcf440 {
-        println!("  ⚠️  Not an IDL instruction (expected 0x0a69e9a778bcf440, got 0x{:x})", tag);
-        return Ok(None);
-    }
-    
-    println!("  🔍 Found IDL instruction tag!");
-    
-    // Try to parse as IdlInstruction
-    let instruction_data = &data[8..]; // Skip the tag
-    
-    match anchor_lang::idl::IdlInstruction::try_from_slice(instruction_data) {
-        Ok(idl_instruction) => {
-            match idl_instruction {
-                anchor_lang::idl::IdlInstruction::Write { data: idl_data } => {
-                    println!("  🔍 Found IDL Write instruction with {} bytes", idl_data.len());
-                    // Try to decompress the IDL data
-                    match decompress_idl_data(&idl_data) {
-                        Ok(decompressed) => {
-                            println!("  ✅ Successfully decompressed IDL data ({} bytes)", decompressed.len());
-                            Ok(Some(decompressed))
-                        }
-                        Err(e) => {
-                            println!("  ⚠️  Failed to decompress IDL data: {}", e);
-                            // Return raw data if decompression fails
-                            Ok(Some(idl_data))
-                        }
-                    }
-                }
-                _ => {
-                    println!("  ⚠️  Found IDL instruction but not a Write instruction");
-                    Ok(None)
-                }
-            }
-        }
-        Err(e) => {
-            println!("  ⚠️  Failed to parse as IdlInstruction: {}", e);
-            // Try to decompress the raw data directly
-            match decompress_idl_data(&data) {
-                Ok(decompressed) => {
-                    println!("  ✅ Successfully decompressed raw data ({} bytes)", decompressed.len());
-                    Ok(Some(decompressed))
-                }
-                Err(_) => Ok(None),
-            }
-        }
-    }
-}
-
-/// Decompress IDL data using zlib
-fn decompress_idl_data(data: &[u8]) -> Result<Vec<u8>> {
-    use flate2::read::ZlibDecoder;
-    use std::io::Read;
-    
-    let mut decoder = ZlibDecoder::new(data);
-    let mut decompressed = Vec::new();
-    decoder.read_to_end(&mut decompressed)?;
-    Ok(decompressed)
-}
-
-/// Try to extract IDL data from any instruction type
-fn try_extract_idl_from_instruction(
-    instruction: &solana_transaction_status_client_types::UiInstruction,
-    account_keys: &[solana_transaction_status_client_types::ParsedAccount],
-    program_id: &Pubkey,
-) -> Result<Option<Vec<u8>>> {
-    // Handle different instruction types
-    match instruction {
-        solana_transaction_status_client_types::UiInstruction::Parsed(parsed_instruction) => {
-            // For parsed instructions, we need to understand the actual structure
-            // Let's try to extract data using a more generic approach
-            println!("  🔍 Parsed instruction structure: {:?}", parsed_instruction);
-            
-            // Try to extract IDL data from any field that might contain it
-            // This is a simplified approach that can be refined based on actual structure
-            if let Some(idl_data) = try_extract_idl_from_parsed_instruction(parsed_instruction, account_keys, program_id)? {
-                return Ok(Some(idl_data));
-            }
-        }
-        solana_transaction_status_client_types::UiInstruction::Compiled(compiled_instruction) => {
-            // Check if this instruction targets our program
-            let program_id_index = compiled_instruction.program_id_index;
-            if let Some(program_key) = account_keys.get(program_id_index as usize) {
-                if program_key.pubkey == program_id.to_string() {
-                    println!("  🎯 Found compiled instruction targeting IDL program");
-                    
-                    // This instruction targets our IDL program
-                    let data = &compiled_instruction.data;
-                    println!("  📊 Instruction data length: {} bytes", data.len());
-                    
-                    // Try to extract IDL data from this instruction
-                    return extract_idl_from_instruction_data(data);
-                }
-            }
-        }
-    }
-    
-    Ok(None)
-}
-
-/// Try to extract IDL data from parsed instruction (simplified approach)
-fn try_extract_idl_from_parsed_instruction(
-    _parsed_instruction: &solana_transaction_status_client_types::UiParsedInstruction,
-    _account_keys: &[solana_transaction_status_client_types::ParsedAccount],
-    _program_id: &Pubkey,
-) -> Result<Option<Vec<u8>>> {
-    // For now, return None as we need to understand the actual structure
-    // This can be implemented once we understand the actual fields available
-    println!("  ⚠️  Parsed instruction parsing not yet implemented - need to understand actual structure");
-    Ok(None)
-}
-
-/// Try to extract IDL data from compiled instruction type
-fn try_extract_idl_from_compiled_instruction(
-    instruction: &solana_transaction_status_client_types::UiCompiledInstruction,
-    account_keys: &[String],
-    program_id: &Pubkey,
-) -> Result<Option<Vec<u8>>> {
-    // Check if this instruction targets our program
-    let program_id_index = instruction.program_id_index;
-    if let Some(program_key) = account_keys.get(program_id_index as usize) {
-        if program_key == &program_id.to_string() {
-            println!("  🎯 Found compiled instruction targeting IDL program");
-            
-            // This instruction targets our IDL program
-            let data = &instruction.data;
-            println!("  📊 Instruction data length: {} bytes", data.len());
-            
-            // Try to extract IDL data from this instruction
-            return extract_idl_from_instruction_data(data);
-        }
-    }
-    
-    Ok(None)
 }
 
 fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
@@ -3909,7 +3544,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
     Ok((ledger_path, log_path))
 }
 
-fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
+pub(crate) fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
     let is_localnet = cfg.provider.cluster == Cluster::Localnet;
     match is_localnet {
         // Cluster is Localnet, assume the intent is to use the configuration
