@@ -113,6 +113,31 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
+
+            let actual_param_count = ix.args.len();
+            let ix_name_str = ix_method_name.to_string();
+            let accounts_type_str = anchor.to_string();
+
+            // Build clear error messages
+            let count_error_msg = format!(
+                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
+                accounts_type_str,
+                ix_name_str,
+                actual_param_count,
+            );
+            
+            let param_validation = quote! {
+                const _: () = {
+                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
+                    const HANDLER_PARAM_COUNT: usize = #actual_param_count;
+
+                    // Count validation
+                    if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
+                        panic!(#count_error_msg); 
+                    }
+                };
+            };
+
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
@@ -124,6 +149,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
+                    #param_validation
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;

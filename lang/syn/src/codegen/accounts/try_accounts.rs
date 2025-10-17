@@ -114,7 +114,28 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    let param_count_const = match &accs.instruction_api {
+        None => quote! {
+            #[automatically_derived]
+            impl<#combined_generics> #name<#struct_generics> #where_clause {
+                #[doc(hidden)]
+                pub const __ANCHOR_IX_PARAM_COUNT: usize = 0;
+            }
+        },
+        Some(ix_api) => {
+            let count = ix_api.len();
+            quote! {
+                #[automatically_derived]
+                impl<#combined_generics> #name<#struct_generics> #where_clause {
+                    #[doc(hidden)]
+                    pub const __ANCHOR_IX_PARAM_COUNT: usize = #count;
+                }
+            }
+        }
+    };
+
     quote! {
+        #param_count_const
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
