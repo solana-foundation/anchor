@@ -1,6 +1,7 @@
 use anchor_client::solana_sdk::pubkey::Pubkey;
-use anchor_client::solana_sdk::signature::{Keypair, Signer};
+use anchor_client::solana_sdk::signature::Keypair;
 use anchor_client::solana_sdk::system_instruction;
+use anchor_client::solana_signer::Signer;
 use anchor_client::{Client, Cluster};
 use anyhow::Result;
 use clap::Parser;
