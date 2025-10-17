@@ -2122,7 +2122,6 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<serde_js
     let mut account = client.get_account(&idl_addr)?;
     if account.executable {
         let idl_addr = IdlAccount::address(&idl_addr);
-        println!("IDL account address: {}", idl_addr);
         account = client.get_account(&idl_addr)?;
     }
 
