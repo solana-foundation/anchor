@@ -125,7 +125,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 ix_name_str,
                 actual_param_count,
             );
-            
+
             let param_validation = quote! {
                 const _: () = {
                     const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
@@ -133,7 +133,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                     // Count validation
                     if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
-                        panic!(#count_error_msg); 
+                        panic!(#count_error_msg);
                     }
                 };
             };
