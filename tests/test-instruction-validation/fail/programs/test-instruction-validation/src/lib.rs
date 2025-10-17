@@ -12,7 +12,7 @@ pub mod test_instruction_validation {
         _ctx: Context<MissingInstructionAttr>,
         data: u64, // Handler has u64
     ) -> Result<()> {
-        msg!("Data: {}, Ehe: ", data );
+        msg!("Data: {}, Ehe: ", data);
         Ok(())
     }
 

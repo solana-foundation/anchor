@@ -11,9 +11,9 @@ pub mod test_instruction_validation {
     pub fn missing_instruction_attr(
         _ctx: Context<MissingInstructionAttr>,
         data: u64, // Handler has u64
-        _ehe: u64
+        _ehe: u64,
     ) -> Result<()> {
-        msg!("Data: {}, Ehe: ", data );
+        msg!("Data: {}, Ehe: ", data);
         Ok(())
     }
 
@@ -24,7 +24,7 @@ pub mod test_instruction_validation {
 }
 
 #[derive(Accounts)]
-#[instruction(data: u64, ehe: u64)] 
+#[instruction(data: u64, ehe: u64)]
 pub struct MissingInstructionAttr<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
