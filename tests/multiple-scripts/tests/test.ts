@@ -11,9 +11,7 @@ describe("multiple-scripts", () => {
 
   it("Initializes successfully", async () => {
     // Call the initialize instruction
-    const tx = await program.methods
-      .initialize()
-      .rpc();
+    const tx = await program.methods.initialize().rpc();
 
     console.log("Transaction signature:", tx);
     assert.ok(tx, "Transaction should have a signature");
@@ -21,12 +19,9 @@ describe("multiple-scripts", () => {
 
   it("Can be called multiple times", async () => {
     // Call initialize again to demonstrate it can be called multiple times
-    const tx = await program.methods
-      .initialize()
-      .rpc();
+    const tx = await program.methods.initialize().rpc();
 
     console.log("Second transaction signature:", tx);
     assert.ok(tx, "Second transaction should also succeed");
   });
 });
-
