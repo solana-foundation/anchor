@@ -3331,9 +3331,11 @@ fn validator_flags(
 fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::process::Child>> {
     let program_logs_dir = Path::new(".anchor").join("program-logs");
     if program_logs_dir.exists() {
-        fs::remove_dir_all(&program_logs_dir)?;
+        fs::remove_dir_all(&program_logs_dir)
+            .with_context(|| format!("Failed to remove dir {}", program_logs_dir.display()))?;
     }
-    fs::create_dir_all(&program_logs_dir)?;
+    fs::create_dir_all(&program_logs_dir)
+        .with_context(|| format!("Failed to create dir {}", program_logs_dir.display()))?;
 
     let mut handles = vec![];
     for program in config.read_all_programs()? {
@@ -3341,12 +3343,13 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
-        let idl = fs::read(idl_path)?;
+        let idl = fs::read(&idl_path)
+            .with_context(|| format!("Failed to read IDL file {}", idl_path.display()))?;
         let idl = convert_idl(&idl)?;
 
-        let log_file = File::create(
-            program_logs_dir.join(format!("{}.{}.log", idl.address, program.lib_name)),
-        )?;
+        let log_path = program_logs_dir.join(format!("{}.{}.log", &idl.address, program.lib_name));
+        let log_file = File::create(&log_path)
+            .with_context(|| format!("Failed to create log file {}", log_path.display()))?;
         let stdio = std::process::Stdio::from(log_file);
         let child = std::process::Command::new("solana")
             .arg("logs")
@@ -3354,14 +3357,17 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
             .arg("--url")
             .arg(rpc_url)
             .stdout(stdio)
-            .spawn()?;
+            .spawn()
+            .with_context(|| format!("Failed to spawn 'solana logs' for {}", &idl.address))?;
         handles.push(child);
     }
     if let Some(test) = config.test_validator.as_ref() {
         if let Some(genesis) = &test.genesis {
             for entry in genesis {
-                let log_file =
-                    File::create(program_logs_dir.join(&entry.address).with_extension("log"))?;
+                let genesis_log_path = program_logs_dir.join(&entry.address).with_extension("log");
+                let log_file = File::create(&genesis_log_path).with_context(|| {
+                    format!("Failed to create log file {}", genesis_log_path.display())
+                })?;
                 let stdio = std::process::Stdio::from(log_file);
                 let child = std::process::Command::new("solana")
                     .arg("logs")
@@ -3369,7 +3375,10 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
                     .arg("--url")
                     .arg(rpc_url)
                     .stdout(stdio)
-                    .spawn()?;
+                    .spawn()
+                    .with_context(|| {
+                        "Failed to spawn 'solana logs' for genesis entry".to_string()
+                    })?;
                 handles.push(child);
             }
         }
@@ -3390,7 +3399,13 @@ fn start_test_validator(
     // Start a validator for testing.
     let (test_validator_stdout, test_validator_stderr) = match test_log_stdout {
         true => {
-            let test_validator_stdout_file = File::create(&test_ledger_log_filename)?;
+            let test_validator_stdout_file =
+                File::create(&test_ledger_log_filename).with_context(|| {
+                    format!(
+                        "Failed to create validator log file {}",
+                        test_ledger_log_filename.display()
+                    )
+                })?;
             let test_validator_sterr_file = test_validator_stdout_file.try_clone()?;
             (
                 Stdio::from(test_validator_stdout_file),
@@ -3490,10 +3505,20 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
         std::process::exit(1);
     }
     if ledger_path.exists() {
-        fs::remove_dir_all(&ledger_path)?;
+        fs::remove_dir_all(&ledger_path).with_context(|| {
+            format!(
+                "Failed to remove ledger directory {}",
+                ledger_path.display()
+            )
+        })?;
     }
 
-    fs::create_dir_all(&ledger_path)?;
+    fs::create_dir_all(&ledger_path).with_context(|| {
+        format!(
+            "Failed to create ledger directory {}",
+            ledger_path.display()
+        )
+    })?;
 
     let log_path = ledger_path.join("test-ledger-log.txt");
     Ok((ledger_path, log_path))
