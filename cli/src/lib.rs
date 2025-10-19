@@ -145,6 +145,9 @@ pub enum Command {
         /// Architecture to use when building the program
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
+        /// Generate JavaScript client with Codama
+        #[clap(long)]
+        codama_js: bool,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -781,6 +784,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_lint,
             no_docs,
             arch,
+            codama_js,
         } => build(
             &opts.cfg_override,
             no_idl,
@@ -798,6 +802,7 @@ fn process_command(opts: Opts) -> Result<()> {
             cargo_args,
             no_docs,
             arch,
+            codama_js,
         ),
         Command::Verify {
             program_id,
@@ -1299,6 +1304,7 @@ pub fn build(
     cargo_args: Vec<String>,
     no_docs: bool,
     arch: ProgramArch,
+    codama_js: bool,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1356,6 +1362,7 @@ pub fn build(
             skip_lint,
             no_docs,
             arch,
+            codama_js,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -1372,6 +1379,7 @@ pub fn build(
             skip_lint,
             no_docs,
             arch,
+            codama_js,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_rust_cwd(
@@ -1388,6 +1396,7 @@ pub fn build(
             skip_lint,
             no_docs,
             &arch,
+            codama_js,
         )?,
     }
 
@@ -1411,6 +1420,7 @@ fn build_all(
     skip_lint: bool,
     no_docs: bool,
     arch: ProgramArch,
+    codama_js: bool,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -1431,6 +1441,7 @@ fn build_all(
                     skip_lint,
                     no_docs,
                     &arch,
+                    codama_js,
                 )?;
             }
             Ok(())
@@ -1456,6 +1467,7 @@ fn build_rust_cwd(
     skip_lint: bool,
     no_docs: bool,
     arch: &ProgramArch,
+    codama_js: bool,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
@@ -1463,7 +1475,7 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args, codama_js,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1822,6 +1834,7 @@ fn _build_rust_cwd(
     no_docs: bool,
     arch: &ProgramArch,
     cargo_args: Vec<String>,
+    codama_js: bool,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg(arch.build_subcommand())
@@ -1854,7 +1867,7 @@ fn _build_rust_cwd(
         };
 
         // Write out the JSON file.
-        write_idl(&idl, OutFile::File(out))?;
+        write_idl(&idl, OutFile::File(out.clone()))?;
         // Write out the TypeScript type.
         fs::write(&ts_out, idl_ts(&idl)?)?;
 
@@ -1868,6 +1881,19 @@ fn _build_rust_cwd(
                     .join(&idl.metadata.name)
                     .with_extension("ts"),
             )?;
+        }
+
+        // Generate JavaScript client with Codama if enabled
+        let use_codama_js = cfg
+            .workspace
+            .codama
+            .as_ref()
+            .map(|c| c.generate_js)
+            .unwrap_or(false)
+            || codama_js; // CLI flag overrides
+
+        if use_codama_js {
+            codama_generate_js_client(cfg, &out)?;
         }
     }
 
@@ -2975,6 +3001,7 @@ fn test(
                 cargo_args,
                 false,
                 arch,
+                false, // codama_js
             )?;
         }
 
@@ -4267,6 +4294,7 @@ fn localnet(
                 cargo_args,
                 false,
                 arch,
+                false, // codama_js
             )?;
         }
 
@@ -4458,6 +4486,109 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+// ============================================================================
+// Codama Integration
+// ============================================================================
+
+/// Create or update codama.config.json
+fn ensure_codama_config(
+    workspace_dir: &Path,
+    idl_path: &Path,
+    js_renderer: &str,
+) -> Result<PathBuf> {
+    let codama_config_path = workspace_dir.join("codama.config.json");
+
+    if !codama_config_path.exists() {
+        let out_dir = workspace_dir.join("ts-client");
+        let config = json!({
+            "idl": idl_path.display().to_string(),
+            "scripts": {
+                "js": [{
+                    "from": js_renderer,
+                    "args": [out_dir.display().to_string()]
+                }]
+            }
+        });
+
+        fs::write(&codama_config_path, serde_json::to_string_pretty(&config)?)?;
+        println!("Created {}", codama_config_path.display());
+    }
+
+    Ok(codama_config_path)
+}
+
+/// Generate JavaScript client using Codama
+fn codama_generate_js_client(cfg: &WithPath<Config>, idl_path: &Path) -> Result<()> {
+    let workspace_dir = cfg.path().parent().expect("Invalid Anchor.toml");
+
+    // Get JS renderer from config or use default
+    let js_renderer = cfg
+        .workspace
+        .codama
+        .as_ref()
+        .map(|c| c.js_renderer.clone())
+        .unwrap_or_else(|| "@codama/renderers-js".to_string());
+
+    println!("Generating JavaScript client with Codama...");
+
+    // Install required Codama dependencies
+    let default_pkg_manager = PackageManager::default();
+    let pkg_manager = cfg.toolchain.package_manager.as_ref().unwrap_or(&default_pkg_manager);
+    let pkg_manager_cmd = pkg_manager.to_string();
+
+    // Different package managers use different commands to add dependencies
+    let install_cmd = match pkg_manager {
+        PackageManager::NPM => "install",
+        PackageManager::Yarn => "add",
+        PackageManager::PNPM => "install",
+        PackageManager::Bun => "install",
+    };
+
+    println!("Installing Codama dependencies...");
+    let install_status = std::process::Command::new(&pkg_manager_cmd)
+        .args([install_cmd, "@codama/nodes-from-anchor"])
+        .current_dir(workspace_dir)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    if !install_status.success() {
+        bail!("Failed to install @codama/nodes-from-anchor");
+    }
+
+    // Ensure codama.config.json exists
+    ensure_codama_config(workspace_dir, idl_path, &js_renderer)?;
+
+    // Run codama to generate JS client
+    let config_path = workspace_dir.join("codama.config.json");
+    println!("Running: npx codama run js --config {}", config_path.display());
+    let status = std::process::Command::new("npx")
+        .args([
+            "codama",
+            "run",
+            "js",
+            "--config",
+            &config_path.display().to_string(),
+        ])
+        .current_dir(workspace_dir)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    if !status.success() {
+        bail!("Codama JS client generation failed");
+    }
+
+    // Verify output directory was created
+    let out_dir = workspace_dir.join("ts-client");
+    if !out_dir.exists() || !out_dir.is_dir() {
+        bail!("Codama reported success but output directory was not created. This usually means a required dependency is missing. Try running: pnpm install @codama/nodes-from-anchor");
+    }
+
+    println!("✓ JavaScript client generated with Codama");
+    Ok(())
 }
 
 #[cfg(test)]
