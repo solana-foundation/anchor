@@ -126,6 +126,27 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 actual_param_count,
             );
 
+            // Generate type validation calls for each argument
+            let type_validations: Vec<proc_macro2::TokenStream> = ix.args
+                .iter()
+                .enumerate()
+                .map(|(idx, arg)| {
+                    let arg_ty = &arg.raw_arg.ty;
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        // Type validation for argument #idx
+                        if false {
+                            // This code is never executed but is type-checked at compile time
+                            let __type_check_arg: #arg_ty = panic!();
+                            #anchor::#method_name(&__type_check_arg);
+                        }
+                    }
+                })
+                .collect();
+
             let param_validation = quote! {
                 const _: () = {
                     const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
@@ -136,6 +157,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         panic!(#count_error_msg);
                     }
                 };
+
+                // Type validations
+                #(#type_validations)*
             };
 
             quote! {

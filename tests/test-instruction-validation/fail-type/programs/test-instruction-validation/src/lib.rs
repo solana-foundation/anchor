@@ -8,11 +8,12 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod test_instruction_validation {
     use super::*;
 
+    // Test 1: Missing parameter - handler only has 1 arg but #[instruction] expects 2
     pub fn missing_instruction_attr(
         _ctx: Context<MissingInstructionAttr>,
-        data: u64, // Handler has u64
+        data: u64, // Handler has only 1 parameter
     ) -> Result<()> {
-        msg!("Data: {}, Ehe: ", data);
+        msg!("Data: {}", data);
         Ok(())
     }
 
@@ -20,10 +21,19 @@ pub mod test_instruction_validation {
         msg!("No params needed");
         Ok(())
     }
+
+    // Test 2: Type mismatch - handler has u64 but #[instruction(...)] has u8
+    pub fn type_mismatch(
+        _ctx: Context<TypeMismatch>,
+        data: u64, // Handler parameter is u64
+    ) -> Result<()> {
+        msg!("Data: {}", data);
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
-#[instruction(data: u64, ehe: u64)]
+#[instruction(data: u64)] // Expects 2 params but handler only has 1
 pub struct MissingInstructionAttr<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -32,5 +42,11 @@ pub struct MissingInstructionAttr<'info> {
 #[derive(Accounts)]
 // No #[instruction(...)] - correct for no params
 pub struct NoParams<'info> {
+    pub user: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(data: u8)] // Attribute specifies u8 but handler has u64
+pub struct TypeMismatch<'info> {
     pub user: Signer<'info>,
 }

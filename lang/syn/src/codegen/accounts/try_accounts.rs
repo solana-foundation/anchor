@@ -114,21 +114,60 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    // Generate type validation methods for instruction parameters
+    let type_validation_methods = match &accs.instruction_api {
+        None => quote! {},
+        Some(ix_api) => {
+            let type_check_methods: Vec<proc_macro2::TokenStream> = ix_api
+                .iter()
+                .enumerate()
+                .map(|(idx, expr)| {
+                    if let Expr::Type(expr_type) = expr {
+                        let ty = &expr_type.ty;
+                        let method_name = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", idx),
+                            proc_macro2::Span::call_site(),
+                        );
+                        quote! {
+                            #[doc(hidden)]
+                            #[inline(always)]
+                            pub fn #method_name<T>(_arg: &T)
+                            where
+                                T: anchor_lang::__private::IsSameType<#ty>,
+                            {}
+                        }
+                    } else {
+                        panic!("Invalid instruction declaration");
+                    }
+                })
+                .collect();
+
+            quote! {
+                #(#type_check_methods)*
+            }
+        }
+    };
+
     let param_count_const = match &accs.instruction_api {
         None => quote! {
             #[automatically_derived]
             impl<#combined_generics> #name<#struct_generics> #where_clause {
                 #[doc(hidden)]
                 pub const __ANCHOR_IX_PARAM_COUNT: usize = 0;
+
+                #type_validation_methods
             }
         },
         Some(ix_api) => {
             let count = ix_api.len();
+
             quote! {
                 #[automatically_derived]
                 impl<#combined_generics> #name<#struct_generics> #where_clause {
                     #[doc(hidden)]
                     pub const __ANCHOR_IX_PARAM_COUNT: usize = #count;
+
+                    #type_validation_methods
                 }
             }
         }
