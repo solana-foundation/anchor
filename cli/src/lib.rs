@@ -1884,16 +1884,10 @@ fn _build_rust_cwd(
         }
 
         // Generate JavaScript client with Codama if enabled
-        let use_codama_js = cfg
-            .workspace
-            .codama
-            .as_ref()
-            .map(|c| c.generate_js)
-            .unwrap_or(false)
-            || codama_js; // CLI flag overrides
-
-        if use_codama_js {
-            codama_generate_js_client(cfg, &out)?;
+        if codama_js {
+            // Resolve full path to IDL
+            let idl_full_path = cfg_parent.join(&out);
+            codama_generate_js_client(cfg, &idl_full_path)?;
         }
     }
 
@@ -4493,11 +4487,7 @@ fn create_client<U: ToString>(url: U) -> RpcClient {
 // ============================================================================
 
 /// Create or update codama.config.json
-fn ensure_codama_config(
-    workspace_dir: &Path,
-    idl_path: &Path,
-    js_renderer: &str,
-) -> Result<PathBuf> {
+fn ensure_codama_config(workspace_dir: &Path, idl_path: &Path) -> Result<PathBuf> {
     let codama_config_path = workspace_dir.join("codama.config.json");
 
     if !codama_config_path.exists() {
@@ -4506,7 +4496,7 @@ fn ensure_codama_config(
             "idl": idl_path.display().to_string(),
             "scripts": {
                 "js": [{
-                    "from": js_renderer,
+                    "from": "@codama/renderers-js",
                     "args": [out_dir.display().to_string()]
                 }]
             }
@@ -4523,68 +4513,43 @@ fn ensure_codama_config(
 fn codama_generate_js_client(cfg: &WithPath<Config>, idl_path: &Path) -> Result<()> {
     let workspace_dir = cfg.path().parent().expect("Invalid Anchor.toml");
 
-    // Get JS renderer from config or use default
-    let js_renderer = cfg
-        .workspace
-        .codama
-        .as_ref()
-        .map(|c| c.js_renderer.clone())
-        .unwrap_or_else(|| "@codama/renderers-js".to_string());
-
     println!("Generating JavaScript client with Codama...");
 
-    // Install required Codama dependencies
-    let default_pkg_manager = PackageManager::default();
-    let pkg_manager = cfg.toolchain.package_manager.as_ref().unwrap_or(&default_pkg_manager);
-    let pkg_manager_cmd = pkg_manager.to_string();
-
-    // Different package managers use different commands to add dependencies
-    let install_cmd = match pkg_manager {
-        PackageManager::NPM => "install",
-        PackageManager::Yarn => "add",
-        PackageManager::PNPM => "install",
-        PackageManager::Bun => "install",
-    };
-
-    println!("Installing Codama dependencies...");
-    let install_status = std::process::Command::new(&pkg_manager_cmd)
-        .args([install_cmd, "@codama/nodes-from-anchor"])
-        .current_dir(workspace_dir)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !install_status.success() {
-        bail!("Failed to install @codama/nodes-from-anchor");
-    }
-
     // Ensure codama.config.json exists
-    ensure_codama_config(workspace_dir, idl_path, &js_renderer)?;
+    ensure_codama_config(workspace_dir, idl_path)?;
 
     // Run codama to generate JS client
     let config_path = workspace_dir.join("codama.config.json");
-    println!("Running: npx codama run js --config {}", config_path.display());
-    let status = std::process::Command::new("npx")
-        .args([
-            "codama",
-            "run",
-            "js",
-            "--config",
-            &config_path.display().to_string(),
-        ])
+    let config_path_str = config_path.display().to_string();
+
+    // Get package manager to determine how to run codama
+    let default_pkg_manager = PackageManager::default();
+    let pkg_manager = cfg.toolchain.package_manager.as_ref().unwrap_or(&default_pkg_manager);
+
+    // Use package manager's exec command to run locally installed codama
+    let (cmd, args): (&str, Vec<&str>) = match pkg_manager {
+        PackageManager::NPM => ("npx", vec!["codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::Yarn => ("yarn", vec!["run", "codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::PNPM => ("pnpm", vec!["exec", "codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::Bun => ("bunx", vec!["codama", "run", "js", "--config", &config_path_str]),
+    };
+
+    println!("Running: {} {}", cmd, args.join(" "));
+    let status = std::process::Command::new(cmd)
+        .args(&args)
         .current_dir(workspace_dir)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()?;
 
     if !status.success() {
-        bail!("Codama JS client generation failed");
+        bail!("Codama JS client generation failed. Ensure you have installed the required dependencies: @codama/cli, @codama/nodes-from-anchor, @codama/renderers-js");
     }
 
     // Verify output directory was created
     let out_dir = workspace_dir.join("ts-client");
     if !out_dir.exists() || !out_dir.is_dir() {
-        bail!("Codama reported success but output directory was not created. This usually means a required dependency is missing. Try running: pnpm install @codama/nodes-from-anchor");
+        bail!("Codama reported success but output directory was not created. Ensure you have installed the required dependencies: @codama/cli, @codama/nodes-from-anchor, @codama/renderers-js");
     }
 
     println!("✓ JavaScript client generated with Codama");

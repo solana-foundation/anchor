@@ -392,33 +392,6 @@ pub struct WorkspaceConfig {
     pub exclude: Vec<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub types: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codama: Option<CodamaConfig>,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct CodamaConfig {
-    /// Generate JavaScript client (requires @codama/renderers-js)
-    #[serde(default, rename = "generate-js")]
-    pub generate_js: bool,
-
-    /// JS renderer to use (default: @codama/renderers-js)
-    #[serde(default = "CodamaConfig::default_js_renderer", rename = "js-renderer")]
-    pub js_renderer: String,
-
-    /// Path to codama config file (default: "./codama.config.json")
-    #[serde(default = "CodamaConfig::default_config_path", rename = "config-path")]
-    pub config_path: String,
-}
-
-impl CodamaConfig {
-    fn default_js_renderer() -> String {
-        "@codama/renderers-js".to_string()
-    }
-
-    fn default_config_path() -> String {
-        "./codama.config.json".to_string()
-    }
 }
 
 #[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
