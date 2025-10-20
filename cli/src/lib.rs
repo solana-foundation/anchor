@@ -145,9 +145,6 @@ pub enum Command {
         /// Architecture to use when building the program
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
-        /// Generate JavaScript client with Codama
-        #[clap(long)]
-        codama_js: bool,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -313,6 +310,11 @@ pub enum Command {
     Keys {
         #[clap(subcommand)]
         subcmd: KeysCommand,
+    },
+    /// Client generation commands.
+    Client {
+        #[clap(subcommand)]
+        subcmd: ClientCommand,
     },
     /// Localnet commands.
     Localnet {
@@ -500,6 +502,19 @@ pub enum IdlCommand {
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ClientCommand {
+    /// Generate JavaScript client with Codama
+    CodamaJs {
+        /// Name of the program to generate client for
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Path to the IDL file
+        #[clap(short, long)]
+        idl_path: Option<String>,
     },
 }
 
@@ -784,7 +799,6 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_lint,
             no_docs,
             arch,
-            codama_js,
         } => build(
             &opts.cfg_override,
             no_idl,
@@ -802,7 +816,6 @@ fn process_command(opts: Opts) -> Result<()> {
             cargo_args,
             no_docs,
             arch,
-            codama_js,
         ),
         Command::Verify {
             program_id,
@@ -890,6 +903,7 @@ fn process_command(opts: Opts) -> Result<()> {
         } => run(&opts.cfg_override, script, script_args),
         Command::Login { token } => login(&opts.cfg_override, token),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
+        Command::Client { subcmd } => client(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
             skip_deploy,
@@ -1304,7 +1318,6 @@ pub fn build(
     cargo_args: Vec<String>,
     no_docs: bool,
     arch: ProgramArch,
-    codama_js: bool,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1362,7 +1375,6 @@ pub fn build(
             skip_lint,
             no_docs,
             arch,
-            codama_js,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -1379,7 +1391,6 @@ pub fn build(
             skip_lint,
             no_docs,
             arch,
-            codama_js,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_rust_cwd(
@@ -1396,7 +1407,6 @@ pub fn build(
             skip_lint,
             no_docs,
             &arch,
-            codama_js,
         )?,
     }
 
@@ -1420,7 +1430,6 @@ fn build_all(
     skip_lint: bool,
     no_docs: bool,
     arch: ProgramArch,
-    codama_js: bool,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -1441,7 +1450,6 @@ fn build_all(
                     skip_lint,
                     no_docs,
                     &arch,
-                    codama_js,
                 )?;
             }
             Ok(())
@@ -1467,7 +1475,6 @@ fn build_rust_cwd(
     skip_lint: bool,
     no_docs: bool,
     arch: &ProgramArch,
-    codama_js: bool,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
@@ -1475,7 +1482,7 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args, codama_js,
+            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1834,7 +1841,6 @@ fn _build_rust_cwd(
     no_docs: bool,
     arch: &ProgramArch,
     cargo_args: Vec<String>,
-    codama_js: bool,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
         .arg(arch.build_subcommand())
@@ -1881,13 +1887,6 @@ fn _build_rust_cwd(
                     .join(&idl.metadata.name)
                     .with_extension("ts"),
             )?;
-        }
-
-        // Generate JavaScript client with Codama if enabled
-        if codama_js {
-            // Resolve full path to IDL
-            let idl_full_path = cfg_parent.join(&out);
-            codama_generate_js_client(cfg, &idl_full_path)?;
         }
     }
 
@@ -2995,7 +2994,6 @@ fn test(
                 cargo_args,
                 false,
                 arch,
-                false, // codama_js
             )?;
         }
 
@@ -4170,6 +4168,44 @@ fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
     }
 }
 
+fn client(cfg_override: &ConfigOverride, cmd: ClientCommand) -> Result<()> {
+    match cmd {
+        ClientCommand::CodamaJs { program_name, idl_path } => client_codama_js(cfg_override, program_name, idl_path),
+    }
+}
+
+fn client_codama_js(cfg_override: &ConfigOverride, program_name: Option<String>, idl_path_arg: Option<String>) -> Result<()> {
+    with_workspace(cfg_override, |cfg| {
+        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+
+        // Determine which IDL to use
+        let idl_path = if let Some(path_str) = idl_path_arg {
+            // Use the provided IDL path
+            PathBuf::from(path_str)
+        } else if let Some(name) = program_name {
+            // Use the provided program name, converting kebab-case to snake_case
+            let normalized_name = name.replace('-', "_");
+            cfg_parent.join("target/idl").join(&normalized_name).with_extension("json")
+        } else {
+            // If no program name or IDL path specified, get the first program
+            let programs = cfg.read_all_programs()?;
+            if programs.is_empty() {
+                bail!("No programs found in workspace");
+            }
+            if programs.len() > 1 {
+                bail!("Multiple programs found. Please specify a program name with --program-name or an IDL path with --idl-path");
+            }
+            cfg_parent.join("target/idl").join(&programs[0].lib_name).with_extension("json")
+        };
+
+        if !idl_path.exists() {
+            bail!("IDL not found at {}. Please run 'anchor build' first.", idl_path.display());
+        }
+
+        codama_generate_js_client(cfg, &idl_path)
+    })
+}
+
 fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         for program in cfg.read_all_programs()? {
@@ -4288,7 +4324,6 @@ fn localnet(
                 cargo_args,
                 false,
                 arch,
-                false, // codama_js
             )?;
         }
 
