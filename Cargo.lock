@@ -4855,7 +4855,7 @@ dependencies = [
  "solana-last-restart-slot 3.0.0",
  "solana-msg 3.0.0",
  "solana-native-token 3.0.0",
- "solana-program-entrypoint 3.0.0",
+ "solana-program-entrypoint 3.1.0",
  "solana-program-error 3.0.0",
  "solana-program-memory 3.0.0",
  "solana-program-option 3.0.0",
@@ -4889,9 +4889,9 @@ dependencies = [
 
 [[package]]
 name = "solana-program-entrypoint"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb61aaf3bf54b69721fbaadb0942cfd41f608cf279e514c1362264a24e469a9e"
+checksum = "6557cf5b5e91745d1667447438a1baa7823c6086e4ece67f8e6ebfa7a8f72660"
 dependencies = [
  "solana-account-info 3.0.0",
  "solana-define-syscall 3.0.0",
@@ -5799,7 +5799,7 @@ dependencies = [
  "solana-hash 3.0.0",
  "solana-instruction 3.0.0",
  "solana-last-restart-slot 3.0.0",
- "solana-program-entrypoint 3.0.0",
+ "solana-program-entrypoint 3.1.0",
  "solana-program-error 3.0.0",
  "solana-program-memory 3.0.0",
  "solana-pubkey 3.0.0",
