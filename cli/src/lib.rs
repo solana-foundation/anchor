@@ -4176,26 +4176,23 @@ fn client(cfg_override: &ConfigOverride, cmd: ClientCommand) -> Result<()> {
 
 fn client_codama_js(cfg_override: &ConfigOverride, program_name: Option<String>, idl_path_arg: Option<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
-        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
+        let cfg_parent = cfg.path().parent().context("Invalid Anchor.toml path")?;
 
         // Determine which IDL to use
-        let idl_path = if let Some(path_str) = idl_path_arg {
-            // Use the provided IDL path
-            PathBuf::from(path_str)
-        } else if let Some(name) = program_name {
-            // Use the provided program name, converting kebab-case to snake_case
-            let normalized_name = name.replace('-', "_");
-            cfg_parent.join("target/idl").join(&normalized_name).with_extension("json")
-        } else {
-            // If no program name or IDL path specified, get the first program
-            let programs = cfg.read_all_programs()?;
-            if programs.is_empty() {
-                bail!("No programs found in workspace");
+        let idl_path = match (idl_path_arg, program_name) {
+            (Some(path_str), _) => PathBuf::from(path_str),
+            (None, Some(name)) => {
+                let normalized_name = name.replace('-', "_");
+                cfg_parent.join("target/idl").join(&normalized_name).with_extension("json")
             }
-            if programs.len() > 1 {
-                bail!("Multiple programs found. Please specify a program name with --program-name or an IDL path with --idl-path");
+            (None, None) => {
+                let programs = cfg.read_all_programs()?;
+                match programs.as_slice() {
+                    [] => bail!("No programs found in workspace"),
+                    [program] => cfg_parent.join("target/idl").join(&program.lib_name).with_extension("json"),
+                    _ => bail!("Multiple programs found. Please specify a program name with --program-name or an IDL path with --idl-path"),
+                }
             }
-            cfg_parent.join("target/idl").join(&programs[0].lib_name).with_extension("json")
         };
 
         if !idl_path.exists() {
@@ -4546,15 +4543,12 @@ fn ensure_codama_config(workspace_dir: &Path, idl_path: &Path) -> Result<PathBuf
 
 /// Generate JavaScript client using Codama
 fn codama_generate_js_client(cfg: &WithPath<Config>, idl_path: &Path) -> Result<()> {
-    let workspace_dir = cfg.path().parent().expect("Invalid Anchor.toml");
+    let workspace_dir = cfg.path().parent().context("Invalid Anchor.toml path")?;
 
     println!("Generating JavaScript client with Codama...");
 
     // Ensure codama.config.json exists
-    ensure_codama_config(workspace_dir, idl_path)?;
-
-    // Run codama to generate JS client
-    let config_path = workspace_dir.join("codama.config.json");
+    let config_path = ensure_codama_config(workspace_dir, idl_path)?;
     let config_path_str = config_path.display().to_string();
 
     // Get package manager to determine how to run codama
