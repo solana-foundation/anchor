@@ -204,11 +204,13 @@ mollusk-svm = "~0.4"
     };
 
     format!(
-        r#"[package]
+        r#"cargo-features = ["edition2024"]
+
+[package]
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -744,12 +746,16 @@ impl TestTemplate {
 }
 
 pub fn tests_cargo_toml(name: &str) -> String {
+    // TODO: remove `cargo-features` flag once figured out who the fuck is relying
+    // on Cargo (1.84.0 (12fe57a9d 2025-04-07)). Prolly solana cli, cz it is sus tho.
     format!(
-        r#"[package]
+        r#"cargo-features = ["edition2024"]
+
+[package]
 name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition = "2024"
 rust-version = "{msrv}"
 
 [dependencies]

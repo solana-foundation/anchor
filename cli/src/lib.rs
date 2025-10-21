@@ -966,9 +966,10 @@ fn init(
 
     let test_script = test_template.get_test_script(javascript, &package_manager);
     cfg.scripts.insert("test".to_owned(), test_script);
-
     let package_manager_cmd = package_manager.to_string();
-    cfg.toolchain.package_manager = Some(package_manager);
+    if test_template != TestTemplate::Rust {
+        cfg.toolchain.package_manager = Some(package_manager);
+    }
 
     let mut localnet = BTreeMap::new();
     let program_id = rust_template::get_or_create_program_id(&rust_name);
@@ -1013,14 +1014,14 @@ fn init(
     let license = get_npm_init_license()?;
 
     let jest = TestTemplate::Jest == test_template;
-    if javascript {
+    if javascript && test_template != TestTemplate::Rust {
         // Build javascript config
         let mut package_json = File::create("package.json")?;
         package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
         let mut deploy = File::create(migrations_path.join("deploy.js"))?;
         deploy.write_all(rust_template::deploy_script().as_bytes())?;
-    } else {
+    } else if !javascript && test_template != TestTemplate::Rust {
         // Build typescript config
         let mut ts_config = File::create("tsconfig.json")?;
         ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
@@ -1034,7 +1035,7 @@ fn init(
 
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
-    if !no_install {
+    if !no_install && test_template != TestTemplate::Rust {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
         if !package_manager_result.status.success() && package_manager_cmd != "npm" {
@@ -1048,6 +1049,7 @@ fn init(
     if !no_git {
         let git_result = std::process::Command::new("git")
             .arg("init")
+            .arg("--initial-branch=main")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
