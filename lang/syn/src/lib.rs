@@ -282,6 +282,7 @@ pub struct Field {
     pub constraints: ConstraintGroup,
     pub ty: Ty,
     pub is_optional: bool,
+    pub ty_span: Span,
     /// IDL Doc comment
     pub docs: Option<Vec<String>>,
 }
@@ -873,17 +874,107 @@ pub struct ConstraintInitGroup {
     pub kind: InitKind,
 }
 
+/// Seeds can be written as a literal slice (`[ a, b ]`) or any
+/// expression that produces `&[&[u8]]` at run time.
+#[derive(Debug, Clone)]
+pub enum SeedsExpr {
+    /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`
+    List(Punctuated<Expr, Token![,]>),
+    /// Example: `pda_seeds(key)`
+    Expr(Box<Expr>),
+}
+
+impl SeedsExpr {
+    /// Return the underlying `Punctuated` if this is the `List` form.
+    fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
+        match self {
+            SeedsExpr::List(list) => Some(list),
+            SeedsExpr::Expr(_) => None,
+        }
+    }
+
+    /// Mirrors `Punctuated::pop`: removes and returns the last element and its
+    /// trailing punctuation when this is the `List` variant. For the `Expr variant`,
+    /// which represents a single non-list seed expression, returns `None` because
+    /// there is no list to pop from.
+    pub fn pop(&mut self) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
+        self.list_mut()?.pop()
+    }
+
+    pub fn push_value(&mut self, value: Expr) {
+        if let Some(list) = self.list_mut() {
+            list.push_value(value);
+        }
+    }
+
+    /// Mirrors `Punctuated::push_value`: pushes a value without punctuation onto
+    /// the underlying list when this is the `List` variant. No-op for the `Expr`
+    /// variant.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            SeedsExpr::List(list) => list.is_empty(),
+            SeedsExpr::Expr(_) => false, // Treat as “one seed”
+        }
+    }
+
+    /// Immutable iteration over every seed expression, regardless of variant
+    pub fn iter(&self) -> Box<dyn Iterator<Item = &Expr> + '_> {
+        match self {
+            SeedsExpr::List(list) => Box::new(list.iter()),
+            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr.as_ref())),
+        }
+    }
+
+    /// The number of seeds represented: `list.len()` for `List` and `1` for `Expr`.
+    pub fn len(&self) -> usize {
+        match self {
+            SeedsExpr::List(list) => list.len(),
+            SeedsExpr::Expr(_) => 1,
+        }
+    }
+}
+
+/// Allow `quote!{ #seeds }`
+impl quote::ToTokens for SeedsExpr {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            SeedsExpr::List(list) => list.to_tokens(tokens),
+            SeedsExpr::Expr(expr) => expr.to_tokens(tokens),
+        }
+    }
+}
+
+impl syn::parse::Parse for SeedsExpr {
+    fn parse(stream: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        if stream.peek(syn::token::Bracket) {
+            let content;
+            syn::bracketed!(content in stream);
+            let mut list: Punctuated<Expr, Token![,]> = content.parse_terminated(Expr::parse)?;
+
+            // Strip a trailing comma if present.
+            // Use `pop_punct` when we update to syn 2.0
+            if let Some(pair) = list.pop() {
+                list.push_value(pair.into_value());
+            }
+
+            Ok(SeedsExpr::List(list))
+        } else {
+            Ok(SeedsExpr::Expr(Box::new(stream.parse()?)))
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
     pub bump: Option<Expr>,         // None => bump was given without a target.
     pub program_seed: Option<Expr>, // None => use the current program's program_id.
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintSeeds {
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
 }
 
 #[derive(Debug, Clone)]
