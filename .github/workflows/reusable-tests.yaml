@@ -272,7 +272,7 @@ jobs:
           path: tests/bpf-upgradeable-state/target
           key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: solana-test-validator -r --quiet &
+      - run: ./launch-test-validator.sh
         name: start validator
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
       - run: cd tests/bpf-upgradeable-state
