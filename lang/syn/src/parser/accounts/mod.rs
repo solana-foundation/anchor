@@ -315,6 +315,7 @@ pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
                 ty,
                 is_optional,
                 constraints: account_constraints,
+                ty_span: f.ty.span(),
                 docs,
             })
         }

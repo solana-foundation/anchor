@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(dead_code, deprecated)]
 
 use anchor_lang::prelude::borsh::maybestd::io::Write;
 use anchor_lang::prelude::*;
