@@ -2858,12 +2858,10 @@ fn deserialize_idl_type_to_json(
         }
         IdlType::F64 => json!(<f64 as AnchorDeserialize>::deserialize(data)?),
         IdlType::U128 => {
-            // TODO: Remove to_string once serde_json supports u128 deserialization
-            json!(<u128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<u128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::I128 => {
-            // TODO: Remove to_string once serde_json supports i128 deserialization
-            json!(<i128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<i128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::U256 => todo!("Upon completion of u256 IDL standard"),
         IdlType::I256 => todo!("Upon completion of i256 IDL standard"),
