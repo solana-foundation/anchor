@@ -92,7 +92,7 @@ pub enum Command {
         #[clap(long)]
         no_git: bool,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Test template to use
         #[clap(value_enum, long, default_value = "mocha")]
@@ -230,7 +230,7 @@ pub enum Command {
         /// Program name
         name: String,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Create new program even if there is already one
         #[clap(long, action)]
