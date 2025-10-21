@@ -128,7 +128,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         #[doc(hidden)]
                         #[inline(always)]
                         #[allow(unused)]
-                        pub fn #method_name<T>(_arg: &T) {
+                        pub fn #method_name<__T>(_arg: &__T) {
                             // no type validation when #[instruction(...)] is missing
                         }
                     }
@@ -140,6 +140,9 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             }
         }
         Some(ix_api) => {
+            let declared_count = ix_api.len();
+
+            // Generate strict validation methods for declared parameters
             let type_check_methods: Vec<proc_macro2::TokenStream> = ix_api
                 .iter()
                 .enumerate()
@@ -153,9 +156,9 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         quote! {
                             #[doc(hidden)]
                             #[inline(always)]
-                            pub fn #method_name<T>(_arg: &T)
+                            pub fn #method_name<__T>(_arg: &__T)
                             where
-                                T: anchor_lang::__private::IsSameType<#ty>,
+                                __T: anchor_lang::__private::IsSameType<#ty>,
                             {}
                         }
                     } else {
@@ -164,8 +167,26 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 })
                 .collect();
 
+            // stub methods for remaining argument positions
+            let stub_methods: Vec<proc_macro2::TokenStream> = (declared_count..16)
+                .map(|idx| {
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        #[doc(hidden)]
+                        #[inline(always)]
+                        #[allow(unused)]
+                        pub fn #method_name<__T>(_arg: &__T) {
+                        }
+                    }
+                })
+                .collect();
+
             quote! {
                 #(#type_check_methods)*
+                #(#stub_methods)*
             }
         }
     };
