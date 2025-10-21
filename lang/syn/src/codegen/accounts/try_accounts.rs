@@ -116,7 +116,29 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     // Generate type validation methods for instruction parameters
     let type_validation_methods = match &accs.instruction_api {
-        None => quote! {},
+        None => {
+            // generate stub methods for up to 16 possible arguments
+            let stub_methods: Vec<proc_macro2::TokenStream> = (0..16)
+                .map(|idx| {
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        #[doc(hidden)]
+                        #[inline(always)]
+                        #[allow(unused)]
+                        pub fn #method_name<T>(_arg: &T) {
+                            // no type validation when #[instruction(...)] is missing
+                        }
+                    }
+                })
+                .collect();
+
+            quote! {
+                #(#stub_methods)*
+            }
+        }
         Some(ix_api) => {
             let type_check_methods: Vec<proc_macro2::TokenStream> = ix_api
                 .iter()
