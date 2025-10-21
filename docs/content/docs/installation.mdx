@@ -727,7 +727,16 @@ anchor init my-project
 ```
 
 This command creates a new directory with the project name and initializes a new
-Anchor project with a basic Rust program and TypeScript test template.
+Anchor project with a modular Rust program structure and TypeScript test
+template.
+
+<Callout type="info">
+
+By default, Anchor uses a **modular structure** with separate files for
+instructions, state, constants, and errors. This organization improves code
+maintainability and is recommended for production code.
+
+</Callout>
 
 Navigate to the project directory:
 

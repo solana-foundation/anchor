@@ -23,10 +23,10 @@ const ANCHOR_MSRV: &str = "1.89.0";
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum ProgramTemplate {
-    /// Program with a single `lib.rs` file
-    #[default]
+    /// Program with a single `lib.rs` file (not recommended for production)
     Single,
-    /// Program with multiple files for instructions, state...
+    /// Program with multiple files for instructions, state... (recommended)
+    #[default]
     Multiple,
 }
 
@@ -44,7 +44,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     ];
 
     let template_files = match template {
-        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Single => {
+            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            create_program_template_single(name, &program_path)
+        }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
     };
 
