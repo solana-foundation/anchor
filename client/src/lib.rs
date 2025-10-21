@@ -74,6 +74,7 @@ use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
+use solana_account::Account;
 use solana_account_decoder::UiAccountEncoding;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
@@ -86,7 +87,6 @@ use solana_rpc_client_api::{
     filter::{Memcmp, RpcFilterType},
     response::{Response as RpcResponse, RpcLogsResponse},
 };
-use solana_sdk::account::Account;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::hash::Hash;
 use solana_sdk::instruction::{AccountMeta, Instruction};
