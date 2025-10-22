@@ -494,3 +494,44 @@ jobs:
         name: ${{ matrix.node.path }} program test
 
       - uses: ./.github/actions/git-diff/
+
+  test-cli:
+    needs: setup-anchor-cli
+    name: Test Anchor CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup/
+      - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-ts/
+
+      - uses: actions/cache@v3
+        if: ${{ env.CACHE != 'false' }}
+        name: Cache Cargo registry + index
+        id: cache-anchor
+        with:
+          path: ${{ env.CARGO_CACHE_PATH }}
+          key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ANCHOR_BINARY_NAME }}
+          path: ~/.cargo/bin/
+      - run: chmod +x ~/.cargo/bin/anchor
+
+      - uses: actions/cache@v3
+        if: ${{ env.CACHE != 'false' }}
+        name: Cache tests/cli target
+        id: cache-test-target
+        with:
+          path: tests/cli/output
+          key: cargo-${{ runner.os }}-tests/cli-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - run: sudo apt-get install -y jq
+        name: Install jq
+
+      - run: cd tests/cli && chmod +x test.sh && ./test.sh
+        name: Run CLI tests
+
+      - uses: ./.github/actions/git-diff/
