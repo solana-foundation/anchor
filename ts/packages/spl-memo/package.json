@@ -27,7 +27,7 @@
     "watch": "tsc -p tsconfig.cjs.json --watch"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "=0.31.1"
+    "@coral-xyz/anchor": "=0.32.1"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "=21.0.2",

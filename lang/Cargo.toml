@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang"
-version = "0.31.1"
+version = "0.32.1"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/coral-xyz/anchor"
 edition = "2021"
@@ -23,7 +23,7 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi"]
+event-cpi = ["anchor-attribute-event/event-cpi","anchor-attribute-account/event-cpi"]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
@@ -39,15 +39,15 @@ interface-instructions = ["anchor-attribute-program/interface-instructions"]
 lazy-account = ["anchor-attribute-account/lazy-account", "anchor-derive-serde/lazy-account"]
 
 [dependencies]
-anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.31.1" }
-anchor-attribute-account = { path = "./attribute/account", version = "0.31.1" }
-anchor-attribute-constant = { path = "./attribute/constant", version = "0.31.1" }
-anchor-attribute-error = { path = "./attribute/error", version = "0.31.1" }
-anchor-attribute-event = { path = "./attribute/event", version = "0.31.1" }
-anchor-attribute-program = { path = "./attribute/program", version = "0.31.1" }
-anchor-derive-accounts = { path = "./derive/accounts", version = "0.31.1" }
-anchor-derive-serde = { path = "./derive/serde", version = "0.31.1" }
-anchor-derive-space = { path = "./derive/space", version = "0.31.1" }
+anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.32.1" }
+anchor-attribute-account = { path = "./attribute/account", version = "0.32.1" }
+anchor-attribute-constant = { path = "./attribute/constant", version = "0.32.1" }
+anchor-attribute-error = { path = "./attribute/error", version = "0.32.1" }
+anchor-attribute-event = { path = "./attribute/event", version = "0.32.1" }
+anchor-attribute-program = { path = "./attribute/program", version = "0.32.1" }
+anchor-derive-accounts = { path = "./derive/accounts", version = "0.32.1" }
+anchor-derive-serde = { path = "./derive/serde", version = "0.32.1" }
+anchor-derive-space = { path = "./derive/space", version = "0.32.1" }
 
 # `anchor-lang-idl` should only be included with `idl-build` feature
 anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
@@ -56,6 +56,7 @@ base64 = "0.21"
 bincode = "1"
 borsh = "0.10.3"
 bytemuck = { version = "1", features = ["derive"] }
+const-crypto = "0.3.0"
 solana-account-info = "2"
 solana-clock = "2"
 solana-cpi = "2"
