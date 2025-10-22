@@ -588,6 +588,11 @@ pub mod __private {
     /// Trait for compile-time type equality checking.
     /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
     #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
     pub trait IsSameType<T> {}
 
     impl<T> IsSameType<T> for T {}
