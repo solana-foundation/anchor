@@ -75,10 +75,10 @@ diff_test() {
 }
 
 # build binary
-(
-  cd "${workspace_dir}"
-  cargo build -p anchor-cli --bin anchor
-)
+# (
+#   cd "${workspace_dir}"
+#   cargo build -p anchor-cli --bin anchor
+# )
 
 # ----- start: init -----
 (
