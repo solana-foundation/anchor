@@ -1,0 +1,15 @@
+[package]
+name = "bad_two"
+version = "0.1.0"
+description = "Bad example - missing reload after nested CPI"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+anchor-lang = { path = "../../../lang", features = ["init-if-needed"] }
+anchor-spl = { path = "../../../spl" }
+

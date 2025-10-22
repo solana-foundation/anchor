@@ -1,0 +1,15 @@
+[package]
+name = "double_cpi_test"
+version = "0.1.0"
+description = "Test for double CPI reload validation"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+anchor-lang = { path = "../../../lang", features = ["init-if-needed"] }
+anchor-spl = { path = "../../../spl" }
+
