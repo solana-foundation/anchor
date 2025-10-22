@@ -158,7 +158,7 @@ jobs:
   #     - uses: ./.github/actions/git-diff/
 
   # Temporarily commented out to save CI time during debugging
-  # setup-client-example:
+  setup-client-example:
     needs: setup-anchor-cli
     name: Setup Client Example Test
     runs-on: ubuntu-latest
