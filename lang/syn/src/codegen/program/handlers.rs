@@ -139,6 +139,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     quote! {
                         // Type validation for argument #idx
                         if #anchor::__ANCHOR_IX_PARAM_COUNT > #idx {
+                            #[allow(unreachable_code)]
                             if false {
                                 // This code is never executed but is type-checked at compile time
                                 let __type_check_arg: #arg_ty = panic!();
