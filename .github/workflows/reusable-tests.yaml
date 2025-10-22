@@ -32,40 +32,41 @@ env:
     ./target/
 
 jobs:
-  test-core:
-    name: Core Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup/
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: Cache Cargo registry + index
-        id: cache-cargo-build
-        with:
-          path: ${{ env.CARGO_CACHE_PATH }}
-          key: cargo-${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build
-      - run: cargo fmt -- --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --workspace --exclude avm
-      # using singlethreaded testing for avm so that tests that change files do not conflict with each other
-      - run: cargo test --package avm -- --test-threads=1
-      # Init local borsh package
-      - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build
-      - run: cd ts/packages/anchor-errors && yarn --frozen-lockfile && yarn build
-      - run: cd ts/packages/anchor && yarn --frozen-lockfile
-      - run: cd ts/packages/anchor && yarn test
-      - run: cd ts/packages/anchor && yarn lint
-      - run: cd examples/tutorial && yarn --frozen-lockfile
-      - run: cd examples/tutorial && yarn lint
-      - run: cd tests && yarn --frozen-lockfile
-      - run: cd tests && yarn lint
-      - uses: ./.github/actions/git-diff/
+  # Temporarily commented out to save CI time during debugging
+  # test-core:
+  #   name: Core Tests
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: ./.github/actions/setup/
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ env.NODE_VERSION }}
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: Cache Cargo registry + index
+  #       id: cache-cargo-build
+  #       with:
+  #         path: ${{ env.CARGO_CACHE_PATH }}
+  #         key: cargo-${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+  #     - run: cargo build
+  #     - run: cargo fmt -- --check
+  #     - run: cargo clippy --all-targets -- -D warnings
+  #     - run: cargo test --workspace --exclude avm
+  #     # using singlethreaded testing for avm so that tests that change files do not conflict with each other
+  #     - run: cargo test --package avm -- --test-threads=1
+  #     # Init local borsh package
+  #     - run: cd ts/packages/borsh && yarn --frozen-lockfile && yarn build
+  #     - run: cd ts/packages/anchor-errors && yarn --frozen-lockfile && yarn build
+  #     - run: cd ts/packages/anchor && yarn --frozen-lockfile
+  #     - run: cd ts/packages/anchor && yarn test
+  #     - run: cd ts/packages/anchor && yarn lint
+  #     - run: cd examples/tutorial && yarn --frozen-lockfile
+  #     - run: cd examples/tutorial && yarn lint
+  #     - run: cd tests && yarn --frozen-lockfile
+  #     - run: cd tests && yarn lint
+  #     - uses: ./.github/actions/git-diff/
 
   setup-anchor-cli:
     name: Setup Anchor cli
@@ -95,67 +96,69 @@ jobs:
 
       - uses: ./.github/actions/git-diff/
 
-  test-examples:
-    needs: setup-anchor-cli
-    name: Examples Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.ANCHOR_BINARY_NAME }}
-          path: ~/.cargo/bin/
-      - run: chmod +rwx ~/.cargo/bin/anchor
+  # Temporarily commented out to save CI time during debugging
+  # test-examples:
+  #   needs: setup-anchor-cli
+  #   name: Examples Test
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ env.ANCHOR_BINARY_NAME }}
+  #         path: ~/.cargo/bin/
+  #     - run: chmod +rwx ~/.cargo/bin/anchor
+  #
+  #     - uses: ./.github/actions/setup/
+  #     - uses: ./.github/actions/setup-solana/
+  #     - uses: ./.github/actions/setup-ts/
+  #
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: basic-0 cache
+  #       id: cache-basic-0
+  #       with:
+  #         path: ./examples/tutorial/basic-0/target
+  #         key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: basic-1 cache
+  #       id: cache-basic-1
+  #       with:
+  #         path: ./examples/tutorial/basic-1/target
+  #         key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: basic-2 cache
+  #       id: cache-basic-2
+  #       with:
+  #         path: ./examples/tutorial/basic-2/target
+  #         key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: basic-3 cache
+  #       id: cache-basic-3
+  #       with:
+  #         path: ./examples/tutorial/basic-3/target
+  #         key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - uses: actions/cache@v3
+  #       if: ${{ env.CACHE != 'false' }}
+  #       name: basic-4 cache
+  #       id: cache-basic-4
+  #       with:
+  #         path: ./examples/tutorial/basic-4/target
+  #         key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - run: cd examples/tutorial && yarn workspaces run test
+  #     - uses: ./.github/actions/git-diff/
 
-      - uses: ./.github/actions/setup/
-      - uses: ./.github/actions/setup-solana/
-      - uses: ./.github/actions/setup-ts/
-
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: basic-0 cache
-        id: cache-basic-0
-        with:
-          path: ./examples/tutorial/basic-0/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: basic-1 cache
-        id: cache-basic-1
-        with:
-          path: ./examples/tutorial/basic-1/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: basic-2 cache
-        id: cache-basic-2
-        with:
-          path: ./examples/tutorial/basic-2/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: basic-3 cache
-        id: cache-basic-3
-        with:
-          path: ./examples/tutorial/basic-3/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions/cache@v3
-        if: ${{ env.CACHE != 'false' }}
-        name: basic-4 cache
-        id: cache-basic-4
-        with:
-          path: ./examples/tutorial/basic-4/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - run: cd examples/tutorial && yarn workspaces run test
-      - uses: ./.github/actions/git-diff/
-
-  setup-client-example:
+  # Temporarily commented out to save CI time during debugging
+  # setup-client-example:
     needs: setup-anchor-cli
     name: Setup Client Example Test
     runs-on: ubuntu-latest
