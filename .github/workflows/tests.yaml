@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - tests/commands
     paths-ignore:
       - 'docs/**'
   pull_request:
