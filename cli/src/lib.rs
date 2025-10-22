@@ -370,6 +370,15 @@ pub enum IdlCommand {
         #[clap(long)]
         non_canonical: bool,
     },
+    /// Upgrades the IDL to the new file. An alias for first writing and then
+    /// then setting the idl buffer account.
+    Upgrade {
+        program_id: Pubkey,
+        #[clap(short, long)]
+        filepath: String,
+        #[clap(long)]
+        priority_fee: Option<u64>,
+    },
     /// Generates the IDL for the program using the compilation method.
     #[clap(alias = "b")]
     Build {
@@ -1951,6 +1960,11 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             priority_fee,
             non_canonical,
         ),
+        IdlCommand::Upgrade {
+            program_id,
+            filepath,
+            priority_fee,
+        } => idl_upgrade(cfg_override, program_id, filepath, priority_fee),
         IdlCommand::Build {
             program_name,
             out,
@@ -2054,6 +2068,43 @@ fn idl_init(
     println!("IDL initialized.");
     Ok(())
 }
+
+fn idl_upgrade(
+    cfg_override: &ConfigOverride,
+    program_id: Pubkey,
+    idl_filepath: String,
+    priority_fee: Option<u64>,
+) -> Result<()> {
+    let url = rpc_url(cfg_override)?;
+
+    let program_id_str = program_id.to_string();
+    let mut args = vec!["write", "idl", &program_id_str, &idl_filepath];
+
+    let priority_fee_str;
+    if let Some(priority_fee) = priority_fee {
+        priority_fee_str = priority_fee.to_string();
+        args.push("--priority-fees");
+        args.push(&priority_fee_str);
+    }
+
+    args.push("--rpc");
+    args.push(&url);
+
+    let status = ProcessCommand::new("npx")
+        .arg("@solana-program/program-metadata")
+        .args(&args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    if !status.success() {
+        return Err(anyhow!("Failed to upgrade IDL"));
+    }
+
+    println!("IDL upgraded.");
+    Ok(())
+}
+
 fn idl_build(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
@@ -3335,7 +3386,6 @@ fn deploy(
 
                 // Upload the IDL to the cluster by default (unless no_idl is set)
                 if !no_idl {
-<<<<<<< HEAD
                     // Wait for the program to be confirmed before initializing IDL to prevent
                     // race condition where the program isn't yet available in validator cache
                     let client = create_client(&url);
@@ -3365,7 +3415,9 @@ fn deploy(
                     }
 
                     // Check if IDL account already exists
-                    let idl_address = IdlAccount::address(&program_id);
+                    let (base, _) = Pubkey::find_program_address(&[], &program_id);
+                    let idl_address = Pubkey::create_with_seed(&base, "anchor:idl", &program_id)
+                        .expect("Seed is always valid");
                     let idl_account_exists = client.get_account(&idl_address).is_ok();
 
                     if idl_account_exists {
@@ -3383,17 +3435,9 @@ fn deploy(
                             program_id,
                             idl_filepath.display().to_string(),
                             None,
+                            false,
                         )?;
                     }
-=======
-                    idl_init(
-                        cfg_override,
-                        program_id,
-                        idl_filepath.display().to_string(),
-                        None,
-                        false,
-                    )?;
->>>>>>> e55f8ae8 (feat: Refactor RPC URL handling in IDL commands)
                 }
             }
         }
