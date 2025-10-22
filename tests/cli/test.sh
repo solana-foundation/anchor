@@ -15,7 +15,14 @@ anchor_cli() {
 setup_test() {
   test_dir="${output_dir}/${1}"
   rm -rf "${test_dir}"
-  cp -r "${initialize_dir}/${1}" "${test_dir}"
+  
+  # Only copy from initialize if the directory exists
+  if [ -d "${initialize_dir}/${1}" ]; then
+    cp -r "${initialize_dir}/${1}" "${test_dir}"
+  else
+    mkdir -p "${test_dir}"
+  fi
+  
   cd "${test_dir}"
 }
 
