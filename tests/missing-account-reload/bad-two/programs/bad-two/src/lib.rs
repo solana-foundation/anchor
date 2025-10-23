@@ -35,24 +35,9 @@ pub mod bad_two {
         Ok(())
     }
 
-    pub fn transfer_with_macro_cpi_bad(ctx: Context<Transfer>, amount: u64) -> Result<()> {
-        // CPI using builder pattern - should trigger warning
-        anchor_lang::system_program::transfer(
-            CpiContext::new(
-                ctx.accounts.system_program.key(),
-                anchor_lang::system_program::Transfer {
-                    from: ctx.accounts.user_account.to_account_info(),
-                    to: ctx.accounts.beneficiary.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-
-        // BAD: Access account without reload after CPI macro
-        let balance = ctx.accounts.user_account.balance;
-        msg!("Balance: {}", balance);
-
-        Ok(())
+    pub fn transfer_with_impl_method_bad(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+        // Call impl method that does CPI
+        ctx.accounts.transfer_impl(amount)
     }
 }
 
@@ -79,6 +64,30 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+// Impl block OUTSIDE #[program] module - tests file-level scanning
+impl<'info> Transfer<'info> {
+    pub fn transfer_impl(&mut self, amount: u64) -> Result<()> {
+        // CPI using invoke
+        anchor_lang::solana_program::program::invoke(
+            &system_instruction::transfer(
+                &self.user_account.key(),
+                &self.beneficiary.key(),
+                amount,
+            ),
+            &[
+                self.user_account.to_account_info(),
+                self.beneficiary.to_account_info(),
+            ],
+        )?;
+
+        // BAD: Access account without reload after CPI in impl method
+        let balance = self.user_account.balance;
+        msg!("Balance after impl transfer: {}", balance);
+
+        Ok(())
+    }
 }
 
 #[account]
