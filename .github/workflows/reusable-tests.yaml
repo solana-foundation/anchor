@@ -462,6 +462,8 @@ jobs:
             path: tests/idl
           - cmd: cd tests/lazy-account && anchor test
             path: tests/lazy-account
+          - cmd: cd tests/missing-account-reload && ./build-all.sh
+            path: tests/missing-account-reload
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

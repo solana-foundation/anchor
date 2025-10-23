@@ -7,6 +7,7 @@ pub struct ReloadViolation {
     pub function_name: String,
     pub account_name: String,
     pub span: proc_macro2::Span,
+    pub should_ignore: bool,
 }
 
 impl ReloadViolation {
@@ -121,11 +122,32 @@ impl<'a> ReloadChecker<'a> {
         let mut ctx = FunctionContext::new(func_name.clone());
         ctx.context_type = Some(context_type.to_string());
 
+        // Check for #[allow(missing_reload)] attribute
+        ctx.ignore_reload_checks = Self::has_ignore_reload_attr(&func.attrs);
+
         // Analyze the function body with inlining
         self.analyze_block(&func.block, &mut ctx, 0);
 
-        // Collect violations
-        self.violations.extend(ctx.violations);
+        // Collect violations (excluding ignored ones)
+        self.violations
+            .extend(ctx.violations.into_iter().filter(|v| !v.should_ignore));
+    }
+
+    fn has_ignore_reload_attr(attrs: &[syn::Attribute]) -> bool {
+        attrs.iter().any(|attr| {
+            // Check for #[allow(missing_reload)]
+            if attr.path.is_ident("allow") {
+                if let Ok(syn::Meta::List(meta_list)) = attr.parse_meta() {
+                    return meta_list.nested.iter().any(|nested| {
+                        if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested {
+                            return path.is_ident("missing_reload");
+                        }
+                        false
+                    });
+                }
+            }
+            false
+        })
     }
 
     fn analyze_block(&mut self, block: &syn::Block, ctx: &mut FunctionContext, depth: usize) {
@@ -568,8 +590,7 @@ impl<'a> ReloadChecker<'a> {
                     if *ident == "accounts" {
                         // Check if base is ctx
                         if let Expr::Path(path) = &*field.base {
-                            if path.path.segments.len() == 1
-                                && path.path.segments[0].ident == "ctx"
+                            if path.path.segments.len() == 1 && path.path.segments[0].ident == "ctx"
                             {
                                 return None; // Need one more level
                             }
@@ -636,6 +657,8 @@ struct FunctionContext {
     /// Maps local variable names to account names
     /// e.g., "my_var" -> "user_account" when: let my_var = ctx.accounts.user_account;
     var_to_account: HashMap<String, String>,
+    /// Whether this function has #[allow(missing_reload)] attribute
+    ignore_reload_checks: bool,
 }
 
 impl FunctionContext {
@@ -648,6 +671,7 @@ impl FunctionContext {
             violations: Vec::new(),
             param_to_account: HashMap::new(),
             var_to_account: HashMap::new(),
+            ignore_reload_checks: false,
         }
     }
 
@@ -670,6 +694,7 @@ impl FunctionContext {
                 function_name: self.function_name.clone(),
                 account_name: account.to_string(),
                 span,
+                should_ignore: self.ignore_reload_checks,
             });
             // Mark as reloaded to prevent reporting the same issue multiple times
             // for the same CPI until another CPI happens

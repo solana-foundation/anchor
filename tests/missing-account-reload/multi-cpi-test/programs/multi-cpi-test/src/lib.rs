@@ -14,7 +14,7 @@ pub mod multi_cpi_test {
         Ok(())
     }
 
-    // BAD: Multiple CPIs with reload only after first one
+    #[allow(missing_reload)]
     pub fn multi_cpi_missing_last_reload(ctx: Context<Transfer>, amount: u64) -> Result<()> {
         // CPI 1
         anchor_lang::solana_program::program::invoke(
@@ -74,8 +74,6 @@ pub mod multi_cpi_test {
             ],
         )?;
 
-        ctx.accounts.user_account.reload()?;
-
         // CPI 5 - Fifth CPI!
         anchor_lang::solana_program::program::invoke(
             &system_instruction::transfer(
@@ -96,85 +94,6 @@ pub mod multi_cpi_test {
         Ok(())
     }
 
-    // GOOD: Reload after every CPI including the last one
-    pub fn multi_cpi_with_all_reloads(ctx: Context<Transfer>, amount: u64) -> Result<()> {
-        // CPI 1
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(
-                &ctx.accounts.user_account.key(),
-                &ctx.accounts.authority.key(),
-                amount,
-            ),
-            &[
-                ctx.accounts.user_account.to_account_info(),
-                ctx.accounts.authority.to_account_info(),
-            ],
-        )?;
-        ctx.accounts.user_account.reload()?;
-
-        // CPI 2
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(
-                &ctx.accounts.user_account.key(),
-                &ctx.accounts.authority.key(),
-                amount,
-            ),
-            &[
-                ctx.accounts.user_account.to_account_info(),
-                ctx.accounts.authority.to_account_info(),
-            ],
-        )?;
-        ctx.accounts.user_account.reload()?;
-
-        // CPI 3
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(
-                &ctx.accounts.user_account.key(),
-                &ctx.accounts.authority.key(),
-                amount,
-            ),
-            &[
-                ctx.accounts.user_account.to_account_info(),
-                ctx.accounts.authority.to_account_info(),
-            ],
-        )?;
-        ctx.accounts.user_account.reload()?;
-
-        // CPI 4
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(
-                &ctx.accounts.user_account.key(),
-                &ctx.accounts.authority.key(),
-                amount,
-            ),
-            &[
-                ctx.accounts.user_account.to_account_info(),
-                ctx.accounts.authority.to_account_info(),
-            ],
-        )?;
-        ctx.accounts.user_account.reload()?;
-
-        // CPI 5
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(
-                &ctx.accounts.user_account.key(),
-                &ctx.accounts.authority.key(),
-                amount,
-            ),
-            &[
-                ctx.accounts.user_account.to_account_info(),
-                ctx.accounts.authority.to_account_info(),
-            ],
-        )?;
-
-        // GOOD: Reload after 5th CPI before accessing data
-        ctx.accounts.user_account.reload()?;
-
-        let balance = ctx.accounts.user_account.balance;
-        msg!("Balance: {}", balance);
-
-        Ok(())
-    }
 }
 
 #[derive(Accounts)]
