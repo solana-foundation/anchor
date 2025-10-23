@@ -14,11 +14,21 @@ pub mod bad_two {
         Ok(())
     }
 
-    pub fn transfer_with_cpi_bad(ctx: Context<Transfer>, amount: u64) -> Result<()> {
-        // Deep nested CPI calls - should trigger warning
-        level_a(&ctx.accounts.user_account, amount)?;
+    pub fn transfer_with_direct_cpi_bad(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+        // Direct CPI - should trigger warning
+        anchor_lang::solana_program::program::invoke(
+            &system_instruction::transfer(
+                &ctx.accounts.user_account.key(),
+                &ctx.accounts.authority.key(),
+                amount,
+            ),
+            &[
+                ctx.accounts.user_account.to_account_info(),
+                ctx.accounts.authority.to_account_info(),
+            ],
+        )?;
 
-         // BAD: Access account without reload after deep nested CPI
+        // BAD: Access account without reload after CPI
         let balance = ctx.accounts.user_account.balance;
         msg!("Balance: {}", balance);
 
@@ -29,7 +39,7 @@ pub mod bad_two {
         // CPI using builder pattern - should trigger warning
         anchor_lang::system_program::transfer(
             CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 anchor_lang::system_program::Transfer {
                     from: ctx.accounts.user_account.to_account_info(),
                     to: ctx.accounts.beneficiary.to_account_info(),
@@ -38,31 +48,10 @@ pub mod bad_two {
             amount,
         )?;
 
-         // BAD: Access account without reload after CPI macro
+        // BAD: Access account without reload after CPI macro
         let balance = ctx.accounts.user_account.balance;
         msg!("Balance: {}", balance);
 
-        Ok(())
-    }
-
-    // Level A calls Level B
-    fn level_a(account: &Account<UserAccount>, amount: u64) -> Result<()> {
-        level_b(account, amount)?;
-        Ok(())
-    }
-
-    // Level B calls Level C
-    fn level_b(account: &Account<UserAccount>, amount: u64) -> Result<()> {
-        level_c(account, amount)?;
-        Ok(())
-    }
-
-    // Level C does the actual CPI
-    fn level_c(account: &Account<UserAccount>, amount: u64) -> Result<()> {
-        anchor_lang::solana_program::program::invoke(
-            &system_instruction::transfer(&account.key(), &account.authority, amount),
-            &[account.to_account_info()],
-        )?;
         Ok(())
     }
 }
@@ -85,6 +74,7 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub user_account: Account<'info, UserAccount>,
     #[account(mut)]
+    /// CHECK: Beneficiary account is only used for receiving SOL
     pub beneficiary: AccountInfo<'info>,
     #[account(mut)]
     pub authority: Signer<'info>,

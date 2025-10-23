@@ -1,15 +1,16 @@
+[toolchain]
+
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
 [programs.localnet]
 good_two = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
-
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
