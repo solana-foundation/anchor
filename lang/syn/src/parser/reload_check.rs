@@ -565,11 +565,11 @@ impl<'a> ReloadChecker<'a> {
 
                 // Check if this field access completes the pattern
                 if let syn::Member::Named(ident) = &field.member {
-                    if ident.to_string() == "accounts" {
+                    if *ident == "accounts" {
                         // Check if base is ctx
                         if let Expr::Path(path) = &*field.base {
                             if path.path.segments.len() == 1
-                                && path.path.segments[0].ident.to_string() == "ctx"
+                                && path.path.segments[0].ident == "ctx"
                             {
                                 return None; // Need one more level
                             }
@@ -578,10 +578,10 @@ impl<'a> ReloadChecker<'a> {
                         // This might be the account name
                         if let Expr::Field(inner_field) = &*field.base {
                             if let syn::Member::Named(inner_ident) = &inner_field.member {
-                                if inner_ident.to_string() == "accounts" {
+                                if *inner_ident == "accounts" {
                                     if let Expr::Path(path) = &*inner_field.base {
                                         if path.path.segments.len() == 1
-                                            && path.path.segments[0].ident.to_string() == "ctx"
+                                            && path.path.segments[0].ident == "ctx"
                                         {
                                             return Some(ident.to_string());
                                         }
@@ -609,7 +609,7 @@ impl<'a> ReloadChecker<'a> {
             }
             Expr::MethodCall(method_call) => {
                 // Handle to_account_info() calls
-                if method_call.method.to_string() == "to_account_info" {
+                if method_call.method == "to_account_info" {
                     return Self::extract_account_name_impl(&method_call.receiver, param_mapping);
                 }
                 None
