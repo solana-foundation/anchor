@@ -23,7 +23,10 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi","anchor-attribute-account/event-cpi"]
+event-cpi = [
+    "anchor-attribute-event/event-cpi",
+    "anchor-attribute-account/event-cpi",
+]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
@@ -36,7 +39,10 @@ idl-build = [
 ]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 interface-instructions = ["anchor-attribute-program/interface-instructions"]
-lazy-account = ["anchor-attribute-account/lazy-account", "anchor-derive-serde/lazy-account"]
+lazy-account = [
+    "anchor-attribute-account/lazy-account",
+    "anchor-derive-serde/lazy-account",
+]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.32.1" }
@@ -80,5 +86,9 @@ solana-sysvar-id = "2"
 thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
- level = "warn"
- check-cfg = ['cfg(target_os, values("solana"))']
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(dylint_lib, values(any()))',
+    'cfg(dylint, values(any()))',
+]

@@ -22,9 +22,17 @@ impl<'tcx> LateLintPass<'tcx> for ExampleLint {
             && func.ident.as_str() == "sol_log"
             && let [arg] = &args
             && let ExprKind::Lit(lit) = arg.kind
-            && lit.node.str().is_some_and(|s| s.as_str() == "Hello, world!")
+            && lit
+                .node
+                .str()
+                .is_some_and(|s| s.as_str() == "Hello, world!")
         {
-            span_lint(cx, EXAMPLE_LINT, expr.span.source_callsite(), "Use of `msg!(\"Hello, world!\")`");
+            span_lint(
+                cx,
+                EXAMPLE_LINT,
+                expr.span.source_callsite(),
+                "Use of `msg!(\"Hello, world!\")`",
+            );
         }
     }
 }
