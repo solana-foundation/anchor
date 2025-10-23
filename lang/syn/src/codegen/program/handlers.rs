@@ -172,6 +172,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         mod __private {
             use super::*;
             /// __idl mod defines handlers for injected Anchor IDL instructions.
+            #[allow(deprecated, reason = "instructions make use of deprecated `AccountInfo`")]
             pub mod __idl {
                 use super::*;
 
