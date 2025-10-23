@@ -286,9 +286,9 @@ Solana version: 2.1.0
 | interface4                  | 1,189         | -                     |
 | interface8                  | 1,748         | -                     |
 | program1                    | 779           | -                     |
-| program2                    | 920           | -                     |
-| program4                    | 1,193         | -                     |
-| program8                    | 1,744         | -                     |
+| program2                    | 934           | 🔴 **+14 (1.52%)**    |
+| program4                    | 1,221         | 🔴 **+28 (2.35%)**    |
+| program8                    | 1,800         | 🔴 **+56 (3.21%)**    |
 | signer1                     | 774           | -                     |
 | signer2                     | 1,064         | -                     |
 | signer4                     | 1,637         | -                     |
