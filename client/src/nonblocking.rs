@@ -107,7 +107,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     /// Returns an [`EventUnsubscriber`] to unsubscribe and close connection gracefully.
     pub async fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber<'_>, ClientError> {
         let (handle, rx) = self.on_internal(f).await?;
 
