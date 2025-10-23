@@ -99,7 +99,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber<'_>, ClientError> {
         let (handle, rx) = self.rt.block_on(self.on_internal(f))?;
 
