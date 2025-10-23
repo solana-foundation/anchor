@@ -617,31 +617,38 @@ pub fn list_versions() -> Result<()> {
     let mut available_versions = fetch_versions()?;
     available_versions.sort();
 
-    let print_versions =
-        |versions: Vec<Version>, installed_versions: &mut Vec<Version>, show_latest: bool| {
-            versions.iter().enumerate().for_each(|(i, v)| {
-                print!("{v}");
-                let mut flags = vec![];
-                if i == versions.len() - 1 && show_latest {
-                    flags.push("latest");
-                }
-                if let Some(position) = installed_versions.iter().position(|iv| iv == v) {
-                    flags.push("installed");
-                    installed_versions.remove(position);
-                }
-                if current_version().map(|cv| &cv == v).unwrap_or_default() {
-                    flags.push("current");
-                }
+    let installed_set: std::collections::HashSet<_> = installed_versions.iter().cloned().collect();
 
-                if flags.is_empty() {
-                    println!();
-                } else {
-                    println!("\t({})", flags.join(", "));
-                }
-            })
-        };
-    print_versions(available_versions, &mut installed_versions, true);
-    print_versions(installed_versions.clone(), &mut installed_versions, false);
+    // Print helper function
+    let mut print_version_info = |v: &Version, flags: &[&str]| {
+        print!("{v}");
+        if !flags.is_empty() {
+            println!("\t({})", flags.join(", "));
+        } else {
+            println!();
+        }
+    };
+
+    // Print available versions with flags
+    let mut print_available_versions = |versions: Vec<Version>, show_latest: bool| {
+        for (i, v) in versions.iter().enumerate() {
+            let mut flags = vec![];
+            if i == versions.len() - 1 && show_latest {
+                flags.push("latest");
+            }
+            if installed_set.contains(v) {
+                flags.push("installed");
+                installed_versions.retain(|iv| iv != v);
+            }
+            if current_version().map_or(false, |cv| cv == *v) {
+                flags.push("current");
+            }
+            print_version_info(v, &flags);
+        }
+    };
+
+    print_available_versions(available_versions, true);
+    print_available_versions(installed_versions, false);
 
     Ok(())
 }
