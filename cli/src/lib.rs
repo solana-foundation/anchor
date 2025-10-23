@@ -44,6 +44,7 @@ use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
+mod lint;
 pub mod rust_template;
 
 // Version of the docker image.
@@ -348,6 +349,16 @@ pub enum Command {
     Completions {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
+    },
+    /// Run Anchor lints on this workspace.
+    Lint {
+        // TODO: Once lints are published to GitHub, we shoud load from there by default
+        /// Path containing lint library packages
+        #[clap(long)]
+        path: String,
+        /// Subdirectories of the `--path` argument containing lint library packages
+        #[clap(long)]
+        pattern: String,
     },
 }
 
@@ -914,6 +925,7 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::Lint { path, pattern } => lint::run(&path, &pattern),
     }
 }
 
