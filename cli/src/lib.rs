@@ -311,6 +311,11 @@ pub enum Command {
         #[clap(subcommand)]
         subcmd: KeysCommand,
     },
+    /// Client generation commands.
+    Client {
+        #[clap(subcommand)]
+        subcmd: ClientCommand,
+    },
     /// Localnet commands.
     Localnet {
         /// Flag to skip building the program in the workspace,
@@ -497,6 +502,19 @@ pub enum IdlCommand {
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ClientCommand {
+    /// Generate JavaScript client with Codama
+    CodamaJs {
+        /// Name of the program to generate client for
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Path to the IDL file
+        #[clap(short, long)]
+        idl_path: Option<String>,
     },
 }
 
@@ -885,6 +903,7 @@ fn process_command(opts: Opts) -> Result<()> {
         } => run(&opts.cfg_override, script, script_args),
         Command::Login { token } => login(&opts.cfg_override, token),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
+        Command::Client { subcmd } => client(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
             skip_deploy,
@@ -1854,7 +1873,7 @@ fn _build_rust_cwd(
         };
 
         // Write out the JSON file.
-        write_idl(&idl, OutFile::File(out))?;
+        write_idl(&idl, OutFile::File(out.clone()))?;
         // Write out the TypeScript type.
         fs::write(&ts_out, idl_ts(&idl)?)?;
 
@@ -4147,6 +4166,41 @@ fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
     }
 }
 
+fn client(cfg_override: &ConfigOverride, cmd: ClientCommand) -> Result<()> {
+    match cmd {
+        ClientCommand::CodamaJs { program_name, idl_path } => client_codama_js(cfg_override, program_name, idl_path),
+    }
+}
+
+fn client_codama_js(cfg_override: &ConfigOverride, program_name: Option<String>, idl_path_arg: Option<String>) -> Result<()> {
+    with_workspace(cfg_override, |cfg| {
+        let cfg_parent = cfg.path().parent().context("Invalid Anchor.toml path")?;
+
+        // Determine which IDL to use
+        let idl_path = match (idl_path_arg, program_name) {
+            (Some(path_str), _) => PathBuf::from(path_str),
+            (None, Some(name)) => {
+                let normalized_name = name.replace('-', "_");
+                cfg_parent.join("target/idl").join(&normalized_name).with_extension("json")
+            }
+            (None, None) => {
+                let programs = cfg.read_all_programs()?;
+                match programs.as_slice() {
+                    [] => bail!("No programs found in workspace"),
+                    [program] => cfg_parent.join("target/idl").join(&program.lib_name).with_extension("json"),
+                    _ => bail!("Multiple programs found. Please specify a program name with --program-name or an IDL path with --idl-path"),
+                }
+            }
+        };
+
+        if !idl_path.exists() {
+            bail!("IDL not found at {}. Please run 'anchor build' first.", idl_path.display());
+        }
+
+        codama_generate_js_client(cfg, &idl_path)
+    })
+}
+
 fn keys_list(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg| {
         for program in cfg.read_all_programs()? {
@@ -4456,6 +4510,77 @@ fn strip_workspace_prefix(absolute_path: String) -> String {
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+// ============================================================================
+// Codama Integration
+// ============================================================================
+
+/// Create or update codama.config.json
+fn ensure_codama_config(workspace_dir: &Path, idl_path: &Path) -> Result<PathBuf> {
+    let codama_config_path = workspace_dir.join("codama.config.json");
+
+    if !codama_config_path.exists() {
+        let out_dir = workspace_dir.join("ts-client");
+        let config = json!({
+            "idl": idl_path.display().to_string(),
+            "scripts": {
+                "js": [{
+                    "from": "@codama/renderers-js",
+                    "args": [out_dir.display().to_string()]
+                }]
+            }
+        });
+
+        fs::write(&codama_config_path, serde_json::to_string_pretty(&config)?)?;
+        println!("Created {}", codama_config_path.display());
+    }
+
+    Ok(codama_config_path)
+}
+
+/// Generate JavaScript client using Codama
+fn codama_generate_js_client(cfg: &WithPath<Config>, idl_path: &Path) -> Result<()> {
+    let workspace_dir = cfg.path().parent().context("Invalid Anchor.toml path")?;
+
+    println!("Generating JavaScript client with Codama...");
+
+    // Ensure codama.config.json exists
+    let config_path = ensure_codama_config(workspace_dir, idl_path)?;
+    let config_path_str = config_path.display().to_string();
+
+    // Get package manager to determine how to run codama
+    let default_pkg_manager = PackageManager::default();
+    let pkg_manager = cfg.toolchain.package_manager.as_ref().unwrap_or(&default_pkg_manager);
+
+    // Use package manager's exec command to run locally installed codama
+    let (cmd, args): (&str, Vec<&str>) = match pkg_manager {
+        PackageManager::NPM => ("npx", vec!["codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::Yarn => ("yarn", vec!["run", "codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::PNPM => ("pnpm", vec!["exec", "codama", "run", "js", "--config", &config_path_str]),
+        PackageManager::Bun => ("bunx", vec!["codama", "run", "js", "--config", &config_path_str]),
+    };
+
+    println!("Running: {} {}", cmd, args.join(" "));
+    let status = std::process::Command::new(cmd)
+        .args(&args)
+        .current_dir(workspace_dir)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    if !status.success() {
+        bail!("Codama JS client generation failed. Ensure you have installed the required dependencies: @codama/cli, @codama/nodes-from-anchor, @codama/renderers-js");
+    }
+
+    // Verify output directory was created
+    let out_dir = workspace_dir.join("ts-client");
+    if !out_dir.exists() || !out_dir.is_dir() {
+        bail!("Codama reported success but output directory was not created. Ensure you have installed the required dependencies: @codama/cli, @codama/nodes-from-anchor, @codama/renderers-js");
+    }
+
+    println!("✓ JavaScript client generated with Codama");
+    Ok(())
 }
 
 #[cfg(test)]
