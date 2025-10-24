@@ -9,13 +9,17 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::fn_has_unsatisfiable_preds;
-use rustc_hir::{Body, FnDecl, def_id::LocalDefId, intravisit::FnKind};
+use clippy_utils::ty::is_type_diagnostic_item;
+use rustc_hir::{Body as HirBody, FnDecl, def_id::LocalDefId, intravisit::FnKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::{BasicBlock, BasicBlocks, HasLocalDecls, Operand, TerminatorKind};
+use rustc_middle::mir::{
+    BasicBlock, BasicBlocks, Body as MirBody, HasLocalDecls, Operand, TerminatorKind,
+};
 use rustc_middle::ty::{self as rustc_ty, Ty};
+use rustc_span::source_map::Spanned;
 use rustc_span::{Span, Symbol};
 
-dylint_linting::declare_late_lint! {
+dylint_linting::impl_late_lint! {
     /// ### What it does
     /// Identifies access of an account without calling `reload()` after a CPI.
     ///
@@ -25,8 +29,12 @@ dylint_linting::declare_late_lint! {
     /// ```
     pub MISSING_ACCOUNT_RELOAD,
     Warn,
-    "account accessed after a CPI without reloading"
+    "account accessed after a CPI without reloading",
+    MissingAccountReload::default()
 }
+
+#[derive(Default)]
+pub struct MissingAccountReload;
 
 impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
     fn check_fn(
@@ -34,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
         cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         _: &FnDecl<'tcx>,
-        _: &Body<'tcx>,
+        _: &HirBody<'tcx>,
         _: Span,
         def_id: LocalDefId,
     ) {
@@ -46,6 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
         if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;
         }
+
         let account_reload_sym = Symbol::intern("AnchorAccountReload");
         let deref_method_sym = Symbol::intern("deref_method");
         let cpi_invoke_syms = [
@@ -81,40 +90,44 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
                 ..
             } = &bbdata.terminator().kind
                 && let rustc_ty::FnDef(fn_def_id, generics) = func.ty().kind()
+            {
                 // Check that it is a diag item
-                && let Some(diag_item) = cx
+                if let Some(diag_item) = cx
                     .tcx
                     .diagnostic_items(fn_def_id.krate)
                     .id_to_name
                     .get(fn_def_id)
-            {
-                // Check if it is Account::reload...
-                if *diag_item == account_reload_sym {
-                    // Extract the receiver
-                    if let Some(account) = args.get(0)
+                {
+                    // Check if it is Account::reload...
+                    if *diag_item == account_reload_sym {
+                        // Extract the receiver
+                        if let Some(account) = args.get(0)
                         && let Operand::Move(account) = account.node
                         // Get the corresponding local variable (should be a temporary &mut account.field)
                         && let Some(local) = account.as_local()
                         // Get the field type being accessed (`Account<AccountType>`)
                         && let Some(ty) = mir.local_decls().get(local).map(|d| d.ty.peel_refs())
-                    {
-                        account_reloads
-                            .entry(ty)
-                            .or_insert_with(HashSet::new)
-                            .insert(bb);
+                        {
+                            account_reloads
+                                .entry(ty)
+                                .or_insert_with(HashSet::new)
+                                .insert(bb);
+                        }
                     }
-                }
-                // Or a CPI invoke function
-                else if cpi_invoke_syms.contains(diag_item) {
+                    // Or a CPI invoke function
+                    else if cpi_invoke_syms.contains(diag_item) {
+                        cpi_calls.insert(bb, *fn_span);
+                    } else if *diag_item == deref_method_sym
+                        && let Some(deref_impl_ty_arg) = generics.first()
+                        && let Some(ty) = deref_impl_ty_arg.as_type()
+                    {
+                        account_accesses
+                            .entry(ty)
+                            .or_insert_with(HashMap::new)
+                            .insert(bb, *fn_span);
+                    }
+                } else if takes_cpi_context(cx, mir, args) {
                     cpi_calls.insert(bb, *fn_span);
-                } else if *diag_item == deref_method_sym
-                    && let Some(deref_impl_ty_arg) = generics.first()
-                    && let Some(ty) = deref_impl_ty_arg.as_type()
-                {
-                    account_accesses
-                        .entry(ty)
-                        .or_insert_with(HashMap::new)
-                        .insert(bb, *fn_span);
                 }
             }
         }
@@ -140,6 +153,19 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
             }
         }
     }
+}
+
+fn takes_cpi_context(cx: &LateContext<'_>, mir: &MirBody<'_>, args: &[Spanned<Operand>]) -> bool {
+    args.iter().any(|arg| {
+        if let Operand::Copy(place) | Operand::Move(place) = &arg.node
+            && let Some(local) = place.as_local()
+            && let Some(decl) = mir.local_decls().get(local)
+        {
+            is_type_diagnostic_item(cx, decl.ty.peel_refs(), Symbol::intern("AnchorCpiContext"))
+        } else {
+            false
+        }
+    })
 }
 
 /// Finds blocks in `to` that are reachable from `from` nodes without passing through `without` nodes

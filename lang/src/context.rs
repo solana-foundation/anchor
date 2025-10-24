@@ -168,6 +168,7 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiContext")]
 pub struct CpiContext<'a, 'b, 'c, 'info, T>
 where
     T: ToAccountMetas + ToAccountInfos<'info>,
