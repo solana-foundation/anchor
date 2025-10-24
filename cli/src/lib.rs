@@ -22,7 +22,11 @@ use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
+use solana_cli_config::Config as SolanaCliConfig;
+use solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription};
 use solana_rpc_client::rpc_client::RpcClient;
+use solana_rpc_client_api::config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter};
+use solana_rpc_client_api::response::{Response as RpcResponse, RpcLogsResponse};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -43,9 +47,14 @@ use std::str::FromStr;
 use std::string::ToString;
 use std::sync::LazyLock;
 
+mod account;
 mod checks;
 pub mod config;
+mod keygen;
+mod program;
 pub mod rust_template;
+
+use keygen::get_default_wallet_path;
 
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -53,6 +62,15 @@ pub const DOCKER_BUILDER_VERSION: &str = VERSION;
 
 /// Default RPC port
 pub const DEFAULT_RPC_PORT: u16 = 8899;
+
+/// WebSocket port offset for solana-test-validator (RPC port + 1)
+pub const WEBSOCKET_PORT_OFFSET: u16 = 1;
+
+/// Default Solana mainnet RPC URL
+pub const DEFAULT_MAINNET_RPC_URL: &str = "https://api.mainnet-beta.solana.com";
+
+/// Default Solana wallet path relative to home directory
+pub const DEFAULT_WALLET_PATH: &str = ".config/solana/id.json";
 
 pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     if let Ok(avm_home) = std::env::var("AVM_HOME") {
@@ -243,7 +261,8 @@ pub enum Command {
     },
     /// Remove all artifacts from the generated directories except program keypairs.
     Clean,
-    /// Deploys each program in the workspace.
+    /// [DEPRECATED] Deploys each program in the workspace. Use `anchor program deploy` instead.
+    #[clap(hide = true)]
     Deploy {
         /// Only deploy this program
         #[clap(short, long)]
@@ -257,15 +276,17 @@ pub enum Command {
         /// Don't upload IDL during deployment (IDL is uploaded by default)
         #[clap(long)]
         no_idl: bool,
+        /// Make the program immutable after deployment (cannot be upgraded)
+        #[clap(long = "final")]
+        make_final: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
     },
     /// Runs the deploy migration script.
     Migrate,
-    /// Deploys, initializes an IDL, and migrates all in one command.
-    /// Upgrades a single program. The configured wallet must be the upgrade
-    /// authority.
+    /// [DEPRECATED] Upgrades a single program. Use `anchor program upgrade` instead.
+    #[clap(hide = true)]
     Upgrade {
         /// The program to upgrade.
         #[clap(short, long)]
@@ -279,11 +300,12 @@ pub enum Command {
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
     },
-    #[cfg(feature = "dev")]
-    /// Runs an airdrop loop, continuously funding the configured wallet.
+    /// Request an airdrop of SOL
     Airdrop {
-        #[clap(short, long)]
-        url: Option<String>,
+        /// Amount of SOL to airdrop
+        amount: f64,
+        /// Recipient address (defaults to configured wallet)
+        pubkey: Option<Pubkey>,
     },
     /// Cluster commands.
     Cluster {
@@ -350,6 +372,49 @@ pub enum Command {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    /// Get your public key
+    Address {
+        /// Confirm key on device; only relevant if using remote wallet
+        #[clap(long)]
+        confirm_key: bool,
+    },
+    /// Get your balance
+    Balance {
+        /// Account to check balance for (defaults to configured wallet)
+        pubkey: Option<Pubkey>,
+        /// Display balance in lamports instead of SOL
+        #[clap(long)]
+        lamports: bool,
+    },
+    /// Get current epoch
+    Epoch,
+    /// Get information about the current epoch
+    EpochInfo,
+    /// Stream transaction logs
+    Logs {
+        /// Include vote transactions when monitoring all transactions
+        #[clap(long)]
+        include_votes: bool,
+        /// Addresses to filter logs by
+        #[clap(long)]
+        address: Option<Vec<Pubkey>>,
+    },
+    /// Show the contents of an account
+    #[clap(name = "show-account")]
+    ShowAccount {
+        #[clap(flatten)]
+        cmd: account::ShowAccountCommand,
+    },
+    /// Keypair generation and management
+    Keygen {
+        #[clap(subcommand)]
+        subcmd: KeygenCommand,
+    },
+    /// Program deployment and management (BPF Loader Upgradeable)
+    Program {
+        #[clap(subcommand)]
+        subcmd: ProgramCommand,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -361,6 +426,209 @@ pub enum KeysCommand {
         /// Only sync the given program instead of all programs
         #[clap(short, long)]
         program_name: Option<String>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum KeygenCommand {
+    /// Generate a new keypair
+    New {
+        /// Path to generated keypair file
+        #[clap(short = 'o', long)]
+        outfile: Option<String>,
+        /// Overwrite the output file if it exists
+        #[clap(short, long)]
+        force: bool,
+        /// Do not prompt for a passphrase
+        #[clap(long)]
+        no_passphrase: bool,
+        /// Do not display the generated pubkey
+        #[clap(long)]
+        silent: bool,
+        /// Number of words in the mnemonic phrase [possible values: 12, 15, 18, 21, 24]
+        #[clap(short = 'w', long, default_value = "12")]
+        word_count: usize,
+    },
+    /// Display the pubkey for a given keypair
+    Pubkey {
+        /// Keypair filepath
+        keypair: Option<String>,
+    },
+    /// Recover a keypair from a seed phrase
+    Recover {
+        /// Path to recovered keypair file
+        #[clap(short = 'o', long)]
+        outfile: Option<String>,
+        /// Overwrite the output file if it exists
+        #[clap(short, long)]
+        force: bool,
+        /// Skip seed phrase validation
+        #[clap(long)]
+        skip_seed_phrase_validation: bool,
+        /// Do not prompt for a passphrase
+        #[clap(long)]
+        no_passphrase: bool,
+    },
+    /// Verify a keypair can sign and verify a message
+    Verify {
+        /// Public key to verify
+        pubkey: Pubkey,
+        /// Keypair filepath (defaults to configured wallet)
+        keypair: Option<String>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ProgramCommand {
+    /// Deploy an upgradeable program
+    Deploy {
+        /// Program filepath (e.g., target/deploy/my_program.so).
+        /// If not provided, discovers programs from workspace
+        program_filepath: Option<String>,
+        /// Program name to deploy (from workspace). Used when program_filepath is not provided
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Program keypair filepath (defaults to target/deploy/{program_name}-keypair.json)
+        #[clap(long)]
+        program_keypair: Option<String>,
+        /// Upgrade authority keypair (defaults to configured wallet)
+        #[clap(long)]
+        upgrade_authority: Option<String>,
+        /// Program id to deploy to (derived from program-keypair if not specified)
+        #[clap(long)]
+        program_id: Option<Pubkey>,
+        /// Buffer account to use for deployment
+        #[clap(long)]
+        buffer: Option<Pubkey>,
+        /// Maximum transaction length (BPF loader upgradeable limit)
+        #[clap(long)]
+        max_len: Option<usize>,
+        /// Don't upload IDL during deployment (IDL is uploaded by default)
+        #[clap(long)]
+        no_idl: bool,
+        /// Make the program immutable after deployment (cannot be upgraded)
+        #[clap(long = "final")]
+        make_final: bool,
+        /// Additional arguments to configure deployment (e.g., --with-compute-unit-price 1000)
+        #[clap(required = false, last = true)]
+        solana_args: Vec<String>,
+    },
+    /// Write a program into a buffer account
+    WriteBuffer {
+        /// Program filepath (e.g., target/deploy/my_program.so).
+        /// If not provided, discovers program from workspace using program_name
+        program_filepath: Option<String>,
+        /// Program name to write (from workspace). Used when program_filepath is not provided
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Buffer account keypair (defaults to new keypair)
+        #[clap(long)]
+        buffer: Option<String>,
+        /// Buffer authority (defaults to configured wallet)
+        #[clap(long)]
+        buffer_authority: Option<String>,
+        /// Maximum transaction length
+        #[clap(long)]
+        max_len: Option<usize>,
+    },
+    /// Set a new buffer authority
+    SetBufferAuthority {
+        /// Buffer account address
+        buffer: Pubkey,
+        /// New buffer authority
+        new_buffer_authority: Pubkey,
+    },
+    /// Set a new program authority
+    SetUpgradeAuthority {
+        /// Program id
+        program_id: Pubkey,
+        /// New upgrade authority pubkey
+        #[clap(long)]
+        new_upgrade_authority: Option<Pubkey>,
+        /// New upgrade authority signer (keypair file). Required unless --skip-new-upgrade-authority-signer-check is used.
+        /// When provided, both current and new authority will sign (checked mode, recommended)
+        #[clap(long)]
+        new_upgrade_authority_signer: Option<String>,
+        /// Skip new upgrade authority signer check. Allows setting authority with only current authority signature.
+        /// WARNING: Less safe - use only if you're confident the pubkey is correct
+        #[clap(long)]
+        skip_new_upgrade_authority_signer_check: bool,
+        /// Make the program immutable (cannot be upgraded)
+        #[clap(long = "final")]
+        make_final: bool,
+        /// Current upgrade authority keypair (defaults to configured wallet)
+        #[clap(long)]
+        upgrade_authority: Option<String>,
+    },
+    /// Display information about a buffer or program
+    Show {
+        /// Account address (buffer or program)
+        account: Pubkey,
+        /// Get account information from the Solana config file
+        #[clap(long)]
+        get_programs: bool,
+        /// Get account information from the Solana config file
+        #[clap(long)]
+        get_buffers: bool,
+        /// Show all accounts
+        #[clap(long)]
+        all: bool,
+    },
+    /// Upgrade an upgradeable program
+    Upgrade {
+        /// Program id to upgrade
+        program_id: Pubkey,
+        /// Program filepath (e.g., target/deploy/my_program.so). If not provided, buffer must be specified
+        #[clap(long)]
+        program_filepath: Option<String>,
+        /// Existing buffer account to upgrade from. If not provided, program_filepath must be specified
+        #[clap(long)]
+        buffer: Option<Pubkey>,
+        /// Upgrade authority (defaults to configured wallet)
+        #[clap(long)]
+        upgrade_authority: Option<String>,
+        /// Max times to retry on failure
+        #[clap(long, default_value = "0")]
+        max_retries: u32,
+        /// Additional arguments to configure deployment (e.g., --with-compute-unit-price 1000)
+        #[clap(required = false, last = true)]
+        solana_args: Vec<String>,
+    },
+    /// Write the program data to a file
+    Dump {
+        /// Program account address
+        account: Pubkey,
+        /// Output file path
+        output_file: String,
+    },
+    /// Close a program or buffer account and withdraw all lamports
+    Close {
+        /// Account address to close (buffer or program).
+        /// If not provided, discovers program from workspace using program_name
+        account: Option<Pubkey>,
+        /// Program name to close (from workspace). Used when account is not provided
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Authority keypair (defaults to configured wallet)
+        #[clap(long)]
+        authority: Option<String>,
+        /// Recipient address for reclaimed lamports (defaults to authority)
+        #[clap(long)]
+        recipient: Option<Pubkey>,
+        /// Bypass warning prompts
+        #[clap(long)]
+        bypass_warning: bool,
+    },
+    /// Extend the length of an upgradeable program
+    Extend {
+        /// Program id to extend.
+        /// If not provided, discovers program from workspace using program_name
+        program_id: Option<Pubkey>,
+        /// Program name to extend (from workspace). Used when program_id is not provided
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Additional bytes to allocate
+        additional_bytes: usize,
     },
 }
 
@@ -820,15 +1088,29 @@ fn process_command(opts: Opts) -> Result<()> {
             program_keypair,
             verifiable,
             no_idl,
+            make_final,
             solana_args,
-        } => deploy(
-            &opts.cfg_override,
-            program_name,
-            program_keypair,
-            verifiable,
-            no_idl,
-            solana_args,
-        ),
+        } => {
+            // Show deprecation warning
+            eprintln!("⚠️  WARNING: 'anchor deploy' is deprecated.");
+            eprintln!("   Please use 'anchor program deploy' instead.");
+            eprintln!("   Example: anchor program deploy [PROGRAM_FILEPATH]\n");
+
+            program::process_deploy(
+                &opts.cfg_override,
+                None, // program_filepath
+                program_name,
+                program_keypair,
+                None, // upgrade_authority
+                None, // program_id
+                None, // buffer
+                None, // max_len
+                verifiable,
+                no_idl,
+                make_final,
+                solana_args,
+            )
+        }
         Command::Expand {
             program_name,
             cargo_args,
@@ -838,13 +1120,27 @@ fn process_command(opts: Opts) -> Result<()> {
             program_filepath,
             max_retries,
             solana_args,
-        } => upgrade(
-            &opts.cfg_override,
-            program_id,
-            program_filepath,
-            max_retries,
-            solana_args,
-        ),
+        } => {
+            // Show deprecation warning
+            eprintln!("⚠️  WARNING: 'anchor upgrade' is deprecated.");
+            eprintln!("   Please use 'anchor program upgrade' instead.");
+            eprintln!(
+                "   Example: anchor program upgrade <PROGRAM_ID> --program-filepath <PATH>\n"
+            );
+
+            // Redirect to new command
+            program::program(
+                &opts.cfg_override,
+                ProgramCommand::Upgrade {
+                    program_id,
+                    program_filepath: Some(program_filepath),
+                    buffer: None,
+                    upgrade_authority: None,
+                    max_retries,
+                    solana_args,
+                },
+            )
+        }
         Command::Idl { subcmd } => idl(&opts.cfg_override, subcmd),
         Command::Migrate => migrate(&opts.cfg_override),
         Command::Test {
@@ -875,8 +1171,7 @@ fn process_command(opts: Opts) -> Result<()> {
             cargo_args,
             arch,
         ),
-        #[cfg(feature = "dev")]
-        Command::Airdrop { .. } => airdrop(&opts.cfg_override),
+        Command::Airdrop { amount, pubkey } => airdrop(&opts.cfg_override, amount, pubkey),
         Command::Cluster { subcmd } => cluster(subcmd),
         Command::Shell => shell(&opts.cfg_override),
         Command::Run {
@@ -915,6 +1210,17 @@ fn process_command(opts: Opts) -> Result<()> {
             );
             Ok(())
         }
+        Command::Address { confirm_key } => address(&opts.cfg_override, confirm_key),
+        Command::Balance { pubkey, lamports } => balance(&opts.cfg_override, pubkey, lamports),
+        Command::Epoch => epoch(&opts.cfg_override),
+        Command::EpochInfo => epoch_info(&opts.cfg_override),
+        Command::Logs {
+            include_votes,
+            address,
+        } => logs_subscribe(&opts.cfg_override, include_votes, address),
+        Command::ShowAccount { cmd } => account::show_account(&opts.cfg_override, cmd),
+        Command::Keygen { subcmd } => keygen::keygen(&opts.cfg_override, subcmd),
+        Command::Program { subcmd } => program::program(&opts.cfg_override, subcmd),
     }
 }
 
@@ -1196,7 +1502,8 @@ pub fn expand(
         cd_member(cfg_override, program_name)?;
     }
 
-    let workspace_cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let workspace_cfg = Config::discover(cfg_override)?
+        .ok_or_else(|| anyhow!("The 'anchor expand' command requires an Anchor workspace."))?;
     let cfg_parent = workspace_cfg.path().parent().expect("Invalid Anchor.toml");
     let cargo = Manifest::discover()?;
 
@@ -1304,7 +1611,8 @@ pub fn build(
     if let Some(program_name) = program_name.as_ref() {
         cd_member(cfg_override, program_name)?;
     }
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    let cfg = Config::discover(cfg_override)?
+        .ok_or_else(|| anyhow!("The 'anchor build' command requires an Anchor workspace."))?;
     let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
 
     // Require overflow checks
@@ -1941,10 +2249,10 @@ pub fn verify(
 }
 
 fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
-    // Change directories to the given `program_name`, if given.
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
+    // Change directories to the given `program_name`, using either Anchor or Cargo workspace
+    let programs = program::get_programs_from_workspace(cfg_override, None)?;
 
-    for program in cfg.read_all_programs()? {
+    for program in programs {
         let cargo_toml = program.path.join("Cargo.toml");
         if !cargo_toml.exists() {
             return Err(anyhow!(
@@ -1955,8 +2263,7 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
 
         let manifest = Manifest::from_path(&cargo_toml)?;
         let pkg_name = manifest.package().name();
-        let lib_name = manifest.lib_name()?;
-        if program_name == pkg_name || program_name == lib_name {
+        if program_name == pkg_name || program_name == program.lib_name {
             std::env::set_current_dir(&program.path)?;
             return Ok(());
         }
@@ -2111,9 +2418,9 @@ fn idl_init(
         let idl = fs::read(idl_filepath)?;
         let idl = convert_idl(&idl)?;
 
-        let idl_address = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
+        // Silently create the IDL account
+        let _ = create_idl_account(cfg, &keypair, &program_id, &idl, priority_fee)?;
 
-        println!("Idl account created: {idl_address:?}");
         Ok(())
     })
 }
@@ -2428,12 +2735,9 @@ fn idl_write(
         e.finish()?
     };
 
-    println!("Idl data length: {:?} bytes", idl_data.len());
-
     const MAX_WRITE_SIZE: usize = 600;
     let mut offset = 0;
     while offset < idl_data.len() {
-        println!("Step {offset}/{} ", idl_data.len());
         // Instruction data.
         let data = {
             let start = offset;
@@ -2493,7 +2797,8 @@ fn idl_build(
     skip_lint: bool,
     cargo_args: Vec<String>,
 ) -> Result<()> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
+    let cfg = Config::discover(cfg_override)?
+        .ok_or_else(|| anyhow!("The 'anchor idl build' command requires an Anchor workspace."))?;
     let current_dir = std::env::current_dir()?;
     let program_path = match program_name {
         Some(name) => cfg.get_program(&name)?.path,
@@ -2685,9 +2990,8 @@ fn account(
 
     let idl = idl_filepath.map_or_else(
         || {
-            Config::discover(cfg_override)
-                .expect("Error when detecting workspace.")
-                .expect("Not in workspace.")
+            Config::discover(cfg_override)?
+                .ok_or_else(|| anyhow!("The 'anchor idl convert' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?
                 .read_all_programs()
                 .expect("Workspace must contain atleast one program.")
                 .into_iter()
@@ -2987,7 +3291,20 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, true, vec![])?;
+            program::process_deploy(
+                cfg_override,
+                None,   // program_filepath
+                None,   // program_name
+                None,   // program_keypair
+                None,   // upgrade_authority
+                None,   // program_id
+                None,   // buffer
+                None,   // max_len
+                false,  // verifiable
+                true,   // no_idl
+                false,  // make_final
+                vec![], // solana_args
+            )?;
         }
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
@@ -3097,8 +3414,15 @@ fn run_test_suite(
         get_node_dns_option()?,
     );
 
-    // Setup log reader.
-    let log_streams = stream_logs(cfg, &url);
+    // Setup log reader - kept alive until end of scope
+    let log_streams = match stream_logs(cfg, &url) {
+        Ok(streams) => Some(streams),
+        Err(e) => {
+            eprintln!("Warning: Failed to setup program log streaming: {:#}", e);
+            eprintln!("Program logs will still be visible in the test output.");
+            None
+        }
+    };
 
     // Run the tests.
     let test_result = {
@@ -3132,9 +3456,11 @@ fn run_test_suite(
             println!("Failed to kill subprocess {}: {}", child.id(), err);
         }
     }
-    for mut child in log_streams? {
-        if let Err(err) = child.kill() {
-            println!("Failed to kill subprocess {}: {}", child.id(), err);
+
+    // Explicitly shutdown log streams - closes WebSocket subscriptions
+    if let Some(log_streams) = log_streams {
+        for handle in log_streams {
+            handle.shutdown();
         }
     }
 
@@ -3326,14 +3652,93 @@ fn validator_flags(
     Ok(flags)
 }
 
-fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::process::Child>> {
+/// Handle for a log streaming thread.
+///
+/// Manages a WebSocket subscription and its associated receiver thread.
+/// Call `shutdown()` to cleanly stop the thread.
+struct LogStreamHandle {
+    subscription: PubsubClientSubscription<RpcResponse<RpcLogsResponse>>,
+}
+
+impl LogStreamHandle {
+    /// Explicitly shutdown the log stream
+    fn shutdown(self) {
+        // Send unsubscribe in a background thread to avoid blocking
+        // PubsubClientSubscription::send_unsubscribe() can block indefinitely if WebSocket is stuck
+        // The receiver threads will exit when the subscription closes
+        std::thread::spawn(move || {
+            let _ = self.subscription.send_unsubscribe();
+        });
+    }
+}
+
+/// Spawns a thread to receive logs from a subscription and write them to a file
+fn spawn_log_receiver_thread<R>(receiver: R, log_file_path: PathBuf)
+where
+    R: IntoIterator<Item = RpcResponse<RpcLogsResponse>> + Send + 'static,
+{
+    std::thread::spawn(move || {
+        if let Ok(mut file) = File::create(&log_file_path) {
+            for response in receiver {
+                let _ = writeln!(
+                    file,
+                    "Transaction executed in slot {}:",
+                    response.context.slot
+                );
+                let _ = writeln!(file, "  Signature: {}", response.value.signature);
+                let _ = writeln!(
+                    file,
+                    "  Status: {}",
+                    response
+                        .value
+                        .err
+                        .map(|err| err.to_string())
+                        .unwrap_or_else(|| "Ok".to_string())
+                );
+                let _ = writeln!(file, "  Log Messages:");
+                for log in response.value.logs {
+                    let _ = writeln!(file, "    {}", log);
+                }
+                let _ = writeln!(file); // Empty line between transactions
+                let _ = file.flush();
+            }
+        } else {
+            eprintln!("Failed to create log file: {:?}", log_file_path);
+        }
+    });
+}
+
+fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<LogStreamHandle>> {
     let program_logs_dir = Path::new(".anchor").join("program-logs");
     if program_logs_dir.exists() {
         fs::remove_dir_all(&program_logs_dir)?;
     }
     fs::create_dir_all(&program_logs_dir)?;
 
+    // For solana-test-validator, the WebSocket port is RPC port + WEBSOCKET_PORT_OFFSET
+    // Extract port from rpc_url and construct WebSocket URL
+    let ws_url = if rpc_url.contains("127.0.0.1") || rpc_url.contains("localhost") {
+        // Local validator: increment port by 1 for WebSocket
+        let rpc_port = rpc_url
+            .rsplit_once(':')
+            .and_then(|(_, port)| port.parse::<u16>().ok())
+            .unwrap_or(DEFAULT_RPC_PORT);
+
+        let ws_port = rpc_port + WEBSOCKET_PORT_OFFSET;
+        let url = format!("ws://127.0.0.1:{}", ws_port);
+        url
+    } else {
+        // Remote cluster: use same URL but replace http(s) with ws(s)
+        rpc_url
+            .replace("https://", "wss://")
+            .replace("http://", "ws://")
+    };
+
+    // Give the WebSocket endpoint a moment to be ready (especially for local validators)
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+
     let mut handles = vec![];
+
     for program in config.read_all_programs()? {
         let idl_path = Path::new("target")
             .join("idl")
@@ -3342,33 +3747,66 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
         let idl = fs::read(idl_path)?;
         let idl = convert_idl(&idl)?;
 
-        let log_file = File::create(
-            program_logs_dir.join(format!("{}.{}.log", idl.address, program.lib_name)),
-        )?;
-        let stdio = std::process::Stdio::from(log_file);
-        let child = std::process::Command::new("solana")
-            .arg("logs")
-            .arg(idl.address)
-            .arg("--url")
-            .arg(rpc_url)
-            .stdout(stdio)
-            .spawn()?;
-        handles.push(child);
+        let log_file_path =
+            program_logs_dir.join(format!("{}.{}.log", idl.address, program.lib_name));
+        let program_address = idl.address.clone();
+
+        // Subscribe to logs using PubsubClient
+        let (client, receiver) = match PubsubClient::logs_subscribe(
+            &ws_url,
+            RpcTransactionLogsFilter::Mentions(vec![program_address.clone()]),
+            RpcTransactionLogsConfig {
+                commitment: Some(CommitmentConfig::confirmed()),
+            },
+        ) {
+            Ok(result) => result,
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to subscribe to logs for program {}: {}",
+                    program.lib_name, e
+                );
+                continue;
+            }
+        };
+
+        // Spawn thread to write logs to file
+        spawn_log_receiver_thread(receiver, log_file_path);
+
+        handles.push(LogStreamHandle {
+            subscription: client,
+        });
     }
+
     if let Some(test) = config.test_validator.as_ref() {
         if let Some(genesis) = &test.genesis {
             for entry in genesis {
-                let log_file =
-                    File::create(program_logs_dir.join(&entry.address).with_extension("log"))?;
-                let stdio = std::process::Stdio::from(log_file);
-                let child = std::process::Command::new("solana")
-                    .arg("logs")
-                    .arg(entry.address.clone())
-                    .arg("--url")
-                    .arg(rpc_url)
-                    .stdout(stdio)
-                    .spawn()?;
-                handles.push(child);
+                let log_file_path = program_logs_dir.join(&entry.address).with_extension("log");
+                let address = entry.address.clone();
+
+                // Subscribe to logs using PubsubClient
+                let (client, receiver) = match PubsubClient::logs_subscribe(
+                    &ws_url,
+                    RpcTransactionLogsFilter::Mentions(vec![address.clone()]),
+                    RpcTransactionLogsConfig {
+                        commitment: Some(CommitmentConfig::confirmed()),
+                    },
+                ) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        eprintln!(
+                            "Warning: Failed to subscribe to logs for genesis program {}: {}",
+                            &entry.address, e
+                        );
+                        continue;
+                    }
+                };
+
+                // Spawn thread to write logs to file
+                spawn_log_receiver_thread(receiver, log_file_path);
+
+                handles.push(LogStreamHandle {
+                    subscription: client,
+                });
             }
         }
     }
@@ -3508,10 +3946,19 @@ fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
 }
 
 fn clean(cfg_override: &ConfigOverride) -> Result<()> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace.");
-    let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
-    let dot_anchor_dir = cfg_parent.join(".anchor");
-    let target_dir = cfg_parent.join("target");
+    // Get workspace root - either from Anchor.toml or use current directory
+    let workspace_root = if let Ok(Some(cfg)) = Config::discover(cfg_override) {
+        cfg.path()
+            .parent()
+            .expect("Invalid Anchor.toml")
+            .to_path_buf()
+    } else {
+        // No Anchor.toml - use current directory for Cargo workspace
+        std::env::current_dir()?
+    };
+
+    let dot_anchor_dir = workspace_root.join(".anchor");
+    let target_dir = workspace_root.join("target");
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -3547,184 +3994,6 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn deploy(
-    cfg_override: &ConfigOverride,
-    program_name: Option<String>,
-    program_keypair: Option<String>,
-    verifiable: bool,
-    no_idl: bool,
-    solana_args: Vec<String>,
-) -> Result<()> {
-    // Execute the code within the workspace
-    with_workspace(cfg_override, |cfg| {
-        let url = cluster_url(cfg, &cfg.test_validator);
-        let keypair = cfg.provider.wallet.to_string();
-
-        // Augment the given solana args with recommended defaults.
-        let client = create_client(&url);
-        let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
-
-        // Deploy the programs.
-        println!("Deploying cluster: {url}");
-        println!("Upgrade authority: {keypair}");
-
-        for mut program in cfg.get_programs(program_name)? {
-            let binary_path = program.binary_path(verifiable).display().to_string();
-
-            println!("Deploying program {:?}...", program.lib_name);
-            println!("Program path: {binary_path}...");
-
-            let (program_keypair_filepath, program_id) = match &program_keypair {
-                Some(path) => (path.clone(), get_keypair(path)?.pubkey()),
-                None => (
-                    program.keypair_file()?.path().display().to_string(),
-                    program.pubkey()?,
-                ),
-            };
-
-            // Send deploy transactions using the Solana CLI
-            let exit = std::process::Command::new("solana")
-                .arg("program")
-                .arg("deploy")
-                .arg("--url")
-                .arg(&url)
-                .arg("--keypair")
-                .arg(&keypair)
-                .arg("--program-id")
-                .arg(strip_workspace_prefix(program_keypair_filepath))
-                .arg(strip_workspace_prefix(binary_path))
-                .args(&solana_args)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()
-                .expect("Must deploy");
-
-            // Check if deployment was successful
-            if !exit.status.success() {
-                println!("There was a problem deploying: {exit:?}.");
-                std::process::exit(exit.status.code().unwrap_or(1));
-            }
-
-            // Get the IDL filepath
-            let idl_filepath = Path::new("target")
-                .join("idl")
-                .join(&program.lib_name)
-                .with_extension("json");
-
-            if let Some(idl) = program.idl.as_mut() {
-                // Add program address to the IDL.
-                idl.address = program_id.to_string();
-
-                // Persist it.
-                write_idl(idl, OutFile::File(idl_filepath.clone()))?;
-
-                // Upload the IDL to the cluster by default (unless no_idl is set)
-                if !no_idl {
-                    // Wait for the program to be confirmed before initializing IDL to prevent
-                    // race condition where the program isn't yet available in validator cache
-                    let client = create_client(&url);
-                    let max_retries = 5;
-                    let retry_delay = std::time::Duration::from_millis(500);
-                    let cache_delay = std::time::Duration::from_secs(2);
-
-                    println!("Waiting for program {} to be confirmed...", program_id);
-
-                    for attempt in 0..max_retries {
-                        if let Ok(account) = client.get_account(&program_id) {
-                            if account.executable {
-                                println!("Program confirmed on-chain");
-                                std::thread::sleep(cache_delay);
-                                break;
-                            }
-                        }
-
-                        if attempt == max_retries - 1 {
-                            return Err(anyhow!(
-                                "Timeout waiting for program {} to be confirmed",
-                                program_id
-                            ));
-                        }
-
-                        std::thread::sleep(retry_delay);
-                    }
-
-                    // Check if IDL account already exists
-                    let idl_address = IdlAccount::address(&program_id);
-                    let idl_account_exists = client.get_account(&idl_address).is_ok();
-
-                    if idl_account_exists {
-                        // IDL account exists, upgrade it
-                        idl_upgrade(
-                            cfg_override,
-                            program_id,
-                            idl_filepath.display().to_string(),
-                            None,
-                        )?;
-                    } else {
-                        // IDL account doesn't exist, create it
-                        idl_init(
-                            cfg_override,
-                            program_id,
-                            idl_filepath.display().to_string(),
-                            None,
-                        )?;
-                    }
-                }
-            }
-        }
-
-        println!("Deploy success");
-
-        Ok(())
-    })
-}
-
-fn upgrade(
-    cfg_override: &ConfigOverride,
-    program_id: Pubkey,
-    program_filepath: String,
-    max_retries: u32,
-    solana_args: Vec<String>,
-) -> Result<()> {
-    let path: PathBuf = program_filepath.parse().unwrap();
-    let program_filepath = path.canonicalize()?.display().to_string();
-
-    with_workspace(cfg_override, |cfg| {
-        let url = cluster_url(cfg, &cfg.test_validator);
-        let client = create_client(&url);
-        let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
-
-        for retry in 0..(1 + max_retries) {
-            let exit = std::process::Command::new("solana")
-                .arg("program")
-                .arg("deploy")
-                .arg("--url")
-                .arg(url.clone())
-                .arg("--keypair")
-                .arg(cfg.provider.wallet.to_string())
-                .arg("--program-id")
-                .arg(program_id.to_string())
-                .arg(strip_workspace_prefix(program_filepath.clone()))
-                .args(&solana_args)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .output()
-                .expect("Must deploy");
-            if exit.status.success() {
-                break;
-            }
-
-            println!("There was a problem deploying: {exit:?}.");
-            if retry < max_retries {
-                println!("Retrying {} more time(s)...", max_retries - retry);
-            } else {
-                std::process::exit(exit.status.code().unwrap_or(1));
-            }
-        }
-        Ok(())
-    })
 }
 
 fn create_idl_account(
@@ -3974,6 +4243,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
 }
 
 fn set_workspace_dir_or_exit() {
+    // First try to find Anchor workspace
     let d = match Config::discover(&ConfigOverride::default()) {
         Err(err) => {
             println!("Workspace configuration error: {err}");
@@ -3981,19 +4251,45 @@ fn set_workspace_dir_or_exit() {
         }
         Ok(d) => d,
     };
+
     match d {
         None => {
-            println!("Not in anchor workspace.");
-            std::process::exit(1);
+            // No Anchor.toml found - check for Cargo workspace with Solana programs
+            let current_dir = match std::env::current_dir() {
+                Ok(dir) => dir,
+                Err(_) => {
+                    println!("Unable to determine current directory");
+                    std::process::exit(1);
+                }
+            };
+
+            let cargo_toml_path = current_dir.join("Cargo.toml");
+            if !cargo_toml_path.exists() {
+                println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                std::process::exit(1);
+            }
+
+            // Check if this is a workspace and has Solana programs
+            match program::discover_solana_programs(None) {
+                Ok(programs) if !programs.is_empty() => {
+                    // Found Solana programs in Cargo workspace - stay in current directory
+                    // (already in the right place)
+                }
+                _ => {
+                    println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                    std::process::exit(1);
+                }
+            }
         }
         Some(cfg) => {
+            // Found Anchor.toml - change to workspace root
             match cfg.path().parent() {
                 None => {
                     println!("Unable to make new program");
                 }
                 Some(parent) => {
                     if std::env::set_current_dir(parent).is_err() {
-                        println!("Not in anchor workspace.");
+                        println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
                         std::process::exit(1);
                     }
                 }
@@ -4002,34 +4298,58 @@ fn set_workspace_dir_or_exit() {
     }
 }
 
-#[cfg(feature = "dev")]
-fn airdrop(cfg_override: &ConfigOverride) -> Result<()> {
-    let url = cfg_override
-        .cluster
-        .as_ref()
-        .unwrap_or(&Cluster::Devnet)
-        .url();
-    loop {
-        let exit = std::process::Command::new("solana")
-            .arg("airdrop")
-            .arg("10")
-            .arg("--url")
-            .arg(url)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .expect("Must airdrop");
-        if !exit.status.success() {
-            println!("There was a problem airdropping: {:?}.", exit);
-            std::process::exit(exit.status.code().unwrap_or(1));
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10000));
-    }
+fn airdrop(cfg_override: &ConfigOverride, amount: f64, pubkey: Option<Pubkey>) -> Result<()> {
+    // Get cluster URL and wallet path
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+
+    // Create RPC client
+    let client = RpcClient::new(cluster_url);
+
+    // Determine recipient
+    let recipient_pubkey = if let Some(pubkey) = pubkey {
+        pubkey
+    } else {
+        // Load keypair from wallet path and get pubkey
+        let keypair = Keypair::read_from_file(&wallet_path)
+            .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
+        keypair.pubkey()
+    };
+
+    // Convert SOL to lamports
+    let lamports = (amount * 1_000_000_000.0) as u64;
+
+    // Request airdrop
+    println!("Requesting airdrop of {} SOL", amount);
+
+    let signature = client
+        .request_airdrop(&recipient_pubkey, lamports)
+        .map_err(|e| anyhow!("Airdrop request failed: {}", e))?;
+
+    println!("Signature: {}", signature);
+
+    // Confirm the transaction
+    let recent_blockhash = client
+        .get_latest_blockhash()
+        .map_err(|e| anyhow!("Failed to get recent blockhash: {}", e))?;
+
+    client
+        .confirm_transaction_with_spinner(
+            &signature,
+            &recent_blockhash,
+            CommitmentConfig::confirmed(),
+        )
+        .map_err(|e| anyhow!("Transaction confirmation failed: {}", e))?;
+
+    // Get and display the new balance
+    let balance = client.get_balance(&recipient_pubkey)?;
+    println!("{}", format_sol(balance));
+
+    Ok(())
 }
 
 fn cluster(_cmd: ClusterCommand) -> Result<()> {
     println!("Cluster Endpoints:\n");
-    println!("* Mainnet - https://api.mainnet-beta.solana.com");
+    println!("* Mainnet - {}", DEFAULT_MAINNET_RPC_URL);
     println!("* Devnet  - https://api.devnet.solana.com");
     println!("* Testnet - https://api.testnet.solana.com");
     Ok(())
@@ -4275,9 +4595,22 @@ fn localnet(
 
         let validator_handle = &mut start_test_validator(cfg, &cfg.test_validator, flags, false)?;
 
-        // Setup log reader.
+        // Setup log reader - kept alive until end of scope
         let url = test_validator_rpc_url(&cfg.test_validator);
-        let log_streams = stream_logs(cfg, &url);
+        let log_streams = match stream_logs(cfg, &url) {
+            Ok(streams) => {
+                println!(
+                    "Log streams set up successfully ({} streams)",
+                    streams.len()
+                );
+                Some(streams)
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to setup program log streaming: {:#}", e);
+                eprintln!("  Program logs will still be visible in the validator output.");
+                None
+            }
+        };
 
         std::io::stdin().lock().lines().next().unwrap().unwrap();
 
@@ -4290,9 +4623,10 @@ fn localnet(
             );
         }
 
-        for mut child in log_streams? {
-            if let Err(err) = child.kill() {
-                println!("Failed to kill subprocess {}: {}", child.id(), err);
+        // Explicitly shutdown log streams - closes WebSocket subscriptions
+        if let Some(log_streams) = log_streams {
+            for handle in log_streams {
+                handle.shutdown();
             }
         }
 
@@ -4314,7 +4648,7 @@ fn with_workspace<R>(
 
     let mut cfg = Config::discover(cfg_override)
         .expect("Previously set the workspace dir")
-        .expect("Anchor.toml must always exist");
+        .expect("This command requires an Anchor workspace.");
 
     let r = f(&mut cfg);
 
@@ -4344,7 +4678,7 @@ fn get_node_version() -> Result<Version> {
     Version::parse(output).map_err(Into::into)
 }
 
-fn add_recommended_deployment_solana_args(
+pub fn add_recommended_deployment_solana_args(
     client: &RpcClient,
     args: Vec<String>,
 ) -> Result<Vec<String>> {
@@ -4384,7 +4718,7 @@ fn add_recommended_deployment_solana_args(
     Ok(augmented_args)
 }
 
-fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
+pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
     let mut fees = client.get_recent_prioritization_fees(&[])?;
     if fees.is_empty() {
         // Fees may be empty, e.g. on localnet
@@ -4406,7 +4740,7 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
 
 /// Prepend a compute unit ix, if the priority fee is greater than 0.
 /// This helps to improve the chances that the transaction will land.
-fn prepend_compute_unit_ix(
+pub fn prepend_compute_unit_ix(
     instructions: Vec<Instruction>,
     client: &RpcClient,
     priority_fee: Option<u64>,
@@ -4438,24 +4772,315 @@ fn get_node_dns_option() -> Result<&'static str> {
     Ok(option)
 }
 
-// Remove the current workspace directory if it prefixes a string.
-// This is used as a workaround for the Solana CLI using the uriparse crate to
-// parse args but not handling percent encoding/decoding when using the path as
-// a local filesystem path. Removing the workspace prefix handles most/all cases
-// of spaces in keypair/binary paths, but this should be fixed in the Solana CLI
-// and removed here.
-fn strip_workspace_prefix(absolute_path: String) -> String {
-    let workspace_prefix =
-        std::env::current_dir().unwrap().display().to_string() + std::path::MAIN_SEPARATOR_STR;
-    absolute_path
-        .strip_prefix(&workspace_prefix)
-        .unwrap_or(&absolute_path)
-        .into()
-}
-
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
 fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
+}
+
+/// Format lamports as SOL, removing trailing zeros
+fn format_sol(lamports: u64) -> String {
+    let sol = lamports as f64 / 1_000_000_000.0;
+    let formatted = format!("{:.8}", sol);
+
+    // Remove trailing zeros and decimal point if not needed
+    let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
+    format!("{} SOL", trimmed)
+}
+
+/// Get cluster URL and wallet path from Anchor config, CLI overrides, or Solana CLI config
+fn get_cluster_and_wallet(cfg_override: &ConfigOverride) -> Result<(String, String)> {
+    // Try to get from Anchor workspace config first
+    if let Ok(Some(cfg)) = Config::discover(cfg_override) {
+        return Ok((
+            cfg.provider.cluster.url().to_string(),
+            cfg.provider.wallet.to_string(),
+        ));
+    }
+
+    // Try to load Solana CLI config
+    let (cluster_url, wallet_path) =
+        if let Some(config_file) = solana_cli_config::CONFIG_FILE.as_ref() {
+            match SolanaCliConfig::load(config_file) {
+                Ok(cli_config) => (
+                    cli_config.json_rpc_url.clone(),
+                    cli_config.keypair_path.clone(),
+                ),
+                Err(_) => {
+                    // Fallback to defaults if Solana CLI config doesn't exist
+                    (
+                        DEFAULT_MAINNET_RPC_URL.to_string(),
+                        get_default_wallet_path()?,
+                    )
+                }
+            }
+        } else {
+            // If CONFIG_FILE is not available, use defaults
+            (
+                DEFAULT_MAINNET_RPC_URL.to_string(),
+                get_default_wallet_path()?,
+            )
+        };
+
+    // Apply any CLI overrides
+    let final_cluster_url = cfg_override
+        .cluster
+        .as_ref()
+        .map(|c| c.url().to_string())
+        .unwrap_or(cluster_url);
+
+    Ok((final_cluster_url, wallet_path))
+}
+
+fn address(cfg_override: &ConfigOverride, _confirm_key: bool) -> Result<()> {
+    // Get wallet path from config or use default
+    let wallet_path = match Config::discover(cfg_override) {
+        Ok(Some(cfg)) => cfg.provider.wallet.to_string(),
+        _ => {
+            // Not in workspace - use default Solana CLI path
+            get_default_wallet_path()?
+        }
+    };
+
+    // Load keypair and get pubkey
+    let keypair = Keypair::read_from_file(&wallet_path)
+        .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
+
+    // Print the public key
+    println!("{}", keypair.pubkey());
+
+    Ok(())
+}
+
+fn balance(cfg_override: &ConfigOverride, pubkey: Option<Pubkey>, lamports: bool) -> Result<()> {
+    // Get cluster URL and wallet path
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+
+    // Create RPC client
+    let client = RpcClient::new(cluster_url);
+
+    // Determine which account to check
+    let account_pubkey = if let Some(pubkey) = pubkey {
+        pubkey
+    } else {
+        // Load keypair from wallet path and get pubkey
+        let keypair = Keypair::read_from_file(&wallet_path)
+            .map_err(|e| anyhow!("Failed to read keypair from {}: {}", wallet_path, e))?;
+        keypair.pubkey()
+    };
+
+    // Get balance
+    let balance = client.get_balance(&account_pubkey)?;
+
+    // Format and display output
+    if lamports {
+        println!("{}", balance);
+    } else {
+        println!("{}", format_sol(balance));
+    }
+
+    Ok(())
+}
+
+fn epoch(cfg_override: &ConfigOverride) -> Result<()> {
+    // Get cluster URL
+    let (cluster_url, _) = get_cluster_and_wallet(cfg_override)?;
+
+    // Create RPC client
+    let client = RpcClient::new(cluster_url);
+
+    // Get epoch info
+    let epoch_info = client.get_epoch_info()?;
+
+    // Print just the epoch number
+    println!("{}", epoch_info.epoch);
+
+    Ok(())
+}
+
+fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
+    // Get cluster URL
+    let (cluster_url, _) = get_cluster_and_wallet(cfg_override)?;
+
+    // Create RPC client
+    let client = RpcClient::new(cluster_url);
+
+    // Get epoch info
+    let epoch_info = client.get_epoch_info()?;
+
+    // Calculate epoch slot range
+    let first_slot_in_epoch = epoch_info.absolute_slot - epoch_info.slot_index;
+    let last_slot_in_epoch = first_slot_in_epoch + epoch_info.slots_in_epoch;
+
+    // Calculate completion stats
+    let epoch_completed_percent =
+        epoch_info.slot_index as f64 / epoch_info.slots_in_epoch as f64 * 100.0;
+    let remaining_slots = epoch_info.slots_in_epoch - epoch_info.slot_index;
+
+    // Display epoch information (matching Solana CLI format)
+    println!("Block height: {}", epoch_info.block_height);
+    println!("Slot: {}", epoch_info.absolute_slot);
+    println!("Epoch: {}", epoch_info.epoch);
+
+    if let Some(tx_count) = epoch_info.transaction_count {
+        println!("Transaction Count: {}", tx_count);
+    }
+
+    println!(
+        "Epoch Slot Range: [{}..{})",
+        first_slot_in_epoch, last_slot_in_epoch
+    );
+    println!("Epoch Completed Percent: {:>3.3}%", epoch_completed_percent);
+    println!(
+        "Epoch Completed Slots: {}/{} ({} remaining)",
+        epoch_info.slot_index, epoch_info.slots_in_epoch, remaining_slots
+    );
+
+    // Try to calculate epoch completed time
+    // Get average slot time from performance samples (aggregate up to 60 samples)
+    if let Ok(samples) = client.get_recent_performance_samples(Some(60)) {
+        // Aggregate all samples to calculate average slot time
+        let (total_slots, total_secs) =
+            samples.iter().fold((0u64, 0u64), |(slots, secs), sample| {
+                (
+                    slots.saturating_add(sample.num_slots),
+                    secs.saturating_add(sample.sample_period_secs as u64),
+                )
+            });
+
+        if total_slots > 0 {
+            let avg_slot_time_ms = (total_secs * 1000) / total_slots;
+
+            // Calculate time_remaining using average slot time (always estimated)
+            let remaining_secs = (remaining_slots * avg_slot_time_ms) / 1000;
+
+            // Calculate time_elapsed - try actual block times first, then estimate
+            // Get the first actual block in the epoch and adjust for slot differences
+            let start_block_time = client
+                .get_blocks_with_limit(first_slot_in_epoch, 1)
+                .ok()
+                .and_then(|slots| slots.first().cloned())
+                .and_then(|first_actual_block| {
+                    client.get_block_time(first_actual_block).ok().map(|time| {
+                        // Adjust backwards if first actual block is after expected start
+                        let slot_diff = first_actual_block.saturating_sub(first_slot_in_epoch);
+                        let time_adjustment = (slot_diff * avg_slot_time_ms / 1000) as i64;
+                        time.saturating_sub(time_adjustment)
+                    })
+                });
+
+            let current_block_time = client.get_block_time(epoch_info.absolute_slot).ok();
+
+            let (elapsed_secs, is_estimated) = if let (Some(start_time), Some(current_time)) =
+                (start_block_time, current_block_time)
+            {
+                // Use actual block times for elapsed
+                ((current_time - start_time) as u64, false)
+            } else {
+                // Estimate elapsed using average slot time
+                ((epoch_info.slot_index * avg_slot_time_ms) / 1000, true)
+            };
+
+            // Total time = elapsed + remaining
+            let total_secs = elapsed_secs + remaining_secs;
+
+            let estimated_marker = if is_estimated { "*" } else { "" };
+            println!(
+                "Epoch Completed Time: {}{}/{} ({} remaining)",
+                format_duration_secs(elapsed_secs),
+                estimated_marker,
+                format_duration_secs(total_secs),
+                format_duration_secs(remaining_secs)
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn logs_subscribe(
+    cfg_override: &ConfigOverride,
+    include_votes: bool,
+    mentions: Option<Vec<Pubkey>>,
+) -> Result<()> {
+    // Get cluster URL
+    let (cluster_url, _) = get_cluster_and_wallet(cfg_override)?;
+
+    // Convert HTTP(S) URL to WebSocket URL
+    let ws_url = cluster_url
+        .replace("https://", "wss://")
+        .replace("http://", "ws://");
+
+    println!("Connecting to {}", ws_url);
+
+    let filter = match (include_votes, mentions) {
+        (true, Some(mentions)) => {
+            RpcTransactionLogsFilter::Mentions(mentions.iter().map(|p| p.to_string()).collect())
+        }
+        (true, None) => RpcTransactionLogsFilter::AllWithVotes,
+        (false, Some(mentions)) => {
+            RpcTransactionLogsFilter::Mentions(mentions.iter().map(|p| p.to_string()).collect())
+        }
+        (false, None) => RpcTransactionLogsFilter::All,
+    };
+
+    let (_client, receiver) = PubsubClient::logs_subscribe(
+        &ws_url,
+        filter,
+        RpcTransactionLogsConfig {
+            commitment: cfg_override
+                .commitment
+                .map(|commitment| CommitmentConfig { commitment }),
+        },
+    )?;
+
+    loop {
+        match receiver.recv() {
+            Ok(logs) => {
+                println!("Transaction executed in slot {}:", logs.context.slot);
+                println!("  Signature: {}", logs.value.signature);
+                println!(
+                    "  Status: {}",
+                    logs.value
+                        .err
+                        .map(|err| err.to_string())
+                        .unwrap_or_else(|| "Ok".to_string())
+                );
+                println!("  Log Messages:");
+                for log in logs.value.logs {
+                    println!("    {log}");
+                }
+            }
+            Err(err) => {
+                return Err(anyhow!("Disconnected: {err}"));
+            }
+        }
+    }
+}
+
+/// Format seconds into human-readable duration (e.g., "1day 5h 49m 8s")
+fn format_duration_secs(total_seconds: u64) -> String {
+    let seconds = total_seconds % 60;
+    let total_minutes = total_seconds / 60;
+    let minutes = total_minutes % 60;
+    let total_hours = total_minutes / 60;
+    let hours = total_hours % 24;
+    let days = total_hours / 24;
+
+    let mut parts = Vec::new();
+    if days > 0 {
+        parts.push(format!("{}day", days));
+    }
+    if hours > 0 {
+        parts.push(format!("{}h", hours));
+    }
+    if minutes > 0 {
+        parts.push(format!("{}m", minutes));
+    }
+    if seconds > 0 || parts.is_empty() {
+        parts.push(format!("{}s", seconds));
+    }
+
+    parts.join(" ")
 }
 
 #[cfg(test)]
@@ -4469,6 +5094,7 @@ mod tests {
             &ConfigOverride {
                 cluster: None,
                 wallet: None,
+                commitment: None,
             },
             "await".to_string(),
             true,
@@ -4489,6 +5115,7 @@ mod tests {
             &ConfigOverride {
                 cluster: None,
                 wallet: None,
+                commitment: None,
             },
             "fn".to_string(),
             true,
@@ -4509,6 +5136,7 @@ mod tests {
             &ConfigOverride {
                 cluster: None,
                 wallet: None,
+                commitment: None,
             },
             "1project".to_string(),
             true,

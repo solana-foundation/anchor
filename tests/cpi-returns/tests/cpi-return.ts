@@ -44,7 +44,7 @@ describe("CPI return", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([cpiReturn])
-      .rpc();
+      .rpc(confirmOptions);
   });
 
   it("can return u64 from a cpi", async () => {
@@ -57,6 +57,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -98,6 +99,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -136,6 +138,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);

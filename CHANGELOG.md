@@ -10,6 +10,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+- cli: Add `anchor program *` commands to replace `anchor deploy` and `anchor upgrade` & introduce new commands as well. ([#3963](https://github.com/solana-foundation/anchor/pull/3963)).
+
 ### Features
 
 ### Fixes
