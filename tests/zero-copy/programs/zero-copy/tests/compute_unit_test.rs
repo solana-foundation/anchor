@@ -3,10 +3,9 @@
 use {
     anchor_client::{
         anchor_lang::Discriminator,
-        solana_account::Account,
+        solana_pubkey::Pubkey,
         solana_sdk::{
             commitment_config::CommitmentConfig,
-            pubkey::Pubkey,
             signature::{Keypair, Signer},
             transaction::Transaction,
         },

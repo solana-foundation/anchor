@@ -113,6 +113,7 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
+pub use solana_pubkey;
 pub use solana_sdk;
 
 mod cluster;
