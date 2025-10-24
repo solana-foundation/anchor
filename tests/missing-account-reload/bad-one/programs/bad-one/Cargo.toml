@@ -1,0 +1,21 @@
+[package]
+name = "bad-one"
+version = "0.1.0"
+description = "Bad one program"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "bad_one"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = ["anchor-lang/anchor-debug"]
+
+[dependencies]
+anchor-lang = { path = "../../../../../lang" }

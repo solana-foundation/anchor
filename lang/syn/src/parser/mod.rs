@@ -3,6 +3,7 @@ pub mod context;
 pub mod docs;
 pub mod error;
 pub mod program;
+pub mod reload_check;
 pub mod spl_interface;
 
 pub fn tts_to_string<T: quote::ToTokens>(item: T) -> String {
