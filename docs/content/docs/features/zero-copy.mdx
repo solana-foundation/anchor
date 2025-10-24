@@ -5,6 +5,50 @@ description:
   account data in Solana programs.
 ---
 
+## Overview
+
+Zero-copy deserialization allows programs to read and write account data
+**directly from memory** without copying or deserializing it. This is essential
+for handling large accounts efficiently on Solana.
+
+### Why Use Zero-Copy?
+
+Traditional account deserialization (`Account<T>`) copies data from the account
+into a heap-allocated struct. This has limitations:
+
+- **Size Constraints**: Stack (4KB) and heap (32KB) limits restrict account sizes
+- **Compute Cost**: Deserialization consumes significant compute units
+- **Memory Overhead**: Data is duplicated in memory
+
+Zero-copy (`AccountLoader<T>`) instead:
+
+- **Direct Access**: Casts raw account bytes to the struct type (no copying)
+- **Larger Accounts**: Supports accounts up to 10MB (10,485,760 bytes)
+- **Lower Compute**: ~90% reduction in CU usage for large accounts
+- **In-Place Updates**: Modifies account data directly
+
+### Performance Comparison
+
+| Account Size | Account\<T\> | AccountLoader\<T\> | Improvement |
+| ------------ | ------------ | ------------------ | ----------- |
+| 1 KB         | ~8,000 CU    | ~1,500 CU          | 81% faster  |
+| 10 KB        | ~50,000 CU   | ~5,000 CU          | 90% faster  |
+| 100 KB       | Too large    | ~12,000 CU         | Possible    |
+| 1 MB         | Impossible   | ~25,000 CU         | Possible    |
+
+### When to Use Zero-Copy
+
+   **Use zero-copy for:**
+- Accounts larger than 1KB
+- Arrays with many elements (orderbooks, event queues)
+- High-frequency operations
+- Compute-sensitive programs
+ **Use regular Account\<T\> for:**
+- Small accounts (< 1KB)
+- Dynamic data structures (Vec, String, HashMap)
+- Frequently changing schemas
+- Simple state that doesn't need optimization
+
 ## Usage
 
 Zero copy is a deserialization feature that allows programs to read account data
@@ -192,6 +236,230 @@ pub fn read_only(ctx: Context<ReadOnly>) -> Result<()> {
     Ok(())
 }
 ```
+
+## Common Patterns
+
+### Nested Zero-Copy Types
+
+For types used within zero-copy accounts, use `#[zero_copy]` (without `account`):
+
+```rust
+#[account(zero_copy)]
+pub struct OrderBook {
+    pub market: Pubkey,
+    pub bids: [Order; 1000],
+    pub asks: [Order; 1000],
+}
+
+// [!code word:#[zero_copy]]
+#[zero_copy]
+pub struct Order {
+    pub trader: Pubkey,
+    pub price: u64,
+    pub quantity: u64,
+}
+```
+
+### Accessor Methods for Byte Arrays
+
+Zero-copy uses `#[repr(packed)]`, making field references unsafe. Use the
+`#[accessor]` attribute for safe getter/setter methods:
+
+```rust
+#[account(zero_copy)]
+pub struct Config {
+    pub authority: Pubkey,
+    // [!code word:accessor]
+    #[accessor(Pubkey)]
+    pub secondary_authority: [u8; 32],
+}
+
+// Usage:
+let config = &mut ctx.accounts.config.load_mut()?;
+let secondary = config.get_secondary_authority();
+config.set_secondary_authority(&new_authority);
+```
+
+### Zero-Copy with PDAs
+
+Zero-copy accounts work seamlessly with program-derived addresses:
+
+```rust
+#[derive(Accounts)]
+pub struct CreatePdaAccount<'info> {
+    #[account(
+        init,
+        // [!code word:seeds]
+        seeds = [b"data", authority.key().as_ref()],
+        bump,
+        payer = authority,
+        space = 8 + std::mem::size_of::<Data>(),
+    )]
+    pub data_account: AccountLoader<'info, Data>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+```
+
+### Separate Types for RPC Parameters
+
+Zero-copy types cannot derive `AnchorSerialize`/`AnchorDeserialize`. Use
+separate types for instruction parameters:
+
+```rust
+// For zero-copy account
+#[zero_copy]
+pub struct Event {
+    pub from: Pubkey,
+    pub data: u64,
+}
+
+// For RPC/instruction parameters
+// [!code word:AnchorSerialize]
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct EventParams {
+    pub from: Pubkey,
+    pub data: u64,
+}
+
+impl From<EventParams> for Event {
+    fn from(params: EventParams) -> Self {
+        Event {
+            from: params.from,
+            data: params.data,
+        }
+    }
+}
+```
+
+## Common Pitfalls
+
+### Forgetting the Account Discriminator
+
+Always add 8 bytes for the account discriminator when calculating space:
+
+```rust
+// Wrong - missing discriminator
+space = std::mem::size_of::<Data>()
+
+//    Correct - includes discriminator
+// [!code highlight]
+space = 8 + std::mem::size_of::<Data>()
+```
+
+### Using Dynamic Types
+
+Zero-copy requires all fields to be `Copy` types:
+
+```rust
+#[account(zero_copy)]
+pub struct InvalidData {
+    pub items: Vec<u64>,  // Vec is not Copy
+    pub name: String,     // String is not Copy
+}
+
+#[account(zero_copy)]
+pub struct ValidData {
+    pub items: [u64; 100], //     Fixed-size array
+    pub name: [u8; 32],    //     Fixed-size bytes
+}
+```
+
+### Using load_init vs load_mut
+
+Use `load_init()` for first-time initialization (sets discriminator):
+
+```rust
+// First initialization
+pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    // [!code highlight]
+    let account = &mut ctx.accounts.data_account.load_init()?;
+    account.data = [1; 10232];
+    Ok(())
+}
+
+// Subsequent updates
+pub fn update(ctx: Context<Update>) -> Result<()> {
+    // [!code highlight]
+    let account = &mut ctx.accounts.data_account.load_mut()?;
+    account.data = [2; 10232];
+    Ok(())
+}
+```
+
+### Not Validating Array Indices
+
+Always validate array indices to prevent panics:
+
+```rust
+pub fn update_item(
+    ctx: Context<Update>,
+    index: u32,
+    value: u64
+) -> Result<()> {
+    let account = &mut ctx.accounts.data_account.load_mut()?;
+    
+    // [!code highlight:4]
+    require!(
+        (index as usize) < account.items.len(),
+        ErrorCode::IndexOutOfBounds
+    );
+    
+    account.items[index as usize] = value;
+    Ok(())
+}
+```
+
+## Real-World Use Cases
+
+### Event Queue Pattern
+
+Store large sequences of events efficiently:
+
+```rust
+#[account(zero_copy)]
+pub struct EventQueue {
+    pub head: u64,
+    pub count: u64,
+    pub events: [Event; 10000],
+}
+
+#[zero_copy]
+pub struct Event {
+    pub timestamp: i64,
+    pub user: Pubkey,
+    pub event_type: u8,
+    pub data: [u8; 32],
+}
+```
+
+**Used by**: Trading protocols, audit logs, messaging systems
+
+### Order Book Pattern
+
+Efficient storage for trading pairs:
+
+```rust
+#[account(zero_copy)]
+pub struct OrderBook {
+    pub market: Pubkey,
+    pub bid_count: u32,
+    pub ask_count: u32,
+    pub bids: [Order; 1000],
+    pub asks: [Order; 1000],
+}
+
+#[zero_copy]
+pub struct Order {
+    pub trader: Pubkey,
+    pub price: u64,
+    pub size: u64,
+    pub timestamp: i64,
+}
+```
+
+**Used by**: DEXs (Serum, Mango), NFT marketplaces
 
 ## Examples
 
