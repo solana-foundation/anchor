@@ -59,6 +59,7 @@ pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
+pub use const_crypto::ed25519::derive_program_address;
 
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
@@ -67,12 +68,12 @@ pub mod solana_program {
     pub use solana_feature_gate_interface as feature;
 
     pub use {
-        solana_account_info as account_info, solana_clock as clock, solana_cpi as program,
-        solana_msg::msg, solana_program_entrypoint as entrypoint,
-        solana_program_entrypoint::entrypoint, solana_program_error as program_error,
-        solana_program_memory as program_memory, solana_program_option as program_option,
-        solana_program_pack as program_pack, solana_pubkey as pubkey,
-        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
+        solana_account_info as account_info, solana_clock as clock, solana_msg::msg,
+        solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
+        solana_program_error as program_error, solana_program_memory as program_memory,
+        solana_program_option as program_option, solana_program_pack as program_pack,
+        solana_pubkey as pubkey, solana_sdk_ids::system_program,
+        solana_system_interface::instruction as system_instruction,
     };
     pub mod instruction {
         pub use solana_instruction::*;
@@ -93,6 +94,10 @@ pub mod solana_program {
     }
     pub mod rent {
         pub use solana_sysvar::rent::*;
+    }
+    pub mod program {
+        pub use solana_cpi::*;
+        pub use solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked};
     }
 
     pub mod bpf_loader_upgradeable {
@@ -167,6 +172,12 @@ pub use idl::IdlBuild;
 pub use anchor_attribute_program::interface;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
+
+// Deprecated message for AccountInfo usage in Accounts struct
+#[deprecated(
+    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
+)]
+pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any
@@ -510,7 +521,6 @@ pub mod prelude {
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
-    pub use crate::solana_program::msg;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
     pub use crate::solana_program::sysvar::clock::Clock;
@@ -522,6 +532,7 @@ pub mod prelude {
     pub use crate::solana_program::sysvar::slot_history::SlotHistory;
     pub use crate::solana_program::sysvar::stake_history::StakeHistory;
     pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
+    pub use crate::solana_program::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;

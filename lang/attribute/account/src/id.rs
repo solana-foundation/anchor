@@ -39,6 +39,17 @@ fn id_to_tokens(
     pubkey_type: proc_macro2::TokenStream,
     tokens: &mut proc_macro2::TokenStream,
 ) {
+    let event_authority_and_bump = {
+        #[cfg(feature = "event-cpi")]
+        quote! {
+            pub const EVENT_AUTHORITY_AND_BUMP: (#pubkey_type, u8) = {
+                let (address, bump) = anchor_lang::derive_program_address(&[b"__event_authority"], &ID_CONST.to_bytes());
+                (#pubkey_type::new_from_array(address), bump)
+            };
+        }
+        #[cfg(not(feature = "event-cpi"))]
+        quote! {}
+    };
     tokens.extend(quote! {
         /// The static program ID
         pub static ID: #pubkey_type = #id;
@@ -60,6 +71,8 @@ fn id_to_tokens(
         pub const fn id_const() -> #pubkey_type {
             ID_CONST
         }
+
+        #event_authority_and_bump
 
         #[cfg(test)]
         #[test]

@@ -199,8 +199,8 @@ impl<'info> From<&mut InitializeEscrow<'info>>
                 .clone(),
             current_authority: accounts.initializer.to_account_info(),
         };
-        let cpi_program = accounts.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
@@ -210,8 +210,8 @@ impl<'info> CancelEscrow<'info> {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
             current_authority: self.pda_account.clone(),
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = self.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
@@ -221,8 +221,8 @@ impl<'info> Exchange<'info> {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
             current_authority: self.pda_account.clone(),
         };
-        let cpi_program = self.receive_token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = self.receive_token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
@@ -236,8 +236,8 @@ impl<'info> Exchange<'info> {
             to: self.taker_receive_token_account.to_account_info(),
             authority: self.pda_account.clone(),
         };
-        let cpi_program = self.receive_token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = self.receive_token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
@@ -254,7 +254,7 @@ impl<'info> Exchange<'info> {
                 .clone(),
             authority: self.taker.clone(),
         };
-        let cpi_program = self.deposit_token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = self.deposit_token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }

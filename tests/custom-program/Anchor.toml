@@ -1,0 +1,21 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+custom_program = "FdQ5d5kJDidxLP8qBm2d4G47QbDMWk6iWJ3QkYY2UAP7"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 tests/*.ts"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+ 
+[[test.validator.clone]]
+address = "9cxLzxjrTeodcbaEU3KCNGE1a4yFZEcdJ7uEXN378S4U"
+
+[[test.validator.clone]]
+address = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY"
+
+[[test.validator.clone]]
+address = "dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH"
