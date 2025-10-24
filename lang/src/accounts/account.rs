@@ -266,6 +266,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccountReload")]
     pub fn reload(&mut self) -> Result<()> {
         let mut data: &[u8] = &self.info.try_borrow_data()?;
         self.account = T::try_deserialize(&mut data)?;

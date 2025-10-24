@@ -1,4 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+// Enable `rustc_attrs` when linting so we can create diagnostic items
+#![cfg_attr(dylint, allow(internal_features))]
+#![cfg_attr(dylint, feature(rustc_attrs))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -96,8 +99,41 @@ pub mod solana_program {
         pub use solana_sysvar::rent::*;
     }
     pub mod program {
+        use solana_account_info::AccountInfo;
         pub use solana_cpi::*;
-        pub use solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked};
+        use solana_instruction::Instruction;
+        use solana_program_entrypoint::ProgramResult;
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvoke")]
+        pub fn invoke(instruction: &Instruction, account_infos: &[AccountInfo]) -> ProgramResult {
+            solana_invoke::invoke(instruction, account_infos)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeUnchecked")]
+        pub fn invoke_unchecked(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+        ) -> ProgramResult {
+            solana_invoke::invoke_unchecked(instruction, account_infos)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeSigned")]
+        pub fn invoke_signed(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            solana_invoke::invoke_signed(instruction, account_infos, signers_seeds)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeSignedUnchecked")]
+        pub fn invoke_signed_unchecked(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            solana_invoke::invoke_signed_unchecked(instruction, account_infos, signers_seeds)
+        }
     }
 
     pub mod bpf_loader_upgradeable {
