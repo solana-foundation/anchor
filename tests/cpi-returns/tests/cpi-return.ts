@@ -28,7 +28,12 @@ describe("CPI return", () => {
 
   const cpiReturn = anchor.web3.Keypair.generate();
 
-  const confirmOptions: ConfirmOptions = { commitment: "confirmed" };
+  const confirmOptions: ConfirmOptions = {
+    commitment: "confirmed",
+    preflightCommitment: "confirmed",
+    skipPreflight: true,
+    maxRetries: 3,
+  };
 
   it("can initialize", async () => {
     await calleeProgram.methods
