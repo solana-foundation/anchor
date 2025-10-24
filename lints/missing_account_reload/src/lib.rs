@@ -47,7 +47,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingAccountReload {
         def_id: LocalDefId,
     ) {
         match kind {
-            FnKind::ItemFn(ident, ..) if ident.as_str() == "initialize" => (),
+            FnKind::ItemFn(_, ..) => {
+                // Only analyze functions defined in the current crate to avoid analyzing dependencies and generated code
+                let path = cx.tcx.def_path_str(def_id.to_def_id());
+                let crate_name = cx.tcx.crate_name(def_id.to_def_id().krate).to_string();
+                if !path.starts_with(&crate_name) {
+                    return;
+                }
+            }
             _ => return,
         }
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
