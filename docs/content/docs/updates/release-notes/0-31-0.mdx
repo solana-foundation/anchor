@@ -102,7 +102,7 @@ Program name: `my-program`
 ### Pass `cargo` args to IDL build
 
 Both `anchor build` and `anchor idl build` commands pass the `cargo` arguments
-to the underyling IDL build command. For example:
+to the underlying IDL build command. For example:
 
 ```
 anchor build -- --features my-feature
@@ -274,7 +274,7 @@ still allows empty discriminators because some non-Anchor programs, e.g. the SPL
 Token program, don't have account discriminators. In that case, safety checks
 should never depend on the discriminator.
 
-Additionally, the IDL generation step also checks whether you have ambigious
+Additionally, the IDL generation step also checks whether you have ambiguous
 discriminators i.e. discriminators that can be used for multiple types. However,
 you should still consider future possibilities, especially when working with
 1-byte discriminators. For example, having an account with discriminator `[1]`
@@ -440,7 +440,7 @@ Building the IDL via the
 [`build_idl`](https://github.com/coral-xyz/anchor/blob/v0.31.0/idl/src/build.rs#L119)
 function made it impossible to extend its functionality e.g. add new parameters
 without a breaking change. To solve this problem, there is a new way to build
-IDLs programatically:
+IDLs programmatically:
 
 ```rs
 let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
