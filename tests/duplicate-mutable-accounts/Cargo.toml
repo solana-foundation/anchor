@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "programs/duplicate-mutable-accounts",
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
