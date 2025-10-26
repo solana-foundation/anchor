@@ -1,0 +1,6 @@
+[target.bpf]
+linker = "rust-lld"
+rustflags = [
+  "-C", "link-arg=--import-memory",
+  "-C", "link-arg=--export-table",
+]

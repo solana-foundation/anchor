@@ -66,6 +66,30 @@ impl CrateContext {
                 });
 
                 if has_accounts_derive {
+                    // Check for duplicate field names within the same struct
+                    let mut field_names = std::collections::HashSet::new();
+                    for field in &struct_item.fields {
+                        if let Some(ident) = &field.ident {
+                            let field_name = ident.to_string();
+                            if !field_names.insert(field_name.clone()) {
+                                let span = ident.span();
+                                return Err(anyhow!(
+                                    r#"
+        {}:{}:{}
+        Duplicate field name "{}" found in struct "{}".
+        Each field in an accounts struct must have a unique name.
+        Please rename one of the duplicate fields to resolve this conflict.
+                    "#,
+                                    ctx.file.canonicalize().unwrap().display(),
+                                    span.start().line,
+                                    span.start().column,
+                                    field_name,
+                                    struct_item.ident.to_string()
+                                ));
+                            }
+                        }
+                    }
+
                     for field in &struct_item.fields {
                         // Check if this field is an unsafe type
                         let is_unsafe_type = match &field.ty {
