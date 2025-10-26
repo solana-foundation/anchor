@@ -314,6 +314,15 @@ impl FromStr for IdlType {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Input validation
+        if s.is_empty() {
+            return Err(anyhow!("Type string cannot be empty"));
+        }
+
+        if s.len() > 1000 {
+            return Err(anyhow!("Type string too long (max 1000 chars)"));
+        }
+
         let mut s = s.to_owned();
         s.retain(|c| !c.is_whitespace());
 
@@ -341,7 +350,7 @@ impl FromStr for IdlType {
                     let inner_ty = Self::from_str(
                         inner
                             .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Option"))?,
+                            .ok_or_else(|| anyhow!("Invalid Option syntax: missing '>'"))?,
                     )?;
                     return Ok(IdlType::Option(Box::new(inner_ty)));
                 }
@@ -350,27 +359,79 @@ impl FromStr for IdlType {
                     let inner_ty = Self::from_str(
                         inner
                             .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Vec"))?,
+                            .ok_or_else(|| anyhow!("Invalid Vec syntax: missing '>'"))?,
                     )?;
                     return Ok(IdlType::Vec(Box::new(inner_ty)));
                 }
 
                 if s.starts_with('[') {
-                    fn array_from_str(inner: &str) -> IdlType {
+                    fn array_from_str(inner: &str) -> Result<IdlType, anyhow::Error> {
                         match inner.strip_suffix(']') {
-                            Some(nested_inner) => array_from_str(&nested_inner[1..]),
+                            Some(nested_inner) => {
+                                // Validate nested array has content
+                                if nested_inner.len() <= 1 {
+                                    return Err(anyhow!("Invalid nested array syntax"));
+                                }
+
+                                // Recursive call, now propagates errors
+                                array_from_str(&nested_inner[1..])
+                            }
                             None => {
-                                let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
-                                let ty = IdlType::from_str(raw_type).unwrap();
+                                // FIXED: Properly handle missing semicolon
+                                let (raw_type, raw_length) = inner
+                                    .rsplit_once(';')
+                                    .ok_or_else(|| anyhow!(
+                                        "Invalid array syntax: expected '[type; length]', found '[{}]'",
+                                        inner
+                                    ))?;
+
+                                // Validate type is not empty
+                                let raw_type = raw_type.trim();
+                                if raw_type.is_empty() {
+                                    return Err(anyhow!("Array type cannot be empty"));
+                                }
+
+                                // FIXED: Properly handle invalid type
+                                let ty = IdlType::from_str(raw_type)
+                                    .map_err(|e| anyhow!(
+                                        "Invalid array element type '{}': {}",
+                                        raw_type, e
+                                    ))?;
+
+                                // Validate length is not empty
+                                let raw_length = raw_length.trim();
+                                if raw_length.is_empty() {
+                                    return Err(anyhow!("Array length cannot be empty"));
+                                }
+
                                 let len = match raw_length.replace('_', "").parse::<usize>() {
-                                    Ok(len) => IdlArrayLen::Value(len),
-                                    Err(_) => IdlArrayLen::Generic(raw_length.to_owned()),
+                                    Ok(len) => {
+                                        // Validate reasonable array size
+                                        if len == 0 {
+                                            return Err(anyhow!("Array length cannot be zero"));
+                                        }
+                                        if len > 1_000_000 {
+                                            return Err(anyhow!("Array length too large (max 1,000,000)"));
+                                        }
+                                        IdlArrayLen::Value(len)
+                                    }
+                                    Err(_) => {
+                                        // Validate generic name format
+                                        if !raw_length.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                                            return Err(anyhow!(
+                                                "Invalid array length or generic name: '{}'",
+                                                raw_length
+                                            ));
+                                        }
+                                        IdlArrayLen::Generic(raw_length.to_owned())
+                                    }
                                 };
-                                IdlType::Array(Box::new(ty), len)
+
+                                Ok(IdlType::Array(Box::new(ty), len))
                             }
                         }
                     }
-                    return Ok(array_from_str(&s));
+                    return array_from_str(&s);
                 }
 
                 // Defined
@@ -380,7 +441,7 @@ impl FromStr for IdlType {
                         s.get(i + 1..)
                             .unwrap()
                             .strip_suffix('>')
-                            .unwrap()
+                            .ok_or_else(|| anyhow!("Invalid generic syntax: missing '>'"))?
                             .split(',')
                             .map(|g| g.trim().to_owned())
                             .map(|g| {
@@ -498,5 +559,111 @@ mod tests {
                 ],
             }
         )
+    }
+
+    // Tests for the vulnerability fix - missing semicolon
+    #[test]
+    fn array_missing_semicolon_error() {
+        let result = IdlType::from_str("[u8 32]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid array syntax"));
+    }
+
+    // Tests for the vulnerability fix - malformed syntax with colon
+    #[test]
+    fn array_malformed_colon_error() {
+        let result = IdlType::from_str("[u8:32]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid array syntax"));
+    }
+
+    // Tests for the vulnerability fix - empty type
+    #[test]
+    fn array_empty_type_error() {
+        let result = IdlType::from_str("[; 32]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Array type cannot be empty"));
+    }
+
+    // Tests for the vulnerability fix - empty length
+    #[test]
+    fn array_empty_length_error() {
+        let result = IdlType::from_str("[u8; ]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Array length cannot be empty"));
+    }
+
+    // Tests for the vulnerability fix - zero length
+    #[test]
+    fn array_zero_length_error() {
+        let result = IdlType::from_str("[u8; 0]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Array length cannot be zero"));
+    }
+
+    // Tests for the vulnerability fix - too large array
+    #[test]
+    fn array_too_large_error() {
+        let result = IdlType::from_str("[u8; 10000001]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Array length too large"));
+    }
+
+    // Tests for the vulnerability fix - invalid generic name
+    #[test]
+    fn array_invalid_generic_name_error() {
+        let result = IdlType::from_str("[u8; @invalid]");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid array length or generic name"));
+    }
+
+    // Tests for input validation - empty string
+    #[test]
+    fn empty_string_error() {
+        let result = IdlType::from_str("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Type string cannot be empty"));
+    }
+
+    // Tests for input validation - too long string
+    #[test]
+    fn too_long_string_error() {
+        let long_type = "a".repeat(1001);
+        let result = IdlType::from_str(&long_type);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Type string too long"));
+    }
+
+    // Tests for valid malformed numeric values in array
+    #[test]
+    fn array_numeric_parsing_edge_cases() {
+        // Valid cases that should work
+        assert!(IdlType::from_str("[u8; 1_000]").is_ok());
+        assert!(IdlType::from_str("[u8; 1_000_000]").is_ok());
+
+        // Invalid cases that should fail
+        assert!(IdlType::from_str("[u8; 1.5]").is_err());
+    }
+
+    // Tests for nested arrays with malformed syntax
+    #[test]
+    fn nested_array_malformed_error() {
+        let result = IdlType::from_str("[[u8 32]; 16]");
+        assert!(result.is_err());
+    }
+
+    // Tests for valid nested arrays still work
+    #[test]
+    fn valid_nested_array() {
+        assert_eq!(
+            IdlType::from_str("[[u8; 16]; 32]").unwrap(),
+            IdlType::Array(
+                Box::new(IdlType::Array(
+                    Box::new(IdlType::U8),
+                    IdlArrayLen::Value(16)
+                )),
+                IdlArrayLen::Value(32)
+            )
+        );
     }
 }
