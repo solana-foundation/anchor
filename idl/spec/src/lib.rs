@@ -392,11 +392,9 @@ impl FromStr for IdlType {
                                 }
 
                                 // FIXED: Properly handle invalid type
-                                let ty = IdlType::from_str(raw_type)
-                                    .map_err(|e| anyhow!(
-                                        "Invalid array element type '{}': {}",
-                                        raw_type, e
-                                    ))?;
+                                let ty = IdlType::from_str(raw_type).map_err(|e| {
+                                    anyhow!("Invalid array element type '{}': {}", raw_type, e)
+                                })?;
 
                                 // Validate length is not empty
                                 let raw_length = raw_length.trim();
@@ -411,13 +409,18 @@ impl FromStr for IdlType {
                                             return Err(anyhow!("Array length cannot be zero"));
                                         }
                                         if len > 1_000_000 {
-                                            return Err(anyhow!("Array length too large (max 1,000,000)"));
+                                            return Err(anyhow!(
+                                                "Array length too large (max 1,000,000)"
+                                            ));
                                         }
                                         IdlArrayLen::Value(len)
                                     }
                                     Err(_) => {
                                         // Validate generic name format
-                                        if !raw_length.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                                        if !raw_length
+                                            .chars()
+                                            .all(|c| c.is_alphanumeric() || c == '_')
+                                        {
                                             return Err(anyhow!(
                                                 "Invalid array length or generic name: '{}'",
                                                 raw_length
@@ -566,7 +569,10 @@ mod tests {
     fn array_missing_semicolon_error() {
         let result = IdlType::from_str("[u8 32]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid array syntax"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid array syntax"));
     }
 
     // Tests for the vulnerability fix - malformed syntax with colon
@@ -574,7 +580,10 @@ mod tests {
     fn array_malformed_colon_error() {
         let result = IdlType::from_str("[u8:32]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid array syntax"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid array syntax"));
     }
 
     // Tests for the vulnerability fix - empty type
@@ -582,7 +591,10 @@ mod tests {
     fn array_empty_type_error() {
         let result = IdlType::from_str("[; 32]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Array type cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Array type cannot be empty"));
     }
 
     // Tests for the vulnerability fix - empty length
@@ -590,7 +602,10 @@ mod tests {
     fn array_empty_length_error() {
         let result = IdlType::from_str("[u8; ]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Array length cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Array length cannot be empty"));
     }
 
     // Tests for the vulnerability fix - zero length
@@ -598,7 +613,10 @@ mod tests {
     fn array_zero_length_error() {
         let result = IdlType::from_str("[u8; 0]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Array length cannot be zero"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Array length cannot be zero"));
     }
 
     // Tests for the vulnerability fix - too large array
@@ -606,7 +624,10 @@ mod tests {
     fn array_too_large_error() {
         let result = IdlType::from_str("[u8; 10000001]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Array length too large"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Array length too large"));
     }
 
     // Tests for the vulnerability fix - invalid generic name
@@ -614,7 +635,10 @@ mod tests {
     fn array_invalid_generic_name_error() {
         let result = IdlType::from_str("[u8; @invalid]");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid array length or generic name"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid array length or generic name"));
     }
 
     // Tests for input validation - empty string
@@ -622,7 +646,10 @@ mod tests {
     fn empty_string_error() {
         let result = IdlType::from_str("");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Type string cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Type string cannot be empty"));
     }
 
     // Tests for input validation - too long string
@@ -631,7 +658,10 @@ mod tests {
         let long_type = "a".repeat(1001);
         let result = IdlType::from_str(&long_type);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Type string too long"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Type string too long"));
     }
 
     // Tests for valid malformed numeric values in array
