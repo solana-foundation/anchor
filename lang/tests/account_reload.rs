@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::AnchorSerialize;
-use solana_program::{account_info::AccountInfo, clock::Epoch, pubkey::Pubkey};
+use anchor_lang::solana_program::clock::Epoch;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
