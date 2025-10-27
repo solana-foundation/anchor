@@ -91,17 +91,20 @@ main() {
 }
 
 cleanup() {
-    local surfpool_pid=$1
+    local pid="${1:-}"
 
-    if [ -n "${surfpool_pid:-}" ]; then
-        echo "Killing surfpool process with PID: $surfpool_pid"
-        kill "$surfpool_pid" 2>/dev/null || true
+    if [ -n "$pid" ]; then
+        echo "Attempting to kill tracked surfpool process PID: $pid"
+        kill "$pid" 2>/dev/null || true
         sleep 1
-        kill -9 "$surfpool_pid" 2>/dev/null || true
+        kill -9 "$pid" 2>/dev/null || true
     fi
 
-    # Kill remaining children
-    pkill -P $$ || true
+    echo "Ensuring all surfpool processes are stopped..."
+    pkill -9 -f 'surfpool' 2>/dev/null || true
+
+    # Clean up any sub-processes from this script
+    pkill -P $$ 2>/dev/null || true
     wait || true
 }
 
@@ -129,24 +132,25 @@ check_surfpool() {
 }
 
 start_surfpool() {
-    surfpool start --ci --offline --daemon &
+    surfpool start --ci --offline --daemon &>/dev/null &
     local surfpool_pid=$!
 
     sleep 3
 
+    # Send setup output to stderr, not stdout
     surfpool run setup -u \
         --input composite_pid=$composite_pid \
         --input basic_2_pid=$basic_2_pid \
         --input basic_4_pid=$basic_4_pid \
         --input events_pid=$events_pid \
-        --input optional_pid=$optional_pid
+        --input optional_pid=$optional_pid \
+        >&2
 
     sleep 3
 
-    echo "Surfpool PID: $surfpool_pid"
-    # check_surfpool $surfpool_pid
+    echo "Surfpool PID: $surfpool_pid" >&2
 
-    echo $surfpool_pid
+    echo "$surfpool_pid"
 }
 
 declare -f -t trap_add
