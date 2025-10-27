@@ -21,7 +21,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
     let load_panic_docs = quote! {
         /// # Panics
         ///
-        /// If there is an existing mutable reference crated by any of the `load_mut` methods.
+        /// If there is an existing mutable reference created by any of the `load_mut` methods.
     };
     let load_mut_panic_docs = quote! {
         /// # Panics

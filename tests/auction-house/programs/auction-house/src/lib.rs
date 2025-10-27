@@ -297,7 +297,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if rec_acct.delegate.is_some() {
                 return err!(ErrorCode::BuyerATACannotHaveDelegate);
             }
@@ -773,7 +773,7 @@ pub mod auction_house {
             &[auction_house.bump],
         ];
 
-        // with the native account, the escrow is it's own owner,
+        // with the native account, the escrow is its own owner,
         // whereas with token, it is the auction house that is owner.
         let signer_seeds_for_royalties = if is_native {
             escrow_signer_seeds
@@ -832,7 +832,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if seller_rec_acct.delegate.is_some() {
                 return err!(ErrorCode::SellerATACannotHaveDelegate);
             }

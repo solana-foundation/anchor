@@ -211,14 +211,14 @@ describe("New IDL", () => {
       const pointX = new anchor.BN(1);
       const pointY = new anchor.BN(2);
       const named = await testAccountEnum({ named: { pointX, pointY } });
-      if (!named.fullEnum.named) throw new Error("Named not crated");
+      if (!named.fullEnum.named) throw new Error("Named not created");
       assert(named.fullEnum.named.pointX.eq(pointX));
       assert(named.fullEnum.named.pointY.eq(pointY));
 
       // Unnamed
       const tupleArg = [1, 2, 3, 4] as const;
       const unnamed = await testAccountEnum({ unnamed: tupleArg });
-      if (!unnamed.fullEnum.unnamed) throw new Error("Unnamed not crated");
+      if (!unnamed.fullEnum.unnamed) throw new Error("Unnamed not created");
       assert(
         Object.entries(unnamed.fullEnum.unnamed).every(
           ([key, value]) => value === tupleArg[key as keyof typeof tupleArg]
@@ -233,7 +233,7 @@ describe("New IDL", () => {
         unnamedStruct: tupleStructArg,
       });
       if (!unnamedStruct.fullEnum.unnamedStruct) {
-        throw new Error("Unnamed struct not crated");
+        throw new Error("Unnamed struct not created");
       }
       assert.strictEqual(
         unnamedStruct.fullEnum.unnamedStruct[0].u8,
