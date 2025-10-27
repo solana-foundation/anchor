@@ -1,9 +1,10 @@
-#![allow(dead_code)]
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(dead_code, deprecated)]
 
 use anchor_lang::prelude::borsh::maybestd::io::Write;
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 // Needed to declare accounts.
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

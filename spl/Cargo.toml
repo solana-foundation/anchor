@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl"
-version = "0.31.1"
+version = "0.32.1"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -23,16 +23,21 @@ mint = []
 stake = ["borsh"]
 token = ["spl-token"]
 token_2022 = ["spl-token-2022"]
-token_2022_extensions = ["spl-token-2022", "spl-token-group-interface", "spl-token-metadata-interface", "spl-pod"]
+token_2022_extensions = [
+    "spl-token-2022",
+    "spl-token-group-interface",
+    "spl-token-metadata-interface",
+    "spl-pod",
+]
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.31.1", features = ["derive"] }
+anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
 borsh = { version = "0.10.3", optional = true }
 mpl-token-metadata = { version = "5", optional = true }
-spl-associated-token-account = { version = "6", features = ["no-entrypoint"], optional = true }
+spl-associated-token-account = { version = "7", features = ["no-entrypoint"], optional = true }
 spl-memo = { version = "6", features = ["no-entrypoint"], optional = true }
-spl-token = { version = "7", features = ["no-entrypoint"], optional = true }
-spl-token-2022 = { version = "6", features = ["no-entrypoint"], optional = true }
-spl-token-group-interface = { version = "0.5", optional = true }
-spl-token-metadata-interface = { version = "0.6", optional = true }
 spl-pod = { version = "0.5", optional = true }
+spl-token = { version = "8", features = ["no-entrypoint"], optional = true }
+spl-token-2022 = { version = "8", features = ["no-entrypoint"], optional = true }
+spl-token-group-interface = { version = "0.6", optional = true }
+spl-token-metadata-interface = { version = "0.7", optional = true }

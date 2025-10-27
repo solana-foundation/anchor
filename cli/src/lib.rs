@@ -5,10 +5,12 @@ use crate::config::{
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
+use anchor_lang::prelude::UpgradeableLoaderState;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize, Discriminator};
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
@@ -20,8 +22,7 @@ use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
-use solana_client::rpc_client::RpcClient;
-use solana_sdk::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
@@ -40,6 +41,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::string::ToString;
+use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
@@ -48,6 +50,19 @@ pub mod rust_template;
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
+
+/// Default RPC port
+pub const DEFAULT_RPC_PORT: u16 = 8899;
+
+pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(avm_home) = std::env::var("AVM_HOME") {
+        PathBuf::from(avm_home)
+    } else {
+        let mut user_home = dirs::home_dir().expect("Could not find home directory");
+        user_home.push(".avm");
+        user_home
+    }
+});
 
 #[derive(Debug, Parser)]
 #[clap(version = VERSION)]
@@ -77,7 +92,7 @@ pub enum Command {
         #[clap(long)]
         no_git: bool,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Test template to use
         #[clap(value_enum, long, default_value = "mocha")]
@@ -215,7 +230,7 @@ pub enum Command {
         /// Program name
         name: String,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Create new program even if there is already one
         #[clap(long, action)]
@@ -239,6 +254,9 @@ pub enum Command {
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
+        /// Don't upload IDL during deployment (IDL is uploaded by default)
+        #[clap(long)]
+        no_idl: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -655,17 +673,10 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         "`anchor` {anchor_version} is not installed with `avm`. Installing...\n"
                     );
 
-                    let exit_status = std::process::Command::new("avm")
-                        .arg("install")
-                        .arg(anchor_version)
-                        .spawn()?
-                        .wait()?;
-                    if !exit_status.success() {
+                    if let Err(e) = install_with_avm(anchor_version, false) {
                         eprintln!(
-                            "Failed to install `anchor` {anchor_version}, \
-                            using {current_version} instead"
+                            "Failed to install `anchor`: {e}, using {current_version} instead"
                         );
-
                         return Ok(restore_cbs);
                     }
                 }
@@ -683,6 +694,23 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
     }
 
     Ok(restore_cbs)
+}
+
+/// Installs Anchor using AVM, passing `--force` (and optionally) installing
+/// `solana-verify`.
+fn install_with_avm(version: &str, verify: bool) -> Result<()> {
+    let mut cmd = std::process::Command::new("avm");
+    cmd.arg("install");
+    cmd.arg(version);
+    cmd.arg("--force");
+    if verify {
+        cmd.arg("--verify");
+    }
+    let status = cmd.status().context("running AVM")?;
+    if !status.success() {
+        bail!("failed to install `anchor` {version} with avm");
+    }
+    Ok(())
 }
 
 /// Restore toolchain to how it was before the command was run.
@@ -791,12 +819,14 @@ fn process_command(opts: Opts) -> Result<()> {
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         } => deploy(
             &opts.cfg_override,
             program_name,
             program_keypair,
             verifiable,
+            no_idl,
             solana_args,
         ),
         Command::Expand {
@@ -1889,7 +1919,13 @@ pub fn verify(
     command_args.extend(args);
 
     println!("Verifying program {program_id}");
-    let status = std::process::Command::new("solana-verify")
+    let verify_path = AVM_HOME.join("bin").join("solana-verify");
+    if !verify_path.exists() {
+        install_with_avm(env!("CARGO_PKG_VERSION"), true)
+            .context("installing Anchor with solana-verify")?;
+    }
+
+    let status = std::process::Command::new(verify_path)
         .arg("verify-from-repo")
         .args(&command_args)
         .stdout(std::process::Stdio::inherit())
@@ -2822,12 +2858,10 @@ fn deserialize_idl_type_to_json(
         }
         IdlType::F64 => json!(<f64 as AnchorDeserialize>::deserialize(data)?),
         IdlType::U128 => {
-            // TODO: Remove to_string once serde_json supports u128 deserialization
-            json!(<u128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<u128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::I128 => {
-            // TODO: Remove to_string once serde_json supports i128 deserialization
-            json!(<i128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<i128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::U256 => todo!("Upon completion of u256 IDL standard"),
         IdlType::I256 => todo!("Upon completion of i256 IDL standard"),
@@ -2953,7 +2987,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, vec![])?;
+            deploy(cfg_override, None, None, false, true, vec![])?;
         }
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
@@ -3370,7 +3404,7 @@ fn start_test_validator(
         .test_validator
         .as_ref()
         .and_then(|test| test.validator.as_ref().map(|v| v.rpc_port))
-        .unwrap_or(solana_sdk::rpc_port::DEFAULT_RPC_PORT);
+        .unwrap_or(DEFAULT_RPC_PORT);
     if !portpicker::is_free(rpc_port) {
         return Err(anyhow!(
             "Your configured rpc port: {rpc_port} is already in use"
@@ -3520,6 +3554,7 @@ fn deploy(
     program_name: Option<String>,
     program_keypair: Option<String>,
     verifiable: bool,
+    no_idl: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -3572,16 +3607,71 @@ fn deploy(
                 std::process::exit(exit.status.code().unwrap_or(1));
             }
 
+            // Get the IDL filepath
+            let idl_filepath = Path::new("target")
+                .join("idl")
+                .join(&program.lib_name)
+                .with_extension("json");
+
             if let Some(idl) = program.idl.as_mut() {
                 // Add program address to the IDL.
                 idl.address = program_id.to_string();
 
                 // Persist it.
-                let idl_out = Path::new("target")
-                    .join("idl")
-                    .join(&idl.metadata.name)
-                    .with_extension("json");
-                write_idl(idl, OutFile::File(idl_out))?;
+                write_idl(idl, OutFile::File(idl_filepath.clone()))?;
+
+                // Upload the IDL to the cluster by default (unless no_idl is set)
+                if !no_idl {
+                    // Wait for the program to be confirmed before initializing IDL to prevent
+                    // race condition where the program isn't yet available in validator cache
+                    let client = create_client(&url);
+                    let max_retries = 5;
+                    let retry_delay = std::time::Duration::from_millis(500);
+                    let cache_delay = std::time::Duration::from_secs(2);
+
+                    println!("Waiting for program {} to be confirmed...", program_id);
+
+                    for attempt in 0..max_retries {
+                        if let Ok(account) = client.get_account(&program_id) {
+                            if account.executable {
+                                println!("Program confirmed on-chain");
+                                std::thread::sleep(cache_delay);
+                                break;
+                            }
+                        }
+
+                        if attempt == max_retries - 1 {
+                            return Err(anyhow!(
+                                "Timeout waiting for program {} to be confirmed",
+                                program_id
+                            ));
+                        }
+
+                        std::thread::sleep(retry_delay);
+                    }
+
+                    // Check if IDL account already exists
+                    let idl_address = IdlAccount::address(&program_id);
+                    let idl_account_exists = client.get_account(&idl_address).is_ok();
+
+                    if idl_account_exists {
+                        // IDL account exists, upgrade it
+                        idl_upgrade(
+                            cfg_override,
+                            program_id,
+                            idl_filepath.display().to_string(),
+                            None,
+                        )?;
+                    } else {
+                        // IDL account doesn't exist, create it
+                        idl_init(
+                            cfg_override,
+                            program_id,
+                            idl_filepath.display().to_string(),
+                            None,
+                        )?;
+                    }
+                }
             }
         }
 
@@ -3917,14 +4007,14 @@ fn airdrop(cfg_override: &ConfigOverride) -> Result<()> {
     let url = cfg_override
         .cluster
         .as_ref()
-        .unwrap_or_else(|| &Cluster::Devnet)
+        .unwrap_or(&Cluster::Devnet)
         .url();
     loop {
         let exit = std::process::Command::new("solana")
             .arg("airdrop")
             .arg("10")
             .arg("--url")
-            .arg(&url)
+            .arg(url)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
