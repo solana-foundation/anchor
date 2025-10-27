@@ -39,7 +39,6 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::solana_program::clock::Epoch;
     use crate::solana_program::pubkey::Pubkey;
 
     use super::*;
@@ -58,29 +57,13 @@ mod tests {
         let mut lamports1 = 0;
         let mut data1 = vec![0; 10];
         let owner = Pubkey::default();
-        let account1 = AccountInfo::new(
-            &key,
-            true,
-            true,
-            &mut lamports1,
-            &mut data1,
-            &owner,
-            false,
-            Epoch::default(),
-        );
+        let account1 =
+            AccountInfo::new(&key, true, true, &mut lamports1, &mut data1, &owner, false);
 
         let mut lamports2 = 0;
         let mut data2 = vec![0; 10];
-        let account2 = AccountInfo::new(
-            &key,
-            true,
-            true,
-            &mut lamports2,
-            &mut data2,
-            &owner,
-            false,
-            Epoch::default(),
-        );
+        let account2 =
+            AccountInfo::new(&key, true, true, &mut lamports2, &mut data2, &owner, false);
         let mut bumps = TestBumps::default();
         let mut reallocs = std::collections::BTreeSet::new();
         let mut accounts = &[account1, account2][..];
