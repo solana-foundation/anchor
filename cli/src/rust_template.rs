@@ -5,8 +5,8 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
+use solana_pubkey::Pubkey;
 use solana_sdk::{
-    pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
     signer::Signer,
 };
@@ -779,8 +779,9 @@ mod test_initialize;
                 r#"use std::str::FromStr;
 
 use anchor_client::{{
+    solana_pubkey::Pubkey,
     solana_sdk::{{
-        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
+        commitment_config::CommitmentConfig, signature::read_keypair_file,
     }},
     Client, Cluster,
 }};
