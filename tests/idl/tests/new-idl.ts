@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
+import BN from "bn.js";
 import { assert } from "chai";
-
 import type { NewIdl } from "../target/types/new_idl";
 
 describe("New IDL", () => {
@@ -71,14 +71,14 @@ describe("New IDL", () => {
       const i8 = -3;
       const i16 = 1;
       const i32 = -5555551;
-      const i64 = new anchor.BN("384535471");
-      const i128 = new anchor.BN(-8342491);
+      const i64 = new BN("384535471");
+      const i128 = new BN(-8342491);
 
       const u8 = 123;
       const u16 = 7888;
       const u32 = 5555551;
-      const u64 = new anchor.BN("384535471");
-      const u128 = new anchor.BN(8888888);
+      const u64 = new BN("384535471");
+      const u128 = new BN(8888888);
 
       const f32 = 1.0;
       const f64 = 0.618;
@@ -157,9 +157,9 @@ describe("New IDL", () => {
         u8: 1,
         u16: 11,
         u32: 111,
-        u64: new anchor.BN(1111),
+        u64: new BN(1111),
       } as const;
-      const tupleStructArg = [new anchor.BN(23), "tuple"] as const;
+      const tupleStructArg = [new BN(23), "tuple"] as const;
 
       const kp = anchor.web3.Keypair.generate();
       await program.methods
@@ -208,8 +208,8 @@ describe("New IDL", () => {
       assert.deepEqual(unit.fullEnum.unit, {});
 
       // Named
-      const pointX = new anchor.BN(1);
-      const pointY = new anchor.BN(2);
+      const pointX = new BN(1);
+      const pointY = new BN(2);
       const named = await testAccountEnum({ named: { pointX, pointY } });
       if (!named.fullEnum.named) throw new Error("Named not created");
       assert(named.fullEnum.named.pointX.eq(pointX));
@@ -227,7 +227,7 @@ describe("New IDL", () => {
 
       // Unnamed struct
       const tupleStructArg = [
-        { u8: 1, u16: 11, u32: 111, u64: new anchor.BN(1111) },
+        { u8: 1, u16: 11, u32: 111, u64: new BN(1111) },
       ] as const;
       const unnamedStruct = await testAccountEnum({
         unnamedStruct: tupleStructArg,
@@ -261,7 +261,7 @@ describe("New IDL", () => {
         u8: 1,
         u16: 2,
         u32: 3,
-        u64: new anchor.BN(4),
+        u64: new BN(4),
       };
       const aliasVecString = ["first", "second"];
       const aliasOptionVecPubkey = [anchor.web3.Keypair.generate().publicKey];
@@ -270,7 +270,7 @@ describe("New IDL", () => {
         [true, false],
         [false, true],
       ];
-      const aliasExternal = new anchor.BN(1708705033);
+      const aliasExternal = new BN(1708705033);
 
       await program.methods
         .typeAlias(
@@ -372,7 +372,7 @@ describe("New IDL", () => {
     it("Can use full module path types", async () => {
       const kp = anchor.web3.Keypair.generate();
 
-      const namedStructArg = { u8: 1, u16: 2, u32: 3, u64: new anchor.BN(4) };
+      const namedStructArg = { u8: 1, u16: 2, u32: 3, u64: new BN(4) };
       const someModuleNamedStructArg = { data: 5 };
 
       await program.methods
@@ -418,7 +418,7 @@ describe("New IDL", () => {
     });
 
     it("Can use non-Anchor external types", async () => {
-      const feature = { activatedAt: new anchor.BN(42) };
+      const feature = { activatedAt: new BN(42) };
 
       const kp = anchor.web3.Keypair.generate();
       await program.methods
@@ -471,7 +471,7 @@ describe("New IDL", () => {
         "fullEnum",
         {
           fullEnum: {
-            named: { pointX: new anchor.BN(1), pointY: new anchor.BN(2) },
+            named: { pointX: new BN(1), pointY: new BN(2) },
           },
         },
         "named { pointX: 1, pointY: 2 }"
