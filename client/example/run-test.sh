@@ -57,7 +57,7 @@ main() {
     #
     # Restart validator for multithreaded test
     #
-    cleanup $surfpool_pid
+    cleanup "$surfpool_pid"
     surfpool_pid=$(start_surfpool)
 
     #
@@ -74,7 +74,7 @@ main() {
     #
     # Restart validator for async test
     #
-    cleanup $surfpool_pid
+    cleanup "$surfpool_pid"
     surfpool_pid=$(start_surfpool)
 
     #
@@ -91,22 +91,20 @@ main() {
 }
 
 cleanup() {
-    local surfpool_pid=${1:-}
-    
-    # Kill specific surfpool process if PID provided
-    if [ -n "$surfpool_pid" ]; then
+    local surfpool_pid=$1
+
+    if [ -n "${surfpool_pid:-}" ]; then
         echo "Killing surfpool process with PID: $surfpool_pid"
         kill "$surfpool_pid" 2>/dev/null || true
-        # Give it a moment to shutdown gracefully
         sleep 1
-        # Force kill if still running
         kill -9 "$surfpool_pid" 2>/dev/null || true
     fi
-    
-    # Kill any remaining child processes
+
+    # Kill remaining children
     pkill -P $$ || true
     wait || true
 }
+
 
 trap_add() {
     trap_add_cmd=$1; shift || fatal "${FUNCNAME} usage error"
@@ -152,5 +150,5 @@ start_surfpool() {
 }
 
 declare -f -t trap_add
-trap_add 'cleanup' EXIT
+trap 'cleanup' EXIT
 main
