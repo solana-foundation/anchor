@@ -228,6 +228,7 @@ dependencies = [
  "solana-cli-config",
  "solana-faucet",
  "solana-rpc-client",
+ "solana-rpc-client-api",
  "solana-sdk",
  "syn 1.0.109",
  "tar",
