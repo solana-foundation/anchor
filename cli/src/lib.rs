@@ -92,7 +92,7 @@ pub enum Command {
         #[clap(long)]
         no_git: bool,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Test template to use
         #[clap(value_enum, long, default_value = "mocha")]
@@ -230,7 +230,7 @@ pub enum Command {
         /// Program name
         name: String,
         /// Rust program template to use
-        #[clap(value_enum, short, long, default_value = "single")]
+        #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Create new program even if there is already one
         #[clap(long, action)]
@@ -2858,12 +2858,10 @@ fn deserialize_idl_type_to_json(
         }
         IdlType::F64 => json!(<f64 as AnchorDeserialize>::deserialize(data)?),
         IdlType::U128 => {
-            // TODO: Remove to_string once serde_json supports u128 deserialization
-            json!(<u128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<u128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::I128 => {
-            // TODO: Remove to_string once serde_json supports i128 deserialization
-            json!(<i128 as AnchorDeserialize>::deserialize(data)?.to_string())
+            json!(<i128 as AnchorDeserialize>::deserialize(data)?)
         }
         IdlType::U256 => todo!("Upon completion of u256 IDL standard"),
         IdlType::I256 => todo!("Upon completion of i256 IDL standard"),
