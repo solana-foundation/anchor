@@ -21,14 +21,23 @@ use std::ops::Deref;
 ///
 /// # Table of Contents
 /// - [Basic Functionality](#basic-functionality)
+/// - [Generic Program Validation](#generic-program-validation)
 /// - [Out of the Box Types](#out-of-the-box-types)
 ///
 /// # Basic Functionality
 ///
+/// For `Program<'info, T>` where T implements Id:
 /// Checks:
 ///
 /// - `account_info.key == expected_program`
 /// - `account_info.executable == true`
+///
+/// # Generic Program Validation
+///
+/// For `Program<'info>` (without type parameter):
+/// - Only checks: `account_info.executable == true`
+/// - Use this when you only need to verify that an address is executable,
+///   without validating against a specific program ID.
 ///
 /// # Example
 /// ```ignore
@@ -65,6 +74,16 @@ use std::ops::Deref;
 /// - `program_data`'s constraint checks that its upgrade authority is the `authority` account.
 /// - Finally, `authority` needs to sign the transaction.
 ///
+/// ## Generic Program Example
+/// ```ignore
+/// #[derive(Accounts)]
+/// pub struct ValidateExecutableProgram<'info> {
+///     // Only validates that the provided account is executable
+///     pub any_program: Program<'info>,
+///     pub authority: Signer<'info>,
+/// }
+/// ```
+///
 /// # Out of the Box Types
 ///
 /// Between the [`anchor_lang`](https://docs.rs/anchor-lang/latest/anchor_lang) and [`anchor_spl`](https://docs.rs/anchor_spl/latest/anchor_spl) crates,
@@ -75,7 +94,7 @@ use std::ops::Deref;
 /// - [`Token`](https://docs.rs/anchor-spl/latest/anchor_spl/token/struct.Token.html)
 ///
 #[derive(Clone)]
-pub struct Program<'info, T> {
+pub struct Program<'info, T = ()> {
     info: &'info AccountInfo<'info>,
     _phantom: PhantomData<T>,
 }
@@ -128,13 +147,15 @@ impl<'a, T: Id> TryFrom<&'a AccountInfo<'a>> for Program<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
     fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.key != &T::id() {
+        // Special handling for unit type () - only check executable, not program ID
+        let is_unit_type = T::id() == Pubkey::default();
+
+        if !is_unit_type && info.key != &T::id() {
             return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
         }
         if !info.executable {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
-
         Ok(Program::new(info))
     }
 }
@@ -193,5 +214,15 @@ impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
 impl<T: AccountDeserialize> Key for Program<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
+    }
+}
+
+// Implement Id trait for unit type to support Program<'info> without type parameter
+impl crate::Id for () {
+    fn id() -> Pubkey {
+        // For generic programs, this should never be called since they don't validate specific program IDs.
+        // However, we need to implement it to satisfy the trait bounds.
+        // Using a special marker value that indicates "any program"
+        Pubkey::default()
     }
 }
