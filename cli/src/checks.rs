@@ -186,3 +186,45 @@ in `{manifest_path:?}`."#
 
     Ok(())
 }
+
+/// Check whether the `instrument-compute-units` feature is being used correctly.
+///
+/// **Note:** The check expects the current directory to be a program directory.
+pub fn check_instrument_compute_units_build_feature() -> Result<()> {
+    let manifest_path = Path::new("Cargo.toml").canonicalize()?;
+    let manifest = Manifest::from_path(&manifest_path)?;
+
+    // Check whether the manifest has `instrument-compute-units` feature
+    let has_instrument_compute_units_feature = manifest
+        .features
+        .iter()
+        .any(|(feature, _)| feature == "instrument-compute-units");
+    if !has_instrument_compute_units_feature {
+        return Err(anyhow!(
+            r#"`instrument-compute-units` feature is missing. To solve, add
+
+[features]
+instrument-compute-units = ["anchor-lang/instrument-compute-units"]
+
+in `{manifest_path:?}`."#
+        ));
+    }
+
+    // Check if `instrument-compute-units` is enabled by default
+    manifest
+        .dependencies
+        .iter()
+        .filter(|(_, dep)| dep.req_features().contains(&"instrument-compute-units".into()))
+        .for_each(|(name, _)| {
+            eprintln!(
+                "WARNING: `instrument-compute-units` feature of crate `{name}` is enabled by default. \
+                    This is not the intended usage.\n\n\t\
+                    To solve, do not enable the `instrument-compute-units` feature and include crates that have \
+                    `instrument-compute-units` feature in the `instrument-compute-units feature list:\n\n\t\
+                    [features]\n\t\
+                    instrument-compute-units = [\"{name}/instrument-compute-units\", ...]\n"
+            )
+        });
+
+    Ok(())
+}

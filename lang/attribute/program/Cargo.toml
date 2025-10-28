@@ -13,6 +13,7 @@ proc-macro = true
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
+instrument-compute-units = ["anchor-syn/instrument-compute-units"]
 interface-instructions = ["anchor-syn/interface-instructions"]
 
 [dependencies]
