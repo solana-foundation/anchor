@@ -22,15 +22,14 @@ use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
+use solana_commitment_config::CommitmentConfig;
+use solana_compute_budget_interface::ComputeBudgetInstruction;
+use solana_instruction::{AccountMeta, Instruction};
+use solana_keypair::Keypair;
+use solana_pubkey::Pubkey;
 use solana_rpc_client::rpc_client::RpcClient;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::compute_budget::ComputeBudgetInstruction;
-use solana_sdk::instruction::{AccountMeta, Instruction};
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Keypair;
-use solana_sdk::signature::Signer;
-use solana_sdk::signer::EncodableKey;
-use solana_sdk::transaction::Transaction;
+use solana_signer::{EncodableKey, Signer};
+use solana_transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -39,7 +38,6 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
-use std::str::FromStr;
 use std::string::ToString;
 use std::sync::LazyLock;
 
@@ -507,7 +505,7 @@ pub enum ClusterCommand {
 }
 
 fn get_keypair(path: &str) -> Result<Keypair> {
-    solana_sdk::signature::read_keypair_file(path)
+    solana_keypair::read_keypair_file(path)
         .map_err(|_| anyhow!("Unable to read keypair file ({path})"))
 }
 
@@ -1051,7 +1049,7 @@ fn init(
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("git init failed: {}", e.to_string()))?;
+            .map_err(|e| anyhow::format_err!("git init failed: {}", e))?;
         if !git_result.status.success() {
             eprintln!("Failed to automatically initialize a new git repository");
         }
@@ -1069,14 +1067,14 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e.to_string()))
+            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
     } else {
         std::process::Command::new(cmd)
             .arg("install")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e.to_string()))
+            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
     }
 }
 
@@ -1262,7 +1260,7 @@ fn expand_program(
         .args(cargo_args)
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
         std::process::exit(exit.status.code().unwrap_or(1));
@@ -1271,7 +1269,7 @@ fn expand_program(
     let version = cargo.version();
     let time = chrono::Utc::now().to_string().replace(' ', "_");
     let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
-    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e))?;
 
     println!(
         "Expanded {} into file {}\n",
@@ -1612,7 +1610,7 @@ fn docker_build(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e))?;
     if !exit.status.success() {
         return Err(anyhow!("Failed to build program"));
     }
@@ -1736,7 +1734,7 @@ fn docker_build_bpf(
             Some(f) => f.into(),
         })
         .output()
-        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e))?;
     if !exit.status.success() {
         return Err(anyhow!("Failed to build program"));
     }
@@ -1768,7 +1766,7 @@ fn docker_build_bpf(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         Err(anyhow!(
             "Failed to copy binary out of docker. Is the target directory set correctly?"
@@ -1790,7 +1788,7 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         println!("Unable to remove the docker container");
         std::process::exit(exit.status.code().unwrap_or(1));
@@ -1829,7 +1827,7 @@ fn _build_rust_cwd(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         std::process::exit(exit.status.code().unwrap_or(1));
     }
@@ -2178,7 +2176,9 @@ fn idl_set_buffer(
                 AccountMeta::new(idl_authority, true),
             ];
             let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
-            data.append(&mut IdlInstruction::SetBuffer.try_to_vec()?);
+            data.append(&mut anchor_lang::prelude::borsh::to_vec(
+                &IdlInstruction::SetBuffer,
+            )?);
             Instruction {
                 program_id,
                 accounts,
@@ -2603,7 +2603,7 @@ fn idl_ts(idl: &Idl) -> Result<String> {
             let name = cur.get(1).unwrap().as_str();
 
             // Do not modify pubkeys
-            if Pubkey::from_str(name).is_ok() {
+            if Pubkey::try_from(name).is_ok() {
                 return acc;
             }
 
@@ -3262,7 +3262,7 @@ fn validator_flags(
                         .iter()
                         .map(|entry| {
                             let address = entry["address"].as_str().unwrap();
-                            Pubkey::from_str(address)
+                            Pubkey::try_from(address)
                                 .map_err(|_| anyhow!("Invalid pubkey {}", address))
                         })
                         .collect::<Result<HashSet<Pubkey>>>()?
@@ -3300,7 +3300,7 @@ fn validator_flags(
                         .iter()
                         .map(|entry| {
                             let feature_flag = entry.as_str().unwrap();
-                            Pubkey::from_str(feature_flag).map_err(|_| {
+                            Pubkey::try_from(feature_flag).map_err(|_| {
                                 anyhow!("Invalid pubkey (feature flag) {}", feature_flag)
                             })
                         })
@@ -3764,7 +3764,7 @@ fn create_idl_account(
             AccountMeta::new_readonly(keypair.pubkey(), true),
             AccountMeta::new(idl_address, false),
             AccountMeta::new_readonly(program_signer, false),
-            AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
+            AccountMeta::new_readonly(solana_system_interface::program::ID, false),
             AccountMeta::new_readonly(*program_id, false),
         ];
         instructions.push(Instruction {
@@ -3780,7 +3780,7 @@ fn create_idl_account(
                 accounts: vec![
                     AccountMeta::new(idl_address, false),
                     AccountMeta::new_readonly(keypair.pubkey(), true),
-                    AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
+                    AccountMeta::new_readonly(solana_system_interface::program::ID, false),
                 ],
                 data,
             });
@@ -3841,7 +3841,7 @@ fn create_idl_buffer(
     let create_account_ix = {
         let space = IdlAccount::DISCRIMINATOR.len() + 32 + 4 + serialize_idl(idl)?.len();
         let lamports = client.get_minimum_balance_for_rent_exemption(space)?;
-        solana_sdk::system_instruction::create_account(
+        solana_system_interface::instruction::create_account(
             &keypair.pubkey(),
             &buffer.pubkey(),
             lamports,
@@ -3857,7 +3857,9 @@ fn create_idl_buffer(
             AccountMeta::new_readonly(keypair.pubkey(), true),
         ];
         let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
-        data.append(&mut IdlInstruction::CreateBuffer.try_to_vec()?);
+        data.append(&mut anchor_lang::prelude::borsh::to_vec(
+            &IdlInstruction::CreateBuffer,
+        )?);
         Instruction {
             program_id: *program_id,
             accounts,
@@ -4090,7 +4092,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+            .map_err(|e| anyhow::format_err!("{}", e))?;
 
         if !child.wait()?.success() {
             println!("Error running node shell");
@@ -4217,7 +4219,7 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                         println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
 
                         // Update the program id
-                        deployment.address = Pubkey::from_str(&actual_program_id).unwrap();
+                        deployment.address = Pubkey::try_from(actual_program_id.as_str()).unwrap();
                         fs::write(cfg.path(), cfg.to_string())?;
 
                         println!("Updated to {actual_program_id}\n");
@@ -4336,7 +4338,7 @@ fn get_node_version() -> Result<Version> {
         .arg("--version")
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("node failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("node failed: {}", e))?;
     let output = std::str::from_utf8(&node_version.stdout)?
         .strip_prefix('v')
         .unwrap()
