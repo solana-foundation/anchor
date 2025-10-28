@@ -3,7 +3,6 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-/// IDL specification Semantic Version
 pub const IDL_SPEC: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -314,13 +313,8 @@ impl FromStr for IdlType {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Input validation
         if s.is_empty() {
             return Err(anyhow!("Type string cannot be empty"));
-        }
-
-        if s.len() > 1000 {
-            return Err(anyhow!("Type string too long (max 1000 chars)"));
         }
 
         let mut s = s.to_owned();
@@ -368,16 +362,13 @@ impl FromStr for IdlType {
                     fn array_from_str(inner: &str) -> Result<IdlType, anyhow::Error> {
                         match inner.strip_suffix(']') {
                             Some(nested_inner) => {
-                                // Validate nested array has content
                                 if nested_inner.len() <= 1 {
                                     return Err(anyhow!("Invalid nested array syntax"));
                                 }
 
-                                // Recursive call, now propagates errors
                                 array_from_str(&nested_inner[1..])
                             }
                             None => {
-                                // FIXED: Properly handle missing semicolon
                                 let (raw_type, raw_length) = inner
                                     .rsplit_once(';')
                                     .ok_or_else(|| anyhow!(
@@ -385,38 +376,23 @@ impl FromStr for IdlType {
                                         inner
                                     ))?;
 
-                                // Validate type is not empty
                                 let raw_type = raw_type.trim();
                                 if raw_type.is_empty() {
                                     return Err(anyhow!("Array type cannot be empty"));
                                 }
 
-                                // FIXED: Properly handle invalid type
                                 let ty = IdlType::from_str(raw_type).map_err(|e| {
                                     anyhow!("Invalid array element type '{}': {}", raw_type, e)
                                 })?;
 
-                                // Validate length is not empty
                                 let raw_length = raw_length.trim();
                                 if raw_length.is_empty() {
                                     return Err(anyhow!("Array length cannot be empty"));
                                 }
 
                                 let len = match raw_length.replace('_', "").parse::<usize>() {
-                                    Ok(len) => {
-                                        // Validate reasonable array size
-                                        if len == 0 {
-                                            return Err(anyhow!("Array length cannot be zero"));
-                                        }
-                                        if len > 1_000_000 {
-                                            return Err(anyhow!(
-                                                "Array length too large (max 1,000,000)"
-                                            ));
-                                        }
-                                        IdlArrayLen::Value(len)
-                                    }
+                                    Ok(len) => IdlArrayLen::Value(len),
                                     Err(_) => {
-                                        // Validate generic name format
                                         if !raw_length
                                             .chars()
                                             .all(|c| c.is_alphanumeric() || c == '_')
@@ -437,7 +413,6 @@ impl FromStr for IdlType {
                     return array_from_str(&s);
                 }
 
-                // Defined
                 let (name, generics) = if let Some(i) = s.find('<') {
                     (
                         s.get(..i).unwrap().to_owned(),
@@ -473,7 +448,6 @@ impl FromStr for IdlType {
 
 pub type IdlDiscriminator = Vec<u8>;
 
-/// Get whether the given data is the default of its type.
 fn is_default<T: Default + PartialEq>(it: &T) -> bool {
     *it == T::default()
 }
@@ -564,7 +538,6 @@ mod tests {
         )
     }
 
-    // Tests for the vulnerability fix - missing semicolon
     #[test]
     fn array_missing_semicolon_error() {
         let result = IdlType::from_str("[u8 32]");
@@ -575,7 +548,6 @@ mod tests {
             .contains("Invalid array syntax"));
     }
 
-    // Tests for the vulnerability fix - malformed syntax with colon
     #[test]
     fn array_malformed_colon_error() {
         let result = IdlType::from_str("[u8:32]");
@@ -586,7 +558,6 @@ mod tests {
             .contains("Invalid array syntax"));
     }
 
-    // Tests for the vulnerability fix - empty type
     #[test]
     fn array_empty_type_error() {
         let result = IdlType::from_str("[; 32]");
@@ -597,7 +568,6 @@ mod tests {
             .contains("Array type cannot be empty"));
     }
 
-    // Tests for the vulnerability fix - empty length
     #[test]
     fn array_empty_length_error() {
         let result = IdlType::from_str("[u8; ]");
@@ -608,29 +578,6 @@ mod tests {
             .contains("Array length cannot be empty"));
     }
 
-    // Tests for the vulnerability fix - zero length
-    #[test]
-    fn array_zero_length_error() {
-        let result = IdlType::from_str("[u8; 0]");
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Array length cannot be zero"));
-    }
-
-    // Tests for the vulnerability fix - too large array
-    #[test]
-    fn array_too_large_error() {
-        let result = IdlType::from_str("[u8; 10000001]");
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Array length too large"));
-    }
-
-    // Tests for the vulnerability fix - invalid generic name
     #[test]
     fn array_invalid_generic_name_error() {
         let result = IdlType::from_str("[u8; @invalid]");
@@ -641,7 +588,6 @@ mod tests {
             .contains("Invalid array length or generic name"));
     }
 
-    // Tests for input validation - empty string
     #[test]
     fn empty_string_error() {
         let result = IdlType::from_str("");
@@ -652,37 +598,19 @@ mod tests {
             .contains("Type string cannot be empty"));
     }
 
-    // Tests for input validation - too long string
-    #[test]
-    fn too_long_string_error() {
-        let long_type = "a".repeat(1001);
-        let result = IdlType::from_str(&long_type);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Type string too long"));
-    }
-
-    // Tests for valid malformed numeric values in array
     #[test]
     fn array_numeric_parsing_edge_cases() {
-        // Valid cases that should work
         assert!(IdlType::from_str("[u8; 1_000]").is_ok());
         assert!(IdlType::from_str("[u8; 1_000_000]").is_ok());
-
-        // Invalid cases that should fail
         assert!(IdlType::from_str("[u8; 1.5]").is_err());
     }
 
-    // Tests for nested arrays with malformed syntax
     #[test]
     fn nested_array_malformed_error() {
         let result = IdlType::from_str("[[u8 32]; 16]");
         assert!(result.is_err());
     }
 
-    // Tests for valid nested arrays still work
     #[test]
     fn valid_nested_array() {
         assert_eq!(
