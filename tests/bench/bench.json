@@ -1398,9 +1398,9 @@
       },
       "stackMemory": {
         "account_info1": 46,
-        "account_info2": 80,
-        "account_info4": 80,
-        "account_info8": 80,
+        "account_info2": 88,
+        "account_info4": 88,
+        "account_info8": 88,
         "account_empty_init1": 88,
         "account_empty_init2": 88,
         "account_empty_init4": 88,
