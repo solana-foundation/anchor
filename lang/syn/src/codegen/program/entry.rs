@@ -1,14 +1,17 @@
 use crate::Program;
 use heck::CamelCase;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     let span = program.program_mod.span();
-    quote_spanned! { span =>
+    let spanned_entry = quote_spanned! { span => entry };
+    let spanned_try_entry = quote_spanned! { span => try_entry };
+    let spanned_name = quote_spanned! { span => #name };
+    quote! {
         #[cfg(not(feature = "no-entrypoint"))]
-        anchor_lang::solana_program::entrypoint!(entry);
+        anchor_lang::solana_program::entrypoint!(#spanned_entry);
         /// The Anchor codegen exposes a programming model where a user defines
         /// a set of methods inside of a `#[program]` module in a way similar
         /// to writing RPC request handlers. The macro then generates a bunch of
@@ -38,14 +41,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        pub fn entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
-            try_entry(program_id, accounts, data).map_err(|e| {
+        pub fn #spanned_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+            #spanned_try_entry(program_id, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
         }
 
-        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
+        fn #spanned_try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
@@ -63,9 +66,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             /// Type representing the program.
             #[derive(Clone)]
-            pub struct #name;
+            pub struct #spanned_name;
 
-            impl anchor_lang::Id for #name {
+            impl anchor_lang::Id for #spanned_name {
                 fn id() -> Pubkey {
                     ID
                 }

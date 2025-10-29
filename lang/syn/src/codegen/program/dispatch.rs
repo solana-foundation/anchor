@@ -1,6 +1,6 @@
 use crate::Program;
 use heck::CamelCase;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -13,14 +13,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
         let ix_span = ix.raw_method.span();
-        let discriminator =
-            quote_spanned! { ix_span => instruction::#ix_name_camel::DISCRIMINATOR };
+        let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
+        let spanned_method_name = quote_spanned! { ix_span => #ix_method_name };
         let ix_cfgs = &ix.cfgs;
 
-        quote_spanned! { ix_span =>
+        quote! {
             #(#ix_cfgs)*
             if data.starts_with(#discriminator) {
-                return __private::__global::#ix_method_name(
+                return __private::__global::#spanned_method_name(
                     program_id,
                     accounts,
                     &data[#discriminator.len()..],
@@ -30,10 +30,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     });
 
     // Generate the event-cpi instruction handler based on whether the `event-cpi` feature is enabled.
-    let program_span = program.program_mod.span();
     let event_cpi_handler = {
         #[cfg(feature = "event-cpi")]
-        quote_spanned! { program_span =>
+        quote! {
             // `event-cpi` feature is enabled, dispatch self-cpi instruction
             __private::__events::__event_dispatch(
                 program_id,
@@ -42,7 +41,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             )
         }
         #[cfg(not(feature = "event-cpi"))]
-        quote_spanned! { program_span =>
+        quote! {
             // `event-cpi` feature is not enabled
             Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
         }
@@ -55,19 +54,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let program_name = &program.name;
             let fn_name = &fallback_fn.raw_method.sig.ident;
             let fallback_span = fallback_fn.raw_method.span();
-            quote_spanned! { fallback_span =>
-                #program_name::#fn_name(program_id, accounts, data)
+            let spanned_fn_name = quote_spanned! { fallback_span => #fn_name };
+            quote! {
+                #program_name::#spanned_fn_name(program_id, accounts, data)
             }
         })
         .unwrap_or_else(|| {
-            let program_span = program.program_mod.span();
-            quote_spanned! { program_span =>
+            quote! {
                 Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into())
             }
         });
 
     let program_span = program.program_mod.span();
-    quote_spanned! { program_span =>
+    let spanned_dispatch = quote_spanned! { program_span => dispatch };
+    quote! {
         /// Performs method dispatch.
         ///
         /// Each instruction's discriminator is checked until the given instruction data starts with
@@ -78,7 +78,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// If no match is found, the fallback function is executed if it exists, or an error is
         /// returned if it doesn't exist.
-        fn dispatch<'info>(
+        fn #spanned_dispatch<'info>(
             program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
             data: &[u8],
