@@ -436,7 +436,7 @@ pub enum IdlCommand {
         priority_fee: Option<u64>,
     },
     /// Command to remove the ability to modify the IDL account. This should
-    /// likely be used in conjection with eliminating an "upgrade authority" on
+    /// likely be used in conjunction with eliminating an "upgrade authority" on
     /// the program.
     EraseAuthority {
         #[clap(short, long)]
