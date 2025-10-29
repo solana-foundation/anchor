@@ -83,7 +83,7 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
         /// An Anchor generated module containing the program's set of instructions, where each
         /// method handler in the `#[program]` mod is associated with a struct defining the input
         /// arguments to the method. These should be used directly, when one wants to serialize
-        /// Anchor instruction data, for example, when specifying instructions instructions on a
+        /// Anchor instruction data, for example, when specifying instructions on a
         /// client.
         pub mod args {
             use super::*;

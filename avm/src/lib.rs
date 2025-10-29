@@ -753,7 +753,7 @@ mod tests {
         let expected = vec![version];
         assert_eq!(read_installed_versions().unwrap(), expected);
 
-        // Should ignore this file because its not anchor- prefixed
+        // Should ignore this file because it's not anchor- prefixed
         fs::File::create(AVM_HOME.join("bin").join("garbage").as_path()).unwrap();
         assert_eq!(read_installed_versions().unwrap(), expected);
     }
