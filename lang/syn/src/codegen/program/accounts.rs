@@ -1,8 +1,10 @@
 use crate::Program;
 use heck::SnakeCase;
-use quote::quote;
+use quote::quote_spanned;
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    let program_span = program.program_mod.span();
     let mut accounts = std::collections::HashMap::new();
 
     // Go through instruction accounts.
@@ -21,7 +23,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .iter()
         .map(|(macro_name, cfgs)| {
             let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
-            quote! {
+            quote_spanned! { program_span =>
                 #(#cfgs)*
                 pub use crate::#macro_name::*;
             }
@@ -31,7 +33,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // TODO: calculate the account size and add it as a constant field to
     //       each struct here. This is convenient for Rust clients.
 
-    quote! {
+    quote_spanned! { program_span =>
         /// An Anchor generated module, providing a set of structs
         /// mirroring the structs deriving `Accounts`, where each field is
         /// a `Pubkey`. This is useful for specifying accounts for a client.

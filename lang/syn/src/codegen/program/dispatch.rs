@@ -1,6 +1,7 @@
 use crate::Program;
 use heck::CamelCase;
-use quote::quote;
+use quote::quote_spanned;
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
@@ -11,10 +12,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             .to_camel_case()
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
-        let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
+        let ix_span = ix.raw_method.span();
+        let discriminator =
+            quote_spanned! { ix_span => instruction::#ix_name_camel::DISCRIMINATOR };
         let ix_cfgs = &ix.cfgs;
 
-        quote! {
+        quote_spanned! { ix_span =>
             #(#ix_cfgs)*
             if data.starts_with(#discriminator) {
                 return __private::__global::#ix_method_name(
@@ -27,9 +30,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     });
 
     // Generate the event-cpi instruction handler based on whether the `event-cpi` feature is enabled.
+    let program_span = program.program_mod.span();
     let event_cpi_handler = {
         #[cfg(feature = "event-cpi")]
-        quote! {
+        quote_spanned! { program_span =>
             // `event-cpi` feature is enabled, dispatch self-cpi instruction
             __private::__events::__event_dispatch(
                 program_id,
@@ -38,7 +42,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             )
         }
         #[cfg(not(feature = "event-cpi"))]
-        quote! {
+        quote_spanned! { program_span =>
             // `event-cpi` feature is not enabled
             Err(anchor_lang::error::ErrorCode::EventInstructionStub.into())
         }
@@ -50,17 +54,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .map(|fallback_fn| {
             let program_name = &program.name;
             let fn_name = &fallback_fn.raw_method.sig.ident;
-            quote! {
+            let fallback_span = fallback_fn.raw_method.span();
+            quote_spanned! { fallback_span =>
                 #program_name::#fn_name(program_id, accounts, data)
             }
         })
         .unwrap_or_else(|| {
-            quote! {
+            let program_span = program.program_mod.span();
+            quote_spanned! { program_span =>
                 Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into())
             }
         });
 
-    quote! {
+    let program_span = program.program_mod.span();
+    quote_spanned! { program_span =>
         /// Performs method dispatch.
         ///
         /// Each instruction's discriminator is checked until the given instruction data starts with

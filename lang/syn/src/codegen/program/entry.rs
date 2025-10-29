@@ -1,10 +1,12 @@
 use crate::Program;
 use heck::CamelCase;
-use quote::quote;
+use quote::quote_spanned;
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
-    quote! {
+    let span = program.program_mod.span();
+    quote_spanned! { span =>
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
         /// The Anchor codegen exposes a programming model where a user defines

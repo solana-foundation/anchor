@@ -1,7 +1,8 @@
 use crate::codegen::program::common::*;
 use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
-use quote::{quote, ToTokens};
+use quote::{quote_spanned, ToTokens};
+use syn::spanned::Spanned;
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -11,8 +12,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // A constant token stream that stores the accounts and functions, required to live
     // inside the target program in order to get the program ID.
     let idl_accounts_and_functions = idl_accounts_and_functions();
+    let program_span = program.program_mod.span();
     let non_inlined_idl: proc_macro2::TokenStream = {
-        quote! {
+        quote_spanned! { program_span =>
             // Entry for all IDL related instructions. Use the "no-idl" feature
             // to eliminate this code, for example, if one wants to make the
             // IDL no longer mutable or if one doesn't want to store the IDL
@@ -99,21 +101,23 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
+            let ix_span = ix.raw_method.span();
             let ix_name = generate_ix_variant_name(&ix_method_name_str);
-            let variant_arm = generate_ix_variant(&ix_method_name_str, &ix.args);
+            let variant_arm = generate_ix_variant_spanned(&ix_method_name_str, &ix.args, ix_span);
             let ix_name_log = format!("Instruction: {ix_name}");
             let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
             let cfgs = &ix.cfgs;
+            let ix_span = ix.raw_method.span();
             let maybe_set_return_data = match ret_type.to_string().as_str() {
-                "()" => quote! {},
-                _ => quote! {
+                "()" => quote_spanned! { ix_span => {} },
+                _ => quote_spanned! { ix_span => {
                     let mut return_data = Vec::with_capacity(256);
                     result.serialize(&mut return_data).unwrap();
                     anchor_lang::solana_program::program::set_return_data(&return_data);
-                },
+                }},
             };
-            quote! {
+            quote_spanned! { ix_span =>
                 #(#cfgs)*
                 #[inline(never)]
                 pub fn #ix_method_name<'info>(
@@ -165,7 +169,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         })
         .collect();
 
-    quote! {
+    quote_spanned! { program_span =>
         /// Create a private module to not clutter the program's namespace.
         /// Defines an entrypoint for each individual instruction handler
         /// wrapper.
@@ -197,8 +201,9 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
     {
         let authority = crate::parser::accounts::event_cpi::EventAuthority::get();
         let authority_name = authority.name;
+        let span = proc_macro2::Span::call_site();
 
-        quote! {
+        quote_spanned! { span =>
             /// __events mod defines handler for self-cpi based event logging
             pub mod __events {
                 use super::*;
@@ -231,5 +236,8 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
         }
     }
     #[cfg(not(feature = "event-cpi"))]
-    quote! {}
+    {
+        let span = proc_macro2::Span::call_site();
+        quote_spanned! { span => }
+    }
 }

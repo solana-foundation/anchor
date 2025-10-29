@@ -1,5 +1,6 @@
 use crate::Program;
-use quote::quote;
+use quote::quote_spanned;
+use syn::spanned::Spanned;
 
 mod accounts;
 pub mod common;
@@ -12,6 +13,7 @@ mod instruction;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let mod_name = &program.name;
+    let program_span = program.program_mod.span();
 
     let entry = entry::generate(program);
     let dispatch = dispatch::generate(program);
@@ -23,7 +25,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
     #[allow(clippy::let_and_return)]
     let ret = {
-        quote! {
+        quote_spanned! { program_span =>
             // TODO: remove once we allow segmented paths in `Accounts` structs.
             use self::#mod_name::*;
 
@@ -40,7 +42,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     #[cfg(feature = "idl-build")]
     {
         let idl_build_impl = crate::idl::gen_idl_print_fn_program(program);
-        return quote! {
+        return quote_spanned! { program_span =>
             #ret
             #idl_build_impl
         };

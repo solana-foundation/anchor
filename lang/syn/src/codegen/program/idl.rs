@@ -1,7 +1,8 @@
-use quote::quote;
+use quote::quote_spanned;
 
 pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
-    quote! {
+    let span = proc_macro2::Span::call_site();
+    quote_spanned! { span =>
         use anchor_lang::idl::ERASED_AUTHORITY;
 
         #[account("internal")]

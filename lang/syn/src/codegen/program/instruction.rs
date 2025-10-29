@@ -2,9 +2,11 @@ use crate::codegen::program::common::*;
 use crate::parser;
 use crate::Program;
 use heck::CamelCase;
-use quote::quote;
+use quote::quote_spanned;
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    let program_span = program.program_mod.span();
     let variants: Vec<proc_macro2::TokenStream> = program
         .ixs
         .iter()
@@ -33,8 +35,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                     },
                 };
+                let ix_span = ix.raw_method.span();
 
-                quote! {
+                quote_spanned! { ix_span =>
                     #(#ix_cfgs)*
                     impl anchor_lang::Discriminator for #ix_name_camel {
                         const DISCRIMINATOR: &'static [u8] = #discriminator;
@@ -50,8 +53,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 }
             };
             // If no args, output a "unit" variant instead of a struct variant.
+            let ix_span = ix.raw_method.span();
             if ix.args.is_empty() {
-                quote! {
+                quote_spanned! { ix_span =>
                     #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -60,7 +64,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #impls
                 }
             } else {
-                quote! {
+                quote_spanned! { ix_span =>
                     #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -74,7 +78,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         })
         .collect();
 
-    quote! {
+    quote_spanned! { program_span =>
         /// An Anchor generated module containing the program's set of
         /// instructions, where each method handler in the `#[program]` mod is
         /// associated with a struct defining the input arguments to the
