@@ -634,7 +634,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     pub fn transaction(&self) -> Transaction {
-        let instructions = &self.instructions;
+        let instructions = &self.instructions();
         Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
     }
 
