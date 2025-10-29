@@ -536,7 +536,7 @@ jobs:
       - run: sudo apt-get install -y jq
         name: Install jq
 
-      - run: cd tests/cli && chmod +x test.sh && ./test.sh
+      - run: cd tests/cli && ./test.sh
         name: Run CLI tests
 
       - uses: ./.github/actions/git-diff/
