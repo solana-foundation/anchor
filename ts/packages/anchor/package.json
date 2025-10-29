@@ -30,13 +30,14 @@
     "watch": "tsc -p tsconfig.cjs.json --watch",
     "prepublishOnly": "yarn build",
     "docs": "typedoc --excludePrivate --includeVersion --out ../../../docs/src/.vuepress/dist/ts/ --readme none src/index.ts",
-    "test": "jest tests --detectOpenHandles"
+    "test": "jest tests --detectOpenHandles",
+    "test:unit": "jest src/**/*.test.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor-errors": "^0.31.1",
     "@coral-xyz/borsh": "^0.31.1",
     "@noble/hashes": "^1.3.1",
-    "@solana/web3.js": "^1.69.0",
+    "@solana/web3.js": "1.69.0",
     "bn.js": "^5.1.2",
     "bs58": "^4.0.1",
     "buffer-layout": "^1.2.2",

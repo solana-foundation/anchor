@@ -20,7 +20,7 @@ anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["conve
 anchor-syn = { path = "../../syn", version = "0.32.1" }
 anyhow = "1"
 bs58 = "0.5"
-heck = "0.3"
+heck = "0.5.0"
 proc-macro2 = "1"
 quote = "1"
 serde_json = "1"

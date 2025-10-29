@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import BN from "bn.js";
 import { assert } from "chai";
 
 import type { NewIdl } from "../target/types/new_idl";
@@ -56,9 +57,73 @@ describe("New IDL", () => {
           .rpc();
       });
     });
+    it("Should pass correct parameter values with number+letter patterns", async () => {
+      const testValue = 12345;
+      const testPubkey = anchor.web3.Keypair.generate().publicKey;
+      
+      // This tests the entire pipeline from TS → Solana → Rust
+      const ix = await program.methods
+          .my3ParamHandler(testValue, testPubkey)
+          .accounts({ signer: program.provider.wallet.publicKey })
+          .instruction();
+      
+      // Verify the instruction data contains the correct values
+      const ixCoder = new anchor.BorshInstructionCoder(program.idl);
+      const decodedIx = ixCoder.decode(ix.data);
+      
+      assert.equal(decodedIx.name, "my3ParamHandler");
+      assert.equal(decodedIx.data.value, testValue);
+      assert.ok(decodedIx.data.pubkey.equals(testPubkey));
+  });
   });
 
   describe("Client interaction", () => {
+    describe("Number+Letter Pattern Harmonization", () => {
+      it("Should have consistent IDL and runtime names for number+letter patterns", async () => {
+        // Test a1b_receive function
+        const a1bInstruction = program.idl.instructions.find(ix => ix.name === "a1BReceive");
+        assert.exists(a1bInstruction, "IDL should contain a1BReceive instruction");
+        
+        // Runtime method should exist with harmonized name
+        assert.isFunction(program.methods.a1BReceive, "program.methods.a1BReceive should be a function");
+        assert.isUndefined(program.methods.a1bReceive, "program.methods.a1bReceive should be undefined (old broken behavior)");
+
+        // Test test2var_function
+        const test2varInstruction = program.idl.instructions.find(ix => ix.name === "test2VarFunction");
+        assert.exists(test2varInstruction, "IDL should contain test2VarFunction instruction");
+        
+        assert.isFunction(program.methods.test2VarFunction, "program.methods.test2VarFunction should be a function");
+        assert.isUndefined(program.methods.test2varFunction, "program.methods.test2varFunction should be undefined");
+      });
+
+      it("Should successfully call methods with number+letter patterns", async () => {
+        // These calls should work without errors
+        await program.methods
+          .a1BReceive()
+          .accounts({ signer: program.provider.wallet.publicKey })
+          .rpc();
+
+        await program.methods
+          .test2VarFunction()
+          .accounts({ signer: program.provider.wallet.publicKey })
+          .rpc();
+      });
+
+      it("Should handle parameters with number+letter patterns correctly", async () => {
+        const testValue = 12345;
+        const testPubkey = new anchor.web3.PublicKey("11111111111111111111111111111112");
+        
+        
+        await program.methods
+          .my3ParamHandler(testValue, testPubkey)
+          .accounts({ signer: program.provider.wallet.publicKey })
+          .rpc();
+
+        // Verify the method exists with correct name
+        assert.isFunction(program.methods.my3ParamHandler, "program.methods.my3ParamHandler should exist");
+        assert.isUndefined(program.methods.my3paramHandler, "program.methods.my3paramHandler should not exist");
+      });
+    });
     it("Can send empty ix(no arg, no account)", async () => {
       await program.methods.empty().rpc();
     });
@@ -71,14 +136,14 @@ describe("New IDL", () => {
       const i8 = -3;
       const i16 = 1;
       const i32 = -5555551;
-      const i64 = new anchor.BN("384535471");
-      const i128 = new anchor.BN(-8342491);
+      const i64 = new BN("384535471");
+      const i128 = new BN(-8342491);
 
       const u8 = 123;
       const u16 = 7888;
       const u32 = 5555551;
-      const u64 = new anchor.BN("384535471");
-      const u128 = new anchor.BN(8888888);
+      const u64 = new BN("384535471");
+      const u128 = new BN(8888888);
 
       const f32 = 1.0;
       const f64 = 0.618;
@@ -157,9 +222,9 @@ describe("New IDL", () => {
         u8: 1,
         u16: 11,
         u32: 111,
-        u64: new anchor.BN(1111),
+        u64: new BN(1111),
       } as const;
-      const tupleStructArg = [new anchor.BN(23), "tuple"] as const;
+      const tupleStructArg = [new BN(23), "tuple"] as const;
 
       const kp = anchor.web3.Keypair.generate();
       await program.methods
@@ -208,8 +273,8 @@ describe("New IDL", () => {
       assert.deepEqual(unit.fullEnum.unit, {});
 
       // Named
-      const pointX = new anchor.BN(1);
-      const pointY = new anchor.BN(2);
+      const pointX = new BN(1);
+      const pointY = new BN(2);
       const named = await testAccountEnum({ named: { pointX, pointY } });
       if (!named.fullEnum.named) throw new Error("Named not created");
       assert(named.fullEnum.named.pointX.eq(pointX));
@@ -227,7 +292,7 @@ describe("New IDL", () => {
 
       // Unnamed struct
       const tupleStructArg = [
-        { u8: 1, u16: 11, u32: 111, u64: new anchor.BN(1111) },
+        { u8: 1, u16: 11, u32: 111, u64: new BN(1111) },
       ] as const;
       const unnamedStruct = await testAccountEnum({
         unnamedStruct: tupleStructArg,
@@ -261,7 +326,7 @@ describe("New IDL", () => {
         u8: 1,
         u16: 2,
         u32: 3,
-        u64: new anchor.BN(4),
+        u64: new BN(4),
       };
       const aliasVecString = ["first", "second"];
       const aliasOptionVecPubkey = [anchor.web3.Keypair.generate().publicKey];
@@ -270,7 +335,7 @@ describe("New IDL", () => {
         [true, false],
         [false, true],
       ];
-      const aliasExternal = new anchor.BN(1708705033);
+      const aliasExternal = new BN(1708705033);
 
       await program.methods
         .typeAlias(
@@ -372,7 +437,7 @@ describe("New IDL", () => {
     it("Can use full module path types", async () => {
       const kp = anchor.web3.Keypair.generate();
 
-      const namedStructArg = { u8: 1, u16: 2, u32: 3, u64: new anchor.BN(4) };
+      const namedStructArg = { u8: 1, u16: 2, u32: 3, u64: new BN(4) };
       const someModuleNamedStructArg = { data: 5 };
 
       await program.methods
@@ -418,7 +483,7 @@ describe("New IDL", () => {
     });
 
     it("Can use non-Anchor external types", async () => {
-      const feature = { activatedAt: new anchor.BN(42) };
+      const feature = { activatedAt: new BN(42) };
 
       const kp = anchor.web3.Keypair.generate();
       await program.methods
@@ -471,7 +536,7 @@ describe("New IDL", () => {
         "fullEnum",
         {
           fullEnum: {
-            named: { pointX: new anchor.BN(1), pointY: new anchor.BN(2) },
+            named: { pointX: new BN(1), pointY: new BN(2) },
           },
         },
         "named { pointX: 1, pointY: 2 }"

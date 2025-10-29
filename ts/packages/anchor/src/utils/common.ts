@@ -1,4 +1,6 @@
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
+import camelCase from "camelcase";
+
 
 /**
  * Returns true if being run inside a web browser,
@@ -32,3 +34,27 @@ export const isVersionedTransaction = (
 ): tx is VersionedTransaction => {
   return "version" in tx;
 };
+
+const NUMBER_LETTER_PATTERN = /(\d)([a-zA-Z])/g;
+
+/**
+ * Harmonized camelCase conversion that handles number+letter patterns consistently
+ * with Rust's heck library behavior.
+ * 
+ * This fixes the discrepancy between Rust (heck) and JavaScript (camelcase) libraries
+ * when converting identifiers with numbers followed by letters (e.g., a1b_receive → a1BReceive).
+ *
+ * @param input The string to convert to camelCase
+ * @returns The harmonized camelCase string
+ */
+export function harmonizedCamelCase(input: string): string {
+  // Apply normal camelCase first
+  let result = camelCase(input, { locale: false });
+
+  
+  
+  // Fix number+letter patterns to match Rust side (a1b → a1B)
+  return result.replace(NUMBER_LETTER_PATTERN, (match, digit, letter) => {
+    return digit + letter.toUpperCase();
+  });
+}
