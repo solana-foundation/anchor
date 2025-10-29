@@ -235,7 +235,5 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
         }
     }
     #[cfg(not(feature = "event-cpi"))]
-    {
-        quote! { }
-    }
+    quote! {}
 }
