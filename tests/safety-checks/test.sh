@@ -7,7 +7,7 @@ echo "Building programs"
 #
 pushd programs/unchecked-account/
 output=$(anchor build 2>&1 > /dev/null)
-if ! [[ $output =~ "Struct field \"unchecked\" is unsafe" ]]; then
+if ! [[ $output =~ "Struct field \"unchecked\" in struct \"Initialize\" is unsafe" ]]; then
    echo "Error: expected /// CHECK error"
    exit 1
 fi
@@ -18,8 +18,19 @@ popd
 #
 pushd programs/account-info/
 output=$(anchor build 2>&1 > /dev/null)
-if ! [[ $output =~ "Struct field \"unchecked\" is unsafe" ]]; then
+if ! [[ $output =~ "Struct field \"unchecked\" in struct \"Initialize\" is unsafe" ]]; then
    echo "Error: expected /// CHECK error"
+   exit 1
+fi
+popd
+
+#
+# Build the duplicate-names variant.
+#
+pushd programs/duplicate-names/
+output=$(anchor build 2>&1 > /dev/null)
+if ! [[ $output =~ "Struct field \"my_account\" in struct \"FuncOne\" is unsafe" ]]; then
+   echo "Error: expected /// CHECK error for duplicate-names"
    exit 1
 fi
 popd
