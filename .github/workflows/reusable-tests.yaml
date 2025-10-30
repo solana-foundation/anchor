@@ -185,7 +185,7 @@ jobs:
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
 
-      - run: cd ${{ matrix.node.path }} && anchor build --skip-lint
+      - run: cd ${{ matrix.node.path }} && anchor build --skip-lint --ignore-keys
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.node.name }}
@@ -276,7 +276,7 @@ jobs:
         name: start validator
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
       - run: cd tests/bpf-upgradeable-state
-      - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint
+      - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint --ignore-keys
       - run: cd tests/bpf-upgradeable-state && solana program deploy --program-id program_with_different_programdata.json target/deploy/bpf_upgradeable_state.so
       - run: cd tests/bpf-upgradeable-state && cp bpf_upgradeable_state-keypair.json target/deploy/bpf_upgradeable_state-keypair.json && anchor test --skip-local-validator --skip-build --skip-lint
       - run: cd tests/bpf-upgradeable-state && npx tsc --noEmit
@@ -331,7 +331,7 @@ jobs:
   #     - run: cd tests/misc && yarn --frozen-lockfile
   #     - run: cd tests/misc
   #     - run: cd tests/misc && chmod +x ci.sh && ./ci.sh
-  #     - run: cd tests/misc && anchor test --skip-lint
+  #     - run: cd tests/misc && anchor test --skip-lint --ignore-keys
 
   test-anchor-init:
     needs: setup-anchor-cli
@@ -373,96 +373,96 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - cmd: cd tests/sysvars && anchor test --skip-lint
+          - cmd: cd tests/sysvars && anchor test --skip-lint --ignore-keys
             path: tests/sysvars
-          - cmd: cd tests/composite && anchor test --skip-lint
+          - cmd: cd tests/composite && anchor test --skip-lint --ignore-keys
             path: tests/composite
-          - cmd: cd tests/errors && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/errors && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/errors
-          - cmd: cd tests/spl/metadata && anchor test --skip-lint
+          - cmd: cd tests/spl/metadata && anchor test --skip-lint --ignore-keys
             path: spl/metadata
-          - cmd: cd tests/spl/token-proxy && anchor test --skip-lint
+          - cmd: cd tests/spl/token-proxy && anchor test --skip-lint --ignore-keys
             path: spl/token-proxy
-          - cmd: cd tests/spl/token-wrapper && anchor test --skip-lint
+          - cmd: cd tests/spl/token-wrapper && anchor test --skip-lint --ignore-keys
             path: spl/token-wrapper
-          - cmd: cd tests/spl/transfer-hook && anchor test --skip-lint
+          - cmd: cd tests/spl/transfer-hook && anchor test --skip-lint --ignore-keys
             path: spl/transfer-hook
-          - cmd: cd tests/spl/token-extensions && anchor test --skip-lint
+          - cmd: cd tests/spl/token-extensions && anchor test --skip-lint --ignore-keys
             path: spl/token-extensions
-          - cmd: cd tests/multisig && anchor test --skip-lint
+          - cmd: cd tests/multisig && anchor test --skip-lint --ignore-keys
             path: tests/multisig
-          # - cmd: cd tests/lockup && anchor test --skip-lint
+          # - cmd: cd tests/lockup && anchor test --skip-lint --ignore-keys
           #   path: tests/lockup
           # TODO: Re-enable after making it work with Solana v2
-          # - cmd: cd tests/swap && anchor test --skip-lint
+          # - cmd: cd tests/swap && anchor test --skip-lint --ignore-keys
           #   path: tests/swap
-          - cmd: cd tests/escrow && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/escrow && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/escrow
-          - cmd: cd tests/pyth && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/pyth && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/pyth
-          - cmd: cd tests/realloc && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/realloc && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/realloc
-          - cmd: cd tests/system-accounts && anchor test --skip-lint
+          - cmd: cd tests/system-accounts && anchor test --skip-lint --ignore-keys
             path: tests/system-accounts
-          - cmd: cd tests/misc && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/misc && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/misc
-          - cmd: cd tests/events && anchor test --skip-lint
+          - cmd: cd tests/events && anchor test --skip-lint --ignore-keys
             path: tests/events
-          - cmd: cd tests/cashiers-check && anchor test --skip-lint
+          - cmd: cd tests/cashiers-check && anchor test --skip-lint --ignore-keys
             path: tests/cashiers-check
-          - cmd: cd tests/declare-id && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/declare-id && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/declare-id
-          - cmd: cd tests/declare-program && anchor test --skip-lint
+          - cmd: cd tests/declare-program && anchor test --skip-lint --ignore-keys
             path: tests/declare-program
-          - cmd: cd tests/custom-program && anchor test --skip-lint
+          - cmd: cd tests/custom-program && anchor test --skip-lint --ignore-keys
             path: tests/custom-program
-          - cmd: cd tests/typescript && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/typescript && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/typescript
           # zero-copy tests cause `/usr/bin/ld: final link failed: No space left on device`
           # on GitHub runners. It is likely caused by `cargo test-sbf` since all other tests
           # don't have this problem.
           # TODO: Find a fix.
-          # - cmd: cd tests/zero-copy && anchor test --skip-lint && cd programs/zero-copy && cargo test-sbf
+          # - cmd: cd tests/zero-copy && anchor test --skip-lint --ignore-keys && cd programs/zero-copy && cargo test-sbf
           #   path: tests/zero-copy
-          - cmd: cd tests/chat && anchor test --skip-lint
+          - cmd: cd tests/chat && anchor test --skip-lint --ignore-keys
             path: tests/chat
-          - cmd: cd tests/ido-pool && anchor test --skip-lint
+          - cmd: cd tests/ido-pool && anchor test --skip-lint --ignore-keys
             path: tests/ido-pool
           # - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
           #   path: tests/cfo
-          - cmd: cd tests/auction-house && anchor test --skip-lint
+          - cmd: cd tests/auction-house && anchor test --skip-lint --ignore-keys
             path: tests/auction-house
-          - cmd: cd tests/floats && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/floats && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/floats
           - cmd: cd tests/safety-checks && anchor run test
             path: tests/safety-checks
-          - cmd: cd tests/custom-coder && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/custom-coder && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/custom-coder
-          - cmd: cd tests/custom-discriminator && anchor test
+          - cmd: cd tests/custom-discriminator && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/custom-discriminator
-          - cmd: cd tests/validator-clone && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/validator-clone && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/validator-clone
-          - cmd: cd tests/cpi-returns && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/cpi-returns && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/cpi-returns
-          - cmd: cd tests/multiple-suites && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/multiple-suites && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/multiple-suites
-          - cmd: cd tests/multiple-suites-run-single && anchor test --skip-lint --run tests/should-run && npx tsc --noEmit
+          - cmd: cd tests/multiple-suites-run-single && anchor test --skip-lint --ignore-keys --run tests/should-run && npx tsc --noEmit
             path: tests/multiple-suites-run-single
-          - cmd: cd tests/optional && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/optional && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/optional
-          - cmd: cd tests/pda-derivation && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/pda-derivation && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/pda-derivation
-          - cmd: cd tests/relations-derivation && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/relations-derivation && anchor test --skip-lint --ignore-keys && npx tsc --noEmit
             path: tests/relations-derivation
           - cmd: cd tests/anchor-cli-idl && ./test.sh
             path: tests/anchor-cli-idl
-          - cmd: cd tests/anchor-cli-account && anchor test --skip-lint
+          - cmd: cd tests/anchor-cli-account && anchor test --skip-lint --ignore-keys
             path: tests/anchor-cli-account
-          - cmd: cd tests/bench && anchor test --skip-lint
+          - cmd: cd tests/bench && anchor test --skip-lint --ignore-keys
             path: tests/bench
           - cmd: cd tests/idl && ./test.sh
             path: tests/idl
-          - cmd: cd tests/lazy-account && anchor test
+          - cmd: cd tests/lazy-account && anchor test --skip-lint --ignore-keys
             path: tests/lazy-account
     steps:
       - uses: actions/checkout@v3

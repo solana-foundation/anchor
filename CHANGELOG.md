@@ -12,6 +12,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018))
+
 ### Fixes
 
 ### Breaking
