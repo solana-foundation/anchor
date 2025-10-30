@@ -16,6 +16,7 @@ resolver = "2"
 
 [workspace.dependencies]
 solana-pubkey = "2"
+solana-signer = "2"
 
 [profile.release]
 lto = true
