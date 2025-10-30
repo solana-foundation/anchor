@@ -13,6 +13,10 @@ members = [
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
+
+[workspace.dependencies]
+solana-pubkey = "2"
+
 [profile.release]
 lto = true
 

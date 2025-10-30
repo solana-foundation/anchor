@@ -48,3 +48,4 @@ tar = "0.4.35"
 toml = "0.7.6"
 walkdir = "2.3.2"
 bs58 = "0.5.1"
+solana-pubkey.workspace = true
