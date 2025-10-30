@@ -250,6 +250,7 @@ dependencies = [
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-sdk",
+ "solana-signer",
  "thiserror 1.0.66",
  "tokio",
  "url",
