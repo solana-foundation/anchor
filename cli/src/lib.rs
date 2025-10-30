@@ -26,10 +26,9 @@ use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
-use solana_sdk::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
-use solana_sdk::signature::Signer;
-use solana_sdk::signer::EncodableKey;
+use solana_signer::{Signer, EncodableKey};
 use solana_sdk::transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -45,6 +44,7 @@ use std::sync::LazyLock;
 
 mod checks;
 pub mod config;
+mod fetch;
 pub mod rust_template;
 
 // Version of the docker image.
@@ -473,11 +473,30 @@ pub enum IdlCommand {
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
+    ///
+    /// Note: Historical filters can be supplied to fetch historical IDL versions.
+    /// If any historical flag is provided, this command will fetch historical
+    /// IDLs for the given program id (the `address` is interpreted as a program id).
     Fetch {
         address: Pubkey,
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
+        /// Fetch all historical versions (historical mode)
+        #[clap(long)]
+        all: bool,
+        /// Fetch IDL at specific slot (historical mode)
+        #[clap(long)]
+        slot: Option<u64>,
+        /// Fetch IDL before this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        before: Option<String>,
+        /// Fetch IDL after this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        after: Option<String>,
+        /// Output directory for multiple versions (historical mode)
+        #[clap(long)]
+        out_dir: Option<String>,
     },
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
@@ -2045,7 +2064,31 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             skip_lint,
             cargo_args,
         ),
-        IdlCommand::Fetch { address, out } => idl_fetch(cfg_override, address, out),
+        IdlCommand::Fetch {
+            address,
+            out,
+            all,
+            slot,
+            before,
+            after,
+            out_dir,
+        } => {
+            // If any historical flag is provided, route to historical fetch
+            if slot.is_some() || before.is_some() || after.is_some() || all {
+                fetch::idl_fetch_historical(
+                    cfg_override,
+                    address,
+                    all,
+                    slot,
+                    before,
+                    after,
+                    out_dir,
+                    out,
+                )
+            } else {
+                idl_fetch(cfg_override, address, out)
+            }
+        }
         IdlCommand::Convert {
             path,
             out,
@@ -3497,7 +3540,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
     Ok((ledger_path, log_path))
 }
 
-fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
+pub(crate) fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
     let is_localnet = cfg.provider.cluster == Cluster::Localnet;
     match is_localnet {
         // Cluster is Localnet, assume the intent is to use the configuration
