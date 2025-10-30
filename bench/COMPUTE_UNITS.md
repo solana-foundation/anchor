@@ -22,53 +22,53 @@ Solana version: 2.3.0
 | accountInfo2                | 1,053         | -                   |
 | accountInfo4                | 1,750         | -                   |
 | accountInfo8                | 3,135         | -                   |
-| accountEmptyInit1           | 4,915         | -                   |
+| accountEmptyInit1           | 4,878         | 🟢 **-37 (0.75%)**  |
 | accountEmpty1               | 774           | -                   |
-| accountEmptyInit2           | 8,793         | -                   |
+| accountEmptyInit2           | 8,755         | 🟢 **-38 (0.43%)**  |
 | accountEmpty2               | 1,174         | -                   |
-| accountEmptyInit4           | 16,495        | 🟢 **-253 (1.51%)** |
+| accountEmptyInit4           | 16,503        | 🟢 **-245 (1.46%)** |
 | accountEmpty4               | 1,962         | -                   |
-| accountEmptyInit8           | 31,997        | 🟢 **-360 (1.11%)** |
+| accountEmptyInit8           | 32,005        | 🟢 **-352 (1.09%)** |
 | accountEmpty8               | 3,548         | -                   |
-| accountSizedInit1           | 5,019         | -                   |
+| accountSizedInit1           | 4,982         | 🟢 **-37 (0.74%)**  |
 | accountSized1               | 822           | -                   |
-| accountSizedInit2           | 8,981         | -                   |
+| accountSizedInit2           | 8,940         | 🟢 **-41 (0.46%)**  |
 | accountSized2               | 1,240         | -                   |
-| accountSizedInit4           | 16,850        | 🟢 **-304 (1.77%)** |
+| accountSizedInit4           | 16,858        | 🟢 **-296 (1.73%)** |
 | accountSized4               | 2,082         | -                   |
-| accountSizedInit8           | 32,653        | 🟢 **-360 (1.09%)** |
+| accountSizedInit8           | 32,661        | 🟢 **-352 (1.07%)** |
 | accountSized8               | 3,762         | -                   |
-| accountUnsizedInit1         | 5,127         | -                   |
+| accountUnsizedInit1         | 5,090         | 🟢 **-37 (0.72%)**  |
 | accountUnsized1             | 874           | -                   |
-| accountUnsizedInit2         | 9,131         | 🟢 **-120 (1.30%)** |
+| accountUnsizedInit2         | 9,139         | 🟢 **-112 (1.21%)** |
 | accountUnsized2             | 1,326         | -                   |
-| accountUnsizedInit4         | 17,198        | 🟢 **-180 (1.04%)** |
+| accountUnsizedInit4         | 17,206        | 🟢 **-172 (0.99%)** |
 | accountUnsized4             | 2,231         | -                   |
-| accountUnsizedInit8         | 33,324        | 🟢 **-637 (1.88%)** |
+| accountUnsizedInit8         | 33,332        | 🟢 **-629 (1.85%)** |
 | accountUnsized8             | 4,035         | -                   |
-| boxedAccountEmptyInit1      | 5,007         | -                   |
+| boxedAccountEmptyInit1      | 4,970         | 🟢 **-37 (0.74%)**  |
 | boxedAccountEmpty1          | 864           | -                   |
-| boxedAccountEmptyInit2      | 8,906         | -                   |
+| boxedAccountEmptyInit2      | 8,868         | 🟢 **-38 (0.43%)**  |
 | boxedAccountEmpty2          | 1,286         | -                   |
-| boxedAccountEmptyInit4      | 16,648        | 🟢 **-254 (1.50%)** |
+| boxedAccountEmptyInit4      | 16,656        | 🟢 **-246 (1.46%)** |
 | boxedAccountEmpty4          | 2,115         | -                   |
-| boxedAccountEmptyInit8      | 32,231        | 🟢 **-360 (1.10%)** |
+| boxedAccountEmptyInit8      | 32,239        | 🟢 **-352 (1.08%)** |
 | boxedAccountEmpty8          | 3,801         | -                   |
-| boxedAccountSizedInit1      | 5,103         | -                   |
+| boxedAccountSizedInit1      | 5,066         | 🟢 **-37 (0.73%)**  |
 | boxedAccountSized1          | 912           | -                   |
-| boxedAccountSizedInit2      | 9,075         | -                   |
+| boxedAccountSizedInit2      | 9,036         | 🟢 **-39 (0.43%)**  |
 | boxedAccountSized2          | 1,355         | -                   |
-| boxedAccountSizedInit4      | 16,960        | 🟢 **-254 (1.48%)** |
+| boxedAccountSizedInit4      | 16,968        | 🟢 **-246 (1.43%)** |
 | boxedAccountSized4          | 2,231         | -                   |
-| boxedAccountSizedInit8      | 32,831        | 🟢 **-690 (2.06%)** |
+| boxedAccountSizedInit8      | 32,839        | 🟢 **-682 (2.03%)** |
 | boxedAccountSized8          | 4,007         | -                   |
-| boxedAccountUnsizedInit1    | 5,202         | -                   |
+| boxedAccountUnsizedInit1    | 5,165         | 🟢 **-37 (0.71%)**  |
 | boxedAccountUnsized1        | 964           | -                   |
-| boxedAccountUnsizedInit2    | 9,251         | -                   |
+| boxedAccountUnsizedInit2    | 9,210         | 🟢 **-41 (0.44%)**  |
 | boxedAccountUnsized2        | 1,434         | -                   |
-| boxedAccountUnsizedInit4    | 17,284        | 🟢 **-258 (1.47%)** |
+| boxedAccountUnsizedInit4    | 17,292        | 🟢 **-250 (1.43%)** |
 | boxedAccountUnsized4        | 2,367         | -                   |
-| boxedAccountUnsizedInit8    | 33,455        | 🟢 **-698 (2.04%)** |
+| boxedAccountUnsizedInit8    | 33,463        | 🟢 **-690 (2.02%)** |
 | boxedAccountUnsized8        | 4,257         | -                   |
 | boxedInterfaceAccountMint1  | 1,110         | -                   |
 | boxedInterfaceAccountMint2  | 1,534         | -                   |
@@ -89,10 +89,10 @@ Solana version: 2.3.0
 | interface2                  | 1,023         | -                   |
 | interface4                  | 1,301         | -                   |
 | interface8                  | 1,867         | -                   |
-| program1                    | 890           | -                   |
-| program2                    | 1,035         | -                   |
-| program4                    | 1,313         | -                   |
-| program8                    | 1,879         | -                   |
+| program1                    | 898           | 🔴 **+8 (0.90%)**   |
+| program2                    | 1,051         | 🔴 **+16 (1.55%)**  |
+| program4                    | 1,345         | 🔴 **+32 (2.44%)**  |
+| program8                    | 1,943         | 🔴 **+64 (3.41%)**  |
 | signer1                     | 874           | -                   |
 | signer2                     | 1,173         | -                   |
 | signer4                     | 1,759         | -                   |
@@ -188,9 +188,9 @@ Solana version: 2.3.0
 | interface4                  | 1,301         | 🔴 **+112 (9.42%)**    |
 | interface8                  | 1,867         | 🔴 **+119 (6.81%)**    |
 | program1                    | 890           | 🔴 **+111 (14.25%)**   |
-| program2                    | 1,035         | 🔴 **+115 (12.50%)**   |
-| program4                    | 1,313         | 🔴 **+120 (10.06%)**   |
-| program8                    | 1,879         | 🔴 **+135 (7.74%)**    |
+| program2                    | 1,035         | 🔴 **+101 (10.81%)**   |
+| program4                    | 1,313         | 🔴 **+92 (7.53%)**     |
+| program8                    | 1,879         | 🔴 **+79 (4.39%)**     |
 | signer1                     | 874           | 🔴 **+100 (12.92%)**   |
 | signer2                     | 1,173         | 🔴 **+109 (10.24%)**   |
 | signer4                     | 1,759         | 🔴 **+122 (7.45%)**    |
