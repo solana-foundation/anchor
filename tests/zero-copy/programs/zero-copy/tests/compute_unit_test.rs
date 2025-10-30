@@ -21,8 +21,7 @@ async fn update_foo() {
     let authority = Keypair::new();
     let foo_pubkey = Pubkey::new_unique();
     let foo_account = {
-        let mut foo_data = Vec::new();
-        foo_data.extend_from_slice(zero_copy::Foo::DISCRIMINATOR);
+        let mut foo_data = zero_copy::Foo::DISCRIMINATOR.to_vec();
         foo_data.extend_from_slice(bytemuck::bytes_of(&zero_copy::Foo {
             authority: authority.pubkey(),
             ..zero_copy::Foo::default()

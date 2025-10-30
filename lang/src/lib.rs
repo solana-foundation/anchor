@@ -383,8 +383,7 @@ pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 /// struct of named fields for each argument given to an instruction.
 pub trait InstructionData: Discriminator + AnchorSerialize {
     fn data(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(256);
-        data.extend_from_slice(Self::DISCRIMINATOR);
+        let mut data = Self::DISCRIMINATOR.to_vec();
         self.serialize(&mut data).unwrap();
         data
     }
@@ -394,8 +393,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
     /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
-        data.clear();
-        data.extend_from_slice(Self::DISCRIMINATOR);
+        *data = Self::DISCRIMINATOR.to_vec();
         self.serialize(&mut data).unwrap()
     }
 }

@@ -47,8 +47,7 @@ pub fn event(
 
         impl anchor_lang::Event for #event_name {
             fn data(&self) -> Vec<u8> {
-                let mut data = Vec::with_capacity(256);
-                data.extend_from_slice(#event_name::DISCRIMINATOR);
+                let mut data = (#event_name::DISCRIMINATOR).to_vec();
                 self.serialize(&mut data).unwrap();
                 data
             }
