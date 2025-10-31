@@ -25,22 +25,35 @@ cargo_toml = "0.19.2"
 chrono = "0.4.19"
 clap = { version = "4.5.17", features = ["derive"] }
 clap_complete = "4.5.26"
+console = "0.15"
 dirs = "4.0"
+ed25519-dalek = "2"
 flate2 = "1.0.19"
 heck = "0.4.0"
 pathdiff = "0.2.0"
 portpicker = "0.1.1"
 regex = "1.8.3"
 reqwest = { version = "0.11.4", default-features = false, features = ["multipart", "blocking", "rustls-tls"] }
+rustls-webpki = "0.102"
 semver = "1.0.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 solana-cli-config = "2"
+solana-client = "2"
 solana-faucet = "2"
+solana-loader-v3-interface = { version = "5", features = ["bincode"] }
+solana-packet = "2"
+solana-pubsub-client = "2"
 solana-rpc-client = "2"
+solana-rpc-client-api = "2"
 solana-sdk = "2"
+solana-sdk-ids = "2.2"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
+tiny-bip39 = "2.0"
 toml = "0.7.6"
 walkdir = "2.3.2"
+
+[dev-dependencies]
+tempfile = "3"
