@@ -413,18 +413,22 @@
   ],
   "errors": [
     {
-      "code": 6000,
+      "code": 500000,
       "name": "SomeError",
       "msg": "Example error."
     },
     {
-      "code": 6001,
+      "code": 500001,
       "name": "OtherError",
       "msg": "Another error."
     },
     {
-      "code": 6002,
+      "code": 500002,
       "name": "ErrorWithoutMsg"
+    },
+    {
+      "code": 500500,
+      "name": "WithDiscrim"
     }
   ],
   "types": [
