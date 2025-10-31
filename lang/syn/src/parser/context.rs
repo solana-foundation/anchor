@@ -52,7 +52,13 @@ impl CrateContext {
     pub fn safety_checks(&self) -> Result<()> {
         // Check all structs for unsafe field types, i.e. AccountInfo and UncheckedAccount.
         for ctx in self.modules.values() {
-            for unsafe_field in ctx.unsafe_struct_fields() {
+            // Read the source file to find accurate line numbers
+            let file_content = std::fs::read_to_string(&ctx.file)?;
+            let lines: Vec<&str> = file_content.lines().collect();
+
+            // Iterate through each struct individually to track which struct each field belongs to
+            for unsafe_field_with_struct in ctx.unsafe_struct_fields_with_struct_name() {
+                let (struct_name, unsafe_field) = unsafe_field_with_struct;
                 // Check if unsafe field type has been documented with a /// SAFETY: doc string.
                 let is_documented = unsafe_field.attrs.iter().any(|attr| {
                     attr.tokens.clone().into_iter().any(|token| match token {
@@ -63,21 +69,37 @@ impl CrateContext {
                 });
                 if !is_documented {
                     let ident = unsafe_field.ident.as_ref().unwrap();
-                    let span = ident.span();
+                    let field_name = ident.to_string();
+
+                    // Find the actual line number by searching the source file
+                    let mut actual_line = 1;
+                    let mut in_target_struct = false;
+                    for (line_idx, line) in lines.iter().enumerate() {
+                        // Look for the target struct definition
+                        if !in_target_struct && line.contains(&format!("struct {}", struct_name)) {
+                            in_target_struct = true;
+                        }
+                        // Once in the struct, find the field
+                        if in_target_struct && line.contains(&field_name) {
+                            actual_line = line_idx + 1;
+                            break;
+                        }
+                    }
+
                     // Error if undocumented.
                     return Err(anyhow!(
                         r#"
-        {}:{}:{}
-        Struct field "{}" is unsafe, but is not documented.
+        {}:{}:0
+        Struct "{}" field "{}" is unsafe, but is not documented.
         Please add a `/// CHECK:` doc comment explaining why no checks through types are necessary.
         Alternatively, for reasons like quick prototyping, you may disable the safety checks
         by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/the-accounts-struct#safety-checks for more information.
                     "#,
                         ctx.file.canonicalize().unwrap().display(),
-                        span.start().line,
-                        span.start().column,
-                        ident.to_string()
+                        actual_line,
+                        struct_name,
+                        field_name
                     ));
                 };
             }
@@ -221,7 +243,7 @@ impl ParsedModule {
         })
     }
 
-    fn unsafe_struct_fields(&self) -> impl Iterator<Item = &syn::Field> {
+    fn unsafe_struct_fields_with_struct_name(&self) -> impl Iterator<Item = (String, &syn::Field)> {
         let accounts_filter = |item_struct: &&syn::ItemStruct| {
             item_struct.attrs.iter().any(|attr| {
                 match attr.parse_meta() {
@@ -237,14 +259,17 @@ impl ParsedModule {
 
         self.structs()
             .filter(accounts_filter)
-            .flat_map(|s| &s.fields)
-            .filter(|f| match &f.ty {
+            .flat_map(|s| {
+                let struct_name = s.ident.to_string();
+                s.fields.iter().map(move |f| (struct_name.clone(), f))
+            })
+            .filter(|(_, f)| match &f.ty {
                 syn::Type::Path(syn::TypePath {
                     path: syn::Path { segments, .. },
                     ..
                 }) => {
-                    segments.len() == 1 && segments[0].ident == "UncheckedAccount"
-                        || segments[0].ident == "AccountInfo"
+                    segments.len() == 1 && (segments[0].ident == "UncheckedAccount"
+                        || segments[0].ident == "AccountInfo")
                 }
                 _ => false,
             })
