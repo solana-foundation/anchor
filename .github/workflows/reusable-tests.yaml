@@ -464,6 +464,8 @@ jobs:
             path: tests/idl
           - cmd: cd tests/lazy-account && anchor test
             path: tests/lazy-account
+          - cmd: cd tests/post2018-template && anchor test --skip-lint
+            path: tests/post2018-template
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

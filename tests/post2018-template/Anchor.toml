@@ -1,0 +1,6 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+template_multiple_files = "CwrqeMj2U8tFr1Rhkgwc84tpAsqbt9pTt2a4taoTADPr"

@@ -149,7 +149,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -170,7 +170,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
