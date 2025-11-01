@@ -1,7 +1,8 @@
 use crate::codegen::program::common::*;
 use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::spanned::Spanned;
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -99,12 +100,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
+            let ix_span = ix.raw_method.span();
             let ix_name = generate_ix_variant_name(&ix_method_name_str);
-            let variant_arm = generate_ix_variant(&ix_method_name_str, &ix.args);
+            let variant_arm = generate_ix_variant_spanned(&ix_method_name_str, &ix.args, ix_span);
             let ix_name_log = format!("Instruction: {ix_name}");
             let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
             let cfgs = &ix.cfgs;
+            let ix_span = ix.raw_method.span();
             let maybe_set_return_data = match ret_type.to_string().as_str() {
                 "()" => quote! {},
                 _ => quote! {
@@ -113,10 +116,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
+            let spanned_fn_name = quote_spanned! { ix_span => #ix_method_name };
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
-                pub fn #ix_method_name<'info>(
+                pub fn #spanned_fn_name<'info>(
                     __program_id: &Pubkey,
                     __accounts: &'info[AccountInfo<'info>],
                     __ix_data: &[u8],

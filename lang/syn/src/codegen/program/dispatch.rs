@@ -1,6 +1,7 @@
 use crate::Program;
 use heck::CamelCase;
-use quote::quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
@@ -11,13 +12,15 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             .to_camel_case()
             .parse()
             .expect("Failed to parse ix method name in camel as `TokenStream`");
+        let ix_span = ix.raw_method.span();
         let discriminator = quote! { instruction::#ix_name_camel::DISCRIMINATOR };
+        let spanned_method_name = quote_spanned! { ix_span => #ix_method_name };
         let ix_cfgs = &ix.cfgs;
 
         quote! {
             #(#ix_cfgs)*
             if data.starts_with(#discriminator) {
-                return __private::__global::#ix_method_name(
+                return __private::__global::#spanned_method_name(
                     program_id,
                     accounts,
                     &data[#discriminator.len()..],
@@ -50,8 +53,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .map(|fallback_fn| {
             let program_name = &program.name;
             let fn_name = &fallback_fn.raw_method.sig.ident;
+            let fallback_span = fallback_fn.raw_method.span();
+            let spanned_fn_name = quote_spanned! { fallback_span => #fn_name };
             quote! {
-                #program_name::#fn_name(program_id, accounts, data)
+                #program_name::#spanned_fn_name(program_id, accounts, data)
             }
         })
         .unwrap_or_else(|| {
@@ -60,6 +65,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
         });
 
+    let program_span = program.program_mod.span();
+    let spanned_dispatch = quote_spanned! { program_span => dispatch };
     quote! {
         /// Performs method dispatch.
         ///
@@ -71,7 +78,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// If no match is found, the fallback function is executed if it exists, or an error is
         /// returned if it doesn't exist.
-        fn dispatch<'info>(
+        fn #spanned_dispatch<'info>(
             program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
             data: &[u8],
