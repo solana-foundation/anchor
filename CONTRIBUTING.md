@@ -20,6 +20,15 @@ If you'd like to contribute, please claim an issue by commenting, forking, and
 opening a pull request, even if empty. This allows the maintainers to track who
 is working on what issue as to not overlap work.
 
+## Typo and Small Documentation Fixes
+
+If you find typos or small documentation errors:
+
+- **Batch multiple fixes together**: Please group multiple typo fixes into a single PR rather than creating separate PRs for each typo. This helps reduce noise and makes reviewing more efficient.
+- **Use a descriptive title**: Title your PR something like "docs: Fix multiple typos in [module/section]" or "docs: Fix typos in CONTRIBUTING.md and README.md"
+- **Simple fixes don't need an issue**: For straightforward typo corrections, you can directly open a pull request without creating an issue first
+- **Exception**: If you find only a single critical typo (e.g., in a command or code example that would cause errors), you can submit it separately
+
 ## Issue Guidelines
 
 Please follow these guidelines:
