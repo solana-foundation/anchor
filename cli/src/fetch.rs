@@ -3,11 +3,12 @@ use crate::config::{get_solana_cfg_url, Config, ConfigOverride};
 use anchor_lang::idl::IdlAccount;
 use anyhow::{anyhow, Result};
 use flate2::read::ZlibDecoder;
+use indicatif::{ProgressBar, ProgressStyle};
+use solana_pubkey::Pubkey;
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_rpc_client_api::config::RpcTransactionConfig;
 use solana_rpc_client_api::response::RpcConfirmedTransactionStatusWithSignature;
 use solana_sdk::commitment_config::CommitmentConfig;
-use solana_pubkey::Pubkey;
 use solana_sdk::signature::Signature;
 use solana_transaction_status_client_types::*;
 use std::io::Read;
@@ -47,10 +48,14 @@ impl<'a> IdlFetcher<'a> {
     fn collect_chunks(
         &self,
         signatures: &[&RpcConfirmedTransactionStatusWithSignature],
+        pb: Option<&ProgressBar>,
     ) -> Vec<SlotChunk> {
         signatures
             .iter()
             .filter_map(|sig| {
+                if let Some(pb) = pb {
+                    pb.inc(1);
+                }
                 let signature = Signature::from_str(&sig.signature).ok()?;
                 let chunks = extract_chunks_from_transaction(self.client, &signature).ok()?;
                 if chunks.is_empty() {
@@ -71,9 +76,10 @@ impl<'a> IdlFetcher<'a> {
     fn collect_chunks_owned(
         &self,
         signatures: &[RpcConfirmedTransactionStatusWithSignature],
+        pb: Option<&ProgressBar>,
     ) -> Vec<SlotChunk> {
         let refs: Vec<&RpcConfirmedTransactionStatusWithSignature> = signatures.iter().collect();
-        self.collect_chunks(&refs)
+        self.collect_chunks(&refs, pb)
     }
 
     fn scan_backwards(
@@ -256,13 +262,27 @@ pub fn idl_fetch_at_slot(
 
     let (before_target, at_target, after_target) =
         partition_signatures_by_slot(all_signatures, target_slot);
+
+    let total_sigs = before_target.len() + at_target.len() + after_target.len();
+    let pb = ProgressBar::new(total_sigs as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} transactions ({eta})")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+    pb.set_message("Processing transactions...");
+
     let session_chunks = reconstruct_session_at_slot(
         &fetcher,
         &before_target,
         &at_target,
         &after_target,
         target_slot,
+        Some(&pb),
     )?;
+
+    pb.finish_with_message("Transaction processing complete");
 
     if session_chunks.is_empty() {
         println!(
@@ -310,11 +330,12 @@ fn reconstruct_session_at_slot(
     at_target: &[&RpcConfirmedTransactionStatusWithSignature],
     after_target: &[&RpcConfirmedTransactionStatusWithSignature],
     target_slot: u64,
+    pb: Option<&ProgressBar>,
 ) -> Result<SessionChunks> {
-    let mut session_chunks = fetcher.collect_chunks(at_target);
+    let mut session_chunks = fetcher.collect_chunks(at_target, pb);
 
     if session_chunks.is_empty() {
-        let all_chunks = fetcher.collect_chunks(before_target);
+        let all_chunks = fetcher.collect_chunks(before_target, pb);
         if all_chunks.is_empty() {
             println!(
                 "No IDL Write transactions found before slot {}",
@@ -401,6 +422,7 @@ pub fn idl_fetch_historical(
         println!("The program doesn't have an IDL account");
         return Ok(());
     }
+    println!("Found {} transactions on the IDL account", signatures.len());
 
     if let Some(target_slot) = slot {
         fetcher.validate_slot(target_slot)?;
@@ -411,14 +433,47 @@ pub fn idl_fetch_historical(
     if filtered_signatures.is_empty() {
         return Ok(());
     }
+    println!(
+        "Processing {} transactions on the IDL account...",
+        filtered_signatures.len()
+    );
 
-    let all_chunks = collect_and_process_chunks(&fetcher, &filtered_signatures);
+    let pb = ProgressBar::new(filtered_signatures.len() as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} transactions ({eta})")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+    pb.set_message("Extracting IDL chunks from transactions...");
+
+    let all_chunks = collect_and_process_chunks(&fetcher, &filtered_signatures, Some(&pb));
+
+    pb.finish_with_message("Transaction processing complete");
+
     if all_chunks.is_empty() {
+        println!("\nNo IDL chunks found in transactions");
         return Ok(());
     }
 
+    println!("Grouping {} chunks into sessions...", all_chunks.len());
     let sessions = group_chunks_into_sessions(&all_chunks);
-    let extracted_idls = decompress_sessions(&sessions, &filtered_signatures)?;
+    println!("Found {} IDL session(s)", sessions.len());
+
+    println!("Decompressing IDL data...");
+    let decompress_pb = ProgressBar::new(sessions.len() as u64);
+    decompress_pb.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} sessions",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+
+    let extracted_idls =
+        decompress_sessions(&sessions, &filtered_signatures, Some(&decompress_pb))?;
+    decompress_pb.finish_with_message("Decompression complete");
 
     if extracted_idls.is_empty() {
         println!("\nNo IDL data could be fetched from historical slots.");
@@ -475,8 +530,9 @@ fn apply_date_filters(
 fn collect_and_process_chunks(
     fetcher: &IdlFetcher,
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
+    pb: Option<&ProgressBar>,
 ) -> Vec<SlotChunk> {
-    let mut all_chunks = fetcher.collect_chunks_owned(signatures);
+    let mut all_chunks = fetcher.collect_chunks_owned(signatures, pb);
     all_chunks.sort_by_key(|(slot, _)| *slot);
     all_chunks
 }
@@ -484,10 +540,14 @@ fn collect_and_process_chunks(
 fn decompress_sessions(
     sessions: &[SessionChunks],
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
+    pb: Option<&ProgressBar>,
 ) -> Result<Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>> {
     let extracted = sessions
         .iter()
         .filter_map(|session| {
+            if let Some(pb) = pb {
+                pb.inc(1);
+            }
             let combined_data = combine_chunks(session);
             match decompress_idl_data(&combined_data) {
                 Ok(Some(idl_data)) => {
