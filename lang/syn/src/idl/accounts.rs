@@ -418,7 +418,12 @@ impl SeedPath {
         }
 
         // Break up the seed into each subfield component.
-        let mut components = seed_str.split('.').collect::<Vec<_>>();
+        // Trim whitespace from components to handle formatted token streams (e.g., "user . key ()")
+        let mut components = seed_str
+            .split('.')
+            .map(|s| s.trim())
+            .collect::<Vec<_>>();
+
         if components.len() <= 1 {
             return Err(anyhow!("Seed is in unexpected format: {seed:#?}"));
         }
