@@ -1,0 +1,6 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+seeds_issue = "5uYEr7j1eznfyH8tytwRakSMfy7gqNP647havHtSfuWt"
