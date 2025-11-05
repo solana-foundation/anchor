@@ -96,6 +96,9 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
             } = terminator_kind
                 && let rustc_ty::FnDef(fn_def_id, _) = func_const.ty().kind()
             {
+                let fn_sig = cx.tcx.fn_sig(*fn_def_id).skip_binder();
+                let fn_sig_unbounded = fn_sig.skip_binder();
+                let return_ty = fn_sig_unbounded.output();
                 // check if the function takes a CPI context
                 if takes_cpi_context(cx, mir, args)
                     && let Some(instruction) = args.get(0)
@@ -114,11 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                         );
                     }
                 // check if the function returns a CPI context
-                } else if let fn_sig = cx.tcx.fn_sig(*fn_def_id).skip_binder()
-                    && let fn_sig_unbounded = fn_sig.skip_binder()
-                    && let return_ty = fn_sig_unbounded.output()
-                    && is_type_diagnostic_item(cx, return_ty, anchor_cpi_sym)
-                {
+                } else if is_type_diagnostic_item(cx, return_ty, anchor_cpi_sym) {
                     // check if CPI context with user controllable program id
                     if let Some(program_id) = args.get(0)
                         && let Operand::Copy(place) | Operand::Move(place) = &program_id.node
@@ -142,6 +141,19 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                     && let Some(ret) = destination.as_local()
                 {
                     program_id_cmps.push(Cmp { lhs, rhs, ret });
+                } else if let [_receiver, arg] = args.as_ref()
+                    && let Some(maybe_pubkey) = pubkey_operand_to_local(cx, mir, &arg.node)
+                    && let Some(name) = cx.tcx.opt_item_name(*fn_def_id)
+                    && name.as_str() == "contains"
+                    && return_ty.is_bool()
+                    && let Some(ret) = destination.as_local()
+                {
+                    // FIXME: Represent this more accurately than a fake comparison to self
+                    program_id_cmps.push(Cmp {
+                        lhs: maybe_pubkey,
+                        rhs: maybe_pubkey,
+                        ret,
+                    });
                 }
             }
             // Find if/else switches which may be the result of a comparison
