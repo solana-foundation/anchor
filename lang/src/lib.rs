@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -172,6 +172,12 @@ pub use idl::IdlBuild;
 pub use anchor_attribute_program::interface;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
+
+// Deprecated message for AccountInfo usage in Accounts struct
+#[deprecated(
+    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
+)]
+pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any

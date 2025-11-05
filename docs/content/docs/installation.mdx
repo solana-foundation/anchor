@@ -468,7 +468,7 @@ To verify that the installation was successful, check the Yarn version:
 yarn --version
 ```
 
-You should the following output:
+You should see the following output:
 
 ```
 1.22.1
@@ -567,7 +567,7 @@ Keypair Path: /Users/test/.config/solana/id.json
 Commitment: confirmed
 ```
 
-The RPC URL and Websocket URL specific the Solana cluster the CLI will make
+The RPC URL and Websocket URL specify the Solana cluster the CLI will make
 requests to. By default this will be mainnet-beta.
 
 You can update the Solana CLI cluster using the following commands:
@@ -727,7 +727,16 @@ anchor init my-project
 ```
 
 This command creates a new directory with the project name and initializes a new
-Anchor project with a basic Rust program and TypeScript test template.
+Anchor project with a modular Rust program structure and TypeScript test
+template.
+
+<Callout type="info">
+
+By default, Anchor uses a **modular structure** with separate files for
+instructions, state, constants, and errors. This organization improves code
+maintainability and is recommended for production code.
+
+</Callout>
 
 Navigate to the project directory:
 
