@@ -137,14 +137,11 @@ impl<'tcx> LateLintPass<'tcx> for ArbitraryCpiCall {
                             },
                         );
                     }
-                } else {
-                    if cx.tcx.is_diagnostic_item(sym::cmp_partialeq_eq, *fn_def_id)
-                        && let (Some(lhs), Some(rhs)) =
-                            check_function_args_has_pubkey_type(cx, mir, args)
-                        && let Some(ret) = destination.as_local()
-                    {
-                        program_id_cmps.push(Cmp { lhs, rhs, ret });
-                    }
+                } else if cx.tcx.is_diagnostic_item(sym::cmp_partialeq_eq, *fn_def_id)
+                    && let Some((lhs, rhs)) = args_as_pubkey_locals(cx, mir, args)
+                    && let Some(ret) = destination.as_local()
+                {
+                    program_id_cmps.push(Cmp { lhs, rhs, ret });
                 }
             }
             // Find if/else switches which may be the result of a comparison
