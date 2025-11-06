@@ -58,11 +58,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
 fn rust_toolchain_toml() -> String {
     format!(
         r#"[toolchain]
-channel = "{msrv}"
+channel = "{ANCHOR_MSRV}"
 components = ["rustfmt","clippy"]
 profile = "minimal"
-"#,
-        msrv = ANCHOR_MSRV
+"#
     )
 }
 
@@ -750,15 +749,12 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
-rust-version = "{msrv}"
+rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]
-anchor-client = "{version}"
+anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
-"#,
-        msrv = ANCHOR_MSRV,
-        version = VERSION,
-        name = name,
+"#
     )
 }
 

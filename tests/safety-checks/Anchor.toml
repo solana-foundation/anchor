@@ -1,6 +1,15 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
 [programs.localnet]
-unchecked_account = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-account_info = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+account_info = "99YPYSHjNekPHmMB7yrTxZCV2k2pRMKEqwwcqE62NqdA"
+unchecked_account = "4es8ojkX4URUyar2pbuLXQ4WoFtUizb5EupfaEgHjYQF"
+
+[registry]
+url = "https://api.apr.dev"
 
 [provider]
 cluster = "localnet"
