@@ -1,7 +1,10 @@
-use crate::codegen::program::common::{generate_ix_variant, generate_ix_variant_name};
+use crate::codegen::program::common::{
+    generate_ix_variant_name_spanned, generate_ix_variant_spanned,
+};
 use crate::Program;
 use heck::SnakeCase;
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Generate cpi methods for global methods.
@@ -13,35 +16,28 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
                 let name_str = name.to_string();
-                let ix_variant = match generate_ix_variant(&name_str, &ix.args) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        let err = e.to_string();
-                        return quote! { compile_error!(concat!("error generating ix variant: `", #err, "`")) };
-                    }
-                };
+                let ix_span = ix.raw_method.span();
+                let ix_variant = generate_ix_variant_spanned(&name_str, &ix.args, ix_span);
                 let method_name = &ix.ident;
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
-                let discriminator = match generate_ix_variant_name(&name_str) {
-                    Ok(name) => quote! { <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR },
-                    Err(e) => {
-                        let err = e.to_string();
-                        return quote! { compile_error!(concat!("error generating ix variant name: `", #err, "`")) };
-                    }
+                let discriminator = {
+                    let name = generate_ix_variant_name_spanned(&name_str, ix_span);
+                    quote_spanned! { ix_span => <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR }
                 };
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let ix_cfgs = &ix.cfgs;
                 let (method_ret, maybe_return) = match ret_type.to_string().as_str() {
-                    "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
+                    "()" => (quote! { anchor_lang::Result<()> }, quote! { Ok(()) }),
                     _ => (
                         quote! { anchor_lang::Result<crate::cpi::Return::<#ret_type>> },
                         quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData }) }
                     )
                 };
+                let spanned_method_name = quote_spanned! { ix_span => #method_name };
 
                 quote! {
                     #(#ix_cfgs)*
-                    pub fn #method_name<'a, 'b, 'c, 'info>(
+                    pub fn #spanned_method_name<'a, 'b, 'c, 'info>(
                         ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
                         #(#args),*
                     ) -> #method_ret {
