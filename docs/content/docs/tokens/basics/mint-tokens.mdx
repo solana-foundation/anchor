@@ -71,8 +71,8 @@ pub mod token_example {
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.signer.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
+        let cpi_program_id = ctx.accounts.token_program.key();
+        let cpi_context = CpiContext::new(cpi_program_id, cpi_accounts);
         token_interface::mint_to(cpi_context, amount)?;
         Ok(())
     }
@@ -124,10 +124,10 @@ pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
     };
 
     // The program being invoked in the CPI
-    let cpi_program = ctx.accounts.token_program.to_account_info();
+    let cpi_program_id = ctx.accounts.token_program.key();
 
     // Combine the accounts and program into a "CpiContext"
-    let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
+    let cpi_context = CpiContext::new(cpi_program_id, cpi_accounts);
 
     // Make CPI to mint_to instruction on the token program
     token_interface::mint_to(cpi_context, amount)?;
@@ -172,8 +172,8 @@ pub mod token_example {
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.mint.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_context = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
+        let cpi_program_id = ctx.accounts.token_program.key();
+        let cpi_context = CpiContext::new(cpi_program_id, cpi_accounts).with_signer(signer_seeds);
         // [!code highlight]
         token_interface::mint_to(cpi_context, amount)?;
         Ok(())
