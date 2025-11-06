@@ -31,7 +31,7 @@ to understand, contribute to, or modify the code.
 Accounts are the pieces of state owned by a Solana program. For reference while reading, here are all
 accounts used by the **Registry** program.
 
-* `Registrar` - Analogous to an SPL token `Mint`, the `Registrar` defines a staking instance. It has its own pool, and it's own set of rewards distributed amongst its own set of stakers.
+* `Registrar` - Analogous to an SPL token `Mint`, the `Registrar` defines a staking instance. It has its own pool, and its own set of rewards distributed amongst its own set of stakers.
 * `Member` - Analogous to an SPL token `Account`, `Member` accounts represent a **beneficiary**'s (i.e. a wallet's) stake state. This account has several vaults, all of which represent the funds belonging to an individual user.
 * `PendingWithdrawal` - A transfer out of the staking pool (poorly named since it's not a withdrawal out of the program. But a withdrawal out of the staking pool and into a `Member`'s freely available balances).
 * `RewardVendor` - A reward that has been dropped onto stakers and is distributed pro rata to staked `Member` beneficiaries.
@@ -89,7 +89,7 @@ from the stake pool is complete, and the funds are ready to be used again.
 Feel free to skip this section and jump to the **Reward Vendors** section if you want to
 just see how rewards work.
 
-One could imagine several ways to drop rewards onto a staking pool, each with there own downsides.
+One could imagine several ways to drop rewards onto a staking pool, each with their own downsides.
 Of course what you want is, for a given reward amount, to atomically snapshot the state
 of the staking pool and to distribute it proportionally to all stake holders. Effectively,
 an on chain program such as
@@ -116,7 +116,7 @@ This is not auditable or verifiable. And if you want to answer these questions, 
 complex off-chain protocols that require either fancy cryptography or effectively
 recreating a BFT system off chain.
 
-Another solution considerered was to use a uniswap-style AMM pool (without the swapping).
+Another solution considered was to use a uniswap-style AMM pool (without the swapping).
 This has a lot of advantages. First it's easy to reason about and implement in a single transaction.
 To drop rewards globally onto the pool, one can deposit funds directly into the pool, in which case
 the reward is automatically received by owners of the staking pool token upon redemption, a process
