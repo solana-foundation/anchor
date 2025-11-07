@@ -31,12 +31,12 @@ pub fn verify_ed25519_ix(
     expected.push(1u8); // num signatures
     expected.push(0u8); // padding
     expected.extend_from_slice(&sig_offset.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX as u16).to_le_bytes());
+    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
     expected.extend_from_slice(&pubkey_offset.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX as u16).to_le_bytes());
+    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
     expected.extend_from_slice(&msg_offset.to_le_bytes());
     expected.extend_from_slice(&msg_len.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX as u16).to_le_bytes());
+    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
 
     expected.extend_from_slice(sig);
     expected.extend_from_slice(pubkey);
