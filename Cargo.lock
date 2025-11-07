@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-access-control"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-account"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "bs58",
@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-constant"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-error"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-event"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "proc-macro2",
@@ -187,7 +187,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-attribute-program"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-lang-idl",
  "anchor-syn",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-cli"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -237,13 +237,14 @@ dependencies = [
 
 [[package]]
 name = "anchor-client"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-lang",
  "anyhow",
  "futures",
  "regex",
  "serde",
+ "solana-account",
  "solana-account-decoder",
  "solana-pubsub-client",
  "solana-rpc-client",
@@ -256,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "quote",
@@ -265,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-serde"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-syn",
  "borsh-derive-internal",
@@ -276,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-space"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -285,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-attribute-access-control",
  "anchor-attribute-account",
@@ -301,6 +302,7 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "bytemuck",
+ "const-crypto",
  "solana-account-info 2.3.0",
  "solana-clock 2.2.2",
  "solana-cpi 2.2.1",
@@ -347,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-spl"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.3",
@@ -363,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-syn"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anyhow",
  "bs58",
@@ -636,7 +638,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "avm"
-version = "0.31.1"
+version = "0.32.1"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -1081,6 +1083,16 @@ checksum = "e89f72f65e8501878b8a004d5a1afb780987e2ce2b4532c562e367a72c57499f"
 dependencies = [
  "log",
  "web-sys",
+]
+
+[[package]]
+name = "const-crypto"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c06f1eb05f06cf2e380fdded278fbf056a38974299d77960555a311dcf91a52"
+dependencies = [
+ "keccak-const",
+ "sha2-const-stable",
 ]
 
 [[package]]
@@ -2282,6 +2294,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "keccak-const"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d8d8ce877200136358e0bbff3a77965875db3af755a11e1fa6b1b3e2df13ea"
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3353,6 +3371,12 @@ dependencies = [
  "cpufeatures",
  "digest 0.10.7",
 ]
+
+[[package]]
+name = "sha2-const-stable"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f179d4e11094a893b82fff208f74d448a7512f99f5a0acbd5c679b705f83ed9"
 
 [[package]]
 name = "sha3"

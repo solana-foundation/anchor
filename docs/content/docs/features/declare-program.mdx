@@ -244,7 +244,7 @@ pub mod example_cpi {
     pub fn initialize_cpi(ctx: Context<InitializeCpi>) -> Result<()> {
         // Create CPI context for initialize
         let cpi_ctx = CpiContext::new(
-            ctx.accounts.example_program.to_account_info(),
+            ctx.accounts.example_program.key(),
             Initialize {
                 payer: ctx.accounts.payer.to_account_info(),
                 counter: ctx.accounts.counter.to_account_info(),
@@ -260,7 +260,7 @@ pub mod example_cpi {
     pub fn increment_cpi(ctx: Context<IncrementCpi>) -> Result<()> {
         // Create CPI context for increment
         let cpi_ctx = CpiContext::new(
-            ctx.accounts.example_program.to_account_info(),
+            ctx.accounts.example_program.key(),
             Increment {
                 counter: ctx.accounts.counter.to_account_info(),
             },
@@ -404,7 +404,7 @@ Use the CPI module to invoke the program's instructions:
 pub fn initialize_cpi(ctx: Context<InitializeCpi>) -> Result<()> {
     // Create CPI context for initialize
     let cpi_ctx = CpiContext::new(
-        ctx.accounts.example_program.to_account_info(),
+        ctx.accounts.example_program.key(),
         Initialize {
             payer: ctx.accounts.payer.to_account_info(),
             counter: ctx.accounts.counter.to_account_info(),
@@ -423,7 +423,7 @@ pub fn initialize_cpi(ctx: Context<InitializeCpi>) -> Result<()> {
 pub fn increment_cpi(ctx: Context<IncrementCpi>) -> Result<()> {
     // Create CPI context for increment
     let cpi_ctx = CpiContext::new(
-        ctx.accounts.example_program.to_account_info(),
+        ctx.accounts.example_program.key(),
         Increment {
             counter: ctx.accounts.counter.to_account_info(),
         },
@@ -679,8 +679,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anchor-client = { version = "0.31.1", features = ["async"] }
-anchor-lang = "0.31.1"
+anchor-client = { version = "0.32.1", features = ["async"] }
+anchor-lang = "0.32.1"
 anyhow = "1.0.93"
 tokio = { version = "1.0", features = ["full"] }
 ```

@@ -47,6 +47,10 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
 
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
       - name: Build release binary
         run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
 
