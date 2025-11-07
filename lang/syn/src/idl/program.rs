@@ -20,7 +20,8 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
         Ok(tokens) => tokens,
         Err(e) => {
             // If we can't perform safety checks, emit a compile error
-            return e.to_compile_error();
+            return syn::Error::new(proc_macro2::Span::call_site(), e.to_string())
+                .to_compile_error();
         }
     };
 
