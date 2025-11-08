@@ -178,6 +178,10 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+edition = "2021"
+rust-version = "1.89.0"
+
 [profile.release]
 overflow-checks = true
 lto = "fat"
@@ -205,7 +209,8 @@ mollusk-svm = "~0.4"
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
