@@ -369,6 +369,11 @@ jobs:
     name: Test ${{ matrix.node.path }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Allow sccache to work
+      CARGO_INCREMENTAL: "false"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     strategy:
       fail-fast: false
       matrix:
@@ -491,6 +496,9 @@ jobs:
         with:
           path: ${{ matrix.node.path }}/target
           key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - run: ${{ matrix.node.cmd }}
         name: ${{ matrix.node.path }} program test
