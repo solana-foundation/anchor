@@ -306,6 +306,7 @@ pub enum IdlType {
         #[serde(default, skip_serializing_if = "is_default")]
         generics: Vec<IdlGenericArg>,
     },
+    NonZero(Box<IdlType>),
     Generic(String),
 }
 
@@ -353,6 +354,20 @@ impl FromStr for IdlType {
                             .ok_or_else(|| anyhow!("Invalid Vec"))?,
                     )?;
                     return Ok(IdlType::Vec(Box::new(inner_ty)));
+                }
+                // NonZero<u8>
+                if let Some(inner) = s.strip_prefix("NonZero<") {
+                    let inner_ty = Self::from_str(
+                        inner
+                            .strip_suffix('>')
+                            .ok_or_else(|| anyhow!("Invalid NonZero"))?,
+                    )?;
+                    return Ok(IdlType::NonZero(Box::new(inner_ty)));
+                }
+                // NonZeroU8
+                if let Some(inner) = s.strip_prefix("NonZero") {
+                    let inner_ty = Self::from_str(&inner.to_lowercase())?;
+                    return Ok(IdlType::NonZero(Box::new(inner_ty)));
                 }
 
                 if s.starts_with('[') {
@@ -498,5 +513,17 @@ mod tests {
                 ],
             }
         )
+    }
+
+    #[test]
+    fn nonzero() {
+        assert_eq!(
+            IdlType::from_str("NonZero<u64>").unwrap(),
+            IdlType::NonZero(Box::new(IdlType::U64)),
+        );
+        assert_eq!(
+            IdlType::from_str("NonZeroU8").unwrap(),
+            IdlType::NonZero(Box::new(IdlType::U8)),
+        );
     }
 }

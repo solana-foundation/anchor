@@ -76,6 +76,16 @@ export class IdlCoder {
         return borsh.publicKey(fieldName);
       }
       default: {
+        if ("nonzero" in field.type) {
+          return borsh.nonzero(
+            IdlCoder.fieldLayout(
+              { type: field.type.nonzero },
+              types,
+              genericArgs,
+            ),
+            fieldName
+          );
+        }
         if ("option" in field.type) {
           return borsh.option(
             IdlCoder.fieldLayout(

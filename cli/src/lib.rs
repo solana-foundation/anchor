@@ -2899,6 +2899,7 @@ fn deserialize_idl_type_to_json(
                 deserialize_idl_type_to_json(ty, data, parent_idl)?
             }
         }
+        IdlType::NonZero(ty) => deserialize_idl_type_to_json(ty, data, parent_idl)?,
         IdlType::Vec(ty) => {
             let size: usize = <u32 as AnchorDeserialize>::deserialize(data)?
                 .try_into()
