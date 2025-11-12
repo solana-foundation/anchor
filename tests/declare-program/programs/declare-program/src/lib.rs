@@ -118,6 +118,14 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    pub fn test_amm_v3_errors(_ctx: Context<Utils>) -> Result<()> {
+        let _error: amm_v3::ProgramError = amm_v3::ProgramError::LOK;
+
+        let _error2: amm_v3::errors::ProgramError = amm_v3::errors::ProgramError::NotApproved;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]

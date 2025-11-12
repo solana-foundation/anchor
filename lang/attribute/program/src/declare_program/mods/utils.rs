@@ -56,7 +56,7 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*
-                Err(ProgramError::InvalidArgument.into())
+                Err(anchor_lang::prelude::ProgramError::InvalidArgument.into())
             }
         }
     }
@@ -102,7 +102,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*
-                Err(ProgramError::InvalidArgument.into())
+                Err(anchor_lang::prelude::ProgramError::InvalidArgument.into())
             }
         }
     }
