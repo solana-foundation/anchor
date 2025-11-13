@@ -175,6 +175,24 @@ export function option<T>(
   return new OptionLayout<T>(layout, property);
 }
 
+function decodeNonZero<T>(value: T): T {
+  if (value === 0) {
+    throw new Error("Invalid nonzero: " + value);
+  }
+  return value;
+}
+
+function encodeNonZero<T>(value: T): T {
+  return value;
+}
+
+export function nonzero<T>(
+  layout: Layout<T>,
+  property?: string
+): Layout<T> {
+  return new WrappedLayout(layout, decodeNonZero, encodeNonZero, property);
+}
+
 export function bool(property?: string): Layout<boolean> {
   return new WrappedLayout(u8(), decodeBool, encodeBool, property);
 }

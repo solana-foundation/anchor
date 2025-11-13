@@ -299,6 +299,18 @@
               "name": "FooEnum"
             }
           }
+        },
+        {
+          "name": "non_zero_u8",
+          "type": {
+            "nonzero": "u8"
+          }
+        },
+        {
+          "name": "non_zero_u64",
+          "type": {
+            "nonzero": "u64"
+          }
         }
       ]
     },
@@ -810,6 +822,18 @@
               "defined": {
                 "name": "FooEnum"
               }
+            }
+          },
+          {
+            "name": "non_zero_u8",
+            "type": {
+              "nonzero": "u8"
+            }
+          },
+          {
+            "name": "non_zero_u64",
+            "type": {
+              "nonzero": "u64"
             }
           }
         ]
