@@ -3,8 +3,22 @@ use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;
 use solana_sdk_ids::ed25519_program;
 
+/// Verifies an Ed25519 signature instruction assuming the signature, public key,
+/// and message bytes are embedded directly inside the instruction data (Solana's
+/// default encoding). Prefer [`verify_ed25519_ix_with_instruction_index`] when
+/// working with custom instructions that point at external instruction data.
 pub fn verify_ed25519_ix(
     ix: &Instruction,
+    pubkey: &[u8; 32],
+    msg: &[u8],
+    sig: &[u8; 64],
+) -> Result<()> {
+    verify_ed25519_ix_with_instruction_index(ix, u16::MAX, pubkey, msg, sig)
+}
+
+pub fn verify_ed25519_ix_with_instruction_index(
+    ix: &Instruction,
+    instruction_index: u16,
     pubkey: &[u8; 32],
     msg: &[u8],
     sig: &[u8; 64],
@@ -31,12 +45,12 @@ pub fn verify_ed25519_ix(
     expected.push(1u8); // num signatures
     expected.push(0u8); // padding
     expected.extend_from_slice(&sig_offset.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
+    expected.extend_from_slice(&instruction_index.to_le_bytes());
     expected.extend_from_slice(&pubkey_offset.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
+    expected.extend_from_slice(&instruction_index.to_le_bytes());
     expected.extend_from_slice(&msg_offset.to_le_bytes());
     expected.extend_from_slice(&msg_len.to_le_bytes());
-    expected.extend_from_slice(&(u16::MAX).to_le_bytes());
+    expected.extend_from_slice(&instruction_index.to_le_bytes());
 
     expected.extend_from_slice(sig);
     expected.extend_from_slice(pubkey);

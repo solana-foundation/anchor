@@ -3,8 +3,24 @@ use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;
 use solana_sdk_ids::secp256k1_program;
 
+/// Verifies a Secp256k1 instruction created under the assumption that the
+/// signature, address, and message bytes all live inside the same instruction
+/// (i.e. the signature ix is placed at index `0`). Prefer
+/// [`verify_secp256k1_ix_with_instruction_index`] and pass the actual signature
+/// instruction index instead of relying on this default.
 pub fn verify_secp256k1_ix(
     ix: &Instruction,
+    eth_address: &[u8; 20],
+    msg: &[u8],
+    sig: &[u8; 64],
+    recovery_id: u8,
+) -> Result<()> {
+    verify_secp256k1_ix_with_instruction_index(ix, 0, eth_address, msg, sig, recovery_id)
+}
+
+pub fn verify_secp256k1_ix_with_instruction_index(
+    ix: &Instruction,
+    instruction_index: u8,
     eth_address: &[u8; 20],
     msg: &[u8],
     sig: &[u8; 64],
@@ -33,12 +49,12 @@ pub fn verify_secp256k1_ix(
 
     expected.push(1u8); // num signatures
     expected.extend_from_slice(&sig_offset.to_le_bytes());
-    expected.push(0u8); // sig ix idx
+    expected.push(instruction_index); // sig ix idx
     expected.extend_from_slice(&eth_offset.to_le_bytes());
-    expected.push(0u8); // eth ix idx
+    expected.push(instruction_index); // eth ix idx
     expected.extend_from_slice(&msg_offset.to_le_bytes());
     expected.extend_from_slice(&msg_len.to_le_bytes());
-    expected.push(0u8); // msg ix idx
+    expected.push(instruction_index); // msg ix idx
 
     expected.extend_from_slice(eth_address);
     expected.extend_from_slice(sig);

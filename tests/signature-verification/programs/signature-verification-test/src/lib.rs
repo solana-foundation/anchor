@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::signature_verification::{
-    load_instruction, verify_ed25519_ix, verify_secp256k1_ix,
+    load_instruction, verify_ed25519_ix_with_instruction_index,
+    verify_secp256k1_ix_with_instruction_index,
 };
 
 declare_id!("9P8zSbNRQkwDrjCmqsHHcU1GTk5npaKYgKHroAkupbLG");
@@ -15,8 +16,9 @@ pub mod signature_verification_test {
         signature: [u8; 64],
     ) -> Result<()> {
         let ix = load_instruction(0, &ctx.accounts.ix_sysvar)?;
-        verify_ed25519_ix(
+        verify_ed25519_ix_with_instruction_index(
             &ix,
+            u16::MAX,
             &ctx.accounts.signer.key().to_bytes(),
             &message,
             &signature,
@@ -34,7 +36,14 @@ pub mod signature_verification_test {
         eth_address: [u8; 20],
     ) -> Result<()> {
         let ix = load_instruction(0, &ctx.accounts.ix_sysvar)?;
-        verify_secp256k1_ix(&ix, &eth_address, &message, &signature, recovery_id)?;
+        verify_secp256k1_ix_with_instruction_index(
+            &ix,
+            0,
+            &eth_address,
+            &message,
+            &signature,
+            recovery_id,
+        )?;
 
         msg!("Secp256k1 signature verified successfully using custom helper!");
 
