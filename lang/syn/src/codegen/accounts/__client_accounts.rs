@@ -124,7 +124,7 @@ pub fn generate(
     // accounts used for structs.
     let re_exports: Vec<proc_macro2::TokenStream> = {
         // First, dedup the exports.
-        let mut re_exports = std::collections::HashSet::new();
+        let mut re_exports = std::collections::BTreeSet::new();
         for f in accs.fields.iter().filter_map(|f: &AccountField| match f {
             AccountField::CompositeField(s) => Some(s),
             AccountField::Field(_) => None,
