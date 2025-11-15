@@ -712,6 +712,7 @@ pub struct ConstraintGroup {
     pub token_account: Option<ConstraintTokenAccountGroup>,
     pub mint: Option<ConstraintTokenMintGroup>,
     pub realloc: Option<ConstraintReallocGroup>,
+    pub migrate: Option<ConstraintMigrate>,
 }
 
 impl ConstraintGroup {
@@ -754,6 +755,7 @@ pub enum Constraint {
     TokenAccount(ConstraintTokenAccountGroup),
     Mint(ConstraintTokenMintGroup),
     Realloc(ConstraintReallocGroup),
+    Migrate(ConstraintMigrate),
 }
 
 // Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
@@ -804,6 +806,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    Migrate(Context<ConstraintMigrate>),
 }
 
 impl Parse for ConstraintToken {
@@ -848,6 +851,16 @@ pub struct ConstraintReallocPayer {
 #[derive(Debug, Clone)]
 pub struct ConstraintReallocZero {
     pub zero: Expr,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MigrationMode {
+    Strict,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintMigrate {
+    pub mode: MigrationMode,
 }
 
 #[derive(Debug, Clone)]

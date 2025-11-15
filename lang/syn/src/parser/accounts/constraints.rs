@@ -369,6 +369,22 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
+        "migrate" => {
+            stream.parse::<Token![=]>()?;
+            let mode_str = stream.parse::<syn::LitStr>()?;
+            let mode = match mode_str.value().as_str() {
+                "strict" => MigrationMode::Strict,
+                _ => return Err(ParseError::new(mode_str.span(), "migrate must be \"strict\"")),
+            };
+            let span = ident
+                .span()
+                .join(stream.span())
+                .unwrap_or_else(|| ident.span());
+            ConstraintToken::Migrate(Context::new(
+                span,
+                ConstraintMigrate { mode },
+            ))
+        }
         "realloc" => {
             if stream.peek(Token![=]) {
                 stream.parse::<Token![=]>()?;
@@ -538,6 +554,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub realloc: Option<Context<ConstraintRealloc>>,
     pub realloc_payer: Option<Context<ConstraintReallocPayer>>,
     pub realloc_zero: Option<Context<ConstraintReallocZero>>,
+    pub migrate: Option<Context<ConstraintMigrate>>,
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
@@ -583,6 +600,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc: None,
             realloc_payer: None,
             realloc_zero: None,
+            migrate: None,
         }
     }
 
@@ -795,6 +813,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc,
             realloc_payer,
             realloc_zero,
+            migrate,
         } = self;
 
         // Converts Option<Context<T>> -> Option<T>.
@@ -1026,6 +1045,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             seeds,
             token_account: if !is_init {token_account} else {None},
             mint: if !is_init {mint} else {None},
+            migrate: into_inner!(migrate),
         })
     }
 
@@ -1088,6 +1108,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
             }
+            ConstraintToken::Migrate(c) => self.add_migrate(c),
         }
     }
 
@@ -1233,6 +1254,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "realloc::zero already provided"));
         }
         self.realloc_zero.replace(c);
+        Ok(())
+    }
+
+    fn add_migrate(&mut self, c: Context<ConstraintMigrate>) -> ParseResult<()> {
+        if self.migrate.is_some() {
+            return Err(ParseError::new(c.span(), "migrate already provided"));
+        }
+        self.migrate.replace(c);
         Ok(())
     }
 

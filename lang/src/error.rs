@@ -177,6 +177,9 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - Account is already migrated
+    #[msg("Account is already migrated")]
+    AccountAlreadyMigrated,
 
     // Require
     /// 2500 - A require expression was violated

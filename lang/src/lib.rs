@@ -442,6 +442,15 @@ pub trait Owner {
     fn owner() -> Pubkey;
 }
 
+/// Defines migration logic from one account type to another.
+///
+/// This trait enables transforming account data from an old structure to a new one during runtime.
+/// Useful for account upgrades and schema migrations.
+pub trait Migrate<T> {
+    /// Transforms the current type into the target type.
+    fn migrate(&self) -> T;
+}
+
 /// Defines a list of addresses expected to own an account.
 pub trait Owners {
     fn owners() -> &'static [Pubkey];
@@ -507,17 +516,18 @@ pub mod prelude {
     pub use super::{
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::program::Program,
-        accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
-        require_keys_eq, require_keys_neq, require_neq,
+        accounts::interface_account::InterfaceAccount, accounts::migration::Migration,
+        accounts::program::Program, accounts::signer::Signer,
+        accounts::system_account::SystemAccount, accounts::sysvar::Sysvar,
+        accounts::unchecked_account::UncheckedAccount, constant, context::Context,
+        context::CpiContext, declare_id, declare_program, emit, err, error, event, instruction,
+        program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
+        require_keys_neq, require_neq,
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        InitSpace, Key, Lamports, Migrate, Owner, ProgramData, Result, Space, ToAccountInfo,
+        ToAccountInfos, ToAccountMetas,
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;

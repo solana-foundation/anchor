@@ -89,6 +89,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         token_account,
         mint,
         realloc,
+        migrate,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -137,6 +138,9 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = mint {
         constraints.push(Constraint::Mint(c));
     }
+    if let Some(c) = migrate {
+        constraints.push(Constraint::Migrate(c));
+    }
     constraints
 }
 
@@ -162,6 +166,7 @@ fn generate_constraint(
         Constraint::TokenAccount(c) => generate_constraint_token_account(f, c, accs),
         Constraint::Mint(c) => generate_constraint_mint(f, c, accs),
         Constraint::Realloc(c) => generate_constraint_realloc(f, c, accs),
+        Constraint::Migrate(c) => generate_constraint_migrate(f, c),
     }
 }
 
@@ -344,6 +349,23 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
     quote! {
         if !#account_ref.is_signer {
             return #error;
+        }
+    }
+}
+
+pub fn generate_constraint_migrate(f: &Field, c: &ConstraintMigrate) -> proc_macro2::TokenStream {
+    let ident = &f.ident;
+    let mode = &c.mode;
+
+    match mode {
+        MigrationMode::Strict => {
+            // For strict mode, fail if account is already migrated
+            quote! {
+                if #ident.is_already_migrated() {
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountAlreadyMigrated)
+                        .with_account_name(stringify!(#ident)));
+                }
+            }
         }
     }
 }
