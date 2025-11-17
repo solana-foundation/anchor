@@ -27,16 +27,16 @@ enum MigrationInner<From, To> {
 ///
 /// # Table of Contents
 /// - [Basic Functionality](#basic-functionality)
-/// - [Smart Migration](#smart-migration)
-/// - [Migration Modes](#migration-modes)
 /// - [Example](#example)
 ///
 /// # Basic Functionality
 ///
 /// `Migration` facilitates migrating account data from an old schema (`From`) to a new
-/// schema (`To`). The account can be in either the old or new format when deserialized.
-/// You must explicitly call `.migrate(new_data)` to perform the migration. The `migrate()`
-/// method is idempotent - calling it on an already-migrated account is a no-op.
+/// schema (`To`). During deserialization, the account must be in the `From` format -
+/// accounts already in the `To` format will be rejected with an error.
+///
+/// You must explicitly call `.migrate(new_data)` to perform the migration. The migrated
+/// data is stored in memory and will be serialized to the account when the instruction exits.
 ///
 /// On exit, the account must be in the migrated state or an error will be returned.
 ///
@@ -45,23 +45,9 @@ enum MigrationInner<From, To> {
 ///
 /// Checks:
 ///
-/// - `Account.info.owner == From::owner()` or `Account.info.owner == To::owner()` (smart mode)
+/// - `Account.info.owner == From::owner()`
 /// - `!(Account.info.owner == SystemProgram && Account.info.lamports() == 0)`
-///
-/// # Smart Migration
-///
-/// By default, `Migration` uses smart detection when both `From` and `To` implement
-/// the required traits. It attempts to deserialize as `To` first (already migrated),
-/// falling back to `From` (needs migration). This allows gradual migrations where
-/// some accounts may already be in the new format.
-///
-/// # Migration Modes
-///
-/// Use `migrate = "strict"` to reject accounts that are already migrated:
-/// ```ignore
-/// #[account(mut, migrate = "strict")]
-/// pub my_account: Migration<'info, AccountV1, AccountV2>,
-/// ```
+/// - Account must deserialize as `From` (not `To`)
 ///
 /// # Example
 /// ```ignore
@@ -74,18 +60,12 @@ enum MigrationInner<From, To> {
 ///     use super::*;
 ///
 ///     pub fn migrate(ctx: Context<MigrateAccount>) -> Result<()> {
-///         // Access old data via deref
-///         let old_data = ctx.accounts.my_account.data;
-///
 ///         // Perform migration
 ///         ctx.accounts.my_account.migrate(AccountV2 {
-///             data: old_data,
+///             data: 42,
 ///             new_field: 0,
 ///         })?;
 ///
-///         // Access new data after migration
-///         let new = ctx.accounts.my_account.as_new()?;
-///         msg!("Migrated! New field: {}", new.new_field);
 ///         Ok(())
 ///     }
 /// }
@@ -122,7 +102,7 @@ where
 {
     /// Account info reference
     info: &'info AccountInfo<'info>,
-    /// Internal migration state - either Old(From) or New(Box<To>)
+    /// Internal migration state
     inner: MigrationInner<From, To>,
 }
 
@@ -145,8 +125,8 @@ where
 
 impl<'info, From, To> Migration<'info, From, To>
 where
-    From: AccountDeserialize,
-    To: AccountSerialize,
+    From: AccountDeserialize + Owner,
+    To: AccountSerialize + Owner,
 {
     fn new(info: &'info AccountInfo<'info>, account: From) -> Self {
         Self {
@@ -155,118 +135,45 @@ where
         }
     }
 
-    fn new_already_migrated(info: &'info AccountInfo<'info>, account: To) -> Self {
-        Self {
-            info,
-            inner: MigrationInner::New(Box::new(account)),
-        }
+    /// Returns `true` if the account has been migrated.
+    #[inline(always)]
+    pub fn is_migrated(&self) -> bool {
+        matches!(self.inner, MigrationInner::New(_))
     }
 
     /// Migrates the account by providing the new data.
     ///
-    /// This method is idempotent - if the account is already migrated, it returns `Ok(())`
-    /// without modifying the account. Use the `migrate = "strict"` constraint if you want
-    /// to ensure the account has not been migrated yet.
+    /// This method stores the new data in memory. The data will be
+    /// serialized to the account when the instruction exits.
     ///
-    /// # Example
-    /// ```ignore
-    /// pub fn migrate_account(ctx: Context<MigrateAccount>) -> Result<()> {
-    ///     // Access old data via deref
-    ///     let old_data = ctx.accounts.my_account.data;
-    ///
-    ///     // This will no-op if already migrated
-    ///     ctx.accounts.my_account.migrate(AccountV2 {
-    ///         data: old_data,
-    ///         new_field: 0,
-    ///     })?;
-    ///
-    ///     // Can access new data after migration
-    ///     let new = ctx.accounts.my_account.as_new()?;
-    ///     msg!("Migrated! New field: {}", new.new_field);
-    ///     Ok(())
-    /// }
-    /// ```
+    /// # Errors
+    /// Returns an error if the account has already been migrated.
     pub fn migrate(&mut self, new_data: To) -> Result<()> {
         if self.is_migrated() {
-            // Already migrated - no-op
-            return Ok(());
+            return Err(ErrorCode::AccountAlreadyMigrated.into());
         }
 
         self.inner = MigrationInner::New(Box::new(new_data));
         Ok(())
     }
 
-    /// Access old data before migration.
-    ///
-    /// This method is used internally by the `Deref` implementation.
-    /// Users should access old data via dereferencing instead.
-    ///
-    /// # Errors
-    /// Returns an error if the account is already migrated.
-    #[doc(hidden)]
-    pub fn as_old(&self) -> Result<&From> {
-        match &self.inner {
-            MigrationInner::Old(from) => Ok(from),
-            MigrationInner::New(_) => Err(ErrorCode::AccountAlreadyMigrated.into()),
-        }
-    }
-
-    /// Access old data mutably before migration.
-    ///
-    /// This method is used internally by the `DerefMut` implementation.
-    /// Users should access old data via dereferencing instead.
-    ///
-    /// # Errors
-    /// Returns an error if the account is already migrated.
-    #[doc(hidden)]
-    pub fn as_old_mut(&mut self) -> Result<&mut From> {
-        match &mut self.inner {
-            MigrationInner::Old(from) => Ok(from),
-            MigrationInner::New(_) => Err(ErrorCode::AccountAlreadyMigrated.into()),
-        }
-    }
-
-    /// Access new data after migration.
-    ///
-    /// # Errors
-    /// Returns an error if the account has not been migrated yet.
-    pub fn as_new(&self) -> Result<&To> {
-        match &self.inner {
-            MigrationInner::New(to) => Ok(to.as_ref()),
-            MigrationInner::Old(_) => Err(ErrorCode::AccountNotMigrated.into()),
-        }
-    }
-
-    /// Access new data mutably after migration.
-    ///
-    /// # Errors
-    /// Returns an error if the account has not been migrated yet.
-    pub fn as_new_mut(&mut self) -> Result<&mut To> {
-        match &mut self.inner {
-            MigrationInner::New(to) => Ok(to.as_mut()),
-            MigrationInner::Old(_) => Err(ErrorCode::AccountNotMigrated.into()),
-        }
-    }
-
-    /// Returns `true` if the account was already in the new format when deserialized.
-    #[inline(always)]
-    pub fn is_migrated(&self) -> bool {
-        matches!(self.inner, MigrationInner::New(_))
-    }
-}
-
-impl<'info, From, To> Migration<'info, From, To>
-where
-    From: AccountDeserialize + Owner,
-    To: AccountSerialize + AccountDeserialize + Owner,
-{
     /// Deserializes the given `info` into a `Migration`.
     ///
-    /// Uses smart detection: tries to deserialize as `To` (already migrated) first,
-    /// falls back to `From` (needs migration).
+    /// Only accepts accounts in the `From` format. Accounts already in the `To`
+    /// format will be rejected.
     #[inline(never)]
     pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Self> {
-        Self::try_from_smart(info)
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+
+        if info.owner != &From::owner() {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, From::owner())));
+        }
+
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        Ok(Self::new(info, From::try_deserialize(&mut data)?))
     }
 
     /// Deserializes the given `info` into a `Migration` without checking
@@ -279,22 +186,11 @@ where
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        // Try to deserialize as To (already migrated) without discriminator check
-        let data_borrowed = info.try_borrow_data()?;
-        let mut data: &[u8] = &data_borrowed;
-        if info.owner == &To::owner() {
-            if let Ok(already_migrated) = To::try_deserialize_unchecked(&mut data) {
-                drop(data_borrowed);
-                return Ok(Self::new_already_migrated(info, already_migrated));
-            }
-        }
-        drop(data_borrowed);
-
-        // Fall back to deserializing as From
         if info.owner != &From::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner, From::owner())));
         }
+
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Self::new(
             info,
@@ -303,102 +199,10 @@ where
     }
 }
 
-impl<'info, From, To> Migration<'info, From, To>
-where
-    From: AccountDeserialize + Owner,
-    To: AccountSerialize + AccountDeserialize + Owner,
-{
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    ///
-    /// Uses smart migration logic to detect if account is already in `To` format.
-    pub fn reload(&mut self) -> Result<()> {
-        if self.info.owner == &system_program::ID && self.info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-
-        let data_borrowed = self.info.try_borrow_data()?;
-
-        // Try to deserialize as To (already migrated) if owner matches
-        if self.info.owner == &To::owner() {
-            let mut cursor: &[u8] = &data_borrowed;
-            if let Ok(already_migrated) = To::try_deserialize(&mut cursor) {
-                drop(data_borrowed);
-                self.inner = MigrationInner::New(Box::new(already_migrated));
-                return Ok(());
-            }
-        }
-
-        // Fall back to deserializing as From (data still borrowed)
-        if self.info.owner != &From::owner() {
-            drop(data_borrowed);
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*self.info.owner, From::owner())));
-        }
-
-        let mut cursor: &[u8] = &data_borrowed;
-        let from = From::try_deserialize(&mut cursor)?;
-        drop(data_borrowed);
-
-        self.inner = MigrationInner::Old(from);
-        Ok(())
-    }
-
-    /// Smart migration: tries to deserialize as `To` (already migrated) first,
-    /// falls back to `From` (needs migration).
-    ///
-    /// This method is automatically called by the `Accounts` trait implementation when both
-    /// `From` and `To` implement all required traits.
-    /// You typically don't need to call this directly unless you're manually constructing the Migration.
-    ///
-    /// Use this for gradual migrations where some accounts may already be migrated.
-    ///
-    /// # Example
-    /// ```ignore
-    /// // This works with both AccountV1 and AccountV2 accounts
-    /// let migration = Migration::<AccountV1, AccountV2>::try_from_smart(account_info)?;
-    ///
-    /// if migration.is_migrated() {
-    ///     msg!("Account already migrated");
-    /// }
-    /// ```
-    ///
-    /// # Note
-    /// When using the `#[account(migrate = "strict")]` constraint, accounts that are already
-    /// in the `To` format will be rejected at the constraint validation stage.
-    #[inline(never)]
-    pub fn try_from_smart(info: &'info AccountInfo<'info>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-
-        // Try to deserialize as To (already migrated)
-        let data_borrowed = info.try_borrow_data()?;
-        let mut data: &[u8] = &data_borrowed;
-        if info.owner == &To::owner() {
-            if let Ok(already_migrated) = To::try_deserialize(&mut data) {
-                // Account is already migrated!
-                drop(data_borrowed);
-                return Ok(Self::new_already_migrated(info, already_migrated));
-            }
-        }
-        drop(data_borrowed);
-
-        // Fall back to deserializing as From (needs migration)
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        if info.owner != &From::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, From::owner())));
-        }
-        Ok(Self::new(info, From::try_deserialize(&mut data)?))
-    }
-}
-
-// Smart migration by default when To implements all required traits
 impl<'info, B, From, To> Accounts<'info, B> for Migration<'info, From, To>
 where
     From: AccountDeserialize + Owner,
-    To: AccountSerialize + AccountDeserialize + Owner,
+    To: AccountSerialize + Owner,
 {
     #[inline(never)]
     fn try_accounts(
@@ -413,7 +217,7 @@ where
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
-        Self::try_from_smart(account)
+        Self::try_from(account)
     }
 }
 
@@ -488,7 +292,6 @@ where
     }
 }
 
-
 impl<From, To> Key for Migration<'_, From, To>
 where
     From: AccountDeserialize,
@@ -496,31 +299,5 @@ where
 {
     fn key(&self) -> Pubkey {
         *self.info.key
-    }
-}
-
-// Deref to From when account is in Old state
-impl<'info, From, To> Deref for Migration<'info, From, To>
-where
-    From: AccountDeserialize,
-    To: AccountSerialize,
-{
-    type Target = From;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_old()
-            .expect("Cannot deref to From: account is already migrated. Use .as_new() to access the migrated data.")
-    }
-}
-
-// DerefMut to From when account is in Old state
-impl<'info, From, To> DerefMut for Migration<'info, From, To>
-where
-    From: AccountDeserialize,
-    To: AccountSerialize,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_old_mut()
-            .expect("Cannot deref_mut to From: account is already migrated. Use .as_new_mut() to access the migrated data.")
     }
 }
