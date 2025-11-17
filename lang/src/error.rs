@@ -180,6 +180,9 @@ pub enum ErrorCode {
     /// 2040 - Account is already migrated
     #[msg("Account is already migrated")]
     AccountAlreadyMigrated,
+    /// 2041 - Account must be migrated before exiting
+    #[msg("Account must be migrated before exiting")]
+    AccountNotMigrated,
 
     // Require
     /// 2500 - A require expression was violated

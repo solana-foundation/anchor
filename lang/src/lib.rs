@@ -442,15 +442,6 @@ pub trait Owner {
     fn owner() -> Pubkey;
 }
 
-/// Defines migration logic from one account type to another.
-///
-/// This trait enables transforming account data from an old structure to a new one during runtime.
-/// Useful for account upgrades and schema migrations.
-pub trait Migrate<T> {
-    /// Transforms the current type into the target type.
-    fn migrate(&self) -> T;
-}
-
 /// Defines a list of addresses expected to own an account.
 pub trait Owners {
     fn owners() -> &'static [Pubkey];
@@ -526,7 +517,7 @@ pub mod prelude {
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Migrate, Owner, ProgramData, Result, Space, ToAccountInfo,
+        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo,
         ToAccountInfos, ToAccountMetas,
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
