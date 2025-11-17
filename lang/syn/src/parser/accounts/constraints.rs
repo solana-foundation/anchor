@@ -1210,10 +1210,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if !matches!(self.f_ty, Some(Ty::Account(_)))
             && !matches!(self.f_ty, Some(Ty::LazyAccount(_)))
             && !matches!(self.f_ty, Some(Ty::AccountLoader(_)))
+            && !matches!(self.f_ty, Some(Ty::Migration(_)))
         {
             return Err(ParseError::new(
                 c.span(),
-                "realloc must be on an Account, LazyAccount or AccountLoader",
+                "realloc must be on an Account, LazyAccount, AccountLoader, or Migration",
             ));
         }
         if self.mutable.is_none() {
