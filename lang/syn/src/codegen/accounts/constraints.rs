@@ -361,7 +361,7 @@ pub fn generate_constraint_migrate(f: &Field, c: &ConstraintMigrate) -> proc_mac
         MigrationMode::Strict => {
             // For strict mode, fail if account is already migrated
             quote! {
-                if #ident.is_already_migrated() {
+                if #ident.is_migrated() {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountAlreadyMigrated)
                         .with_account_name(stringify!(#ident)));
                 }

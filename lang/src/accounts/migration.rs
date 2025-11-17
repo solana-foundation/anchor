@@ -187,16 +187,13 @@ where
     /// }
     /// ```
     pub fn migrate(&mut self, new_data: To) -> Result<()> {
-        match &self.inner {
-            MigrationInner::Old(_) => {
-                self.inner = MigrationInner::New(Box::new(new_data));
-                Ok(())
-            }
-            MigrationInner::New(_) => {
-                // Already migrated - no-op
-                Ok(())
-            }
+        if self.is_migrated() {
+            // Already migrated - no-op
+            return Ok(());
         }
+
+        self.inner = MigrationInner::New(Box::new(new_data));
+        Ok(())
     }
 
     /// Access old data before migration.
@@ -252,7 +249,8 @@ where
     }
 
     /// Returns `true` if the account was already in the new format when deserialized.
-    pub fn is_already_migrated(&self) -> bool {
+    #[inline(always)]
+    pub fn is_migrated(&self) -> bool {
         matches!(self.inner, MigrationInner::New(_))
     }
 }
@@ -360,7 +358,7 @@ where
     /// // This works with both AccountV1 and AccountV2 accounts
     /// let migration = Migration::<AccountV1, AccountV2>::try_from_smart(account_info)?;
     ///
-    /// if migration.is_already_migrated() {
+    /// if migration.is_migrated() {
     ///     msg!("Account already migrated");
     /// }
     /// ```
