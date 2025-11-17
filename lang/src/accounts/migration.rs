@@ -319,26 +319,29 @@ where
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        // Try to deserialize as To (already migrated)
         let data_borrowed = self.info.try_borrow_data()?;
-        let mut data: &[u8] = &data_borrowed;
+
+        // Try to deserialize as To (already migrated) if owner matches
         if self.info.owner == &To::owner() {
-            if let Ok(already_migrated) = To::try_deserialize(&mut data) {
-                // Account is already migrated!
+            let mut cursor: &[u8] = &data_borrowed;
+            if let Ok(already_migrated) = To::try_deserialize(&mut cursor) {
                 drop(data_borrowed);
                 self.inner = MigrationInner::New(Box::new(already_migrated));
                 return Ok(());
             }
         }
-        drop(data_borrowed);
 
-        // Fall back to deserializing as From
-        let mut data: &[u8] = &self.info.try_borrow_data()?;
+        // Fall back to deserializing as From (data still borrowed)
         if self.info.owner != &From::owner() {
+            drop(data_borrowed);
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*self.info.owner, From::owner())));
         }
-        let from = From::try_deserialize(&mut data)?;
+
+        let mut cursor: &[u8] = &data_borrowed;
+        let from = From::try_deserialize(&mut cursor)?;
+        drop(data_borrowed);
+
         self.inner = MigrationInner::Old(from);
         Ok(())
     }
