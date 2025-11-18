@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+function main() {
+  const filename = process.env.MOCK_CARGO_OUTPUT_PATH;
+  if (!filename) return;
+
+  const args = process.argv.slice(2);
+  const output = {
+    command: "cargo",
+    args,
+  };
+
+  fs.appendFileSync(filename, JSON.stringify(output, null, 2) + "\n");
+
+  const idlBuildStdoutFile = process.env.IDL_BUILD_STDOUT_FILE;
+  if (idlBuildStdoutFile && args.includes("idl-build")) {
+    console.log(fs.readFileSync(idlBuildStdoutFile).toString());
+  }
+}
+
+main();

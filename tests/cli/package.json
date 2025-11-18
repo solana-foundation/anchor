@@ -1,0 +1,32 @@
+{
+  "name": "anchor-cli-tests",
+  "version": "0.32.1",
+  "license": "(MIT OR Apache-2.0)",
+  "homepage": "https://github.com/coral-xyz/anchor#readme",
+  "bugs": {
+    "url": "https://github.com/coral-xyz/anchor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coral-xyz/anchor.git"
+  },
+  "engines": {
+    "node": ">=17"
+  },
+  "scripts": {
+    "test": "ts-mocha --paths --type-check",
+    "test:watch": "ts-mocha --paths --type-check --watch "
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.0",
+    "@types/expect": "^24.3.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^16.0.0",
+    "chai": "^4.3.4",
+    "mocha": "9.2.2",
+    "ts-mocha": "^10.0.0",
+    "tsc": "^2.0.4",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^4.4.4"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "spec": ["tests/commands/*.ts", "tests/commands/*/index.ts"],
+  "watchFiles": ["tests/**/*.ts"]
+}
