@@ -1,0 +1,25 @@
+{
+  "command": "cargo",
+  "args": [
+    "build-sbf"
+  ]
+}
+{
+  "command": "cargo",
+  "args": [
+    "+stable"
+  ]
+}
+{
+  "command": "cargo",
+  "args": [
+    "+stable",
+    "test",
+    "__anchor_private_print_idl",
+    "--features",
+    "idl-build",
+    "--",
+    "--show-output",
+    "--quiet"
+  ]
+}
