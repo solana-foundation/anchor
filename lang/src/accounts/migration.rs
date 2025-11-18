@@ -73,25 +73,26 @@ pub enum MigrationInner<From, To> {
 /// ctx.accounts.my_account.migrate(AccountV2 { ... })?;
 /// ```
 ///
-/// ## 3. Lazy Migration with `into_inner()`
+/// ## 3. Idempotent Migration with `into_inner()`
 ///
 /// ```ignore
 /// // Migrates if needed, returns reference to new data
-/// let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
-///     data: old.data,
-///     new_field: old.data * 2,
+/// // Access old fields directly via deref!
+/// let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
+///     data: ctx.accounts.my_account.data,
+///     new_field: ctx.accounts.my_account.data * 2,
 /// })?;
 ///
-/// // Use migrated data
+/// // Use migrated data (safe to call multiple times!)
 /// msg!("New field: {}", migrated.new_field);
 /// ```
 ///
-/// ## 4. Lazy Migration with Mutation via `into_inner_mut()`
+/// ## 4. Idempotent Migration with Mutation via `into_inner_mut()`
 ///
 /// ```ignore
 /// // Migrates if needed, returns mutable reference
-/// let migrated = ctx.accounts.my_account.into_inner_mut(|old| AccountV2 {
-///     data: old.data,
+/// let migrated = ctx.accounts.my_account.into_inner_mut(AccountV2 {
+///     data: ctx.accounts.my_account.data,
 ///     new_field: 0,
 /// })?;
 ///
@@ -110,10 +111,10 @@ pub enum MigrationInner<From, To> {
 ///     use super::*;
 ///
 ///     pub fn migrate(ctx: Context<MigrateAccount>) -> Result<()> {
-///         // Use lazy migration with into_inner
-///         let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
-///             data: old.data,
-///             new_field: old.data * 2,
+///         // Use idempotent migration with into_inner
+///         let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
+///             data: ctx.accounts.my_account.data,
+///             new_field: ctx.accounts.my_account.data * 2,
 ///         })?;
 ///
 ///         msg!("Migrated! New field: {}", migrated.new_field);
@@ -208,21 +209,22 @@ where
         Ok(())
     }
 
-    /// Gets a reference to the migrated value, or migrates it first if needed.
+    /// Gets a reference to the migrated value, or migrates it with the provided data.
     ///
     /// This method provides flexible access to the migrated state:
     /// - If already migrated, returns a reference to the existing value
-    /// - If not migrated, uses the provided closure to migrate, then returns a reference
+    /// - If not migrated, migrates with the provided data, then returns a reference
     ///
     /// # Arguments
-    /// * `f` - A closure that produces the new `To` value, only called if not yet migrated
+    /// * `new_data` - The new `To` value to migrate to (only used if not yet migrated)
     ///
     /// # Example
     /// ```ignore
     /// pub fn process(ctx: Context<MyInstruction>) -> Result<()> {
     ///     // Migrate and get reference in one call
-    ///     let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
-    ///         data: old.data,
+    ///     // Access old fields directly via deref!
+    ///     let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
+    ///         data: ctx.accounts.my_account.data,
     ///         new_field: 42,
     ///     })?;
     ///
@@ -232,16 +234,9 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn into_inner<F>(&mut self, f: F) -> Result<&To>
-    where
-        F: FnOnce(&From) -> To,
-    {
-        match &self.inner {
-            MigrationInner::To(_) => {}
-            MigrationInner::From(from) => {
-                let new_data = f(from);
-                self.inner = MigrationInner::To(new_data);
-            }
+    pub fn into_inner(&mut self, new_data: To) -> Result<&To> {
+        if !self.is_migrated() {
+            self.inner = MigrationInner::To(new_data);
         }
 
         match &self.inner {
@@ -250,21 +245,22 @@ where
         }
     }
 
-    /// Gets a mutable reference to the migrated value, or migrates it first if needed.
+    /// Gets a mutable reference to the migrated value, or migrates it with the provided data.
     ///
     /// This method provides flexible mutable access to the migrated state:
     /// - If already migrated, returns a mutable reference to the existing value
-    /// - If not migrated, uses the provided closure to migrate, then returns a mutable reference
+    /// - If not migrated, migrates with the provided data, then returns a mutable reference
     ///
     /// # Arguments
-    /// * `f` - A closure that produces the new `To` value, only called if not yet migrated
+    /// * `new_data` - The new `To` value to migrate to (only used if not yet migrated)
     ///
     /// # Example
     /// ```ignore
     /// pub fn process(ctx: Context<MyInstruction>) -> Result<()> {
     ///     // Migrate and get mutable reference in one call
-    ///     let migrated = ctx.accounts.my_account.into_inner_mut(|old| AccountV2 {
-    ///         data: old.data,
+    ///     // Access old fields directly via deref!
+    ///     let migrated = ctx.accounts.my_account.into_inner_mut(AccountV2 {
+    ///         data: ctx.accounts.my_account.data,
     ///         new_field: 0,
     ///     })?;
     ///
@@ -274,16 +270,9 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn into_inner_mut<F>(&mut self, f: F) -> Result<&mut To>
-    where
-        F: FnOnce(&From) -> To,
-    {
-        match &self.inner {
-            MigrationInner::To(_) => {}
-            MigrationInner::From(from) => {
-                let new_data = f(from);
-                self.inner = MigrationInner::To(new_data);
-            }
+    pub fn into_inner_mut(&mut self, new_data: To) -> Result<&mut To> {
+        if !self.is_migrated() {
+            self.inner = MigrationInner::To(new_data);
         }
 
         match &mut self.inner {
