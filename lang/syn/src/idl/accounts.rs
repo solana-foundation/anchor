@@ -190,10 +190,15 @@ fn get_address(acc: &Field) -> TokenStream {
 fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let idl = get_idl_module_path();
     let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
-
     // Seeds
-    let seed_constraints = acc.constraints.seeds.as_ref();
-    let pda = seed_constraints
+    let seeds_constraints = acc.constraints.seeds.as_ref().or_else(|| {
+        acc.constraints
+            .init
+            .as_ref()
+            .and_then(|init| init.seeds.as_ref())
+    });
+    
+    let pda = seeds_constraints
         .map(|seed| seed.seeds.iter().map(parse_default))
         .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
         .and_then(|seeds| {
