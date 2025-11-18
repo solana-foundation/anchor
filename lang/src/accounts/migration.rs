@@ -15,11 +15,11 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 /// Internal representation of the migration state.
-enum MigrationInner<From, To> {
+pub enum MigrationInner<From, To> {
     /// Account is in old format, will be migrated and serialized on exit
-    Old(From),
+    From(From),
     /// Account is already in new format, will be serialized on exit
-    New(Box<To>),
+    To(To),
 }
 
 /// Wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
@@ -27,6 +27,7 @@ enum MigrationInner<From, To> {
 ///
 /// # Table of Contents
 /// - [Basic Functionality](#basic-functionality)
+/// - [Usage Patterns](#usage-patterns)
 /// - [Example](#example)
 ///
 /// # Basic Functionality
@@ -35,10 +36,9 @@ enum MigrationInner<From, To> {
 /// schema (`To`). During deserialization, the account must be in the `From` format -
 /// accounts already in the `To` format will be rejected with an error.
 ///
-/// You must explicitly call `.migrate(new_data)` to perform the migration. The migrated
-/// data is stored in memory and will be serialized to the account when the instruction exits.
-///
-/// On exit, the account must be in the migrated state or an error will be returned.
+/// The migrated data is stored in memory and will be serialized to the account when the
+/// instruction exits. On exit, the account must be in the migrated state or an error will
+/// be returned.
 ///
 /// This type is typically used with the `realloc` constraint to resize the account
 /// during migration.
@@ -48,6 +48,56 @@ enum MigrationInner<From, To> {
 /// - `Account.info.owner == From::owner()`
 /// - `!(Account.info.owner == SystemProgram && Account.info.lamports() == 0)`
 /// - Account must deserialize as `From` (not `To`)
+///
+/// # Usage Patterns
+///
+/// There are multiple ways to work with Migration accounts:
+///
+/// ## 1. Explicit Migration with `migrate()`
+///
+/// ```ignore
+/// ctx.accounts.my_account.migrate(AccountV2 {
+///     data: ctx.accounts.my_account.data,
+///     new_field: 42,
+/// })?;
+/// ```
+///
+/// ## 2. Direct Field Access via Deref (before migration)
+///
+/// ```ignore
+/// // Access old account fields directly
+/// let old_value = ctx.accounts.my_account.data;
+/// let old_timestamp = ctx.accounts.my_account.timestamp;
+///
+/// // Then migrate
+/// ctx.accounts.my_account.migrate(AccountV2 { ... })?;
+/// ```
+///
+/// ## 3. Lazy Migration with `into_inner()`
+///
+/// ```ignore
+/// // Migrates if needed, returns reference to new data
+/// let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
+///     data: old.data,
+///     new_field: old.data * 2,
+/// })?;
+///
+/// // Use migrated data
+/// msg!("New field: {}", migrated.new_field);
+/// ```
+///
+/// ## 4. Lazy Migration with Mutation via `into_inner_mut()`
+///
+/// ```ignore
+/// // Migrates if needed, returns mutable reference
+/// let migrated = ctx.accounts.my_account.into_inner_mut(|old| AccountV2 {
+///     data: old.data,
+///     new_field: 0,
+/// })?;
+///
+/// // Mutate the new data
+/// migrated.new_field = 42;
+/// ```
 ///
 /// # Example
 /// ```ignore
@@ -60,12 +110,13 @@ enum MigrationInner<From, To> {
 ///     use super::*;
 ///
 ///     pub fn migrate(ctx: Context<MigrateAccount>) -> Result<()> {
-///         // Perform migration
-///         ctx.accounts.my_account.migrate(AccountV2 {
-///             data: 42,
-///             new_field: 0,
+///         // Use lazy migration with into_inner
+///         let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
+///             data: old.data,
+///             new_field: old.data * 2,
 ///         })?;
 ///
+///         msg!("Migrated! New field: {}", migrated.new_field);
 ///         Ok(())
 ///     }
 /// }
@@ -113,8 +164,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inner_debug = match &self.inner {
-            MigrationInner::Old(from) => format!("Old({:?})", from),
-            MigrationInner::New(to) => format!("New({:?})", to),
+            MigrationInner::From(from) => format!("From({:?})", from),
+            MigrationInner::To(to) => format!("To({:?})", to),
         };
         f.debug_struct("Migration")
             .field("inner", &inner_debug)
@@ -131,14 +182,14 @@ where
     fn new(info: &'info AccountInfo<'info>, account: From) -> Self {
         Self {
             info,
-            inner: MigrationInner::Old(account),
+            inner: MigrationInner::From(account),
         }
     }
 
     /// Returns `true` if the account has been migrated.
     #[inline(always)]
     pub fn is_migrated(&self) -> bool {
-        matches!(self.inner, MigrationInner::New(_))
+        matches!(self.inner, MigrationInner::To(_))
     }
 
     /// Migrates the account by providing the new data.
@@ -153,8 +204,92 @@ where
             return Err(ErrorCode::AccountAlreadyMigrated.into());
         }
 
-        self.inner = MigrationInner::New(Box::new(new_data));
+        self.inner = MigrationInner::To(new_data);
         Ok(())
+    }
+
+    /// Gets a reference to the migrated value, or migrates it first if needed.
+    ///
+    /// This method provides flexible access to the migrated state:
+    /// - If already migrated, returns a reference to the existing value
+    /// - If not migrated, uses the provided closure to migrate, then returns a reference
+    ///
+    /// # Arguments
+    /// * `f` - A closure that produces the new `To` value, only called if not yet migrated
+    ///
+    /// # Example
+    /// ```ignore
+    /// pub fn process(ctx: Context<MyInstruction>) -> Result<()> {
+    ///     // Migrate and get reference in one call
+    ///     let migrated = ctx.accounts.my_account.into_inner(|old| AccountV2 {
+    ///         data: old.data,
+    ///         new_field: 42,
+    ///     })?;
+    ///
+    ///     // Use migrated...
+    ///     msg!("Migrated data: {}", migrated.data);
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn into_inner<F>(&mut self, f: F) -> Result<&To>
+    where
+        F: FnOnce(&From) -> To,
+    {
+        match &self.inner {
+            MigrationInner::To(_) => {}
+            MigrationInner::From(from) => {
+                let new_data = f(from);
+                self.inner = MigrationInner::To(new_data);
+            }
+        }
+
+        match &self.inner {
+            MigrationInner::To(to) => Ok(to),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Gets a mutable reference to the migrated value, or migrates it first if needed.
+    ///
+    /// This method provides flexible mutable access to the migrated state:
+    /// - If already migrated, returns a mutable reference to the existing value
+    /// - If not migrated, uses the provided closure to migrate, then returns a mutable reference
+    ///
+    /// # Arguments
+    /// * `f` - A closure that produces the new `To` value, only called if not yet migrated
+    ///
+    /// # Example
+    /// ```ignore
+    /// pub fn process(ctx: Context<MyInstruction>) -> Result<()> {
+    ///     // Migrate and get mutable reference in one call
+    ///     let migrated = ctx.accounts.my_account.into_inner_mut(|old| AccountV2 {
+    ///         data: old.data,
+    ///         new_field: 0,
+    ///     })?;
+    ///
+    ///     // Mutate the migrated value
+    ///     migrated.new_field = 42;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn into_inner_mut<F>(&mut self, f: F) -> Result<&mut To>
+    where
+        F: FnOnce(&From) -> To,
+    {
+        match &self.inner {
+            MigrationInner::To(_) => {}
+            MigrationInner::From(from) => {
+                let new_data = f(from);
+                self.inner = MigrationInner::To(new_data);
+            }
+        }
+
+        match &mut self.inner {
+            MigrationInner::To(to) => Ok(to),
+            _ => unreachable!(),
+        }
     }
 
     /// Deserializes the given `info` into a `Migration`.
@@ -234,11 +369,11 @@ where
 
         // Check that the account has been migrated and serialize
         match &self.inner {
-            MigrationInner::Old(_) => {
+            MigrationInner::From(_) => {
                 // Account was not migrated - this is an error
                 return Err(ErrorCode::AccountNotMigrated.into());
             }
-            MigrationInner::New(to) => {
+            MigrationInner::To(to) => {
                 // Only persist if the owner is the current program
                 let expected_owner = To::owner();
                 if &expected_owner != program_id {
@@ -249,7 +384,7 @@ where
                 let mut data = self.info.try_borrow_mut_data()?;
                 let dst: &mut [u8] = &mut data;
                 let mut writer = BpfWriter::new(dst);
-                to.as_ref().try_serialize(&mut writer)?;
+                to.try_serialize(&mut writer)?;
             }
         }
 
@@ -301,3 +436,41 @@ where
         *self.info.key
     }
 }
+
+// Deref to From when account is in Old state
+impl<'info, From, To> Deref for Migration<'info, From, To>
+where
+    From: AccountDeserialize,
+    To: AccountSerialize,
+{
+    type Target = From;
+
+    fn deref(&self) -> &Self::Target {
+       match &self.inner {
+        MigrationInner::From(from) => from,
+        MigrationInner::To(_) =>
+            {
+                crate::solana_program::msg!("Cannot deref to From: account is already migrated.");
+                panic!();
+            }
+       }
+    }
+}
+
+// DerefMut to From when account is in Old state
+impl<'info, From, To> DerefMut for Migration<'info, From, To>
+where
+    From: AccountDeserialize,
+    To: AccountSerialize,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match &mut self.inner {
+            MigrationInner::From(from) => from,
+            MigrationInner::To(_) => {
+                crate::solana_program::msg!("Cannot deref_mut to From: account is already migrated.");
+                panic!();
+            }
+        }
+    }
+}
+
