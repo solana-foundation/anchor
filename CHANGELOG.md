@@ -47,6 +47,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
 - cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
+- cli: Add `hooks` section to `Anchor.toml` ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 
 ### Fixes
 
