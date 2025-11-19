@@ -459,7 +459,22 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 "constraint" => ConstraintToken::Raw(Context::new(
                     span,
                     ConstraintRaw {
-                        raw: stream.parse()?,
+                        raw: {
+                            let expr = stream.parse()?;
+
+                            if let syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(_),
+                                ..
+                            }) = &expr
+                            {
+                                return Err(ParseError::new(expr.span(),
+                                "constraint must be a boolean expression, not a string literal.\n\
+                                Help: Raw constraints expect expressions that evaluate to boolean values.\n\
+                                If you need to compare a field to a string, use: constraint = my_field == \"my string\""));
+                            }
+
+                            expr
+                        },
                         error: parse_optional_custom_error(&stream)?,
                     },
                 )),
