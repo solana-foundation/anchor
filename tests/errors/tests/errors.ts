@@ -46,6 +46,7 @@ describe("errors", () => {
   // because we cannot get logs for them (only through overkill `onLogs`)
   provider.opts.commitment = "confirmed";
   anchor.setProvider(provider);
+  provider.opts.maxRetries = 3;
 
   const program = anchor.workspace.Errors as Program<Errors>;
 

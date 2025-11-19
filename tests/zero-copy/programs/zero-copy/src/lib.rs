@@ -170,7 +170,7 @@ pub struct Event {
 //    traits, so any types in method signatures must as well.
 // 2. All types for zero copy deserialization are `#[repr(packed)]`. However,
 //    the implementation of AnchorSerialize (i.e. borsh), uses references
-//    to the fields it serializes. So if we were to just throw tehse derives
+//    to the fields it serializes. So if we were to just throw these derives
 //    onto the other `Event` struct, we would have references to
 //    `#[repr(packed)]` fields, which is unsafe. To avoid the unsafeness, we
 //    just use a separate type.
