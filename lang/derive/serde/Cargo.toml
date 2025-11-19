@@ -16,7 +16,6 @@ lazy-account = []
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.32.1" }
-borsh-derive-internal = "0.10.3"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

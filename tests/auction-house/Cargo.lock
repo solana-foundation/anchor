@@ -137,7 +137,6 @@ name = "anchor-derive-serde"
 version = "0.32.1"
 dependencies = [
  "anchor-syn",
- "borsh-derive-internal",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -168,7 +167,7 @@ dependencies = [
  "anchor-lang-idl",
  "base64 0.21.7",
  "bincode",
- "borsh 0.10.4",
+ "borsh 1.5.7",
  "bytemuck",
  "const-crypto",
  "solana-account-info",
