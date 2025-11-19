@@ -374,19 +374,19 @@ pub struct SomeStruct {
 const GENERIC_CONST: usize = 8;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct GenericStruct<T, const N: usize> {
+pub struct GenericStruct<T: AnchorSerialize + AnchorDeserialize + Clone, const N: usize> {
     arr: [T; N],
     sub_field: SubGenericStruct<GENERIC_CONST, T, Vec<Option<T>>>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct SubGenericStruct<const N: usize, T, U> {
+pub struct SubGenericStruct<const N: usize, T: AnchorSerialize + AnchorDeserialize + Clone, U: AnchorSerialize + AnchorDeserialize + Clone> {
     sub_arr: [T; N],
     another: U,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub enum GenericEnum<T> {
+pub enum GenericEnum<T: AnchorSerialize + AnchorDeserialize + Clone> {
     Unit,
     Named { x: T },
     Tuple(Vec<T>),
