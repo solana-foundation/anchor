@@ -100,7 +100,15 @@ impl Parse for Overrides {
                     };
                     attr.discriminator.replace(value)
                 }
-                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+                name => {
+                    return Err(ParseError::new(
+                        arg.name.span(),
+                        format!(
+                            "Invalid argument `{}`. Expected one of: `discriminator`",
+                            name
+                        ),
+                    ));
+                }
             };
         }
 
