@@ -113,6 +113,58 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
+
+            let actual_param_count = ix.args.len();
+            let ix_name_str = ix_method_name.to_string();
+            let accounts_type_str = anchor.to_string();
+
+            // Build clear error messages
+            let count_error_msg = format!(
+                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
+                accounts_type_str,
+                ix_name_str,
+                actual_param_count,
+            );
+
+            // Generate type validation calls for each argument
+            let type_validations: Vec<proc_macro2::TokenStream> = ix.args
+                .iter()
+                .enumerate()
+                .map(|(idx, arg)| {
+                    let arg_ty = &arg.raw_arg.ty;
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        // Type validation for argument #idx
+                        if #anchor::__ANCHOR_IX_PARAM_COUNT > #idx {
+                            #[allow(unreachable_code)]
+                            if false {
+                                // This code is never executed but is type-checked at compile time
+                                let __type_check_arg: #arg_ty = panic!();
+                                #anchor::#method_name(&__type_check_arg);
+                            }
+                        }
+                    }
+                })
+                .collect();
+
+            let param_validation = quote! {
+                const _: () = {
+                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
+                    const HANDLER_PARAM_COUNT: usize = #actual_param_count;
+
+                    // Count validation
+                    if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
+                        panic!(#count_error_msg);
+                    }
+                };
+
+                // Type validations
+                #(#type_validations)*
+            };
+
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
@@ -124,6 +176,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
+                    #param_validation
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;

@@ -124,7 +124,110 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    // Generate type validation methods for instruction parameters
+    let type_validation_methods = match &accs.instruction_api {
+        None => {
+            // generate stub methods for up to 32 possible arguments
+            let stub_methods: Vec<proc_macro2::TokenStream> = (0..32)
+                .map(|idx| {
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        #[doc(hidden)]
+                        #[inline(always)]
+                        #[allow(unused)]
+                        pub fn #method_name<__T>(_arg: &__T) {
+                            // no type validation when #[instruction(...)] is missing
+                        }
+                    }
+                })
+                .collect();
+
+            quote! {
+                #(#stub_methods)*
+            }
+        }
+        Some(ix_api) => {
+            let declared_count = ix_api.len();
+
+            // Generate strict validation methods for declared parameters
+            let type_check_methods: Vec<proc_macro2::TokenStream> = ix_api
+                .iter()
+                .enumerate()
+                .map(|(idx, expr)| {
+                    if let Expr::Type(expr_type) = expr {
+                        let ty = &expr_type.ty;
+                        let method_name = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", idx),
+                            proc_macro2::Span::call_site(),
+                        );
+                        quote! {
+                            #[doc(hidden)]
+                            #[inline(always)]
+                            pub fn #method_name<__T>(_arg: &__T)
+                            where
+                                __T: anchor_lang::__private::IsSameType<#ty>,
+                            {}
+                        }
+                    } else {
+                        panic!("Invalid instruction declaration");
+                    }
+                })
+                .collect();
+
+            // stub methods for remaining argument positions (up to 32 total)
+            let stub_methods: Vec<proc_macro2::TokenStream> = (declared_count..32)
+                .map(|idx| {
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        #[doc(hidden)]
+                        #[inline(always)]
+                        #[allow(unused)]
+                        pub fn #method_name<__T>(_arg: &__T) {
+                        }
+                    }
+                })
+                .collect();
+
+            quote! {
+                #(#type_check_methods)*
+                #(#stub_methods)*
+            }
+        }
+    };
+
+    let param_count_const = match &accs.instruction_api {
+        None => quote! {
+            #[automatically_derived]
+            impl<#combined_generics> #name<#struct_generics> #where_clause {
+                #[doc(hidden)]
+                pub const __ANCHOR_IX_PARAM_COUNT: usize = 0;
+
+                #type_validation_methods
+            }
+        },
+        Some(ix_api) => {
+            let count = ix_api.len();
+
+            quote! {
+                #[automatically_derived]
+                impl<#combined_generics> #name<#struct_generics> #where_clause {
+                    #[doc(hidden)]
+                    pub const __ANCHOR_IX_PARAM_COUNT: usize = #count;
+
+                    #type_validation_methods
+                }
+            }
+        }
+    };
+
     quote! {
+        #param_count_const
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
