@@ -8,8 +8,8 @@ use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
 };
+use solana_signer::Signer;
 use std::{
     fmt::Write as _,
     fs::{self, File},
@@ -149,7 +149,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -170,7 +170,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
@@ -705,7 +705,7 @@ impl TestTemplate {
                     .arg("tests")
                     .stderr(Stdio::inherit())
                     .output()
-                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                    .map_err(|e| anyhow::format_err!("{}", e))?;
                 if !exit.status.success() {
                     eprintln!("'cargo new --lib tests' failed");
                     std::process::exit(exit.status.code().unwrap_or(1));

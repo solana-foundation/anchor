@@ -1,7 +1,7 @@
 use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, Manifest,
-    PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig, TestValidator,
-    WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
+    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+    TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction, ERASED_AUTHORITY};
@@ -28,9 +28,8 @@ use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
-use solana_sdk::signature::Signer;
-use solana_sdk::signer::EncodableKey;
 use solana_sdk::transaction::Transaction;
+use solana_signer::{EncodableKey, Signer};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -1051,7 +1050,7 @@ fn init(
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("git init failed: {}", e.to_string()))?;
+            .map_err(|e| anyhow::format_err!("git init failed: {}", e))?;
         if !git_result.status.success() {
             eprintln!("Failed to automatically initialize a new git repository");
         }
@@ -1069,14 +1068,14 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e.to_string()))
+            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
     } else {
         std::process::Command::new(cmd)
             .arg("install")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e.to_string()))
+            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
     }
 }
 
@@ -1262,7 +1261,7 @@ fn expand_program(
         .args(cargo_args)
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
         std::process::exit(exit.status.code().unwrap_or(1));
@@ -1271,7 +1270,7 @@ fn expand_program(
     let version = cargo.version();
     let time = chrono::Utc::now().to_string().replace(' ', "_");
     let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
-    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e))?;
 
     println!(
         "Expanded {} into file {}\n",
@@ -1333,6 +1332,8 @@ pub fn build(
         fs::create_dir_all(cfg_parent.join(&cfg.workspace.types))?;
     };
 
+    cfg.run_hooks(HookType::PreBuild)?;
+
     let cargo = Manifest::discover()?;
     let build_config = BuildConfig {
         verifiable,
@@ -1390,6 +1391,7 @@ pub fn build(
             &arch,
         )?,
     }
+    cfg.run_hooks(HookType::PostBuild)?;
 
     set_workspace_dir_or_exit();
 
@@ -1612,7 +1614,7 @@ fn docker_build(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e))?;
     if !exit.status.success() {
         return Err(anyhow!("Failed to build program"));
     }
@@ -1736,7 +1738,7 @@ fn docker_build_bpf(
             Some(f) => f.into(),
         })
         .output()
-        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("Docker build failed: {}", e))?;
     if !exit.status.success() {
         return Err(anyhow!("Failed to build program"));
     }
@@ -1768,7 +1770,7 @@ fn docker_build_bpf(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         Err(anyhow!(
             "Failed to copy binary out of docker. Is the target directory set correctly?"
@@ -1790,7 +1792,7 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         println!("Unable to remove the docker container");
         std::process::exit(exit.status.code().unwrap_or(1));
@@ -1829,7 +1831,7 @@ fn _build_rust_cwd(
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
         std::process::exit(exit.status.code().unwrap_or(1));
     }
@@ -2178,7 +2180,9 @@ fn idl_set_buffer(
                 AccountMeta::new(idl_authority, true),
             ];
             let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
-            data.append(&mut IdlInstruction::SetBuffer.try_to_vec()?);
+            data.append(&mut anchor_lang::prelude::borsh::to_vec(
+                &IdlInstruction::SetBuffer,
+            )?);
             Instruction {
                 program_id,
                 accounts,
@@ -2989,6 +2993,9 @@ fn test(
         if (!is_localnet || skip_local_validator) && !skip_deploy {
             deploy(cfg_override, None, None, false, true, vec![])?;
         }
+
+        cfg.run_hooks(HookType::PreTest)?;
+
         let mut is_first_suite = true;
         if let Some(test_script) = cfg.scripts.get_mut("test") {
             is_first_suite = false;
@@ -3057,6 +3064,7 @@ fn test(
                 )?;
             }
         }
+        cfg.run_hooks(HookType::PostTest)?;
         Ok(())
     })
 }
@@ -3566,6 +3574,7 @@ fn deploy(
         let client = create_client(&url);
         let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
 
+        cfg.run_hooks(HookType::PreDeploy)?;
         // Deploy the programs.
         println!("Deploying cluster: {url}");
         println!("Upgrade authority: {keypair}");
@@ -3676,6 +3685,7 @@ fn deploy(
         }
 
         println!("Deploy success");
+        cfg.run_hooks(HookType::PostDeploy)?;
 
         Ok(())
     })
@@ -3857,7 +3867,9 @@ fn create_idl_buffer(
             AccountMeta::new_readonly(keypair.pubkey(), true),
         ];
         let mut data = anchor_lang::idl::IDL_IX_TAG.to_le_bytes().to_vec();
-        data.append(&mut IdlInstruction::CreateBuffer.try_to_vec()?);
+        data.append(&mut anchor_lang::prelude::borsh::to_vec(
+            &IdlInstruction::CreateBuffer,
+        )?);
         Instruction {
             program_id: *program_id,
             accounts,
@@ -4090,7 +4102,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+            .map_err(|e| anyhow::format_err!("{}", e))?;
 
         if !child.wait()?.success() {
             println!("Error running node shell");
@@ -4336,7 +4348,7 @@ fn get_node_version() -> Result<Version> {
         .arg("--version")
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|e| anyhow::format_err!("node failed: {}", e.to_string()))?;
+        .map_err(|e| anyhow::format_err!("node failed: {}", e))?;
     let output = std::str::from_utf8(&node_version.stdout)?
         .strip_prefix('v')
         .unwrap()
