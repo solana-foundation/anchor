@@ -46,6 +46,8 @@ Solana version: 2.1.0
 | ------- | ----------- | --------------------- |
 | bench   | 945,568     | 🟢 **-96,360 (9.25%)** |
 
+### Notable changes
+
 ---
 
 ## [0.31.1]
@@ -64,8 +66,8 @@ Solana version: 2.1.0
 
 Solana version: 2.1.0
 
-| Program | Binary Size | -                        |
-| ------- | ----------- | ------------------------ |
+| Program | Binary Size | -                       |
+| ------- | ----------- | ----------------------- |
 | bench   | 1,041,928   | 🔴 **+250,920 (31.72%)** |
 
 ### Notable changes
@@ -91,8 +93,8 @@ Solana version: 1.18.17
 
 Solana version: 1.18.8
 
-| Program | Binary Size | -                      |
-| ------- | ----------- | ---------------------- |
+| Program | Binary Size | -                     |
+| ------- | ----------- | --------------------- |
 | bench   | 791,008     | 🔴 **+47,952 (6.45%)** |
 
 ### Notable changes
@@ -105,8 +107,8 @@ Solana version: 1.18.8
 
 Solana version: 1.17.0
 
-| Program | Binary Size | +/-                      |
-| ------- | ----------- | ------------------------ |
+| Program | Binary Size | +/-                     |
+| ------- | ----------- | ----------------------- |
 | bench   | 743,056     | 🟢 **-417,904 (36.00%)** |
 
 ### Notable changes
@@ -121,8 +123,8 @@ Solana version: 1.17.0
 
 Solana version: 1.16.0
 
-| Program | Binary Size | +/-                    |
-| ------- | ----------- | ---------------------- |
+| Program | Binary Size | +/-                   |
+| ------- | ----------- | --------------------- |
 | bench   | 1,160,960   | 🔴 **+23,272 (2.05%)** |
 
 ### Notable changes
