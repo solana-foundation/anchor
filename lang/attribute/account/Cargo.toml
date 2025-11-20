@@ -22,3 +22,6 @@ bs58 = "0.5"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+trybuild = "1.0"
