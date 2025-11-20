@@ -8,8 +8,8 @@ use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
 };
+use solana_signer::Signer;
 use std::{
     fmt::Write as _,
     fs::{self, File},
@@ -23,10 +23,10 @@ const ANCHOR_MSRV: &str = "1.89.0";
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum ProgramTemplate {
-    /// Program with a single `lib.rs` file
-    #[default]
+    /// Program with a single `lib.rs` file (not recommended for production)
     Single,
-    /// Program with multiple files for instructions, state...
+    /// Program with multiple files for instructions, state... (recommended)
+    #[default]
     Multiple,
 }
 
@@ -44,7 +44,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     ];
 
     let template_files = match template {
-        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Single => {
+            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            create_program_template_single(name, &program_path)
+        }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
     };
 
@@ -146,7 +149,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -167,7 +170,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
@@ -702,7 +705,7 @@ impl TestTemplate {
                     .arg("tests")
                     .stderr(Stdio::inherit())
                     .output()
-                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                    .map_err(|e| anyhow::format_err!("{}", e))?;
                 if !exit.status.success() {
                     eprintln!("'cargo new --lib tests' failed");
                     std::process::exit(exit.status.code().unwrap_or(1));

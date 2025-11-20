@@ -146,10 +146,17 @@ fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
         Ty::Program(_) | Ty::Sysvar(_) => {
             let ty = acc.account_ty();
-            let id_trait = matches!(acc.ty, Ty::Program(_))
-                .then(|| quote!(anchor_lang::Id))
-                .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
-            quote! { Some(<#ty as #id_trait>::id().to_string()) }
+            // Check if this is the unit type marker (for generic Program<'info>)
+            let ty_str = quote!(#ty).to_string();
+            if ty_str == "" || ty_str == "__SolanaProgramUnitType" {
+                // For generic programs, we don't have a specific address
+                quote! { None }
+            } else {
+                let id_trait = matches!(acc.ty, Ty::Program(_))
+                    .then(|| quote!(anchor_lang::Id))
+                    .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
+                quote! { Some(<#ty as #id_trait>::id().to_string()) }
+            }
         }
         _ => acc
             .constraints

@@ -1,14 +1,14 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::solana_program::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
-    Owners, Result, ToAccountInfos, ToAccountMetas,
+    Owners, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use std::collections::BTreeSet;
 use std::fmt;
@@ -184,8 +184,28 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
+    ///
+    /// No Anchor discriminator is checked during reload. Instead, this method enforces
+    /// owner stability by verifying that `info.owner == self.owner` (i.e., the pubkey
+    /// validated at construction) to avoid TOCTOU issues, and then re-deserializes `T`
+    /// from the updated bytes.
+    ///
+    /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
+    /// #[account] type.
     pub fn reload(&mut self) -> Result<()> {
-        self.account.reload()
+        let info = self.account.to_account_info();
+
+        // Enforce owner stability: must match the one validated at construction.
+        if info.owner != &self.owner {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, self.owner)));
+        }
+
+        // Re-deserialize fresh data into the inner account.
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        let new_val = T::try_deserialize_unchecked(&mut data)?;
+        self.account.set_inner(new_val);
+        Ok(())
     }
 
     pub fn into_inner(self) -> T {
@@ -215,19 +235,27 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 
 impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> InterfaceAccount<'a, T> {
     /// Deserializes the given `info` into a `InterfaceAccount`.
+    ///
+    /// This **does not** check an Anchor discriminator. It first validates
+    /// program ownership via `T::check_owner`, then deserializes using
+    /// `AccountDeserialize::try_deserialize_unchecked`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        T::check_owner(info.owner)?;
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Self::new(info, T::try_deserialize(&mut data)?))
+        // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
+        // accounts) that do not have Anchor discriminators. Because of that, we
+        // intentionally skip the Anchor discriminator check here and instead:
+        //
+        // 1) Validate program ownership via `T::check_owner(info.owner)?`
+        // 2) Deserialize without a discriminator by delegating to
+        //    `T::try_deserialize_unchecked`
+        Self::try_from_unchecked(info)
     }
 
-    /// Deserializes the given `info` into a `InterfaceAccount` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
+    /// Deserializes the given `info` into a `InterfaceAccount` **without** checking
+    /// the account discriminator. This is intended for foreign program accounts.
+    /// Prefer `Self::try_from` when you also want the ownership check, but note
+    /// that both skip Anchor discriminator checks, and `try_from` additionally
+    /// enforces ownership.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {

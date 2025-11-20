@@ -19,7 +19,10 @@ describe("custom-discriminator", () => {
       assert(data.equals(Buffer.from(ix.discriminator)));
 
       // Verify tx runs
-      await program.provider.sendAndConfirm!(tx);
+      await program.provider.sendAndConfirm!(tx, [], {
+        maxRetries: 3,
+        skipPreflight: true,
+      });
     };
 
     it("Integer", () => testCommon("int"));
