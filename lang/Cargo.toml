@@ -23,7 +23,7 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi","anchor-attribute-account/event-cpi"]
+event-cpi = ["anchor-attribute-event/event-cpi", "anchor-attribute-account/event-cpi"]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
@@ -54,7 +54,7 @@ anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 
 base64 = "0.21"
 bincode = "1"
-borsh = "0.10.3"
+borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
 solana-account-info = "2"
