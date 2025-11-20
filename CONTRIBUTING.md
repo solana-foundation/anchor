@@ -9,7 +9,7 @@ adding documentation, fixing bugs, creating examples, and implementing features.
 If you're looking to get started,
 check out [good first issues](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 or issues where [help is wanted](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-For simple documentation changes or typos, feel free to just open a pull request.
+PRs that only correct typos or make minor wording adjustments will be rejected. Fixing typos alongside other non-trivial engineering work is welcome.
 
 If you're considering larger changes or self motivated features, please file an issue
 and engage with the maintainers in [Discord](https://discord.gg/NHHGSXAnXk).
