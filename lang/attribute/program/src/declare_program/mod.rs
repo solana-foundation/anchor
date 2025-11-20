@@ -71,6 +71,14 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     // Utils
     let utils_mod = gen_utils_mod(idl);
 
+    let errors_re_export = if !idl.errors.is_empty() {
+        quote! {
+            pub use errors::ProgramError;
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         #docs
         pub mod #name {
@@ -87,6 +95,9 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
             #events_mod
             #types_mod
             #errors_mod
+
+            // Re-export error types to make them easily accessible
+            #errors_re_export
 
             #cpi_mod
             #client_mod
