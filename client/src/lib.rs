@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! An RPC client to interact with Solana programs written in [`anchor_lang`].
 //!
@@ -90,8 +90,9 @@ use solana_rpc_client_api::{
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::hash::Hash;
 use solana_sdk::instruction::{AccountMeta, Instruction};
-use solana_sdk::signature::{Signature, Signer};
+use solana_sdk::signature::Signature;
 use solana_sdk::transaction::Transaction;
+use solana_signer::{Signer, SignerError};
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -184,7 +185,7 @@ impl Signer for DynSigner {
         self.0.pubkey()
     }
 
-    fn try_pubkey(&self) -> Result<Pubkey, solana_sdk::signer::SignerError> {
+    fn try_pubkey(&self) -> Result<Pubkey, SignerError> {
         self.0.try_pubkey()
     }
 
@@ -195,7 +196,7 @@ impl Signer for DynSigner {
     fn try_sign_message(
         &self,
         message: &[u8],
-    ) -> Result<solana_sdk::signature::Signature, solana_sdk::signer::SignerError> {
+    ) -> Result<solana_sdk::signature::Signature, SignerError> {
         self.0.try_sign_message(message)
     }
 

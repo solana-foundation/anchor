@@ -1660,7 +1660,7 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with with system program with the
+// Generated code to create an account with system program with the
 // given `space` amount of data, owned by `owner`.
 //
 // `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
@@ -1729,7 +1729,7 @@ pub fn generate_constraint_executable(
     let name_str = f.ident.to_string();
     let account_ref = generate_account_ref(f);
 
-    // because we are only acting on the field, we know it isnt optional at this point
+    // because we are only acting on the field, we know it isn't optional at this point
     // as it was unwrapped in `generate_constraint`
     quote! {
         if !#account_ref.executable {

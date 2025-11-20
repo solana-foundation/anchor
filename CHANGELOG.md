@@ -47,6 +47,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
 - cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
+- cli: Add `hooks` section to `Anchor.toml` ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 
 ### Fixes
 
@@ -617,7 +618,7 @@ See the [Anchor 0.29 release notes](https://www.anchor-lang.com/release-notes/0.
 - spl: Re-export the `spl_token` crate ([#1665](https://github.com/coral-xyz/anchor/pull/1665)).
 - lang, cli, spl: Update solana toolchain to v1.9.13 ([#1653](https://github.com/coral-xyz/anchor/pull/1653) and [#1751](https://github.com/coral-xyz/anchor/pull/1751)).
 - lang: `Program` type now deserializes `programdata_address` only on demand ([#1723](https://github.com/coral-xyz/anchor/pull/1723)).
-- ts: Make `Provider` an interface and adjust its signatures and add `AnchorProvider` implementor class ([#1707](https://github.com/coral-xyz/anchor/pull/1707)).
+- ts: Make `Provider` an interface and adjust its signatures and add `AnchorProvider` implementer class ([#1707](https://github.com/coral-xyz/anchor/pull/1707)).
 - spl: Change "to" to "from" in `token::burn` ([#1080](https://github.com/coral-xyz/anchor/pull/1080)).
 
 ## [0.23.0] - 2022-03-20

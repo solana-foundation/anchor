@@ -21,12 +21,13 @@ anyhow = "1"
 futures = "0.3"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
+solana-account = "2"
 solana-account-decoder = "2"
 solana-pubsub-client = "2"
 solana-rpc-client = "2"
 solana-rpc-client-api = "2"
-solana-account = "2"
 solana-sdk = "2"
+solana-signer.workspace = true
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"

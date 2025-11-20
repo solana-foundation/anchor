@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -43,6 +43,7 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
+pub mod signature_verification;
 pub mod system_program;
 mod vec;
 
@@ -590,6 +591,18 @@ pub mod __private {
     pub use crate::lazy::Lazy;
     #[cfg(feature = "lazy-account")]
     pub use anchor_derive_serde::Lazy;
+
+    /// Trait for compile-time type equality checking.
+    /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
+    pub trait IsSameType<T> {}
+
+    impl<T> IsSameType<T> for T {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.
