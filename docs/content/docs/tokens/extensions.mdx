@@ -15,13 +15,20 @@ the implementation of these extension instructions in the Token Extensions
 Program
 [source code](https://github.com/solana-program/token-2022/tree/main/program/src/extension).
 
-Each extension adds specific state that must be initialized during mint or token
+Each extension adds specific state that is usually initialized during mint or token
 account creation. When initializing either type of account, you can enable
 multiple extensions simultaneously to add different functionality. However,
-extensions cannot be added after an account is created - you must include all
+most extensions cannot be added after an account is created - you must include all
 desired extensions during the initial account creation. This is an important
 consideration when designing your token, as you'll need to plan ahead for which
 features you want your token to support.
+The exceptions to this, which require the account to be initialized before they are added, are:
+
+- `cpi-guard`
+- `memo-transfer`
+- `token-group`
+- `token-member`
+- `token-metadata`
 
 <Callout type="info">
   Some extensions are incompatible with each other and cannot be enabled
