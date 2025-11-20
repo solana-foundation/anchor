@@ -22,8 +22,8 @@ pub mod remaining_accounts {
         Ok(())
     }
 
-    pub fn test_remaining_accounts<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, TestRemainingAccounts>,
+    pub fn test_remaining_accounts(
+        ctx: Context<TestRemainingAccounts>,
     ) -> Result<()> {
         let remaining_accounts_iter = &mut ctx.remaining_accounts.iter();
 
