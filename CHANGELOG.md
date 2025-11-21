@@ -55,9 +55,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Check the account owner whenever `Account::reload` is used to guard
   against mismatched programs
   ([#3837](https://github.com/solana-foundation/anchor/pull/3837)).
-- lang: Upgrade to the latest `borsh` release for serialization and
-  deserialization
-  ([#4012](https://github.com/solana-foundation/anchor/pull/4012)).
 - lang: Emit compile-time warnings when deriving `Accounts` structs that use raw
   `AccountInfo`, nudging programs toward strongly typed accounts
   ([#3854](https://github.com/solana-foundation/anchor/pull/3854)).
@@ -94,7 +91,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Remove the program account info from CPI contexts to match Solana's CPI
   expectations
   ([#2762](https://github.com/solana-foundation/anchor/pull/2762)).
-
+- lang: Upgrade to the latest `borsh` release for serialization and
+  deserialization
+  ([#4012](https://github.com/solana-foundation/anchor/pull/4012)).
+  
 ## [0.32.1] - 2025-10-09
 
 ### Features
