@@ -5,10 +5,8 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, write_keypair_file, Keypair},
-};
+use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
+use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use std::{
     fmt::Write as _,
@@ -792,7 +790,7 @@ fn test_initialize() {{
     let payer = read_keypair_file(&anchor_wallet).unwrap();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
 
     let tx = program

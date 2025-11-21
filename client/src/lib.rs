@@ -74,8 +74,7 @@ use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
-use solana_account::Account;
-use solana_account_decoder::UiAccountEncoding;
+use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_program::hash::Hash;
@@ -284,12 +283,16 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         Ok(ProgramAccountsIterator {
             inner: self
                 .internal_rpc_client
-                .get_program_accounts_with_config(&self.id(), config)
+                .get_program_ui_accounts_with_config(&self.id(), config)
                 .await
                 .map_err(Box::new)?
                 .into_iter()
                 .map(|(key, account)| {
-                    Ok((key, T::try_deserialize(&mut (&account.data as &[u8]))?))
+                    let data = account
+                        .data
+                        .decode()
+                        .expect("account was fetched with binary encoding");
+                    Ok((key, T::try_deserialize(&mut data.as_slice())?))
                 }),
         })
     }
@@ -365,11 +368,11 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 /// Iterator with items of type (Pubkey, T). Used to lazily deserialize account structs.
 /// Wrapper type hides the inner type from usages so the implementation can be changed.
 pub struct ProgramAccountsIterator<T> {
-    inner: Map<IntoIter<(Pubkey, Account)>, AccountConverterFunction<T>>,
+    inner: Map<IntoIter<(Pubkey, UiAccount)>, AccountConverterFunction<T>>,
 }
 
 /// Function type that accepts solana accounts and returns deserialized anchor accounts
-type AccountConverterFunction<T> = fn((Pubkey, Account)) -> Result<(Pubkey, T), ClientError>;
+type AccountConverterFunction<T> = fn((Pubkey, UiAccount)) -> Result<(Pubkey, T), ClientError>;
 
 impl<T> Iterator for ProgramAccountsIterator<T> {
     type Item = Result<(Pubkey, T), ClientError>;
