@@ -1478,6 +1478,7 @@ fn build_rust_cwd(
             cargo_args,
             no_docs,
             arch,
+            no_idl,
         ),
     }
 }
@@ -1496,6 +1497,7 @@ fn build_cwd_verifiable(
     cargo_args: Vec<String>,
     no_docs: bool,
     arch: &ProgramArch,
+    no_idl: bool,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -1527,36 +1529,39 @@ fn build_cwd_verifiable(
             eprintln!("Error during Docker build: {e:?}");
         }
         Ok(_) => {
-            // Build the idl.
-            println!("Extracting the IDL");
-            let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
-            // Write out the JSON file.
-            println!("Writing the IDL file");
-            let out_file = workspace_dir
-                .join("target")
-                .join("idl")
-                .join(&idl.metadata.name)
-                .with_extension("json");
-            write_idl(&idl, OutFile::File(out_file))?;
+            // Generate IDL only if not disabled
+            if !no_idl {
+                // Build the idl.
+                println!("Extracting the IDL");
+                let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
+                // Write out the JSON file.
+                println!("Writing the IDL file");
+                let out_file = workspace_dir
+                    .join("target")
+                    .join("idl")
+                    .join(&idl.metadata.name)
+                    .with_extension("json");
+                write_idl(&idl, OutFile::File(out_file))?;
 
-            // Write out the TypeScript type.
-            println!("Writing the .ts file");
-            let ts_file = workspace_dir
-                .join("target")
-                .join("types")
-                .join(&idl.metadata.name)
-                .with_extension("ts");
-            fs::write(&ts_file, idl_ts(&idl)?)?;
+                // Write out the TypeScript type.
+                println!("Writing the .ts file");
+                let ts_file = workspace_dir
+                    .join("target")
+                    .join("types")
+                    .join(&idl.metadata.name)
+                    .with_extension("ts");
+                fs::write(&ts_file, idl_ts(&idl)?)?;
 
-            // Copy out the TypeScript type.
-            if !&cfg.workspace.types.is_empty() {
-                fs::copy(
-                    ts_file,
-                    workspace_dir
-                        .join(&cfg.workspace.types)
-                        .join(idl.metadata.name)
-                        .with_extension("ts"),
-                )?;
+                // Copy out the TypeScript type.
+                if !&cfg.workspace.types.is_empty() {
+                    fs::copy(
+                        ts_file,
+                        workspace_dir
+                            .join(&cfg.workspace.types)
+                            .join(idl.metadata.name)
+                            .with_extension("ts"),
+                    )?;
+                }
             }
 
             println!("Build success");
@@ -1833,7 +1838,10 @@ fn _build_rust_cwd(
         .output()
         .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
-        std::process::exit(exit.status.code().unwrap_or(1));
+        return Err(anyhow!(
+            "Cargo build failed with exit code {}",
+            exit.status.code().unwrap_or(1)
+        ));
     }
 
     // Generate IDL
