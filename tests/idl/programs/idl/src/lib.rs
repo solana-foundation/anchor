@@ -300,13 +300,14 @@ pub struct Initialize2<'info> {
 #[derive(Accounts)]
 pub struct CauseError {}
 
-#[error_code]
+#[error_code(offset = 500_000)]
 pub enum ErrorCode {
     #[msg("Example error.")]
     SomeError,
     #[msg("Another error.")]
     OtherError,
     ErrorWithoutMsg,
+    WithDiscrim = 500,
 }
 
 mod some_other_module {
