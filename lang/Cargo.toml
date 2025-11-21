@@ -23,7 +23,10 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi", "anchor-attribute-account/event-cpi"]
+event-cpi = [
+    "anchor-attribute-event/event-cpi",
+    "anchor-attribute-account/event-cpi",
+]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
@@ -36,7 +39,10 @@ idl-build = [
 ]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 interface-instructions = ["anchor-attribute-program/interface-instructions"]
-lazy-account = ["anchor-attribute-account/lazy-account", "anchor-derive-serde/lazy-account"]
+lazy-account = [
+    "anchor-attribute-account/lazy-account",
+    "anchor-derive-serde/lazy-account",
+]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.32.1" }
@@ -57,28 +63,30 @@ bincode = "1"
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
-solana-account-info = "2"
-solana-clock = "2"
-solana-cpi = "2"
-solana-define-syscall = "2"
-solana-feature-gate-interface = "2"
-solana-instruction = "2"
-solana-instructions-sysvar = "2"
-solana-invoke = "0.4.0"
-solana-loader-v3-interface = { version = "3", features = ["bincode"] }
-solana-msg = "2"
-solana-program-entrypoint = "2"
-solana-program-error = { version = "2", features = ["borsh"] }
-solana-program-memory = "2"
-solana-program-option = "2"
-solana-program-pack = "2"
-solana-pubkey = { version = "2", features = ["borsh", "bytemuck", "serde"] }
-solana-sdk-ids = "2"
-solana-system-interface = "1"
-solana-sysvar = { version = "2", features = ["bincode"] }
-solana-sysvar-id = "2"
+solana-account-info = "3.0.0"
+solana-clock = "3.0.0"
+solana-cpi = "3.0.0"
+solana-define-syscall = "3.0.0"
+solana-feature-gate-interface = "3.0.0"
+solana-instruction = "3.0.0"
+solana-instructions-sysvar = "3.0.0"
+## FIXME(jamie): When solana-invoke is released with 3.0 compatability, update this
+solana-invoke = { git = "https://github.com/solana-foundation/solana-invoke", branch = "solana-3-0" }
+solana-loader-v3-interface = { version = "6.0.0", features = ["bincode"] }
+solana-msg = "3.0.0"
+solana-program-entrypoint = "3.0.0"
+solana-program-error = { version = "3.0.0", features = ["borsh"] }
+solana-program-memory = "3.0.0"
+solana-program-option = "3.0.0"
+solana-program-pack = "3.0.0"
+solana-pubkey = { version = "4", features = ["borsh", "bytemuck", "serde"] }
+solana-sdk-ids = "3.0.0"
+solana-stake-interface = { version = "2.0.0", features = ["sysvar", "bincode"] }
+solana-system-interface = "2.0.0"
+solana-sysvar = { version = "3.0.0", features = ["bincode"] }
+solana-sysvar-id = "3.0.0"
 thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
- level = "warn"
- check-cfg = ['cfg(target_os, values("solana"))']
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']
