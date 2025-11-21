@@ -468,6 +468,8 @@ jobs:
             path: tests/test-instruction-validation
           - cmd: cd tests/signature-verification && anchor test
             path: tests/signature-verification
+          - cmd: cd tests/pda-payer && anchor test
+            path: tests/pda-payer
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
