@@ -168,7 +168,7 @@ pub fn generate(
             #(#re_exports)*
 
             #struct_doc
-            #[derive(anchor_lang::AnchorSerialize, Debug, Default, Copy, Clone)]
+            #[derive(anchor_lang::AnchorSerialize)]
             pub struct #name {
                 #(#account_struct_fields),*
             }
