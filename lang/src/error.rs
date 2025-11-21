@@ -177,6 +177,12 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - Account is already migrated
+    #[msg("Account is already migrated")]
+    AccountAlreadyMigrated,
+    /// 2041 - Account must be migrated before exiting
+    #[msg("Account must be migrated before exiting")]
+    AccountNotMigrated,
 
     // Signature verification errors
     /// 2040 - Invalid Ed25519 program id for signature verification
