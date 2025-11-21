@@ -692,22 +692,21 @@ fn generate_constraint_init_group(
 
             let token_account_space = generate_get_token_account_space(mint);
 
-            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
             let payer_signing = if payer_is_pda && field_is_pda {
-                // Both are PDAs - combine seeds
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
                 quote! {
-                    {
-                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
-                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
-                        &__combined_seeds[..]
-                    }
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
                 }
             } else if payer_is_pda {
                 // Only payer is PDA
-                quote! { #payer_seeds_with_bump }
+                quote! { &[#payer_seeds_with_bump] }
             } else if field_is_pda {
-                // Only field is PDA
-                quote! { #seeds_with_bump }
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
             } else {
                 // Neither is PDA
                 quote! { &[] }
@@ -1074,22 +1073,21 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
             };
 
-            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
             let payer_signing = if payer_is_pda && field_is_pda {
-                // Both are PDAs - combine seeds
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
                 quote! {
-                    {
-                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
-                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
-                        &__combined_seeds[..]
-                    }
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
                 }
             } else if payer_is_pda {
                 // Only payer is PDA
-                quote! { #payer_seeds_with_bump }
+                quote! { &[#payer_seeds_with_bump] }
             } else if field_is_pda {
-                // Only field is PDA
-                quote! { #seeds_with_bump }
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
             } else {
                 // Neither is PDA
                 quote! { &[] }
@@ -1256,22 +1254,21 @@ fn generate_constraint_init_group(
                 #system_program_optional_check
             };
 
-            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
             let payer_signing = if payer_is_pda && field_is_pda {
-                // Both are PDAs - combine seeds
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
                 quote! {
-                    {
-                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
-                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
-                        &__combined_seeds[..]
-                    }
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
                 }
             } else if payer_is_pda {
                 // Only payer is PDA
-                quote! { #payer_seeds_with_bump }
+                quote! { &[#payer_seeds_with_bump] }
             } else if field_is_pda {
-                // Only field is PDA
-                quote! { #seeds_with_bump }
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
             } else {
                 // Neither is PDA
                 quote! { &[] }
@@ -1891,7 +1888,7 @@ fn generate_create_account(
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#payer_signing]), lamports, space as u64, #owner)?;
+            anchor_lang::system_program::create_account(cpi_context.with_signer(#payer_signing), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1905,20 +1902,20 @@ fn generate_create_account(
                     to: #field.to_account_info(),
                 };
                 let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-                anchor_lang::system_program::transfer(cpi_context.with_signer(&[#payer_signing]), required_lamports)?;
+                anchor_lang::system_program::transfer(cpi_context.with_signer(#payer_signing), required_lamports)?;
             }
             // Allocate space.
             let cpi_accounts = anchor_lang::system_program::Allocate {
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#payer_signing]), #space as u64)?;
+            anchor_lang::system_program::allocate(cpi_context.with_signer(#payer_signing), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#payer_signing]), #owner)?;
+            anchor_lang::system_program::assign(cpi_context.with_signer(#payer_signing), #owner)?;
         }
     }
 }
@@ -2014,7 +2011,11 @@ fn find_payer_pda_seeds(
                 match &seeds_group.seeds {
                     SeedsExpr::List(list) => {
                         // Optional prefix (either empty or "<list>,")
-                        let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
+                        let maybe_seeds_plus_comma = if list.is_empty() {
+                            quote! {}
+                        } else {
+                            quote! { #list, }
+                        };
 
                         let deriving_program_id = seeds_group
                             .program_seed
@@ -2028,10 +2029,27 @@ fn find_payer_pda_seeds(
                             quote!(__payer_bump)
                         };
 
+                        let seeds_for_find = if list.is_empty() {
+                            quote! { &[] }
+                        } else {
+                            quote! { &[ #maybe_seeds_plus_comma ] }
+                        };
+
+                        let seeds_for_signing = if list.is_empty() {
+                            quote! { &[&[__payer_bump][..]][..] }
+                        } else {
+                            quote! {
+                                &[
+                                    #maybe_seeds_plus_comma
+                                    &[__payer_bump][..]
+                                ][..]
+                            }
+                        };
+
                         (
                             quote! {
                                 let (__payer_pda_address, __payer_bump) = Pubkey::find_program_address(
-                                    &[ #maybe_seeds_plus_comma ],
+                                    #seeds_for_find,
                                     &#deriving_program_id,
                                 );
                                 __bumps.#payer_ident = #bump_tok;
@@ -2042,12 +2060,7 @@ fn find_payer_pda_seeds(
                                      .with_pubkeys((#payer_ident.key(), __payer_pda_address)));
                                 }
                             },
-                            quote! {
-                                &[
-                                    #maybe_seeds_plus_comma
-                                    &[__payer_bump][..]
-                                ][..]
-                            },
+                            seeds_for_signing,
                             true,
                         )
                     }
