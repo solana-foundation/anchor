@@ -417,12 +417,17 @@ fn generate_constraint_realloc(
     let new_space = &c.space;
     let payer = &c.payer;
 
+    // Check if payer is a PDA and generate seeds if needed
+    let (payer_pda_find, payer_seeds_with_bump, payer_is_pda) = find_payer_pda_seeds(payer, accs);
+
     let mut optional_check_scope = OptionalCheckScope::new_with_field(accs, field);
     let payer_optional_check = optional_check_scope.generate_check(payer);
     let system_program_optional_check =
         optional_check_scope.generate_check(quote! {system_program});
 
     quote! {
+        // Define payer PDA if it's a PDA
+        #payer_pda_find
         // Blocks duplicate account reallocs in a single instruction to prevent accidental account overwrites
         // and to ensure the calculation of the change in bytes is based on account size at program entry
         // which inheritantly guarantee idempotency.
@@ -447,14 +452,18 @@ fn generate_constraint_realloc(
                 }
 
                 if __new_rent_minimum > __field_info.lamports() {
+                    let mut cpi_ctx = anchor_lang::context::CpiContext::new(
+                        system_program.key(),
+                        anchor_lang::system_program::Transfer {
+                            from: #payer.to_account_info(),
+                            to: __field_info.clone(),
+                        },
+                    );
+                    if #payer_is_pda {
+                        cpi_ctx = cpi_ctx.with_signer(&[#payer_seeds_with_bump]);
+                    }
                     anchor_lang::system_program::transfer(
-                        anchor_lang::context::CpiContext::new(
-                            system_program.key(),
-                            anchor_lang::system_program::Transfer {
-                                from: #payer.to_account_info(),
-                                to: __field_info.clone(),
-                            },
-                        ),
+                        cpi_ctx,
                         __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
                     )?;
                 }
@@ -487,6 +496,9 @@ fn generate_constraint_init_group(
 
     let payer = &c.payer;
 
+    // Check if payer is a PDA and generate seeds if needed
+    let (payer_pda_find, payer_seeds_with_bump, payer_is_pda) = find_payer_pda_seeds(payer, accs);
+
     // Convert from account info to account context wrapper type.
     let from_account_info = f.from_account_info(Some(&c.kind), true);
     let from_account_info_unchecked = f.from_account_info(Some(&c.kind), false);
@@ -494,8 +506,8 @@ fn generate_constraint_init_group(
     let account_ref = generate_account_ref(f);
 
     // PDA bump seeds.
-    let (find_pda, seeds_with_bump) = match &c.seeds {
-        None => (quote! {}, quote! {}),
+    let (find_pda, seeds_with_bump, field_is_pda) = match &c.seeds {
+        None => (quote! {}, quote! {}, false),
         Some(c) => match &c.seeds {
             // If the bump is provided with init *and target*, then force it to be the
             // canonical bump.
@@ -553,6 +565,7 @@ fn generate_constraint_init_group(
                             &[__bump][..]
                         ][..]
                     },
+                    true,
                 )
             }
             SeedsExpr::Expr(expr) => {
@@ -582,6 +595,7 @@ fn generate_constraint_init_group(
                         }
                     },
                     quote! { &__signer_seeds[..] },
+                    true,
                 )
             }
         },
@@ -623,17 +637,41 @@ fn generate_constraint_init_group(
 
             let token_account_space = generate_get_token_account_space(mint);
 
+            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - combine seeds
+                quote! {
+                    {
+                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
+                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
+                        &__combined_seeds[..]
+                    }
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { #payer_seeds_with_bump }
+            } else if field_is_pda {
+                // Only field is PDA
+                quote! { #seeds_with_bump }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             let create_account = generate_create_account(
                 field,
                 quote! {#token_account_space},
                 quote! {&#token_program.key()},
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
             quote! {
                 // Define the bump and pda variable.
                 #find_pda
+                // Define payer PDA if it's a PDA
+                #payer_pda_find
 
                 let #field: #ty_decl = ({ #[inline(never)] || {
                     // Checks that all the required accounts for this operation are present.
@@ -705,6 +743,8 @@ fn generate_constraint_init_group(
             quote! {
                 // Define the bump and pda variable.
                 #find_pda
+                // Define payer PDA if it's a PDA
+                #payer_pda_find
 
                 let #field: #ty_decl = ({ #[inline(never)] || {
                     // Checks that all the required accounts for this operation are present.
@@ -714,19 +754,21 @@ fn generate_constraint_init_group(
                     if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
                         #payer_optional_check
 
-                        ::anchor_spl::associated_token::create(
-                            anchor_lang::context::CpiContext::new(
-                                associated_token_program.key(),
-                                ::anchor_spl::associated_token::Create {
-                                    payer: #payer.to_account_info(),
-                                    associated_token: #field.to_account_info(),
-                                    authority: #owner.to_account_info(),
-                                    mint: #mint.to_account_info(),
-                                    system_program: system_program.to_account_info(),
-                                    token_program: #token_program.to_account_info(),
-                                }
-                            )
-                        )?;
+                        let mut cpi_ctx = anchor_lang::context::CpiContext::new(
+                            associated_token_program.key(),
+                            ::anchor_spl::associated_token::Create {
+                                payer: #payer.to_account_info(),
+                                associated_token: #field.to_account_info(),
+                                authority: #owner.to_account_info(),
+                                mint: #mint.to_account_info(),
+                                system_program: system_program.to_account_info(),
+                                token_program: #token_program.to_account_info(),
+                            }
+                        );
+                        if #payer_is_pda {
+                            cpi_ctx = cpi_ctx.with_signer(&[#payer_seeds_with_bump]);
+                        }
+                        ::anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
@@ -949,17 +991,41 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
             };
 
+            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - combine seeds
+                quote! {
+                    {
+                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
+                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
+                        &__combined_seeds[..]
+                    }
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { #payer_seeds_with_bump }
+            } else if field_is_pda {
+                // Only field is PDA
+                quote! { #seeds_with_bump }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             let create_account = generate_create_account(
                 field,
                 mint_space,
                 quote! {&#token_program.key()},
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
             quote! {
                 // Define the bump and pda variable.
                 #find_pda
+                // Define payer PDA if it's a PDA
+                #payer_pda_find
 
                 let #field: #ty_decl = ({ #[inline(never)] || {
                     // Checks that all the required accounts for this operation are present.
@@ -1094,19 +1160,43 @@ fn generate_constraint_init_group(
                 #system_program_optional_check
             };
 
+            // Construct payer_signing: if payer is PDA use its seeds, otherwise use field's seeds
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - combine seeds
+                quote! {
+                    {
+                        let mut __combined_seeds: ::std::vec::Vec<&[u8]> = #seeds_with_bump.to_vec();
+                        __combined_seeds.extend_from_slice(#payer_seeds_with_bump);
+                        &__combined_seeds[..]
+                    }
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { #payer_seeds_with_bump }
+            } else if field_is_pda {
+                // Only field is PDA
+                quote! { #seeds_with_bump }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             // CPI to the system program to create the account.
             let create_account = generate_create_account(
                 field,
                 quote! {space},
                 owner.clone(),
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
             // Put it all together.
             quote! {
                 // Define the bump variable.
                 #find_pda
+                // Define payer PDA if it's a PDA
+                #payer_pda_find
 
                 let #field = ({ #[inline(never)] || {
                     // Checks that all the required accounts for this operation are present.
@@ -1660,11 +1750,11 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with system program with the
+// Generated code to create an account with with system program with the
 // given `space` amount of data, owned by `owner`.
 //
-// `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
-// empty stream.
+// `payer_signing` should be given for PDA signing. Otherwise it's the
+// seeds_with_nonce for the account being created.
 //
 // This should only be run within scopes where `system_program` is not Optional
 fn generate_create_account(
@@ -1672,7 +1762,8 @@ fn generate_create_account(
     space: proc_macro2::TokenStream,
     owner: proc_macro2::TokenStream,
     payer: proc_macro2::TokenStream,
-    seeds_with_nonce: proc_macro2::TokenStream,
+    _payer_field: Option<&Field>,
+    payer_signing: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     // Field, payer, and system program are already validated to not be an Option at this point
     quote! {
@@ -1690,7 +1781,7 @@ fn generate_create_account(
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
+            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#payer_signing]), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1704,20 +1795,20 @@ fn generate_create_account(
                     to: #field.to_account_info(),
                 };
                 let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-                anchor_lang::system_program::transfer(cpi_context, required_lamports)?;
+                anchor_lang::system_program::transfer(cpi_context.with_signer(&[#payer_signing]), required_lamports)?;
             }
             // Allocate space.
             let cpi_accounts = anchor_lang::system_program::Allocate {
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
+            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#payer_signing]), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
+            anchor_lang::system_program::assign(cpi_context.with_signer(&[#payer_signing]), #owner)?;
         }
     }
 }
@@ -1776,5 +1867,121 @@ fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
             quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref()))
         }
         _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
+    }
+}
+
+// Helper function to check if payer is a PDA and generate seeds if needed
+fn find_payer_pda_seeds(
+    payer: &Expr,
+    accs: &AccountsStruct,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream, bool) {
+    // Extract payer field name from expression
+    let payer_name = match payer {
+        Expr::Path(expr_path) => {
+            if let Some(segment) = expr_path.path.segments.last() {
+                segment.ident.to_string()
+            } else {
+                return (quote! {}, quote! {}, false);
+            }
+        }
+        _ => return (quote! {}, quote! {}, false),
+    };
+
+    // Find the payer field in accounts struct
+    let payer_field = accs.fields.iter().find_map(|af| match af {
+        AccountField::Field(f) if f.ident.to_string() == payer_name => Some(f),
+        _ => None,
+    });
+
+    match payer_field {
+        Some(field) => {
+            // Check if payer has seeds constraints (is a PDA)
+            if let Some(seeds_group) = &field.constraints.seeds {
+                let payer_ident = &field.ident;
+                let payer_name_str = payer_ident.to_string();
+
+                // Generate PDA seeds similar to how it's done for init fields
+                match &seeds_group.seeds {
+                    SeedsExpr::List(list) => {
+                        // Optional prefix (either empty or "<list>,")
+                        let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
+
+                        let deriving_program_id = seeds_group
+                            .program_seed
+                            .clone()
+                            .map(|program_id| quote! { #program_id.key() })
+                            .unwrap_or(quote! { __program_id });
+
+                        let bump_tok = if field.is_optional {
+                            quote!(Some(__payer_bump))
+                        } else {
+                            quote!(__payer_bump)
+                        };
+
+                        (
+                            quote! {
+                                let (__payer_pda_address, __payer_bump) = Pubkey::find_program_address(
+                                    &[ #maybe_seeds_plus_comma ],
+                                    &#deriving_program_id,
+                                );
+                                __bumps.#payer_ident = #bump_tok;
+                                if #payer_ident.key() != __payer_pda_address {
+                                    return Err(anchor_lang::error::Error::from(
+                                        anchor_lang::error::ErrorCode::ConstraintSeeds
+                                    ).with_account_name(#payer_name_str)
+                                     .with_pubkeys((#payer_ident.key(), __payer_pda_address)));
+                                }
+                            },
+                            quote! {
+                                &[
+                                    #maybe_seeds_plus_comma
+                                    &[__payer_bump][..]
+                                ][..]
+                            },
+                            true,
+                        )
+                    }
+                    SeedsExpr::Expr(expr) => {
+                        let deriving_program_id = seeds_group
+                            .program_seed
+                            .clone()
+                            .map(|program_id| quote! { #program_id.key() })
+                            .unwrap_or(quote! { __program_id });
+
+                        let bump_tok = if field.is_optional {
+                            quote!(Some(__payer_bump))
+                        } else {
+                            quote!(__payer_bump)
+                        };
+
+                        (
+                            quote! {
+                                let __payer_seeds_slice: &[&[u8]] = #expr;
+                                let (__payer_pda_address, __payer_bump) =
+                                    Pubkey::find_program_address(__payer_seeds_slice, &#deriving_program_id);
+                                __bumps.#payer_ident = #bump_tok;
+
+                                let mut __payer_signer_seeds_vec: ::std::vec::Vec<&[u8]> = __payer_seeds_slice.to_vec();
+                                let __payer_bump_array = [__payer_bump];
+                                __payer_signer_seeds_vec.push(&__payer_bump_array[..]);
+                                let __payer_signer_seeds = __payer_signer_seeds_vec;
+
+                                if #payer_ident.key() != __payer_pda_address {
+                                    return Err(anchor_lang::error::Error::from(
+                                        anchor_lang::error::ErrorCode::ConstraintSeeds
+                                    ).with_account_name(#payer_name_str)
+                                     .with_pubkeys((#payer_ident.key(), __payer_pda_address)));
+                                }
+                            },
+                            quote! { &__payer_signer_seeds[..] },
+                            true,
+                        )
+                    }
+                }
+            } else {
+                (quote! {}, quote! {}, false)
+            }
+        }
+        None => (quote! {}, quote! {}, false),
     }
 }

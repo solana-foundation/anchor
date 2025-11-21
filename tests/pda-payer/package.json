@@ -1,0 +1,20 @@
+{
+  "name": "pda-payer",
+  "version": "0.1.0",
+  "description": "Created with Anchor",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "anchor test"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.0",
+    "@solana/web3.js": "^1.87.6"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
