@@ -6,9 +6,7 @@ import { expect } from "chai";
 
 describe("pda-payer", () => {
   // Configure the client to use the local cluster.
-  const provider = anchor.AnchorProvider.local(undefined, {
-    commitment: `confirmed`,
-  });
+  const provider = anchor.AnchorProvider.local()
   anchor.setProvider(provider);
 
   const program = anchor.workspace.PdaPayer as Program<PdaPayer>;

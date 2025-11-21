@@ -11,9 +11,6 @@
     "type": "git",
     "url": "https://github.com/coral-xyz/anchor.git"
   },
-  "engines": {
-    "node": ">=17"
-  },
   "scripts": {
     "test": "anchor test"
   }
