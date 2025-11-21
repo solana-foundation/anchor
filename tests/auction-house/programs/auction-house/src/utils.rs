@@ -11,7 +11,7 @@ use {
     },
     anchor_spl::{
         associated_token::spl_associated_token_account::{
-            create_associated_token_account, get_associated_token_address,
+            address::get_associated_token_address, instruction::create_associated_token_account,
         },
         metadata::mpl_token_metadata,
         token::{
@@ -20,6 +20,7 @@ use {
         },
     },
     arrayref::array_ref,
+    solana_sysvar::SysvarSerialize,
     std::{convert::TryInto, slice::Iter},
 };
 pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Result<Account> {
@@ -50,7 +51,7 @@ pub fn make_ata<'a>(
     }
 
     invoke_signed(
-        &create_associated_token_account(&fee_payer.key, &wallet.key, &mint.key),
+        &create_associated_token_account(&fee_payer.key, &wallet.key, &mint.key, &spl_token::ID),
         &[
             ata,
             wallet,

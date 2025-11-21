@@ -5,8 +5,8 @@ use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 
-pub use spl_token_2022;
 pub use spl_token_2022::ID;
+pub use spl_token_2022_interface as spl_token_2022;
 
 #[deprecated(
     since = "0.28.0",
