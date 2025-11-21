@@ -40,7 +40,7 @@ solana-cli-config = "2"
 solana-faucet = "2"
 solana-rpc-client = "2"
 solana-sdk = "2"
-solana-signer.workspace = true
+solana-signer = "2"
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 toml = "0.7.6"

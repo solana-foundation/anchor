@@ -76,6 +76,9 @@ use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account::Account;
 use solana_account_decoder::UiAccountEncoding;
+use solana_commitment_config::CommitmentConfig;
+use solana_instruction::{AccountMeta, Instruction};
+use solana_program::hash::Hash;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
@@ -87,12 +90,9 @@ use solana_rpc_client_api::{
     filter::{Memcmp, RpcFilterType},
     response::{Response as RpcResponse, RpcLogsResponse},
 };
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::hash::Hash;
-use solana_sdk::instruction::{AccountMeta, Instruction};
-use solana_sdk::signature::Signature;
-use solana_sdk::transaction::Transaction;
+use solana_signature::Signature;
 use solana_signer::{Signer, SignerError};
+use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -114,7 +114,6 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
-pub use solana_sdk;
 
 mod cluster;
 
@@ -189,14 +188,11 @@ impl Signer for DynSigner {
         self.0.try_pubkey()
     }
 
-    fn sign_message(&self, message: &[u8]) -> solana_sdk::signature::Signature {
+    fn sign_message(&self, message: &[u8]) -> Signature {
         self.0.sign_message(message)
     }
 
-    fn try_sign_message(
-        &self,
-        message: &[u8],
-    ) -> Result<solana_sdk::signature::Signature, SignerError> {
+    fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
         self.0.try_sign_message(message)
     }
 
