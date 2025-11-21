@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 
 import { Events } from "../target/types/events";
+import { ConfirmOptions } from "@solana/web3.js";
 
 describe("Events", () => {
   // Configure the client to use the local cluster.
@@ -15,17 +16,27 @@ describe("Events", () => {
   };
 
   type Event = anchor.IdlEvents<typeof program["idl"]>;
+
+  const config: ConfirmOptions = {
+    commitment: "confirmed",
+    preflightCommitment: "confirmed",
+    skipPreflight: true,
+    maxRetries: 3,
+  } as const;
+
   const getEvent = async <E extends keyof Event>(
     eventName: E,
     methodName: keyof typeof program["methods"]
   ) => {
     let listenerId: number;
-    const event = await new Promise<Event[E]>((res) => {
+    const eventPromise = new Promise<Event[E]>((res) => {
       listenerId = program.addEventListener(eventName, (event) => {
         res(event);
       });
-      program.methods[methodName]().rpc();
     });
+
+    await program.methods[methodName]().rpc(config);
+    const event = await eventPromise;
     await program.removeEventListener(listenerId);
 
     return event;
