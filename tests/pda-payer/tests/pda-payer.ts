@@ -6,13 +6,14 @@ import { expect } from "chai";
 
 describe("pda-payer", () => {
   // Configure the client to use the local cluster.
-  const wallet = new anchor.Wallet(Keypair.generate());
   const provider = anchor.AnchorProvider.local(undefined, {
     commitment: `confirmed`,
   });
   anchor.setProvider(provider);
 
   const program = anchor.workspace.PdaPayer as Program<PdaPayer>;
+  const wallet = provider.wallet;
+
   before(async () => {
     const airdropSig = await provider.connection.requestAirdrop(
       wallet.publicKey,
@@ -45,7 +46,17 @@ describe("pda-payer", () => {
     const newAccount = Keypair.generate();
 
     // Get the PDA account info to check it has funds
-    const pdaAccountInfo = await provider.connection.getAccountInfo(pdaAccount);
+    // Note: The PDA account might not exist yet, so we check after funding
+    let pdaAccountInfo = await provider.connection.getAccountInfo(pdaAccount);
+
+    // If PDA doesn't exist yet, it will be created when we transfer funds to it
+    // After the transfer, it should exist and have funds
+    if (pdaAccountInfo === null) {
+      // Wait a bit for the transaction to be confirmed
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      pdaAccountInfo = await provider.connection.getAccountInfo(pdaAccount);
+    }
+
     expect(pdaAccountInfo).to.not.be.null;
     expect(pdaAccountInfo!.lamports).to.be.greaterThan(0);
 
