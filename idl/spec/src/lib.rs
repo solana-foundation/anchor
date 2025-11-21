@@ -299,7 +299,7 @@ pub enum IdlType {
     String,
     Pubkey,
     Option(Box<IdlType>),
-    Vec(Box<IdlType>),
+    Vec(VecType),
     Array(Box<IdlType>, IdlArrayLen),
     Defined {
         name: String,
@@ -308,6 +308,31 @@ pub enum IdlType {
     },
     Generic(String),
 }
+
+/// Represents a vector type with optional custom length prefix.
+/// Supports both standard Vec<T> and Vec<T> with custom length discriminators (u8, u16, u32).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum VecType {
+    // Try the more specific variant first
+    WithLength {
+        r#type: Box<IdlType>,
+        length: VecLengthType,
+    },
+    // Fall back to simple variant for backward compatibility
+    Simple(Box<IdlType>),
+}
+
+/// Length discriminator type for custom vectors.
+/// Determines the byte size of the vector length prefix.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum VecLengthType {
+    U8,
+    U16,
+    U32,
+}
+
 
 // TODO: Move to utils crate
 impl FromStr for IdlType {
@@ -347,12 +372,26 @@ impl FromStr for IdlType {
                 }
 
                 if let Some(inner) = s.strip_prefix("Vec<") {
-                    let inner_ty = Self::from_str(
-                        inner
-                            .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Vec"))?,
-                    )?;
-                    return Ok(IdlType::Vec(Box::new(inner_ty)));
+                    // Check for Vec<T, LengthType> format
+                    if let Some((ty_str , len_str)) = inner.split_once(','){
+                        let ty = Self::from_str(ty_str.trim())?;
+                        let length = match len_str.trim() {
+                            "u8" => VecLengthType::U8,
+                            "u16" => VecLengthType::U16,
+                            "u32" => VecLengthType::U32,
+                            _ => return Err(anyhow!("Invalid Vec length type. Must be u8 , u16 , u32"))
+                        };
+
+                        return Ok(IdlType::Vec(VecType::WithLength {
+                            r#type: Box::new(ty),
+                            length,
+                        }));
+
+                    } else {
+                        // Simple Vec<T> format (backward compatible)
+                        let inner_ty = Self::from_str(inner)?;
+                        return Ok(IdlType::Vec(VecType::Simple(Box::new(inner_ty))));
+                    }
                 }
 
                 if s.starts_with('[') {
@@ -430,7 +469,18 @@ mod tests {
     fn vector() {
         assert_eq!(
             IdlType::from_str("Vec<bool>").unwrap(),
-            IdlType::Vec(Box::new(IdlType::Bool))
+            IdlType::Vec(VecType::Simple(Box::new(IdlType::Bool)))
+        )
+    }
+
+    #[test]
+    fn lenth(){
+        assert_eq!(
+            IdlType::from_str("Vec<u64 , u16>").unwrap(),
+            IdlType::Vec(VecType::WithLength { 
+                r#type: Box::new(IdlType::String),
+                length: VecLengthType::U16,
+            })
         )
     }
 
