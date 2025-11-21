@@ -6,23 +6,20 @@ import { expect } from "chai";
 
 describe("pda-payer", () => {
   // Configure the client to use the local cluster.
-  const connection = new anchor.web3.Connection("http://127.0.0.1:8899", "confirmed");
   const wallet = new anchor.Wallet(Keypair.generate());
-  const provider = new anchor.AnchorProvider(connection, wallet, {
-    commitment: "confirmed",
+  const provider = anchor.AnchorProvider.local(undefined, {
+    commitment: `confirmed`,
   });
   anchor.setProvider(provider);
-  
-  // Airdrop some SOL to the wallet for testing
+
+  const program = anchor.workspace.PdaPayer as Program<PdaPayer>;
   before(async () => {
-    const airdropSig = await connection.requestAirdrop(
+    const airdropSig = await provider.connection.requestAirdrop(
       wallet.publicKey,
       10 * anchor.web3.LAMPORTS_PER_SOL
     );
-    await connection.confirmTransaction(airdropSig);
+    await provider.connection.confirmTransaction(airdropSig);
   });
-
-  const program = anchor.workspace.PdaPayer as Program<PdaPayer>;
 
   it("Initializes account with PDA as payer", async () => {
     // Find PDA address
@@ -46,7 +43,7 @@ describe("pda-payer", () => {
     // Derive the new account address (it will be created by the init constraint)
     // For init, we need to provide a keypair for the new account
     const newAccount = Keypair.generate();
-    
+
     // Get the PDA account info to check it has funds
     const pdaAccountInfo = await provider.connection.getAccountInfo(pdaAccount);
     expect(pdaAccountInfo).to.not.be.null;
@@ -92,4 +89,3 @@ describe("pda-payer", () => {
     }
   });
 });
-

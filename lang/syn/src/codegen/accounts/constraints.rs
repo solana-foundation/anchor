@@ -1889,7 +1889,7 @@ fn find_payer_pda_seeds(
 
     // Find the payer field in accounts struct
     let payer_field = accs.fields.iter().find_map(|af| match af {
-        AccountField::Field(f) if f.ident.to_string() == payer_name => Some(f),
+        AccountField::Field(f) if f.ident == payer_name => Some(f),
         _ => None,
     });
 
