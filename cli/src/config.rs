@@ -1,7 +1,7 @@
 use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;
 use heck::ToSnakeCase;
@@ -12,7 +12,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
 use solana_sdk::clock::Slot;
 use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::{Keypair, Signer};
+use solana_sdk::signature::Keypair;
+use solana_signer::Signer;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::fs::{self, File};
@@ -21,6 +22,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, io};
 use walkdir::WalkDir;
@@ -291,6 +293,7 @@ pub struct Config {
     pub provider: ProviderConfig,
     pub programs: ProgramsConfig,
     pub scripts: ScriptsConfig,
+    pub hooks: HooksConfig,
     pub workspace: WorkspaceConfig,
     // Separate entry next to test_config because
     // "anchor localnet" only has access to the Anchor.toml,
@@ -383,6 +386,49 @@ pub struct ProviderConfig {
 pub type ScriptsConfig = BTreeMap<String, String>;
 
 pub type ProgramsConfig = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HooksConfig {
+    #[serde(alias = "pre-build")]
+    pre_build: Option<Hook>,
+    #[serde(alias = "post-build")]
+    post_build: Option<Hook>,
+    #[serde(alias = "pre-test")]
+    pre_test: Option<Hook>,
+    #[serde(alias = "post-test")]
+    post_test: Option<Hook>,
+    #[serde(alias = "pre-deploy")]
+    pre_deploy: Option<Hook>,
+    #[serde(alias = "post-deploy")]
+    post_deploy: Option<Hook>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum Hook {
+    Single(String),
+    List(Vec<String>),
+}
+
+impl Hook {
+    pub fn hooks(&self) -> &[String] {
+        match self {
+            Self::Single(h) => std::slice::from_ref(h),
+            Self::List(l) => l.as_slice(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HookType {
+    PreBuild,
+    PostBuild,
+    PreTest,
+    PostTest,
+    PreDeploy,
+    PostDeploy,
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct WorkspaceConfig {
@@ -501,6 +547,32 @@ impl Config {
     pub fn wallet_kp(&self) -> Result<Keypair> {
         get_keypair(&self.provider.wallet.to_string())
     }
+
+    pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
+        let hooks = match hook_type {
+            HookType::PreBuild => &self.hooks.pre_build,
+            HookType::PostBuild => &self.hooks.post_build,
+            HookType::PreTest => &self.hooks.pre_test,
+            HookType::PostTest => &self.hooks.post_test,
+            HookType::PreDeploy => &self.hooks.pre_deploy,
+            HookType::PostDeploy => &self.hooks.post_deploy,
+        };
+        let cmds = hooks.as_ref().map(Hook::hooks).unwrap_or_default();
+        for cmd in cmds {
+            let status = Command::new("bash")
+                .arg("-c")
+                .arg(cmd)
+                .status()
+                .with_context(|| format!("failed to execute `{cmd}`"))?;
+            if !status.success() {
+                match status.code() {
+                    Some(code) => bail!("`{cmd}` failed with exit code {code}"),
+                    None => bail!("`{cmd}` killed by signal"),
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -512,6 +584,7 @@ struct _Config {
     provider: Provider,
     workspace: Option<WorkspaceConfig>,
     scripts: Option<ScriptsConfig>,
+    hooks: Option<HooksConfig>,
     test: Option<_TestValidator>,
 }
 
@@ -610,6 +683,7 @@ impl fmt::Display for Config {
                 true => None,
                 false => Some(self.scripts.clone()),
             },
+            hooks: Some(self.hooks.clone()),
             programs,
             workspace: (!self.workspace.members.is_empty() || !self.workspace.exclude.is_empty())
                 .then(|| self.workspace.clone()),
@@ -635,6 +709,7 @@ impl FromStr for Config {
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
             },
             scripts: cfg.scripts.unwrap_or_default(),
+            hooks: cfg.hooks.unwrap_or_default(),
             test_validator: cfg.test.map(Into::into),
             test_config: None,
             programs: cfg.programs.map_or(Ok(BTreeMap::new()), deser_programs)?,

@@ -63,6 +63,7 @@ mod legacy {
         pub value: String,
     }
 
+    #[allow(dead_code)]
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     pub struct IdlState {
         #[serde(rename = "struct")]

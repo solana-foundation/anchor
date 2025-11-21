@@ -264,14 +264,6 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
         Ok(())
     }
 
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    pub fn reload(&mut self) -> Result<()> {
-        let mut data: &[u8] = &self.info.try_borrow_data()?;
-        self.account = T::try_deserialize(&mut data)?;
-        Ok(())
-    }
-
     pub fn into_inner(self) -> T {
         self.account
     }
@@ -298,6 +290,22 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T> {
+    /// Reloads the account from storage. This is useful, for example, when
+    /// observing side effects after CPI.
+    ///
+    /// This method also re-validates that the program owner has not
+    /// changed since the initial validation
+    pub fn reload(&mut self) -> Result<()> {
+        if self.info.owner != &T::owner() {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*self.info.owner, T::owner())));
+        }
+
+        let mut data: &[u8] = &self.info.try_borrow_data()?;
+        self.account = T::try_deserialize(&mut data)?;
+        Ok(())
+    }
+
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Account<'a, T>> {

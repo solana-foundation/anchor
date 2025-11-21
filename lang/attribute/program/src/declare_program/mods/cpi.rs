@@ -77,7 +77,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
 
                     let accounts = ctx.to_account_metas(None);
                     anchor_lang::solana_program::instruction::Instruction {
-                        program_id: ctx.program.key(),
+                        program_id: ctx.program_id.key(),
                         accounts,
                         data,
                     }

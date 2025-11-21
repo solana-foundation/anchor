@@ -173,8 +173,9 @@ use anchor_client::{
     solana_client::rpc_client::RpcClient,
     solana_sdk::{
         commitment_config::CommitmentConfig, native_token::LAMPORTS_PER_SOL, signature::Keypair,
-        signer::Signer, system_program,
+        system_program,
     },
+    solana_signer::Signer,
     Client, Cluster,
 };
 use anchor_lang::prelude::*;
@@ -261,8 +262,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anchor-client = { version = "0.31.1", features = ["async"] }
-anchor-lang = "0.31.1"
+anchor-client = { version = "0.32.1", features = ["async"] }
+anchor-lang = "0.32.1"
 anyhow = "1.0.93"
 tokio = { version = "1.0", features = ["full"] }
 ```

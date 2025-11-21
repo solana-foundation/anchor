@@ -1,6 +1,6 @@
 use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use anchor_lang::error_code;
-use borsh::maybestd::io::Error as BorshIoError;
+use borsh::io::Error as BorshIoError;
 use std::fmt::{Debug, Display};
 use std::num::TryFromIntError;
 
@@ -177,6 +177,26 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+
+    // Signature verification errors
+    /// 2040 - Invalid Ed25519 program id for signature verification
+    #[msg("Invalid Ed25519 program id for signature verification")]
+    Ed25519InvalidProgram,
+    /// 2041 - Invalid Secp256k1 program id for signature verification
+    #[msg("Invalid Secp256k1 program id for signature verification")]
+    Secp256k1InvalidProgram,
+    /// 2042 - Instruction unexpectedly had account metas
+    #[msg("Instruction unexpectedly had account metas")]
+    InstructionHasAccounts,
+    /// 2043 - Message length exceeds allowed maximum
+    #[msg("Message length exceeds allowed maximum")]
+    MessageTooLong,
+    /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
+    #[msg("Invalid Secp256k1 recovery id")]
+    InvalidRecoveryId,
+    /// 2047 - Signature verification failed
+    #[msg("Signature verification failed")]
+    SignatureVerificationFailed,
 
     // Require
     /// 2500 - A require expression was violated

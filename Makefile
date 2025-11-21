@@ -1,3 +1,5 @@
+DICTIONARY_FILE ?= .cspell-anchor-dictionary.txt
+
 .PHONY: build-cli
 build-cli:
 	cargo build -p anchor-cli --release
@@ -39,3 +41,15 @@ publish:
 	sleep 25
 	cd cli/ && cargo publish && cd ../
 	sleep 25
+
+.PHONY: spellcheck
+spellcheck:
+	cspell *.md **/*.md **/*.mdx --config cspell.config.yaml --no-progress
+
+.PHONY: update-dictionary
+update-dictionary:
+	echo $(DICTIONARY_FILE)
+	cspell *.md **/*.md **/*.mdx --config cspell.config.yaml --words-only --unique --no-progress --quiet 2>/dev/null | sort --ignore-case > .new-dictionary-words
+	cat .new-dictionary-words $(DICTIONARY_FILE) | sort --ignore-case > .new-$(DICTIONARY_FILE)
+	mv .new-$(DICTIONARY_FILE) $(DICTIONARY_FILE)
+	rm -f .new-dictionary-words

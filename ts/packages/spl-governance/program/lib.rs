@@ -1275,7 +1275,7 @@ pub enum ProposalState {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
-    /// In the SingeChoice mode there can ever be a single winner
+    /// In the SingleChoice mode there can ever be a single winner
     /// If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed
     /// Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)
     SingleChoice,

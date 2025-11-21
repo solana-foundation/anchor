@@ -37,7 +37,7 @@ anchor --version
 Expected output:
 
 ```shell filename="Terminal"
-anchor-cli 0.31.1
+anchor-cli 0.32.1
 ```
 
 ## Getting Started
@@ -65,10 +65,17 @@ Navigate to the new project directory and open it in your code editor.
 cd my-project
 ```
 
-The default Anchor program is located at `/programs/my-project/src/lib.rs`.
+By default, Anchor generates a modular program structure to promote better code
+organization and maintainability. The program files are organized as follows:
+
+- `/programs/my-project/src/lib.rs` - Main entry point with module declarations
+- `/programs/my-project/src/instructions/` - Instruction handlers
+- `/programs/my-project/src/state/` - Account structures and state
+- `/programs/my-project/src/constants.rs` - Program constants
+- `/programs/my-project/src/error.rs` - Custom error definitions
 
 <Accordions>
-<Accordion title="Default Program">
+<Accordion title="Default Program Structure">
 
 The value in the `declare_id!` macro is the program ID, a unique identifier for
 your program.
@@ -76,8 +83,19 @@ your program.
 By default, it is the public key of the keypair generated in
 `/target/deploy/my_project-keypair.json`.
 
+**Main entry point** (`lib.rs`):
+
 ```rust filename="lib.rs"
+pub mod constants;
+pub mod error;
+pub mod instructions;
+pub mod state;
+
 use anchor_lang::prelude::*;
+
+pub use constants::*;
+pub use instructions::*;
+pub use state::*;
 
 declare_id!("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg");
 
@@ -86,14 +104,33 @@ pub mod my_project {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
+        initialize::handler(ctx)
     }
 }
+```
+
+**Instruction handler** (`instructions/initialize.rs`):
+
+```rust filename="instructions/initialize.rs"
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct Initialize {}
+
+pub fn handler(ctx: Context<Initialize>) -> Result<()> {
+    msg!("Greetings from: {:?}", ctx.program_id);
+    Ok(())
+}
 ```
+
+<Callout type="info">
+
+For simpler projects or quick prototyping, you can use the single-file template
+with `anchor init --template single`. However, the modular structure is
+recommended for production code as it improves code organization, readability,
+and maintainability.
+
+</Callout>
 
 </Accordion>
 </Accordions>
@@ -344,6 +381,8 @@ new program.
 
 Below is an overview of default file structure in an Anchor workspace:
 
+<!-- cspell:disable -->
+
 <Files>
   <Folder name=".anchor">
     <File name="program-logs" />
@@ -354,9 +393,17 @@ Below is an overview of default file structure in an Anchor workspace:
     <Folder name="[project-name]" defaultOpen={true}>
       <Folder name="src" defaultOpen={true}>
         <File name="lib.rs" />
-        <File name="Cargo.toml" />
-        <File name="Xargo.toml" />
+        <File name="constants.rs" />
+        <File name="error.rs" />
+        <Folder name="instructions" defaultOpen={true}>
+          <File name="mod.rs" />
+          <File name="initialize.rs" />
+        </Folder>
+        <Folder name="state">
+          <File name="mod.rs" />
+        </Folder>
       </Folder>
+      <File name="Cargo.toml" />
     </Folder>
   </Folder>
   <Folder name="target" defaultOpen={true}>
@@ -378,10 +425,23 @@ Below is an overview of default file structure in an Anchor workspace:
   <File name="package.json" />
 </Files>
 
+<!-- cspell:enable -->
+
 ### Programs Folder
 
 The `/programs` directory contains your project's Anchor programs. A single
 workspace can contain multiple programs.
+
+By default, programs are organized with a modular structure:
+
+- `lib.rs` - Main entry point that declares and exports modules
+- `instructions/` - Directory containing instruction handler functions
+- `state/` - Directory for account structures and state definitions
+- `constants.rs` - Program-wide constants
+- `error.rs` - Custom error codes
+
+This modular organization makes it easier to navigate and maintain your code,
+especially as your program grows in complexity.
 
 ### Tests Folder
 

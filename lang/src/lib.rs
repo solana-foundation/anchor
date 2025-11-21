@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -43,6 +43,7 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
+pub mod signature_verification;
 pub mod system_program;
 mod vec;
 
@@ -59,6 +60,7 @@ pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
+pub use const_crypto::ed25519::derive_program_address;
 
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
@@ -171,6 +173,12 @@ pub use idl::IdlBuild;
 pub use anchor_attribute_program::interface;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
+
+// Deprecated message for AccountInfo usage in Accounts struct
+#[deprecated(
+    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
+)]
+pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any
@@ -514,7 +522,6 @@ pub mod prelude {
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
-    pub use crate::solana_program::msg;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
     pub use crate::solana_program::sysvar::clock::Clock;
@@ -526,6 +533,7 @@ pub mod prelude {
     pub use crate::solana_program::sysvar::slot_history::SlotHistory;
     pub use crate::solana_program::sysvar::stake_history::StakeHistory;
     pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
+    pub use crate::solana_program::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
@@ -583,6 +591,18 @@ pub mod __private {
     pub use crate::lazy::Lazy;
     #[cfg(feature = "lazy-account")]
     pub use anchor_derive_serde::Lazy;
+
+    /// Trait for compile-time type equality checking.
+    /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
+    pub trait IsSameType<T> {}
+
+    impl<T> IsSameType<T> for T {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.
