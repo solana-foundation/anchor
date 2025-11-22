@@ -83,7 +83,9 @@ solana-pubkey = { version = "4", features = ["borsh", "bytemuck", "serde"] }
 solana-sdk-ids = "3.0.0"
 solana-stake-interface = { version = "2.0.0", features = ["sysvar", "bincode"] }
 solana-system-interface = "2.0.0"
-solana-sysvar = { version = "3.0.0", features = ["bincode"] }
+# FIXME: solana-sysvar 3.1.x causes breakage:
+# https://github.com/anza-xyz/solana-sdk/pull/257#issuecomment-3566690576
+solana-sysvar = { version = "~3.0.0", features = ["bincode"] }
 solana-sysvar-id = "3.0.0"
 thiserror = "1"
 
