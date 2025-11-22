@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::{spanned::Spanned, Result};
 
 use super::common::{get_idl_module_path, get_no_docs};
 use crate::parser::docs;
@@ -22,7 +22,7 @@ pub fn impl_idl_build_union(item: &syn::ItemUnion) -> TokenStream {
     impl_idl_build(
         &item.ident,
         &item.generics,
-        Err(anyhow!("Unions are not supported")),
+        Err(syn::Error::new_spanned(item, "Unions are not supported")),
     )
 }
 
@@ -33,10 +33,11 @@ fn impl_idl_build(
     type_def: Result<(TokenStream, Vec<syn::TypePath>)>,
 ) -> TokenStream {
     let idl = get_idl_module_path();
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let idl_build_trait = quote!(anchor_lang::idl::build::IdlBuild);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let (idl_type_def, insert_defined) = match type_def {
+        Err(e) => return e.into_compile_error(),
         Ok((ts, defined)) => (
             quote! { Some(#ts) },
             quote! {
@@ -48,7 +49,6 @@ fn impl_idl_build(
                 );*
             },
         ),
-        _ => (quote! { None }, quote! {}),
     };
 
     quote! {
@@ -612,7 +612,12 @@ pub fn gen_idl_type(
                                 defined.extend(def);
                                 quote! { #idl::IdlGenericArg::Type { ty: #ty } }
                             }
-                            _ => return Err(anyhow!("Unsupported generic argument: {arg:#?}")),
+                            _ => {
+                                return Err(syn::Error::new(
+                                    arg.span(),
+                                    "Unsupported generic argument",
+                                ))
+                            }
                         };
                         generics.push(generic);
                     }
@@ -635,7 +640,7 @@ pub fn gen_idl_type(
             }
             _ => gen_idl_type(&reference.elem, generic_params),
         },
-        _ => Err(anyhow!("Unknown type: {ty:#?}")),
+        _ => Err(syn::Error::new_spanned(ty, "Unsupported type")),
     }
 }
 
