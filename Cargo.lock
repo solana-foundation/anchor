@@ -224,7 +224,7 @@ dependencies = [
  "solana-faucet",
  "solana-instruction",
  "solana-keypair",
- "solana-pubkey 3.0.0",
+ "solana-pubkey 4.0.0",
  "solana-rpc-client",
  "solana-signature",
  "solana-signer",

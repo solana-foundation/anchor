@@ -63,30 +63,29 @@ bincode = "1"
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
-solana-account-info = "3.0.0"
-solana-clock = "3.0.0"
-solana-cpi = "3.0.0"
-solana-define-syscall = "3.0.0"
-solana-feature-gate-interface = "3.0.0"
-solana-instruction = "3.0.0"
-solana-instructions-sysvar = "3.0.0"
-## FIXME(jamie): When solana-invoke is released with 3.0 compatability, update this
-solana-invoke = { git = "https://github.com/solana-foundation/solana-invoke", branch = "solana-3-0" }
-solana-loader-v3-interface = { version = "6.0.0", features = ["bincode"] }
-solana-msg = "3.0.0"
-solana-program-entrypoint = "3.0.0"
-solana-program-error = { version = "3.0.0", features = ["borsh"] }
-solana-program-memory = "3.0.0"
-solana-program-option = "3.0.0"
-solana-program-pack = "3.0.0"
-solana-pubkey = { version = "4", features = ["borsh", "bytemuck", "serde"] }
-solana-sdk-ids = "3.0.0"
-solana-stake-interface = { version = "2.0.0", features = ["sysvar", "bincode"] }
-solana-system-interface = "2.0.0"
-# FIXME: solana-sysvar 3.1.x causes breakage:
-# https://github.com/anza-xyz/solana-sdk/pull/257#issuecomment-3566690576
-solana-sysvar = { version = "~3.0.0", features = ["bincode"] }
-solana-sysvar-id = "3.0.0"
+
+solana-account-info.workspace = true
+solana-clock.workspace = true
+solana-cpi.workspace = true
+solana-define-syscall.workspace = true
+solana-feature-gate-interface.workspace = true
+solana-instruction.workspace = true
+solana-instructions-sysvar.workspace = true
+solana-invoke.workspace = true
+solana-loader-v3-interface = { workspace = true, features = ["bincode"] }
+solana-msg.workspace = true
+solana-program-entrypoint.workspace = true
+solana-program-error = { workspace = true, features = ["borsh"] }
+solana-program-memory.workspace = true
+solana-program-option.workspace = true
+solana-program-pack.workspace = true
+solana-pubkey = { workspace = true, features = ["borsh", "bytemuck", "serde"] }
+solana-sdk-ids.workspace = true
+solana-stake-interface = { workspace = true, features = ["sysvar", "bincode"] }
+solana-system-interface.workspace = true
+solana-sysvar = { workspace = true, features = ["bincode"] }
+solana-sysvar-id.workspace = true
+
 thiserror = "1"
 
 [lints.rust.unexpected_cfgs]

@@ -37,7 +37,7 @@ anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
 base64ct = { version = "<1.8.0", optional = true }
 borsh = { version = "1.5.7", optional = true }
 mpl-token-metadata = { version = "=5.1.2-alpha.1", optional = true }
-solana-stake-interface = { version = "2", features = ["borsh"], optional = true }
+solana-stake-interface = { workspace = true, features = ["borsh"], optional = true }
 solana-sysvar = { version = "3", optional = true }
 spl-associated-token-account-interface = { version = "2", optional = true }
 spl-memo-interface = { version = "2", optional = true }

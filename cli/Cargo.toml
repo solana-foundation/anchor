@@ -36,19 +36,19 @@ semver = "1.0.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
-solana-cli-config = "3.0.0"
-solana-clock = "3.0.0"
-solana-commitment-config = "3.0.0"
-solana-compute-budget-interface = "3.0.0"
-solana-faucet = { version = "3.0.0", features = ["agave-unstable-api"] }
-solana-instruction = "3.0.0"
-solana-keypair = "3.0.0"
-solana-pubkey = "3.0.0"
-solana-signature = "3.0.0"
-solana-signer = "3.0.0"
-solana-system-interface = "2.0.0"
-solana-transaction = "3.0.0"
-solana-rpc-client = "3.0.0"
+solana-cli-config.workspace = true
+solana-clock.workspace = true
+solana-commitment-config.workspace = true
+solana-compute-budget-interface.workspace = true
+solana-faucet = { workspace = true, features = ["agave-unstable-api"] }
+solana-instruction.workspace = true
+solana-keypair.workspace = true
+solana-pubkey.workspace = true
+solana-signature.workspace = true
+solana-signer.workspace = true
+solana-system-interface.workspace = true
+solana-transaction.workspace = true
+solana-rpc-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 toml = "0.7.6"
