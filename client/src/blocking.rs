@@ -3,14 +3,15 @@ use crate::{
     RequestBuilder,
 };
 use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
+use solana_commitment_config::CommitmentConfig;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 #[cfg(not(feature = "mock"))]
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
-use solana_sdk::{
-    commitment_config::CommitmentConfig, signature::Signature, transaction::Transaction,
-};
+use solana_signature::Signature;
 use solana_signer::Signer;
+use solana_transaction::Transaction;
+
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 use tokio::{
     runtime::{Builder, Handle},
