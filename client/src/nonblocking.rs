@@ -6,9 +6,9 @@ use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
 use solana_sdk::{
-    commitment_config::CommitmentConfig, signature::Signature, signer::Signer,
-    transaction::Transaction,
+    commitment_config::CommitmentConfig, signature::Signature, transaction::Transaction,
 };
+use solana_signer::Signer;
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 use tokio::sync::RwLock;
 

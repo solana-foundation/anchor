@@ -1,0 +1,22 @@
+[package]
+name = "test-instruction-validation"
+version = "0.1.0"
+description = "Test for instruction parameter validation"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "test_instruction_validation"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = ["anchor-lang/anchor-debug"]
+
+[dependencies]
+anchor-lang = { path = "../../../../../lang" }
+
