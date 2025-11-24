@@ -13,9 +13,21 @@ pub fn program(
     _args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    parse_macro_input!(input as anchor_syn::Program)
-        .to_token_stream()
-        .into()
+    let program = parse_macro_input!(input as anchor_syn::Program);
+    let program_tokens = program.to_token_stream();
+
+    #[cfg(feature = "idl-build")]
+    {
+        use anchor_syn::idl::gen_idl_print_fn_program;
+        let idl_tokens = gen_idl_print_fn_program(&program);
+        return proc_macro::TokenStream::from(quote::quote! {
+            #program_tokens
+            #idl_tokens
+        });
+    }
+
+    #[allow(unreachable_code)]
+    proc_macro::TokenStream::from(program_tokens)
 }
 
 /// Declare an external program based on its IDL.
