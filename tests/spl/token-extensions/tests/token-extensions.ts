@@ -215,4 +215,16 @@ describe("token extensions", () => {
         .rpc();
     });
   });
+
+  it("pausable toggle test passes", async () => {
+    await program.methods
+      .checkTogglePause()
+      .accountsStrict({
+        authority: payer.publicKey,
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID
+      })
+      .signers([payer])
+      .rpc();
+  });
 });

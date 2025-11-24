@@ -50,4 +50,10 @@ pub mod token_extensions {
     pub fn disable_cpi_guard(ctx: Context<DisableCpiGuard>) -> Result<()> {
         instructions::disable_cpi_guard_handler(ctx)
     }
+    
+    pub fn check_toggle_pause(
+        ctx: Context<CheckTogglePause>,
+    ) -> Result<()> {
+        instructions::toggle_pause_handler(ctx)
+    }
 }
