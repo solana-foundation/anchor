@@ -763,6 +763,7 @@ fn generate_constraint_init_group(
             permanent_delegate,
             transfer_hook_authority,
             transfer_hook_program_id,
+            pausable_authority
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -827,6 +828,11 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let pausable_authority_check = match pausable_authority {
+                Some(pac) => check_scope.generate_check(pac),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -847,6 +853,7 @@ fn generate_constraint_init_group(
                 #transfer_hook_authority_check
                 #transfer_hook_program_id_check
                 #permanent_delegate_check
+                #pausable_authority_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
@@ -876,6 +883,10 @@ fn generate_constraint_init_group(
 
             if permanent_delegate.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate});
+            }
+
+            if pausable_authority.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::Pausable})
             }
 
             let mint_space = if extensions.is_empty() {
@@ -946,6 +957,11 @@ fn generate_constraint_init_group(
                 Some(thpid) => {
                     quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#thpid.key()) }
                 }
+                None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let pausable_authority = match pausable_authority {
+                Some(pa) => quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#pa.key()) },
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
             };
 
@@ -1021,6 +1037,12 @@ fn generate_constraint_init_group(
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
                                         }), #permanent_delegate.unwrap())?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::Pausable => {
+                                        ::anchor_spl::token_interface::pausable_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PausableInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }), #pausable_authority.unwrap())?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
@@ -1581,6 +1603,24 @@ fn generate_constraint_mint(
         }
         None => quote! {},
     };
+    
+    let pausable_authority_check = match &c.pausable_authority {
+        Some(pausable_authority) => {
+            let pausable_authority_optional_check =
+                optional_check_scope.generate_check(pausable_authority);
+            quote! {
+                let pausable = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::pausable::PausableConfig>(#account_ref);
+                if pausable.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintPausableExtension.into());
+                }
+                #pausable_authority_optional_check
+                if pausable.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#pausable_authority.key()))? {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintPausableAuthority.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
 
     quote! {
         {
@@ -1598,6 +1638,7 @@ fn generate_constraint_mint(
             #permanent_delegate_check
             #transfer_hook_authority_check
             #transfer_hook_program_id_check
+            #pausable_authority_check
         }
     }
 }
