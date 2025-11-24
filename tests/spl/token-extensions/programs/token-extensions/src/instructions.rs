@@ -4,15 +4,16 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::spl_token_2022::extension::{
         group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer,
-        mint_close_authority::MintCloseAuthority, permanent_delegate::PermanentDelegate,
-        transfer_hook::TransferHook,
+        mint_close_authority::MintCloseAuthority, pausable::PausableConfig,
+        permanent_delegate::PermanentDelegate, transfer_hook::TransferHook,
     },
     token_interface::{
-        get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
-        token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
+        get_mint_extension_data, pausable_pause, pausable_resume,
+        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
+        PausableToggle, Token2022, TokenAccount, TokenMetadataInitialize,
     },
 };
-use spl_pod::optional_keys::OptionalNonZeroPubkey;
+use spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool};
 
 use crate::{
     get_meta_list_size, get_mint_extensible_extension_data,
@@ -53,6 +54,7 @@ pub struct CreateMintAccount<'info> {
         extensions::transfer_hook::program_id = crate::ID,
         extensions::close_authority::authority = authority,
         extensions::permanent_delegate::delegate = authority,
+        extensions::pausable::authority = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -157,6 +159,12 @@ pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> 
         ctx.accounts.system_program.to_account_info(),
     )?;
 
+    let pausable_extension = get_mint_extension_data::<PausableConfig>(mint_data)?;
+    assert_eq!(
+        pausable_extension.authority,
+        OptionalNonZeroPubkey::try_from(authority_key)?
+    );
+
     Ok(())
 }
 
@@ -175,6 +183,54 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::transfer_hook::program_id = crate::ID,
         extensions::close_authority::authority = authority,
         extensions::permanent_delegate::delegate = authority,
+        extensions::pausable::authority = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CheckTogglePause<'info> {
+    #[account(mut)]
+    /// CHECK: can be any account
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        extensions::pausable::authority = authority,
+    )]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_program: Program<'info, Token2022>,
+}
+
+pub fn toggle_pause_handler(ctx: Context<CheckTogglePause>) -> Result<()> {
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let pausable_extension = get_mint_extension_data::<PausableConfig>(mint_data)?;
+    assert_eq!(pausable_extension.paused, PodBool::from_bool(false));
+
+    pausable_pause(CpiContext::new(
+        Token2022::id(),
+        PausableToggle {
+            token_program_id: ctx.accounts.token_program.to_account_info(),
+            mint: ctx.accounts.mint.to_account_info(),
+            authority: ctx.accounts.authority.to_account_info(),
+        },
+    ))?;
+
+    let pausable_extension = get_mint_extension_data::<PausableConfig>(mint_data)?;
+    assert_eq!(pausable_extension.paused, PodBool::from_bool(true));
+
+    pausable_resume(CpiContext::new(
+        Token2022::id(),
+        PausableToggle {
+            token_program_id: ctx.accounts.token_program.to_account_info(),
+            mint: ctx.accounts.mint.to_account_info(),
+            authority: ctx.accounts.authority.to_account_info(),
+        },
+    ))?;
+
+    let pausable_extension = get_mint_extension_data::<PausableConfig>(mint_data)?;
+    assert_eq!(pausable_extension.paused, PodBool::from_bool(false));
+
+    Ok(())
 }

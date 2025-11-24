@@ -29,4 +29,10 @@ pub mod token_extensions {
     ) -> Result<()> {
         Ok(())
     }
+    
+    pub fn check_toggle_pause(
+        ctx: Context<CheckTogglePause>,
+    ) -> Result<()> {
+        instructions::toggle_pause_handler(ctx)
+    }
 }

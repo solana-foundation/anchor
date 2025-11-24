@@ -258,6 +258,27 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "pausable" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "authority" => ConstraintToken::ExtensionPausableAuthority(Context::new(
+                            span,
+                            ConstraintExtensionAuthority {
+                                authority: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -534,6 +555,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_hook_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
     pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
+    pub extension_pausable_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -580,6 +602,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority: None,
             extension_transfer_hook_program_id: None,
             extension_permanent_delegate: None,
+            extension_pausable_authority: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -793,6 +816,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority,
             extension_transfer_hook_program_id,
             extension_permanent_delegate,
+            extension_pausable_authority,
             bump,
             program_seed,
             realloc,
@@ -893,8 +917,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_authority,
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
+            &extension_pausable_authority
         ) {
             (
+                None,
                 None,
                 None,
                 None,
@@ -954,6 +980,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_hook_program_id: extension_transfer_hook_program_id
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
+                pausable_authority: extension_pausable_authority
+                    .as_ref()
+                    .map(|a|a.clone().into_inner().authority),
+                
             }),
         };
 
@@ -1004,6 +1034,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                         permanent_delegate: extension_permanent_delegate.map(|pd| pd.into_inner().permanent_delegate),
                         transfer_hook_authority: extension_transfer_hook_authority.map(|tha| tha.into_inner().authority),
                         transfer_hook_program_id: extension_transfer_hook_program_id.map(|thpid| thpid.into_inner().program_id),
+                        pausable_authority: extension_pausable_authority.map(|ca| ca.into_inner().authority),
                     }
                 } else {
                     InitKind::Program {
@@ -1092,8 +1123,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
-            }
+            },
             ConstraintToken::Dup(c) => self.add_dup(c),
+            ConstraintToken::ExtensionPausableAuthority(c) => self.add_extension_pausable(c),
         }
     }
 
@@ -1682,6 +1714,20 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "dup already provided"));
         }
         self.dup.replace(c);
+        Ok(())
+    }
+    
+    fn add_extension_pausable(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_pausable_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension pausable already provided",
+            ));
+        }
+        self.extension_pausable_authority.replace(c);
         Ok(())
     }
 }
