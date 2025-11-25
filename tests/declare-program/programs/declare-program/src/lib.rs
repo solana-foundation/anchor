@@ -2,7 +2,10 @@ use anchor_lang::prelude::*;
 
 declare_id!("Dec1areProgram11111111111111111111111111111");
 
-declare_program!(external);
+declare_program!(
+    external,
+    address = "Externa111111111111111111111111111111111111"
+);
 use external::program::External;
 
 // Compilation check for legacy IDL (pre Anchor `0.30`)
