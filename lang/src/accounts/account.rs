@@ -295,6 +295,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     ///
     /// This method also re-validates that the program owner has not
     /// changed since the initial validation
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccountReload")]
     pub fn reload(&mut self) -> Result<()> {
         if self.info.owner != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
