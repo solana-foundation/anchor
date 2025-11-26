@@ -168,6 +168,9 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - A immutable owner extension constraint was violated
+    #[msg("A immutable owner extension constraint was violated")]
+    ConstraintTokenAccountImmutableOwnerExtension,
 
     // Signature verification errors
     /// 2040 - Invalid Ed25519 program id for signature verification
