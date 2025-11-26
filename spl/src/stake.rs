@@ -1,17 +1,14 @@
 use anchor_lang::{
     context::CpiContext,
-    solana_program::{
-        account_info::AccountInfo,
-        pubkey::Pubkey,
-        stake::{
-            self,
-            program::ID,
-            state::{StakeAuthorize, StakeState},
-        },
-    },
+    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
     Accounts, Result,
 };
 use borsh::BorshDeserialize;
+use solana_stake_interface::{
+    self as stake,
+    program::ID,
+    state::{StakeAuthorize, StakeStateV2},
+};
 use std::ops::Deref;
 
 // CPI functions
@@ -128,7 +125,7 @@ pub struct DeactivateStake<'info> {
 // State
 
 #[derive(Clone)]
-pub struct StakeAccount(StakeState);
+pub struct StakeAccount(StakeStateV2);
 
 impl anchor_lang::AccountDeserialize for StakeAccount {
     fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
@@ -136,7 +133,7 @@ impl anchor_lang::AccountDeserialize for StakeAccount {
     }
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        StakeState::deserialize(buf).map(Self).map_err(Into::into)
+        StakeStateV2::deserialize(buf).map(Self).map_err(Into::into)
     }
 }
 
@@ -149,7 +146,7 @@ impl anchor_lang::Owner for StakeAccount {
 }
 
 impl Deref for StakeAccount {
-    type Target = StakeState;
+    type Target = StakeStateV2;
 
     fn deref(&self) -> &Self::Target {
         &self.0

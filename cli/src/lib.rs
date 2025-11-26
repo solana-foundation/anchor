@@ -18,11 +18,11 @@ use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
 use serde_json::{json, Map, Value as JsonValue};
+use solana_commitment_config::CommitmentConfig;
+use solana_keypair::Keypair;
+use solana_pubkey::Pubkey;
 use solana_rpc_client::rpc_client::RpcClient;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::{Keypair, Signer};
-use solana_signer::EncodableKey;
+use solana_signer::{EncodableKey, Signer};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -31,7 +31,6 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command as ProcessCommand, Stdio};
-use std::str::FromStr;
 use std::string::ToString;
 use std::sync::LazyLock;
 
@@ -487,7 +486,7 @@ pub enum ClusterCommand {
 }
 
 fn get_keypair(path: &str) -> Result<Keypair> {
-    solana_sdk::signature::read_keypair_file(path)
+    solana_keypair::read_keypair_file(path)
         .map_err(|_| anyhow!("Unable to read keypair file ({path})"))
 }
 
@@ -2402,7 +2401,7 @@ fn idl_ts(idl: &Idl) -> Result<String> {
             let name = cur.get(1).unwrap().as_str();
 
             // Do not modify pubkeys
-            if Pubkey::from_str(name).is_ok() {
+            if Pubkey::try_from(name).is_ok() {
                 return acc;
             }
 
@@ -3032,7 +3031,7 @@ fn validator_flags(
                         .iter()
                         .map(|entry| {
                             let address = entry["address"].as_str().unwrap();
-                            Pubkey::from_str(address)
+                            Pubkey::try_from(address)
                                 .map_err(|_| anyhow!("Invalid pubkey {}", address))
                         })
                         .collect::<Result<HashSet<Pubkey>>>()?
@@ -3070,7 +3069,7 @@ fn validator_flags(
                         .iter()
                         .map(|entry| {
                             let feature_flag = entry.as_str().unwrap();
-                            Pubkey::from_str(feature_flag).map_err(|_| {
+                            Pubkey::try_from(feature_flag).map_err(|_| {
                                 anyhow!("Invalid pubkey (feature flag) {}", feature_flag)
                             })
                         })
@@ -3808,7 +3807,7 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                         println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
 
                         // Update the program id
-                        deployment.address = Pubkey::from_str(&actual_program_id).unwrap();
+                        deployment.address = Pubkey::try_from(actual_program_id.as_str()).unwrap();
                         fs::write(cfg.path(), cfg.to_string())?;
 
                         println!("Updated to {actual_program_id}\n");

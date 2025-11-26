@@ -9,7 +9,7 @@ pub use crate::token_2022::*;
 #[cfg(feature = "token_2022_extensions")]
 pub use crate::token_2022_extensions::*;
 
-static IDS: [Pubkey; 2] = [spl_token::ID, spl_token_2022::ID];
+static IDS: [Pubkey; 2] = [spl_token_interface::ID, spl_token_2022_interface::ID];
 
 #[derive(Clone, Debug, Default, PartialEq, Copy)]
 pub struct TokenAccount(spl_token_2022::state::Account);
