@@ -1687,8 +1687,6 @@ fn docker_build_bpf(
         manifest_path.display()
     );
 
-    let subcommand = arch.build_subcommand();
-
     // Execute the build.
     let exit = std::process::Command::new("docker")
         .args([
@@ -1704,7 +1702,9 @@ fn docker_build_bpf(
         .args([
             container_name,
             "cargo",
-            subcommand,
+        ])
+        .args(arch.build_subcommand())
+        .args([
             "--manifest-path",
             &manifest_path.display().to_string(),
         ])
@@ -1806,7 +1806,7 @@ fn _build_rust_cwd(
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
-        .arg(arch.build_subcommand())
+        .args(arch.build_subcommand())
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
