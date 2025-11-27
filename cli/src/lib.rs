@@ -3120,7 +3120,7 @@ fn stream_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<std::proc
         let stdio = std::process::Stdio::from(log_file);
         let child = std::process::Command::new("solana")
             .arg("logs")
-            .arg(idl.address)
+            .arg(&idl.address)
             .arg("--url")
             .arg(rpc_url)
             .stdout(stdio)
