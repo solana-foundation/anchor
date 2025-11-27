@@ -451,11 +451,13 @@ pub enum ProgramArch {
     Bpf,
     Sbf,
 }
+
 impl ProgramArch {
-    pub fn build_subcommand(&self) -> &str {
+    /// Subcommand and any arguments to be passed to cargo
+    pub fn build_subcommand(&self) -> &[&'static str] {
         match self {
-            Self::Bpf => "build-bpf",
-            Self::Sbf => "build-sbf",
+            Self::Bpf => &["build-bpf"],
+            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
         }
     }
 }
