@@ -763,7 +763,7 @@ fn generate_constraint_init_group(
             permanent_delegate,
             transfer_hook_authority,
             transfer_hook_program_id,
-            pausable_authority
+            pausable_authority,
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -1603,7 +1603,7 @@ fn generate_constraint_mint(
         }
         None => quote! {},
     };
-    
+
     let pausable_authority_check = match &c.pausable_authority {
         Some(pausable_authority) => {
             let pausable_authority_optional_check =

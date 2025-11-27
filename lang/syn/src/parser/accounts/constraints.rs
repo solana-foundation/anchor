@@ -913,7 +913,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_authority,
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
-            &extension_pausable_authority
+            &extension_pausable_authority,
         ) {
             (
                 None,
@@ -978,8 +978,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .map(|a| a.clone().into_inner().program_id),
                 pausable_authority: extension_pausable_authority
                     .as_ref()
-                    .map(|a|a.clone().into_inner().authority),
-                
+                    .map(|a| a.clone().into_inner().authority),
             }),
         };
 
@@ -1118,7 +1117,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
-            },
+            }
             ConstraintToken::ExtensionPausableAuthority(c) => self.add_extension_pausable(c),
         }
     }
@@ -1702,7 +1701,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         self.extension_permanent_delegate.replace(c);
         Ok(())
     }
-    
+
     fn add_extension_pausable(
         &mut self,
         c: Context<ConstraintExtensionAuthority>,
