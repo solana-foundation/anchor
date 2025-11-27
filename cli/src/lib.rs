@@ -98,6 +98,9 @@ pub enum Command {
         /// True if the build should not fail even if there are no "CHECK" comments
         #[clap(long)]
         skip_lint: bool,
+        /// Skip checking for program ID mismatch between keypair and declare_id
+        #[clap(long)]
+        ignore_keys: bool,
         /// Do not build the IDL
         #[clap(long)]
         no_idl: bool,
@@ -316,6 +319,9 @@ pub enum Command {
         /// no "CHECK" comments where normally required
         #[clap(long)]
         skip_lint: bool,
+        /// Skip checking for program ID mismatch between keypair and declare_id
+        #[clap(long)]
+        ignore_keys: bool,
         /// Architecture to use when building the program
         #[clap(value_enum, long, default_value = "sbf")]
         arch: ProgramArch,
@@ -758,6 +764,7 @@ fn process_command(opts: Opts) -> Result<()> {
             cargo_args,
             env,
             skip_lint,
+            ignore_keys,
             no_docs,
             arch,
         } => build(
@@ -767,6 +774,7 @@ fn process_command(opts: Opts) -> Result<()> {
             idl_ts,
             verifiable,
             skip_lint,
+            ignore_keys,
             program_name,
             solana_version,
             docker_image,
@@ -868,6 +876,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_build,
             skip_deploy,
             skip_lint,
+            ignore_keys,
             env,
             cargo_args,
             arch,
@@ -876,6 +885,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_build,
             skip_deploy,
             skip_lint,
+            ignore_keys,
             env,
             cargo_args,
             arch,
@@ -1268,6 +1278,7 @@ pub fn build(
     idl_ts: Option<String>,
     verifiable: bool,
     skip_lint: bool,
+    ignore_keys: bool,
     program_name: Option<String>,
     solana_version: Option<String>,
     docker_image: Option<String>,
@@ -1295,6 +1306,11 @@ pub fn build(
     // Check whether there is a mismatch between CLI and crate/package versions
     check_anchor_version(&cfg).ok();
     check_deps(&cfg).ok();
+
+    // Check for program ID mismatches before building (skip if --ignore-keys is used), Always skipped in anchor test
+    if !ignore_keys {
+        check_program_id_mismatch(&cfg, program_name.clone())?;
+    }
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
@@ -2728,6 +2744,7 @@ fn test(
                 None,
                 false,
                 skip_lint,
+                true,
                 program_name.clone(),
                 None,
                 None,
@@ -3424,7 +3441,7 @@ fn deploy(
                     let retry_delay = std::time::Duration::from_millis(500);
                     let cache_delay = std::time::Duration::from_secs(2);
 
-                    println!("Waiting for program {} to be confirmed...", program_id);
+                    println!("Waiting for program {program_id} to be confirmed...");
 
                     for attempt in 0..max_retries {
                         if let Ok(account) = client.get_account(&program_id) {
@@ -3851,11 +3868,58 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
     })
 }
 
+/// Check if there's a mismatch between the program keypair and the `declare_id!` in the source code.
+/// Returns an error if a mismatch is detected, prompting the user to run `anchor keys sync`.
+fn check_program_id_mismatch(cfg: &WithPath<Config>, program_name: Option<String>) -> Result<()> {
+    let declare_id_regex = RegexBuilder::new(r#"^(([\w]+::)*)declare_id!\("(\w*)"\)"#)
+        .multi_line(true)
+        .build()
+        .unwrap();
+
+    for program in cfg.get_programs(program_name)? {
+        // Get the pubkey from the keypair file
+        let actual_program_id = program.pubkey()?.to_string();
+
+        // Check declaration in program files
+        let src_path = program.path.join("src");
+        let files_to_check = vec![src_path.join("lib.rs"), src_path.join("id.rs")];
+
+        for path in files_to_check {
+            let content = match fs::read_to_string(&path) {
+                Ok(content) => content,
+                Err(_) => continue,
+            };
+
+            let incorrect_program_id = declare_id_regex
+                .captures(&content)
+                .and_then(|captures| captures.get(3))
+                .filter(|program_id_match| program_id_match.as_str() != actual_program_id);
+
+            if let Some(program_id_match) = incorrect_program_id {
+                let declared_id = program_id_match.as_str();
+                return Err(anyhow!(
+                    "Program ID mismatch detected for program '{}':\n  \
+                    Keypair file has: {}\n  \
+                    Source code has:  {}\n\n\
+                    Please run 'anchor keys sync' to update the program ID in your source code or use the '--ignore-keys' flag to skip this check.",
+                    program.lib_name,
+                    actual_program_id,
+                    declared_id
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 fn localnet(
     cfg_override: &ConfigOverride,
     skip_build: bool,
     skip_deploy: bool,
     skip_lint: bool,
+    ignore_keys: bool,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     arch: ProgramArch,
@@ -3870,6 +3934,7 @@ fn localnet(
                 None,
                 false,
                 skip_lint,
+                ignore_keys,
                 None,
                 None,
                 None,
