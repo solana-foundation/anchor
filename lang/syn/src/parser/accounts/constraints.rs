@@ -917,7 +917,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_authority,
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
-            &extension_pausable_authority
+            &extension_pausable_authority,
         ) {
             (
                 None,
@@ -982,8 +982,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .map(|a| a.clone().into_inner().program_id),
                 pausable_authority: extension_pausable_authority
                     .as_ref()
-                    .map(|a|a.clone().into_inner().authority),
-                
+                    .map(|a| a.clone().into_inner().authority),
             }),
         };
 
