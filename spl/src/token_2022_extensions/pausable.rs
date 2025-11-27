@@ -12,7 +12,7 @@ pub fn pausable_initialize<'info>(
     let ix = spl_token_2022::extension::pausable::instruction::initialize(
         ctx.accounts.token_program_id.key,
         ctx.accounts.mint.key,
-        &authority
+        &authority,
     )?;
     anchor_lang::solana_program::program::invoke(
         &ix,
@@ -34,11 +34,15 @@ pub fn pausable_resume<'info>(
         ctx.accounts.token_program_id.key,
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
-        &[]
+        &[],
     )?;
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint, ctx.accounts.authority],
+        &[
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
+        ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -51,11 +55,15 @@ pub fn pausable_pause<'info>(
         ctx.accounts.token_program_id.key,
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
-        &[]
+        &[],
     )?;
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint, ctx.accounts.authority],
+        &[
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
+        ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
