@@ -17,8 +17,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
-            let ix_name = generate_ix_variant_name(&ix_method_name_str);
-            let variant_arm = generate_ix_variant(&ix_method_name_str, &ix.args);
+            let ix_name = match generate_ix_variant_name(&ix_method_name_str) {
+                Ok(name) => quote! { #name },
+                Err(e) => {
+                    let err = e.to_string();
+                    return quote! { compile_error!(concat!("error generating ix variant name: `", #err, "`")) };
+                }
+            };
+            let variant_arm = match generate_ix_variant(&ix_method_name_str, &ix.args) {
+                Ok(v) => v,
+                Err(e) => {
+                    let err = e.to_string();
+                    return quote! { compile_error!(concat!("error generating ix variant arm: `", #err, "`")) };
+                }
+            };
+
             let ix_name_log = format!("Instruction: {ix_name}");
             let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
