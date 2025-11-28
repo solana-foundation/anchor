@@ -680,9 +680,8 @@ impl Parse for ErrorArgs {
             return Err(ParseError::new(offset_span, "expected keyword offset"));
         }
         stream.parse::<Token![=]>()?;
-        Ok(ErrorArgs {
-            offset: stream.parse()?,
-        })
+        let offset: LitInt = stream.parse()?;
+        Ok(ErrorArgs { offset })
     }
 }
 

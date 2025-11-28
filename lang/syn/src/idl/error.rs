@@ -12,6 +12,13 @@ pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
         "__anchor_private_print_idl_error_{}",
         error.ident.to_string().to_snake_case()
     );
+    let offset = match &error.args {
+        Some(args) => {
+            let offset = &args.offset;
+            quote! { #offset }
+        }
+        None => quote! { ::anchor_lang::error::ERROR_CODE_OFFSET },
+    };
 
     let error_codes = error
         .codes
@@ -26,7 +33,7 @@ pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
 
             quote! {
                 #idl::IdlErrorCode {
-                    code: anchor_lang::error::ERROR_CODE_OFFSET + #id,
+                    code: #offset + #id,
                     name: #name.into(),
                     msg: #msg,
                 }
