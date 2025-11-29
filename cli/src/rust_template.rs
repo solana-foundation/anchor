@@ -171,8 +171,9 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     ]
 }
 
-const fn workspace_manifest() -> &'static str {
-    r#"[workspace]
+fn workspace_manifest() -> String {
+    format!(
+        r#"[workspace]
 members = [
     "programs/*"
 ]
@@ -180,7 +181,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.89.0"
+rust-version = "{ANCHOR_MSRV}"
 
 [profile.release]
 overflow-checks = true
@@ -191,6 +192,7 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+    )
 }
 
 fn cargo_toml(name: &str, with_mollusk: bool) -> String {
@@ -672,7 +674,7 @@ impl TestTemplate {
                 }
             }
             Self::Rust => "cargo test".to_owned(),
-            Self::Mollusk => "cargo test-sbf".to_owned(),
+            Self::Mollusk => "cargo test-sbf --tools-version v1.52".to_owned(),
         }
     }
 
