@@ -270,6 +270,9 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .map(|f| constraints::generate(f, accs))
         .collect();
 
+    // Generate duplicate mutable account validation
+    let duplicate_checks = generate_duplicate_mutable_checks(accs);
+
     // Constraint checks for each account fields.
     let access_checks: Vec<proc_macro2::TokenStream> = non_init_fields
         .iter()
@@ -281,6 +284,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         #(#init_fields)*
+        #duplicate_checks
         #(#access_checks)*
     }
 }
@@ -313,5 +317,96 @@ fn is_init(af: &AccountField) -> bool {
     match af {
         AccountField::CompositeField(_s) => false,
         AccountField::Field(f) => f.constraints.init.is_some(),
+    }
+}
+
+// Generates duplicate mutable account validation logic
+fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+    // Collect all mutable account fields without `dup` constraint, excluding UncheckedAccount, Signer, and init accounts.
+    let candidates: Vec<_> = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::Field(f)
+                if f.constraints.is_mutable()
+                    && !f.constraints.is_dup()
+                    && f.constraints.init.is_none() =>
+            {
+                match &f.ty {
+                    crate::Ty::UncheckedAccount => None, // unchecked by design
+                    crate::Ty::Signer => None, // signers are excluded as they're typically payers
+                    _ => Some(f),
+                }
+            }
+            _ => None,
+        })
+        .collect();
+
+    if candidates.is_empty() {
+        // No declared mutable accounts, but still need to check remaining_accounts
+        return quote! {
+            // Duplicate mutable account validation for remaining_accounts only
+            {
+                let mut __mutable_accounts = std::collections::HashSet::new();
+
+                for __remaining_account in __accounts.iter() {
+                    if __remaining_account.is_writable {
+                        if !__mutable_accounts.insert(*__remaining_account.key) {
+                            return Err(anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                            )
+                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    let mut field_keys = Vec::with_capacity(candidates.len());
+    let mut field_name_strs = Vec::with_capacity(candidates.len());
+
+    for f in candidates.iter() {
+        let name = &f.ident;
+
+        if f.is_optional {
+            field_keys.push(quote! { #name.as_ref().map(|f| f.key()) });
+        } else {
+            field_keys.push(quote! { Some(#name.key()) });
+        }
+
+        // Use stringify! to avoid runtime allocation
+        field_name_strs.push(quote! { stringify!(#name) });
+    }
+
+    quote! {
+        // Duplicate mutable account validation - using HashSet
+        {
+            let mut __mutable_accounts = std::collections::HashSet::new();
+
+            // First, check declared mutable accounts for duplicates among themselves
+            #(
+                if let Some(key) = #field_keys {
+                    // Check for duplicates and insert the key and account name
+                    if !__mutable_accounts.insert(key) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        ).with_account_name(#field_name_strs));
+                    }
+                }
+            )*
+
+            // This prevents duplicates from being passed via remaining_accounts
+            for __remaining_account in __accounts.iter() {
+                if __remaining_account.is_writable {
+                    if !__mutable_accounts.insert(*__remaining_account.key) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        )
+                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                    }
+                }
+            }
+        }
     }
 }
