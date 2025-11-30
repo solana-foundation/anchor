@@ -34,16 +34,7 @@ pub enum ErrorCode {
     #[msg("The program could not serialize the given instruction")]
     InstructionDidNotSerialize,
 
-    // IDL instructions
-    /// 1000 - The program was compiled without idl instructions
-    #[msg("The program was compiled without idl instructions")]
-    IdlInstructionStub = 1000,
-    /// 1001 - Invalid program given to the IDL instruction
-    #[msg("Invalid program given to the IDL instruction")]
-    IdlInstructionInvalidProgram,
-    /// 1002 - IDL Account must be empty in order to resize
-    #[msg("IDL account must be empty in order to resize, try closing first")]
-    IdlAccountNotEmpty,
+    // Legacy IDL instructions have been removed in favor of Program Metadata
 
     // Event instructions
     /// 1500 - The program was compiled without `event-cpi` feature

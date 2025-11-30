@@ -69,6 +69,11 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Remove unnecessary `.to_string()` conversions when parsing `i128`/`u128`
   CLI arguments
   ([#3938](https://github.com/solana-foundation/anchor/pull/3938)).
+- cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
+
+### Fixes
+
+- idl: Fix defined types with unsupported fields not producing an error ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
 
 ### Breaking
 
@@ -87,7 +92,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - lang: Fix deprecation warnings on alloc and add solana-program to prelude
   ([#3975](https://github.com/solana-foundation/anchor/pull/3975)).
-- cli: Fix race condition that could happen when deploying a program 
+- cli: Fix race condition that could happen when deploying a program
   ([#3976](https://github.com/solana-foundation/anchor/pull/3976)).
 
 ### Breaking
@@ -124,6 +129,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- client: Make sending a tx not panic and instead return an Error when signing fails ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
 - spl: Update SPL dependencies to latest compatible versions ([#3860](https://github.com/solana-foundation/anchor/pull/3860)).
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - cli: Upload IDL by default with an option to skip ((#3863)[https://github.com/solana-foundation/anchor/pull/3863]).

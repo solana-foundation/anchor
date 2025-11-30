@@ -56,13 +56,13 @@ pub struct VerifyEd25519Signature<'info> {
     /// CHECK: Signer account
     pub signer: AccountInfo<'info>,
     /// CHECK: Instructions sysvar account
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_sdk_ids::sysvar::instructions::ID)]
     pub ix_sysvar: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct VerifySecp256k1Signature<'info> {
     /// CHECK: Instructions sysvar account
-    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = solana_sdk_ids::sysvar::instructions::ID)]
     pub ix_sysvar: AccountInfo<'info>,
 }

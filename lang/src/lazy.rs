@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn generic() {
         #[derive(AnchorSerialize, AnchorDeserialize)]
-        struct GenericStruct<T: Lazy> {
+        struct GenericStruct<T: Lazy + borsh::BorshSerialize> {
             t: T,
         }
 
