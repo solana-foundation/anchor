@@ -5,10 +5,8 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, write_keypair_file, Keypair},
-};
+use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
+use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use std::{
     fmt::Write as _,
@@ -58,11 +56,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
 fn rust_toolchain_toml() -> String {
     format!(
         r#"[toolchain]
-channel = "{msrv}"
+channel = "{ANCHOR_MSRV}"
 components = ["rustfmt","clippy"]
 profile = "minimal"
-"#,
-        msrv = ANCHOR_MSRV
+"#
     )
 }
 
@@ -750,15 +747,12 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
-rust-version = "{msrv}"
+rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]
-anchor-client = "{version}"
+anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
-"#,
-        msrv = ANCHOR_MSRV,
-        version = VERSION,
-        name = name,
+"#
     )
 }
 
@@ -792,7 +786,7 @@ fn test_initialize() {{
     let payer = read_keypair_file(&anchor_wallet).unwrap();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
 
     let tx = program

@@ -19,6 +19,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl", features = ["metadata"] }
+solana-sysvar = "3"
 thiserror = "1.0"
 arrayref = "0.3.6"
 # FIXME: We transitively depend on base64ct, which switched to edition 2024 in 1.8.0

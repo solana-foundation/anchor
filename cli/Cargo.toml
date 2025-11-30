@@ -25,7 +25,9 @@ cargo_toml = "0.19.2"
 chrono = "0.4.19"
 clap = { version = "4.5.17", features = ["derive"] }
 clap_complete = "4.5.26"
+console = "0.15"
 dirs = "4.0"
+ed25519-dalek = "2"
 flate2 = "1.0.19"
 heck = "0.4.0"
 pathdiff = "0.2.0"
@@ -36,12 +38,29 @@ semver = "1.0.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
-solana-cli-config = "2"
-solana-faucet = "2"
-solana-rpc-client = "2"
-solana-sdk = "2"
+solana-cli-config.workspace = true
+solana-client = "3.0.0"
+solana-clock.workspace = true
+solana-commitment-config.workspace = true
+solana-compute-budget-interface.workspace = true
+solana-faucet = { workspace = true, features = ["agave-unstable-api"] }
+solana-instruction.workspace = true
+solana-keypair.workspace = true
+solana-loader-v3-interface.workspace = true
+solana-message.workspace = true
+solana-packet.workspace = true
+solana-pubkey.workspace = true
+solana-sdk-ids.workspace = true
+solana-signature.workspace = true
 solana-signer.workspace = true
+solana-system-interface.workspace = true
+solana-transaction.workspace = true
+solana-rpc-client.workspace = true
+solana-rpc-client-api.workspace = true
+solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
+tempfile = "3"
+tiny-bip39 = "2.0"
 toml = "0.7.6"
 walkdir = "2.3.2"

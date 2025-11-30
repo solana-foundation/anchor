@@ -2,7 +2,7 @@ use crate::codegen::program::common::*;
 use crate::parser;
 use crate::Program;
 use heck::CamelCase;
-use quote::quote;
+use quote::{quote, quote_spanned};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let variants: Vec<proc_macro2::TokenStream> = program
@@ -11,8 +11,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .map(|ix| {
             let name = &ix.raw_method.sig.ident.to_string();
             let ix_cfgs = &ix.cfgs;
-            let ix_name_camel =
-                proc_macro2::Ident::new(&name.to_camel_case(), ix.raw_method.sig.ident.span());
+            let Ok(ix_name_camel) = syn::parse_str::<syn::Ident>(&name.to_camel_case()) else {
+                return quote_spanned! { ix.raw_method.sig.ident.span()=>
+                    compile_error!("failed to parse ix method name after conversion to camelCase");
+                };
+            };
             let raw_args: Vec<proc_macro2::TokenStream> = ix
                 .args
                 .iter()

@@ -10,9 +10,10 @@ use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
-use solana_sdk::clock::Slot;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::Keypair;
+use solana_clock::Slot;
+use solana_commitment_config::CommitmentLevel;
+use solana_keypair::Keypair;
+use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
@@ -27,6 +28,32 @@ use std::str::FromStr;
 use std::{fmt, io};
 use walkdir::WalkDir;
 
+/// Wrapper around CommitmentLevel to support case-insensitive parsing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
+
+impl FromStr for CaseInsensitiveCommitmentLevel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Convert to lowercase for case-insensitive matching
+        let lowercase = s.to_lowercase();
+        let commitment = CommitmentLevel::from_str(&lowercase).map_err(|_| {
+            format!(
+                "Invalid commitment level '{}'. Valid values are: processed, confirmed, finalized",
+                s
+            )
+        })?;
+        Ok(CaseInsensitiveCommitmentLevel(commitment))
+    }
+}
+
+impl From<CaseInsensitiveCommitmentLevel> for CommitmentLevel {
+    fn from(val: CaseInsensitiveCommitmentLevel) -> Self {
+        val.0
+    }
+}
+
 pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
@@ -39,6 +66,9 @@ pub struct ConfigOverride {
     /// Wallet override.
     #[clap(global = true, long = "provider.wallet")]
     pub wallet: Option<WalletPath>,
+    /// Commitment override (valid values: processed, confirmed, finalized).
+    #[clap(global = true, long = "commitment")]
+    pub commitment: Option<CaseInsensitiveCommitmentLevel>,
 }
 
 #[derive(Debug)]
@@ -451,11 +481,13 @@ pub enum ProgramArch {
     Bpf,
     Sbf,
 }
+
 impl ProgramArch {
-    pub fn build_subcommand(&self) -> &str {
+    /// Subcommand and any arguments to be passed to cargo
+    pub fn build_subcommand(&self) -> &[&'static str] {
         match self {
-            Self::Bpf => "build-bpf",
-            Self::Sbf => "build-sbf",
+            Self::Bpf => &["build-bpf"],
+            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
         }
     }
 }

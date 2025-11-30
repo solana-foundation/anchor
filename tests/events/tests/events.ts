@@ -68,7 +68,10 @@ describe("Events", () => {
       );
       const txResult = await program.provider.connection.getTransaction(
         txHash,
-        { ...confirmOptions, maxSupportedTransactionVersion: 0 }
+        {
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0,
+        }
       );
 
       const ixData = anchor.utils.bytes.bs58.decode(

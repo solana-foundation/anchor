@@ -23,7 +23,10 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug",
 ]
 derive = []
-event-cpi = ["anchor-attribute-event/event-cpi", "anchor-attribute-account/event-cpi"]
+event-cpi = [
+    "anchor-attribute-event/event-cpi",
+    "anchor-attribute-account/event-cpi",
+]
 idl-build = [
     "anchor-attribute-account/idl-build",
     "anchor-attribute-constant/idl-build",
@@ -36,7 +39,10 @@ idl-build = [
 ]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
 interface-instructions = ["anchor-attribute-program/interface-instructions"]
-lazy-account = ["anchor-attribute-account/lazy-account", "anchor-derive-serde/lazy-account"]
+lazy-account = [
+    "anchor-attribute-account/lazy-account",
+    "anchor-derive-serde/lazy-account",
+]
 
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.32.1" }
@@ -57,28 +63,31 @@ bincode = "1"
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
-solana-account-info = "2"
-solana-clock = "2"
-solana-cpi = "2"
-solana-define-syscall = "2"
-solana-feature-gate-interface = "2"
-solana-instruction = "2"
-solana-instructions-sysvar = "2"
-solana-invoke = "0.4.0"
-solana-loader-v3-interface = { version = "3", features = ["bincode"] }
-solana-msg = "2"
-solana-program-entrypoint = "2"
-solana-program-error = { version = "2", features = ["borsh"] }
-solana-program-memory = "2"
-solana-program-option = "2"
-solana-program-pack = "2"
-solana-pubkey = { version = "2", features = ["borsh", "bytemuck", "serde"] }
-solana-sdk-ids = "2"
-solana-system-interface = "1"
-solana-sysvar = { version = "2", features = ["bincode"] }
-solana-sysvar-id = "2"
+
+solana-account-info.workspace = true
+solana-clock.workspace = true
+solana-cpi.workspace = true
+solana-define-syscall.workspace = true
+solana-feature-gate-interface.workspace = true
+solana-instruction.workspace = true
+solana-instructions-sysvar.workspace = true
+solana-invoke.workspace = true
+solana-loader-v3-interface = { workspace = true, features = ["bincode"] }
+solana-msg.workspace = true
+solana-program-entrypoint.workspace = true
+solana-program-error = { workspace = true, features = ["borsh"] }
+solana-program-memory.workspace = true
+solana-program-option.workspace = true
+solana-program-pack.workspace = true
+solana-pubkey = { workspace = true, features = ["borsh", "bytemuck", "serde"] }
+solana-sdk-ids.workspace = true
+solana-stake-interface = { workspace = true, features = ["sysvar", "bincode"] }
+solana-system-interface.workspace = true
+solana-sysvar = { workspace = true, features = ["bincode"] }
+solana-sysvar-id.workspace = true
+
 thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
- level = "warn"
- check-cfg = ['cfg(target_os, values("solana"))']
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']
