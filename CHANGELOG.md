@@ -10,34 +10,18 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
-### Features
-
-- lang: Use `const-crypto` to deterministically compute event authorities and
-  perform address comparisons
-  ([#3986](https://github.com/solana-foundation/anchor/pull/3986)).
-- repo: Add a minimal `cspell` configuration so contributor spelling mistakes
-  are surfaced early
-  ([#3960](https://github.com/solana-foundation/anchor/pull/3960)).
 - docs: Document the policy for typo-only pull requests to set contributor
   expectations
   ([#4035](https://github.com/solana-foundation/anchor/pull/4035)).
-
-### Fixes
 
 - cli: Ensure new workspaces point at the intended default template
   ([#4038](https://github.com/solana-foundation/anchor/pull/4038)).
 - lang: Replace unstable `doc_auto_cfg` usage with `doc_cfg`, fixing docs
   builds on stable toolchains
   ([#3983](https://github.com/solana-foundation/anchor/pull/3983)).
-- docs: Correct the token-extension initialization walkthrough
-  ([#4063](https://github.com/solana-foundation/anchor/pull/4063)).
-- docs: Apply spelling cleanups across the documentation set
-  ([#3959](https://github.com/solana-foundation/anchor/pull/3959)).
 - benches: Update stored benchmark outputs to reflect the CPI context changes
   from #2762
   ([#4010](https://github.com/solana-foundation/anchor/pull/4010)).
-
-### Breaking
 
 ## [1.0.0] - 2025-??-??
 
