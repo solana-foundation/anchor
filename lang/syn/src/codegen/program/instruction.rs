@@ -3,6 +3,70 @@ use crate::parser;
 use crate::Program;
 use heck::CamelCase;
 use quote::{quote, quote_spanned};
+use syn::Type;
+
+/// Returns true for primitives, common std types, and types wrapped in Option/Vec.
+fn can_derive_common_trait(ty: &Type) -> bool {
+    match ty {
+        // Primitives - always support Clone/Debug
+        Type::Path(path) if path.qself.is_none() => {
+            let segments = &path.path.segments;
+            if segments.is_empty() {
+                return false;
+            }
+            let first_segment = &segments[0];
+            let ident_str = first_segment.ident.to_string();
+
+            // Check for primitives
+            if matches!(
+                ident_str.as_str(),
+                "bool"
+                    | "i8"
+                    | "i16"
+                    | "i32"
+                    | "i64"
+                    | "i128"
+                    | "isize"
+                    | "u8"
+                    | "u16"
+                    | "u32"
+                    | "u64"
+                    | "u128"
+                    | "usize"
+                    | "f32"
+                    | "f64"
+                    | "char"
+                    | "str"
+            ) {
+                return true;
+            }
+
+            // For Option<T> and Vec<T>, check the inner type first
+            if ident_str == "Option" || ident_str == "Vec" {
+                if let syn::PathArguments::AngleBracketed(args) = &first_segment.arguments {
+                    if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
+                        return can_derive_common_trait(inner_ty);
+                    }
+                }
+                // If we can't extract the inner type, Vec/Option themselves support Clone/Debug
+                return true;
+            }
+
+            // Check for common std types that support Clone/Debug
+            if matches!(ident_str.as_str(), "String" | "Pubkey") {
+                return true;
+            }
+
+            // For user-defined types, we can't verify at macro time
+            false
+        }
+        Type::Array(arr) => can_derive_common_trait(&arr.elem),
+        Type::Tuple(tuple) => tuple.elems.iter().all(can_derive_common_trait),
+        Type::Reference(reference) => can_derive_common_trait(&reference.elem),
+        // For other types, be conservative
+        _ => false,
+    }
+}
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let variants: Vec<proc_macro2::TokenStream> = program
@@ -25,6 +89,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         .unwrap()
                 })
                 .collect();
+
+            // Check if all argument types can derive Clone and Debug
+            let can_derive_traits = ix.args.is_empty()
+                || ix
+                    .args
+                    .iter()
+                    .all(|arg| can_derive_common_trait(&arg.raw_arg.ty));
+
+            let traits_attr = if can_derive_traits {
+                quote!(Clone, Debug,)
+            } else {
+                quote!()
+            };
+
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
                     Some(overrides) if overrides.discriminator.is_some() => {
@@ -53,7 +131,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+                    #[derive(AnchorSerialize, AnchorDeserialize, #traits_attr)]
                     pub struct #ix_name_camel;
 
                     #impls
@@ -62,7 +140,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+                    #[derive(AnchorSerialize, AnchorDeserialize, #traits_attr)]
                     pub struct #ix_name_camel {
                         #(#raw_args),*
                     }
