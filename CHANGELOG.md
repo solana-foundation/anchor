@@ -10,8 +10,65 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ## [Unreleased]
 
+- docs: Document the policy for typo-only pull requests to set contributor
+  expectations
+  ([#4035](https://github.com/solana-foundation/anchor/pull/4035)).
+
+- cli: Ensure new workspaces point at the intended default template
+  ([#4038](https://github.com/solana-foundation/anchor/pull/4038)).
+- lang: Replace unstable `doc_auto_cfg` usage with `doc_cfg`, fixing docs
+  builds on stable toolchains
+  ([#3983](https://github.com/solana-foundation/anchor/pull/3983)).
+- benches: Update stored benchmark outputs to reflect the CPI context changes
+  from #2762
+  ([#4010](https://github.com/solana-foundation/anchor/pull/4010)).
+
+## [1.0.0] - 2025-??-??
+
 ### Features
 
+- cli: Add `{pre,post}-{build,test,deploy}` hooks so workspaces can run custom
+  scripts around core workflows
+  ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
+- lang: Allow generic program types inside `Accounts` structs, enabling stricter
+  validation for executable-only accounts
+  ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
+- lang: Add helper modules for verifying ed25519 and secp256k1 signatures,
+  simplifying signature checks in programs
+  ([#3952](https://github.com/solana-foundation/anchor/pull/3952)).
+- lang: Check the account owner whenever `Account::reload` is used to guard
+  against mismatched programs
+  ([#3837](https://github.com/solana-foundation/anchor/pull/3837)).
+- lang: Emit compile-time warnings when deriving `Accounts` structs that use raw
+  `AccountInfo`, nudging programs toward strongly typed accounts
+  ([#3854](https://github.com/solana-foundation/anchor/pull/3854)).
+- lang/syn: Relax PDA `seeds` syntax so additional valid expressions compile
+  without workarounds
+  ([#3813](https://github.com/solana-foundation/anchor/pull/3813)).
+- cli: Refresh `anchor init` defaults to point at the latest template and
+  metadata
+  ([#3958](https://github.com/solana-foundation/anchor/pull/3958)).
+- client: Extract `solana-account` decoding logic from `solana-sdk`, shrinking
+  downstream dependency graphs
+  ([#3891](https://github.com/solana-foundation/anchor/pull/3891)).
+- docs: Expand the zero-copy documentation with additional guidance and
+  examples
+  ([#3971](https://github.com/solana-foundation/anchor/pull/3971)).
+
+### Fixes
+
+- lang/syn: Enforce that instruction handlers and `#[instruction(...)]`
+  metadata agree on argument count and types, surfacing mismatches at compile
+  time
+  ([#4000](https://github.com/solana-foundation/anchor/pull/4000)).
+- cli, client: Depend on the standalone `solana-signer` crate so builds no
+  longer rely on `solana-sdk` exporting it transitively
+  ([#3995](https://github.com/solana-foundation/anchor/pull/3995)).
+- tests: Fix the flaky optional test introduced around #3980
+  ([#3987](https://github.com/solana-foundation/anchor/pull/3987)).
+- cli: Remove unnecessary `.to_string()` conversions when parsing `i128`/`u128`
+  CLI arguments
+  ([#3938](https://github.com/solana-foundation/anchor/pull/3938)).
 - cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
 
 ### Fixes
@@ -20,6 +77,13 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- lang: Remove the program account info from CPI contexts to match Solana's CPI
+  expectations
+  ([#2762](https://github.com/solana-foundation/anchor/pull/2762)).
+- lang: Upgrade to the latest `borsh` release for serialization and
+  deserialization
+  ([#4012](https://github.com/solana-foundation/anchor/pull/4012)).
+  
 ## [0.32.1] - 2025-10-09
 
 ### Features
@@ -41,7 +105,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
-- lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
 - lang: Use `solana-invoke` instead of `solana_cpi::invoke` ([#3900](https://github.com/solana-foundation/anchor/pull/3900)).
 - client: remove `solana-client` from `anchor-client` and `cli` ([#3877](https://github.com/solana-foundation/anchor/pull/3877)).
 - idl: Build IDL on stable Rustc ([#3842](https://github.com/solana-foundation/anchor/pull/3842)).
@@ -51,7 +114,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
 - cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
-- cli: Add `hooks` section to `Anchor.toml` ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 
 ### Fixes
 
