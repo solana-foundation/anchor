@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const { spawnSync } = require("child_process");
+
+function appendLog({ logfile, args }) {
+  if (!logfile) return;
+  const entry = {
+    command: "solana",
+    args,
+  };
+  fs.appendFileSync(logfile, JSON.stringify(entry, null, 2) + "\n");
+}
+
+function proxyToRealBinary(args) {
+  const realBinary = process.env.MOCK_SOLANA_REAL_BINARY;
+  if (!realBinary) return null;
+
+  const result = spawnSync(realBinary, args, {
+    stdio: "inherit",
+  });
+
+  return result ? result.status ?? 0 : 0;
+}
+
+function main() {
+  const args = process.argv.slice(2);
+
+  const logfile = process.env.MOCK_SOLANA_LOG_PATH;
+  appendLog({ logfile, args });
+
+  const stdout = process.env.MOCK_SOLANA_STDOUT;
+  if (stdout) {
+    process.stdout.write(stdout);
+  }
+
+  const stderr = process.env.MOCK_SOLANA_STDERR;
+  if (stderr) {
+    process.stderr.write(stderr);
+  }
+
+  const forceExitCode = process.env.MOCK_SOLANA_FORCE_EXIT_CODE;
+  if (forceExitCode !== undefined) {
+    const code = Number.parseInt(forceExitCode, 10);
+    process.exit(Number.isNaN(code) ? 1 : code);
+  }
+
+  if (process.env.MOCK_SOLANA_PROXY === "1") {
+    const status = proxyToRealBinary(args);
+    process.exit(status ?? 0);
+  }
+
+  process.exit(0);
+}
+
+main();
+
