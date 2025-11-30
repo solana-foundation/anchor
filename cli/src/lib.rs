@@ -3095,7 +3095,8 @@ fn run_test_suite(
         );
     }
     node_options_parts.push(get_node_dns_option()?.to_string());
-    node_options_parts.push(get_node_strip_types_option()?.to_string());
+    // Note: --no-experimental-strip-types cannot be set via NODE_OPTIONS
+    // node_options_parts.push(get_node_strip_types_option()?.to_string());
     let node_options = node_options_parts
         .into_iter()
         .filter(|part| !part.trim().is_empty())
