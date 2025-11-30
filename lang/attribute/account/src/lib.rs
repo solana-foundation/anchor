@@ -320,28 +320,28 @@ impl Parse for AccountArg {
         }
 
         // Zero copy
-        let lookahead = input.fork();
-        if let Ok(ident) = lookahead.parse::<Ident>() {
-            if ident == "zero_copy" {
-                input.parse::<Ident>()?;
-                let is_unsafe = if input.peek(Paren) {
-                    let content;
-                    parenthesized!(content in input);
-                    let content = content.parse::<proc_macro2::TokenStream>()?;
-                    if content.to_string().as_str().trim() != "unsafe" {
-                        return Err(syn::Error::new(
-                            syn::spanned::Spanned::span(&content),
-                            "Expected `unsafe`",
-                        ));
-                    }
+        if input
+            .fork()
+            .parse::<Ident>()
+            .is_ok_and(|ident| ident == "zero_copy")
+        {
+            input.parse::<Ident>()?;
+            let is_unsafe = if input.peek(Paren) {
+                let content;
+                parenthesized!(content in input);
+                let content = content.parse::<proc_macro2::TokenStream>()?;
+                if content.to_string().as_str().trim() != "unsafe" {
+                    return Err(syn::Error::new(
+                        syn::spanned::Spanned::span(&content),
+                        "Expected `unsafe`",
+                    ));
+                }
+                true
+            } else {
+                false
+            };
 
-                    true
-                } else {
-                    false
-                };
-
-                return Ok(Self::ZeroCopy { is_unsafe });
-            }
+            return Ok(Self::ZeroCopy { is_unsafe });
         }
 
         // Overrides (handles discriminator = ...)
