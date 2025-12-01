@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod codegen;
 pub mod parser;
@@ -344,6 +344,20 @@ impl Field {
                     Sysvar<#account>
                 }
             }
+            Ty::Program(ty) => {
+                let program = &ty.account_type_path;
+                // Check if this is the generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {
+                        #container_ty<'info>
+                    }
+                } else {
+                    quote! {
+                        #container_ty<'info, #program>
+                    }
+                }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -543,8 +557,14 @@ impl Field {
             },
             Ty::Program(ty) => {
                 let program = &ty.account_type_path;
-                quote! {
-                    #program
+                // Check if this is the special marker for generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {}
+                } else {
+                    quote! {
+                        #program
+                    }
                 }
             }
             Ty::Interface(ty) => {
@@ -660,9 +680,8 @@ impl Parse for ErrorArgs {
             return Err(ParseError::new(offset_span, "expected keyword offset"));
         }
         stream.parse::<Token![=]>()?;
-        Ok(ErrorArgs {
-            offset: stream.parse()?,
-        })
+        let offset: LitInt = stream.parse()?;
+        Ok(ErrorArgs { offset })
     }
 }
 

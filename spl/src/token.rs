@@ -7,8 +7,8 @@ use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 use std::ops::Deref;
 
-pub use spl_token;
 pub use spl_token::ID;
+pub use spl_token_interface as spl_token;
 
 pub fn transfer<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Transfer<'info>>,

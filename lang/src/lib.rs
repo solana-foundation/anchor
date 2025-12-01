@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -43,6 +43,7 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
+pub mod signature_verification;
 pub mod system_program;
 mod vec;
 
@@ -134,30 +135,10 @@ pub mod solana_program {
     }
     pub mod sysvar {
         pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
-        #[deprecated(since = "2.2.0", note = "Use `solana-sysvar` crate instead")]
-        #[allow(deprecated)]
-        pub use {
-            solana_sdk_ids::sysvar::{check_id, id, ID},
-            solana_sysvar::{
-                clock, epoch_rewards, epoch_schedule, fees, is_sysvar_id, last_restart_slot,
-                recent_blockhashes, rent, rewards, slot_hashes, slot_history, stake_history,
-                Sysvar, ALL_IDS,
-            },
-        };
         pub mod instructions {
             pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
             #[cfg(not(target_os = "solana"))]
             pub use solana_instructions_sysvar::construct_instructions_data;
-            #[deprecated(
-                since = "2.2.0",
-                note = "Use solana-instructions-sysvar crate instead"
-            )]
-            pub use solana_instructions_sysvar::{
-                get_instruction_relative, load_current_index_checked, load_instruction_at_checked,
-                store_current_index_checked, Instructions,
-            };
-            #[deprecated(since = "2.2.0", note = "Use solana-sdk-ids crate instead")]
-            pub use solana_sdk_ids::sysvar::instructions::{check_id, id, ID};
         }
     }
 }
@@ -523,19 +504,19 @@ pub mod prelude {
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
-    pub use crate::solana_program::sysvar::clock::Clock;
-    pub use crate::solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use crate::solana_program::sysvar::instructions::Instructions;
-    pub use crate::solana_program::sysvar::rent::Rent;
-    pub use crate::solana_program::sysvar::rewards::Rewards;
-    pub use crate::solana_program::sysvar::slot_hashes::SlotHashes;
-    pub use crate::solana_program::sysvar::slot_history::SlotHistory;
-    pub use crate::solana_program::sysvar::stake_history::StakeHistory;
-    pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use crate::solana_program::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
+    pub use solana_clock::Clock;
+    pub use solana_instructions_sysvar::Instructions;
+    pub use solana_stake_interface::stake_history::StakeHistory;
+    pub use solana_sysvar::epoch_schedule::EpochSchedule;
+    pub use solana_sysvar::rent::Rent;
+    pub use solana_sysvar::rewards::Rewards;
+    pub use solana_sysvar::slot_hashes::SlotHashes;
+    pub use solana_sysvar::slot_history::SlotHistory;
+    pub use solana_sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
 
     #[cfg(feature = "event-cpi")]
@@ -590,6 +571,18 @@ pub mod __private {
     pub use crate::lazy::Lazy;
     #[cfg(feature = "lazy-account")]
     pub use anchor_derive_serde::Lazy;
+
+    /// Trait for compile-time type equality checking.
+    /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
+    pub trait IsSameType<T> {}
+
+    impl<T> IsSameType<T> for T {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.
