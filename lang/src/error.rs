@@ -168,6 +168,30 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - A non-transferable extension constraint was violated
+    #[msg("A non-transferable extension constraint was violated")]
+    ConstraintMintNonTransferableExtension,
+    /// 2041 - A transfer fee extension constraint was violated
+    #[msg("A transfer fee extension constraint was violated")]
+    ConstraintMintTransferFeeExtension,
+    /// 2042 - A transfer fee extension config authority constraint was violated
+    #[msg("A transfer fee extension config authority constraint was violated")]
+    ConstraintMintTransferFeeConfigAuthority,
+    /// 2043 - A transfer fee extension withheld authority constraint was violated
+    #[msg("A transfer fee extension withheld authority constraint was violated")]
+    ConstraintMintTransferFeeWithheldAuthority,
+    /// 2044 - An interest bearing extension constraint was violated
+    #[msg("An interest bearing extension constraint was violated")]
+    ConstraintMintInterestBearingExtension,
+    /// 2045 - An interest bearing extension rate authority constraint was violated
+    #[msg("An interest bearing extension rate authority constraint was violated")]
+    ConstraintMintInterestBearingRateAuthority,
+    /// 2046 - A default account state extension constraint was violated
+    #[msg("A default account state extension constraint was violated")]
+    ConstraintMintDefaultAccountStateExtension,
+    /// 2047 - A default account state extension state constraint was violated
+    #[msg("A default account state extension state constraint was violated")]
+    ConstraintMintDefaultAccountState,
 
     // Signature verification errors
     /// 2040 - Invalid Ed25519 program id for signature verification
