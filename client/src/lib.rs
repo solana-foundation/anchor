@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! An RPC client to interact with Solana programs written in [`anchor_lang`].
 //!
@@ -50,7 +50,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.31.1/client/example/src
+//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
 //!
 //! # Features
 //!
@@ -59,7 +59,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.31.1 ", features = ["async"] }
+//! anchor-client = { version = "0.32.1 ", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -67,31 +67,31 @@
 //! This feature allows passing in a custom RPC client when creating program instances, which is
 //! useful for mocking RPC responses, e.g. via [`RpcClient::new_mock`].
 //!
-//! [`RpcClient::new_mock`]: https://docs.rs/solana-client/2.1.0/solana_client/rpc_client/struct.RpcClient.html#method.new_mock
+//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/2.3.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
 use anchor_lang::solana_program::program_error::ProgramError;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
-use solana_client::rpc_config::{
-    RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-    RpcTransactionLogsConfig, RpcTransactionLogsFilter,
+use solana_account_decoder::{UiAccount, UiAccountEncoding};
+use solana_commitment_config::CommitmentConfig;
+use solana_instruction::{AccountMeta, Instruction};
+use solana_program::hash::Hash;
+use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
+use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
+use solana_rpc_client_api::{
+    client_error::Error as SolanaClientError,
+    config::{
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
+    },
+    filter::{Memcmp, RpcFilterType},
+    response::{Response as RpcResponse, RpcLogsResponse},
 };
-use solana_client::rpc_filter::{Memcmp, RpcFilterType};
-use solana_client::{
-    client_error::ClientError as SolanaClientError,
-    nonblocking::pubsub_client::{PubsubClient, PubsubClientError},
-    rpc_response::{Response as RpcResponse, RpcLogsResponse},
-};
-use solana_sdk::account::Account;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::hash::Hash;
-use solana_sdk::instruction::{AccountMeta, Instruction};
-use solana_sdk::signature::{Signature, Signer};
-use solana_sdk::transaction::Transaction;
+use solana_signature::Signature;
+use solana_signer::{Signer, SignerError};
+use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -113,8 +113,6 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
-pub use solana_client;
-pub use solana_sdk;
 
 mod cluster;
 
@@ -185,18 +183,15 @@ impl Signer for DynSigner {
         self.0.pubkey()
     }
 
-    fn try_pubkey(&self) -> Result<Pubkey, solana_sdk::signer::SignerError> {
+    fn try_pubkey(&self) -> Result<Pubkey, SignerError> {
         self.0.try_pubkey()
     }
 
-    fn sign_message(&self, message: &[u8]) -> solana_sdk::signature::Signature {
+    fn sign_message(&self, message: &[u8]) -> Signature {
         self.0.sign_message(message)
     }
 
-    fn try_sign_message(
-        &self,
-        message: &[u8],
-    ) -> Result<solana_sdk::signature::Signature, solana_sdk::signer::SignerError> {
+    fn try_sign_message(&self, message: &[u8]) -> Result<Signature, SignerError> {
         self.0.try_sign_message(message)
     }
 
@@ -288,12 +283,16 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         Ok(ProgramAccountsIterator {
             inner: self
                 .internal_rpc_client
-                .get_program_accounts_with_config(&self.id(), config)
+                .get_program_ui_accounts_with_config(&self.id(), config)
                 .await
                 .map_err(Box::new)?
                 .into_iter()
                 .map(|(key, account)| {
-                    Ok((key, T::try_deserialize(&mut (&account.data as &[u8]))?))
+                    let data = account
+                        .data
+                        .decode()
+                        .expect("account was fetched with binary encoding");
+                    Ok((key, T::try_deserialize(&mut data.as_slice())?))
                 }),
         })
     }
@@ -369,11 +368,11 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 /// Iterator with items of type (Pubkey, T). Used to lazily deserialize account structs.
 /// Wrapper type hides the inner type from usages so the implementation can be changed.
 pub struct ProgramAccountsIterator<T> {
-    inner: Map<IntoIter<(Pubkey, Account)>, AccountConverterFunction<T>>,
+    inner: Map<IntoIter<(Pubkey, UiAccount)>, AccountConverterFunction<T>>,
 }
 
 /// Function type that accepts solana accounts and returns deserialized anchor accounts
-type AccountConverterFunction<T> = fn((Pubkey, Account)) -> Result<(Pubkey, T), ClientError>;
+type AccountConverterFunction<T> = fn((Pubkey, UiAccount)) -> Result<(Pubkey, T), ClientError>;
 
 impl<T> Iterator for ProgramAccountsIterator<T> {
     type Item = Result<(Pubkey, T), ClientError>;
@@ -500,6 +499,8 @@ pub enum ClientError {
     LogParseError(String),
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+    #[error("{0}")]
+    SignerError(#[from] SignerError),
 }
 
 pub trait AsSigner {
@@ -604,7 +605,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self
     }
 
-    pub fn instructions(&self) -> Result<Vec<Instruction>, ClientError> {
+    pub fn instructions(&self) -> Vec<Instruction> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
             instructions.push(Instruction {
@@ -614,32 +615,26 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             });
         }
 
-        Ok(instructions)
+        instructions
     }
 
     fn signed_transaction_with_blockhash(
         &self,
         latest_hash: Hash,
     ) -> Result<Transaction, ClientError> {
-        let instructions = self.instructions()?;
         let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
         let mut all_signers = signers;
         all_signers.push(&*self.payer);
 
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&self.payer.pubkey()),
-            &all_signers,
-            latest_hash,
-        );
+        let mut tx = self.transaction();
+        tx.try_sign(&all_signers, latest_hash)?;
 
         Ok(tx)
     }
 
-    pub fn transaction(&self) -> Result<Transaction, ClientError> {
-        let instructions = &self.instructions;
-        let tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
-        Ok(tx)
+    pub fn transaction(&self) -> Transaction {
+        let instructions = &self.instructions();
+        Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
     }
 
     async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
@@ -749,7 +744,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
-    use solana_client::rpc_response::RpcResponseContext;
+    use solana_rpc_client_api::response::RpcResponseContext;
 
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`

@@ -21,13 +21,13 @@ pub mod cashiers_check {
         nonce: u8,
     ) -> Result<()> {
         // Transfer funds to the check.
+        let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_accounts = Transfer {
             from: ctx.accounts.from.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
             authority: ctx.accounts.owner.clone(),
         };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let cpi_ctx = CpiContext::new(cpi_program_id, cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
 
         // Print the check.
@@ -49,13 +49,13 @@ pub mod cashiers_check {
             &[ctx.accounts.check.nonce],
         ];
         let signer = &[&seeds[..]];
+        let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.to.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;
         // Burn the check for one time use.
         ctx.accounts.check.burned = true;
@@ -69,13 +69,13 @@ pub mod cashiers_check {
             &[ctx.accounts.check.nonce],
         ];
         let signer = &[&seeds[..]];
+        let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.from.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;
         ctx.accounts.check.burned = true;
         Ok(())
