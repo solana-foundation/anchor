@@ -226,7 +226,7 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
     }
 }
 
-/// The close procedure to initiate garabage collection of an account, allowing
+/// The close procedure to initiate garbage collection of an account, allowing
 /// one to retrieve the rent exemption.
 pub trait AccountsClose<'info>: ToAccountInfos<'info> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()>;
