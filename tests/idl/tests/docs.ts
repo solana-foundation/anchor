@@ -9,7 +9,7 @@ describe("Docs", () => {
   const program = anchor.workspace.docs as Program<Docs>;
 
   const instruction = program.idl.instructions.find(
-    (i) => i.name === "testIdlDocParse"
+    (i) => i.name === "testIdlDocParse",
   )!;
 
   it("includes instruction doc comment", () => {
@@ -27,7 +27,7 @@ describe("Docs", () => {
   });
 
   const dataWithDoc = program.idl.types.find(
-    (ty) => ty.name === "dataWithDoc"
+    (ty) => ty.name === "dataWithDoc",
   )!;
 
   it("includes type doc comment", () => {

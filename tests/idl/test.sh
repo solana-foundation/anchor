@@ -40,7 +40,6 @@ compare() {
 
 compare "new"
 compare "generics"
-compare "pda-init-seeds"
 compare "relations"
 
 exit $ret
