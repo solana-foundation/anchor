@@ -29,7 +29,7 @@ describe("New IDL", () => {
       if (!acc) throw new Error(`Account \`${accName}\` not found`);
 
       const caseConversionAccount = await program.account.simpleAccount.fetch(
-        caseConversionAccountKp.publicKey,
+        caseConversionAccountKp.publicKey
       );
       assert.strictEqual(caseConversionAccount.fieldName, FIELD_NAME);
     });
@@ -100,7 +100,7 @@ describe("New IDL", () => {
           u128,
           f32,
           f64,
-          pubkey,
+          pubkey
         )
         .accounts({ account: kp.publicKey })
         .signers([kp])
@@ -110,7 +110,7 @@ describe("New IDL", () => {
         .rpc();
 
       const account = await program.account.primitiveAccount.fetch(
-        kp.publicKey,
+        kp.publicKey
       );
       assert.strictEqual(account.bool, bool);
 
@@ -189,7 +189,7 @@ describe("New IDL", () => {
 
     it("Can use enum", async () => {
       const testAccountEnum = async (
-        ...args: Parameters<(typeof program)["methods"]["enm"]>
+        ...args: Parameters<typeof program["methods"]["enm"]>
       ) => {
         const kp = anchor.web3.Keypair.generate();
         await program.methods
@@ -221,8 +221,8 @@ describe("New IDL", () => {
       if (!unnamed.fullEnum.unnamed) throw new Error("Unnamed not created");
       assert(
         Object.entries(unnamed.fullEnum.unnamed).every(
-          ([key, value]) => value === tupleArg[key as keyof typeof tupleArg],
-        ),
+          ([key, value]) => value === tupleArg[key as keyof typeof tupleArg]
+        )
       );
 
       // Unnamed struct
@@ -237,18 +237,18 @@ describe("New IDL", () => {
       }
       assert.strictEqual(
         unnamedStruct.fullEnum.unnamedStruct[0].u8,
-        tupleStructArg[0].u8,
+        tupleStructArg[0].u8
       );
       assert.strictEqual(
         unnamedStruct.fullEnum.unnamedStruct[0].u16,
-        tupleStructArg[0].u16,
+        tupleStructArg[0].u16
       );
       assert.strictEqual(
         unnamedStruct.fullEnum.unnamedStruct[0].u32,
-        tupleStructArg[0].u32,
+        tupleStructArg[0].u32
       );
       assert(
-        unnamedStruct.fullEnum.unnamedStruct[0].u64.eq(tupleStructArg[0].u64),
+        unnamedStruct.fullEnum.unnamedStruct[0].u64.eq(tupleStructArg[0].u64)
       );
     });
 
@@ -281,7 +281,7 @@ describe("New IDL", () => {
           aliasOptionVecPubkey,
           aliasGenericConst,
           aliasMultipleGenericsMixed,
-          aliasExternal,
+          aliasExternal
         )
         .accounts({ account: kp.publicKey })
         .signers([kp])
@@ -303,7 +303,7 @@ describe("New IDL", () => {
       assert.deepEqual(account.aliasGenericConst, aliasGenericConst);
       assert.deepEqual(
         account.aliasMultipleGenericsMixed,
-        aliasMultipleGenericsMixed,
+        aliasMultipleGenericsMixed
       );
       assert(account.aliasExternal.eq(aliasExternal));
     });
@@ -321,13 +321,13 @@ describe("New IDL", () => {
         .signers([kp])
         .preInstructions([
           await program.account.accountAndEventFieldAccount.createInstruction(
-            kp,
+            kp
           ),
         ])
         .rpc();
 
       const account = await program.account.accountAndEventFieldAccount.fetch(
-        kp.publicKey,
+        kp.publicKey
       );
       assert.deepEqual(account, accountArg);
     });
@@ -342,7 +342,7 @@ describe("New IDL", () => {
       };
       const { pubkeys } = await program.methods.generic(arg).rpcAndKeys();
       const myAccount = await program.account.genericAccount.fetch(
-        pubkeys.myAccount,
+        pubkeys.myAccount
       );
       assert.deepEqual(myAccount.field, arg);
     });
@@ -364,7 +364,7 @@ describe("New IDL", () => {
         .genericCustomStruct(arg)
         .rpcAndKeys();
       const myAccount = await program.account.genericAccountCustomStruct.fetch(
-        pubkeys.myAccount,
+        pubkeys.myAccount
       );
       assert.deepEqual(myAccount.field, arg);
     });
@@ -385,7 +385,7 @@ describe("New IDL", () => {
         .rpc();
 
       const fullPathAccount = await program.account.fullPathAccount.fetch(
-        kp.publicKey,
+        kp.publicKey
       );
       assert.strictEqual(fullPathAccount.namedStruct.u8, namedStructArg.u8);
       assert.strictEqual(fullPathAccount.namedStruct.u16, namedStructArg.u16);
@@ -393,7 +393,7 @@ describe("New IDL", () => {
       assert(fullPathAccount.namedStruct.u64.eq(namedStructArg.u64));
       assert.deepEqual(
         fullPathAccount.someModuleNamedStruct,
-        someModuleNamedStructArg,
+        someModuleNamedStructArg
       );
     });
 
@@ -411,7 +411,7 @@ describe("New IDL", () => {
         .rpc();
 
       const account = await program.account.accountWithExternalField.fetch(
-        kp.publicKey,
+        kp.publicKey
       );
 
       assert.deepEqual(account.myStruct, externalArg);
@@ -427,14 +427,14 @@ describe("New IDL", () => {
         .signers([kp])
         .preInstructions([
           await program.account.accountWithNonAnchorExternalField.createInstruction(
-            kp,
+            kp
           ),
         ])
         .rpc();
 
       const account =
         await program.account.accountWithNonAnchorExternalField.fetch(
-          kp.publicKey,
+          kp.publicKey
         );
 
       assert(account.feature.activatedAt?.eq(feature.activatedAt));
@@ -474,7 +474,7 @@ describe("New IDL", () => {
             named: { pointX: new anchor.BN(1), pointY: new anchor.BN(2) },
           },
         },
-        "named { pointX: 1, pointY: 2 }",
+        "named { pointX: 1, pointY: 2 }"
       );
     });
 
@@ -482,7 +482,7 @@ describe("New IDL", () => {
       await formatEnum(
         "fullEnum",
         { fullEnum: { unnamed: [2, 10, 200, 49] } },
-        "unnamed { 0: 2, 1: 10, 2: 200, 3: 49 }",
+        "unnamed { 0: 2, 1: 10, 2: 200, 3: 49 }"
       );
     });
   });
