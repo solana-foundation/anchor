@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+function usage() {
+  console.error("Mock anchor CLI: unsupported command");
+  process.exit(1);
+}
+
+function ensureFile(fp) {
+  if (!fp) {
+    console.error("Error: --filepath is required");
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(fp)) {
+    console.error("Error: IDL doesn't exist");
+    process.exit(1);
+  }
+
+  try {
+    JSON.parse(fs.readFileSync(fp, "utf8"));
+  } catch (err) {
+    console.error(`Error: Failed to parse IDL JSON: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function handleIdl(args) {
+  const subcommand = args.shift();
+  if (subcommand !== "init") {
+    usage();
+  }
+
+  let filepath;
+  let priorityFee;
+  const positional = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--filepath") {
+      filepath = args[++i];
+    } else if (arg === "--priority-fee") {
+      priorityFee = args[++i];
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  const programId = positional[positional.length - 1];
+  if (!programId) {
+    console.error("Error: PROGRAM_ID argument required");
+    process.exit(1);
+  }
+
+  ensureFile(filepath);
+
+  if (priorityFee) {
+    process.stdout.write(`Using priority fee: ${priorityFee}\n`);
+  }
+
+  const idlAddress =
+    process.env.MOCK_ANCHOR_IDL_ACCOUNT ||
+    "Fg6PaFpoGXkYsidMpWxTWqk2b9G8mCe3bHp9Cne9dtrT";
+
+  process.stdout.write(`Idl account created: ${idlAddress}\n`);
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    usage();
+  }
+
+  const command = args.shift();
+
+  switch (command) {
+    case "build":
+      process.stdout.write("Anchor build (mock) succeeded\n");
+      break;
+    case "deploy":
+      process.stdout.write("Anchor deploy (mock) succeeded\n");
+      break;
+    case "idl":
+      handleIdl(args);
+      break;
+    default:
+      usage();
+  }
+}
+
+main();
+

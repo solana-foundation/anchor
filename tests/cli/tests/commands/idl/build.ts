@@ -5,6 +5,7 @@ import { anchorCommand, diffTest, runCommands, setupTest } from "@/lib";
 import {
   IDL_BUILD_ROOT,
   cleanupFile,
+  cleanupWorkspaceArtifacts,
   readJsonFromMixedOutput,
 } from "./shared";
 
@@ -155,19 +156,5 @@ export function runIdlBuildTests() {
       ).to.throw(/Program missing-program not found/);
     });
   });
-}
-
-function cleanupWorkspaceArtifacts(workspaceDir: string): void {
-  const removeIfExists = (relativePath: string) => {
-    const absolutePath = path.join(workspaceDir, relativePath);
-    if (fs.existsSync(absolutePath)) {
-      fs.rmSync(absolutePath, { recursive: true, force: true });
-    }
-  };
-
-  removeIfExists("target");
-  removeIfExists("app");
-  removeIfExists(".anchor");
-  removeIfExists("Cargo.lock");
 }
 

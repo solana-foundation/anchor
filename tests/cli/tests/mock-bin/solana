@@ -29,6 +29,10 @@ function main() {
   const logfile = process.env.MOCK_SOLANA_LOG_PATH;
   appendLog({ logfile, args });
 
+  if (process.env.MOCK_SOLANA_FAIL === "1") {
+    process.exit(1);
+  }
+
   const stdout = process.env.MOCK_SOLANA_STDOUT;
   if (stdout) {
     process.stdout.write(stdout);

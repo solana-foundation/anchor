@@ -106,7 +106,9 @@ export function getErrorMessage(e: any): string {
 }
 
 export function anchorCommand(command: string): string {
-  return `${WORKSPACE_DIR}/target/debug/anchor ${command}`;
+  const override = process.env.MOCK_ANCHOR_BIN;
+  const binary = override || `${WORKSPACE_DIR}/target/debug/anchor`;
+  return `${binary} ${command}`;
 }
 
 export interface PatchWorkspaceArgs {

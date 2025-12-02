@@ -1,8 +1,9 @@
 import { runIdlBuildTests } from "./build";
+import { runIdlInitTests } from "./init";
 
 describe("idl", () => {
   runIdlBuildTests();
-  // Future subcommand test suites should be registered here.
+  runIdlInitTests();
 });
 
 
