@@ -14,8 +14,9 @@ fn can_derive_common_trait(ty: &Type) -> bool {
             if segments.is_empty() {
                 return false;
             }
-            let first_segment = &segments[0];
-            let ident_str = first_segment.ident.to_string();
+            // Use last segment to handle fully qualified paths like std::vec::Vec<T>
+            let last_segment = segments.last().unwrap();
+            let ident_str = last_segment.ident.to_string();
 
             // Check for primitives
             if matches!(
@@ -43,7 +44,7 @@ fn can_derive_common_trait(ty: &Type) -> bool {
 
             // For Option<T> and Vec<T>, check the inner type first
             if ident_str == "Option" || ident_str == "Vec" {
-                if let syn::PathArguments::AngleBracketed(args) = &first_segment.arguments {
+                if let syn::PathArguments::AngleBracketed(args) = &last_segment.arguments {
                     if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
                         return can_derive_common_trait(inner_ty);
                     }
@@ -91,11 +92,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 .collect();
 
             // Check if all argument types can derive Clone and Debug
-            let can_derive_traits = ix.args.is_empty()
-                || ix
-                    .args
-                    .iter()
-                    .all(|arg| can_derive_common_trait(&arg.raw_arg.ty));
+            // Note: all() returns true for empty iterators, so no need to check is_empty()
+            let can_derive_traits = ix
+                .args
+                .iter()
+                .all(|arg| can_derive_common_trait(&arg.raw_arg.ty));
 
             let traits_attr = if can_derive_traits {
                 quote!(Clone, Debug,)
