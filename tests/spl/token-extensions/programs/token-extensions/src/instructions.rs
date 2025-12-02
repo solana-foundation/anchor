@@ -5,7 +5,7 @@ use anchor_spl::{
     token_2022::spl_token_2022::extension::{
         group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer,
         mint_close_authority::MintCloseAuthority, permanent_delegate::PermanentDelegate,
-        transfer_hook::TransferHook,
+        transfer_hook::TransferHook, interest_bearing_mint::{InterestBearingConfig, BasisPoints},
     },
     token_interface::{
         get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
@@ -53,6 +53,8 @@ pub struct CreateMintAccount<'info> {
         extensions::transfer_hook::program_id = crate::ID,
         extensions::close_authority::authority = authority,
         extensions::permanent_delegate::delegate = authority,
+        extensions::interest_bearing_mint::authority = authority,
+        extensions::interest_bearing_mint::rate = 100,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
@@ -150,6 +152,12 @@ pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> 
         group_member_pointer.member_address,
         OptionalNonZeroPubkey::try_from(mint_key)?
     );
+    let interest_bearing_config = get_mint_extension_data::<InterestBearingConfig>(mint_data)?;
+    assert_eq!(
+        interest_bearing_config.rate_authority,
+        OptionalNonZeroPubkey::try_from(authority_key)?
+    );
+    assert_eq!(interest_bearing_config.current_rate, BasisPoints::from(100));
     // transfer minimum rent to mint account
     update_account_lamports_to_minimum_balance(
         ctx.accounts.mint.to_account_info(),
