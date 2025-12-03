@@ -1,4 +1,4 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
+use crate::{get_keypair, is_hidden, keys_sync, AbsolutePath, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -29,7 +29,7 @@ use std::{fmt, io};
 use walkdir::WalkDir;
 
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
 
 impl FromStr for CaseInsensitiveCommitmentLevel {
@@ -58,7 +58,7 @@ pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -340,7 +340,9 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -470,13 +472,13 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum ProgramArch {
     Bpf,
     Sbf,
@@ -1464,7 +1466,7 @@ impl AnchorPackage {
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, AbsolutePath)]
         pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
