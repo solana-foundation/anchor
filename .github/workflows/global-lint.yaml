@@ -1,0 +1,27 @@
+# Linters that run on everything and don't exclude docs/**
+name: Global Linters
+on:
+  workflow_dispatch:
+  pull_request:
+
+# Manually run cspell locally via:
+#    make spellcheck
+jobs:
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned version of the v7.2.0 tag, which is a lightweight and hence mutable tag
+      - uses: streetsidesoftware/cspell-action@dcd03dc3e8a59ec2e360d0c62db517baa0b4bb6d
+        with:
+          # For now, only lint markdown files
+          files: |
+            **/*.md
+            **/*.mdx
+          inline: warning
+
+          # Only check files in the PR or push
+          incremental_files_only: true
+
+          # Do not error out on failures, only complain
+          strict: false

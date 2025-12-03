@@ -5,11 +5,9 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
-};
+use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
+use solana_pubkey::Pubkey;
+use solana_signer::Signer;
 use std::{
     fmt::Write as _,
     fs::{self, File},
@@ -23,10 +21,10 @@ const ANCHOR_MSRV: &str = "1.89.0";
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum ProgramTemplate {
-    /// Program with a single `lib.rs` file
-    #[default]
+    /// Program with a single `lib.rs` file (not recommended for production)
     Single,
-    /// Program with multiple files for instructions, state...
+    /// Program with multiple files for instructions, state... (recommended)
+    #[default]
     Multiple,
 }
 
@@ -44,7 +42,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     ];
 
     let template_files = match template {
-        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Single => {
+            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            create_program_template_single(name, &program_path)
+        }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
     };
 
@@ -55,11 +56,10 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
 fn rust_toolchain_toml() -> String {
     format!(
         r#"[toolchain]
-channel = "{msrv}"
+channel = "{ANCHOR_MSRV}"
 components = ["rustfmt","clippy"]
 profile = "minimal"
-"#,
-        msrv = ANCHOR_MSRV
+"#
     )
 }
 
@@ -146,7 +146,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -167,7 +167,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
@@ -703,7 +703,7 @@ impl TestTemplate {
                     .arg("tests")
                     .stderr(Stdio::inherit())
                     .output()
-                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                    .map_err(|e| anyhow::format_err!("{}", e))?;
                 if !exit.status.success() {
                     eprintln!("'cargo new --lib tests' failed");
                     std::process::exit(exit.status.code().unwrap_or(1));
@@ -748,15 +748,12 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
-rust-version = "{msrv}"
+rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]
-anchor-client = "{version}"
+anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
-"#,
-        msrv = ANCHOR_MSRV,
-        version = VERSION,
-        name = name,
+"#
     )
 }
 
@@ -790,7 +787,7 @@ fn test_initialize() {{
     let payer = read_keypair_file(&anchor_wallet).unwrap();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
 
     let tx = program
