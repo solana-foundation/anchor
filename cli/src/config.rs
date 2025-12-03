@@ -577,7 +577,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        get_keypair(&self.provider.wallet.to_string())
+        get_keypair(Path::new(&self.provider.wallet.0))
     }
 
     pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
@@ -1358,7 +1358,7 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        get_keypair(file.path().to_str().unwrap())
+        get_keypair(file.path())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
@@ -1465,23 +1465,19 @@ impl AnchorPackage {
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
         #[derive(Clone, Debug)]
-        pub struct $my_struct(String);
+        pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(
-                    home_dir()
-                        .unwrap()
-                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
-                        .display()
-                        .to_string(),
-                )
+                $my_struct(home_dir().unwrap().join($path))
             }
         }
 
         impl $my_struct {
             fn stringify_with_tilde(&self) -> String {
                 self.0
+                    .display()
+                    .to_string()
                     .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
             }
         }
@@ -1490,13 +1486,13 @@ macro_rules! home_path {
             type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(s.to_owned()))
+                Ok(Self(::std::path::PathBuf::from(s)))
             }
         }
 
         impl fmt::Display for $my_struct {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, "{}", self.0.display())
             }
         }
     };
