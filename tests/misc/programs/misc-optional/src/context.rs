@@ -151,23 +151,23 @@ pub struct InitializeSkipRentExempt<'info> {
 #[derive(Accounts)]
 pub struct InitializeNoRentExempt<'info> {
     /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
+    pub data: Option<UncheckedAccount<'info>>,
 }
 
 #[derive(Accounts)]
 pub struct TestOwner<'info> {
     #[account(owner = *misc.key)]
     /// CHECK:
-    pub data: Option<AccountInfo<'info>>,
+    pub data: Option<UncheckedAccount<'info>>,
     /// CHECK:
-    pub misc: AccountInfo<'info>,
+    pub misc: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct TestExecutable<'info> {
     #[account(executable)]
     /// CHECK:
-    pub program: Option<AccountInfo<'info>>,
+    pub program: Option<UncheckedAccount<'info>>,
 }
 
 #[derive(Accounts)]
@@ -332,7 +332,7 @@ pub struct TestInitIfNeededChecksOwner<'info> {
     pub payer: Option<Signer<'info>>,
     pub system_program: Option<Program<'info, System>>,
     /// CHECK:
-    pub owner: AccountInfo<'info>,
+    pub owner: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -676,7 +676,7 @@ pub struct TestAssociatedToken<'info> {
     )]
     pub token: Option<Account<'info, TokenAccount>>,
     pub mint: Option<Account<'info, Mint>>,
-    pub authority: Option<AccountInfo<'info>>,
+    pub authority: Option<UncheckedAccount<'info>>,
 }
 
 #[derive(Accounts)]
@@ -689,9 +689,9 @@ pub struct TestAssociatedTokenWithTokenProgramConstraint<'info> {
     pub token: Option<InterfaceAccount<'info, TokenAccountInterface>>,
     pub mint: InterfaceAccount<'info, MintInterface>,
     /// CHECK: ignore
-    pub authority: AccountInfo<'info>,
+    pub authority: UncheckedAccount<'info>,
     /// CHECK: ignore
-    pub associated_token_token_program: Option<AccountInfo<'info>>,
+    pub associated_token_token_program: Option<UncheckedAccount<'info>>,
 }
 
 #[derive(Accounts)]

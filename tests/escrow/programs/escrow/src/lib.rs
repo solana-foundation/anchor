@@ -128,7 +128,7 @@ pub struct InitializeEscrow<'info> {
 pub struct Exchange<'info> {
     #[account(signer)]
     /// CHECK:
-    pub taker: AccountInfo<'info>,
+    pub taker: UncheckedAccount<'info>,
     #[account(mut, token::mint = deposit_mint)]
     pub taker_deposit_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, token::mint = receive_mint)]
@@ -139,7 +139,7 @@ pub struct Exchange<'info> {
     pub initializer_receive_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
     /// CHECK:
-    pub initializer_main_account: AccountInfo<'info>,
+    pub initializer_main_account: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = escrow_account.taker_amount <= taker_deposit_token_account.amount,
@@ -150,7 +150,7 @@ pub struct Exchange<'info> {
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
     /// CHECK:
-    pub pda_account: AccountInfo<'info>,
+    pub pda_account: UncheckedAccount<'info>,
     pub deposit_mint: Box<InterfaceAccount<'info, Mint>>,
     pub receive_mint: Box<InterfaceAccount<'info, Mint>>,
     pub deposit_token_program: Interface<'info, TokenInterface>,
@@ -160,11 +160,11 @@ pub struct Exchange<'info> {
 #[derive(Accounts)]
 pub struct CancelEscrow<'info> {
     /// CHECK:
-    pub initializer: AccountInfo<'info>,
+    pub initializer: UncheckedAccount<'info>,
     #[account(mut)]
     pub pda_deposit_token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK:
-    pub pda_account: AccountInfo<'info>,
+    pub pda_account: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = escrow_account.initializer_key == *initializer.key,

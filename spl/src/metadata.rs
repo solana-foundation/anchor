@@ -547,92 +547,92 @@ pub fn unverify_sized_collection_item<'info>(
 
 #[derive(Accounts)]
 pub struct ApproveCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub new_collection_authority: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub collection_authority_record: UncheckedAccount<'info>,
+    pub new_collection_authority: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct BubblegumSetCollectionSize<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub bubblegum_signer: AccountInfo<'info>,
+    pub metadata_account: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub bubblegum_signer: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct BurnEditionNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub print_edition_mint: AccountInfo<'info>,
-    pub master_edition_mint: AccountInfo<'info>,
-    pub print_edition_token: AccountInfo<'info>,
-    pub master_edition_token: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub print_edition: AccountInfo<'info>,
-    pub edition_marker: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
+    pub print_edition_mint: UncheckedAccount<'info>,
+    pub master_edition_mint: UncheckedAccount<'info>,
+    pub print_edition_token: UncheckedAccount<'info>,
+    pub master_edition_token: UncheckedAccount<'info>,
+    pub master_edition: UncheckedAccount<'info>,
+    pub print_edition: UncheckedAccount<'info>,
+    pub edition_marker: UncheckedAccount<'info>,
+    pub spl_token: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct BurnNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub token: UncheckedAccount<'info>,
+    pub edition: UncheckedAccount<'info>,
+    pub spl_token: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV3<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub system_program: UncheckedAccount<'info>,
+    pub rent: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdateMetadataAccountsV2<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct CreateMasterEditionV3<'info> {
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+    pub edition: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub token_program: UncheckedAccount<'info>,
+    pub system_program: UncheckedAccount<'info>,
+    pub rent: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct MintNewEditionFromMasterEditionViaToken<'info> {
-    pub new_metadata: AccountInfo<'info>,
-    pub new_edition: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub new_mint: AccountInfo<'info>,
-    pub edition_mark_pda: AccountInfo<'info>,
-    pub new_mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub token_account_owner: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub new_metadata_update_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+    pub new_metadata: UncheckedAccount<'info>,
+    pub new_edition: UncheckedAccount<'info>,
+    pub master_edition: UncheckedAccount<'info>,
+    pub new_mint: UncheckedAccount<'info>,
+    pub edition_mark_pda: UncheckedAccount<'info>,
+    pub new_mint_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub token_account_owner: UncheckedAccount<'info>,
+    pub token_account: UncheckedAccount<'info>,
+    pub new_metadata_update_authority: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub token_program: UncheckedAccount<'info>,
+    pub system_program: UncheckedAccount<'info>,
+    pub rent: UncheckedAccount<'info>,
     //
     // Not actually used by the program but still needed because it's needed
     // for the pda calculation in the helper. :/
@@ -640,140 +640,140 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
     // The better thing to do would be to remove this and have the instruction
     // helper pass in the `edition_mark_pda` directly.
     //
-    pub metadata_mint: AccountInfo<'info>,
+    pub metadata_mint: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct RevokeCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub delegate_authority: AccountInfo<'info>,
-    pub revoke_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub collection_authority_record: UncheckedAccount<'info>,
+    pub delegate_authority: UncheckedAccount<'info>,
+    pub revoke_authority: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SetCollectionSize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub system_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SetTokenStandard<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_account: AccountInfo<'info>,
+    pub metadata_account: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub mint_account: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct VerifyCollection<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection_metadata: UncheckedAccount<'info>,
+    pub collection_master_edition: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct VerifySizedCollectionItem<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection_metadata: UncheckedAccount<'info>,
+    pub collection_master_edition: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SetAndVerifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection_metadata: UncheckedAccount<'info>,
+    pub collection_master_edition: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SetAndVerifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection_metadata: UncheckedAccount<'info>,
+    pub collection_master_edition: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct FreezeDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub delegate: UncheckedAccount<'info>,
+    pub token_account: UncheckedAccount<'info>,
+    pub edition: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct ThawDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub delegate: UncheckedAccount<'info>,
+    pub token_account: UncheckedAccount<'info>,
+    pub edition: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UpdatePrimarySaleHappenedViaToken<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
+    pub token: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct SignMetadata<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+    pub creator: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct RemoveCreatorVerification<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+    pub creator: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Utilize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub use_authority: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub token_account: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub use_authority: UncheckedAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UnverifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection: UncheckedAccount<'info>,
+    pub collection_master_edition_account: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct UnverifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub collection_authority: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub collection_mint: UncheckedAccount<'info>,
+    pub collection: UncheckedAccount<'info>,
+    pub collection_master_edition_account: UncheckedAccount<'info>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

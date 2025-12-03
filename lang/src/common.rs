@@ -3,7 +3,10 @@ use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::system_program;
 use crate::Result;
 
-pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info>) -> Result<()> {
+pub fn close<'info>(
+    info: UncheckedAccount<'info>,
+    sol_destination: AccountInfo<'info>,
+) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.
     let dest_starting_lamports = sol_destination.lamports();
     **sol_destination.lamports.borrow_mut() =

@@ -96,7 +96,7 @@ pub enum AuthorityType {
 pub struct ProxyTransfer<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub from: InterfaceAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -108,7 +108,7 @@ pub struct ProxyTransfer<'info> {
 pub struct ProxyOptionalTransfer<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub from: InterfaceAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -121,7 +121,7 @@ pub struct ProxyOptionalTransfer<'info> {
 pub struct ProxyMintTo<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
@@ -133,7 +133,7 @@ pub struct ProxyMintTo<'info> {
 pub struct ProxyBurn<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: UncheckedAccount<'info>,
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
@@ -145,10 +145,10 @@ pub struct ProxyBurn<'info> {
 pub struct ProxySetAuthority<'info> {
     #[account(signer)]
     /// CHECK:
-    pub current_authority: AccountInfo<'info>,
+    pub current_authority: UncheckedAccount<'info>,
     #[account(mut)]
     /// CHECK:
-    pub account_or_mint: AccountInfo<'info>,
+    pub account_or_mint: UncheckedAccount<'info>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 

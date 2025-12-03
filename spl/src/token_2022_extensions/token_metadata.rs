@@ -1,9 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::prelude::UncheckedAccount;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfo};
 
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
 use spl_token_metadata_interface::state::Field;
@@ -27,11 +25,11 @@ pub fn token_metadata_initialize<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id,
-            ctx.accounts.metadata,
-            ctx.accounts.update_authority,
-            ctx.accounts.mint,
-            ctx.accounts.mint_authority,
+            ctx.accounts.program_id.to_account_info(),
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.update_authority.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.mint_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -40,11 +38,11 @@ pub fn token_metadata_initialize<'info>(
 
 #[derive(Accounts)]
 pub struct TokenMetadataInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub program_id: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 pub fn token_metadata_update_authority<'info>(
@@ -60,9 +58,9 @@ pub fn token_metadata_update_authority<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id,
-            ctx.accounts.metadata,
-            ctx.accounts.current_authority,
+            ctx.accounts.program_id.to_account_info(),
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.current_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -71,10 +69,10 @@ pub fn token_metadata_update_authority<'info>(
 
 #[derive(Accounts)]
 pub struct TokenMetadataUpdateAuthority<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub current_authority: AccountInfo<'info>,
-    pub new_authority: AccountInfo<'info>,
+    pub program_id: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub current_authority: UncheckedAccount<'info>,
+    pub new_authority: UncheckedAccount<'info>,
 }
 
 pub fn token_metadata_update_field<'info>(
@@ -92,9 +90,9 @@ pub fn token_metadata_update_field<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id,
-            ctx.accounts.metadata,
-            ctx.accounts.update_authority,
+            ctx.accounts.program_id.to_account_info(),
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.update_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -103,7 +101,7 @@ pub fn token_metadata_update_field<'info>(
 
 #[derive(Accounts)]
 pub struct TokenMetadataUpdateField<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
+    pub program_id: UncheckedAccount<'info>,
+    pub metadata: UncheckedAccount<'info>,
+    pub update_authority: UncheckedAccount<'info>,
 }

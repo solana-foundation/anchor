@@ -619,10 +619,10 @@ pub struct CreateMember<'info> {
         "balances_locked.vault.mint == registrar.mint"
     )]
     balances_locked: BalanceSandboxAccounts<'info>,
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
     // Misc.
     #[account("token_program.key == &token::ID")]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 impl<'info> CreateMember<'info> {
@@ -665,7 +665,7 @@ pub struct BalanceSandboxAccounts<'info> {
 
 #[derive(Accounts)]
 pub struct Ctor<'info> {
-    lockup_program: AccountInfo<'info>,
+    lockup_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -701,12 +701,12 @@ pub struct Deposit<'info> {
     vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    depositor: UncheckedAccount<'info>,
     #[account(signer, constraint = depositor_authority.key == &member.beneficiary)]
-    depositor_authority: AccountInfo<'info>,
+    depositor_authority: UncheckedAccount<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -718,12 +718,12 @@ pub struct DepositLocked<'info> {
     )]
     vesting: Box<Account<'info, Vesting>>,
     #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
-    vesting_vault: AccountInfo<'info>,
+    vesting_vault: UncheckedAccount<'info>,
     // Note: no need to verify the depositor_authority since the SPL program
     //       will fail the transaction if it's not correct.
     pub depositor_authority: Signer<'info>,
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = member_vault.to_account_info().key == &member.balances_locked.vault
@@ -733,7 +733,7 @@ pub struct DepositLocked<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
@@ -766,17 +766,17 @@ pub struct Stake<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref()],
         bump = registrar.nonce,
     )]
-    registrar_signer: AccountInfo<'info>,
+    registrar_signer: UncheckedAccount<'info>,
 
     // Misc.
     clock: Sysvar<'info, Clock>,
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -786,7 +786,7 @@ pub struct StartUnstake<'info> {
     registrar: Account<'info, Registrar>,
     reward_event_q: Account<'info, RewardQueue>,
     #[account(mut)]
-    pool_mint: AccountInfo<'info>,
+    pool_mint: UncheckedAccount<'info>,
 
     // Member.
     #[account(zero)]
@@ -804,11 +804,11 @@ pub struct StartUnstake<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
 
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -827,19 +827,19 @@ pub struct EndUnstake<'info> {
     //
     // Note: we do the constraints check in the handler, not here.
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: UncheckedAccount<'info>,
     #[account(mut)]
-    vault_pw: AccountInfo<'info>,
+    vault_pw: UncheckedAccount<'info>,
 
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
 
     clock: Sysvar<'info, Clock>,
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -856,13 +856,13 @@ pub struct Withdraw<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
     // Receiver.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    depositor: UncheckedAccount<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -874,10 +874,10 @@ pub struct WithdrawLocked<'info> {
     )]
     vesting: Box<Account<'info, Vesting>>,
     #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
-    vesting_vault: AccountInfo<'info>,
+    vesting_vault: UncheckedAccount<'info>,
     vesting_signer: Signer<'info>,
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = member_vault.to_account_info().key == &member.balances_locked.vault
@@ -887,7 +887,7 @@ pub struct WithdrawLocked<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: UncheckedAccount<'info>,
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
@@ -912,12 +912,12 @@ pub struct DropReward<'info> {
     vendor_vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    depositor: UncheckedAccount<'info>,
     #[account(signer)]
-    depositor_authority: AccountInfo<'info>,
+    depositor_authority: UncheckedAccount<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -945,7 +945,7 @@ pub struct ClaimReward<'info> {
     cmn: ClaimRewardCommon<'info>,
     // Account to send reward to.
     #[account(mut)]
-    to: AccountInfo<'info>,
+    to: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -953,7 +953,7 @@ pub struct ClaimRewardLocked<'info> {
     cmn: ClaimRewardCommon<'info>,
     registry: ProgramState<'info, Registry>,
     #[account("lockup_program.key == &registry.lockup_program")]
-    lockup_program: AccountInfo<'info>,
+    lockup_program: UncheckedAccount<'info>,
 }
 
 // Accounts common to both claim reward locked/unlocked instructions.
@@ -973,15 +973,15 @@ pub struct ClaimRewardCommon<'info> {
     #[account(has_one = registrar, has_one = vault)]
     vendor: Account<'info, RewardVendor>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: UncheckedAccount<'info>,
     #[account(
         seeds = [registrar.to_account_info().key.as_ref(), vendor.to_account_info().key.as_ref()],
         bump = vendor.nonce,
     )]
-    vendor_signer: AccountInfo<'info>,
+    vendor_signer: UncheckedAccount<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -998,14 +998,14 @@ pub struct ExpireReward<'info> {
         seeds = [registrar.to_account_info().key.as_ref(), vendor.to_account_info().key.as_ref()],
         bump = vendor.nonce
     )]
-    vendor_signer: AccountInfo<'info>,
+    vendor_signer: UncheckedAccount<'info>,
     // Receiver.
     expiry_receiver: Signer<'info>,
     #[account(mut)]
-    expiry_receiver_token: AccountInfo<'info>,
+    expiry_receiver_token: UncheckedAccount<'info>,
     // Misc.
     #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
     clock: Sysvar<'info, Clock>,
 }
 

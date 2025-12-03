@@ -1,9 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::prelude::UncheckedAccount;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfo};
 use spl_token_2022::state::AccountState;
 use spl_token_2022_interface as spl_token_2022;
 
@@ -18,7 +16,10 @@ pub fn default_account_state_initialize<'info>(
     )?;
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint],
+        &[
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+        ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -26,8 +27,8 @@ pub fn default_account_state_initialize<'info>(
 
 #[derive(Accounts)]
 pub struct DefaultAccountStateInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 pub fn default_account_state_update<'info>(
@@ -45,9 +46,9 @@ pub fn default_account_state_update<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.mint,
-            ctx.accounts.freeze_authority,
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.freeze_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -56,7 +57,7 @@ pub fn default_account_state_update<'info>(
 
 #[derive(Accounts)]
 pub struct DefaultAccountStateUpdate<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub freeze_authority: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub freeze_authority: UncheckedAccount<'info>,
 }

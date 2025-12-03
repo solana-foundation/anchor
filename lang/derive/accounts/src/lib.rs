@@ -65,7 +65,7 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(signer)]
-/// pub authority: AccountInfo<'info>,
+/// pub authority: UncheckedAccount<'info>,
 /// #[account(signer @ MyError::MyErrorCode)]
 /// pub payer: AccountInfo<'info>
 ///                 </code></pre>
@@ -174,13 +174,13 @@ use syn::parse_macro_input;
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;space = 8 + 8, owner = other_program.key()
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountInfo<'info>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: UncheckedAccount<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;owner = other_program.key(),
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed"], bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountInfo<'info>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: UncheckedAccount<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer<'info>,
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program<'info, System>,
@@ -255,13 +255,13 @@ use syn::parse_macro_input;
 /// #[instruction(first_bump: u8, second_bump: u8)]
 /// pub struct Example {
 ///     #[account(seeds = [b"example_seed"], bump)]
-///     pub canonical_pda: AccountInfo<'info>,
+///     pub canonical_pda: UncheckedAccount<'info>,
 ///     #[account(
 ///         seeds = [b"example_seed"],
 ///         bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub canonical_pda_two: AccountInfo<'info>,
+///     pub canonical_pda_two: UncheckedAccount<'info>,
 ///     #[account(seeds = [b"other_seed"], bump = first_bump)]
 ///     pub arbitrary_pda: AccountInfo<'info>
 ///     #[account(
@@ -269,7 +269,7 @@ use syn::parse_macro_input;
 ///         bump = second_bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub arbitrary_pda_two: AccountInfo<'info>,
+///     pub arbitrary_pda_two: UncheckedAccount<'info>,
 ///     pub other_program: Program<'info, OtherProgram>
 /// }
 ///                 </code></pre>

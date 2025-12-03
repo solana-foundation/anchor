@@ -457,7 +457,7 @@ pub struct ExchangeRedeemableForWatermelon<'info> {
     pub payer: Signer<'info>,
     // User Accounts
     #[account(mut)] // Sol rent from empty redeemable account is refunded to the user
-    pub user_authority: AccountInfo<'info>,
+    pub user_authority: UncheckedAccount<'info>,
     // TODO replace with ATA constraints
     #[account(mut,
         constraint = user_watermelon.owner == user_authority.key(),
@@ -520,7 +520,7 @@ pub struct WithdrawFromEscrow<'info> {
     pub payer: Signer<'info>,
     // User Accounts
     #[account(mut)]
-    pub user_authority: AccountInfo<'info>,
+    pub user_authority: UncheckedAccount<'info>,
     #[account(mut,
         constraint = user_usdc.owner == user_authority.key(),
         constraint = user_usdc.mint == usdc_mint.key())]
