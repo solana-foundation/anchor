@@ -29,4 +29,17 @@ pub mod token_extensions {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn check_token_account_extensions_constraints(
+        _ctx: Context<CheckTokenAccountExtensionConstraints>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+
+    pub fn check_missing_token_account_extensions_constraints(
+        _ctx: Context<CheckMissingTokenAccountExtensionConstraints>,
+    ) -> Result<()> {
+        Ok(())
+    }
 }
