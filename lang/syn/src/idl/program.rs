@@ -19,9 +19,13 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
     let safety_check_errors = match check_safety_comments() {
         Ok(tokens) => tokens,
         Err(e) => {
-            // If we can't perform safety checks, emit a compile error
-            return syn::Error::new(proc_macro2::Span::call_site(), e.to_string())
-                .to_compile_error();
+            /// CHECK: Use the span of the first instruction if available, otherwise use the program module span
+            let error_span = program
+                .ixs
+                .first()
+                .map(|ix| ix.raw_method.span())
+                .unwrap_or_else(|| program.program_mod.span());
+            return syn::Error::new(error_span, e.to_string()).to_compile_error();
         }
     };
 
