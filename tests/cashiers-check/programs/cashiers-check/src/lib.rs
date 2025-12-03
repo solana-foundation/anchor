@@ -91,7 +91,7 @@ pub struct CreateCheck<'info> {
     #[account(mut, constraint = &vault.owner == check_signer.key)]
     vault: Account<'info, TokenAccount>,
     // Program derived address for the check.
-    check_signer: AccountInfo<'info>,
+    check_signer: UncheckedAccount<'info>,
     // Token account the check is made from.
     #[account(mut, has_one = owner)]
     from: Account<'info, TokenAccount>,
@@ -99,8 +99,8 @@ pub struct CreateCheck<'info> {
     #[account(constraint = from.mint == to.mint)]
     to: Account<'info, TokenAccount>,
     // Owner of the `from` token account.
-    owner: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
+    owner: UncheckedAccount<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 impl<'info> CreateCheck<'info> {
@@ -122,16 +122,16 @@ pub struct CashCheck<'info> {
     #[account(mut, has_one = vault, has_one = to)]
     check: Account<'info, Check>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: UncheckedAccount<'info>,
     #[account(
         seeds = [check.to_account_info().key.as_ref()],
         bump = check.nonce,
     )]
-    check_signer: AccountInfo<'info>,
+    check_signer: UncheckedAccount<'info>,
     #[account(mut, has_one = owner)]
     to: Account<'info, TokenAccount>,
     owner: Signer<'info>,
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -139,16 +139,16 @@ pub struct CancelCheck<'info> {
     #[account(mut, has_one = vault, has_one = from)]
     check: Account<'info, Check>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: UncheckedAccount<'info>,
     #[account(
         seeds = [check.to_account_info().key.as_ref()],
         bump = check.nonce,
     )]
-    check_signer: AccountInfo<'info>,
+    check_signer: UncheckedAccount<'info>,
     #[account(mut, has_one = owner)]
     from: Account<'info, TokenAccount>,
     owner: Signer<'info>,
-    token_program: AccountInfo<'info>,
+    token_program: UncheckedAccount<'info>,
 }
 
 #[account]

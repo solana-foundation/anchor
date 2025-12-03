@@ -1,9 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::prelude::UncheckedAccount;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfo};
 
 pub fn token_group_initialize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenGroupInitialize<'info>>,
@@ -21,10 +19,10 @@ pub fn token_group_initialize<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id,
-            ctx.accounts.group,
-            ctx.accounts.mint,
-            ctx.accounts.mint_authority,
+            ctx.accounts.program_id.to_account_info(),
+            ctx.accounts.group.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.mint_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -33,10 +31,10 @@ pub fn token_group_initialize<'info>(
 
 #[derive(Accounts)]
 pub struct TokenGroupInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
+    pub program_id: UncheckedAccount<'info>,
+    pub group: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 }
 
 pub fn token_member_initialize<'info>(
@@ -53,12 +51,12 @@ pub fn token_member_initialize<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id,
-            ctx.accounts.member,
-            ctx.accounts.member_mint,
-            ctx.accounts.member_mint_authority,
-            ctx.accounts.group,
-            ctx.accounts.group_update_authority,
+            ctx.accounts.program_id.to_account_info(),
+            ctx.accounts.member.to_account_info(),
+            ctx.accounts.member_mint.to_account_info(),
+            ctx.accounts.member_mint_authority.to_account_info(),
+            ctx.accounts.group.to_account_info(),
+            ctx.accounts.group_update_authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -67,10 +65,10 @@ pub fn token_member_initialize<'info>(
 
 #[derive(Accounts)]
 pub struct TokenMemberInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub member: AccountInfo<'info>,
-    pub member_mint: AccountInfo<'info>,
-    pub member_mint_authority: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub group_update_authority: AccountInfo<'info>,
+    pub program_id: UncheckedAccount<'info>,
+    pub member: UncheckedAccount<'info>,
+    pub member_mint: UncheckedAccount<'info>,
+    pub member_mint_authority: UncheckedAccount<'info>,
+    pub group: UncheckedAccount<'info>,
+    pub group_update_authority: UncheckedAccount<'info>,
 }
