@@ -3,6 +3,7 @@ use crate::parser;
 use crate::Program;
 use heck::CamelCase;
 use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let variants: Vec<proc_macro2::TokenStream> = program
@@ -36,16 +37,18 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                     },
                 };
+                let ix_span = ix.raw_method.span();
+                let spanned_name = quote_spanned! { ix_span => #ix_name_camel };
 
                 quote! {
                     #(#ix_cfgs)*
-                    impl anchor_lang::Discriminator for #ix_name_camel {
+                    impl anchor_lang::Discriminator for #spanned_name {
                         const DISCRIMINATOR: &'static [u8] = #discriminator;
                     }
                     #(#ix_cfgs)*
-                    impl anchor_lang::InstructionData for #ix_name_camel {}
+                    impl anchor_lang::InstructionData for #spanned_name {}
                     #(#ix_cfgs)*
-                    impl anchor_lang::Owner for #ix_name_camel {
+                    impl anchor_lang::Owner for #spanned_name {
                         fn owner() -> Pubkey {
                             ID
                         }
@@ -53,12 +56,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 }
             };
             // If no args, output a "unit" variant instead of a struct variant.
+            let ix_span = ix.raw_method.span();
+            let spanned_name = quote_spanned! { ix_span => #ix_name_camel };
             if ix.args.is_empty() {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
-                    pub struct #ix_name_camel;
+                    pub struct #spanned_name;
 
                     #impls
                 }
@@ -67,7 +72,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #(#ix_cfgs)*
                     /// Instruction.
                     #[derive(AnchorSerialize, AnchorDeserialize)]
-                    pub struct #ix_name_camel {
+                    pub struct #spanned_name {
                         #(#raw_args),*
                     }
 
