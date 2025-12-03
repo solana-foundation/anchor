@@ -47,7 +47,10 @@ use {
         sync::LazyLock,
     },
 };
+use abs_path::AbsolutePath;
+use anchor_cli_macros::AbsolutePath;
 
+mod abs_path;
 mod account;
 mod checks;
 pub mod config;
@@ -75,7 +78,7 @@ pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     }
 });
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 #[clap(version = VERSION)]
 pub struct Opts {
     #[clap(flatten)]
@@ -84,7 +87,7 @@ pub struct Opts {
     pub command: Command,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum Command {
     /// Initializes a workspace.
     Init {
@@ -366,9 +369,9 @@ pub enum Command {
         account_type: String,
         /// Address of the account to deserialize
         address: Pubkey,
-        /// IDL to use (defaults to workspace IDL)
+        /// Path of IDL to use (defaults to workspace IDL)
         #[clap(long)]
-        idl: Option<String>,
+        idl: Option<PathBuf>,
     },
     /// Generates shell completions.
     Completions {
@@ -416,7 +419,7 @@ pub enum Command {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum KeygenCommand {
     /// Generate a new keypair
     New {
@@ -465,7 +468,7 @@ pub enum KeygenCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum KeysCommand {
     /// List all of the program keys.
     List,
@@ -477,7 +480,7 @@ pub enum KeysCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ProgramCommand {
     /// Deploy an upgradeable program
     Deploy {
@@ -634,7 +637,7 @@ pub enum ProgramCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
@@ -770,13 +773,13 @@ pub enum IdlCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ClusterCommand {
     /// Prints common cluster urls.
     List,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ConfigCommand {
     /// Get configuration settings from the local Anchor.toml
     Get,
@@ -907,6 +910,8 @@ pub fn prepend_compute_unit_ix(
 }
 
 pub fn entry(opts: Opts) -> Result<()> {
+    let opts = opts.absolute();
+
     let restore_cbs = override_toolchain(&opts.cfg_override)?;
     let result = process_command(opts);
     restore_toolchain(restore_cbs)?;
@@ -2928,7 +2933,7 @@ fn account(
     cfg_override: &ConfigOverride,
     account_type: String,
     address: Pubkey,
-    idl_filepath: Option<String>,
+    idl_filepath: Option<PathBuf>,
 ) -> Result<()> {
     let (program_name, account_type_name) = account_type
         .split_once('.') // Split at first occurrence of dot

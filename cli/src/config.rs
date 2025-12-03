@@ -1,5 +1,5 @@
 use {
-    crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT},
+    crate::{get_keypair, is_hidden, keys_sync, AbsolutePath, DEFAULT_RPC_PORT},
     anchor_client::Cluster,
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Context, Error, Result},
@@ -35,7 +35,7 @@ use {
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
 
 impl FromStr for CaseInsensitiveCommitmentLevel {
@@ -64,7 +64,7 @@ pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -339,7 +339,7 @@ pub struct Config {
     pub surfpool_config: Option<SurfpoolConfig>,
 }
 
-#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum ValidatorType {
     /// Use Surfpool validator (default)
     Surfpool,
@@ -354,7 +354,9 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -471,12 +473,27 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
 }
 
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
+pub enum ProgramArch {
+    Bpf,
+    Sbf,
+}
+
+impl ProgramArch {
+    /// Subcommand and any arguments to be passed to cargo
+    pub fn build_subcommand(&self) -> &[&'static str] {
+        match self {
+            Self::Bpf => &["build-bpf"],
+            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
+        }
+    }
+}
 #[derive(Debug, Clone)]
 pub struct BuildConfig {
     pub verifiable: bool,
@@ -1554,7 +1571,7 @@ pub struct RunbookExecution {
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, AbsolutePath)]
         pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
