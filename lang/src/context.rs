@@ -21,14 +21,14 @@ use std::fmt;
 ///     Ok(())
 /// }
 /// ```
-pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
+pub struct Context<'a, 'b, 'info, T: Bumps> {
     /// Currently executing program id.
     pub program_id: &'a Pubkey,
     /// Deserialized accounts.
     pub accounts: &'b mut T,
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
-    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub remaining_accounts: &'info [AccountInfo<'info>],
     /// Bump seeds found during constraint validation. This is provided as a
     /// convenience so that handlers don't have to recalculate bump seeds or
     /// pass them in as arguments.
@@ -36,7 +36,7 @@ pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
     pub bumps: T::Bumps,
 }
 
-impl<T> fmt::Debug for Context<'_, '_, '_, '_, T>
+impl<T> fmt::Debug for Context<'_, '_, '_, T>
 where
     T: fmt::Debug + Bumps,
 {
@@ -50,14 +50,14 @@ where
     }
 }
 
-impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, 'info, T>
+impl<'a, 'b, 'info, T> Context<'a, 'b, 'info, T>
 where
     T: Bumps + Accounts<'info, T::Bumps>,
 {
     pub fn new(
         program_id: &'a Pubkey,
         accounts: &'b mut T,
-        remaining_accounts: &'c [AccountInfo<'info>],
+        remaining_accounts: &'info [AccountInfo<'info>],
         bumps: T::Bumps,
     ) -> Self {
         Self {
