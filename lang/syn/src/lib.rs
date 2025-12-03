@@ -803,6 +803,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionPausableAuthority(Context<ConstraintExtensionAuthority>),
 }
 
 impl Parse for ConstraintToken {
@@ -1077,6 +1078,7 @@ pub enum InitKind {
         permanent_delegate: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
+        pausable_authority: Option<Expr>,
     },
 }
 
@@ -1195,6 +1197,7 @@ pub struct ConstraintTokenMintGroup {
     pub permanent_delegate: Option<Expr>,
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
+    pub pausable_authority: Option<Expr>,
 }
 
 // Syntax context object for preserving metadata about the inner item.
