@@ -269,7 +269,7 @@ pub enum Command {
         program_name: Option<String>,
         /// Keypair of the program (filepath) (requires program-name)
         #[clap(long, requires = "program_name")]
-        program_keypair: Option<String>,
+        program_keypair: Option<PathBuf>,
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
@@ -292,7 +292,7 @@ pub enum Command {
         #[clap(short, long)]
         program_id: Pubkey,
         /// Filepath to the new program binary.
-        program_filepath: String,
+        program_filepath: PathBuf,
         /// Max times to retry on failure.
         #[clap(long, default_value = "0")]
         max_retries: u32,
@@ -422,7 +422,7 @@ pub enum KeygenCommand {
     New {
         /// Path to generated keypair file
         #[clap(short = 'o', long)]
-        outfile: Option<String>,
+        outfile: Option<PathBuf>,
         /// Overwrite the output file if it exists
         #[clap(short, long)]
         force: bool,
@@ -439,13 +439,13 @@ pub enum KeygenCommand {
     /// Display the pubkey for a given keypair
     Pubkey {
         /// Keypair filepath
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
     /// Recover a keypair from a seed phrase
     Recover {
         /// Path to recovered keypair file
         #[clap(short = 'o', long)]
-        outfile: Option<String>,
+        outfile: Option<PathBuf>,
         /// Overwrite the output file if it exists
         #[clap(short, long)]
         force: bool,
@@ -461,7 +461,7 @@ pub enum KeygenCommand {
         /// Public key to verify
         pubkey: Pubkey,
         /// Keypair filepath (defaults to configured wallet)
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
 }
 
@@ -483,13 +483,13 @@ pub enum ProgramCommand {
     Deploy {
         /// Program filepath (e.g., target/deploy/my_program.so).
         /// If not provided, discovers programs from workspace
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to deploy (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
         /// Program keypair filepath (defaults to target/deploy/{program_name}-keypair.json)
         #[clap(long)]
-        program_keypair: Option<String>,
+        program_keypair: Option<PathBuf>,
         /// Upgrade authority keypair (defaults to configured wallet)
         #[clap(long)]
         upgrade_authority: Option<String>,
@@ -516,7 +516,7 @@ pub enum ProgramCommand {
     WriteBuffer {
         /// Program filepath (e.g., target/deploy/my_program.so).
         /// If not provided, discovers program from workspace using program_name
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to write (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
@@ -579,7 +579,7 @@ pub enum ProgramCommand {
         program_id: Pubkey,
         /// Program filepath (e.g., target/deploy/my_program.so). If not provided, discovers from workspace
         #[clap(long)]
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to upgrade (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
@@ -642,7 +642,7 @@ pub enum IdlCommand {
         /// If not provided, discovers program ID from IDL.
         program_id: Option<Pubkey>,
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         #[clap(long)]
         priority_fee: Option<u64>,
         /// Create non-canonical metadata account (third-party metadata)
@@ -660,7 +660,7 @@ pub enum IdlCommand {
         /// If not provided, discovers program ID from IDL.
         program_id: Option<Pubkey>,
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         #[clap(long)]
         priority_fee: Option<u64>,
         /// Allow running against a localnet cluster (disabled by default)
@@ -703,7 +703,7 @@ pub enum IdlCommand {
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
         /// Path to the IDL file
-        path: String,
+        path: PathBuf,
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
@@ -715,10 +715,10 @@ pub enum IdlCommand {
     /// Generate TypeScript type for the IDL
     Type {
         /// Path to the IDL file
-        path: String,
+        path: PathBuf,
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
-        out: Option<String>,
+        out: Option<PathBuf>,
     },
     /// Close a metadata account and recover rent
     Close {
@@ -735,7 +735,7 @@ pub enum IdlCommand {
     CreateBuffer {
         /// Path to the metadata file
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         /// Priority fees in micro-lamports per compute unit
         #[clap(long)]
         priority_fee: Option<u64>,
@@ -787,13 +787,13 @@ pub enum ConfigCommand {
         url: Option<String>,
         /// Path to wallet keypair file to update the Anchor.toml file with
         #[clap(short = 'k', long = "keypair")]
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
 }
 
-fn get_keypair(path: &str) -> Result<Keypair> {
+fn get_keypair(path: &Path) -> Result<Keypair> {
     solana_keypair::read_keypair_file(path)
-        .map_err(|_| anyhow!("Unable to read keypair file ({path})"))
+        .map_err(|_| anyhow!("Unable to read keypair file ({})", path.display()))
 }
 
 /// Format lamports as SOL with trailing zeros removed
@@ -2558,7 +2558,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
 fn idl_init(
     program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
-    idl_filepath: String,
+    idl_filepath: PathBuf,
     priority_fee: Option<u64>,
     non_canonical: bool,
     allow_localnet: bool,
@@ -2592,7 +2592,10 @@ fn idl_init(
         priority_fee,
         metadata::FundedIdlSubcommand::Write {
             program_id,
-            idl_filepath,
+            idl_filepath: idl_filepath
+                .to_str()
+                .expect("path should be utf8")
+                .to_string(),
             non_canonical,
         },
     );
@@ -2609,7 +2612,7 @@ fn idl_init(
 fn idl_upgrade(
     program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
-    idl_filepath: String,
+    idl_filepath: PathBuf,
     priority_fee: Option<u64>,
     allow_localnet: bool,
 ) -> Result<()> {
@@ -2640,12 +2643,15 @@ fn idl_upgrade(
         priority_fee,
         metadata::FundedIdlSubcommand::Write {
             program_id,
-            idl_filepath,
+            idl_filepath: idl_filepath
+                .to_str()
+                .expect("path should be utf8")
+                .to_string(),
             non_canonical: false,
         },
     );
     if !command.status()?.success() {
-        return Err(anyhow!("Failed to initialize IDL"));
+        return Err(anyhow!("Failed to upgrade IDL"));
     }
 
     println!("IDL upgraded.");
@@ -2735,7 +2741,7 @@ fn idl_fetch(
     Ok(())
 }
 
-fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
+fn idl_convert(path: PathBuf, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
     let idl = fs::read(path)?;
 
     // Set the `metadata.address` field based on the given `program_id`
@@ -2761,7 +2767,7 @@ fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) ->
     write_idl(&idl, out)
 }
 
-fn idl_type(path: String, out: Option<String>) -> Result<()> {
+fn idl_type(path: PathBuf, out: Option<PathBuf>) -> Result<()> {
     let idl = fs::read(path)?;
     let idl = convert_idl(&idl)?;
     let types = idl_ts(&idl)?;
@@ -2799,7 +2805,7 @@ fn idl_close_metadata(
 
 fn idl_create_buffer(
     cfg_override: &ConfigOverride,
-    filepath: String,
+    filepath: PathBuf,
     priority_fee: Option<u64>,
 ) -> Result<()> {
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
@@ -2807,7 +2813,9 @@ fn idl_create_buffer(
         cluster_url,
         wallet_path,
         priority_fee,
-        metadata::FundedIdlSubcommand::CreateBuffer { filepath },
+        metadata::FundedIdlSubcommand::CreateBuffer {
+            filepath: filepath.to_str().expect("path should be utf8").to_string(),
+        },
     );
 
     if !command.status()?.success() {
@@ -4215,7 +4223,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
 fn deploy(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
-    program_keypair: Option<String>,
+    program_keypair: Option<PathBuf>,
     verifiable: bool,
     no_idl: bool,
     solana_args: Vec<String>,
@@ -4235,14 +4243,14 @@ fn deploy(
         println!("Upgrade authority: {keypair}");
 
         for program in cfg.get_programs(program_name)? {
-            let binary_path = program.binary_path(verifiable).display().to_string();
+            let binary_path = program.binary_path(verifiable);
 
             println!("Deploying program {:?}...", program.lib_name);
-            println!("Program path: {binary_path}...");
+            println!("Program path: {}...", binary_path.display());
 
-            let program_keypair_filepath = match &program_keypair {
+            let program_keypair_filepath = match program_keypair.as_ref() {
                 Some(path) => path.clone(),
-                None => program.keypair_file()?.path().display().to_string(),
+                None => program.keypair_file()?.path().clone(),
             };
 
             // Deploy using our native implementation
@@ -4271,7 +4279,7 @@ fn deploy(
 fn upgrade(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
-    program_filepath: String,
+    program_filepath: PathBuf,
     max_retries: u32,
     solana_args: Vec<String>,
 ) -> Result<()> {
@@ -4484,7 +4492,7 @@ fn config_get(cfg_override: &ConfigOverride) -> Result<()> {
 fn config_set(
     cfg_override: &ConfigOverride,
     url: Option<String>,
-    keypair: Option<String>,
+    keypair: Option<PathBuf>,
 ) -> Result<()> {
     // Find the Anchor.toml file
     let anchor_toml_path = match Config::discover(cfg_override)? {
@@ -4522,7 +4530,7 @@ fn config_set(
 
     // Update wallet path if provided
     if let Some(keypair_path) = keypair {
-        let expanded_path = shellexpand::tilde(&keypair_path).to_string();
+        let expanded_path = shellexpand::tilde(&keypair_path.to_string_lossy()).to_string();
 
         // Check if the wallet file exists
         if !Path::new(&expanded_path).exists() {
@@ -4985,9 +4993,8 @@ fn get_node_dns_option() -> Result<&'static str> {
 // a local filesystem path. Removing the workspace prefix handles most/all cases
 // of spaces in keypair/binary paths, but this should be fixed in the Solana CLI
 // and removed here.
-fn strip_workspace_prefix(absolute_path: String) -> String {
-    let workspace_prefix =
-        std::env::current_dir().unwrap().display().to_string() + std::path::MAIN_SEPARATOR_STR;
+fn strip_workspace_prefix(absolute_path: PathBuf) -> PathBuf {
+    let workspace_prefix = std::env::current_dir().unwrap();
     absolute_path
         .strip_prefix(&workspace_prefix)
         .unwrap_or(&absolute_path)
