@@ -4419,8 +4419,8 @@ fn airdrop(cfg_override: &ConfigOverride, amount: f64, pubkey: Option<Pubkey>) -
     // Get cluster URL and wallet path
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
-    // Create RPC client
-    let client = RpcClient::new(cluster_url);
+    // Create RPC client with confirmed commitment
+    let client = RpcClient::new_with_commitment(cluster_url, CommitmentConfig::confirmed());
 
     // Determine recipient
     let recipient_pubkey = if let Some(pubkey) = pubkey {
@@ -4435,23 +4435,29 @@ fn airdrop(cfg_override: &ConfigOverride, amount: f64, pubkey: Option<Pubkey>) -
     // Convert SOL to lamports
     let lamports = (amount * 1_000_000_000.0) as u64;
 
-    // Request airdrop
+    // Get recent blockhash for airdrop
+    let recent_blockhash = client
+        .get_latest_blockhash()
+        .map_err(|e| anyhow!("Failed to get recent blockhash: {}", e))?;
+
+    // Request airdrop with blockhash
     println!("Requesting airdrop of {} SOL...", amount);
     let signature = client
-        .request_airdrop(&recipient_pubkey, lamports)
+        .request_airdrop_with_blockhash(&recipient_pubkey, lamports, &recent_blockhash)
         .map_err(|e| anyhow!("Airdrop request failed: {}", e))?;
 
     println!("Signature: {}", signature);
-    println!("Waiting for confirmation...");
 
-    // Wait for confirmation
+    // Wait for confirmation with the same blockhash used for the airdrop
     client
-        .confirm_transaction(&signature)
+        .confirm_transaction_with_spinner(&signature, &recent_blockhash, client.commitment())
         .map_err(|e| anyhow!("Transaction confirmation failed: {}", e))?;
+
+    println!("Airdrop confirmed!");
 
     // Get and display the new balance
     let balance = client.get_balance(&recipient_pubkey)?;
-    println!("{}", format_sol(balance));
+    println!("Balance: {}", format_sol(balance));
 
     Ok(())
 }
