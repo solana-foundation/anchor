@@ -218,7 +218,7 @@ Sets a new authority on the IDL account. Both the `new-authority` and
 ## Init
 
 ```shell
-anchor init
+anchor init <project-name>
 ```
 
 Initializes a project workspace with the following structure.
@@ -230,6 +230,21 @@ Initializes a project workspace with the following structure.
 - `app/`: Directory for your application frontend.
 - `tests/`: Directory for JavaScript integration tests.
 - `migrations/deploy.js`: Deploy script.
+
+By default, programs are initialized with a **modular structure** (multiple
+files) to promote better code organization. This is the recommended approach for
+production code.
+
+**Template Options:**
+
+```shell
+anchor init --template multiple  # Default: Modular structure (recommended)
+anchor init --template single     # Single lib.rs file (for prototyping)
+```
+
+The modular template organizes code into separate files for instructions, state,
+constants, and errors, making it easier to navigate and maintain as your program
+grows.
 
 ## Keys
 
@@ -283,6 +298,14 @@ anchor new <program-name>
 
 Creates a new program in the workspace's `programs/` directory initialized with
 boilerplate.
+
+By default, uses the **modular structure** template (recommended). You can
+specify a different template with the `--template` flag:
+
+```shell
+anchor new --template multiple <program-name>  # Default: Modular (recommended)
+anchor new --template single <program-name>    # Single file (for prototyping)
+```
 
 ## Shell
 

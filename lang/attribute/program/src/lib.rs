@@ -13,9 +13,21 @@ pub fn program(
     _args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    parse_macro_input!(input as anchor_syn::Program)
-        .to_token_stream()
-        .into()
+    let program = parse_macro_input!(input as anchor_syn::Program);
+    let program_tokens = program.to_token_stream();
+
+    #[cfg(feature = "idl-build")]
+    {
+        use anchor_syn::idl::gen_idl_print_fn_program;
+        let idl_tokens = gen_idl_print_fn_program(&program);
+        return proc_macro::TokenStream::from(quote::quote! {
+            #program_tokens
+            #idl_tokens
+        });
+    }
+
+    #[allow(unreachable_code)]
+    proc_macro::TokenStream::from(program_tokens)
 }
 
 /// Declare an external program based on its IDL.
@@ -50,7 +62,7 @@ pub fn program(
 ///
 /// A full on-chain CPI usage example can be found [here].
 ///
-/// [here]: https://github.com/coral-xyz/anchor/tree/v0.31.1/tests/declare-program
+/// [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/tests/declare-program
 #[proc_macro]
 pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as DeclareProgram)
@@ -92,9 +104,9 @@ pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// ```
 #[cfg(feature = "interface-instructions")]
 #[deprecated(
-    since = "0.31.1",
+    since = "0.32.1",
     note = "Use `#[instruction(discriminator = <EXPR>)]` instead.
-    See examples in https://github.com/coral-xyz/anchor/tree/v0.31.1/tests/spl/transfer-hook"
+    See examples in https://github.com/coral-xyz/anchor/tree/v0.32.1/tests/spl/transfer-hook"
 )]
 #[proc_macro_attribute]
 pub fn interface(

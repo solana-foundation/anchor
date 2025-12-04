@@ -1,6 +1,6 @@
-use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use clap::Parser;
+use solana_sdk::pubkey::Pubkey;
 
 #[cfg(not(feature = "async"))]
 mod blocking;

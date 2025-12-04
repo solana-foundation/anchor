@@ -91,7 +91,7 @@ impl<'info> CreateMintAccount<'info> {
             mint_authority: self.authority.to_account_info(),
             update_authority: self.authority.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
         token_metadata_initialize(cpi_ctx, name, symbol, uri)?;
         Ok(())
     }
