@@ -2968,7 +2968,7 @@ fn account(
         |idl_path| {
             let idl = fs::read(idl_path)?;
             let idl = convert_idl(&idl)?;
-            if idl.metadata.name != program_name {
+            if !idl.metadata.name.eq_ignore_ascii_case(program_name) {
                 return Err(anyhow!("IDL does not match program {program_name}."));
             }
 
