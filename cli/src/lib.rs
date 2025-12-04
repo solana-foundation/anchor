@@ -4661,7 +4661,7 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
         let script = cfg
             .scripts
             .get(&script)
-            .ok_or_else(|| anyhow!("Unable to find script"))?;
+            .ok_or_else(|| anyhow!("Unable to find script {script}"))?;
         let script_with_args = format!("{script} {}", script_args.join(" "));
         let exit = std::process::Command::new("bash")
             .arg("-c")
