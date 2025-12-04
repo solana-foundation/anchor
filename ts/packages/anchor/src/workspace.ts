@@ -55,10 +55,22 @@ const workspace = new Proxy(
         //
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
-        const output = execSync("cargo metadata --no-deps --format-version 1", {
-          encoding: "utf8",
-        });
-        const metadata = JSON.parse(output);
+        let metadata: { target_directory: string };
+        try {
+          const output = execSync(
+            "cargo metadata --no-deps --format-version=1",
+            {
+              encoding: "utf8",
+            }
+          );
+          metadata = JSON.parse(output);
+        } catch (err) {
+          throw new Error(
+            `Failed to run 'cargo metadata'. Ensure Rust and Cargo are installed and the project is valid.\nOriginal error: ${
+              err instanceof Error ? err.message : err
+            }`
+          );
+        }
         const idlDirPath = path.join(metadata.target_directory, "idl");
         const fileName = fs
           .readdirSync(idlDirPath)

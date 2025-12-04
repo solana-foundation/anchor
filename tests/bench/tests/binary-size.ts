@@ -10,7 +10,7 @@ describe("Binary size", () => {
   const binarySize: BinarySize = {};
 
   it("Measure binary size", async () => {
-    const output = execSync("cargo metadata --no-deps --format-version 1", {
+    const output = execSync("cargo metadata --no-deps --format-version=1", {
       encoding: "utf8",
     });
     const metadata = JSON.parse(output);
