@@ -39,8 +39,6 @@ semver = "1.0.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
-solana-cli-config = "2"
-solana-faucet = "2"
 solana-rpc-client = "2"
 solana-rpc-client-api = "2"
 solana-sdk = "2"
@@ -62,8 +60,6 @@ solana-signature.workspace = true
 solana-signer.workspace = true
 solana-system-interface.workspace = true
 solana-transaction.workspace = true
-solana-rpc-client.workspace = true
-solana-rpc-client-api.workspace = true
 solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
@@ -73,5 +69,3 @@ toml = "0.7.6"
 walkdir = "2.3.2"
 bs58 = "0.5.1"
 indicatif = "0.18.2"
-solana-pubkey.workspace = true
-solana-signer.workspace = true

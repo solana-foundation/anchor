@@ -14,8 +14,6 @@ exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
 
 [workspace.dependencies]
-solana-pubkey = "2"
-solana-signer = "2"
 solana-account = "3.0.0"
 solana-account-decoder = "3.0.0"
 solana-account-info = "3.0.0"
