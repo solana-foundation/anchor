@@ -3028,7 +3028,11 @@ fn deserialize_idl_defined_type_to_json(
         .accounts
         .iter()
         .find(|acc| acc.name.eq_ignore_ascii_case(defined_type_name))
-        .and_then(|acc| idl.types.iter().find(|ty| ty.name == acc.name))
+        .and_then(|acc| {
+            idl.types
+                .iter()
+                .find(|ty| ty.name.eq_ignore_ascii_case(&acc.name))
+        })
         .or_else(|| {
             idl.types
                 .iter()
