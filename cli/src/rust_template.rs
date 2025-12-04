@@ -1,3 +1,4 @@
+use crate::AbsolutePath;
 use crate::{
     config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
     VERSION,
@@ -19,7 +20,7 @@ use std::{
 const ANCHOR_MSRV: &str = "1.89.0";
 
 /// Program initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum ProgramTemplate {
     /// Program with a single `lib.rs` file (not recommended for production)
     Single,
@@ -627,7 +628,7 @@ anchor.workspace.{} = new anchor.Program({}, provider);
 }
 
 /// Test initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum TestTemplate {
     /// Generate template for Mocha unit-test
     #[default]

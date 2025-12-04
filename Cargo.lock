@@ -196,6 +196,7 @@ dependencies = [
 name = "anchor-cli"
 version = "0.32.1"
 dependencies = [
+ "anchor-cli-macros",
  "anchor-client",
  "anchor-lang",
  "anchor-lang-idl",
@@ -245,6 +246,15 @@ dependencies = [
  "tiny-bip39",
  "toml 0.7.8",
  "walkdir",
+]
+
+[[package]]
+name = "anchor-cli-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.107",
 ]
 
 [[package]]

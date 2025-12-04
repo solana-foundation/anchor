@@ -20,7 +20,7 @@ use solana_transaction::Transaction;
 use std::{
     fs::{self, File},
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
     thread,
     time::Duration,
@@ -184,9 +184,9 @@ pub fn get_programs_from_workspace(
 #[allow(clippy::too_many_arguments)]
 pub fn process_deploy(
     cfg_override: &ConfigOverride,
-    program_filepath: Option<String>,
+    program_filepath: Option<PathBuf>,
     program_name: Option<String>,
-    program_keypair: Option<String>,
+    program_keypair: Option<PathBuf>,
     upgrade_authority: Option<String>,
     program_id: Option<Pubkey>,
     buffer: Option<Pubkey>,
@@ -272,7 +272,7 @@ pub fn process_deploy(
 fn deploy_workspace(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
-    program_keypair: Option<String>,
+    program_keypair: Option<PathBuf>,
     verifiable: bool,
     no_idl: bool,
     make_final: bool,
@@ -302,10 +302,7 @@ fn deploy_workspace(
             Some(path) => Some(path.clone()),
             None => {
                 // Try to find program keypair
-                let keypair_path = program
-                    .keypair_file()
-                    .ok()
-                    .map(|kp| kp.path().display().to_string());
+                let keypair_path = program.keypair_file().ok().map(|kp| kp.path().clone());
                 keypair_path
             }
         };
@@ -313,7 +310,7 @@ fn deploy_workspace(
         // Use the native program_deploy implementation
         program_deploy(
             cfg_override,
-            Some(binary_path.display().to_string()),
+            Some(binary_path),
             None, // program_name - not needed since we have filepath
             program_keypair_filepath,
             None, // upgrade_authority - uses wallet
@@ -473,9 +470,9 @@ fn get_payer_keypair(
 #[allow(clippy::too_many_arguments)]
 pub fn program_deploy(
     cfg_override: &ConfigOverride,
-    program_filepath: Option<String>,
+    program_filepath: Option<PathBuf>,
     program_name: Option<String>,
-    program_keypair: Option<String>,
+    program_keypair: Option<PathBuf>,
     upgrade_authority: Option<String>,
     program_id: Option<Pubkey>,
     buffer: Option<Pubkey>,
@@ -500,7 +497,7 @@ pub fn program_deploy(
 
         println!("Deploying program: {}", program.lib_name);
 
-        binary_path.display().to_string()
+        binary_path
     };
 
     // Augment solana_args with recommended defaults (priority fees, max sign attempts, buffer)
@@ -510,8 +507,13 @@ pub fn program_deploy(
     let priority_fee = parse_priority_fee_from_args(&solana_args);
 
     // Read program data
-    let program_data = fs::read(&program_filepath)
-        .map_err(|e| anyhow!("Failed to read program file {}: {}", program_filepath, e))?;
+    let program_data = fs::read(&program_filepath).map_err(|e| {
+        anyhow!(
+            "Failed to read program file {}: {}",
+            program_filepath.display(),
+            e
+        )
+    })?;
 
     // Determine program keypair
     let loaded_program_keypair = if let Some(keypair_path) = program_keypair {
@@ -519,7 +521,7 @@ pub fn program_deploy(
         Keypair::read_from_file(&keypair_path).map_err(|e| {
             anyhow!(
                 "Failed to read program keypair from {}: {}",
-                keypair_path,
+                keypair_path.display(),
                 e
             )
         })?
@@ -653,15 +655,17 @@ pub fn program_deploy(
             .ok_or_else(|| anyhow!("Invalid program filepath"))?;
 
         // Look for IDL file in target/idl/{program_name}.json
-        let idl_filepath = format!("target/idl/{}.json", program_name);
+        let idl_filepath: PathBuf = format!("target/idl/{}.json", program_name).into();
 
         if Path::new(&idl_filepath).exists() {
             // Read and update the IDL with the program address
-            let idl_content = fs::read_to_string(&idl_filepath)
-                .map_err(|e| anyhow!("Failed to read IDL file {}: {}", idl_filepath, e))?;
+            let idl_content = fs::read_to_string(&idl_filepath).map_err(|e| {
+                anyhow!("Failed to read IDL file {}: {}", idl_filepath.display(), e)
+            })?;
 
-            let mut idl: Idl = serde_json::from_str(&idl_content)
-                .map_err(|e| anyhow!("Failed to parse IDL file {}: {}", idl_filepath, e))?;
+            let mut idl: Idl = serde_json::from_str(&idl_content).map_err(|e| {
+                anyhow!("Failed to parse IDL file {}: {}", idl_filepath.display(), e)
+            })?;
 
             // Update the IDL with the program address
             idl.address = program_id.to_string();
@@ -669,8 +673,9 @@ pub fn program_deploy(
             // Write the updated IDL back to the file
             let idl_json = serde_json::to_string_pretty(&idl)
                 .map_err(|e| anyhow!("Failed to serialize IDL: {}", e))?;
-            fs::write(&idl_filepath, idl_json)
-                .map_err(|e| anyhow!("Failed to write IDL file {}: {}", idl_filepath, e))?;
+            fs::write(&idl_filepath, idl_json).map_err(|e| {
+                anyhow!("Failed to write IDL file {}: {}", idl_filepath.display(), e)
+            })?;
 
             // Wait for the program to be confirmed before initializing IDL to prevent
             // race condition where the program isn't yet available in validator cache
@@ -722,7 +727,7 @@ pub fn program_deploy(
         } else {
             println!(
                 "Warning: IDL file not found at {}, skipping IDL deployment",
-                idl_filepath
+                idl_filepath.display()
             );
         }
     }
@@ -964,7 +969,7 @@ fn upgrade_program(
 
 fn program_write_buffer(
     cfg_override: &ConfigOverride,
-    program_filepath: Option<String>,
+    program_filepath: Option<PathBuf>,
     program_name: Option<String>,
     _buffer: Option<String>,
     buffer_authority: Option<String>,
@@ -993,12 +998,17 @@ fn program_write_buffer(
 
         println!("Writing buffer for program: {}", program.lib_name);
 
-        binary_path.display().to_string()
+        binary_path
     };
 
     // Read program data
-    let program_data = fs::read(&program_filepath)
-        .map_err(|e| anyhow!("Failed to read program file {}: {}", program_filepath, e))?;
+    let program_data = fs::read(&program_filepath).map_err(|e| {
+        anyhow!(
+            "Failed to read program file {}: {}",
+            program_filepath.display(),
+            e
+        )
+    })?;
 
     // Determine buffer authority
     let buffer_authority_keypair = if let Some(auth_path) = buffer_authority {
@@ -1306,7 +1316,7 @@ fn program_show(
 pub fn program_upgrade(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
-    program_filepath: Option<String>,
+    program_filepath: Option<PathBuf>,
     program_name: Option<String>,
     buffer: Option<Pubkey>,
     upgrade_authority: Option<String>,
@@ -1366,11 +1376,16 @@ pub fn program_upgrade(
 
         println!("Upgrading program: {}", program.lib_name);
 
-        binary_path.display().to_string()
+        binary_path
     };
 
-    let program_data = fs::read(&program_filepath)
-        .map_err(|e| anyhow!("Failed to read program file {}: {}", program_filepath, e))?;
+    let program_data = fs::read(&program_filepath).map_err(|e| {
+        anyhow!(
+            "Failed to read program file {}: {}",
+            program_filepath.display(),
+            e
+        )
+    })?;
 
     // Retry loop for buffer creation and upgrade
     for retry in 0..(1 + max_retries) {
