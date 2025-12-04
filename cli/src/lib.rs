@@ -1,7 +1,7 @@
 use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
-    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
-    TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
+    get_default_ledger_path, get_solana_cfg_url, BootstrapMode, BuildConfig, Config,
+    ConfigOverride, HookType, Manifest, PackageManager, ProgramArch, ProgramDeployment,
+    ProgramWorkspace, ScriptsConfig, TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
 use anchor_lang::prelude::UpgradeableLoaderState;
@@ -2442,6 +2442,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             before,
             after,
             out_dir,
+            non_canonical,
         } => {
             // If any historical flag is provided, route to historical fetch
             if slot.is_some() || before.is_some() || after.is_some() || all {
@@ -2456,11 +2457,9 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
                     out,
                 )
             } else {
-                idl_fetch(cfg_override, address, out)
+                idl_fetch(cfg_override, address, out, non_canonical)
             }
         }
-            non_canonical,
-        } => idl_fetch(cfg_override, address, out, non_canonical),
         IdlCommand::Convert {
             path,
             out,
@@ -2498,9 +2497,18 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     }
 }
 
-fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
-    Ok(cluster_url(&cfg, &cfg.test_validator))
+fn rpc_url(cfg_override: &ConfigOverride) -> Result<RpcClient> {
+    let url = match Config::discover(cfg_override)? {
+        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
+        None => {
+            if let Some(cluster) = cfg_override.cluster.as_ref() {
+                cluster.url().to_string()
+            } else {
+                get_solana_cfg_url()?
+            }
+        }
+    };
+    Ok(create_client(url))
 }
 
 fn idl_init(
@@ -2690,9 +2698,10 @@ fn idl_fetch(
         args.push("-o");
         args.push(out);
     }
-    let url = rpc_url(cfg_override)?;
+
+    let client = rpc_url(cfg_override)?.url();
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2758,9 +2767,9 @@ fn idl_close_metadata(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?.url();
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2791,9 +2800,9 @@ fn idl_create_buffer(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?.url();
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2832,9 +2841,9 @@ fn idl_set_buffer_authority(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?.url();
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2874,9 +2883,9 @@ fn idl_write_buffer_metadata(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?.url();
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -3909,7 +3918,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
     Ok((ledger_path, log_path))
 }
 
-pub(crate) fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
+fn cluster_url(cfg: &Config, test_validator: &Option<TestValidator>) -> String {
     let is_localnet = cfg.provider.cluster == Cluster::Localnet;
     match is_localnet {
         // Cluster is Localnet, assume the intent is to use the configuration

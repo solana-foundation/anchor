@@ -1,15 +1,14 @@
-use crate::cluster_url;
-use crate::config::{get_solana_cfg_url, Config, ConfigOverride};
-use anchor_lang::idl::IdlAccount;
+use crate::config::ConfigOverride;
+use crate::rpc_url;
 use anyhow::{anyhow, Result};
 use flate2::read::ZlibDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
+use solana_commitment_config::CommitmentConfig;
 use solana_pubkey::Pubkey;
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_rpc_client_api::config::RpcTransactionConfig;
 use solana_rpc_client_api::response::RpcConfirmedTransactionStatusWithSignature;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::signature::Signature;
+use solana_signature::Signature;
 use solana_transaction_status_client_types::*;
 use std::io::Read;
 use std::str::FromStr;
@@ -19,6 +18,13 @@ const FULL_CHUNK_THRESHOLD: usize = 1000;
 const MAX_SLOT_GAP: u64 = 5;
 const IDL_IX_TAG: [u8; 8] = [0x40, 0xf4, 0xbc, 0x78, 0xa7, 0xe9, 0x69, 0x0a];
 const WRITE_VARIANT: u8 = 0x02;
+
+/// Compute the IDL account address for a given program.
+fn idl_account_address(program_id: &Pubkey) -> Result<Pubkey> {
+    let program_signer = Pubkey::find_program_address(&[], program_id).0;
+    Pubkey::create_with_seed(&program_signer, "anchor:idl", program_id)
+        .map_err(|e| anyhow!("Failed to create IDL address: {}", e))
+}
 
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, ChunkData);
@@ -414,7 +420,7 @@ pub fn idl_fetch_historical(
     out_dir: Option<String>,
     out: Option<String>,
 ) -> Result<()> {
-    let client = create_rpc_client(cfg_override)?;
+    let client = rpc_url(cfg_override)?;
     let fetcher = IdlFetcher::new(&client);
 
     let signatures = fetch_idl_signatures(&client, &address)?;
@@ -487,25 +493,11 @@ pub fn idl_fetch_historical(
     output_idls(extracted_idls, out_dir, out)
 }
 
-fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
-    let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
-        None => {
-            if let Some(cluster) = cfg_override.cluster.as_ref() {
-                cluster.url().to_string()
-            } else {
-                get_solana_cfg_url()?
-            }
-        }
-    };
-    Ok(crate::create_client(url))
-}
-
 fn fetch_idl_signatures(
     client: &RpcClient,
     address: &Pubkey,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
-    let idl_account_address = IdlAccount::address(address);
+    let idl_account_address = idl_account_address(address)?;
     Ok(client.get_signatures_for_address(&idl_account_address)?)
 }
 
