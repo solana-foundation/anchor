@@ -54,6 +54,7 @@ msvc
 namespacing
 nonblocking
 openbook
+orderbooks
 pathlib
 pdas
 pdksh
