@@ -21,8 +21,18 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_exit = exit::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
-    let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
-    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, quote!(crate::ID));
+    let program_id = quote! {
+        // In a doctest the ID will be in the current scope, not the crate root
+        {
+            #[cfg(not(doctest))]
+            { crate::ID }
+            #[cfg(doctest)]
+            { ID }
+        }
+    };
+
+    let __client_accounts_mod = __client_accounts::generate(accs, program_id.clone());
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, program_id);
 
     let ret = quote! {
         #impl_try_accounts
