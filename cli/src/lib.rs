@@ -4662,11 +4662,24 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
 fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) -> Result<()> {
     with_workspace(cfg_override, |cfg| -> Result<()> {
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
-        let script = cfg
+        let script_cmd = cfg
             .scripts
-            .get(&script)
-            .ok_or_else(|| anyhow!("Unable to find script {script}"))?;
-        let script_with_args = format!("{script} {}", script_args.join(" "));
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(&script))
+            .map(|(_, cmd)| cmd)
+            .ok_or_else(|| {
+                let available_scripts: Vec<String> = cfg.scripts.keys().cloned().collect();
+
+                if available_scripts.is_empty() {
+                    anyhow!("Script '{script}' not found. No scripts defined in Anchor.toml.")
+                } else {
+                    anyhow!(
+                        "Script '{script}' not found.\n\nAvailable scripts:\n  {}",
+                        available_scripts.join("\n  ")
+                    )
+                }
+            })?;
+        let script_with_args = format!("{script_cmd} {}", script_args.join(" "));
         let exit = std::process::Command::new("bash")
             .arg("-c")
             .arg(&script_with_args)
