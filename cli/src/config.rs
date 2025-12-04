@@ -261,8 +261,9 @@ impl WithPath<Config> {
                 })
                 .cloned()
                 .ok_or_else(|| {
-                    let available_programs: Vec<String> =
+                    let mut available_programs: Vec<String> =
                         programs.iter().map(|p| p.lib_name.clone()).collect();
+                    available_programs.sort();
 
                     if available_programs.is_empty() {
                         anyhow!("Program '{name}' not found. No programs available in workspace.")
