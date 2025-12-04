@@ -2933,19 +2933,32 @@ fn account(
 
     let idl = idl_filepath.map_or_else(
         || {
-            Config::discover(cfg_override)?
-                .ok_or_else(|| {
-                    anyhow!(
-                        "The 'anchor account' command requires an Anchor workspace with \
-                         Anchor.toml for IDL type generation."
-                    )
-                })?
+            let config = Config::discover(cfg_override)?
+                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?;
+            let programs = config
                 .read_all_programs()
-                .expect("Workspace must contain atleast one program.")
-                .into_iter()
-                .find(|p| p.lib_name == *program_name)
-                .ok_or_else(|| anyhow!("Program {program_name} not found in workspace."))
-                .map(|p| p.idl)?
+                .expect("Workspace must contain atleast one program.");
+
+            let program = programs
+                .iter()
+                .find(|p| p.lib_name.eq_ignore_ascii_case(program_name))
+                .ok_or_else(|| {
+                    let available_programs: Vec<String> = programs
+                        .iter()
+                        .map(|p| p.lib_name.clone())
+                        .collect();
+
+                    if available_programs.is_empty() {
+                        anyhow!("Program {program_name} not found in workspace. No programs available.")
+                    } else {
+                        anyhow!(
+                            "Program '{program_name}' not found in workspace.\n\nAvailable programs:\n  {}",
+                            available_programs.join("\n  ")
+                        )
+                    }
+                })?;
+
+            program.idl.clone()
                 .ok_or_else(|| {
                     anyhow!(
                         "IDL not found. Please build the program atleast once to generate the IDL."
@@ -2974,9 +2987,24 @@ fn account(
     let disc_len = idl
         .accounts
         .iter()
-        .find(|acc| acc.name == account_type_name)
+        .find(|acc| acc.name.eq_ignore_ascii_case(account_type_name))
         .map(|acc| acc.discriminator.len())
-        .ok_or_else(|| anyhow!("Account `{account_type_name}` not found in IDL"))?;
+        .ok_or_else(|| {
+            let available_accounts: Vec<String> = idl
+                .accounts
+                .iter()
+                .map(|acc| acc.name.clone())
+                .collect();
+
+            if available_accounts.is_empty() {
+                anyhow!("Account '{account_type_name}' not found in IDL. No accounts available in program '{program_name}'.")
+            } else {
+                anyhow!(
+                    "Account '{account_type_name}' not found in IDL.\n\nAvailable accounts in program '{program_name}':\n  {}",
+                    available_accounts.join("\n  ")
+                )
+            }
+        })?;
     let mut data_view = &data[disc_len..];
 
     let deserialized_json =
@@ -2999,9 +3027,13 @@ fn deserialize_idl_defined_type_to_json(
     let defined_type = &idl
         .accounts
         .iter()
-        .find(|acc| acc.name == defined_type_name)
+        .find(|acc| acc.name.eq_ignore_ascii_case(defined_type_name))
         .and_then(|acc| idl.types.iter().find(|ty| ty.name == acc.name))
-        .or_else(|| idl.types.iter().find(|ty| ty.name == defined_type_name))
+        .or_else(|| {
+            idl.types
+                .iter()
+                .find(|ty| ty.name.eq_ignore_ascii_case(defined_type_name))
+        })
         .ok_or_else(|| anyhow!("Type `{}` not found in IDL.", defined_type_name))?
         .ty;
 
