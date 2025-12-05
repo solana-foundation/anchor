@@ -416,25 +416,36 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
     }
     // System log.
     else {
-        let (program, did_pop) = handle_system_log(self_program_str, l);
+        let (program, did_pop) = handle_system_log(self_program_str, l)?;
         Ok((None, program, did_pop))
     }
 }
 
-pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
+pub fn handle_system_log(
+    this_program_str: &str,
+    log: &str,
+) -> Result<(Option<String>, bool), ClientError> {
     if log.starts_with(&format!("Program {this_program_str} log:")) {
-        (Some(this_program_str.to_string()), false)
+        Ok((Some(this_program_str.to_string()), false))
 
         // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
         // so this ensures we only push CPIs to the stack at this stage
     } else if log.contains("invoke") && !log.ends_with("[1]") {
-        (Some("cpi".to_string()), false) // Any string will do.
+        let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[[\d]+\]$").unwrap();
+        if let Some(c) = re.captures(log) {
+            let inner_program = c
+                .get(1)
+                .ok_or_else(|| ClientError::LogParseError(log.to_string()))?;
+            Ok((Some(inner_program.as_str().to_string()), false))
+        } else {
+            Ok((None, false))
+        }
     } else {
         let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) success$").unwrap();
         if re.is_match(log) {
-            (None, true)
+            Ok((None, true))
         } else {
-            (None, false)
+            Ok((None, false))
         }
     }
 }
@@ -706,7 +717,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                     if program_id_str == execution.program() {
                         handle_program_log(program_id_str, l)?
                     } else {
-                        let (program, did_pop) = handle_system_log(program_id_str, l);
+                        let (program, did_pop) = handle_system_log(program_id_str, l)?;
                         (None, program, did_pop)
                     }
                 };
@@ -772,7 +783,7 @@ mod tests {
     #[test]
     fn handle_system_log_pop() {
         let log = "Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw success";
-        let (program, did_pop) = handle_system_log("asdf", log);
+        let (program, did_pop) = handle_system_log("asdf", log).unwrap();
         assert_eq!(program, None);
         assert!(did_pop);
     }
@@ -780,7 +791,7 @@ mod tests {
     #[test]
     fn handle_system_log_no_pop() {
         let log = "Program 7swsTUiQ6KUK4uFYquQKg4epFRsBnvbrTf2fZQCa2sTJ qwer";
-        let (program, did_pop) = handle_system_log("asdf", log);
+        let (program, did_pop) = handle_system_log("asdf", log).unwrap();
         assert_eq!(program, None);
         assert!(!did_pop);
     }
@@ -917,6 +928,154 @@ mod tests {
             program_id_str,
         )
         .unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_event_cpi() -> Result<()> {
+        use anchor_lang::__private::base64;
+        use base64::Engine;
+
+        let encoded_discriminator =
+            base64::engine::general_purpose::STANDARD.encode(MockEvent::DISCRIMINATOR);
+        let encoded_discriminator_str = format!("Program data: {}", encoded_discriminator);
+
+        let logs = [
+            "Program outer11111111111111111111111111111111111112 invoke [1]", 
+            "Program log: Instruction: MyTopLevelInstruction", 
+            "Program inner11111111111111111111111111111111111112 invoke [2]", 
+            "Program log: Instruction: MyNestedInstruction",
+            encoded_discriminator_str.as_str(),
+            "Program inner11111111111111111111111111111111111112 consumed 64686 of 141119 compute units", 
+            "Program inner11111111111111111111111111111111111112 success", 
+            "Program outer11111111111111111111111111111111111112 consumed 124653 of 200000 compute units", 
+            "Program outer11111111111111111111111111111111111112 success"
+        ];
+
+        // Converting to Vec<String> as expected in `RpcLogsResponse`
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "inner11111111111111111111111111111111111112";
+
+        let events = parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_event_outer() -> Result<()> {
+        use anchor_lang::__private::base64;
+        use base64::Engine;
+
+        let encoded_discriminator =
+            base64::engine::general_purpose::STANDARD.encode(MockEvent::DISCRIMINATOR);
+        let encoded_discriminator_str = format!("Program data: {}", encoded_discriminator);
+
+        let logs = [
+            "Program outer11111111111111111111111111111111111112 invoke [1]",
+            "Program log: Instruction: MyTopLevelInstruction",
+            encoded_discriminator_str.as_str(),
+            "Program inner11111111111111111111111111111111111112 invoke [2]",
+            "Program log: Instruction: MyNestedInstruction",
+            "Program inner11111111111111111111111111111111111112 consumed 64686 of 141119 compute units",
+            "Program inner11111111111111111111111111111111111112 success",
+            "Program outer11111111111111111111111111111111111112 consumed 124653 of 200000 compute units",
+            "Program outer11111111111111111111111111111111111112 success"
+        ];
+
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "outer11111111111111111111111111111111111112";
+
+        let events = parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_event_both_programs_only_matches_target() -> Result<()> {
+        use anchor_lang::__private::base64;
+        use base64::Engine;
+
+        let encoded_discriminator =
+            base64::engine::general_purpose::STANDARD.encode(MockEvent::DISCRIMINATOR);
+        let encoded_discriminator_str = format!("Program data: {}", encoded_discriminator);
+
+        // Both outer and inner emit events (but there's 2 inner ones to differentiate)
+        let logs = [
+            "Program outer11111111111111111111111111111111111112 invoke [1]",
+            "Program log: Instruction: MyTopLevelInstruction",
+            encoded_discriminator_str.as_str(), // outer event
+            "Program inner11111111111111111111111111111111111112 invoke [2]",
+            "Program log: Instruction: MyNestedInstruction",
+            encoded_discriminator_str.as_str(), // inner event
+            encoded_discriminator_str.as_str(), // inner event
+            "Program inner11111111111111111111111111111111111112 consumed 64686 of 141119 compute units",
+            "Program inner11111111111111111111111111111111111112 success",
+            "Program outer11111111111111111111111111111111111112 consumed 124653 of 200000 compute units",
+            "Program outer11111111111111111111111111111111111112 success"
+        ];
+
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        // Only target inner program - should only get 1 event
+        let events = parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            "inner11111111111111111111111111111111111112",
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 2);
+
+        // Only target outer program - should only get 1 event
+        let events = parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            "outer11111111111111111111111111111111111112",
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 1);
 
         Ok(())
     }
