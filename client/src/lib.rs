@@ -1045,7 +1045,7 @@ mod tests {
 
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
 
-        // Only target inner program - should only get 1 event
+        // Only target inner program - should get 2 events
         let events = parse_logs_response::<MockEvent>(
             RpcResponse {
                 context: RpcResponseContext::new(0),
