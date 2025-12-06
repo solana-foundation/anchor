@@ -7,6 +7,7 @@ export const IDL_TEST_ROOT = "idl";
 export const IDL_BUILD_ROOT = path.posix.join(IDL_TEST_ROOT, "build");
 export const IDL_INIT_ROOT = path.posix.join(IDL_TEST_ROOT, "init");
 export const IDL_FETCH_ROOT = path.posix.join(IDL_TEST_ROOT, "fetch");
+export const IDL_AUTHORITY_ROOT = path.posix.join(IDL_TEST_ROOT, "authority");
 
 export const TEST_KEYPAIR_PATH = path.resolve(
   __dirname,

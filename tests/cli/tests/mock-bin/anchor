@@ -140,6 +140,38 @@ function handleIdlFetch(args) {
   }
 }
 
+function handleIdlAuthority(args) {
+  const positional = [...args];
+  const programId = positional[0];
+
+  if (!programId) {
+    console.error("Error: PROGRAM_ID argument required");
+    process.exit(1);
+  }
+
+  const expectedAddress = process.env.MOCK_IDL_AUTHORITY_EXPECT_ADDRESS;
+  if (expectedAddress && expectedAddress !== programId) {
+    console.error(`Unexpected authority address: ${programId}`);
+    process.exit(1);
+  }
+
+  const errorMessage = process.env.MOCK_IDL_AUTHORITY_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_IDL_AUTHORITY_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  const authority =
+    process.env.MOCK_IDL_AUTHORITY_VALUE ||
+    "Auth111111111111111111111111111111111111111";
+
+  process.stdout.write(`${authority}\n`);
+}
+
 function handleIdl(args) {
   const subcommand = args.shift();
 
@@ -149,6 +181,9 @@ function handleIdl(args) {
       break;
     case "fetch":
       handleIdlFetch(args);
+      break;
+    case "authority":
+      handleIdlAuthority(args);
       break;
     default:
       usage();
