@@ -6,6 +6,7 @@ import { MOCK_BIN_DIR, runCommands } from "@/lib";
 export const IDL_TEST_ROOT = "idl";
 export const IDL_BUILD_ROOT = path.posix.join(IDL_TEST_ROOT, "build");
 export const IDL_INIT_ROOT = path.posix.join(IDL_TEST_ROOT, "init");
+export const IDL_FETCH_ROOT = path.posix.join(IDL_TEST_ROOT, "fetch");
 
 export const TEST_KEYPAIR_PATH = path.resolve(
   __dirname,
@@ -169,5 +170,4 @@ export function requestAirdrop(env: Record<string, string>): void {
     prependPath: [MOCK_BIN_DIR],
   });
 }
-
 

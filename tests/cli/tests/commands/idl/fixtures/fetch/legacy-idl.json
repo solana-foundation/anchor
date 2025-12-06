@@ -1,0 +1,26 @@
+{
+  "version": "0.0.0",
+  "name": "legacy_program",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "update_state",
+      "accounts": [],
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "address": "LegacyProgram1111111111111111111111111111111"
+  }
+}
+
+

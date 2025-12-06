@@ -1,0 +1,21 @@
+{
+  "name": "out_file_program",
+  "version": "1.2.3",
+  "instructions": [
+    {
+      "name": "set_value",
+      "accounts": [],
+      "args": [
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "address": "OutFileProgram1111111111111111111111111111111"
+  }
+}
+
+

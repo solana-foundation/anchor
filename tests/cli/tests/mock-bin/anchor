@@ -27,12 +27,7 @@ function ensureFile(fp) {
   }
 }
 
-function handleIdl(args) {
-  const subcommand = args.shift();
-  if (subcommand !== "init") {
-    usage();
-  }
-
+function handleIdlInit(args) {
   let filepath;
   let priorityFee;
   const positional = [];
@@ -65,6 +60,99 @@ function handleIdl(args) {
     "Fg6PaFpoGXkYsidMpWxTWqk2b9G8mCe3bHp9Cne9dtrT";
 
   process.stdout.write(`Idl account created: ${idlAddress}\n`);
+}
+
+function handleIdlFetch(args) {
+  let outPath;
+  const positional = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "-o" || arg === "--out") {
+      outPath = args[++i];
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  const address = positional[0];
+  if (!address) {
+    console.error("Error: ADDRESS argument required");
+    process.exit(1);
+  }
+
+  const expectedAddress = process.env.MOCK_IDL_FETCH_EXPECT_ADDRESS;
+  if (expectedAddress && expectedAddress !== address) {
+    console.error(`Unexpected fetch address: ${address}`);
+    process.exit(1);
+  }
+
+  const errorMessage = process.env.MOCK_IDL_FETCH_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_IDL_FETCH_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  let payload = process.env.MOCK_IDL_FETCH_INLINE_JSON;
+  const sourcePath = process.env.MOCK_IDL_FETCH_SOURCE;
+  if (sourcePath) {
+    try {
+      payload = fs.readFileSync(sourcePath, "utf8");
+    } catch (err) {
+      console.error(`Error: Failed to read IDL fixture: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (!payload) {
+    payload = JSON.stringify({ name: "mock_idl" });
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(payload);
+  } catch (err) {
+    console.error(`Error: Failed to parse IDL JSON: ${err.message}`);
+    process.exit(1);
+  }
+
+  const formatted = `${JSON.stringify(parsed, null, 2)}\n`;
+
+  if (outPath) {
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, formatted);
+  } else {
+    process.stdout.write(formatted);
+  }
+
+  const logPath = process.env.MOCK_IDL_FETCH_LOG_PATH;
+  if (logPath) {
+    const logEntry = {
+      command: "anchor idl fetch",
+      address,
+      out: outPath ?? null,
+    };
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + "\n");
+  }
+}
+
+function handleIdl(args) {
+  const subcommand = args.shift();
+
+  switch (subcommand) {
+    case "init":
+      handleIdlInit(args);
+      break;
+    case "fetch":
+      handleIdlFetch(args);
+      break;
+    default:
+      usage();
+  }
 }
 
 function main() {
