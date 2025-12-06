@@ -153,11 +153,7 @@ fn gen_internal_accounts_common(
                     (2..)
                         .find_map(|i| {
                             let name = format!("{}{i}", accs.name);
-                            if ixs.iter().all(|ix| ix.name != name) {
-                                Some(name)
-                            } else {
-                                None
-                            }
+                            ixs.iter().all(|ix| ix.name != name).then_some(name)
                         })
                         .expect("Should always find a valid name")
                 };
