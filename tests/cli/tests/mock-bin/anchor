@@ -295,6 +295,123 @@ function handleIdl(args) {
   }
 }
 
+function handleKeysList(args) {
+  const errorMessage = process.env.MOCK_KEYS_LIST_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_KEYS_LIST_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  const programsJson = process.env.MOCK_KEYS_LIST_PROGRAMS;
+  if (programsJson) {
+    try {
+      const programs = JSON.parse(programsJson);
+      for (const program of programs) {
+        process.stdout.write(`${program.name}: ${program.pubkey}\n`);
+      }
+    } catch (err) {
+      console.error(`Error: Failed to parse MOCK_KEYS_LIST_PROGRAMS: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  const logPath = process.env.MOCK_KEYS_LIST_LOG_PATH;
+  if (logPath) {
+    const logEntry = {
+      command: "anchor keys list",
+    };
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + "\n");
+  }
+}
+
+function handleKeysSync(args) {
+  let programName;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "-p" || arg === "--program-name") {
+      programName = args[++i];
+    }
+  }
+
+  const errorMessage = process.env.MOCK_KEYS_SYNC_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_KEYS_SYNC_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  const clusterName = process.env.MOCK_KEYS_SYNC_CLUSTER || "localnet";
+  process.stdout.write(`Syncing program ids for the configured cluster (${clusterName})\n\n`);
+
+  const changesMade = process.env.MOCK_KEYS_SYNC_CHANGES_MADE === "true";
+  const sourceChanges = process.env.MOCK_KEYS_SYNC_SOURCE_CHANGES;
+  const tomlChanges = process.env.MOCK_KEYS_SYNC_TOML_CHANGES;
+
+  if (sourceChanges) {
+    try {
+      const changes = JSON.parse(sourceChanges);
+      for (const change of changes) {
+        process.stdout.write(`Found incorrect program id declaration in ${change.file}\n`);
+        process.stdout.write(`Updated to ${change.newId}\n\n`);
+      }
+    } catch (err) {
+      console.error(`Error: Failed to parse MOCK_KEYS_SYNC_SOURCE_CHANGES: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (tomlChanges) {
+    try {
+      const changes = JSON.parse(tomlChanges);
+      for (const change of changes) {
+        process.stdout.write(`Found incorrect program id declaration in Anchor.toml for the program \`${change.program}\`\n`);
+        process.stdout.write(`Updated to ${change.newId}\n\n`);
+      }
+    } catch (err) {
+      console.error(`Error: Failed to parse MOCK_KEYS_SYNC_TOML_CHANGES: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  process.stdout.write("All program id declarations are synced.");
+  if (changesMade) {
+    process.stdout.write("\nPlease rebuild the program to update the generated artifacts.");
+  }
+  process.stdout.write("\n");
+
+  const logPath = process.env.MOCK_KEYS_SYNC_LOG_PATH;
+  if (logPath) {
+    const logEntry = {
+      command: "anchor keys sync",
+      programName: programName ?? null,
+    };
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + "\n");
+  }
+}
+
+function handleKeys(args) {
+  const subcommand = args.shift();
+
+  switch (subcommand) {
+    case "list":
+      handleKeysList(args);
+      break;
+    case "sync":
+      handleKeysSync(args);
+      break;
+    default:
+      usage();
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -312,6 +429,9 @@ function main() {
       break;
     case "idl":
       handleIdl(args);
+      break;
+    case "keys":
+      handleKeys(args);
       break;
     default:
       usage();

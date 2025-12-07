@@ -1,0 +1,10 @@
+Syncing program ids for the configured cluster (localnet)
+
+Found incorrect program id declaration in programs/test-program/src/lib.rs
+Updated to aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x
+
+Found incorrect program id declaration in programs/another-program/src/lib.rs
+Updated to bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ
+
+All program id declarations are synced.
+Please rebuild the program to update the generated artifacts.
