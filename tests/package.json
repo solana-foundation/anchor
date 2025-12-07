@@ -52,7 +52,7 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
-    "multiple-scripts"
+    "multiple-scripts",
     "signature-verification"
   ],
   "dependencies": {
