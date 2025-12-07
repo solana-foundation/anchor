@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Fixes
 
 - idl: Fix defined types with unsupported fields not producing an error ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
+- lang: Fix using non-instruction composite accounts multiple times with `declare_program!` ([#4113](https://github.com/solana-foundation/anchor/pull/4113)).
 
 ### Breaking
 

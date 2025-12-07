@@ -109,6 +109,9 @@ fn gen_internal_accounts_common(
 ) -> proc_macro2::TokenStream {
     // It's possible to declare an accounts struct and not use it as an instruction, see
     // https://github.com/coral-xyz/anchor/issues/3274
+    //
+    // NOTE: Returned accounts will not be unique if non-instruction composite accounts have been
+    // used multiple times https://github.com/solana-foundation/anchor/issues/3349
     fn get_non_instruction_composite_accounts<'a>(
         accs: &'a [IdlInstructionAccountItem],
         idl: &'a Idl,
@@ -121,18 +124,16 @@ fn gen_internal_accounts_common(
                         .iter()
                         .any(|ix| ix.accounts == accs.accounts) =>
                 {
-                    let mut non_ix_composite_accs =
-                        get_non_instruction_composite_accounts(&accs.accounts, idl);
-                    if !non_ix_composite_accs.contains(&accs) {
-                        non_ix_composite_accs.push(accs);
-                    }
-                    non_ix_composite_accs
+                    let mut nica = get_non_instruction_composite_accounts(&accs.accounts, idl);
+                    nica.push(accs);
+                    nica
                 }
                 _ => Default::default(),
             })
             .collect()
     }
 
+    // Combine regular instructions with non-instruction composite accounts
     let ix_accs = idl
         .instructions
         .iter()
@@ -140,16 +141,36 @@ fn gen_internal_accounts_common(
         .collect::<Vec<_>>();
     let combined_ixs = get_non_instruction_composite_accounts(&ix_accs, idl)
         .into_iter()
-        .map(|accs| IdlInstruction {
-            // The name is not guaranteed to be the same as the one used in the actual source code
-            // of the program because the IDL only stores the field names.
-            name: accs.name.to_owned(),
-            accounts: accs.accounts.to_owned(),
-            args: Default::default(),
-            discriminator: Default::default(),
-            docs: Default::default(),
-            returns: Default::default(),
+        .fold(Vec::<IdlInstruction>::default(), |mut ixs, accs| {
+            // Make sure they are unique
+            if ixs.iter().all(|ix| ix.accounts != accs.accounts) {
+                // The name is not guaranteed to be the same as the one used in the actual source
+                // code of the program because the IDL only stores the field names.
+                let name = if ixs.iter().all(|ix| ix.name != accs.name) {
+                    accs.name.to_owned()
+                } else {
+                    // Append numbers to the field name until we find a unique name
+                    (2..)
+                        .find_map(|i| {
+                            let name = format!("{}{i}", accs.name);
+                            ixs.iter().all(|ix| ix.name != name).then_some(name)
+                        })
+                        .expect("Should always find a valid name")
+                };
+
+                ixs.push(IdlInstruction {
+                    name,
+                    accounts: accs.accounts.to_owned(),
+                    args: Default::default(),
+                    discriminator: Default::default(),
+                    docs: Default::default(),
+                    returns: Default::default(),
+                })
+            }
+
+            ixs
         })
+        .into_iter()
         .chain(idl.instructions.iter().cloned())
         .collect::<Vec<_>>();
 
