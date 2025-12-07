@@ -172,6 +172,54 @@ function handleIdlAuthority(args) {
   process.stdout.write(`${authority}\n`);
 }
 
+function handleIdlEraseAuthority(args) {
+  let programId;
+  let priorityFee;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "-p" || arg === "--program-id") {
+      programId = args[++i];
+    } else if (arg === "--priority-fee") {
+      priorityFee = args[++i];
+    }
+  }
+
+  if (!programId) {
+    console.error("Error: --program-id is required");
+    process.exit(1);
+  }
+
+  const expectedAddress = process.env.MOCK_IDL_ERASE_EXPECT_ADDRESS;
+  if (expectedAddress && expectedAddress !== programId) {
+    console.error(`Unexpected erase address: ${programId}`);
+    process.exit(1);
+  }
+
+  const confirm = process.env.MOCK_IDL_ERASE_CONFIRM ?? "y";
+  process.stdout.write("Are you sure you want to erase the IDL authority: [y/n]\n");
+  if (confirm !== "y") {
+    process.stdout.write("Not erasing.\n");
+    return;
+  }
+
+  const errorMessage = process.env.MOCK_IDL_ERASE_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_IDL_ERASE_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  if (priorityFee) {
+    process.stdout.write(`Using priority fee: ${priorityFee}\n`);
+  }
+
+  process.stdout.write("Authority update complete.\n");
+}
+
 function handleIdl(args) {
   const subcommand = args.shift();
 
@@ -181,6 +229,9 @@ function handleIdl(args) {
       break;
     case "fetch":
       handleIdlFetch(args);
+      break;
+    case "erase-authority":
+      handleIdlEraseAuthority(args);
       break;
     case "authority":
       handleIdlAuthority(args);
