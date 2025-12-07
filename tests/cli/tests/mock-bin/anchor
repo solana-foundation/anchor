@@ -412,6 +412,89 @@ function handleKeys(args) {
   }
 }
 
+function handleTest(args) {
+  // Parse command line flags
+  let programName;
+  let skipDeploy = false;
+  let skipBuild = false;
+  let skipValidator = false;
+  
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "-p" || arg === "--program-name") {
+      programName = args[++i];
+    } else if (arg === "--skip-deploy") {
+      skipDeploy = true;
+    } else if (arg === "--skip-build") {
+      skipBuild = true;
+    } else if (arg === "--skip-local-validator") {
+      skipValidator = true;
+    }
+  }
+
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_ANCHOR_TEST_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_ANCHOR_TEST_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Validate expected flags
+  const expectedSkipDeploy = process.env.MOCK_ANCHOR_TEST_SKIP_DEPLOY === "true";
+  if (expectedSkipDeploy !== skipDeploy) {
+    process.stderr.write(`Error: Unexpected skip-deploy flag state\n`);
+    process.exit(1);
+  }
+
+  const expectedSkipBuild = process.env.MOCK_ANCHOR_TEST_SKIP_BUILD === "true";
+  if (expectedSkipBuild !== skipBuild) {
+    process.stderr.write(`Error: Unexpected skip-build flag state\n`);
+    process.exit(1);
+  }
+
+  const expectedProgramName = process.env.MOCK_ANCHOR_TEST_PROGRAM_NAME;
+  if (expectedProgramName && programName !== expectedProgramName) {
+    process.stderr.write(`Error: Unexpected program name: ${programName}\n`);
+    process.exit(1);
+  }
+
+  // Generate test output
+  const customOutput = process.env.MOCK_ANCHOR_TEST_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput + "\n");
+  } else {
+    // Default test success output
+    if (!skipBuild) {
+      process.stdout.write("Building programs...\n");
+    }
+    if (!skipDeploy) {
+      process.stdout.write("Deploying programs...\n");
+    }
+    if (!skipValidator) {
+      process.stdout.write("Starting local test validator...\n");
+    }
+    process.stdout.write("\n  test-program\n");
+    process.stdout.write("    ✔ Is initialized!\n\n");
+    process.stdout.write("  1 passing\n");
+  }
+
+  const logPath = process.env.MOCK_ANCHOR_TEST_LOG_PATH;
+  if (logPath) {
+    const logEntry = {
+      command: "anchor test",
+      programName: programName ?? null,
+      skipDeploy,
+      skipBuild,
+      skipValidator,
+    };
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + "\n");
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -432,6 +515,9 @@ function main() {
       break;
     case "keys":
       handleKeys(args);
+      break;
+    case "test":
+      handleTest(args);
       break;
     default:
       usage();
