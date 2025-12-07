@@ -23,11 +23,76 @@ function proxyToRealBinary(args) {
   return result ? result.status ?? 0 : 0;
 }
 
+function handleProgramDeploy(args) {
+  // Check for upgrade-specific error scenarios
+  const upgradeError = process.env.MOCK_SOLANA_UPGRADE_ERROR;
+  if (upgradeError) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_SOLANA_UPGRADE_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(upgradeError + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Extract program ID and binary path from arguments
+  let programId;
+  let binaryPath;
+  let keypairPath;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--program-id" && i + 1 < args.length) {
+      programId = args[i + 1];
+    } else if (args[i] === "--keypair" && i + 1 < args.length) {
+      keypairPath = args[i + 1];
+    } else if (!args[i].startsWith("--") && args[i].endsWith(".so")) {
+      binaryPath = args[i];
+    }
+  }
+
+  // Validate expected program ID if provided
+  const expectedProgramId = process.env.MOCK_SOLANA_UPGRADE_PROGRAM_ID;
+  if (expectedProgramId && programId !== expectedProgramId) {
+    process.stderr.write(`Error: Unexpected program ID: ${programId}\n`);
+    process.exit(1);
+  }
+
+  // Validate binary path if provided
+  const expectedBinaryPath = process.env.MOCK_SOLANA_UPGRADE_BINARY_PATH;
+  if (expectedBinaryPath && binaryPath && !binaryPath.includes(expectedBinaryPath)) {
+    process.stderr.write(`Error: Unexpected binary path: ${binaryPath}\n`);
+    process.exit(1);
+  }
+
+  // Check if binary file exists
+  if (binaryPath && !fs.existsSync(binaryPath)) {
+    process.stderr.write(`Error: Program binary not found: ${binaryPath}\n`);
+    process.exit(1);
+  }
+
+  // Generate or use custom output
+  const customOutput = process.env.MOCK_SOLANA_UPGRADE_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput + "\n");
+  } else {
+    // Default upgrade/deploy success output
+    const signature = process.env.MOCK_SOLANA_SIGNATURE || "5" + "X".repeat(87);
+    process.stdout.write(`Program Id: ${programId || "UnknownProgram111111111111111111111111111"}\n\n`);
+    process.stdout.write(`Signature: ${signature}\n`);
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
 
   const logfile = process.env.MOCK_SOLANA_LOG_PATH;
   appendLog({ logfile, args });
+
+  // Handle 'program deploy' command (used by anchor upgrade)
+  if (args[0] === "program" && args[1] === "deploy") {
+    handleProgramDeploy(args.slice(2));
+    process.exit(0);
+  }
 
   if (process.env.MOCK_SOLANA_FAIL === "1") {
     process.exit(1);
