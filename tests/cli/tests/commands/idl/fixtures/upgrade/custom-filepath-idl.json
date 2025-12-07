@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "name": "upgrade_custom",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "metadata": {
+    "address": "CustomUpgradeProgram1111111111111111111111111"
+  }
+}
+

@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "name": "upgrade_basic",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "metadata": {
+    "address": "UpgradeProgram111111111111111111111111111111"
+  }
+}
+

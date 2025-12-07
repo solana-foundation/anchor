@@ -140,6 +140,57 @@ function handleIdlFetch(args) {
   }
 }
 
+function handleIdlUpgrade(args) {
+  let filepath;
+  let priorityFee;
+  const positional = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--filepath" || arg === "-f") {
+      filepath = args[++i];
+    } else if (arg === "--priority-fee") {
+      priorityFee = args[++i];
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  const programId = positional[positional.length - 1];
+  if (!programId) {
+    console.error("Error: PROGRAM_ID argument required");
+    process.exit(1);
+  }
+
+  ensureFile(filepath);
+
+  const expectedProgramId = process.env.MOCK_IDL_UPGRADE_EXPECT_PROGRAM_ID;
+  if (expectedProgramId && expectedProgramId !== programId) {
+    console.error(`Unexpected upgrade program id: ${programId}`);
+    process.exit(1);
+  }
+
+  const errorMessage = process.env.MOCK_IDL_UPGRADE_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_IDL_UPGRADE_EXIT_CODE ?? "1",
+      10,
+    );
+    console.error(errorMessage);
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  if (priorityFee) {
+    process.stdout.write(`Using priority fee: ${priorityFee}\n`);
+  }
+
+  const idlAddress =
+    process.env.MOCK_IDL_UPGRADE_IDL_ADDRESS ||
+    "IdlUpgrade11111111111111111111111111111111";
+
+  process.stdout.write(`Idl account ${idlAddress} successfully upgraded\n`);
+}
+
 function handleIdlAuthority(args) {
   const positional = [...args];
   const programId = positional[0];
@@ -229,6 +280,9 @@ function handleIdl(args) {
       break;
     case "fetch":
       handleIdlFetch(args);
+      break;
+    case "upgrade":
+      handleIdlUpgrade(args);
       break;
     case "erase-authority":
       handleIdlEraseAuthority(args);

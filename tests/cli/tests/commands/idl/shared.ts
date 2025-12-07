@@ -12,6 +12,7 @@ export const IDL_ERASE_AUTHORITY_ROOT = path.posix.join(
   "erase-authority",
 );
 export const IDL_AUTHORITY_ROOT = path.posix.join(IDL_TEST_ROOT, "authority");
+export const IDL_UPGRADE_ROOT = path.posix.join(IDL_TEST_ROOT, "upgrade");
 
 export const TEST_KEYPAIR_PATH = path.resolve(
   __dirname,
