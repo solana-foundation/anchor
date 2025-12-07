@@ -1,0 +1,4 @@
+Running migration deploy script
+Deploying programs...
+Migration completed successfully
+Deploy complete.

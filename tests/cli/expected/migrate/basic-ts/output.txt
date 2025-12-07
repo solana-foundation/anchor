@@ -1,0 +1,4 @@
+Running migration deploy script
+Using TypeScript migration script
+
+Deploy complete.

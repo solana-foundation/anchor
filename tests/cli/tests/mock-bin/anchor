@@ -495,6 +495,53 @@ function handleTest(args) {
   }
 }
 
+function handleMigrate(args) {
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_ANCHOR_MIGRATE_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_ANCHOR_MIGRATE_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Check if migration script should exist
+  const scriptExists = process.env.MOCK_ANCHOR_MIGRATE_SCRIPT_EXISTS !== "false";
+  if (!scriptExists) {
+    process.stderr.write("Error: Migration script not found\n");
+    process.exit(1);
+  }
+
+  // Determine if using TypeScript or JavaScript
+  const useTs = process.env.MOCK_ANCHOR_MIGRATE_USE_TS === "true";
+
+  // Generate migration output
+  const customOutput = process.env.MOCK_ANCHOR_MIGRATE_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput + "\n");
+  } else {
+    // Default migration success output
+    process.stdout.write("Running migration deploy script\n");
+    if (useTs) {
+      process.stdout.write("Using TypeScript migration script\n");
+    } else {
+      process.stdout.write("Using JavaScript migration script\n");
+    }
+    process.stdout.write("\nDeploy complete.\n");
+  }
+
+  const logPath = process.env.MOCK_ANCHOR_MIGRATE_LOG_PATH;
+  if (logPath) {
+    const logEntry = {
+      command: "anchor migrate",
+      useTs,
+    };
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + "\n");
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -518,6 +565,9 @@ function main() {
       break;
     case "test":
       handleTest(args);
+      break;
+    case "migrate":
+      handleMigrate(args);
       break;
     default:
       usage();
