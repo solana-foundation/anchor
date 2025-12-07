@@ -24,6 +24,13 @@ function proxyToRealBinary(args) {
 }
 
 function handleProgramDeploy(args) {
+  // Check for forced exit code (used by deploy failure tests)
+  const forceExitCode = process.env.MOCK_SOLANA_FORCE_EXIT_CODE;
+  if (forceExitCode !== undefined) {
+    const code = Number.parseInt(forceExitCode, 10);
+    process.exit(Number.isNaN(code) ? 1 : code);
+  }
+
   // Check for upgrade-specific error scenarios
   const upgradeError = process.env.MOCK_SOLANA_UPGRADE_ERROR;
   if (upgradeError) {
@@ -70,16 +77,21 @@ function handleProgramDeploy(args) {
     process.exit(1);
   }
 
-  // Generate or use custom output
-  const customOutput = process.env.MOCK_SOLANA_UPGRADE_OUTPUT;
-  if (customOutput) {
-    process.stdout.write(customOutput + "\n");
-  } else {
-    // Default upgrade/deploy success output
-    const signature = process.env.MOCK_SOLANA_SIGNATURE || "5" + "X".repeat(87);
-    process.stdout.write(`Program Id: ${programId || "UnknownProgram111111111111111111111111111"}\n\n`);
-    process.stdout.write(`Signature: ${signature}\n`);
+  // Only output upgrade-specific information if we're in upgrade test mode
+  // (indicated by MOCK_SOLANA_UPGRADE_PROGRAM_ID being set)
+  if (expectedProgramId || process.env.MOCK_SOLANA_UPGRADE_OUTPUT) {
+    // Generate or use custom output
+    const customOutput = process.env.MOCK_SOLANA_UPGRADE_OUTPUT;
+    if (customOutput) {
+      process.stdout.write(customOutput + "\n");
+    } else {
+      // Default upgrade success output
+      const signature = process.env.MOCK_SOLANA_SIGNATURE || "5" + "X".repeat(87);
+      process.stdout.write(`Program Id: ${programId || "UnknownProgram111111111111111111111111111"}\n\n`);
+      process.stdout.write(`Signature: ${signature}\n`);
+    }
   }
+  // For deploy tests, just exit successfully without extra output
 }
 
 function main() {
