@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 
@@ -295,60 +295,50 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
 fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream> {
     let idl = get_idl_module_path();
     let args = accounts.instruction_args().unwrap_or_default();
-    match seed {
-        syn::Expr::MethodCall(_) => {
-            let seed_path = SeedPath::new(seed)?;
 
-            if args.contains_key(&seed_path.name) {
-                let path = seed_path.path();
+    if let Ok(seed_path) = SeedPath::new(seed) {
+        return if args.contains_key(&seed_path.name) {
+            let path = seed_path.path();
 
-                Ok(quote! {
-                    #idl::IdlSeed::Arg(
-                        #idl::IdlSeedArg {
-                            path: #path.into(),
-                        }
-                    )
-                })
-            } else if let Some(account_field) = accounts
-                .fields
-                .iter()
-                .find(|field| *field.ident() == seed_path.name)
-            {
-                let path = seed_path.path();
-                let account = match account_field.ty_name() {
-                    Some(name) if !seed_path.subfields.is_empty() => {
-                        quote! { Some(#name.into()) }
+            Ok(quote! {
+                #idl::IdlSeed::Arg(
+                    #idl::IdlSeedArg {
+                        path: #path.into(),
                     }
-                    _ => quote! { None },
-                };
+                )
+            })
+        } else if let Some(account_field) = accounts
+            .fields
+            .iter()
+            .find(|field| *field.ident() == seed_path.name)
+        {
+            let path = seed_path.path();
+            let account = match account_field.ty_name() {
+                Some(name) if !seed_path.subfields.is_empty() => {
+                    quote! { Some(#name.into()) }
+                }
+                _ => quote! { None },
+            };
 
-                Ok(quote! {
-                    #idl::IdlSeed::Account(
-                        #idl::IdlSeedAccount {
-                            path: #path.into(),
-                            account: #account,
-                        }
-                    )
-                })
-            } else if seed_path.name.contains('"') {
-                let seed = seed_path.name.trim_start_matches("b\"").trim_matches('"');
-                Ok(quote! {
-                    #idl::IdlSeed::Const(
-                        #idl::IdlSeedConst {
-                            value: #seed.into(),
-                        }
-                    )
-                })
-            } else {
-                Ok(quote! {
-                    #idl::IdlSeed::Const(
-                        #idl::IdlSeedConst {
-                            value: #seed.into(),
-                        }
-                    )
-                })
-            }
-        }
+            Ok(quote! {
+                #idl::IdlSeed::Account(
+                    #idl::IdlSeedAccount {
+                        path: #path.into(),
+                        account: #account,
+                    }
+                )
+            })
+        } else {
+            Ok(quote! {
+                #idl::IdlSeed::Const(
+                    #idl::IdlSeedConst {
+                        value: AsRef::<[u8]>::as_ref(&#seed).into(),
+                    }
+                )
+            })
+        };
+    }
+    match seed {
         // Support call expressions that don't have any arguments e.g. `System::id()`
         syn::Expr::Call(call) if call.args.is_empty() => Ok(quote! {
             #idl::IdlSeed::Const(
@@ -357,37 +347,6 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
                 }
             )
         }),
-        syn::Expr::Path(path) => {
-            let seed = match path.path.get_ident() {
-                Some(ident) if args.contains_key(&ident.to_string()) => {
-                    quote! {
-                        #idl::IdlSeed::Arg(
-                            #idl::IdlSeedArg {
-                                path: stringify!(#ident).into(),
-                            }
-                        )
-                    }
-                }
-                Some(ident) if accounts.field_names().contains(&ident.to_string()) => {
-                    quote! {
-                        #idl::IdlSeed::Account(
-                            #idl::IdlSeedAccount {
-                                path: stringify!(#ident).into(),
-                                account: None,
-                            }
-                        )
-                    }
-                }
-                _ => quote! {
-                    #idl::IdlSeed::Const(
-                        #idl::IdlSeedConst {
-                            value: AsRef::<[u8]>::as_ref(&#path).into(),
-                        }
-                    )
-                },
-            };
-            Ok(seed)
-        }
         syn::Expr::Lit(_) => Ok(quote! {
             #idl::IdlSeed::Const(
                 #idl::IdlSeedConst {
@@ -412,39 +371,46 @@ struct SeedPath {
 }
 
 impl SeedPath {
-    /// Extract the seed path from a single seed expression.
-    fn new(seed: &syn::Expr) -> Result<Self> {
-        // Convert the seed into the raw string representation.
-        let seed_str = seed.to_token_stream().to_string();
-
-        // Check unsupported cases e.g. `&(account.field + 1).to_le_bytes()`
-        if !seed_str.contains('"')
-            && seed_str.contains(|c: char| matches!(c, '+' | '-' | '*' | '/' | '%' | '^'))
-        {
-            return Err(anyhow!("Seed expression not supported: {seed:#?}"));
-        }
-
-        // Break up the seed into each subfield component.
-        let mut components = seed_str.split('.').collect::<Vec<_>>();
-        if components.len() <= 1 {
-            return Err(anyhow!("Seed is in unexpected format: {seed:#?}"));
-        }
-
-        // The name of the variable (or field).
-        let name = components.remove(0).to_owned();
-
-        // The path to the seed (only if the `name` type is a struct).
-        let mut path = Vec::new();
-        while !components.is_empty() {
-            let subfield = components.remove(0);
-            if subfield.contains("()") {
-                break;
+    /// Attempt to extract a seed path from a single seed expression.
+    /// Will ignore trailing method calls and `.key` field accesses
+    fn new(orig_seed: &syn::Expr) -> Result<Self> {
+        let mut seed = orig_seed;
+        // Peel off method calls and `.key`
+        loop {
+            seed = match seed {
+                syn::Expr::MethodCall(syn::ExprMethodCall { receiver, .. }) => &*receiver,
+                syn::Expr::Field(syn::ExprField {
+                    base,
+                    member: syn::Member::Named(member),
+                    ..
+                }) if member == "key" => &*base,
+                _ => {
+                    break;
+                }
             }
-            path.push(subfield.into());
         }
-        if path.len() == 1 && (path[0] == "key" || path[0] == "key()") {
-            path = Vec::new();
-        }
+        let mut path = vec![];
+        let name = loop {
+            match seed {
+                syn::Expr::Field(syn::ExprField { base, member, .. }) => {
+                    let member = match member {
+                        syn::Member::Named(ident) => ident.to_string(),
+                        syn::Member::Unnamed(index) => index.index.to_string(),
+                    };
+                    path.push(member);
+                    seed = &*base;
+                }
+                syn::Expr::Path(syn::ExprPath { path, .. }) => {
+                    break path.to_token_stream().to_string();
+                }
+                _ => bail!(
+                    "unsupported seed format: `{}`",
+                    orig_seed.to_token_stream().to_string()
+                ),
+            }
+        };
+        // Components were pushed in reverse order
+        path.reverse();
 
         Ok(SeedPath {
             name,
