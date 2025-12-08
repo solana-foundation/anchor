@@ -1,6 +1,7 @@
-use anyhow::{anyhow, bail, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
+use syn::spanned::Spanned;
+use syn::Result;
 
 use super::common::{get_idl_module_path, get_no_docs};
 use crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty};
@@ -192,32 +193,35 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
 
     // Seeds
-    let seed_constraints = acc.constraints.seeds.as_ref();
-    let pda = seed_constraints
-        .map(|seed| seed.seeds.iter().map(parse_default))
-        .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
-        .and_then(|seeds| {
-            let program = match seed_constraints {
-                Some(ConstraintSeedsGroup {
-                    program_seed: Some(program),
-                    ..
-                }) => parse_default(program)
-                    .map(|program| quote! { Some(#program) })
-                    .ok()?,
-                _ => quote! { None },
-            };
+    let get_seeds = |seeds: &ConstraintSeedsGroup| -> Result<TokenStream> {
+        let parsed_seeds = seeds
+            .seeds
+            .iter()
+            .map(parse_default)
+            .collect::<Result<Vec<_>>>()?;
+        let program_seed = seeds
+            .program_seed
+            .as_ref()
+            .map(parse_default)
+            .transpose()?
+            .map_or_else(|| quote! { None }, |program| quote! { Some(#program) });
 
-            Some(quote! {
-                Some(
-                    #idl::IdlPda {
-                        seeds: vec![#(#seeds),*],
-                        program: #program,
-                    }
-                )
-            })
-        });
-    if let Some(pda) = pda {
-        return pda;
+        Ok(quote! {
+            Some(
+                #idl::IdlPda {
+                    seeds: vec![#(#parsed_seeds),*],
+                    program: #program_seed,
+                }
+            )
+        })
+    };
+    if let Some(seed) = acc.constraints.seeds.as_ref() {
+        match get_seeds(seed) {
+            Ok(seeds) => return seeds,
+            // FIXME: An unsupported seed derivation shouldn't cause an error, but we should ideally be able to
+            // report the issue to users to prevent confusing issues like <https://github.com/solana-foundation/anchor/issues/4057>
+            Err(_) => (),
+        }
     }
 
     // Associated token
@@ -355,7 +359,7 @@ fn parse_seed(seed: &syn::Expr, accounts: &AccountsStruct) -> Result<TokenStream
             )
         }),
         syn::Expr::Reference(rf) => parse_seed(&rf.expr, accounts),
-        _ => Err(anyhow!("Unexpected seed: {seed:?}")),
+        _ => Err(syn::Error::new(seed.span(), "unexpected seed format")),
     }
 }
 
@@ -403,10 +407,7 @@ impl SeedPath {
                 syn::Expr::Path(syn::ExprPath { path, .. }) => {
                     break path.to_token_stream().to_string();
                 }
-                _ => bail!(
-                    "unsupported seed format: `{}`",
-                    orig_seed.to_token_stream().to_string()
-                ),
+                _ => return Err(syn::Error::new(seed.span(), "unsupported seeds expression")),
             }
         };
         // Components were pushed in reverse order
