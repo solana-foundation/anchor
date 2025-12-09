@@ -1,6 +1,6 @@
 use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use anchor_lang::error_code;
-use borsh::maybestd::io::Error as BorshIoError;
+use borsh::io::Error as BorshIoError;
 use std::fmt::{Debug, Display};
 use std::num::TryFromIntError;
 
@@ -34,16 +34,7 @@ pub enum ErrorCode {
     #[msg("The program could not serialize the given instruction")]
     InstructionDidNotSerialize,
 
-    // IDL instructions
-    /// 1000 - The program was compiled without idl instructions
-    #[msg("The program was compiled without idl instructions")]
-    IdlInstructionStub = 1000,
-    /// 1001 - Invalid program given to the IDL instruction
-    #[msg("Invalid program given to the IDL instruction")]
-    IdlInstructionInvalidProgram,
-    /// 1002 - IDL Account must be empty in order to resize
-    #[msg("IDL account must be empty in order to resize, try closing first")]
-    IdlAccountNotEmpty,
+    // Legacy IDL instructions have been removed in favor of Program Metadata
 
     // Event instructions
     /// 1500 - The program was compiled without `event-cpi` feature
@@ -177,10 +168,35 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
-    /// 2040 - Account is already migrated
+    /// 2040 - A duplicate mutable account constraint was violated
+    #[msg("A duplicate mutable account constraint was violated")]
+    ConstraintDuplicateMutableAccount,
+
+    // Signature verification errors
+    /// 2040 - Invalid Ed25519 program id for signature verification
+    #[msg("Invalid Ed25519 program id for signature verification")]
+    Ed25519InvalidProgram,
+    /// 2041 - Invalid Secp256k1 program id for signature verification
+    #[msg("Invalid Secp256k1 program id for signature verification")]
+    Secp256k1InvalidProgram,
+    /// 2042 - Instruction unexpectedly had account metas
+    #[msg("Instruction unexpectedly had account metas")]
+    InstructionHasAccounts,
+    /// 2043 - Message length exceeds allowed maximum
+    #[msg("Message length exceeds allowed maximum")]
+    MessageTooLong,
+    /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
+    #[msg("Invalid Secp256k1 recovery id")]
+    InvalidRecoveryId,
+    /// 2047 - Signature verification failed
+    #[msg("Signature verification failed")]
+    SignatureVerificationFailed,
+  
+    // Migration errors
+    /// 2048 - Account is already migrated
     #[msg("Account is already migrated")]
     AccountAlreadyMigrated,
-    /// 2041 - Account must be migrated before exiting
+    /// 2049 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
 

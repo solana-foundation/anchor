@@ -13,18 +13,18 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["associated_token", "mint", "token", "token_2022", "token_2022_extensions"]
 anchor-debug = ["anchor-lang/anchor-debug"]
-associated_token = ["spl-associated-token-account"]
+associated_token = ["spl-associated-token-account-interface"]
 devnet = []
 governance = []
 idl-build = ["anchor-lang/idl-build"]
-memo = ["spl-memo"]
-metadata = ["mpl-token-metadata"]
+memo = ["spl-memo-interface"]
+metadata = ["mpl-token-metadata", "dep:solana-sysvar", "dep:base64ct"]
 mint = []
-stake = ["borsh"]
-token = ["spl-token"]
-token_2022 = ["spl-token-2022"]
+stake = ["dep:borsh", "dep:solana-stake-interface"]
+token = ["spl-token-interface"]
+token_2022 = ["spl-token-2022-interface"]
 token_2022_extensions = [
-    "spl-token-2022",
+    "spl-token-2022-interface",
     "spl-token-group-interface",
     "spl-token-metadata-interface",
     "spl-pod",
@@ -32,12 +32,17 @@ token_2022_extensions = [
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
-borsh = { version = "0.10.3", optional = true }
-mpl-token-metadata = { version = "5", optional = true }
-spl-associated-token-account = { version = "7", features = ["no-entrypoint"], optional = true }
-spl-memo = { version = "6", features = ["no-entrypoint"], optional = true }
-spl-pod = { version = "0.5", optional = true }
-spl-token = { version = "8", features = ["no-entrypoint"], optional = true }
-spl-token-2022 = { version = "8", features = ["no-entrypoint"], optional = true }
-spl-token-group-interface = { version = "0.6", optional = true }
-spl-token-metadata-interface = { version = "0.7", optional = true }
+# FIXME(edition2024): Not used directly, but upstream crates resolve to this version,
+# which uses Edition 2024
+base64ct = { version = "<1.8.0", optional = true }
+borsh = { version = "1.5.7", optional = true }
+mpl-token-metadata = { version = "=5.1.2-alpha.1", optional = true }
+solana-stake-interface = { workspace = true, features = ["borsh"], optional = true }
+solana-sysvar = { version = "3", optional = true }
+spl-associated-token-account-interface = { version = "2", optional = true }
+spl-memo-interface = { version = "2", optional = true }
+spl-pod = { version = "0.7", optional = true }
+spl-token-interface = { version = "2", optional = true }
+spl-token-2022-interface = { version = "2", optional = true }
+spl-token-group-interface = { version = "0.7", optional = true }
+spl-token-metadata-interface = { version = "0.8", optional = true }
