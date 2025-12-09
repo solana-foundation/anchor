@@ -38,6 +38,33 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 #[account(mut @ <custom_error>)]
 ```
 
+### `#[account(dup)]`
+
+Description: By default, Anchor will prevents duplicate mutable accounts to avoid potential security issues and unintended behavior. 
+The `dup` constraint explicitly allows this for cases where it's intentional and safe.
+
+**Note**: This constraint only applies to mutable accounts (`mut`). Readonly accounts naturally allow duplicates without requiring the `dup` constraint.
+
+```rust title="attribute"
+#[account(mut, dup)]
+#[account(mut, dup @ <custom_error>)]
+```
+
+```rust title="snippet"
+#[derive(Accounts)]
+pub struct AllowsDuplicateMutable<'info> {
+    #[account(mut)]
+    pub account1: Account<'info, Counter>,
+    // This account can be the same as account1
+    #[account(mut, dup)]
+    pub account2: Account<'info, Counter>,
+}
+
+pub fn allows_duplicate_mutable(ctx: Context<AllowsDuplicateMutable>) -> Result<()> {
+    Ok(())
+}
+```
+
 ### `#[account(init)]`
 
 Description: Creates the account via a CPI to the system program and initializes

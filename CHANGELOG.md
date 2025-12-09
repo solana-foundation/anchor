@@ -21,6 +21,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
+
 ## [0.32.1] - 2025-10-09
 
 ### Features

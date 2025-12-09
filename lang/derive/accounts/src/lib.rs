@@ -90,6 +90,22 @@ use syn::parse_macro_input;
 ///         </tr>
 ///         <tr>
 ///             <td>
+///                 <code>#[account(dup)]</code> <br><br>
+///             </td>
+///             <td>
+///                 Allows the same mutable account to be passed multiple times within the same instruction context.<br>
+///                 By default, Anchor will prevents duplicate mutable accounts to avoid potential security issues and unintended behavior.<br>
+///                 The <code>dup</code> constraint explicitly allows this for cases where it's intentional and safe.<br>
+///                 This constraint only applies to mutable accounts (<code>mut</code>). Readonly accounts naturally allow duplicates without requiring the <code>dup</code> constraint.<br>
+///                 Example:
+///                 <pre><code>
+/// #[account(mut)]
+/// pub account1: Account<'info, Counter>,
+///                 </code></pre>
+///             </td>
+///         </tr>
+///         <tr>
+///             <td>
 ///                 <code>#[account(init, payer = &lt;target_account&gt;, space = &lt;num_bytes&gt;)]</code>
 ///             </td>
 ///             <td>

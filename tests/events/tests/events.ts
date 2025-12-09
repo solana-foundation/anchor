@@ -69,7 +69,7 @@ describe("Events", () => {
       const txResult = await program.provider.connection.getTransaction(
         txHash,
         {
-          commitment: "confirmed",
+          ...confirmOptions,
           maxSupportedTransactionVersion: 0,
         }
       );

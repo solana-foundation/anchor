@@ -52,6 +52,7 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
+    "duplicate-mutable-accounts",
     "signature-verification"
   ],
   "dependencies": {
