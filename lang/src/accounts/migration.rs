@@ -11,10 +11,10 @@ use crate::{
     ToAccountInfos, ToAccountMetas,
 };
 use std::collections::BTreeSet;
-use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 /// Internal representation of the migration state.
+#[derive(Debug)]
 pub enum MigrationInner<From, To> {
     /// Account is in old format, will be migrated and serialized on exit
     From(From),
@@ -147,6 +147,7 @@ pub enum MigrationInner<From, To> {
 ///     pub system_program: Program<'info, System>,
 /// }
 /// ```
+#[derive(Debug)]
 pub struct Migration<'info, From, To>
 where
     From: AccountDeserialize,
@@ -156,23 +157,6 @@ where
     info: &'info AccountInfo<'info>,
     /// Internal migration state
     inner: MigrationInner<From, To>,
-}
-
-impl<'info, From, To> fmt::Debug for Migration<'info, From, To>
-where
-    From: AccountDeserialize + Clone + fmt::Debug,
-    To: AccountSerialize + Clone + fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let inner_debug = match &self.inner {
-            MigrationInner::From(from) => format!("From({:?})", from),
-            MigrationInner::To(to) => format!("To({:?})", to),
-        };
-        f.debug_struct("Migration")
-            .field("inner", &inner_debug)
-            .field("info", &self.info)
-            .finish()
-    }
 }
 
 impl<'info, From, To> Migration<'info, From, To>
@@ -191,6 +175,28 @@ where
     #[inline(always)]
     pub fn is_migrated(&self) -> bool {
         matches!(self.inner, MigrationInner::To(_))
+    }
+
+    /// Returns a reference to the old account data if not yet migrated.
+    ///
+    /// # Errors
+    /// Returns an error if the account has already been migrated.
+    pub fn try_as_from(&self) -> Result<&From> {
+        match &self.inner {
+            MigrationInner::From(from) => Ok(from),
+            MigrationInner::To(_) => Err(ErrorCode::AccountAlreadyMigrated.into()),
+        }
+    }
+
+    /// Returns a mutable reference to the old account data if not yet migrated.
+    ///
+    /// # Errors
+    /// Returns an error if the account has already been migrated.
+    pub fn try_as_from_mut(&mut self) -> Result<&mut From> {
+        match &mut self.inner {
+            MigrationInner::From(from) => Ok(from),
+            MigrationInner::To(_) => Err(ErrorCode::AccountAlreadyMigrated.into()),
+        }
     }
 
     /// Migrates the account by providing the new data.
@@ -234,13 +240,13 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn into_inner(&mut self, new_data: To) -> Result<&To> {
+    pub fn into_inner(&mut self, new_data: To) -> &To {
         if !self.is_migrated() {
             self.inner = MigrationInner::To(new_data);
         }
 
         match &self.inner {
-            MigrationInner::To(to) => Ok(to),
+            MigrationInner::To(to) => to,
             _ => unreachable!(),
         }
     }
@@ -270,13 +276,13 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn into_inner_mut(&mut self, new_data: To) -> Result<&mut To> {
+    pub fn into_inner_mut(&mut self, new_data: To) -> &mut To {
         if !self.is_migrated() {
             self.inner = MigrationInner::To(new_data);
         }
 
         match &mut self.inner {
-            MigrationInner::To(to) => Ok(to),
+            MigrationInner::To(to) => to,
             _ => unreachable!(),
         }
     }
@@ -460,6 +466,404 @@ where
                 panic!();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::solana_program::clock::Epoch;
+    use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+
+    const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
+    const TEST_DISCRIMINATOR_V2: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
+    const TEST_OWNER: Pubkey = Pubkey::new_from_array([1u8; 32]);
+
+    #[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize, PartialEq)]
+    struct AccountV1 {
+        pub data: u64,
+    }
+
+    impl Discriminator for AccountV1 {
+        const DISCRIMINATOR: &'static [u8] = &TEST_DISCRIMINATOR_V1;
+    }
+
+    impl Owner for AccountV1 {
+        fn owner() -> Pubkey {
+            TEST_OWNER
+        }
+    }
+
+    impl AccountSerialize for AccountV1 {
+        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+            writer.write_all(&TEST_DISCRIMINATOR_V1)?;
+            AnchorSerialize::serialize(self, writer)?;
+            Ok(())
+        }
+    }
+
+    impl AccountDeserialize for AccountV1 {
+        fn try_deserialize(buf: &mut &[u8]) -> Result<Self> {
+            if buf.len() < 8 {
+                return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+            }
+            let disc = &buf[..8];
+            if disc != TEST_DISCRIMINATOR_V1 {
+                return Err(ErrorCode::AccountDiscriminatorMismatch.into());
+            }
+            Self::try_deserialize_unchecked(buf)
+        }
+
+        fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
+            let mut data = &buf[8..];
+            AnchorDeserialize::deserialize(&mut data)
+                .map_err(|_| ErrorCode::AccountDidNotDeserialize.into())
+        }
+    }
+
+    #[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize, PartialEq)]
+    struct AccountV2 {
+        pub data: u64,
+        pub new_field: u64,
+    }
+
+    impl Discriminator for AccountV2 {
+        const DISCRIMINATOR: &'static [u8] = &TEST_DISCRIMINATOR_V2;
+    }
+
+    impl Owner for AccountV2 {
+        fn owner() -> Pubkey {
+            TEST_OWNER
+        }
+    }
+
+    impl AccountSerialize for AccountV2 {
+        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+            writer.write_all(&TEST_DISCRIMINATOR_V2)?;
+            AnchorSerialize::serialize(self, writer)?;
+            Ok(())
+        }
+    }
+
+    impl AccountDeserialize for AccountV2 {
+        fn try_deserialize(buf: &mut &[u8]) -> Result<Self> {
+            if buf.len() < 8 {
+                return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+            }
+            let disc = &buf[..8];
+            if disc != TEST_DISCRIMINATOR_V2 {
+                return Err(ErrorCode::AccountDiscriminatorMismatch.into());
+            }
+            Self::try_deserialize_unchecked(buf)
+        }
+
+        fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
+            let mut data = &buf[8..];
+            AnchorDeserialize::deserialize(&mut data)
+                .map_err(|_| ErrorCode::AccountDidNotDeserialize.into())
+        }
+    }
+
+    fn create_account_info<'a>(
+        key: &'a Pubkey,
+        owner: &'a Pubkey,
+        lamports: &'a mut u64,
+        data: &'a mut [u8],
+    ) -> AccountInfo<'a> {
+        AccountInfo::new(
+            key,
+            false,
+            true,
+            lamports,
+            data,
+            owner,
+            false,
+            Epoch::default(),
+        )
+    }
+
+    // Verifies that a freshly deserialized Migration account reports
+    // is_migrated() as false, since it starts in the From state.
+    #[test]
+    fn test_is_migrated_returns_false_initially() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        assert!(!migration.is_migrated());
+    }
+
+    // Verifies that after calling migrate(), the account correctly
+    // reports is_migrated() as true.
+    #[test]
+    fn test_is_migrated_returns_true_after_migrate() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        migration
+            .migrate(AccountV2 {
+                data: 42,
+                new_field: 100,
+            })
+            .unwrap();
+
+        assert!(migration.is_migrated());
+    }
+
+    // Verifies that try_as_from() successfully returns a reference to the
+    // old account data before migration has occurred.
+    #[test]
+    fn test_try_as_from_returns_data_before_migration() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        let from = migration.try_as_from().unwrap();
+        assert_eq!(from.data, 42);
+    }
+
+    // Verifies that try_as_from() returns an error after migration,
+    // providing a safe alternative to Deref that won't panic.
+    #[test]
+    fn test_try_as_from_returns_error_after_migration() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        migration
+            .migrate(AccountV2 {
+                data: 42,
+                new_field: 100,
+            })
+            .unwrap();
+
+        assert!(migration.try_as_from().is_err());
+    }
+
+    // Verifies that try_as_from_mut() allows mutable access to the old
+    // account data before migration, and changes are persisted.
+    #[test]
+    fn test_try_as_from_mut_works_before_migration() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        let from = migration.try_as_from_mut().unwrap();
+        from.data = 100;
+        assert_eq!(migration.try_as_from().unwrap().data, 100);
+    }
+
+    // Verifies that calling migrate() twice returns an error,
+    // preventing accidental double-migration.
+    #[test]
+    fn test_migrate_fails_if_already_migrated() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        migration
+            .migrate(AccountV2 {
+                data: 42,
+                new_field: 100,
+            })
+            .unwrap();
+        let result = migration.migrate(AccountV2 {
+            data: 42,
+            new_field: 200,
+        });
+
+        assert!(result.is_err());
+    }
+
+    // Verifies that into_inner() performs migration and returns a
+    // reference to the new account data in a single call.
+    #[test]
+    fn test_into_inner_migrates_and_returns_reference() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        let to = migration.into_inner(AccountV2 {
+            data: 42,
+            new_field: 100,
+        });
+
+        assert_eq!(to.data, 42);
+        assert_eq!(to.new_field, 100);
+        assert!(migration.is_migrated());
+    }
+
+    // Verifies that into_inner() is idempotent - calling it multiple times
+    // returns the existing migrated data and ignores subsequent new_data arguments.
+    #[test]
+    fn test_into_inner_is_idempotent() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        let to1 = migration.into_inner(AccountV2 {
+            data: 42,
+            new_field: 100,
+        });
+        assert_eq!(to1.new_field, 100);
+
+        // Second call should return existing value, not use the new data
+        let to2 = migration.into_inner(AccountV2 {
+            data: 42,
+            new_field: 999,
+        });
+        assert_eq!(to2.new_field, 100); // Still 100, not 999
+    }
+
+    // Verifies that into_inner_mut() returns a mutable reference,
+    // allowing modification of the migrated account data.
+    #[test]
+    fn test_into_inner_mut_allows_mutation() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        let to = migration.into_inner_mut(AccountV2 {
+            data: 42,
+            new_field: 100,
+        });
+        to.new_field = 200;
+
+        let to_ref = migration.into_inner(AccountV2 {
+            data: 0,
+            new_field: 0,
+        });
+        assert_eq!(to_ref.new_field, 200);
+    }
+
+    // Verifies that Deref allows direct field access (e.g., account.data)
+    // before migration has occurred.
+    #[test]
+    fn test_deref_works_before_migration() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        assert_eq!(migration.data, 42);
+    }
+
+    // Verifies that Deref panics after migration. This documents the current
+    // behavior - use try_as_from() for safe access that returns Result instead.
+    #[test]
+    #[should_panic]
+    fn test_deref_panics_after_migration() {
+        let key = Pubkey::default();
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &TEST_OWNER, &mut lamports, &mut data);
+        let mut migration: Migration<AccountV1, AccountV2> = Migration::try_from(&info).unwrap();
+
+        migration
+            .migrate(AccountV2 {
+                data: 42,
+                new_field: 100,
+            })
+            .unwrap();
+
+        // This should panic
+        let _ = migration.data;
+    }
+
+    // Verifies that deserialization fails when the account owner doesn't
+    // match the expected program, preventing unauthorized access.
+    #[test]
+    fn test_try_from_fails_with_wrong_owner() {
+        let key = Pubkey::default();
+        let wrong_owner = Pubkey::new_from_array([99u8; 32]);
+        let mut lamports = 100;
+        let v1 = AccountV1 { data: 42 };
+        let mut data = vec![0u8; 100];
+        data[..8].copy_from_slice(&TEST_DISCRIMINATOR_V1);
+        v1.serialize(&mut &mut data[8..]).unwrap();
+
+        let info = create_account_info(&key, &wrong_owner, &mut lamports, &mut data);
+        let result: Result<Migration<AccountV1, AccountV2>> = Migration::try_from(&info);
+
+        assert!(result.is_err());
+    }
+
+    // Verifies that deserialization fails for uninitialized accounts
+    // (owned by system program with zero lamports).
+    #[test]
+    fn test_try_from_fails_with_uninitialized_account() {
+        let key = Pubkey::default();
+        let mut lamports = 0;
+        let mut data = vec![0u8; 100];
+
+        let info = create_account_info(&key, &system_program::ID, &mut lamports, &mut data);
+        let result: Result<Migration<AccountV1, AccountV2>> = Migration::try_from(&info);
+
+        assert!(result.is_err());
     }
 }
 
