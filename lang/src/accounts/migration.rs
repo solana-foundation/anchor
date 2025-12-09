@@ -322,10 +322,7 @@ where
         }
 
         let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Self::new(
-            info,
-            From::try_deserialize_unchecked(&mut data)?,
-        ))
+        Ok(Self::new(info, From::try_deserialize_unchecked(&mut data)?))
     }
 }
 
@@ -441,14 +438,13 @@ where
     type Target = From;
 
     fn deref(&self) -> &Self::Target {
-       match &self.inner {
-        MigrationInner::From(from) => from,
-        MigrationInner::To(_) =>
-            {
+        match &self.inner {
+            MigrationInner::From(from) => from,
+            MigrationInner::To(_) => {
                 crate::solana_program::msg!("Cannot deref to From: account is already migrated.");
                 panic!();
             }
-       }
+        }
     }
 }
 
@@ -462,7 +458,9 @@ where
         match &mut self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                crate::solana_program::msg!("Cannot deref_mut to From: account is already migrated.");
+                crate::solana_program::msg!(
+                    "Cannot deref_mut to From: account is already migrated."
+                );
                 panic!();
             }
         }
@@ -866,4 +864,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

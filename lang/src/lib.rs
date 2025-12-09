@@ -517,8 +517,8 @@ pub mod prelude {
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas,
     };
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
