@@ -32,7 +32,7 @@ pub enum ProgramTemplate {
 pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+        ("Cargo.toml".into(), workspace_manifest()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
