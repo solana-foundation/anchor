@@ -1,0 +1,6 @@
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS from current directory
+Library name: my_custom_program
+
+Verification successful!
+On-chain bytecode matches the local source code.

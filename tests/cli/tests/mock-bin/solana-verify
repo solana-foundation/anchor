@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+function parseArgs(args) {
+  const parsed = {
+    repoUrl: null,
+    currentDir: false,
+    commitHash: null,
+    programId: null,
+    libraryName: null,
+    additionalArgs: [],
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--current-dir") {
+      parsed.currentDir = true;
+    } else if (arg === "--commit-hash" && i + 1 < args.length) {
+      parsed.commitHash = args[i + 1];
+      i++;
+    } else if (arg === "--program-id" && i + 1 < args.length) {
+      parsed.programId = args[i + 1];
+      i++;
+    } else if (arg === "--library-name" && i + 1 < args.length) {
+      parsed.libraryName = args[i + 1];
+      i++;
+    } else if (!arg.startsWith("--") && !parsed.repoUrl && !parsed.currentDir) {
+      parsed.repoUrl = arg;
+    } else if (!arg.startsWith("--") && !parsed.repoUrl && parsed.currentDir) {
+      // This is the directory path when --current-dir is used
+      parsed.repoUrl = arg;
+    } else if (!arg.startsWith("--")) {
+      parsed.additionalArgs.push(arg);
+    }
+  }
+
+  return parsed;
+}
+
+function handleVerifyFromRepo(args) {
+  const parsed = parseArgs(args);
+
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_SOLANA_VERIFY_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_SOLANA_VERIFY_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Validate expected values if set
+  const expectedProgramId = process.env.MOCK_SOLANA_VERIFY_PROGRAM_ID;
+  if (expectedProgramId && parsed.programId !== expectedProgramId) {
+    process.stderr.write(
+      `Error: Expected program ID ${expectedProgramId}, got ${parsed.programId}\n`,
+    );
+    process.exit(1);
+  }
+
+  const expectedRepoUrl = process.env.MOCK_SOLANA_VERIFY_REPO_URL;
+  if (expectedRepoUrl && parsed.repoUrl !== expectedRepoUrl) {
+    process.stderr.write(
+      `Error: Expected repo URL ${expectedRepoUrl}, got ${parsed.repoUrl}\n`,
+    );
+    process.exit(1);
+  }
+
+  const expectedCommitHash = process.env.MOCK_SOLANA_VERIFY_COMMIT_HASH;
+  if (expectedCommitHash && parsed.commitHash !== expectedCommitHash) {
+    process.stderr.write(
+      `Error: Expected commit hash ${expectedCommitHash}, got ${parsed.commitHash}\n`,
+    );
+    process.exit(1);
+  }
+
+  const expectedLibraryName = process.env.MOCK_SOLANA_VERIFY_PROGRAM_NAME;
+  if (expectedLibraryName && parsed.libraryName !== expectedLibraryName) {
+    process.stderr.write(
+      `Error: Expected library name ${expectedLibraryName}, got ${parsed.libraryName}\n`,
+    );
+    process.exit(1);
+  }
+
+  // Generate verification output
+  const customOutput = process.env.MOCK_SOLANA_VERIFY_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput + "\n");
+  } else {
+    // Default verification success output
+    if (parsed.currentDir) {
+      process.stdout.write(
+        `Verifying program ${parsed.programId} from current directory\n`,
+      );
+    } else if (parsed.repoUrl) {
+      process.stdout.write(
+        `Verifying program ${parsed.programId} from repository: ${parsed.repoUrl}\n`,
+      );
+      if (parsed.commitHash) {
+        process.stdout.write(`Using commit: ${parsed.commitHash}\n`);
+      }
+    }
+
+    if (parsed.libraryName) {
+      process.stdout.write(`Library name: ${parsed.libraryName}\n`);
+    }
+
+    process.stdout.write("\n");
+    process.stdout.write("Verification successful!\n");
+    process.stdout.write("On-chain bytecode matches the local source code.\n");
+  }
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    process.stderr.write("Usage: solana-verify <subcommand> [options]\n");
+    process.exit(1);
+  }
+
+  const subcommand = args[0];
+
+  switch (subcommand) {
+    case "verify-from-repo":
+      handleVerifyFromRepo(args.slice(1));
+      break;
+    default:
+      process.stderr.write(`Unknown subcommand: ${subcommand}\n`);
+      process.exit(1);
+  }
+}
+
+main();
+

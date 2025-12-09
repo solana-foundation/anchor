@@ -542,6 +542,95 @@ function handleMigrate(args) {
   }
 }
 
+function handleVerify(args) {
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_ANCHOR_VERIFY_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_ANCHOR_VERIFY_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Parse program ID (first argument)
+  if (args.length === 0) {
+    process.stderr.write("Error: Program ID is required\n");
+    process.exit(1);
+  }
+
+  const programId = args[0];
+  const remainingArgs = args.slice(1);
+
+  // Check if required arguments are provided
+  const hasCurrentDir = remainingArgs.includes("--current-dir");
+  const repoUrlIndex = remainingArgs.indexOf("--repo-url");
+  const hasRepoUrl = repoUrlIndex !== -1;
+
+  if (!hasCurrentDir && !hasRepoUrl) {
+    process.stderr.write(
+      "Error: You must provide either --repo-url or --current-dir\n",
+    );
+    process.exit(1);
+  }
+
+  // Print verification message
+  process.stdout.write(`Verifying program ${programId}\n`);
+
+  // Find solana-verify in PATH
+  const solanaVerifyPath = process.env.MOCK_SOLANA_VERIFY_PATH || "solana-verify";
+
+  // Build solana-verify command arguments
+  const verifyArgs = ["verify-from-repo"];
+
+  // Handle current-dir or repo-url
+  if (hasCurrentDir) {
+    verifyArgs.push(process.cwd());
+    verifyArgs.push("--current-dir");
+  } else if (hasRepoUrl && repoUrlIndex + 1 < remainingArgs.length) {
+    const repoUrl = remainingArgs[repoUrlIndex + 1];
+    verifyArgs.push(repoUrl);
+  }
+
+  // Add commit-hash if present
+  const commitHashIndex = remainingArgs.indexOf("--commit-hash");
+  if (commitHashIndex !== -1 && commitHashIndex + 1 < remainingArgs.length) {
+    verifyArgs.push("--commit-hash");
+    verifyArgs.push(remainingArgs[commitHashIndex + 1]);
+  }
+
+  // Add program-name (library-name) if present
+  const programNameIndex = remainingArgs.indexOf("--program-name");
+  if (programNameIndex !== -1 && programNameIndex + 1 < remainingArgs.length) {
+    verifyArgs.push("--library-name");
+    verifyArgs.push(remainingArgs[programNameIndex + 1]);
+  }
+
+  // Add program-id
+  verifyArgs.push("--program-id");
+  verifyArgs.push(programId);
+
+  // Execute solana-verify
+  const { spawnSync } = require("child_process");
+  const result = spawnSync(solanaVerifyPath, verifyArgs, {
+    stdio: "inherit",
+    env: process.env,
+  });
+
+  if (result.error) {
+    process.stderr.write(
+      `Error: Failed to run \`solana-verify\`: ${result.error.message}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (result.status !== 0) {
+    process.stderr.write("Error: Failed to verify program\n");
+    process.exit(result.status || 1);
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -568,6 +657,9 @@ function main() {
       break;
     case "migrate":
       handleMigrate(args);
+      break;
+    case "verify":
+      handleVerify(args);
       break;
     default:
       usage();
