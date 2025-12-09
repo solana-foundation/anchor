@@ -164,6 +164,7 @@ where
     From: AccountDeserialize + Owner,
     To: AccountSerialize + Owner,
 {
+    /// Creates a new Migration in the From (unmigrated) state.
     fn new(info: &'info AccountInfo<'info>, account: From) -> Self {
         Self {
             info,
