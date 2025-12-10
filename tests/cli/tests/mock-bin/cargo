@@ -1,12 +1,84 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const path = require("path");
+
+function handleExpand(args) {
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_CARGO_EXPAND_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_CARGO_EXPAND_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Parse expand arguments
+  let packageName = null;
+  let targetDir = null;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith("--package=")) {
+      packageName = arg.split("=")[1];
+    } else if (arg.startsWith("--target-dir=")) {
+      targetDir = arg.split("=")[1];
+    }
+  }
+
+  // Validate expected package name if set
+  const expectedPackage = process.env.MOCK_CARGO_EXPAND_PACKAGE_NAME;
+  if (expectedPackage && packageName !== expectedPackage) {
+    process.stderr.write(
+      `Error: Expected package ${expectedPackage}, got ${packageName}\n`,
+    );
+    process.exit(1);
+  }
+
+  // Generate expansion output
+  const customOutput = process.env.MOCK_CARGO_EXPAND_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput);
+  } else {
+    // Default mock expanded code output
+    const expandedCode = `// Expanded code for ${packageName || "program"}
+#![feature(prelude_import)]
+#[prelude_import]
+use std::prelude::rust_2021::*;
+#[macro_use]
+extern crate std;
+
+pub mod lib {
+    use anchor_lang::prelude::*;
+    
+    pub struct Program;
+    
+    impl anchor_lang::Id for Program {
+        fn id() -> Pubkey {
+            Pubkey::new_from_array([0u8; 32])
+        }
+    }
+}
+`;
+    process.stdout.write(expandedCode);
+  }
+}
 
 function main() {
+  const args = process.argv.slice(2);
+
+  // Handle expand subcommand
+  if (args.length > 0 && args[0] === "expand") {
+    handleExpand(args.slice(1));
+    return;
+  }
+
+  // Original cargo mock behavior
   const filename = process.env.MOCK_CARGO_OUTPUT_PATH;
   if (!filename) return;
 
-  const args = process.argv.slice(2);
   const output = {
     command: "cargo",
     args,

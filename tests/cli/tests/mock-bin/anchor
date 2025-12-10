@@ -631,6 +631,106 @@ function handleVerify(args) {
   }
 }
 
+function handleExpand(args) {
+  const path = require("path");
+  const { spawnSync } = require("child_process");
+
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_ANCHOR_EXPAND_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_ANCHOR_EXPAND_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Parse arguments
+  let programName = null;
+  const cargoArgs = [];
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--program-name" || arg === "-p") {
+      if (i + 1 < args.length) {
+        programName = args[i + 1];
+        i++;
+      }
+    } else {
+      cargoArgs.push(arg);
+    }
+  }
+
+  // Determine package name (from program name or current directory)
+  let packageName = programName || process.env.MOCK_ANCHOR_EXPAND_PACKAGE_NAME || "test_program";
+  
+  // Create .anchor/expanded-macros directory structure
+  const cwd = process.cwd();
+  const anchorDir = path.join(cwd, ".anchor");
+  const expandedMacrosDir = path.join(anchorDir, "expanded-macros");
+  const expandTargetDir = path.join(expandedMacrosDir, "expand-target");
+  const programExpandedDir = path.join(expandedMacrosDir, packageName);
+
+  try {
+    fs.mkdirSync(anchorDir, { recursive: true });
+    fs.mkdirSync(expandedMacrosDir, { recursive: true });
+    fs.mkdirSync(expandTargetDir, { recursive: true });
+    fs.mkdirSync(programExpandedDir, { recursive: true });
+  } catch (err) {
+    process.stderr.write(`Error: Failed to create directories: ${err.message}\n`);
+    process.exit(1);
+  }
+
+  // Build cargo expand command
+  const cargoPath = process.env.MOCK_CARGO_PATH || "cargo";
+  const targetDirArg = `--target-dir=${expandTargetDir}`;
+  const packageArg = `--package=${packageName}`;
+  
+  const expandArgs = ["expand", targetDirArg, packageArg, ...cargoArgs];
+
+  // Execute cargo expand
+  const result = spawnSync(cargoPath, expandArgs, {
+    env: process.env,
+    cwd: cwd,
+  });
+
+  if (result.error) {
+    process.stderr.write(
+      "'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation\n",
+    );
+    process.exit(1);
+  }
+
+  if (result.status !== 0) {
+    // Pass through stderr if available
+    if (result.stderr && result.stderr.length > 0) {
+      process.stderr.write(result.stderr);
+    } else {
+      process.stderr.write(
+        "'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation\n",
+      );
+    }
+    process.exit(result.status || 1);
+  }
+
+  // Write expanded output to file
+  const version = process.env.MOCK_ANCHOR_EXPAND_VERSION || "0.1.0";
+  const timestamp = process.env.MOCK_ANCHOR_EXPAND_TIMESTAMP || new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19);
+  const outputFileName = `${packageName}-${version}-${timestamp}.rs`;
+  const outputFilePath = path.join(programExpandedDir, outputFileName);
+
+  try {
+    fs.writeFileSync(outputFilePath, result.stdout);
+    // Use relative path from cwd for output message
+    const relativeOutputPath = path.relative(cwd, outputFilePath);
+    process.stdout.write(`Expanded ${packageName} into file ${relativeOutputPath}\n\n`);
+  } catch (err) {
+    process.stderr.write(`Error: Failed to write output file: ${err.message}\n`);
+    process.exit(1);
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
@@ -660,6 +760,9 @@ function main() {
       break;
     case "verify":
       handleVerify(args);
+      break;
+    case "expand":
+      handleExpand(args);
       break;
     default:
       usage();
