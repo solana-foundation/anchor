@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+/**
+ * Minimal mock for `solana-test-validator`.
+ *
+ * Behavior:
+ * - Prints a startup message to stdout (captured by redirect in caller).
+ * - Keeps the process alive until it receives SIGTERM/SIGINT.
+ * - Exits with status 0 on shutdown.
+ */
+
+function main() {
+  const pidFile = process.env.SOLANA_TEST_VALIDATOR_PID_FILE;
+  if (pidFile) {
+    try {
+      fs.writeFileSync(pidFile, `${process.pid}\n`);
+    } catch (err) {
+      console.error(`Failed to write PID file: ${err}`);
+    }
+  }
+
+  process.stdout.write("Mock solana-test-validator started\n");
+
+  const shutdown = () => {
+    clearInterval(heartbeat);
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+
+  // Keep the process alive.
+  const heartbeat = setInterval(() => {
+    // no-op heartbeat
+  }, 1000);
+}
+
+main();
+

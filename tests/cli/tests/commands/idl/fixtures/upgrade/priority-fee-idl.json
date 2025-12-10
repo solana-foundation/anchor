@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "name": "upgrade_priority_fee",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "metadata": {
+    "address": "PriorityUpgradeProgram111111111111111111111"
+  }
+}
+
