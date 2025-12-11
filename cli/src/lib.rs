@@ -1345,6 +1345,8 @@ fn init(
     test_template: TestTemplate,
     force: bool,
 ) -> Result<()> {
+    // Skip node setup for Rust and Mollusk templates
+    let skip_node = matches!(test_template, TestTemplate::Rust | TestTemplate::Mollusk);
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
@@ -1425,31 +1427,32 @@ fn init(
     let migrations_path = Path::new("migrations");
     fs::create_dir_all(migrations_path)?;
 
-    let license = get_npm_init_license()?;
+    if !skip_node {
+        let license = get_npm_init_license()?;
+        let jest = TestTemplate::Jest == test_template;
+        if javascript {
+            // Build javascript config
+            let mut package_json = File::create("package.json")?;
+            package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
-    let jest = TestTemplate::Jest == test_template;
-    if javascript {
-        // Build javascript config
-        let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.js"))?;
+            deploy.write_all(rust_template::deploy_script().as_bytes())?;
+        } else {
+            // Build typescript config
+            let mut ts_config = File::create("tsconfig.json")?;
+            ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.js"))?;
-        deploy.write_all(rust_template::deploy_script().as_bytes())?;
-    } else {
-        // Build typescript config
-        let mut ts_config = File::create("tsconfig.json")?;
-        ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
+            let mut ts_package_json = File::create("package.json")?;
+            ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
-        let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
-
-        let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
-        deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
+            deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+        }
     }
 
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
-    if !no_install {
+    if !skip_node && !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
         if !package_manager_result.status.success() && package_manager_cmd != "npm" {
