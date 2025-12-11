@@ -137,6 +137,211 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    // TODO: Move utils tests outside of the program
+    pub fn instruction_utils(_ctx: Context<Utils>) -> Result<()> {
+        use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
+        use external::utils::Instruction;
+
+        // Incorrect program
+        if Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            system_program::ID,
+            &[],
+            vec![],
+        ))
+        .is_ok()
+        {
+            return Err(ProgramError::Custom(0).into());
+        };
+        // Incorrect instruction
+        if Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            &[],
+            vec![],
+        ))
+        .is_ok()
+        {
+            return Err(ProgramError::Custom(1).into());
+        };
+        // Not enough accounts
+        if Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            external::client::args::Init::DISCRIMINATOR,
+            vec![],
+        ))
+        .is_ok()
+        {
+            return Err(ProgramError::Custom(2).into());
+        };
+        // Incorrect account(s)
+        if Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            external::client::args::Init::DISCRIMINATOR,
+            vec![
+                AccountMeta::default(),
+                AccountMeta::default(),
+                AccountMeta::default(),
+            ],
+        ))
+        .is_ok()
+        {
+            return Err(ProgramError::Custom(3).into());
+        };
+
+        // Correct (`init`)
+        let authority = Pubkey::from_str_const("Authority1111111111111111111111111111111111");
+        let my_account = Pubkey::from_str_const("MyAccount1111111111111111111111111111111111");
+        match Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            external::client::args::Init::DISCRIMINATOR,
+            vec![
+                AccountMeta::new(authority, true),
+                AccountMeta::new(my_account, false),
+                AccountMeta::new_readonly(system_program::ID, false),
+            ],
+        )) {
+            Ok(Instruction::Init { accounts, .. }) => {
+                require_keys_eq!(accounts.authority, authority);
+                require_keys_eq!(accounts.my_account, my_account);
+                require_keys_eq!(accounts.system_program, system_program::ID);
+            }
+            Ok(_) => return Err(ProgramError::Custom(4).into()),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Missing arg
+        if Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            external::client::args::Update::DISCRIMINATOR,
+            vec![
+                AccountMeta::new_readonly(authority, true),
+                AccountMeta::new(my_account, false),
+            ],
+        ))
+        .is_ok()
+        {
+            return Err(ProgramError::Custom(5).into());
+        };
+
+        // Correct (`update`)
+        let expected_args = external::client::args::Update { value: 1 };
+        match Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            &[
+                external::client::args::Update::DISCRIMINATOR,
+                &ser(&expected_args),
+            ]
+            .concat(),
+            vec![
+                AccountMeta::new_readonly(authority, true),
+                AccountMeta::new(my_account, false),
+            ],
+        )) {
+            Ok(Instruction::Update { accounts, args }) => {
+                require_keys_eq!(accounts.authority, authority);
+                require_keys_eq!(accounts.my_account, my_account);
+                require_eq!(args.value, expected_args.value);
+            }
+            Ok(_) => return Err(ProgramError::Custom(7).into()),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Correct (`update_composite`)
+        let expected_args = external::client::args::UpdateComposite { value: 2 };
+        match Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            &[
+                external::client::args::UpdateComposite::DISCRIMINATOR,
+                &ser(&expected_args),
+            ]
+            .concat(),
+            vec![
+                AccountMeta::new_readonly(authority, true),
+                AccountMeta::new(my_account, false),
+            ],
+        )) {
+            Ok(Instruction::UpdateComposite { accounts, args }) => {
+                require_keys_eq!(accounts.update.authority, authority);
+                require_keys_eq!(accounts.update.my_account, my_account);
+                require_eq!(args.value, expected_args.value);
+            }
+            Ok(_) => return Err(ProgramError::Custom(8).into()),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Correct (`update_non_instruction_composite`)
+        let expected_args = external::client::args::UpdateNonInstructionComposite { value: 3 };
+        match Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            &[
+                external::client::args::UpdateNonInstructionComposite::DISCRIMINATOR,
+                &ser(&expected_args),
+            ]
+            .concat(),
+            vec![
+                AccountMeta::new_readonly(authority, true),
+                AccountMeta::new(my_account, false),
+                AccountMeta::new_readonly(external::ID, false),
+            ],
+        )) {
+            Ok(Instruction::UpdateNonInstructionComposite { accounts, args }) => {
+                require_keys_eq!(accounts.non_instruction_update.authority, authority);
+                require_keys_eq!(accounts.non_instruction_update.my_account, my_account);
+                require_keys_eq!(accounts.non_instruction_update.program, external::ID);
+                require_eq!(args.value, expected_args.value);
+            }
+            Ok(_) => return Err(ProgramError::Custom(9).into()),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Correct (`update_non_instruction_composite2`)
+        let expected_args = external::client::args::UpdateNonInstructionComposite2 { value: 4 };
+        match Instruction::try_from_solana_instruction(&SolanaInstruction::new_with_bytes(
+            external::ID,
+            &[
+                external::client::args::UpdateNonInstructionComposite2::DISCRIMINATOR,
+                &ser(&expected_args),
+            ]
+            .concat(),
+            vec![
+                AccountMeta::new_readonly(external::ID, false),
+                AccountMeta::new_readonly(authority, true),
+                AccountMeta::new(my_account, false),
+                AccountMeta::new_readonly(external::ID, false),
+            ],
+        )) {
+            Ok(Instruction::UpdateNonInstructionComposite2 { accounts, args }) => {
+                require_keys_eq!(accounts.non_instruction_update.program, external::ID);
+                require_keys_eq!(
+                    accounts
+                        .non_instruction_update_with_different_ident
+                        .authority,
+                    authority
+                );
+                require_keys_eq!(
+                    accounts
+                        .non_instruction_update_with_different_ident
+                        .my_account,
+                    my_account
+                );
+                require_keys_eq!(
+                    accounts.non_instruction_update_with_different_ident.program,
+                    external::ID
+                );
+                require_eq!(args.value, expected_args.value);
+            }
+            Ok(_) => return Err(ProgramError::Custom(10).into()),
+            Err(e) => return Err(e.into()),
+        };
+
+        fn ser(val: impl AnchorSerialize) -> Vec<u8> {
+            let mut w = vec![];
+            val.serialize(&mut w).unwrap();
+            w
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]

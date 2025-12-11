@@ -1,6 +1,4 @@
-use anchor_lang_idl::types::{
-    Idl, IdlInstruction, IdlInstructionAccountItem, IdlInstructionAccounts,
-};
+use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem};
 use anchor_syn::{
     codegen::accounts::{__client_accounts, __cpi_client_accounts},
     parser::accounts,
@@ -9,7 +7,10 @@ use anchor_syn::{
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
-use super::common::{convert_idl_type_to_syn_type, gen_discriminator, get_canonical_program_id};
+use super::common::{
+    convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
+    get_canonical_program_id,
+};
 
 pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let internal_args_mod = gen_internal_args_mod(idl);
@@ -107,83 +108,17 @@ fn gen_internal_accounts_common(
     idl: &Idl,
     gen_accounts: impl Fn(&AccountsStruct, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
-    // It's possible to declare an accounts struct and not use it as an instruction, see
-    // https://github.com/coral-xyz/anchor/issues/3274
-    //
-    // NOTE: Returned accounts will not be unique if non-instruction composite accounts have been
-    // used multiple times https://github.com/solana-foundation/anchor/issues/3349
-    fn get_non_instruction_composite_accounts<'a>(
-        accs: &'a [IdlInstructionAccountItem],
-        idl: &'a Idl,
-    ) -> Vec<&'a IdlInstructionAccounts> {
-        accs.iter()
-            .flat_map(|acc| match acc {
-                IdlInstructionAccountItem::Composite(accs)
-                    if !idl
-                        .instructions
-                        .iter()
-                        .any(|ix| ix.accounts == accs.accounts) =>
-                {
-                    let mut nica = get_non_instruction_composite_accounts(&accs.accounts, idl);
-                    nica.push(accs);
-                    nica
-                }
-                _ => Default::default(),
-            })
-            .collect()
-    }
-
-    // Combine regular instructions with non-instruction composite accounts
-    let ix_accs = idl
-        .instructions
+    let all_ix_accs = get_all_instruction_accounts(idl);
+    let accounts = all_ix_accs
         .iter()
-        .flat_map(|ix| ix.accounts.to_owned())
-        .collect::<Vec<_>>();
-    let combined_ixs = get_non_instruction_composite_accounts(&ix_accs, idl)
-        .into_iter()
-        .fold(Vec::<IdlInstruction>::default(), |mut ixs, accs| {
-            // Make sure they are unique
-            if ixs.iter().all(|ix| ix.accounts != accs.accounts) {
-                // The name is not guaranteed to be the same as the one used in the actual source
-                // code of the program because the IDL only stores the field names.
-                let name = if ixs.iter().all(|ix| ix.name != accs.name) {
-                    accs.name.to_owned()
-                } else {
-                    // Append numbers to the field name until we find a unique name
-                    (2..)
-                        .find_map(|i| {
-                            let name = format!("{}{i}", accs.name);
-                            ixs.iter().all(|ix| ix.name != name).then_some(name)
-                        })
-                        .expect("Should always find a valid name")
-                };
-
-                ixs.push(IdlInstruction {
-                    name,
-                    accounts: accs.accounts.to_owned(),
-                    args: Default::default(),
-                    discriminator: Default::default(),
-                    docs: Default::default(),
-                    returns: Default::default(),
-                })
-            }
-
-            ixs
-        })
-        .into_iter()
-        .chain(idl.instructions.iter().cloned())
-        .collect::<Vec<_>>();
-
-    let accounts = combined_ixs
-        .iter()
-        .map(|ix| {
-            let ident = format_ident!("{}", ix.name.to_camel_case());
-            let generics = if ix.accounts.is_empty() {
+        .map(|accs| {
+            let ident = format_ident!("{}", accs.name.to_camel_case());
+            let generics = if accs.accounts.is_empty() {
                 quote!()
             } else {
                 quote!(<'info>)
             };
-            let accounts = ix.accounts.iter().map(|acc| match acc {
+            let accounts = accs.accounts.iter().map(|acc| match acc {
                 IdlInstructionAccountItem::Single(acc) => {
                     let name = format_ident!("{}", acc.name);
 
@@ -212,11 +147,11 @@ fn gen_internal_accounts_common(
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
-                    let ty_name = combined_ixs
+                    let ty_name = all_ix_accs
                         .iter()
-                        .find(|ix| ix.accounts == accs.accounts)
-                        .map(|ix| format_ident!("{}", ix.name.to_camel_case()))
-                        .expect("Instruction must exist");
+                        .find(|a| a.accounts == accs.accounts)
+                        .map(|a| format_ident!("{}", a.name.to_camel_case()))
+                        .expect("Accounts must exist");
 
                     quote! {
                         pub #name: #ty_name #generics
