@@ -42,17 +42,7 @@ main() {
     #
     # Bootup validator.
     #
-    solana-test-validator -r \
-				--bpf-program $composite_pid ../../tests/composite/target/deploy/composite.so \
-				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
-				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
-				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
-				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
-				> test-validator.log &
-    test_validator_pid=$!
-
-    sleep 5
-    check_solana_validator_running $test_validator_pid
+    surfpool_pid=$(start_surfpool)
 
     #
     # Run single threaded test.
@@ -67,18 +57,8 @@ main() {
     #
     # Restart validator for multithreaded test
     #
-    cleanup
-    solana-test-validator -r \
-				--bpf-program $composite_pid ../../tests/composite/target/deploy/composite.so \
-				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
-				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
-				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
-				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
-				> test-validator.log &
-    test_validator_pid=$!
-
-    sleep 5
-    check_solana_validator_running $test_validator_pid
+    cleanup "$surfpool_pid"
+    surfpool_pid=$(start_surfpool)
 
     #
     # Run multi threaded test.
@@ -94,18 +74,8 @@ main() {
     #
     # Restart validator for async test
     #
-    cleanup
-    solana-test-validator -r \
-				--bpf-program $composite_pid ../../tests/composite/target/deploy/composite.so \
-				--bpf-program $basic_2_pid ../../examples/tutorial/basic-2/target/deploy/basic_2.so \
-				--bpf-program $basic_4_pid ../../examples/tutorial/basic-4/target/deploy/basic_4.so \
-				--bpf-program $events_pid ../../tests/events/target/deploy/events.so \
-				--bpf-program $optional_pid ../../tests/optional/target/deploy/optional.so \
-				> test-validator.log &
-    test_validator_pid=$!
-
-    sleep 5
-    check_solana_validator_running $test_validator_pid
+    cleanup "$surfpool_pid"
+    surfpool_pid=$(start_surfpool)
 
     #
     # Run async test.
@@ -121,9 +91,23 @@ main() {
 }
 
 cleanup() {
-    pkill -P $$ || true
+    local pid="${1:-}"
+
+    if [ -n "$pid" ]; then
+        echo "Attempting to kill tracked surfpool process PID: $pid"
+        kill "$pid" 2>/dev/null || true
+        sleep 1
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+
+    echo "Ensuring all surfpool processes are stopped..."
+    pkill -9 -f 'surfpool' 2>/dev/null || true
+
+    # Clean up any sub-processes from this script
+    pkill -P $$ 2>/dev/null || true
     wait || true
 }
+
 
 trap_add() {
     trap_add_cmd=$1; shift || fatal "${FUNCNAME} usage error"
@@ -137,15 +121,38 @@ trap_add() {
     done
 }
 
-check_solana_validator_running() {
+check_surfpool() {
     local pid=$1
+    echo "Checking surfpool with PID: $pid"
     exit_state=$(kill -0 "$pid" && echo 'living' || echo 'exited')
     if [ "$exit_state" == 'exited' ]; then
-        echo "Cannot start test validator, see ./test-validator.log"
+        echo "Cannot start surfpool"
         exit 1
     fi
 }
 
+start_surfpool() {
+    surfpool start --ci --offline --daemon &>/dev/null &
+    local surfpool_pid=$!
+
+    sleep 3
+
+    # Send setup output to stderr, not stdout
+    surfpool run setup -u \
+        --input composite_pid=$composite_pid \
+        --input basic_2_pid=$basic_2_pid \
+        --input basic_4_pid=$basic_4_pid \
+        --input events_pid=$events_pid \
+        --input optional_pid=$optional_pid \
+        >&2
+
+    sleep 3
+
+    echo "Surfpool PID: $surfpool_pid" >&2
+
+    echo "$surfpool_pid"
+}
+
 declare -f -t trap_add
-trap_add 'cleanup' EXIT
+trap 'cleanup' EXIT
 main

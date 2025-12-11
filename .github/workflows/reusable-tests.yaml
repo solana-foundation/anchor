@@ -18,12 +18,16 @@ on:
       anchor_binary_name:
         required: true
         type: string
+      surfpool_cli_version:
+        required: true
+        type: string
 env:
   CACHE: ${{ inputs.cache }}
   SOLANA_CLI_VERSION: ${{ inputs.solana_cli_version }}
   NODE_VERSION: ${{ inputs.node_version }}
   CARGO_PROFILE: ${{ inputs.cargo_profile }}
   ANCHOR_BINARY_NAME: ${{ inputs.anchor_binary_name }}
+  SURFPOOL_CLI_VERSION: ${{ inputs.surfpool_cli_version }}
   CARGO_CACHE_PATH: |
     ~/.cargo/bin/
     ~/.cargo/registry/index/
@@ -111,6 +115,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-ts/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -236,6 +241,7 @@ jobs:
           path: client/example/target
           key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
       - run: cd client/example && ./run-test.sh
       - uses: ./.github/actions/git-diff/
 
@@ -249,6 +255,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -272,8 +279,8 @@ jobs:
           path: tests/bpf-upgradeable-state/target
           key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: solana-test-validator -r --quiet &
-        name: start validator
+      - run: surfpool start --ci --offline &
+        name: start surfpool
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
       - run: cd tests/bpf-upgradeable-state
       - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint --ignore-keys
@@ -346,6 +353,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -475,6 +483,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
