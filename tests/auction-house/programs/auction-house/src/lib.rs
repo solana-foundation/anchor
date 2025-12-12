@@ -35,7 +35,7 @@ pub mod auction_house {
     use super::*;
 
     pub fn create_auction_house<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateAuctionHouse<'info>>,
+        ctx: Context<'_, '_, 'info, CreateAuctionHouse<'info>>,
         seller_fee_basis_points: u16,
         requires_sign_off: bool,
         can_change_sale_price: bool,
@@ -127,7 +127,7 @@ pub mod auction_house {
     }
 
     pub fn deposit<'info>(
-        ctx: Context<'_, '_, '_, 'info, Deposit<'info>>,
+        ctx: Context<'_, '_, 'info, Deposit<'info>>,
         amount: u64,
     ) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
@@ -222,7 +222,7 @@ pub mod auction_house {
     }
 
     pub fn withdraw<'info>(
-        ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>,
+        ctx: Context<'_, '_, 'info, Withdraw<'info>>,
         amount: u64,
     ) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
@@ -341,7 +341,7 @@ pub mod auction_house {
     }
 
     pub fn sell<'info>(
-        ctx: Context<'_, '_, '_, 'info, Sell<'info>>,
+        ctx: Context<'_, '_, 'info, Sell<'info>>,
         buyer_price: u64,
         token_size: u64,
     ) -> Result<()> {
@@ -459,7 +459,7 @@ pub mod auction_house {
     }
 
     pub fn cancel<'info>(
-        ctx: Context<'_, '_, '_, 'info, Cancel<'info>>,
+        ctx: Context<'_, '_, 'info, Cancel<'info>>,
         _buyer_price: u64,
         _token_size: u64,
     ) -> Result<()> {
@@ -521,7 +521,7 @@ pub mod auction_house {
     }
 
     pub fn buy<'info>(
-        ctx: Context<'_, '_, '_, 'info, Buy<'info>>,
+        ctx: Context<'_, '_, 'info, Buy<'info>>,
         buyer_price: u64,
         token_size: u64,
     ) -> Result<()> {
@@ -666,7 +666,7 @@ pub mod auction_house {
     }
 
     pub fn execute_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteSale<'info>>,
+        ctx: Context<'_, '_, 'info, ExecuteSale<'info>>,
         buyer_price: u64,
         token_size: u64,
     ) -> Result<()> {
@@ -948,7 +948,7 @@ pub mod auction_house {
     }
 
     pub fn withdraw_from_fee<'info>(
-        ctx: Context<'_, '_, '_, 'info, WithdrawFromFee<'info>>,
+        ctx: Context<'_, '_, 'info, WithdrawFromFee<'info>>,
         amount: u64,
     ) -> Result<()> {
         let auction_house_fee_account = &ctx.accounts.auction_house_fee_account;
@@ -982,7 +982,7 @@ pub mod auction_house {
     }
 
     pub fn withdraw_from_treasury<'info>(
-        ctx: Context<'_, '_, '_, 'info, WithdrawFromTreasury<'info>>,
+        ctx: Context<'_, '_, 'info, WithdrawFromTreasury<'info>>,
         amount: u64,
     ) -> Result<()> {
         let treasury_mint = &ctx.accounts.treasury_mint;
@@ -1045,7 +1045,7 @@ pub mod auction_house {
     }
 
     pub fn update_auction_house<'info>(
-        ctx: Context<'_, '_, '_, 'info, UpdateAuctionHouse<'info>>,
+        ctx: Context<'_, '_, 'info, UpdateAuctionHouse<'info>>,
         seller_fee_basis_points: Option<u16>,
         requires_sign_off: Option<bool>,
         can_change_sale_price: Option<bool>,
