@@ -370,6 +370,21 @@
       }
     },
     {
+      "name": "partial_destructured_context",
+      "discriminator": [
+        139,
+        235,
+        49,
+        94,
+        149,
+        177,
+        72,
+        229
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
       "name": "underscore_context",
       "discriminator": [
         109,

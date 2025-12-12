@@ -99,7 +99,7 @@ pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
                 let ident = match &*arg.pat {
                     syn::Pat::Ident(ident) => ident.ident.clone(),
                     syn::Pat::Wild(_) => {
-                        syn::Ident::new("_arg", arg.pat.span())
+                        syn::Ident::new("_", arg.pat.span())
                     }
                     syn::Pat::Struct(pat_struct) => {
                         // Use the struct name as the identifier (e.g., "Context" from "Context { .. }")
@@ -108,7 +108,7 @@ pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
                             .segments
                             .last()
                             .map(|seg| seg.ident.clone())
-                            .unwrap_or_else(|| syn::Ident::new("_arg", arg.pat.span()))
+                            .unwrap_or_else(|| syn::Ident::new("_", arg.pat.span()))
                     }
                     _ => return Err(ParseError::new(arg.pat.span(), "expected argument name")),
                 };

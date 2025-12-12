@@ -31,6 +31,13 @@ pub mod idl {
         Ok(())
     }
 
+    pub fn partial_destructured_context(
+        Context { accounts, .. }: Context<CauseError>,
+    ) -> Result<()> {
+        let _ = accounts;
+        Ok(())
+    }
+
     pub fn underscore_context(_: Context<CauseError>) -> Result<()> {
         Ok(())
     }
