@@ -1,3 +1,4 @@
+use crate::AbsolutePath;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use solana_commitment_config::CommitmentConfig;
@@ -9,7 +10,7 @@ use std::path::PathBuf;
 
 use crate::config::{Config, ConfigOverride};
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub struct ShowAccountCommand {
     /// Account address to show
     pub account_address: Pubkey,
