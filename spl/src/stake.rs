@@ -80,46 +80,46 @@ pub fn deactivate_stake<'info>(
 #[derive(Accounts)]
 pub struct Authorize<'info> {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: UncheckedAccount<'info>,
 
     /// The existing authority
-    pub authorized: AccountInfo<'info>,
+    pub authorized: UncheckedAccount<'info>,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: AccountInfo<'info>,
+    pub new_authorized: UncheckedAccount<'info>,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: UncheckedAccount<'info>,
 
     /// The stake account's withdraw authority
-    pub withdrawer: AccountInfo<'info>,
+    pub withdrawer: UncheckedAccount<'info>,
 
     /// Account to send withdrawn lamports to
-    pub to: AccountInfo<'info>,
+    pub to: UncheckedAccount<'info>,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: UncheckedAccount<'info>,
 
     /// StakeHistory sysvar
-    pub stake_history: AccountInfo<'info>,
+    pub stake_history: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
 pub struct DeactivateStake<'info> {
     /// The stake account to be deactivated
-    pub stake: AccountInfo<'info>,
+    pub stake: UncheckedAccount<'info>,
 
     /// The stake account's stake authority
-    pub staker: AccountInfo<'info>,
+    pub staker: UncheckedAccount<'info>,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: UncheckedAccount<'info>,
 }
 
 // State

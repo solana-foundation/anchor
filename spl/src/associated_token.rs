@@ -1,9 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::prelude::UncheckedAccount;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfo};
 
 pub use ::spl_associated_token_account_interface as spl_associated_token_account;
 pub use ::spl_associated_token_account_interface::{
@@ -21,12 +19,12 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.payer,
-            ctx.accounts.associated_token,
-            ctx.accounts.authority,
-            ctx.accounts.mint,
-            ctx.accounts.system_program,
-            ctx.accounts.token_program,
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.associated_token.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -45,12 +43,12 @@ pub fn create_idempotent<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.payer,
-            ctx.accounts.associated_token,
-            ctx.accounts.authority,
-            ctx.accounts.mint,
-            ctx.accounts.system_program,
-            ctx.accounts.token_program,
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.associated_token.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.token_program.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -59,12 +57,12 @@ pub fn create_idempotent<'info>(
 
 #[derive(Accounts)]
 pub struct Create<'info> {
-    pub payer: AccountInfo<'info>,
-    pub associated_token: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+    pub payer: UncheckedAccount<'info>,
+    pub associated_token: UncheckedAccount<'info>,
+    pub authority: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub system_program: UncheckedAccount<'info>,
+    pub token_program: UncheckedAccount<'info>,
 }
 
 type CreateIdempotent<'info> = Create<'info>;

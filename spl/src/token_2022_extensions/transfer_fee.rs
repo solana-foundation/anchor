@@ -1,9 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
+use anchor_lang::prelude::{AccountInfo, UncheckedAccount};
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfo};
 use spl_token_2022_interface as spl_token_2022;
 
 pub fn transfer_fee_initialize<'info>(
@@ -23,7 +21,10 @@ pub fn transfer_fee_initialize<'info>(
     )?;
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint],
+        &[
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+        ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -31,8 +32,8 @@ pub fn transfer_fee_initialize<'info>(
 
 #[derive(Accounts)]
 pub struct TransferFeeInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 pub fn transfer_fee_set<'info>(
@@ -51,9 +52,9 @@ pub fn transfer_fee_set<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.mint,
-            ctx.accounts.authority,
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -62,9 +63,9 @@ pub fn transfer_fee_set<'info>(
 
 #[derive(Accounts)]
 pub struct TransferFeeSetTransferFee<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub authority: UncheckedAccount<'info>,
 }
 
 pub fn transfer_checked_with_fee<'info>(
@@ -87,11 +88,11 @@ pub fn transfer_checked_with_fee<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.source,
-            ctx.accounts.mint,
-            ctx.accounts.destination,
-            ctx.accounts.authority,
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.source.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.destination.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -100,11 +101,11 @@ pub fn transfer_checked_with_fee<'info>(
 
 #[derive(Accounts)]
 pub struct TransferCheckedWithFee<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub source: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub destination: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub source: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub destination: UncheckedAccount<'info>,
+    pub authority: UncheckedAccount<'info>,
 }
 
 pub fn harvest_withheld_tokens_to_mint<'info>(
@@ -117,7 +118,10 @@ pub fn harvest_withheld_tokens_to_mint<'info>(
         sources.iter().map(|a| a.key).collect::<Vec<_>>().as_slice(),
     )?;
 
-    let mut account_infos = vec![ctx.accounts.token_program_id, ctx.accounts.mint];
+    let mut account_infos = vec![
+        ctx.accounts.token_program_id.to_account_info(),
+        ctx.accounts.mint.to_account_info(),
+    ];
     account_infos.extend_from_slice(&sources);
 
     anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
@@ -126,8 +130,8 @@ pub fn harvest_withheld_tokens_to_mint<'info>(
 
 #[derive(Accounts)]
 pub struct HarvestWithheldTokensToMint<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
 }
 
 pub fn withdraw_withheld_tokens_from_mint<'info>(
@@ -144,10 +148,10 @@ pub fn withdraw_withheld_tokens_from_mint<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.mint,
-            ctx.accounts.destination,
-            ctx.accounts.authority,
+            ctx.accounts.token_program_id.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.destination.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
         ],
         ctx.signer_seeds,
     )
@@ -156,10 +160,10 @@ pub fn withdraw_withheld_tokens_from_mint<'info>(
 
 #[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromMint<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub destination: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub destination: UncheckedAccount<'info>,
+    pub authority: UncheckedAccount<'info>,
 }
 
 pub fn withdraw_withheld_tokens_from_accounts<'info>(
@@ -176,10 +180,10 @@ pub fn withdraw_withheld_tokens_from_accounts<'info>(
     )?;
 
     let mut account_infos = vec![
-        ctx.accounts.token_program_id,
-        ctx.accounts.mint,
-        ctx.accounts.destination,
-        ctx.accounts.authority,
+        ctx.accounts.token_program_id.to_account_info(),
+        ctx.accounts.mint.to_account_info(),
+        ctx.accounts.destination.to_account_info(),
+        ctx.accounts.authority.to_account_info(),
     ];
     account_infos.extend_from_slice(&sources);
 
@@ -189,8 +193,8 @@ pub fn withdraw_withheld_tokens_from_accounts<'info>(
 
 #[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromAccounts<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub destination: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+    pub token_program_id: UncheckedAccount<'info>,
+    pub mint: UncheckedAccount<'info>,
+    pub destination: UncheckedAccount<'info>,
+    pub authority: UncheckedAccount<'info>,
 }
