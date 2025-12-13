@@ -54,4 +54,8 @@ describe("declare-program", () => {
   it("Can use event utils", async () => {
     await program.methods.eventUtils().rpc();
   });
+
+  it("Can use instruction utils", async () => {
+    await program.methods.instructionUtils().rpc();
+  });
 });

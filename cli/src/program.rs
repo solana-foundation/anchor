@@ -284,7 +284,7 @@ fn deploy_workspace(
     // For Cargo workspaces, we don't have cluster/wallet in config, so just print basic info
     if let Ok(Some(cfg)) = Config::discover(cfg_override) {
         // Anchor workspace - we have cluster/wallet config
-        let url = crate::cluster_url(&cfg, &cfg.test_validator);
+        let url = crate::cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config);
         let keypair = cfg.provider.wallet.to_string();
         println!("Deploying cluster: {url}");
         println!("Upgrade authority: {keypair}");
