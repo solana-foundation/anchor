@@ -1114,7 +1114,8 @@ fn get_npm_init_license() -> Result<String> {
         .arg("config")
         .arg("get")
         .arg("init-license")
-        .output()?;
+        .output()
+        .context("failed to run `npm config get init-license`")?;
 
     if !npm_init_license_output.status.success() {
         return Err(anyhow!("Failed to get npm init license"));
@@ -1487,14 +1488,14 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
+            .with_context(|| format!("failed to run `{cmd} install`"))
     } else {
         std::process::Command::new(cmd)
             .arg("install")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
+            .with_context(|| format!("failed to run `{cmd} install`"))
     }
 }
 
