@@ -103,7 +103,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            anchor_lang::solana_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
+            anchor_lang::pinocchio_runtime::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
         }
     })
 }
@@ -173,17 +173,17 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .chain(inner_data.into_iter())
                 .collect();
 
-            let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
+            let ix = anchor_lang::pinocchio_runtime::instruction::Instruction::new_with_bytes(
                 crate::ID,
                 &ix_data,
                 vec![
-                    anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
+                    anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly(
                         *authority_info.key,
                         true,
                     ),
                 ],
             );
-            anchor_lang::solana_program::program::invoke_signed(
+            anchor_lang::pinocchio_runtime::program::invoke_signed(
                 &ix,
                 &[authority_info],
                 &[&[#authority_seeds, &[crate::EVENT_AUTHORITY_AND_BUMP.1]]],

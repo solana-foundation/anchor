@@ -18,8 +18,8 @@ pub fn advance_nonce_account<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, AdvanceNonceAccount<'info>>,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::advance_nonce_account(
-        ctx.accounts.nonce.key,
-        ctx.accounts.authorized.key,
+        ctx.accounts.nonce.key(),
+        ctx.accounts.authorized.key(),
     );
     crate::pinocchio_runtime::program::invoke_signed(
         &ix,
@@ -35,9 +35,9 @@ pub fn advance_nonce_account<'info>(
 
 #[derive(Accounts)]
 pub struct AdvanceNonceAccount<'info> {
-    pub nonce: AccountInfo<'info>,
-    pub authorized: AccountInfo<'info>,
-    pub recent_blockhashes: AccountInfo<'info>,
+    pub nonce: AccountInfo,
+    pub authorized: AccountInfo,
+    pub recent_blockhashes: AccountInfo,
 }
 
 pub fn allocate<'info>(
@@ -45,7 +45,7 @@ pub fn allocate<'info>(
     space: u64,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::allocate(
-        ctx.accounts.account_to_allocate.key,
+        ctx.accounts.account_to_allocate.key(),
         space,
     );
     crate::pinocchio_runtime::program::invoke_signed(
@@ -58,7 +58,7 @@ pub fn allocate<'info>(
 
 #[derive(Accounts)]
 pub struct Allocate<'info> {
-    pub account_to_allocate: AccountInfo<'info>,
+    pub account_to_allocate: AccountInfo,
 }
 
 pub fn allocate_with_seed<'info>(
@@ -68,8 +68,8 @@ pub fn allocate_with_seed<'info>(
     owner: &Pubkey,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::allocate_with_seed(
-        ctx.accounts.account_to_allocate.key,
-        ctx.accounts.base.key,
+        ctx.accounts.account_to_allocate.key(),
+        ctx.accounts.base.key(),
         seed,
         space,
         owner,
@@ -84,8 +84,8 @@ pub fn allocate_with_seed<'info>(
 
 #[derive(Accounts)]
 pub struct AllocateWithSeed<'info> {
-    pub account_to_allocate: AccountInfo<'info>,
-    pub base: AccountInfo<'info>,
+    pub account_to_allocate: AccountInfo,
+    pub base: AccountInfo,
 }
 
 pub fn assign<'info>(
@@ -93,7 +93,7 @@ pub fn assign<'info>(
     owner: &Pubkey,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::assign(
-        ctx.accounts.account_to_assign.key,
+        ctx.accounts.account_to_assign.key(),
         owner,
     );
     crate::pinocchio_runtime::program::invoke_signed(
@@ -106,7 +106,7 @@ pub fn assign<'info>(
 
 #[derive(Accounts)]
 pub struct Assign<'info> {
-    pub account_to_assign: AccountInfo<'info>,
+    pub account_to_assign: AccountInfo,
 }
 
 pub fn assign_with_seed<'info>(
@@ -115,8 +115,8 @@ pub fn assign_with_seed<'info>(
     owner: &Pubkey,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::assign_with_seed(
-        ctx.accounts.account_to_assign.key,
-        ctx.accounts.base.key,
+        ctx.accounts.account_to_assign.key(),
+        ctx.accounts.base.key(),
         seed,
         owner,
     );
@@ -130,8 +130,8 @@ pub fn assign_with_seed<'info>(
 
 #[derive(Accounts)]
 pub struct AssignWithSeed<'info> {
-    pub account_to_assign: AccountInfo<'info>,
-    pub base: AccountInfo<'info>,
+    pub account_to_assign: AccountInfo,
+    pub base: AccountInfo,
 }
 
 pub fn authorize_nonce_account<'info>(
@@ -139,8 +139,8 @@ pub fn authorize_nonce_account<'info>(
     new_authority: &Pubkey,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::authorize_nonce_account(
-        ctx.accounts.nonce.key,
-        ctx.accounts.authorized.key,
+        ctx.accounts.nonce.key(),
+        ctx.accounts.authorized.key(),
         new_authority,
     );
     crate::pinocchio_runtime::program::invoke_signed(
@@ -153,8 +153,8 @@ pub fn authorize_nonce_account<'info>(
 
 #[derive(Accounts)]
 pub struct AuthorizeNonceAccount<'info> {
-    pub nonce: AccountInfo<'info>,
-    pub authorized: AccountInfo<'info>,
+    pub nonce: AccountInfo,
+    pub authorized: AccountInfo,
 }
 
 pub fn create_account<'info>(
@@ -180,8 +180,8 @@ pub fn create_account<'info>(
 
 #[derive(Accounts)]
 pub struct CreateAccount<'info> {
-    pub from: AccountInfo<'info>,
-    pub to: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub to: AccountInfo,
 }
 
 pub fn create_account_with_seed<'info>(
@@ -194,7 +194,7 @@ pub fn create_account_with_seed<'info>(
     let ix = crate::pinocchio_runtime::system_instruction::create_account_with_seed(
         ctx.accounts.from.key,
         ctx.accounts.to.key,
-        ctx.accounts.base.key,
+        ctx.accounts.base.key(),
         seed,
         lamports,
         space,
@@ -210,9 +210,9 @@ pub fn create_account_with_seed<'info>(
 
 #[derive(Accounts)]
 pub struct CreateAccountWithSeed<'info> {
-    pub from: AccountInfo<'info>,
-    pub to: AccountInfo<'info>,
-    pub base: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub to: AccountInfo,
+    pub base: AccountInfo,
 }
 
 pub fn create_nonce_account<'info>(
@@ -222,7 +222,7 @@ pub fn create_nonce_account<'info>(
 ) -> Result<()> {
     let ixs = crate::pinocchio_runtime::system_instruction::create_nonce_account(
         ctx.accounts.from.key,
-        ctx.accounts.nonce.key,
+        ctx.accounts.nonce.key(),
         authority,
         lamports,
     );
@@ -246,10 +246,10 @@ pub fn create_nonce_account<'info>(
 
 #[derive(Accounts)]
 pub struct CreateNonceAccount<'info> {
-    pub from: AccountInfo<'info>,
-    pub nonce: AccountInfo<'info>,
-    pub recent_blockhashes: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub nonce: AccountInfo,
+    pub recent_blockhashes: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 pub fn create_nonce_account_with_seed<'info>(
@@ -260,8 +260,8 @@ pub fn create_nonce_account_with_seed<'info>(
 ) -> Result<()> {
     let ixs = crate::pinocchio_runtime::system_instruction::create_nonce_account_with_seed(
         ctx.accounts.from.key,
-        ctx.accounts.nonce.key,
-        ctx.accounts.base.key,
+        ctx.accounts.nonce.key(),
+        ctx.accounts.base.key(),
         seed,
         authority,
         lamports,
@@ -290,11 +290,11 @@ pub fn create_nonce_account_with_seed<'info>(
 
 #[derive(Accounts)]
 pub struct CreateNonceAccountWithSeed<'info> {
-    pub from: AccountInfo<'info>,
-    pub nonce: AccountInfo<'info>,
-    pub base: AccountInfo<'info>,
-    pub recent_blockhashes: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub nonce: AccountInfo,
+    pub base: AccountInfo,
+    pub recent_blockhashes: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 pub fn transfer<'info>(
@@ -316,8 +316,8 @@ pub fn transfer<'info>(
 
 #[derive(Accounts)]
 pub struct Transfer<'info> {
-    pub from: AccountInfo<'info>,
-    pub to: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub to: AccountInfo,
 }
 
 pub fn transfer_with_seed<'info>(
@@ -328,7 +328,7 @@ pub fn transfer_with_seed<'info>(
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::transfer_with_seed(
         ctx.accounts.from.key,
-        ctx.accounts.base.key,
+        ctx.accounts.base.key(),
         from_seed,
         from_owner,
         ctx.accounts.to.key,
@@ -344,9 +344,9 @@ pub fn transfer_with_seed<'info>(
 
 #[derive(Accounts)]
 pub struct TransferWithSeed<'info> {
-    pub from: AccountInfo<'info>,
-    pub base: AccountInfo<'info>,
-    pub to: AccountInfo<'info>,
+    pub from: AccountInfo,
+    pub base: AccountInfo,
+    pub to: AccountInfo,
 }
 
 pub fn withdraw_nonce_account<'info>(
@@ -354,8 +354,8 @@ pub fn withdraw_nonce_account<'info>(
     lamports: u64,
 ) -> Result<()> {
     let ix = crate::pinocchio_runtime::system_instruction::withdraw_nonce_account(
-        ctx.accounts.nonce.key,
-        ctx.accounts.authorized.key,
+        ctx.accounts.nonce.key(),
+        ctx.accounts.authorized.key(),
         ctx.accounts.to.key,
         lamports,
     );
@@ -375,9 +375,9 @@ pub fn withdraw_nonce_account<'info>(
 
 #[derive(Accounts)]
 pub struct WithdrawNonceAccount<'info> {
-    pub nonce: AccountInfo<'info>,
-    pub to: AccountInfo<'info>,
-    pub recent_blockhashes: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
-    pub authorized: AccountInfo<'info>,
+    pub nonce: AccountInfo,
+    pub to: AccountInfo,
+    pub recent_blockhashes: AccountInfo,
+    pub rent: AccountInfo,
+    pub authorized: AccountInfo,
 }

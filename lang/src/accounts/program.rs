@@ -95,7 +95,7 @@ use std::ops::Deref;
 ///
 #[derive(Clone)]
 pub struct Program<'info, T = ()> {
-    info: &'info AccountInfo<'info>,
+    info: &'info AccountInfo,
     _phantom: PhantomData<T>,
 }
 
@@ -106,7 +106,7 @@ impl<T: fmt::Debug> fmt::Debug for Program<'_, T> {
 }
 
 impl<'a, T> Program<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo<'a>) -> Program<'a, T> {
+    pub(crate) fn new(info: &'a AccountInfo) -> Program<'a, T> {
         Self {
             info,
             _phantom: PhantomData,
@@ -114,7 +114,7 @@ impl<'a, T> Program<'a, T> {
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if *self.info.owner == bpf_loader_upgradeable::ID {
+        if self.info.owner() == &bpf_loader_upgradeable::ID {
             let mut data: &[u8] = &self.info.try_borrow_data()?;
             let upgradable_loader_state =
                 UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
@@ -143,17 +143,19 @@ impl<'a, T> Program<'a, T> {
     }
 }
 
-impl<'a, T: Id> TryFrom<&'a AccountInfo<'a>> for Program<'a, T> {
+impl<'a, T: Id> TryFrom<&'a AccountInfo> for Program<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
+    fn try_from(info: &'a AccountInfo) -> Result<Self> {
         // Special handling for unit type () - only check executable, not program ID
         let is_unit_type = T::id() == Pubkey::default();
 
-        if !is_unit_type && info.key != &T::id() {
-            return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
+        if !is_unit_type && info.key() != &T::id() {
+            return Err(
+                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key(), T::id()))
+            );
         }
-        if !info.executable {
+        if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
         Ok(Program::new(info))
@@ -164,7 +166,7 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -180,29 +182,29 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
 
 impl<T> ToAccountMetas for Program<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match self.info.is_writable() {
+            false => AccountMeta::new_readonly(*self.info.key(), is_signer),
+            true => AccountMeta::new(*self.info.key(), is_signer),
         };
         vec![meta]
     }
 }
 
 impl<'info, T> ToAccountInfos<'info> for Program<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![*self.info]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo<'info>> for Program<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+impl<'info, T> AsRef<AccountInfo> for Program<'info, T> {
+    fn as_ref(&self) -> &AccountInfo {
         self.info
     }
 }
 
 impl<'info, T> Deref for Program<'info, T> {
-    type Target = AccountInfo<'info>;
+    type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
         self.info

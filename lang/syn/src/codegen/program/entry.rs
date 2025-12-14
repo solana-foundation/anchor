@@ -36,22 +36,31 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        /// Pinocchio's entrypoint passes program_id as &[u8; 32], so we accept that and convert to Pubkey
+        /// Pinocchio's entrypoint passes program_id as &[u8; 32] and Pinocchio's AccountInfo.
+        /// Pinocchio's AccountInfo is compatible with Solana's runtime at the binary level,
+        /// but the Rust types are different. We need to accept Pinocchio's AccountInfo and
+        /// convert it to Solana's AccountInfo format that Anchor expects.
+        ///
+        /// Note: Pinocchio's entrypoint provides accounts in a zero-copy format using raw pointers,
+        /// while Solana's AccountInfo uses RefCell for interior mutability. The conversion needs
+        /// to preserve is_signer, is_writable, and other account metadata.
         pub fn entry<'info>(
             program_id: &anchor_lang::pinocchio_runtime::pubkey::PinocchioPubkey,
-            accounts: &'info [AccountInfo<'info>],
+            accounts: &'info [AccountInfo],
             data: &[u8]
         ) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
             // Convert Pinocchio's Pubkey ([u8; 32]) to Solana's Pubkey
-            // Pinocchio's Pubkey is [u8; 32], Solana's Pubkey can be created from it
             let program_id_pubkey = Pubkey::from(*program_id);
+
+            // Pinocchio's AccountInfo is now used directly throughout Anchor
+            // No conversion needed - Pinocchio's AccountInfo is compatible with Anchor's runtime
             try_entry(&program_id_pubkey, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
         }
 
-        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
+        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
