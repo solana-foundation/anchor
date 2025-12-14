@@ -1,9 +1,7 @@
-use {
-    crate::{AccountField, AccountsStruct, Ty},
-    heck::SnakeCase,
-    quote::quote,
-    std::str::FromStr,
-};
+use crate::{AccountField, AccountsStruct, Ty};
+use heck::SnakeCase;
+use quote::quote;
+use std::str::FromStr;
 
 // Generates the private `__client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
@@ -98,32 +96,22 @@ pub fn generate(
                     false => quote! {false},
                     true => quote! {true},
                 };
-
+                let meta = match f.constraints.is_mutable() {
+                    false => quote! { anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly },
+                    true => quote! { anchor_lang::pinocchio_runtime::instruction::AccountMeta::new },
+                };
                 let name = &f.ident;
-                let is_mutable = f.constraints.is_mutable();
                 if f.is_optional {
                     quote! {
                         if let Some(#name) = &self.#name {
-                            let meta = match (#is_mutable, #is_signer) {
-                                (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#name),
-                                (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(#name),
-                                (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(#name),
-                                (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(#name),
-                            };
-                            account_metas.push(meta);
+                            account_metas.push(#meta(*#name, #is_signer));
                         } else {
-                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly(#program_id, false));
                         }
                     }
                 } else {
                     quote! {
-                        let meta = match (#is_mutable, #is_signer) {
-                            (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(&self.#name),
-                            (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(&self.#name),
-                            (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(&self.#name),
-                            (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(&self.#name),
-                        };
-                        account_metas.push(meta);
+                        account_metas.push(#meta(self.#name, #is_signer));
                     }
                 }
             }

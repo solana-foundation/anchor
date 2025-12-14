@@ -1,4 +1,6 @@
-use {anchor_lang::pinocchio_runtime::pubkey::Pubkey, core::str::FromStr};
+use core::str::FromStr;
+
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 
 mod id {
     anchor_lang::declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

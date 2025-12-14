@@ -1,9 +1,8 @@
-use {
-    crate::{AccountField, AccountsStruct, Ty},
-    heck::SnakeCase,
-    quote::quote,
-    std::str::FromStr,
-};
+use std::str::FromStr;
+
+use crate::{AccountField, AccountsStruct, Ty};
+use heck::SnakeCase;
+use quote::quote;
 
 // Generates the private `__cpi_client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
@@ -98,35 +97,22 @@ pub fn generate(
                     false => quote! {false},
                     true => quote! {true},
                 };
+                let meta = match f.constraints.is_mutable() {
+                    false => quote! { anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly },
+                    true => quote! { anchor_lang::pinocchio_runtime::instruction::AccountMeta::new },
+                };
                 let name = &f.ident;
-                let is_mutable = f.constraints.is_mutable();
                 if f.is_optional {
                     quote! {
                         if let Some(#name) = &self.#name {
-                            // For AccountInfo, use address() which returns &Pubkey directly
-                            let account_ref = #name;
-                            let meta = match (#is_mutable, #is_signer) {
-                                (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
-                                (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(account_ref.address()),
-                                (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(account_ref.address()),
-                                (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(account_ref.address()),
-                            };
-                            account_metas.push(meta);
+                            account_metas.push(#meta(anchor_lang::Key::key(#name), #is_signer));
                         } else {
-                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly(#program_id, false));
                         }
                     }
                 } else {
                     quote! {
-                        // For AccountInfo, use address() which returns &Pubkey directly
-                        let account_ref = &self.#name;
-                        let meta = match (#is_mutable, #is_signer) {
-                            (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
-                            (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(account_ref.address()),
-                            (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(account_ref.address()),
-                            (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(account_ref.address()),
-                        };
-                        account_metas.push(meta);
+                        account_metas.push(#meta(anchor_lang::Key::key(&self.#name), #is_signer));
                     }
                 }
             }
@@ -173,14 +159,7 @@ pub fn generate(
             })
             .collect()
     };
-    // Check if there are any composite fields (which need lifetimes)
-    // Regular fields are always AccountInfo in this module, so they don't need lifetimes
-    let has_composite_fields = accs
-        .fields
-        .iter()
-        .any(|f| matches!(f, AccountField::CompositeField(_)));
-
-    let generics = if account_struct_fields.is_empty() || !has_composite_fields {
+    let generics = if account_struct_fields.is_empty() {
         quote! {}
     } else {
         quote! {<'info>}
@@ -217,7 +196,7 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl anchor_lang::ToAccountInfos<'static> for #name #generics {
+            impl<'info> anchor_lang::ToAccountInfos<'info> for #name #generics {
                 fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountInfo> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
