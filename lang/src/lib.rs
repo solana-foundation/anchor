@@ -86,8 +86,11 @@ pub mod pinocchio_runtime {
     }
 
     pub mod pubkey {
-        // Use Solana's Pubkey for compatibility
+        // Pinocchio's Pubkey is [u8; 32], but we re-export Solana's Pubkey for compatibility
+        // Entrypoint uses Pinocchio's Pubkey type directly
         pub use solana_pubkey::*;
+        // Pinocchio's Pubkey type alias for entrypoint compatibility
+        pub type PinocchioPubkey = [u8; 32];
     }
 
     pub mod program_error {

@@ -36,8 +36,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        pub fn entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
-            try_entry(program_id, accounts, data).map_err(|e| {
+        /// Pinocchio's entrypoint passes program_id as &[u8; 32], so we accept that and convert to Pubkey
+        pub fn entry<'info>(
+            program_id: &anchor_lang::pinocchio_runtime::pubkey::PinocchioPubkey,
+            accounts: &'info [AccountInfo<'info>],
+            data: &[u8]
+        ) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
+            // Convert Pinocchio's Pubkey ([u8; 32]) to Solana's Pubkey
+            // Pinocchio's Pubkey is [u8; 32], Solana's Pubkey can be created from it
+            let program_id_pubkey = Pubkey::from(*program_id);
+            try_entry(&program_id_pubkey, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
