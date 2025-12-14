@@ -1,7 +1,7 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::prelude::*;
 use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::prelude::*;
 
 pub use crate::pinocchio_runtime::system_program::ID;
 
