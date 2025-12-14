@@ -5,6 +5,8 @@ declare_id!("Dec1areProgram11111111111111111111111111111");
 declare_program!(external);
 use external::program::External;
 
+declare_program!(external_for_less, no_errors, no_client, no_utils);
+
 // Compilation check for legacy IDL (pre Anchor `0.30`)
 declare_program!(external_legacy);
 
