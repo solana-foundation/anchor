@@ -1,4 +1,4 @@
-use crate::solana_program::program_memory::sol_memcpy;
+use crate::pinocchio_runtime::program_memory::sol_memcpy;
 use std::cmp;
 use std::io::{self, Write};
 

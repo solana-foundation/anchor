@@ -1,11 +1,11 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
-use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::solana_program::system_program;
+use crate::error::{Error, ErrorCode};
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
     Owners, Result, ToAccountInfos, ToAccountMetas,
@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountInfo`]
+/// Wrapper around [`AccountInfo`](crate::pinocchio_runtime::account_info::AccountInfo)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -91,7 +91,7 @@ use std::ops::{Deref, DerefMut};
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
 ///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
+/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/coral-xyz/anchor/blob/master/spl/src/token.rs))
 /// ```ignore
 /// #[derive(Clone)]
 /// pub struct Mint(spl_token::state::Mint);
