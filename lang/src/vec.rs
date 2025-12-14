@@ -7,7 +7,7 @@ use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
         self.iter()
             .flat_map(|item| item.to_account_infos())
             .collect()
@@ -25,7 +25,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Vec<T> {
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -46,7 +46,7 @@ mod tests {
     #[derive(Accounts)]
     pub struct Test<'info> {
         #[account(signer)]
-        test: AccountInfo<'info>,
+        test: AccountInfo,
     }
 
     #[test]
