@@ -69,8 +69,8 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::solana_program::program_error::ProgramError;
-use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::pinocchio_runtime::program_error::ProgramError;
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;

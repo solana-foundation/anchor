@@ -52,6 +52,7 @@ solana-system-interface = "2.0.0"
 solana-sysvar = "~3.0.0"
 solana-sysvar-id = "3.0.0"
 solana-transaction = "3.0.0"
+pinocchio = "0.9.2"
 
 [profile.release]
 lto = true

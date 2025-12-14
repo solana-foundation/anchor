@@ -317,6 +317,7 @@ dependencies = [
  "borsh 1.5.7",
  "bytemuck",
  "const-crypto",
+ "pinocchio",
  "solana-account-info",
  "solana-clock",
  "solana-cpi",
@@ -2988,6 +2989,12 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pinocchio"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b971851087bc3699b001954ad02389d50c41405ece3548cbcafc88b3e20017a"
 
 [[package]]
 name = "pkcs8"

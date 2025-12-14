@@ -63,6 +63,8 @@ borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
 
+pinocchio.workspace = true
+
 solana-account-info.workspace = true
 solana-clock.workspace = true
 solana-cpi.workspace = true

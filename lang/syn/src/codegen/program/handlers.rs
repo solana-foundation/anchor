@@ -41,7 +41,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 _ => quote! {
                     let mut return_data = Vec::with_capacity(256);
                     result.serialize(&mut return_data).unwrap();
-                    anchor_lang::solana_program::program::set_return_data(&return_data);
+                    anchor_lang::pinocchio_runtime::program::set_return_data(&return_data);
                 },
             };
 
