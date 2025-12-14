@@ -36,18 +36,18 @@ use std::ops::Deref;
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
 pub struct Signer<'info> {
-    info: &'info AccountInfo<'info>,
+    info: &'info AccountInfo,
 }
 
 impl<'info> Signer<'info> {
-    fn new(info: &'info AccountInfo<'info>) -> Signer<'info> {
+    fn new(info: &'info AccountInfo) -> Signer<'info> {
         Self { info }
     }
 
     /// Deserializes the given `info` into a `Signer`.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Signer<'info>> {
-        if !info.is_signer {
+    pub fn try_from(info: &'info AccountInfo) -> Result<Signer<'info>> {
+        if !info.is_signer() {
             return Err(ErrorCode::AccountNotSigner.into());
         }
         Ok(Signer::new(info))
@@ -58,7 +58,7 @@ impl<'info, B> Accounts<'info, B> for Signer<'info> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -76,29 +76,29 @@ impl<'info> AccountsExit<'info> for Signer<'info> {}
 
 impl ToAccountMetas for Signer<'_> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match self.info.is_writable() {
+            false => AccountMeta::new_readonly(*self.info.key(), is_signer),
+            true => AccountMeta::new(*self.info.key(), is_signer),
         };
         vec![meta]
     }
 }
 
 impl<'info> ToAccountInfos<'info> for Signer<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![*self.info]
     }
 }
 
-impl<'info> AsRef<AccountInfo<'info>> for Signer<'info> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+impl<'info> AsRef<AccountInfo> for Signer<'info> {
+    fn as_ref(&self) -> &AccountInfo {
         self.info
     }
 }
 
 impl<'info> Deref for Signer<'info> {
-    type Target = AccountInfo<'info>;
+    type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
         self.info
@@ -107,6 +107,6 @@ impl<'info> Deref for Signer<'info> {
 
 impl Key for Signer<'_> {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.key()
     }
 }

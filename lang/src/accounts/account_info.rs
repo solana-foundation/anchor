@@ -9,10 +9,10 @@ use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 
-impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
+impl<'info, B> Accounts<'info, B> for AccountInfo {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -22,31 +22,31 @@ impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
         }
         let account = &accounts[0];
         *accounts = &accounts[1..];
-        Ok(account.clone())
+        Ok(*account)
     }
 }
 
-impl ToAccountMetas for AccountInfo<'_> {
+impl ToAccountMetas for AccountInfo {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.is_signer);
-        let meta = match self.is_writable {
-            false => AccountMeta::new_readonly(*self.key, is_signer),
-            true => AccountMeta::new(*self.key, is_signer),
+        let is_signer = is_signer.unwrap_or(self.is_signer());
+        let meta = match self.is_writable() {
+            false => AccountMeta::new_readonly(*self.key(), is_signer),
+            true => AccountMeta::new(*self.key(), is_signer),
         };
         vec![meta]
     }
 }
 
-impl<'info> ToAccountInfos<'info> for AccountInfo<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.clone()]
+impl<'info> ToAccountInfos<'info> for AccountInfo {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![*self]
     }
 }
 
-impl<'info> AccountsExit<'info> for AccountInfo<'info> {}
+impl<'info> AccountsExit<'info> for AccountInfo {}
 
-impl Key for AccountInfo<'_> {
+impl Key for AccountInfo {
     fn key(&self) -> Pubkey {
-        *self.key
+        *self.key()
     }
 }

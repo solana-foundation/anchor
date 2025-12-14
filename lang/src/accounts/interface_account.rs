@@ -174,8 +174,8 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, T> {
-    fn new(info: &'a AccountInfo<'a>, account: T) -> Self {
-        let owner = *info.owner;
+    fn new(info: &'a AccountInfo, account: T) -> Self {
+        let owner = *info.owner();
         Self {
             account: Account::new(info, account),
             owner,
@@ -196,9 +196,9 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         let info = self.account.to_account_info();
 
         // Enforce owner stability: must match the one validated at construction.
-        if info.owner != &self.owner {
+        if info.owner() != &self.owner {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, self.owner)));
+                .with_pubkeys((*info.owner(), self.owner)));
         }
 
         // Re-deserialize fresh data into the inner account.
@@ -240,7 +240,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     /// program ownership via `T::check_owner`, then deserializes using
     /// `AccountDeserialize::try_deserialize_unchecked`.
     #[inline(never)]
-    pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
+    pub fn try_from(info: &'a AccountInfo) -> Result<Self> {
         // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
         // accounts) that do not have Anchor discriminators. Because of that, we
         // intentionally skip the Anchor discriminator check here and instead:
@@ -257,11 +257,11 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     /// that both skip Anchor discriminator checks, and `try_from` additionally
     /// enforces ownership.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from_unchecked(info: &'a AccountInfo) -> Result<Self> {
+        if info.owner() == &system_program::ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        T::check_owner(info.owner)?;
+        T::check_owner(info.owner())?;
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
     }
@@ -273,7 +273,7 @@ impl<'info, B, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Ac
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -299,7 +299,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owners + Clone> AccountsE
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for InterfaceAccount<'info, T>
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
+    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
         self.account.close(sol_destination)
     }
 }
@@ -313,15 +313,15 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Interf
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
     for InterfaceAccount<'info, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
         self.account.to_account_infos()
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo>
     for InterfaceAccount<'info, T>
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+    fn as_ref(&self) -> &AccountInfo {
         self.account.as_ref()
     }
 }
