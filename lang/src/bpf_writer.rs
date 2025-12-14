@@ -1,10 +1,6 @@
-use {
-    crate::pinocchio_runtime::program_memory::sol_memcpy,
-    std::{
-        cmp,
-        io::{self, Write},
-    },
-};
+use crate::pinocchio_runtime::program_memory::sol_memcpy;
+use std::cmp;
+use std::io::{self, Write};
 
 #[derive(Debug, Default)]
 pub struct BpfWriter<T> {
