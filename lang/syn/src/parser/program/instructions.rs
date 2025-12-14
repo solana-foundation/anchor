@@ -89,10 +89,22 @@ fn parse_overrides(attrs: &[syn::Attribute]) -> ParseResult<Option<Overrides>> {
 }
 
 pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
-    let mut args: Vec<IxArg> = method
-        .sig
-        .inputs
-        .iter()
+
+    let mut inputs = method.sig.inputs.iter();
+
+    let ctx = match inputs.next() {
+        Some(syn::FnArg::Typed(arg)) => {
+            let docs = docs::parse(&arg.attrs);
+            IxArg {
+                name: syn::Ident::new("ctx", arg.pat.span()),
+                docs,
+                raw_arg: arg.clone(),
+            }
+        }
+        _ => return Err(ParseError::new(method.sig.span(), "expected Context argument")),
+    };
+
+    let args: Vec<IxArg> = inputs
         .map(|arg: &syn::FnArg| match arg {
             syn::FnArg::Typed(arg) => {
                 let docs = docs::parse(&arg.attrs);
@@ -102,7 +114,6 @@ pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
                         syn::Ident::new("_", arg.pat.span())
                     }
                     syn::Pat::Struct(pat_struct) => {
-                        // Use the struct name as the identifier (e.g., "Context" from "Context { .. }")
                         pat_struct
                             .path
                             .segments
@@ -124,9 +135,6 @@ pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
             )),
         })
         .collect::<ParseResult<_>>()?;
-
-    // Remove the Context argument
-    let ctx = args.remove(0);
 
     Ok((ctx, args))
 }
