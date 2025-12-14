@@ -1,4 +1,6 @@
-use {crate::Program, heck::CamelCase, quote::quote};
+use crate::Program;
+use heck::CamelCase;
+use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
@@ -34,20 +36,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        /// Pinocchio's entrypoint passes program_id as &[u8; 32] and Pinocchio's AccountInfo.
-        /// Pinocchio's AccountInfo is compatible with Solana's runtime at the binary level,
-        /// but the Rust types are different. We need to accept Pinocchio's AccountInfo and
-        /// convert it to Solana's AccountInfo format that Anchor expects.
-        ///
-        /// Note: Pinocchio's entrypoint provides accounts in a zero-copy format using raw pointers,
-        /// while Solana's AccountInfo uses RefCell for interior mutability. The conversion needs
-        /// to preserve is_signer, is_writable, and other account metadata.
         pub fn entry(
             program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
             accounts: &mut [AccountInfo],
             data: &[u8],
         ) -> core::result::Result<(), anchor_lang::pinocchio_runtime::program_error::ProgramError> {
-            // Pinocchio's account view type is used directly throughout Anchor.
             try_entry(program_id, accounts, data).map_err(|e| {
                 e.log();
                 e.into()

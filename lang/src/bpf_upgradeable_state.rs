@@ -1,10 +1,8 @@
-use crate::{
-    error::ErrorCode,
-    pinocchio_runtime::{
-        bpf_loader_upgradeable::UpgradeableLoaderState, program_error::ProgramError, pubkey::Pubkey,
-    },
-    AccountDeserialize, AccountSerialize, Owner, Result,
+use crate::error::ErrorCode;
+use crate::pinocchio_runtime::{
+    bpf_loader_upgradeable::UpgradeableLoaderState, program_error::ProgramError, pubkey::Pubkey,
 };
+use crate::{AccountDeserialize, AccountSerialize, Owner, Result};
 
 #[derive(Clone)]
 pub struct ProgramData {
@@ -47,7 +45,7 @@ impl AccountSerialize for ProgramData {
 }
 
 impl Owner for ProgramData {
-    fn owner() -> Pubkey {
+    fn owner() -> crate::pinocchio_runtime::pubkey::Pubkey {
         anchor_lang::pinocchio_runtime::bpf_loader_upgradeable::ID
     }
 }

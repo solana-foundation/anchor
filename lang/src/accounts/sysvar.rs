@@ -1,18 +1,14 @@
 //! Type validating that the account is a sysvar and deserializing it
 
-use {
-    crate::{
-        pinocchio_runtime::{
-            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey,
-            sysvars::Sysvar as SolanaSysvar,
-        },
-        AccountsExit, Key, ToAccountInfos, ToAccountMetas,
-    },
-    std::{
-        fmt,
-        ops::{Deref, DerefMut},
-    },
-};
+use crate::error::ErrorCode;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
+use solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize};
+use std::collections::BTreeSet;
+use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 /// Type validating that the account is a sysvar and deserializing it.
 ///
@@ -36,11 +32,11 @@ use {
 /// }
 /// ```
 pub struct Sysvar<'info, T: SolanaSysvar> {
-    info: &'info AccountInfo,
+    info: &'info AccountInfo<'info>,
     account: T,
 }
 
-impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
+impl<T: SolanaSysvarSerialize + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sysvar")
             .field("info", &self.info)
@@ -49,25 +45,63 @@ impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     }
 }
 
-impl<T: SolanaSysvar> ToAccountMetas for Sysvar<'_, T> {
-    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
-        vec![AccountMeta::readonly(self.info.address())]
+impl<'info, T: SolanaSysvarSerialize> Sysvar<'info, T> {
+    pub fn from_account_info(acc_info: &'info AccountInfo<'info>) -> Result<Sysvar<'info, T>> {
+        match T::from_account_info(acc_info) {
+            Ok(val) => Ok(Sysvar {
+                info: acc_info,
+                account: val,
+            }),
+            Err(_) => Err(ErrorCode::AccountSysvarMismatch.into()),
+        }
     }
 }
 
-impl<'info, T: SolanaSysvar> ToAccountInfos<'info> for Sysvar<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.info]
+impl<T: SolanaSysvarSerialize> Clone for Sysvar<'_, T> {
+    fn clone(&self) -> Self {
+        Self {
+            info: self.info,
+            account: T::from_account_info(self.info).unwrap(),
+        }
     }
 }
 
-impl<'info, T: SolanaSysvar> AsRef<AccountInfo> for Sysvar<'info, T> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info, B, T: SolanaSysvarSerialize> Accounts<'info, B> for Sysvar<'info, T> {
+    fn try_accounts(
+        _program_id: &Pubkey,
+        accounts: &mut &'info [AccountInfo<'info>],
+        _ix_data: &[u8],
+        _bumps: &mut B,
+        _reallocs: &mut BTreeSet<Pubkey>,
+    ) -> Result<Self> {
+        if accounts.is_empty() {
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
+        }
+        let account = &accounts[0];
+        *accounts = &accounts[1..];
+        Sysvar::from_account_info(account)
+    }
+}
+
+impl<T: SolanaSysvarSerialize> ToAccountMetas for Sysvar<'_, T> {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
+        vec![AccountMeta::new_readonly(*self.info.key, false)]
+    }
+}
+
+impl<'info, T: SolanaSysvarSerialize> ToAccountInfos<'info> for Sysvar<'info, T> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.info.clone()]
+    }
+}
+
+impl<'info, T: SolanaSysvarSerialize> AsRef<AccountInfo<'info>> for Sysvar<'info, T> {
+    fn as_ref(&self) -> &AccountInfo<'info> {
         self.info
     }
 }
 
-impl<T: SolanaSysvar> Deref for Sysvar<'_, T> {
+impl<T: SolanaSysvarSerialize> Deref for Sysvar<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -75,16 +109,16 @@ impl<T: SolanaSysvar> Deref for Sysvar<'_, T> {
     }
 }
 
-impl<T: SolanaSysvar> DerefMut for Sysvar<'_, T> {
+impl<T: SolanaSysvarSerialize> DerefMut for Sysvar<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
 }
 
-impl<'info, T: SolanaSysvar> AccountsExit<'info> for Sysvar<'info, T> {}
+impl<'info, T: SolanaSysvarSerialize> AccountsExit<'info> for Sysvar<'info, T> {}
 
-impl<T: SolanaSysvar> Key for Sysvar<'_, T> {
+impl<T: SolanaSysvarSerialize> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
-        *self.info.address()
+        *self.info.key
     }
 }

@@ -1,6 +1,7 @@
 [package]
 name = "anchor-lang"
 version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/solana-foundation/anchor"
 edition = "2021"
@@ -59,13 +60,10 @@ anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 base64 = "0.21"
 bincode = "1"
 borsh = "1.5.7"
-serde = { version = "1", features = ["derive"] }
-bs58 = "0.5"
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
 
 pinocchio.workspace = true
-pinocchio-system.workspace = true
 
 solana-account-info.workspace = true
 solana-clock.workspace = true
