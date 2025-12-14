@@ -87,7 +87,7 @@ impl Parse for Pubkey {
     fn parse(input: ParseStream) -> Result<Self> {
         parse_id(
             input,
-            quote! { anchor_lang::solana_program::pubkey::Pubkey },
+            quote! { anchor_lang::pinocchio_runtime::pubkey::Pubkey },
         )
         .map(Self)
     }
@@ -106,7 +106,7 @@ impl Parse for Id {
     fn parse(input: ParseStream) -> Result<Self> {
         parse_id(
             input,
-            quote! { anchor_lang::solana_program::pubkey::Pubkey },
+            quote! { anchor_lang::pinocchio_runtime::pubkey::Pubkey },
         )
         .map(Self)
     }
@@ -116,7 +116,7 @@ impl ToTokens for Id {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         id_to_tokens(
             &self.0,
-            quote! { anchor_lang::solana_program::pubkey::Pubkey },
+            quote! { anchor_lang::pinocchio_runtime::pubkey::Pubkey },
             tokens,
         )
     }

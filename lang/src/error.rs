@@ -433,22 +433,22 @@ impl ProgramErrorWithOrigin {
     pub fn log(&self) {
         match &self.error_origin {
             None => {
-                anchor_lang::pinocchio_runtime::msg!(
+                anchor_lang::pinocchio_runtime::msg!(&format!(
                     "ProgramError occurred. Error Code: {:?}. Error Number: {}. Error Message: {}.",
                     self.program_error,
                     u64::from(self.program_error.clone()),
                     self.program_error
-                );
+                ));
             }
             Some(ErrorOrigin::Source(source)) => {
-                anchor_lang::pinocchio_runtime::msg!(
+                anchor_lang::pinocchio_runtime::log::sol_log(&format!(
                     "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
                     source.filename,
                     source.line,
                     self.program_error,
                     u64::from(self.program_error.clone()),
                     self.program_error
-                );
+                ));
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 // using sol_log because msg! wrongly interprets 5 inputs as u64
@@ -469,8 +469,10 @@ impl ProgramErrorWithOrigin {
                 right.log();
             }
             Some(ComparedValues::Values((left, right))) => {
-                anchor_lang::pinocchio_runtime::msg!("Left: {}", left);
-                anchor_lang::pinocchio_runtime::msg!("Right: {}", right);
+                anchor_lang::pinocchio_runtime::msg!("Left: {}");
+                left.log();
+                anchor_lang::pinocchio_runtime::msg!("Right: {}");
+                right.log();
             }
             None => (),
         }
@@ -528,14 +530,14 @@ impl AnchorError {
                 ));
             }
             Some(ErrorOrigin::Source(source)) => {
-                anchor_lang::pinocchio_runtime::msg!(
+                anchor_lang::pinocchio_runtime::msg!(&format!(
                     "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error Message: {}.",
                     source.filename,
                     source.line,
                     self.error_name,
                     self.error_code_number,
                     self.error_msg
-                );
+                ));
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 anchor_lang::pinocchio_runtime::log::sol_log(&format!(
@@ -549,14 +551,12 @@ impl AnchorError {
         }
         match &self.compared_values {
             Some(ComparedValues::Pubkeys((left, right))) => {
-                anchor_lang::pinocchio_runtime::msg!("Left:");
-                left.log();
-                anchor_lang::pinocchio_runtime::msg!("Right:");
-                right.log();
+                anchor_lang::pinocchio_runtime::msg!(&format!("Left: {}", left));
+                anchor_lang::pinocchio_runtime::msg!(&format!("Right: {}", right));
             }
             Some(ComparedValues::Values((left, right))) => {
-                anchor_lang::pinocchio_runtime::msg!("Left: {}", left);
-                anchor_lang::pinocchio_runtime::msg!("Right: {}", right);
+                anchor_lang::pinocchio_runtime::msg!(&format!("Left: {}", left));
+                anchor_lang::pinocchio_runtime::msg!(&format!("Right: {}", right));
             }
             None => (),
         }

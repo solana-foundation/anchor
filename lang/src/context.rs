@@ -21,14 +21,14 @@ use std::fmt;
 ///     Ok(())
 /// }
 /// ```
-pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
+pub struct Context<'a, 'b, 'c, T: Bumps> {
     /// Currently executing program id.
     pub program_id: &'a Pubkey,
     /// Deserialized accounts.
     pub accounts: &'b mut T,
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
-    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub remaining_accounts: &'c [AccountInfo],
     /// Bump seeds found during constraint validation. This is provided as a
     /// convenience so that handlers don't have to recalculate bump seeds or
     /// pass them in as arguments.
@@ -36,7 +36,7 @@ pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
     pub bumps: T::Bumps,
 }
 
-impl<T> fmt::Debug for Context<'_, '_, '_, '_, T>
+impl<T> fmt::Debug for Context<'_, '_, '_, T>
 where
     T: fmt::Debug + Bumps,
 {
@@ -50,14 +50,14 @@ where
     }
 }
 
-impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, 'info, T>
+impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, T>
 where
     T: Bumps + Accounts<'info, T::Bumps>,
 {
     pub fn new(
         program_id: &'a Pubkey,
         accounts: &'b mut T,
-        remaining_accounts: &'c [AccountInfo<'info>],
+        remaining_accounts: &'c [AccountInfo],
         bumps: T::Bumps,
     ) -> Self {
         Self {
@@ -168,19 +168,19 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
-pub struct CpiContext<'a, 'b, 'c, 'info, T>
+pub struct CpiContext<'a, 'b, 'c, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountInfos<'static>,
 {
     pub accounts: T,
-    pub remaining_accounts: Vec<AccountInfo<'info>>,
+    pub remaining_accounts: Vec<AccountInfo>,
     pub program_id: Pubkey,
     pub signer_seeds: &'a [&'b [&'c [u8]]],
 }
 
-impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, 'info, T>
+impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountInfos<'static>,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -213,24 +213,24 @@ where
     }
 
     #[must_use]
-    pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo<'info>>) -> Self {
+    pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo>) -> Self {
         self.remaining_accounts = ra;
         self
     }
 }
 
-impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountInfos<'info>
-    for CpiContext<'_, '_, '_, 'info, T>
+impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
+    for CpiContext<'_, '_, '_, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
         infos
     }
 }
 
-impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountMetas
-    for CpiContext<'_, '_, '_, 'info, T>
+impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas
+    for CpiContext<'_, '_, '_, T>
 {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let mut metas = self.accounts.to_account_metas(is_signer);
@@ -238,9 +238,9 @@ impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountMetas
             &mut self
                 .remaining_accounts
                 .iter()
-                .map(|acc| match acc.is_writable {
-                    false => AccountMeta::new_readonly(*acc.key, acc.is_signer),
-                    true => AccountMeta::new(*acc.key, acc.is_signer),
+                .map(|acc| match acc.is_writable() {
+                    false => AccountMeta::readonly(acc.key()),
+                    true => AccountMeta::new(acc.key(), acc.is_writable(), acc.is_signer()),
                 })
                 .collect(),
         );

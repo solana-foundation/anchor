@@ -32,7 +32,7 @@ use std::ops::{Deref, DerefMut};
 /// }
 /// ```
 pub struct Sysvar<'info, T: SolanaSysvar> {
-    info: &'info AccountInfo<'info>,
+    info: &'info AccountInfo,
     account: T,
 }
 
@@ -46,7 +46,7 @@ impl<T: SolanaSysvarSerialize + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
 }
 
 impl<'info, T: SolanaSysvarSerialize> Sysvar<'info, T> {
-    pub fn from_account_info(acc_info: &'info AccountInfo<'info>) -> Result<Sysvar<'info, T>> {
+    pub fn from_account_info(acc_info: &'info AccountInfo) -> Result<Sysvar<'info, T>> {
         match T::from_account_info(acc_info) {
             Ok(val) => Ok(Sysvar {
                 info: acc_info,
@@ -69,7 +69,7 @@ impl<T: SolanaSysvarSerialize> Clone for Sysvar<'_, T> {
 impl<'info, B, T: SolanaSysvarSerialize> Accounts<'info, B> for Sysvar<'info, T> {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -85,18 +85,18 @@ impl<'info, B, T: SolanaSysvarSerialize> Accounts<'info, B> for Sysvar<'info, T>
 
 impl<T: SolanaSysvarSerialize> ToAccountMetas for Sysvar<'_, T> {
     fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
-        vec![AccountMeta::new_readonly(*self.info.key, false)]
+        vec![AccountMeta::new_readonly(*self.info.key(), false)]
     }
 }
 
 impl<'info, T: SolanaSysvarSerialize> ToAccountInfos<'info> for Sysvar<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![*self.info]
     }
 }
 
-impl<'info, T: SolanaSysvarSerialize> AsRef<AccountInfo<'info>> for Sysvar<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+impl<'info, T: SolanaSysvarSerialize> AsRef<AccountInfo> for Sysvar<'info, T> {
+    fn as_ref(&self) -> &AccountInfo {
         self.info
     }
 }
@@ -119,6 +119,6 @@ impl<'info, T: SolanaSysvarSerialize> AccountsExit<'info> for Sysvar<'info, T> {
 
 impl<T: SolanaSysvarSerialize> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.key()
     }
 }

@@ -315,6 +315,7 @@ dependencies = [
  "base64 0.21.7",
  "bincode",
  "borsh 1.5.7",
+ "bs58",
  "bytemuck",
  "const-crypto",
  "pinocchio",

@@ -1,6 +1,7 @@
 use crate::error::ErrorCode;
 use crate::pinocchio_runtime::instruction::Instruction;
 use crate::prelude::*;
+use pinocchio::pubkey::pubkey_eq;
 use solana_sdk_ids::ed25519_program;
 
 /// Verifies an Ed25519 signature instruction assuming the signature, public key,
@@ -24,8 +25,8 @@ pub fn verify_ed25519_ix_with_instruction_index(
     sig: &[u8; 64],
 ) -> Result<()> {
     require_keys_eq!(
-        ix.program_id,
-        ed25519_program::id(),
+        *ix.program_id,
+        *ed25519_program::id().as_array(),
         ErrorCode::Ed25519InvalidProgram
     );
     require_eq!(ix.accounts.len(), 0usize, ErrorCode::InstructionHasAccounts);
