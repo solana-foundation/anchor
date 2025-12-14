@@ -1,12 +1,10 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
-use {
-    crate::{
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, Bumps, ToAccountInfos, ToAccountMetas,
-    },
-    std::fmt,
-};
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
+use std::fmt;
 
 /// Provides non-argument inputs to the program.
 ///

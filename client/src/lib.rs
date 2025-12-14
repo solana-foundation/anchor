@@ -64,6 +64,40 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
+use anchor_lang::pinocchio_runtime::program_error::ProgramError;
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
+use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
+use futures::{Future, StreamExt};
+use regex::Regex;
+use solana_account_decoder::{UiAccount, UiAccountEncoding};
+use solana_instruction::AccountMeta;
+use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
+use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
+use solana_rpc_client_api::{
+    config::{
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
+        RpcTransactionLogsFilter,
+    },
+    filter::Memcmp,
+    response::{Response as RpcResponse, RpcLogsResponse},
+};
+use solana_signature::Signature;
+use std::iter::Map;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::vec::IntoIter;
+use thiserror::Error;
+use tokio::sync::OnceCell;
+use tokio::{
+    runtime::Handle,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver},
+    task::JoinHandle,
+};
+
+pub use anchor_lang;
+pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use {
