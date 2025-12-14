@@ -1,12 +1,11 @@
 //! Type validating that the account signed the transaction
-use {
-    crate::{
-        error::ErrorCode,
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
-    },
-    std::{collections::BTreeSet, ops::Deref},
-};
+use crate::error::ErrorCode;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
+use std::collections::BTreeSet;
+use std::ops::Deref;
 
 /// Type validating that the account signed the transaction. No other ownership
 /// or type checks are done. If this is used, one should not try to access the
