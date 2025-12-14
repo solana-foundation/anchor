@@ -1,6 +1,6 @@
 use crate::prelude::{Id, System};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::system_program;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::system_program;
 use crate::Result;
 
 pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info>) -> Result<()> {

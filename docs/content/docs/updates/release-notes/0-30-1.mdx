@@ -266,8 +266,8 @@ the macro was specifically using `::solana_program`.
 
 You can now directly use `pubkey!` as it's exported from `anchor_lang::prelude`.
 
-Note that because `solana_program` is exported from `anchor_lang`, you can also
-remove `solana-program` dependency from your `Cargo.toml` if `pubkey!` was the
+Note that in V2, `pinocchio_runtime` is exported from `anchor_lang` (replacing `solana_program`),
+so you can remove `solana-program` dependency from your `Cargo.toml` if `pubkey!` was the
 reason for adding it.
 
 ### `ID_CONST` constant

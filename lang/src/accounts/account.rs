@@ -2,10 +2,10 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::solana_program::system_program;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
     Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
+/// Wrapper around [`AccountInfo`](crate::pinocchio_runtime::account_info::AccountInfo)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -420,7 +420,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
-            crate::solana_program::msg!("The given Account is not mutable");
+            crate::pinocchio_runtime::msg!("The given Account is not mutable");
             panic!();
         }
         &mut self.account

@@ -1,6 +1,6 @@
 use crate::error::ErrorCode;
 use crate::prelude::*;
-use crate::solana_program::instruction::Instruction;
+use crate::pinocchio_runtime::instruction::Instruction;
 use solana_sdk_ids::secp256k1_program;
 
 /// Verifies a Secp256k1 instruction created under the assumption that the

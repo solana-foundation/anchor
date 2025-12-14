@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::solana_program::instruction::Instruction;
+use crate::pinocchio_runtime::instruction::Instruction;
 use core::convert::TryFrom;
 use solana_instructions_sysvar::{load_current_index_checked, load_instruction_at_checked};
 
