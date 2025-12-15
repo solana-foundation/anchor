@@ -12,6 +12,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- lang: Add `Migration<'info, From, To>` account type for schema migrations between account types ([#4060](https://github.com/solana-foundation/anchor/pull/4060)).
+
 ### Fixes
 
 ### Breaking
