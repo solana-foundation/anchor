@@ -59,17 +59,33 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     // Defined
     let constants_mod = gen_constants_mod(idl);
     let accounts_mod = gen_accounts_mod(idl);
-    let events_mod = gen_events_mod(idl);
+    let events_mod = if cfg!(target_os = "solana") {
+        quote! {}
+    } else {
+        gen_events_mod(idl)
+    };
     let types_mod = gen_types_mod(idl);
-    let errors_mod = gen_errors_mod(idl);
+    let errors_mod = if cfg!(target_os = "solana") {
+        quote! {}
+    } else {
+        gen_errors_mod(idl)
+    };
 
     // Clients
     let cpi_mod = gen_cpi_mod(idl);
-    let client_mod = gen_client_mod(idl);
+    let client_mod = if cfg!(target_os = "solana") {
+        quote! {}
+    } else {
+        gen_client_mod(idl)
+    };
     let internal_mod = gen_internal_mod(idl);
 
     // Utils
-    let utils_mod = gen_utils_mod(idl);
+    let utils_mod = if cfg!(target_os = "solana") {
+        quote! {}
+    } else {
+        gen_utils_mod(idl)
+    };
 
     quote! {
         #docs

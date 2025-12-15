@@ -25,3 +25,7 @@ proc-macro2 = "1"
 quote = "1"
 serde_json = "1"
 syn = { version = "1", features = ["full"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']
