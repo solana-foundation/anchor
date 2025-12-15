@@ -13,10 +13,16 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - lang: Add `Migration<'info, From, To>` account type for schema migrations between account types ([#4060](https://github.com/solana-foundation/anchor/pull/4060)).
+- cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
 
 ### Fixes
 
+- idl: Fix defined types with unsupported fields not producing an error ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
+- lang: Fix using non-instruction composite accounts multiple times with `declare_program!` ([#4113](https://github.com/solana-foundation/anchor/pull/4113)).
+
 ### Breaking
+
+- lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
 
 ## [0.32.1] - 2025-10-09
 
@@ -26,7 +32,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - lang: Fix deprecation warnings on alloc and add solana-program to prelude
   ([#3975](https://github.com/solana-foundation/anchor/pull/3975)).
-- cli: Fix race condition that could happen when deploying a program 
+- cli: Fix race condition that could happen when deploying a program
   ([#3976](https://github.com/solana-foundation/anchor/pull/3976)).
 
 ### Breaking
@@ -49,6 +55,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
 - cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
+- cli: Add `hooks` section to `Anchor.toml` ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 
 ### Fixes
 
@@ -64,6 +71,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- client: Make sending a tx not panic and instead return an Error when signing fails ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
 - spl: Update SPL dependencies to latest compatible versions ([#3860](https://github.com/solana-foundation/anchor/pull/3860)).
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - cli: Upload IDL by default with an option to skip ((#3863)[https://github.com/solana-foundation/anchor/pull/3863]).

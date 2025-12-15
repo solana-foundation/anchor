@@ -64,7 +64,26 @@ pub mod declare_program {
                 },
             },
         );
-        external::cpi::update_non_instruction_composite(cpi_ctx, value)?;
+        external::cpi::update_non_instruction_composite(cpi_ctx, 10)?;
+        cpi_my_account.reload()?;
+        require_eq!(cpi_my_account.field, 10);
+
+        // Composite accounts but not an actual instruction (intentionally checking multiple times)
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.external_program.key(),
+            external::cpi::accounts::UpdateNonInstructionComposite2 {
+                non_instruction_update: external::cpi::accounts::NonInstructionUpdate2 {
+                    program: ctx.accounts.external_program.to_account_info(),
+                },
+                non_instruction_update_with_different_ident:
+                    external::cpi::accounts::NonInstructionUpdate {
+                        authority: ctx.accounts.authority.to_account_info(),
+                        my_account: cpi_my_account.to_account_info(),
+                        program: ctx.accounts.external_program.to_account_info(),
+                    },
+            },
+        );
+        external::cpi::update_non_instruction_composite2(cpi_ctx, value)?;
         cpi_my_account.reload()?;
         require_eq!(cpi_my_account.field, value);
 

@@ -28,15 +28,15 @@ main() {
     local events_pid="2dhGsWUzy5YKUsjZdLHLmkNpUDAXkNa9MYWsPc4Ziqzy"
     local optional_pid="FNqz6pqLAwvMSds2FYjR4nKV3moVpPNtvkfGFrqLKrgG"
 
-    cd ../../tests/composite && anchor build && cd -
+    cd ../../tests/composite && anchor build --skip-lint --ignore-keys && cd -
     [ $? -ne 0 ] && exit 1
-    cd ../../examples/tutorial/basic-2 && anchor build && cd -
+    cd ../../examples/tutorial/basic-2 && anchor build --skip-lint --ignore-keys && cd -
     [ $? -ne 0 ] && exit 1
-    cd ../../examples/tutorial/basic-4 && anchor build && cd -
+    cd ../../examples/tutorial/basic-4 && anchor build --skip-lint --ignore-keys && cd -
     [ $? -ne 0 ] && exit 1
-    cd ../../tests/events && anchor build && cd -
+    cd ../../tests/events && anchor build --skip-lint --ignore-keys && cd -
     [ $? -ne 0 ] && exit 1
-    cd ../../tests/optional && anchor build && cd -
+    cd ../../tests/optional && anchor build --skip-lint --ignore-keys && cd -
     [ $? -ne 0 ] && exit 1
 
     #

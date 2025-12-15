@@ -57,6 +57,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -81,6 +82,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
     const [key, , buffer] = getReturnLog(t);
     assert.equal(key, calleeProgram.programId);
@@ -98,6 +100,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -136,6 +139,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);

@@ -705,9 +705,8 @@ impl Parse for ErrorArgs {
             return Err(ParseError::new(offset_span, "expected keyword offset"));
         }
         stream.parse::<Token![=]>()?;
-        Ok(ErrorArgs {
-            offset: stream.parse()?,
-        })
+        let offset: LitInt = stream.parse()?;
+        Ok(ErrorArgs { offset })
     }
 }
 
@@ -724,6 +723,7 @@ pub struct ConstraintGroup {
     pub init: Option<ConstraintInitGroup>,
     pub zeroed: Option<ConstraintZeroed>,
     pub mutable: Option<ConstraintMut>,
+    pub dup: Option<ConstraintDup>,
     pub signer: Option<ConstraintSigner>,
     pub owner: Option<ConstraintOwner>,
     pub rent_exempt: Option<ConstraintRentExempt>,
@@ -748,6 +748,10 @@ impl ConstraintGroup {
         self.mutable.is_some()
     }
 
+    pub fn is_dup(&self) -> bool {
+        self.dup.is_some()
+    }
+
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
     }
@@ -766,6 +770,7 @@ pub enum Constraint {
     Init(ConstraintInitGroup),
     Zeroed(ConstraintZeroed),
     Mut(ConstraintMut),
+    Dup(ConstraintDup),
     Signer(ConstraintSigner),
     HasOne(ConstraintHasOne),
     Raw(ConstraintRaw),
@@ -788,6 +793,7 @@ pub enum ConstraintToken {
     Init(Context<ConstraintInit>),
     Zeroed(Context<ConstraintZeroed>),
     Mut(Context<ConstraintMut>),
+    Dup(Context<ConstraintDup>),
     Signer(Context<ConstraintSigner>),
     HasOne(Context<ConstraintHasOne>),
     Raw(Context<ConstraintRaw>),
@@ -852,6 +858,9 @@ pub struct ConstraintZeroed {}
 pub struct ConstraintMut {
     pub error: Option<Expr>,
 }
+
+#[derive(Debug, Clone)]
+pub struct ConstraintDup {}
 
 #[derive(Debug, Clone)]
 pub struct ConstraintReallocGroup {
