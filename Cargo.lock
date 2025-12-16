@@ -319,6 +319,8 @@ dependencies = [
  "bytemuck",
  "const-crypto",
  "pinocchio",
+ "pinocchio-system",
+ "serde",
  "solana-account-info",
  "solana-clock",
  "solana-cpi",
@@ -2993,6 +2995,15 @@ dependencies = [
  "solana-define-syscall 5.0.0",
  "solana-instruction-view",
  "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-system"
+version = "0.5.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "pinocchio",
+ "solana-address 2.5.0",
 ]
 
 [[package]]

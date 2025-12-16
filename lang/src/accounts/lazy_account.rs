@@ -302,9 +302,11 @@ where
 {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.__info.is_signer());
-        let meta = match self.__info.is_writable() {
-            false => AccountMeta::new_readonly(*self.__info.key(), is_signer),
-            true => AccountMeta::new(*self.__info.key(), is_signer),
+        let meta = match (self.__info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(*self.__info.key()),
+            (false, true) => AccountMeta::readonly_signer(*self.__info.key()),
+            (true, false) => AccountMeta::writable(*self.__info.key()),
+            (true, true) => AccountMeta::writable_signer(*self.__info.key()),
         };
         vec![meta]
     }

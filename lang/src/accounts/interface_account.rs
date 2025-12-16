@@ -91,7 +91,7 @@ use std::ops::{Deref, DerefMut};
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
 ///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
+/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/coral-xyz/anchor/blob/master/spl/src/token.rs))
 /// ```ignore
 /// #[derive(Clone)]
 /// pub struct Mint(spl_token::state::Mint);
@@ -175,7 +175,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, T> {
     fn new(info: &'a AccountInfo, account: T) -> Self {
-        let owner = *info.owner();
+        let owner = unsafe { *info.owner() };
         Self {
             account: Account::new(info, account),
             owner,
@@ -198,15 +198,16 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         // Enforce owner stability: must match the one validated at construction.
         if !info.owned_by(&self.owner) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner(), self.owner)));
+                .with_pubkeys((unsafe { *info.owner() }, self.owner)));
         }
 
         // Re-deserialize fresh data into the inner account.
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        let mut data: &[u8] = &info.try_borrow()?;
         let new_val = T::try_deserialize_unchecked(&mut data)?;
         self.account.set_inner(new_val);
         Ok(())
     }
+
     pub fn into_inner(self) -> T {
         self.account.into_inner()
     }
@@ -250,11 +251,11 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     /// discriminator. Be careful when using this and avoid it if possible.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo) -> Result<Self> {
-        if info.owner() == &system_program::ID && info.lamports() == 0 {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        T::check_owner(info.owner())?;
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        T::check_owner(&unsafe { *info.owner() })?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
     }
 }
