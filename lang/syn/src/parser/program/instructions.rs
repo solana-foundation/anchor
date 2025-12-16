@@ -89,15 +89,38 @@ fn parse_overrides(attrs: &[syn::Attribute]) -> ParseResult<Option<Overrides>> {
 }
 
 pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
-    let mut args: Vec<IxArg> = method
-        .sig
-        .inputs
-        .iter()
+
+    let mut inputs = method.sig.inputs.iter();
+
+    let ctx = match inputs.next() {
+        Some(syn::FnArg::Typed(arg)) => {
+            let docs = docs::parse(&arg.attrs);
+            IxArg {
+                name: syn::Ident::new("ctx", arg.pat.span()),
+                docs,
+                raw_arg: arg.clone(),
+            }
+        }
+        _ => return Err(ParseError::new(method.sig.span(), "expected Context argument")),
+    };
+
+    let args: Vec<IxArg> = inputs
         .map(|arg: &syn::FnArg| match arg {
             syn::FnArg::Typed(arg) => {
                 let docs = docs::parse(&arg.attrs);
                 let ident = match &*arg.pat {
-                    syn::Pat::Ident(ident) => &ident.ident,
+                    syn::Pat::Ident(ident) => ident.ident.clone(),
+                    syn::Pat::Wild(_) => {
+                        syn::Ident::new("_", arg.pat.span())
+                    }
+                    syn::Pat::Struct(pat_struct) => {
+                        pat_struct
+                            .path
+                            .segments
+                            .last()
+                            .map(|seg| seg.ident.clone())
+                            .unwrap_or_else(|| syn::Ident::new("_", arg.pat.span()))
+                    }
                     _ => return Err(ParseError::new(arg.pat.span(), "expected argument name")),
                 };
                 Ok(IxArg {
@@ -112,9 +135,6 @@ pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {
             )),
         })
         .collect::<ParseResult<_>>()?;
-
-    // Remove the Context argument
-    let ctx = args.remove(0);
 
     Ok((ctx, args))
 }
