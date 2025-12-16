@@ -45,7 +45,7 @@ impl AccountSerialize for ProgramData {
 }
 
 impl Owner for ProgramData {
-    fn owner() -> crate::pinocchio_runtime::pubkey::Pubkey {
+    fn owner() -> Pubkey {
         anchor_lang::pinocchio_runtime::bpf_loader_upgradeable::ID
     }
 }

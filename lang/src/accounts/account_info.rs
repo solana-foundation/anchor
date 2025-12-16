@@ -20,18 +20,20 @@ impl<'info, B> Accounts<'info, B> for AccountInfo {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
-        Ok(*account)
+        Ok(account)
     }
 }
 
 impl ToAccountMetas for AccountInfo {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.is_signer());
-        let meta = match self.is_writable() {
-            false => AccountMeta::new_readonly(*self.key(), is_signer),
-            true => AccountMeta::new(*self.key(), is_signer),
+        let meta = match (self.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.address()),
+            (false, true) => AccountMeta::readonly_signer(self.address()),
+            (true, false) => AccountMeta::writable(self.address()),
+            (true, true) => AccountMeta::writable_signer(self.address()),
         };
         vec![meta]
     }
@@ -39,7 +41,7 @@ impl ToAccountMetas for AccountInfo {
 
 impl<'info> ToAccountInfos<'info> for AccountInfo {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self]
+        vec![self.clone()]
     }
 }
 
@@ -47,6 +49,6 @@ impl<'info> AccountsExit<'info> for AccountInfo {}
 
 impl Key for AccountInfo {
     fn key(&self) -> Pubkey {
-        *self.key()
+        self.address().clone()
     }
 }

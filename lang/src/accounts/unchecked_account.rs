@@ -40,9 +40,11 @@ impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
 impl ToAccountMetas for UncheckedAccount<'_> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.0.is_signer());
-        let meta = match self.0.is_writable() {
-            false => AccountMeta::new_readonly(*self.0.key(), is_signer),
-            true => AccountMeta::new(*self.0.key(), is_signer),
+        let meta = match (self.0.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.0.address()),
+            (false, true) => AccountMeta::readonly_signer(self.0.address()),
+            (true, false) => AccountMeta::writable(self.0.address()),
+            (true, true) => AccountMeta::writable_signer(self.0.address()),
         };
         vec![meta]
     }
@@ -72,6 +74,6 @@ impl<'info> Deref for UncheckedAccount<'info> {
 
 impl Key for UncheckedAccount<'_> {
     fn key(&self) -> Pubkey {
-        *self.0.key()
+        *self.0.address()
     }
 }

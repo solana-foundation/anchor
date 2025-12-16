@@ -463,16 +463,12 @@ impl ProgramErrorWithOrigin {
         }
         match &self.compared_values {
             Some(ComparedValues::Pubkeys((left, right))) => {
-                anchor_lang::pinocchio_runtime::msg!("Left:");
-                left.log();
-                anchor_lang::pinocchio_runtime::msg!("Right:");
-                right.log();
+                anchor_lang::pinocchio_runtime::msg!("Left: {}", left);
+                anchor_lang::pinocchio_runtime::msg!("Right: {}", right);
             }
             Some(ComparedValues::Values((left, right))) => {
-                anchor_lang::pinocchio_runtime::msg!("Left: {}");
-                left.log();
-                anchor_lang::pinocchio_runtime::msg!("Right: {}");
-                right.log();
+                anchor_lang::pinocchio_runtime::msg!("Left: {}", left);
+                anchor_lang::pinocchio_runtime::msg!("Right: {}", right);
             }
             None => (),
         }

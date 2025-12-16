@@ -177,9 +177,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 crate::ID,
                 &ix_data,
                 vec![
-                    anchor_lang::pinocchio_runtime::instruction::AccountMeta::new_readonly(
-                        *authority_info.key,
-                        true,
+                    anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(
+                        authority_info.key(),
                     ),
                 ],
             );

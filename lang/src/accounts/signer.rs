@@ -77,9 +77,11 @@ impl<'info> AccountsExit<'info> for Signer<'info> {}
 impl ToAccountMetas for Signer<'_> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
-        let meta = match self.info.is_writable() {
-            false => AccountMeta::new_readonly(*self.info.key(), is_signer),
-            true => AccountMeta::new(*self.info.key(), is_signer),
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
@@ -107,6 +109,6 @@ impl<'info> Deref for Signer<'info> {
 
 impl Key for Signer<'_> {
     fn key(&self) -> Pubkey {
-        *self.info.key()
+        self.info.address().clone()
     }
 }

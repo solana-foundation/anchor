@@ -27,10 +27,6 @@ extern crate self as anchor_lang;
 
 // V2 migration: Using pinocchio_runtime types
 use bytemuck::{Pod, Zeroable};
-use pinocchio_runtime::account_info::AccountInfo;
-use pinocchio_runtime::instruction::AccountMeta;
-use pinocchio_runtime::program_error::ProgramError;
-use pinocchio_runtime::pubkey::Pubkey;
 use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
 mod account_meta;
@@ -52,6 +48,9 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
+use crate::pinocchio_runtime::{
+    account_info::*, instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
+};
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -69,43 +68,36 @@ pub use borsh::ser::BorshSerialize as AnchorSerialize;
 /// Pinocchio runtime module - replaces solana_program for V2
 pub mod pinocchio_runtime {
 
-    pub use pinocchio::program_error::ProgramError;
-    pub type ProgramResult = Result<(), ProgramError>;
+    pub use pinocchio::*;
+
+    pub mod pubkey {
+        pub type Pubkey = pinocchio::Address;
+    }
+
+    pub mod program_error {
+        pub use pinocchio::error::*;
+    }
 
     pub mod account_info {
-        pub use pinocchio::account_info::*;
+        pub use pinocchio::account::*;
+        pub type AccountInfo = AccountView;
 
         pub fn next_account_info<'a, 'b, I: Iterator<Item = AccountInfo>>(
             iter: &mut I,
-        ) -> Result<I::Item, pinocchio::program_error::ProgramError> {
+        ) -> Result<I::Item, pinocchio::error::ProgramError> {
             iter.next()
-                .ok_or(pinocchio::program_error::ProgramError::NotEnoughAccountKeys)
+                .ok_or(pinocchio::error::ProgramError::NotEnoughAccountKeys)
         }
     }
-    pub use {
-        pinocchio::entrypoint, pinocchio::memory as program_memory, pinocchio::msg,
-        pinocchio::program_entrypoint, pinocchio::pubkey, pinocchio::sysvars::clock,
-    };
 
-    pub mod program_error {
-        pub use pinocchio::program_error::*;
-        pub type ProgramResult = core::result::Result<(), pinocchio::program_error::ProgramError>;
-    }
+    pub use {
+        pinocchio::entrypoint, pinocchio::program_entrypoint, pinocchio::sysvars::clock,
+        solana_msg::msg,
+    };
 
     pub mod instruction {
         pub use pinocchio::instruction::*;
-
-        pub fn get_stack_height() -> usize {
-            #[cfg(target_os = "solana")]
-            unsafe {
-                pinocchio::syscalls::sol_get_stack_height() as usize
-            }
-
-            #[cfg(not(target_os = "solana"))]
-            {
-                solana_sysvar::program_stubs::sol_get_stack_height() as usize
-            }
-        }
+        pub type AccountMeta<'a> = InstructionAccount<'a>;
     }
 
     pub mod rent {
@@ -114,15 +106,11 @@ pub mod pinocchio_runtime {
 
     pub mod program {
         pub use pinocchio::cpi::*;
-        pub use pinocchio::program::{
-            invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked,
-        };
     }
 
     pub mod bpf_loader_upgradeable {
         #[allow(deprecated)]
         pub use solana_loader_v3_interface::{
-            get_program_data_address,
             instruction::{
                 close, close_any, create_buffer, deploy_with_max_program_len, extend_program,
                 is_close_instruction, is_set_authority_checked_instruction,
@@ -132,32 +120,57 @@ pub mod pinocchio_runtime {
             },
             state::UpgradeableLoaderState,
         };
-        pub use solana_sdk_ids::bpf_loader_upgradeable::{check_id, id, ID};
-    }
 
-    pub mod log {
-        // Pinocchio's msg! doesn't support format strings, so we use solana_msg for compatibility
-        pub use pinocchio::log::{sol_log, sol_log_data};
-        pub use pinocchio::msg;
-    }
+        pub fn get_program_data_address(
+            program_address: &crate::pinocchio_runtime::Address,
+        ) -> crate::pinocchio_runtime::Address {
+            crate::pinocchio_runtime::Address::find_program_address(
+                &[program_address.as_ref()],
+                &id(),
+            )
+            .0
+        }
 
-    // Re-export sysvar and clock types (keep solana-sysvar temporarily for compatibility)
-    pub mod sysvar {
-        pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
-        pub mod instructions {
-            pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
-            #[cfg(not(target_os = "solana"))]
-            pub use solana_instructions_sysvar::construct_instructions_data;
+        pub const ID: crate::Pubkey =
+            crate::Pubkey::from_str_const("BPFLoaderUpgradeab1e11111111111111111111111");
+
+        pub fn check_id(id: &crate::Pubkey) -> bool {
+            id == &ID
+        }
+
+        pub fn id() -> crate::Pubkey {
+            ID
         }
     }
 
+    pub mod log {
+        pub use solana_msg::{msg, sol_log};
+        /// Print some slices as base64.
+        pub fn sol_log_data(data: &[&[u8]]) {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_define_syscall::definitions::sol_log_data(
+                    data as *const _ as *const u8,
+                    data.len() as u64,
+                )
+            };
+
+            #[cfg(not(target_os = "solana"))]
+            core::hint::black_box(data);
+        }
+    }
+
+    pub mod sysvar_instructions {
+        pub use pinocchio::sysvars::instructions::*;
+    }
+
     pub mod system_program {
-        pub use solana_sdk_ids::system_program;
-        pub use solana_sdk_ids::system_program::ID;
+        pub const ID: crate::Pubkey =
+            crate::Pubkey::from_str_const("11111111111111111111111111111111");
     }
 
     pub mod system_instruction {
-        pub use solana_system_interface::instruction::*;
+        pub use pinocchio_system::instructions::*;
     }
 
     pub mod program_option {
@@ -166,6 +179,10 @@ pub mod pinocchio_runtime {
 
     pub mod program_pack {
         pub use solana_program_pack::*;
+    }
+
+    pub mod program_memory {
+        pub use solana_program_memory::*;
     }
 
     pub mod feature {
@@ -312,11 +329,11 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
     ///
     /// See [`Lamports::sub_lamports`] for subtracting lamports.
     fn add_lamports(&self, amount: u64) -> Result<&Self> {
-        let mut lamports = self.as_ref().try_borrow_mut_lamports()?;
-        *lamports = self
+        let new_lamports = self
             .get_lamports()
             .checked_add(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
+        self.as_ref().set_lamports(new_lamports);
         Ok(self)
     }
 
@@ -334,11 +351,11 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
     ///
     /// See [`Lamports::add_lamports`] for adding lamports.
     fn sub_lamports(&self, amount: u64) -> Result<&Self> {
-        let mut lamports = self.as_ref().try_borrow_mut_lamports()?;
-        *lamports = self
+        let new_lamports = self
             .get_lamports()
             .checked_sub(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
+        self.as_ref().set_lamports(new_lamports);
         Ok(self)
     }
 }
