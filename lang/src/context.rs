@@ -1,5 +1,7 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
+use pinocchio::cpi::Signer;
+
 use crate::pinocchio_runtime::account_info::AccountInfo;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -168,17 +170,17 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
-pub struct CpiContext<'a, 'b, 'c, T>
+pub struct CpiContext<'a, 'b, T>
 where
     T: ToAccountMetas + ToAccountInfos<'static>,
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountInfo>,
     pub program_id: Pubkey,
-    pub signer_seeds: &'a [&'b [&'c [u8]]],
+    pub signer_seeds: &'a [Signer<'a, 'b>],
 }
 
-impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, T>
+impl<'a, 'b, T> CpiContext<'a, 'b, T>
 where
     T: ToAccountMetas + ToAccountInfos<'static>,
 {
@@ -196,7 +198,7 @@ where
     pub fn new_with_signer(
         program_id: Pubkey,
         accounts: T,
-        signer_seeds: &'a [&'b [&'c [u8]]],
+        signer_seeds: &'a [Signer<'a, 'b>],
     ) -> Self {
         Self {
             accounts,
@@ -207,7 +209,7 @@ where
     }
 
     #[must_use]
-    pub fn with_signer(mut self, signer_seeds: &'a [&'b [&'c [u8]]]) -> Self {
+    pub fn with_signer(mut self, signer_seeds: &'a [Signer<'a, 'b>]) -> Self {
         self.signer_seeds = signer_seeds;
         self
     }
@@ -220,7 +222,7 @@ where
 }
 
 impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
-    for CpiContext<'_, '_, '_, T>
+    for CpiContext<'_, '_, T>
 {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         let mut infos = self.accounts.to_account_infos();
@@ -229,18 +231,18 @@ impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
     }
 }
 
-impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas
-    for CpiContext<'_, '_, '_, T>
-{
+impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(
             &mut self
                 .remaining_accounts
                 .iter()
-                .map(|acc| match acc.is_writable() {
-                    false => AccountMeta::readonly(acc.key()),
-                    true => AccountMeta::new(acc.key(), acc.is_writable(), acc.is_signer()),
+                .map(|acc| match (acc.is_writable(), acc.is_signer()) {
+                    (false, false) => AccountMeta::readonly(acc.address()),
+                    (false, true) => AccountMeta::readonly_signer(acc.address()),
+                    (true, false) => AccountMeta::writable(acc.address()),
+                    (true, true) => AccountMeta::writable_signer(acc.address()),
                 })
                 .collect(),
         );

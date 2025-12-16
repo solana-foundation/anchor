@@ -350,12 +350,12 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
                 let mut __mutable_accounts = std::collections::HashSet::new();
 
                 for __remaining_account in __accounts.iter() {
-                    if __remaining_account.is_writable {
-                        if !__mutable_accounts.insert(*__remaining_account.key) {
+                    if __remaining_account.is_writable() {
+                        if !__mutable_accounts.insert(__remaining_account.key()) {
                             return Err(anchor_lang::error::Error::from(
                                 anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
                             )
-                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
                         }
                     }
                 }
@@ -398,12 +398,12 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
 
             // This prevents duplicates from being passed via remaining_accounts
             for __remaining_account in __accounts.iter() {
-                if __remaining_account.is_writable {
-                    if !__mutable_accounts.insert(*__remaining_account.key) {
+                if __remaining_account.is_writable() {
+                    if !__mutable_accounts.insert(__remaining_account.key()) {
                         return Err(anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
                         )
-                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
                     }
                 }
             }

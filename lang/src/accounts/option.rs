@@ -43,7 +43,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
 
         // If there are enough accounts, it will check the program_id and return
         // None if it matches, popping the first account off the accounts vec.
-        if accounts[0].key() == program_id {
+        if accounts[0].address() == program_id {
             *accounts = &accounts[1..];
             Ok(None)
         } else {

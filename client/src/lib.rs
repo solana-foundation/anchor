@@ -71,12 +71,13 @@
 
 use anchor_lang::pinocchio_runtime::program_error::ProgramError;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
+use anchor_lang::prelude::instruction::InstructionView;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
-use solana_instruction::{AccountMeta, Instruction};
+use anchor_lang::pinocchio_runtime::instruction::{AccountMeta, InstructionView};
 use solana_program::hash::Hash;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
@@ -515,12 +516,12 @@ impl AsSigner for Box<dyn Signer + '_> {
 
 /// `RequestBuilder` provides a builder interface to create and send
 /// transactions to a cluster.
-pub struct RequestBuilder<'a, C, S: 'a> {
+pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta>,
+    accounts: Vec<AccountMeta<'a>>,
     options: CommitmentConfig,
-    instructions: Vec<Instruction>,
+    instructions: Vec<InstructionView<'a, 'b, 'c, 'd>>,
     payer: C,
     instruction_data: Option<Vec<u8>>,
     signers: Vec<S>,
@@ -531,7 +532,7 @@ pub struct RequestBuilder<'a, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, S> {
+impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_, '_, '_, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -545,7 +546,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     #[must_use]
-    pub fn instruction(mut self, ix: Instruction) -> Self {
+    pub fn instruction(mut self, ix: InstructionView<'_, '_, '_, '_>) -> Self {
         self.instructions.push(ix);
         self
     }
@@ -605,10 +606,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self
     }
 
-    pub fn instructions(&self) -> Vec<Instruction> {
+    pub fn instructions(&self) -> Vec<InstructionView> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
-            instructions.push(Instruction {
+            instructions.push(InstructionView {
                 program_id: self.program_id,
                 data: ix_data.clone(),
                 accounts: self.accounts.clone(),

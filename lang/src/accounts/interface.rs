@@ -86,7 +86,7 @@ impl<'a, T: CheckId> TryFrom<&'a AccountInfo> for Interface<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
     fn try_from(info: &'a AccountInfo) -> Result<Self> {
-        T::check_id(info.key())?;
+        T::check_id(info.address())?;
         if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }

@@ -244,13 +244,13 @@ pub fn generate_constraint_zeroed(
             };
             if other_field.is_optional {
                 quote! {
-                    if #other.is_some() && #field.key == &#other.as_ref().unwrap().key() {
+                    if #other.is_some() && #field.key() == &#other.as_ref().unwrap().key() {
                         return #err;
                     }
                 }
             } else {
                 quote! {
-                    if #field.key == &#other.key() {
+                    if #field.key() == &#other.key() {
                         return #err;
                     }
                 }
@@ -296,7 +296,7 @@ pub fn generate_constraint_mut(f: &Field, c: &ConstraintMut) -> proc_macro2::Tok
     let account_ref = generate_account_ref(f);
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintMut }, &None);
     quote! {
-        if !#account_ref.is_writable {
+        if !#account_ref.is_writable() {
             return #error;
         }
     }
@@ -347,7 +347,7 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
 
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintSigner }, &None);
     quote! {
-        if !#account_ref.is_signer {
+        if !#account_ref.is_signer() {
             return #error;
         }
     }

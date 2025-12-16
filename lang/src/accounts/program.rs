@@ -114,8 +114,8 @@ impl<'a, T> Program<'a, T> {
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if self.info.owner() == &bpf_loader_upgradeable::ID {
-            let mut data: &[u8] = &self.info.try_borrow_data()?;
+        if self.info.owned_by(&bpf_loader_upgradeable::ID) {
+            let mut data: &[u8] = &self.info.try_borrow()?;
             let upgradable_loader_state =
                 UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
 
@@ -150,9 +150,9 @@ impl<'a, T: Id> TryFrom<&'a AccountInfo> for Program<'a, T> {
         // Special handling for unit type () - only check executable, not program ID
         let is_unit_type = T::id() == Pubkey::default();
 
-        if !is_unit_type && info.key() != &T::id() {
+        if !is_unit_type && info.address() != &T::id() {
             return Err(
-                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key(), T::id()))
+                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((info.key(), T::id()))
             );
         }
         if !info.executable() {
@@ -183,9 +183,11 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
 impl<T> ToAccountMetas for Program<'_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
-        let meta = match self.info.is_writable() {
-            false => AccountMeta::new_readonly(*self.info.key(), is_signer),
-            true => AccountMeta::new(*self.info.key(), is_signer),
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
@@ -215,7 +217,7 @@ impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
 
 impl<T: AccountDeserialize> Key for Program<'_, T> {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        self.info.address().clone()
     }
 }
 
