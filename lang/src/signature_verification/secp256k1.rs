@@ -1,15 +1,14 @@
 use crate::error::ErrorCode;
-use crate::pinocchio_runtime::instruction::Instruction;
+use crate::pinocchio_runtime::sysvar_instructions::IntrospectedInstruction;
 use crate::prelude::*;
-use solana_sdk_ids::secp256k1_program;
-
+pub const ID: Pubkey = Pubkey::from_str_const("KeccakSecp256k11111111111111111111111111111");
 /// Verifies a Secp256k1 instruction created under the assumption that the
 /// signature, address, and message bytes all live inside the same instruction
 /// (i.e. the signature ix is placed at index `0`). Prefer
 /// [`verify_secp256k1_ix_with_instruction_index`] and pass the actual signature
 /// instruction index instead of relying on this default.
 pub fn verify_secp256k1_ix(
-    ix: &Instruction,
+    ix: &IntrospectedInstruction,
     eth_address: &[u8; 20],
     msg: &[u8],
     sig: &[u8; 64],
@@ -19,19 +18,15 @@ pub fn verify_secp256k1_ix(
 }
 
 pub fn verify_secp256k1_ix_with_instruction_index(
-    ix: &Instruction,
+    ix: &IntrospectedInstruction,
     instruction_index: u8,
     eth_address: &[u8; 20],
     msg: &[u8],
     sig: &[u8; 64],
     recovery_id: u8,
 ) -> Result<()> {
-    require_keys_eq!(
-        *ix.program_id,
-        *secp256k1_program::id().as_array(),
-        ErrorCode::Secp256k1InvalidProgram
-    );
-    require_eq!(ix.accounts.len(), 0usize, ErrorCode::InstructionHasAccounts);
+    require_keys_eq!(ix.get_program_id().key(), ID, ErrorCode::Secp256k1InvalidProgram);
+    // require_eq!(ix.accounts.len(), 0usize, ErrorCode::InstructionHasAccounts);
     require!(recovery_id <= 1, ErrorCode::InvalidRecoveryId);
     require!(msg.len() <= u16::MAX as usize, ErrorCode::MessageTooLong);
 
@@ -61,7 +56,7 @@ pub fn verify_secp256k1_ix_with_instruction_index(
     expected.push(recovery_id);
     expected.extend_from_slice(msg);
 
-    if expected != ix.data {
+    if expected != ix.get_instruction_data() {
         return Err(ErrorCode::SignatureVerificationFailed.into());
     }
     Ok(())
