@@ -7,7 +7,6 @@ use anchor_lang::{
         pubkey::Pubkey,
         rent::Rent,
         system_instruction::transfer,
-        sysvar::Sysvar,
     },
     Lamports,
 };
@@ -15,6 +14,7 @@ use anchor_spl::token_interface::spl_token_2022::{
     extension::{BaseStateWithExtensions, Extension, StateWithExtensions},
     state::Mint,
 };
+use solana_sysvar::Sysvar;
 use spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList};
 use spl_type_length_value::variable_len_pack::VariableLenPack;
 

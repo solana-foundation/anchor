@@ -55,6 +55,18 @@ describe("declare-program", () => {
     await program.methods.eventUtils().rpc();
   });
 
+  it("Can use instruction utils", async () => {
+    await program.methods.instructionUtils().rpc();
+  });
+
+  it("Produces correct IDL", () => {
+    // The program itself doesn't have an error definition, therefore its IDL
+    // also shouldn't have the `errors` field.
+    //
+    // https://github.com/solana-foundation/anchor/pull/3757#discussion_r2424695717
+    if (program.idl.errors) throw new Error("The IDL should not have `errors`");
+  });
+
   it("Can use error code utils", async () => {
     await program.methods.errorCodeUtils().rpc();
   });

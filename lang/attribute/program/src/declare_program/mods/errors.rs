@@ -13,6 +13,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
     if errors.len() == 0 {
         return quote! {
             /// Program error type definitions.
+            #[cfg(not(feature = "idl-build"))]
             pub mod errors {
             }
         };
@@ -20,6 +21,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
     quote! {
         /// Program error type definitions.
+        #[cfg(not(feature = "idl-build"))]
         pub mod errors {
 
             #[anchor_lang::error_code(offset = 0)]
