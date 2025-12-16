@@ -711,10 +711,10 @@ pub fn program_deploy(
 
                 if idl_account_exists {
                     // IDL account exists, upgrade it
-                    crate::idl_upgrade(cfg_override, program_id, idl_filepath, None)?;
+                    crate::idl_upgrade(cfg_override, idl_filepath, None)?;
                 } else {
                     // IDL account doesn't exist, create it
-                    crate::idl_init(cfg_override, program_id, idl_filepath, None, false)?;
+                    crate::idl_init(cfg_override, idl_filepath, None, false)?;
                 }
 
                 println!("✓ Idl account created: {}", idl_address);
