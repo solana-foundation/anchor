@@ -22,7 +22,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
         /// Program error type definitions.
         pub mod errors {
 
-            #[anchor_lang::error_code]
+            #[anchor_lang::error_code(offset = 0)]
             pub enum ProgramError {
                 #(#errors)*
             }
