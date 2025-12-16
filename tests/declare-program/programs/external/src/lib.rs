@@ -62,6 +62,14 @@ pub mod external {
     }
 }
 
+#[error_code]
+pub enum ExternalProgramError {
+    // Should have offset 6000
+    MyNormalError,
+    // Should have offset 6500
+    MyErrorWithSpecialOffset = 500,
+}
+
 #[derive(Accounts)]
 pub struct TestCompilation<'info> {
     pub signer: Signer<'info>,

@@ -290,6 +290,16 @@
       ]
     }
   ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MyNormalError"
+    },
+    {
+      "code": 6500,
+      "name": "MyErrorWithSpecialOffset"
+    }
+  ],
   "types": [
     {
       "name": "MyAccount",

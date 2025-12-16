@@ -118,6 +118,15 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    pub fn error_code_utils(_ctx: Context<Utils>) -> Result<()> {
+        use external::errors::ProgramError;
+
+        require_eq!(ProgramError::MyNormalError as u32, 6000);
+        require_eq!(ProgramError::MyErrorWithSpecialOffset as u32, 6500);        
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
