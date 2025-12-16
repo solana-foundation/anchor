@@ -319,6 +319,7 @@ dependencies = [
  "bytemuck",
  "const-crypto",
  "pinocchio",
+ "serde",
  "solana-account-info",
  "solana-clock",
  "solana-cpi",
@@ -2993,9 +2994,16 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pinocchio"
-version = "0.9.2"
+version = "0.10.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b971851087bc3699b001954ad02389d50c41405ece3548cbcafc88b3e20017a"
+checksum = "57b0544c995d8267e78362c6c37ca70c72c489895f2c07aa91e404b1667cc8e6"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.0.0",
+ "solana-define-syscall 4.0.1",
+ "solana-instruction-view",
+ "solana-program-error",
+]
 
 [[package]]
 name = "pkcs8"
@@ -4108,6 +4116,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-account-view"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f37ca34c37f92ee341b73d5ce7c8ef5bb38e9a87955b4bd343c63fa18b149215"
+dependencies = [
+ "solana-address 2.0.0",
+ "solana-program-error",
+]
+
+[[package]]
 name = "solana-address"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4692,6 +4710,18 @@ dependencies = [
  "num-traits",
  "serde",
  "serde_derive",
+ "solana-program-error",
+]
+
+[[package]]
+name = "solana-instruction-view"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60147e4d0a4620013df40bf30a86dd299203ff12fcb8b593cd51014fce0875d8"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.0.0",
+ "solana-define-syscall 4.0.1",
  "solana-program-error",
 ]
 
