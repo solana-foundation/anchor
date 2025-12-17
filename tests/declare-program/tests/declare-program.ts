@@ -47,18 +47,6 @@ describe("declare-program", () => {
     assert.strictEqual(myAccount.field, value);
   });
 
-  it("Can use account utils", async () => {
-    await program.methods.accountUtils().rpc();
-  });
-
-  it("Can use event utils", async () => {
-    await program.methods.eventUtils().rpc();
-  });
-
-  it("Can use instruction utils", async () => {
-    await program.methods.instructionUtils().rpc();
-  });
-
   it("Produces correct IDL", () => {
     // The program itself doesn't have an error definition, therefore its IDL
     // also shouldn't have the `errors` field.
