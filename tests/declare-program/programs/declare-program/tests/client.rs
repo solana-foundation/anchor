@@ -199,7 +199,7 @@ pub fn test_instruction_utils() {
 }
 
 #[test]
-pub fn account_utils() {
+pub fn test_account_utils() {
     // Empty
     assert!(external::utils::Account::try_from_bytes(&[]).is_err());
 
@@ -216,7 +216,7 @@ pub fn account_utils() {
 }
 
 #[test]
-pub fn event_utils() {
+pub fn test_event_utils() {
     // Empty
     assert!(external::utils::Event::try_from_bytes(&[]).is_err());
 
@@ -230,4 +230,14 @@ pub fn event_utils() {
         Ok(external::utils::Event::MyEvent(my_event)) => assert_eq!(my_event.value, 1),
         Err(e) => panic!("Expected Ok result, got error: {:?}", e),
     }
+}
+
+#[test]
+#[cfg(not(feature = "idl-build"))]
+pub fn test_error_code_utils() {
+    assert_eq!(external::errors::ProgramError::MyNormalError as u32, 6000);
+    assert_eq!(
+        external::errors::ProgramError::MyErrorWithSpecialOffset as u32,
+        6500
+    );
 }
