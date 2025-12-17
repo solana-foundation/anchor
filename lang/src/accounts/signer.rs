@@ -35,7 +35,7 @@ use std::ops::Deref;
 ///
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
-pub struct Signer{
+pub struct Signer {
     info: AccountInfo,
 }
 
@@ -75,7 +75,7 @@ impl<'info, B> Accounts<'info, B> for Signer {
 impl<'info> AccountsExit<'info> for Signer {}
 
 impl<'info> ToAccountMetas<'info> for Signer {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.info.address()),

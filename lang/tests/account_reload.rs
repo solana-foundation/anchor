@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use pinocchio::account::RefMut;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -29,16 +30,29 @@ impl anchor_lang::CheckOwner for Dummy {
 #[test]
 fn reload_owner_unchanged_updates_data() {
     let init: Vec<u8> = serialize_dummy(10);
-    let mut data: Vec<u8> = init.clone();
-    let mut lamports: u64 = 1;
+    let data: Vec<u8> = init.clone();
+    let lamports: u64 = 1;
     let owner: Pubkey = crate::ID;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo =
-        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
+    let mut raw_account = &mut account::RuntimeAccount {
+        owner,
+        lamports,
+        is_signer: 0,
+        is_writable: 1,
+        borrow_state: 0,
+        executable: 0,
+        resize_delta: 0,
+        address: key,
+        data_len: data.len() as u64,
+    };
 
+    // SAFETY: raw_account has the memory layout of RuntimeAccount expected by new_unchecked.
+    let acc_info = unsafe {
+        AccountInfo::new_unchecked(&mut raw_account as *mut _ as *mut account::RuntimeAccount)
+    };
     // Wrap in Account<Dummy>.
-    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(acc_info).unwrap();
     assert_eq!(acc.val, 10);
 
     // Simulate CPI side-effect by writing via AccountInfo.
@@ -46,7 +60,7 @@ fn reload_owner_unchanged_updates_data() {
     assert_eq!(new_bytes.len(), acc.to_account_info().data_len());
 
     {
-        let mut d: std::cell::RefMut<'_, &mut [u8]> = acc_info.try_borrow_mut_data().unwrap();
+        let mut d: RefMut<'_, [u8]> = acc_info.try_borrow_mut().unwrap();
         d.copy_from_slice(&new_bytes);
     }
 
@@ -58,16 +72,28 @@ fn reload_owner_unchanged_updates_data() {
 #[test]
 fn reload_owner_changed_fails() {
     let init: Vec<u8> = serialize_dummy(1);
-    let mut data: Vec<u8> = init.clone();
-    let mut lamports: u64 = 1;
+    let data: Vec<u8> = init.clone();
+    let lamports: u64 = 1;
     let mut owner: Pubkey = crate::ID;
     let owner_ptr: *mut Pubkey = &mut owner;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> =
-        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
+    let mut raw_account = &mut account::RuntimeAccount {
+        owner,
+        lamports,
+        is_signer: 0,
+        is_writable: 1,
+        borrow_state: 0,
+        executable: 0,
+        resize_delta: 0,
+        address: key,
+        data_len: data.len() as u64,
+    };
+    let acc_info = unsafe {
+        AccountInfo::new_unchecked(&mut raw_account as *mut _ as *mut account::RuntimeAccount)
+    };
 
-    let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(acc_info).unwrap();
 
     // Change the referenced owner value (i.e., simulate reassignment after CPI).
     unsafe {
@@ -86,22 +112,34 @@ fn reload_owner_changed_fails() {
 fn interface_reload_owner_unchanged_updates_data() {
     use anchor_lang::accounts::interface_account::InterfaceAccount;
 
-    let mut data: Vec<u8> = serialize_dummy(5);
-    let mut lamports: u64 = 1;
+    let data: Vec<u8> = serialize_dummy(5);
+    let lamports: u64 = 1;
     let owner: Pubkey = crate::ID;
     let key: Pubkey = Pubkey::new_unique();
 
-    let acc_info: AccountInfo<'_> =
-        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
+    let mut raw_account = &mut account::RuntimeAccount {
+        owner,
+        lamports,
+        is_signer: 0,
+        is_writable: 1,
+        borrow_state: 0,
+        executable: 0,
+        resize_delta: 0,
+        address: key,
+        data_len: data.len() as u64,
+    };
+    let acc_info = unsafe {
+        AccountInfo::new_unchecked(&mut raw_account as *mut _ as *mut account::RuntimeAccount)
+    };
 
-    let mut i_face: InterfaceAccount<'_, Dummy> =
-        InterfaceAccount::<Dummy>::try_from(&acc_info).unwrap();
+    let mut i_face: InterfaceAccount<Dummy> =
+        InterfaceAccount::<Dummy>::try_from(acc_info).unwrap();
     assert_eq!(i_face.val, 5);
 
     let new_bytes: Vec<u8> = serialize_dummy(6);
 
     {
-        let mut d: std::cell::RefMut<'_, &mut [u8]> = acc_info.try_borrow_mut_data().unwrap();
+        let mut d: RefMut<'_, [u8]> = acc_info.try_borrow_mut().unwrap();
         d.copy_from_slice(&new_bytes);
     }
 
@@ -111,17 +149,29 @@ fn interface_reload_owner_unchanged_updates_data() {
 
 #[test]
 fn reload_error_does_not_mutate_cached_state() {
-    let mut data: Vec<u8> = serialize_dummy(7);
-    let mut lamports: u64 = 1;
+    let data: Vec<u8> = serialize_dummy(7);
+    let lamports: u64 = 1;
 
     let mut owner: Pubkey = crate::ID;
     let owner_ptr: *mut Pubkey = &mut owner;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> =
-        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
+    let mut raw_account = &mut account::RuntimeAccount {
+        owner,
+        lamports,
+        is_signer: 0,
+        is_writable: 1,
+        borrow_state: 0,
+        executable: 0,
+        resize_delta: 0,
+        address: key,
+        data_len: data.len() as u64,
+    };
+    let acc_info = unsafe {
+        AccountInfo::new_unchecked(&mut raw_account as *mut _ as *mut account::RuntimeAccount)
+    };
 
-    let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(acc_info).unwrap();
     assert_eq!(acc.val, 7);
 
     // Change owner under the hood so reload() errors.

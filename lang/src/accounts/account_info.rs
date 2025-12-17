@@ -27,7 +27,7 @@ impl<'info, B> Accounts<'info, B> for AccountInfo {
 }
 
 impl<'info> ToAccountMetas<'info> for AccountInfo {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.is_signer());
         let meta = match (self.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.address()),
@@ -41,7 +41,7 @@ impl<'info> ToAccountMetas<'info> for AccountInfo {
 
 impl ToAccountInfos for AccountInfo {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![self.clone()]
+        vec![*self]
     }
 }
 
@@ -49,6 +49,6 @@ impl<'info> AccountsExit<'info> for AccountInfo {}
 
 impl Key for AccountInfo {
     fn key(&self) -> Pubkey {
-        self.address().clone()
+        *self.address()
     }
 }

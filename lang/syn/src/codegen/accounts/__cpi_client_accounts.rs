@@ -185,7 +185,6 @@ pub fn generate(
         quote! {<'info>}
     };
 
-
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))

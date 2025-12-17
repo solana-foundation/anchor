@@ -4,8 +4,8 @@ use crate::config::{
     TestValidator, WithPath, SHUTDOWN_WAIT, STARTUP_WAIT,
 };
 use anchor_client::Cluster;
-use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::pinocchio_runtime::bpf_loader_upgradeable;
+use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::AnchorDeserialize;
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};

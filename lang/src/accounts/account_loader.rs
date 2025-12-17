@@ -256,7 +256,7 @@ impl<T: ZeroCopy + Owner> AccountsClose for AccountLoader<T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> ToAccountMetas<'info> for AccountLoader<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer());
         let meta = match (self.acc_info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.acc_info.address()),
@@ -276,7 +276,7 @@ impl<T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<T> {
 
 impl<T: ZeroCopy + Owner> ToAccountInfos for AccountLoader<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![self.acc_info.clone()]
+        vec![self.acc_info]
     }
 }
 

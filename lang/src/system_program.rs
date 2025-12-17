@@ -28,7 +28,7 @@ pub fn advance_nonce_account(ctx: CpiContext<'_, '_, 'static, AdvanceNonceAccoun
     };
 
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -40,10 +40,10 @@ pub struct Allocate {
 pub fn allocate(ctx: CpiContext<'_, '_, 'static, Allocate>, space: u64) -> Result<()> {
     let instruction = system_instruction::Allocate {
         account: &ctx.accounts.account_to_allocate,
-        space: space,
+        space,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -62,12 +62,12 @@ pub fn allocate_with_seed(
     let instruction = system_instruction::AllocateWithSeed {
         account: &ctx.accounts.account_to_allocate,
         base: &ctx.accounts.base,
-        seed: seed,
-        space: space,
-        owner: owner,
+        seed,
+        space,
+        owner,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -80,11 +80,11 @@ pub fn assign(ctx: CpiContext<'_, '_, 'static, Assign>, owner: &Pubkey) -> Resul
     // Build instruction accounts
     let instruction = system_instruction::Assign {
         account: &ctx.accounts.account_to_assign,
-        owner: owner,
+        owner,
     };
 
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -102,11 +102,11 @@ pub fn assign_with_seed(
     let instruction = system_instruction::AssignWithSeed {
         account: &ctx.accounts.account_to_assign,
         base: &ctx.accounts.base,
-        seed: seed,
-        owner: owner,
+        seed,
+        owner,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -121,13 +121,13 @@ pub fn authorize_nonce_account(
     new_authority: &Pubkey,
 ) -> Result<()> {
     let instruction = system_instruction::AuthorizeNonceAccount {
-        new_authority: new_authority,
+        new_authority,
         account: &ctx.accounts.nonce,
         authority: &ctx.accounts.authorized,
     };
 
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -146,12 +146,12 @@ pub fn create_account(
     let instruction = system_instruction::CreateAccount {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
-        lamports: lamports,
-        space: space,
-        owner: owner,
+        lamports,
+        space,
+        owner,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -173,13 +173,13 @@ pub fn create_account_with_seed(
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
         base: Some(&ctx.accounts.base),
-        seed: seed,
-        lamports: lamports,
-        space: space,
-        owner: owner,
+        seed,
+        lamports,
+        space,
+        owner,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -253,7 +253,7 @@ pub fn initialize_nonce_account(
         account: &ctx.accounts.nonce,
         recent_blockhashes_sysvar: &ctx.accounts.recent_blockhashes,
         rent_sysvar: &ctx.accounts.rent,
-        authority: authority,
+        authority,
     };
     instruction.invoke().map_err(error::Error::from)
 }
@@ -268,10 +268,10 @@ pub fn transfer(ctx: CpiContext<'_, '_, 'static, Transfer>, lamports: u64) -> Re
     let instruction = system_instruction::Transfer {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
-        lamports: lamports,
+        lamports,
     };
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -292,13 +292,13 @@ pub fn transfer_with_seed(
         from: &ctx.accounts.from,
         base: &ctx.accounts.base,
         to: &ctx.accounts.to,
-        seed: seed,
-        lamports: lamports,
-        owner: owner,
+        seed,
+        lamports,
+        owner,
     };
 
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }
 
@@ -321,10 +321,10 @@ pub fn withdraw_nonce_account(
         recent_blockhashes_sysvar: &ctx.accounts.recent_blockhashes,
         rent_sysvar: &ctx.accounts.rent,
         authority: &ctx.accounts.authorized,
-        lamports: lamports,
+        lamports,
     };
 
     instruction
-        .invoke_signed(&ctx.signer_seeds)
+        .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)
 }

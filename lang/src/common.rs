@@ -3,7 +3,7 @@ use crate::pinocchio_runtime::system_program;
 use crate::prelude::{Id, System};
 use crate::Result;
 
-pub fn close<'info>(info: AccountInfo, sol_destination: AccountInfo) -> Result<()> {
+pub fn close(info: AccountInfo, sol_destination: AccountInfo) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.
     let new_dest_lamports = sol_destination
         .lamports()
@@ -15,7 +15,7 @@ pub fn close<'info>(info: AccountInfo, sol_destination: AccountInfo) -> Result<(
     unsafe {
         info.assign(&system_program::ID);
     }
-    info.resize(0);
+    info.resize(0)?;
     Ok(())
 }
 

@@ -38,7 +38,7 @@ impl<'info, B> Accounts<'info, B> for UncheckedAccount {
 }
 
 impl<'info> ToAccountMetas<'info> for UncheckedAccount {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.0.is_signer());
         let meta = match (self.0.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.0.address()),
