@@ -1,7 +1,7 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::pinocchio_runtime::account_info::AccountInfo;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -182,6 +182,32 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<T> {
         }
     }
 
+    /// Reloads the account from storage. This is useful, for example, when
+    /// observing side effects after CPI.
+    ///
+    /// No Anchor discriminator is checked during reload. Instead, this method enforces
+    /// owner stability by verifying that `info.owner == self.owner` (i.e., the pubkey
+    /// validated at construction) to avoid TOCTOU issues, and then re-deserializes `T`
+    /// from the updated bytes.
+    ///
+    /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
+    /// #[account] type.
+    pub fn reload(&mut self) -> Result<()> {
+        let info = self.account.to_account_info();
+
+        // Enforce owner stability: must match the one validated at construction.
+        if info.owned_by(&self.owner) {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((unsafe { *info.owner() }, self.owner)));
+        }
+
+        // Re-deserialize fresh data into the inner account.
+        let mut data: &[u8] = &info.try_borrow()?;
+        let new_val = T::try_deserialize_unchecked(&mut data)?;
+        self.account.set_inner(new_val);
+        Ok(())
+    }
+
     pub fn into_inner(self) -> T {
         self.account.into_inner()
     }
@@ -276,7 +302,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> AccountsClose for Interfa
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas<'info>
     for InterfaceAccount<T>
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.account.to_account_metas(is_signer)
     }
 }

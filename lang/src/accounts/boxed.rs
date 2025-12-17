@@ -45,12 +45,12 @@ impl<T: ToAccountInfos> ToAccountInfos for Box<T> {
 }
 
 impl<'a, T: ToAccountMetas<'a>> ToAccountMetas<'a> for Box<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         T::to_account_metas(self, is_signer)
     }
 }
 
-impl<T: AccountsClose> AccountsClose for Box<T> {
+impl<'info, T: AccountsClose> AccountsClose for Box<T> {
     fn close(&self, sol_destination: AccountInfo) -> Result<()> {
         T::close(self, sol_destination)
     }

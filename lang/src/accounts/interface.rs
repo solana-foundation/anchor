@@ -124,7 +124,7 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<T> {
 }
 
 impl<'info, T> ToAccountMetas<'info> for Interface<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.0.to_account_metas(is_signer)
     }
 }

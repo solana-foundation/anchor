@@ -1,11 +1,16 @@
+use crate::codegen::accounts::{generics, ParsedGenerics};
 use crate::{AccountField, AccountsStruct};
 use quote::quote;
 
 // Generates the `ToAccountInfos` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let name = &accs.ident;
-
-    let (impl_gen, ty_gen, where_clause) = accs.generics.split_for_impl();
+    let ParsedGenerics {
+        combined_generics,
+        trait_generics,
+        struct_generics,
+        where_clause,
+    } = generics(accs);
 
     let to_acc_infos: Vec<proc_macro2::TokenStream> = accs
         .fields
@@ -17,7 +22,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
     quote! {
         #[automatically_derived]
-        impl #impl_gen anchor_lang::ToAccountInfos for #name #ty_gen #where_clause{
+        impl<#combined_generics> anchor_lang::ToAccountInfos for #name <#struct_generics> #where_clause{
             fn to_account_infos(&self) -> Vec<anchor_lang::AccountInfo> {
                 let mut account_infos = vec![];
 
