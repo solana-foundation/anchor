@@ -51,7 +51,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::ToAccountMetas<#trait_lifetime> for #name <#struct_generics> #where_clause{
-            fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::pinocchio_runtime::instruction::AccountMeta> {
+            fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::pinocchio_runtime::instruction::AccountMeta<'_>> {
                 let mut account_metas = vec![];
 
                 #(#to_acc_metas)*

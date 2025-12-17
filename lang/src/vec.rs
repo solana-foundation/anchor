@@ -15,7 +15,7 @@ impl<T: ToAccountInfos> ToAccountInfos for Vec<T> {
 }
 
 impl<'info, T: ToAccountMetas<'info>> ToAccountMetas<'info> for Vec<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.iter()
             .flat_map(|item| (*item).to_account_metas(is_signer))
             .collect()

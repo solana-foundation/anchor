@@ -50,7 +50,7 @@ impl<'info, B> Accounts<'info, B> for SystemAccount {
 impl<'info> AccountsExit<'info> for SystemAccount {}
 
 impl<'info> ToAccountMetas<'info> for SystemAccount {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.info.address()),

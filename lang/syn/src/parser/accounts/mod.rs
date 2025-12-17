@@ -588,7 +588,7 @@ fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
                 if args.args.len() != 1 {
                     return Err(ParseError::new(
                         args.args.span(),
-                        "bracket arguments must be the lifetime and type",
+                        "bracket arguments must be a type",
                     ));
                 }
                 match &args.args[0] {
@@ -597,8 +597,8 @@ fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
                     }
                     _ => {
                         return Err(ParseError::new(
-                            args.args[1].span(),
-                            "first bracket argument must be a lifetime",
+                            args.args[0].span(),
+                            "bracket argument must be a type",
                         ))
                     }
                 }
@@ -606,7 +606,7 @@ fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
             _ => {
                 return Err(ParseError::new(
                     segments.arguments.span(),
-                    "expected angle brackets with a lifetime and type",
+                    "expected angle brackets with a type",
                 ))
             }
         }
@@ -615,24 +615,24 @@ fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
     let segments = &path.segments[0];
     match &segments.arguments {
         syn::PathArguments::AngleBracketed(args) => {
-            // Expected: <'info, MyType>.
-            if args.args.len() != 2 {
+            // Expected: <MyType>.
+            if args.args.len() != 1 {
                 return Err(ParseError::new(
                     args.args.span(),
-                    "bracket arguments must be the lifetime and type",
+                    "bracket arguments must be type",
                 ));
             }
-            match &args.args[1] {
+            match &args.args[0] {
                 syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
                 _ => Err(ParseError::new(
-                    args.args[1].span(),
-                    "first bracket argument must be a lifetime",
+                    args.args[0].span(),
+                    "bracket argument must be a type",
                 )),
             }
         }
         _ => Err(ParseError::new(
             segments.arguments.span(),
-            "expected angle brackets with a lifetime and type",
+            "expected angle brackets with a type",
         )),
     }
 }

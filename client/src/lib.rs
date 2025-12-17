@@ -646,7 +646,7 @@ impl<'a, 'b, 'c, 'd, C: Deref<Target = impl Signer> + Clone, S: AsSigner>
         self
     }
 
-    pub fn instructions(&self) -> Vec<InstructionView> {
+    pub fn instructions(&self) -> Vec<InstructionView<'_, '_, '_, '_>> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
             instructions.push(InstructionView {
