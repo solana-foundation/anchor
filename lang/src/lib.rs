@@ -51,6 +51,8 @@ pub use crate::bpf_upgradeable_state::*;
 use crate::pinocchio_runtime::{
     account_info::*, instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
 };
+// Re-export AccountInfo for macro expansion
+pub use crate::pinocchio_runtime::account_info::AccountInfo;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -233,7 +235,7 @@ pub fn deprecated_account_info_usage() {}
 ///     pub pda_1: u8,
 /// }
 /// ```
-pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
+pub trait Accounts<'info, B>: ToAccountMetas<'info> + ToAccountInfos + Sized {
     /// Returns the validated accounts struct. What constitutes "valid" is
     /// program dependent. However, users of these types should never have to
     /// worry about account substitution attacks. For example, if a program
@@ -247,7 +249,7 @@ pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     /// so that it cannot be used again.
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -262,7 +264,7 @@ pub trait Bumps {
 
 /// The exit procedure for an account. Any cleanup or persistence to storage
 /// should be done here.
-pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
+pub trait AccountsExit<'info>: ToAccountMetas<'info> + ToAccountInfos {
     /// `program_id` is the currently executing program.
     fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         // no-op
@@ -272,14 +274,14 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
 
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
-pub trait AccountsClose<'info>: ToAccountInfos<'info> {
+pub trait AccountsClose: ToAccountInfos {
     fn close(&self, sol_destination: AccountInfo) -> Result<()>;
 }
 
 /// Transformation to
 /// [`AccountMeta`](../pinocchio_runtime/instruction/struct.AccountMeta.html)
 /// structs.
-pub trait ToAccountMetas {
+pub trait ToAccountMetas<'info> {
     /// `is_signer` is given as an optional override for the signer meta field.
     /// This covers the edge case when a program-derived-address needs to relay
     /// a transaction from a client to another program but sign the transaction
@@ -291,16 +293,16 @@ pub trait ToAccountMetas {
 /// Transformation to
 /// [`AccountInfo`](../pinocchio_runtime/account_info/struct.AccountInfo.html)
 /// structs.
-pub trait ToAccountInfos<'info> {
+pub trait ToAccountInfos {
     fn to_account_infos(&self) -> Vec<AccountInfo>;
 }
 
 /// Transformation to an `AccountInfo` struct.
-pub trait ToAccountInfo<'info> {
+pub trait ToAccountInfo {
     fn to_account_info(&self) -> AccountInfo;
 }
 
-impl<'info, T> ToAccountInfo<'info> for T
+impl<T> ToAccountInfo for T
 where
     T: AsRef<AccountInfo>,
 {
@@ -310,7 +312,7 @@ where
 }
 
 /// Lamports related utility methods for accounts.
-pub trait Lamports<'info>: AsRef<AccountInfo> {
+pub trait Lamports: AsRef<AccountInfo> {
     /// Get the lamports of the account.
     fn get_lamports(&self) -> u64 {
         self.as_ref().lamports()
@@ -360,7 +362,7 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
     }
 }
 
-impl<'info, T: AsRef<AccountInfo>> Lamports<'info> for T {}
+impl<T: AsRef<AccountInfo>> Lamports for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an

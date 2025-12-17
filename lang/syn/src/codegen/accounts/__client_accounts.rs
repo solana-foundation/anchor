@@ -184,7 +184,7 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl anchor_lang::ToAccountMetas for #name {
+            impl<'info> anchor_lang::ToAccountMetas<'info> for #name {
                 fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::pinocchio_runtime::instruction::AccountMeta> {
                     let mut account_metas = vec![];
 

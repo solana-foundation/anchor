@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 impl<'info, B> Accounts<'info, B> for AccountInfo {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -26,7 +26,7 @@ impl<'info, B> Accounts<'info, B> for AccountInfo {
     }
 }
 
-impl ToAccountMetas for AccountInfo {
+impl<'info> ToAccountMetas<'info> for AccountInfo {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.is_signer());
         let meta = match (self.is_writable(), is_signer) {
@@ -39,7 +39,7 @@ impl ToAccountMetas for AccountInfo {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for AccountInfo {
+impl ToAccountInfos for AccountInfo {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         vec![self.clone()]
     }

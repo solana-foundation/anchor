@@ -51,7 +51,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                     *__accounts = &__accounts[1..];
                                     None
                                 } else {
-                                    let account = &__accounts[0];
+                                    let account = __accounts[0];
                                     *__accounts = &__accounts[1..];
                                     Some(account)
                                 };
@@ -61,7 +61,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                 if __accounts.is_empty() {
                                     return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                 }
-                                let #name = &__accounts[0];
+                                let #name = __accounts[0];
                                 *__accounts = &__accounts[1..];
                             }
                         }
@@ -233,7 +233,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             #[inline(never)]
             fn try_accounts(
                 __program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_info::AccountInfo],
+                __accounts: &mut &[anchor_lang::pinocchio_runtime::account_info::AccountInfo],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,

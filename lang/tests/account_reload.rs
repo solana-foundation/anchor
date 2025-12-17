@@ -34,11 +34,11 @@ fn reload_owner_unchanged_updates_data() {
     let owner: Pubkey = crate::ID;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> =
+    let acc_info: AccountInfo =
         AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
 
     // Wrap in Account<Dummy>.
-    let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
     assert_eq!(acc.val, 10);
 
     // Simulate CPI side-effect by writing via AccountInfo.

@@ -12,18 +12,18 @@ use std::ops::Deref;
 /// Explicit wrapper for AccountInfo types to emphasize
 /// that no checks are performed
 #[derive(Debug, Clone)]
-pub struct UncheckedAccount<'info>(&'info AccountInfo);
+pub struct UncheckedAccount(AccountInfo);
 
-impl<'info> UncheckedAccount<'info> {
-    pub fn try_from(acc_info: &'info AccountInfo) -> Self {
+impl UncheckedAccount {
+    pub fn try_from(acc_info: AccountInfo) -> Self {
         Self(acc_info)
     }
 }
 
-impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
+impl<'info, B> Accounts<'info, B> for UncheckedAccount {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -31,13 +31,13 @@ impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Ok(UncheckedAccount(account))
     }
 }
 
-impl ToAccountMetas for UncheckedAccount<'_> {
+impl<'info> ToAccountMetas<'info> for UncheckedAccount {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.0.is_signer());
         let meta = match (self.0.is_writable(), is_signer) {
@@ -50,29 +50,29 @@ impl ToAccountMetas for UncheckedAccount<'_> {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for UncheckedAccount<'info> {
+impl ToAccountInfos for UncheckedAccount {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.0]
+        vec![self.0]
     }
 }
 
-impl<'info> AccountsExit<'info> for UncheckedAccount<'info> {}
+impl<'info> AccountsExit<'info> for UncheckedAccount {}
 
-impl<'info> AsRef<AccountInfo> for UncheckedAccount<'info> {
+impl AsRef<AccountInfo> for UncheckedAccount {
     fn as_ref(&self) -> &AccountInfo {
-        self.0
+        &self.0
     }
 }
 
-impl<'info> Deref for UncheckedAccount<'info> {
+impl Deref for UncheckedAccount {
     type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
-        self.0
+        &self.0
     }
 }
 
-impl Key for UncheckedAccount<'_> {
+impl Key for UncheckedAccount {
     fn key(&self) -> Pubkey {
         *self.0.address()
     }
