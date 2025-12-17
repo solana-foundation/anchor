@@ -8,8 +8,8 @@ use external::program::External;
 // Compilation check for legacy IDL (pre Anchor `0.30`)
 declare_program!(external_legacy);
 
-// Compilation check for the Raydium AMM v3 program (Anchor v0.29.0)
-// https://github.com/raydium-io/raydium-idl/blob/c8507c78618eda1de96ff5e43bd29daefa7e9307/raydium_clmm/amm_v3.json
+// Compilation check for the Raydium AMM v3 program
+// https://github.com/raydium-io/raydium-idl/blob/6123104304ebcb42be175cc297a2c221ac96bb96/raydium_clmm/amm_v3.json
 declare_program!(amm_v3);
 
 #[program]
