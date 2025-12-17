@@ -29,12 +29,12 @@ use std::ops::{Deref, DerefMut};
 ///     let clock = Clock::get()?;
 /// }
 /// ```
-pub struct Sysvar<T: SolanaSysvar> {
-    info: AccountInfo,
+pub struct Sysvar<'info, T: SolanaSysvar> {
+    info: &'info AccountInfo,
     account: T,
 }
 
-impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<T> {
+impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sysvar")
             .field("info", &self.info)
@@ -43,25 +43,25 @@ impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<T> {
     }
 }
 
-impl<'info, T: SolanaSysvar> ToAccountMetas<'info> for Sysvar<T> {
-    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+impl<'info, T: SolanaSysvar> ToAccountMetas<'info> for Sysvar<'info, T> {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta<'info>> {
         vec![AccountMeta::readonly(self.info.address())]
     }
 }
 
-impl<T: SolanaSysvar> ToAccountInfos for Sysvar<T> {
+impl<'info, T: SolanaSysvar> ToAccountInfos for Sysvar<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![self.info]
+        vec![*self.info]
     }
 }
 
-impl<T: SolanaSysvar> AsRef<AccountInfo> for Sysvar<T> {
+impl<'info, T: SolanaSysvar> AsRef<AccountInfo> for Sysvar<'info, T> {
     fn as_ref(&self) -> &AccountInfo {
-        &self.info
+        self.info
     }
 }
 
-impl<T: SolanaSysvar> Deref for Sysvar<T> {
+impl<T: SolanaSysvar> Deref for Sysvar<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -69,15 +69,15 @@ impl<T: SolanaSysvar> Deref for Sysvar<T> {
     }
 }
 
-impl<T: SolanaSysvar> DerefMut for Sysvar<T> {
+impl<T: SolanaSysvar> DerefMut for Sysvar<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
 }
 
-impl<'info, T: SolanaSysvar> AccountsExit<'info> for Sysvar<T> {}
+impl<'info, T: SolanaSysvar> AccountsExit<'info> for Sysvar<'info, T> {}
 
-impl<T: SolanaSysvar> Key for Sysvar<T> {
+impl<T: SolanaSysvar> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.address()
     }
