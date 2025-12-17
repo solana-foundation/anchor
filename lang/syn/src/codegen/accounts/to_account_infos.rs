@@ -22,8 +22,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
     quote! {
         #[automatically_derived]
-        impl<#combined_generics> anchor_lang::ToAccountInfos<#trait_generics> for #name <#struct_generics> #where_clause{
-            fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountInfo> {
+        impl<#combined_generics> anchor_lang::ToAccountInfos for #name <#struct_generics> #where_clause{
+            fn to_account_infos(&self) -> Vec<anchor_lang::AccountInfo> {
                 let mut account_infos = vec![];
 
                 #(#to_acc_infos)*

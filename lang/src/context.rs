@@ -7,6 +7,7 @@ use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
 use std::fmt;
+use std::marker::PhantomData;
 
 /// Provides non-argument inputs to the program.
 ///
@@ -170,19 +171,20 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
-pub struct CpiContext<'a, 'b, T>
+pub struct CpiContext<'a, 'b, 'info, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'static>,
+    T: ToAccountMetas<'info> + ToAccountInfos,
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountInfo>,
     pub program_id: Pubkey,
     pub signer_seeds: &'a [Signer<'a, 'b>],
+    _phantom: PhantomData<&'info ()>,
 }
 
-impl<'a, 'b, T> CpiContext<'a, 'b, T>
+impl<'a, 'b, 'info, T> CpiContext<'a, 'b, 'info, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'static>,
+    T: ToAccountMetas<'info> + ToAccountInfos,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -191,6 +193,7 @@ where
             program_id,
             remaining_accounts: Vec::new(),
             signer_seeds: &[],
+            _phantom: PhantomData,
         }
     }
 
@@ -205,6 +208,7 @@ where
             program_id,
             signer_seeds,
             remaining_accounts: Vec::new(),
+            _phantom: PhantomData,
         }
     }
 
@@ -221,8 +225,8 @@ where
     }
 }
 
-impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
-    for CpiContext<'_, '_, T>
+impl<'info, T: ToAccountInfos + ToAccountMetas<'info>> ToAccountInfos
+    for CpiContext<'_, '_, 'info, T>
 {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         let mut infos = self.accounts.to_account_infos();
@@ -231,21 +235,14 @@ impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
     }
 }
 
-impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
+impl<'a, 'b, 'info, T: ToAccountInfos + ToAccountMetas<'info>> ToAccountMetas<'info>
+    for CpiContext<'a, 'b, 'info, T>
+{
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let mut metas = self.accounts.to_account_metas(is_signer);
-        metas.append(
-            &mut self
-                .remaining_accounts
-                .iter()
-                .map(|acc| match (acc.is_writable(), acc.is_signer()) {
-                    (false, false) => AccountMeta::readonly(acc.address()),
-                    (false, true) => AccountMeta::readonly_signer(acc.address()),
-                    (true, false) => AccountMeta::writable(acc.address()),
-                    (true, true) => AccountMeta::writable_signer(acc.address()),
-                })
-                .collect(),
-        );
+        for acc in &self.remaining_accounts {
+            metas.extend(acc.to_account_metas(None));
+        }
         metas
     }
 }

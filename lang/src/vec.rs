@@ -6,7 +6,7 @@ use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 
-impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
+impl<T: ToAccountInfos> ToAccountInfos for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         self.iter()
             .flat_map(|item| item.to_account_infos())
@@ -14,7 +14,7 @@ impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     }
 }
 
-impl<T: ToAccountMetas> ToAccountMetas for Vec<T> {
+impl<'info, T: ToAccountMetas<'info>> ToAccountMetas<'info> for Vec<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.iter()
             .flat_map(|item| (*item).to_account_metas(is_signer))
@@ -25,7 +25,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Vec<T> {
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
