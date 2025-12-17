@@ -49,7 +49,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
-    let all_account_info = !accs.generics.lifetimes().next().is_some()
+    let all_account_info = accs.generics.lifetimes().next().is_none()
         && accs.fields.iter().all(|f| match f {
             AccountField::Field(field) => matches!(field.ty, Ty::AccountInfo),
             AccountField::CompositeField(_) => false, // Composite fields need lifetimes
@@ -82,9 +82,7 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
     let trait_lifetime = GenericParam::Lifetime(trait_lifetime);
 
     ParsedGenerics {
-        combined_generics: if all_account_info {
-            accs.generics.params.clone()
-        } else if accs.generics.lifetimes().next().is_some() {
+        combined_generics: if all_account_info || accs.generics.lifetimes().next().is_some() {
             accs.generics.params.clone()
         } else {
             iter::once(trait_lifetime.clone())

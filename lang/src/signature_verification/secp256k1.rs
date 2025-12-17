@@ -25,7 +25,11 @@ pub fn verify_secp256k1_ix_with_instruction_index(
     sig: &[u8; 64],
     recovery_id: u8,
 ) -> Result<()> {
-    require_keys_eq!(ix.get_program_id().key(), ID, ErrorCode::Secp256k1InvalidProgram);
+    require_keys_eq!(
+        ix.get_program_id().key(),
+        ID,
+        ErrorCode::Secp256k1InvalidProgram
+    );
     // require_eq!(ix.accounts.len(), 0usize, ErrorCode::InstructionHasAccounts);
     require!(recovery_id <= 1, ErrorCode::InvalidRecoveryId);
     require!(msg.len() <= u16::MAX as usize, ErrorCode::MessageTooLong);

@@ -24,7 +24,11 @@ pub fn verify_ed25519_ix_with_instruction_index(
     msg: &[u8],
     sig: &[u8; 64],
 ) -> Result<()> {
-    require_keys_eq!(ix.get_program_id().key(), ID, ErrorCode::Ed25519InvalidProgram);
+    require_keys_eq!(
+        ix.get_program_id().key(),
+        ID,
+        ErrorCode::Ed25519InvalidProgram
+    );
     // require_eq!(ix.get_instruction_accounts().len(), 0usize, ErrorCode::InstructionHasAccounts);
     require!(msg.len() <= u16::MAX as usize, ErrorCode::MessageTooLong);
 

@@ -49,7 +49,7 @@ mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
 use crate::pinocchio_runtime::{
-    account_info::*, instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
+    instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
 };
 // Re-export AccountInfo for macro expansion
 pub use crate::pinocchio_runtime::account_info::AccountInfo;
@@ -84,7 +84,7 @@ pub mod pinocchio_runtime {
         pub use pinocchio::account::*;
         pub type AccountInfo = AccountView;
 
-        pub fn next_account_info<'a, 'b, I: Iterator<Item = AccountInfo>>(
+        pub fn next_account_info<I: Iterator<Item = AccountInfo>>(
             iter: &mut I,
         ) -> Result<I::Item, pinocchio::error::ProgramError> {
             iter.next()
@@ -287,7 +287,7 @@ pub trait ToAccountMetas<'info> {
     /// a transaction from a client to another program but sign the transaction
     /// before the relay. The client cannot mark the field as a signer, and so
     /// we have to override the is_signer meta field given by the client.
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>>;
 }
 
 /// Transformation to
@@ -481,9 +481,9 @@ pub trait CheckOwner {
     fn check_owner(owner: &Pubkey) -> Result<()>;
 }
 
-impl<T: Owner> CheckOwner for T {
+impl<T: Owners> CheckOwner for T {
     fn check_owner(owner: &Pubkey) -> Result<()> {
-        if Self::owner() != *owner {
+        if !Self::owners().contains(owner) {
             Err(
                 error::Error::from(error::ErrorCode::AccountOwnedByWrongProgram)
                     .with_account_name(pubkey_to_string(owner)),

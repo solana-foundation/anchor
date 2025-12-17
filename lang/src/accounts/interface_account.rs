@@ -302,7 +302,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> AccountsClose for Interfa
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas<'info>
     for InterfaceAccount<T>
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.account.to_account_metas(is_signer)
     }
 }

@@ -238,7 +238,7 @@ impl<'info, T: ToAccountInfos + ToAccountMetas<'info>> ToAccountInfos
 impl<'a, 'b, 'info, T: ToAccountInfos + ToAccountMetas<'info>> ToAccountMetas<'info>
     for CpiContext<'a, 'b, 'info, T>
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         for acc in &self.remaining_accounts {
             metas.extend(acc.to_account_metas(None));

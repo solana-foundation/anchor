@@ -63,7 +63,7 @@ impl<T: ToAccountInfos> ToAccountInfos for Option<T> {
 }
 
 impl<'a, T: ToAccountMetas<'a>> ToAccountMetas<'a> for Option<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.as_ref()
             .expect("Cannot run `to_account_metas` on None")
             .to_account_metas(is_signer)
