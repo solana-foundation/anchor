@@ -11,17 +11,17 @@ use std::ops::Deref;
 ///
 /// - `SystemAccount.info.owner == SystemProgram`
 #[derive(Debug, Clone)]
-pub struct SystemAccount<'info> {
-    info: &'info AccountInfo,
+pub struct SystemAccount {
+    info: AccountInfo,
 }
 
-impl<'info> SystemAccount<'info> {
-    fn new(info: &'info AccountInfo) -> SystemAccount<'info> {
+impl SystemAccount {
+    fn new(info: AccountInfo) -> SystemAccount {
         Self { info }
     }
 
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo) -> Result<SystemAccount<'info>> {
+    pub fn try_from(info: AccountInfo) -> Result<SystemAccount> {
         if info.owned_by(&system_program::ID) {
             return Err(ErrorCode::AccountNotSystemOwned.into());
         }
@@ -29,11 +29,11 @@ impl<'info> SystemAccount<'info> {
     }
 }
 
-impl<'info, B> Accounts<'info, B> for SystemAccount<'info> {
+impl<'info, B> Accounts<'info, B> for SystemAccount {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -41,15 +41,15 @@ impl<'info, B> Accounts<'info, B> for SystemAccount<'info> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         SystemAccount::try_from(account)
     }
 }
 
-impl<'info> AccountsExit<'info> for SystemAccount<'info> {}
+impl<'info> AccountsExit<'info> for SystemAccount {}
 
-impl ToAccountMetas for SystemAccount<'_> {
+impl<'info> ToAccountMetas<'info> for SystemAccount {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
@@ -62,28 +62,28 @@ impl ToAccountMetas for SystemAccount<'_> {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for SystemAccount<'info> {
+impl ToAccountInfos for SystemAccount {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.info]
+        vec![self.info]
     }
 }
 
-impl<'info> AsRef<AccountInfo> for SystemAccount<'info> {
+impl AsRef<AccountInfo> for SystemAccount {
     fn as_ref(&self) -> &AccountInfo {
-        self.info
+        &self.info
     }
 }
 
-impl<'info> Deref for SystemAccount<'info> {
+impl Deref for SystemAccount {
     type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
-        self.info
+        &self.info
     }
 }
 
-impl Key for SystemAccount<'_> {
+impl Key for SystemAccount {
     fn key(&self) -> Pubkey {
-        self.info.address().clone()
+        *self.info.address()
     }
 }

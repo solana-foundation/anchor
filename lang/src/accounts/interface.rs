@@ -73,19 +73,19 @@ use std::ops::Deref;
 /// - [`TokenInterface`](https://docs.rs/anchor-spl/latest/anchor_spl/token_interface/struct.TokenInterface.html)
 ///
 #[derive(Clone)]
-pub struct Interface<'info, T>(Program<'info, T>);
-impl<'a, T> Interface<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo) -> Self {
+pub struct Interface<T>(Program<T>);
+impl<T> Interface<T> {
+    pub(crate) fn new(info: AccountInfo) -> Self {
         Self(Program::new(info))
     }
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
         self.0.programdata_address()
     }
 }
-impl<'a, T: CheckId> TryFrom<&'a AccountInfo> for Interface<'a, T> {
+impl<T: CheckId> TryFrom<AccountInfo> for Interface<T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo) -> Result<Self> {
+    fn try_from(info: AccountInfo) -> Result<Self> {
         T::check_id(info.address())?;
         if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
@@ -93,23 +93,23 @@ impl<'a, T: CheckId> TryFrom<&'a AccountInfo> for Interface<'a, T> {
         Ok(Self::new(info))
     }
 }
-impl<'info, T> Deref for Interface<'info, T> {
+impl<T> Deref for Interface<T> {
     type Target = AccountInfo;
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }
 }
-impl<'info, T> AsRef<AccountInfo> for Interface<'info, T> {
+impl<T> AsRef<AccountInfo> for Interface<T> {
     fn as_ref(&self) -> &AccountInfo {
         self.0.as_ref()
     }
 }
 
-impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
+impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -117,27 +117,27 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Self::try_from(account)
     }
 }
 
-impl<T> ToAccountMetas for Interface<'_, T> {
+impl<'info, T> ToAccountMetas<'info> for Interface<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.0.to_account_metas(is_signer)
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for Interface<'info, T> {
+impl<T> ToAccountInfos for Interface<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         self.0.to_account_infos()
     }
 }
 
-impl<'info, T: AccountDeserialize> AccountsExit<'info> for Interface<'info, T> {}
+impl<'info, T: AccountDeserialize> AccountsExit<'info> for Interface<T> {}
 
-impl<T: AccountDeserialize> Key for Interface<'_, T> {
+impl<T: AccountDeserialize> Key for Interface<T> {
     fn key(&self) -> Pubkey {
         self.0.key()
     }

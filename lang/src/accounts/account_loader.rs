@@ -93,12 +93,12 @@ use std::mem;
 /// }
 /// ```
 #[derive(Clone)]
-pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
-    acc_info: &'info AccountInfo,
-    phantom: PhantomData<&'info T>,
+pub struct AccountLoader<T: ZeroCopy + Owner> {
+    acc_info: AccountInfo,
+    phantom: PhantomData<T>,
 }
 
-impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
+impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccountLoader")
             .field("acc_info", &self.acc_info)
@@ -107,8 +107,8 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo) -> AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> AccountLoader<T> {
+    fn new(acc_info: AccountInfo) -> AccountLoader<T> {
         Self {
             acc_info,
             phantom: PhantomData,
@@ -117,7 +117,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
-    pub fn try_from(acc_info: &'info AccountInfo) -> Result<AccountLoader<'info, T>> {
+    pub fn try_from(acc_info: AccountInfo) -> Result<AccountLoader<T>> {
         if acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
@@ -141,8 +141,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     #[inline(never)]
     pub fn try_from_unchecked(
         _program_id: &Pubkey,
-        acc_info: &'info AccountInfo,
-    ) -> Result<AccountLoader<'info, T>> {
+        acc_info: AccountInfo,
+    ) -> Result<AccountLoader<T>> {
         if acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
@@ -216,11 +216,11 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     }
 }
 
-impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, T> {
+impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -228,18 +228,18 @@ impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, 
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         let l = AccountLoader::try_from(account)?;
         Ok(l)
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T> {
+impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<T> {
     // The account *cannot* be loaded when this is called.
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
-        if &T::owner() == program_id && !crate::common::is_closed(self.acc_info) {
+        if &T::owner() == program_id && !crate::common::is_closed(&self.acc_info) {
             let mut data = self.acc_info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
@@ -249,13 +249,13 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> AccountsClose for AccountLoader<T> {
     fn close(&self, sol_destination: AccountInfo) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 
-impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
+impl<'info, T: ZeroCopy + Owner> ToAccountMetas<'info> for AccountLoader<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer());
         let meta = match (self.acc_info.is_writable(), is_signer) {
@@ -268,19 +268,19 @@ impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<T> {
     fn as_ref(&self) -> &AccountInfo {
-        self.acc_info
+        &self.acc_info
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
+impl<T: ZeroCopy + Owner> ToAccountInfos for AccountLoader<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.acc_info]
+        vec![self.acc_info.clone()]
     }
 }
 
-impl<T: ZeroCopy + Owner> Key for AccountLoader<'_, T> {
+impl<T: ZeroCopy + Owner> Key for AccountLoader<T> {
     fn key(&self) -> Pubkey {
         self.acc_info.key()
     }

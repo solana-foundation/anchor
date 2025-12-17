@@ -64,8 +64,8 @@ use std::ops::{Deref, DerefMut};
 /// #[derive(Accounts)]
 /// pub struct SetData<'info> {
 ///     #[account(mut)]
-///     pub my_account: Account<'info, MyData> // checks that my_account.info.owner == Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
-///     pub auth_account: Account<'info, Auth> // checks that auth_account.info.owner == FEZGUxNhZWpYPj9MJCrZJvUo1iF9ys34UHx52y4SzVW9
+///     pub my_account: Account<MyData> // checks that my_account.info.owner == Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
+///     pub auth_account: Account<Auth> // checks that auth_account.info.owner == FEZGUxNhZWpYPj9MJCrZJvUo1iF9ys34UHx52y4SzVW9
 /// }
 ///
 /// // In a different program
@@ -141,13 +141,13 @@ use std::ops::{Deref, DerefMut};
 /// Anchor provides wrapper types to access data stored in programs owned by the BPFUpgradeableLoader
 /// such as the upgrade authority. If you're interested in the data of a program account, you can use
 /// ```ignore
-/// Account<'info, BpfUpgradeableLoaderState>
+/// Account<BpfUpgradeableLoaderState>
 /// ```
 /// and then match on its contents inside your instruction function.
 ///
 /// Alternatively, you can use
 /// ```ignore
-/// Account<'info, ProgramData>
+/// Account<ProgramData>
 /// ```
 /// to let anchor do the matching for you and return the ProgramData variant of BpfUpgradeableLoaderState.
 ///
@@ -184,14 +184,14 @@ use std::ops::{Deref, DerefMut};
 /// #[derive(Accounts)]
 /// pub struct SetInitialAdmin<'info> {
 ///     #[account(init, payer = authority, seeds = [b"admin"], bump)]
-///     pub admin_settings: Account<'info, AdminSettings>,
+///     pub admin_settings: Account<AdminSettings>,
 ///     #[account(mut)]
 ///     pub authority: Signer<'info>,
 ///     #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
-///     pub program: Program<'info, MyProgram>,
+///     pub program: Program<MyProgram>,
 ///     #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()))]
-///     pub program_data: Account<'info, ProgramData>,
-///     pub system_program: Program<'info, System>,
+///     pub program_data: Account<ProgramData>,
+///     pub system_program: Program<System>,
 /// }
 /// ```
 ///
@@ -210,7 +210,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// #[derive(Accounts)]
 /// pub struct Example {
-///     pub my_acc: Account<'info, TokenAccount>
+///     pub my_acc: Account<TokenAccount>
 /// }
 /// ```
 /// to access token accounts and
@@ -219,23 +219,23 @@ use std::ops::{Deref, DerefMut};
 ///
 /// #[derive(Accounts)]
 /// pub struct Example {
-///     pub my_acc: Account<'info, Mint>
+///     pub my_acc: Account<Mint>
 /// }
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]
-pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
+pub struct Account<T: AccountSerialize + AccountDeserialize + Clone> {
     account: T,
-    info: &'info AccountInfo,
+    info: AccountInfo,
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Account<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.fmt_with_name("Account", f)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<T> {
     pub(crate) fn fmt_with_name(&self, name: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct(name)
             .field("account", &self.account)
@@ -244,8 +244,8 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, 
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo, account: T) -> Account<'a, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Account<T> {
+    pub(crate) fn new(info: AccountInfo, account: T) -> Account<T> {
         Self { info, account }
     }
 
@@ -255,7 +255,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
         program_id: &Pubkey,
     ) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
-        if expected_owner == program_id && !crate::common::is_closed(self.info) {
+        if expected_owner == program_id && !crate::common::is_closed(&self.info) {
             let mut data = self.info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
@@ -289,7 +289,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T> {
+impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<T> {
     /// Reloads the account from storage. This is useful, for example, when
     /// observing side effects after CPI.
     ///
@@ -310,7 +310,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
 
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
-    pub fn try_from(info: &'a AccountInfo) -> Result<Account<'a, T>> {
+    pub fn try_from(info: AccountInfo) -> Result<Account<T>> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -327,7 +327,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// the account discriminator. Be careful when using this and avoid it if
     /// possible.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'a AccountInfo) -> Result<Account<'a, T>> {
+    pub fn try_from_unchecked(info: AccountInfo) -> Result<Account<T>> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -342,14 +342,14 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
 }
 
 impl<'info, B, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info, B>
-    for Account<'info, T>
+    for Account<T>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
 {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -357,29 +357,27 @@ where
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Account::try_from(account)
     }
 }
 
 impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsExit<'info>
-    for Account<'info, T>
+    for Account<T>
 {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         self.exit_with_expected_owner(&T::owner(), program_id)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
-    for Account<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone> AccountsClose for Account<T> {
     fn close(&self, sol_destination: AccountInfo) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'_, T> {
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas<'info> for Account<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
@@ -392,29 +390,25 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Accoun
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
-    for Account<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos for Account<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         vec![self.info.clone()]
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo>
-    for Account<'info, T>
-{
+impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo> for Account<T> {
     fn as_ref(&self) -> &AccountInfo {
-        self.info
+        &self.info
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<T> {
     fn as_ref(&self) -> &T {
         &self.account
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -422,7 +416,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> 
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable() {
@@ -433,8 +427,8 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<T> {
     fn key(&self) -> Pubkey {
-        self.info.address().clone()
+        *self.info.address()
     }
 }

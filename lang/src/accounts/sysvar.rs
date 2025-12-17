@@ -43,13 +43,13 @@ impl<T: SolanaSysvar + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     }
 }
 
-impl<T: SolanaSysvar> ToAccountMetas for Sysvar<'_, T> {
-    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
+impl<'info, T: SolanaSysvar> ToAccountMetas<'info> for Sysvar<'info, T> {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta<'info>> {
         vec![AccountMeta::readonly(self.info.address())]
     }
 }
 
-impl<'info, T: SolanaSysvar> ToAccountInfos<'info> for Sysvar<'info, T> {
+impl<'info, T: SolanaSysvar> ToAccountInfos for Sysvar<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         vec![*self.info]
     }
@@ -79,6 +79,6 @@ impl<'info, T: SolanaSysvar> AccountsExit<'info> for Sysvar<'info, T> {}
 
 impl<T: SolanaSysvar> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
-        self.info.address().clone()
+        *self.info.address()
     }
 }

@@ -296,11 +296,11 @@ where
     }
 }
 
-impl<T> ToAccountMetas for LazyAccount<'_, T>
+impl<'info, T> ToAccountMetas<'info> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'info>> {
         let is_signer = is_signer.unwrap_or(self.__info.is_signer());
         let meta = match (self.__info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(*self.__info.key()),
@@ -312,7 +312,7 @@ where
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for LazyAccount<'info, T>
+impl<'_, T> ToAccountInfos for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -321,7 +321,7 @@ where
     }
 }
 
-impl<'info, T> AsRef<AccountInfo> for LazyAccount<'info, T>
+impl<'_, T> AsRef<AccountInfo> for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {

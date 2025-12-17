@@ -21,7 +21,7 @@ use crate::{
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &[AccountInfo],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -55,14 +55,14 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     }
 }
 
-impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Option<T> {
+impl<T: ToAccountInfos> ToAccountInfos for Option<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         self.as_ref()
             .map_or_else(Vec::new, |account| account.to_account_infos())
     }
 }
 
-impl<T: ToAccountMetas> ToAccountMetas for Option<T> {
+impl<'a, T: ToAccountMetas<'a>> ToAccountMetas<'a> for Option<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
         self.as_ref()
             .expect("Cannot run `to_account_metas` on None")
@@ -70,7 +70,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Option<T> {
     }
 }
 
-impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Option<T> {
+impl<T: AccountsClose> AccountsClose for Option<T> {
     fn close(&self, sol_destination: AccountInfo) -> Result<()> {
         self.as_ref()
             .map_or(Ok(()), |t| T::close(t, sol_destination))
