@@ -253,9 +253,12 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
 
     /// Deserializes the given `info` into a `InterfaceAccount` **without** checking
     /// the account discriminator. This is intended for foreign program accounts.
-    /// Prefer `Self::try_from` when you also want the ownership check, but note
-    /// that both skip Anchor discriminator checks, and `try_from` additionally
-    /// enforces ownership.
+    ///
+    /// Both this method and [`Self::try_from`] validate program ownership via
+    /// [`T::check_owner`] and skip Anchor discriminator checks. This method is the
+    /// lower-level primitive that performs the actual deserialization, while
+    /// [`Self::try_from`] is the higher-level entry point used by the `Accounts`
+    /// derive.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
