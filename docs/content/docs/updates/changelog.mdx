@@ -1148,7 +1148,7 @@ passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: Add `require_neq`, `require_keys_neq`, `require_gt`, and `require_gte`
   comparison macros ([#1622](https://github.com/coral-xyz/anchor/pull/1622)).
 - lang: Handle arrays with const as size in instruction data
-  ([#1623](https://github.com/coral-xyz/anchor/issues/1623).
+  ([#1623](https://github.com/coral-xyz/anchor/issues/1623)).
 - spl: Add support for revoke instruction
   ([#1493](https://github.com/coral-xyz/anchor/pull/1493)).
 - ts: Add provider parameter to `Spl.token` factory method
@@ -1258,7 +1258,6 @@ passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
   `solana_program::program::invoke().map_err(Into::into)` and
   `solana_program::program::invoke_signed()` to
   `solana_program::program::invoke_signed().map_err(Into::into)`
-  Note: In V2, use `anchor_lang::pinocchio_runtime::program::invoke()` instead.
 
 ## [0.21.0] - 2022-02-07
 
@@ -1409,7 +1408,6 @@ passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: `ProgramData` and `UpgradableLoaderState` can now be passed into
   `Account` as generics. see
   [UpgradeableLoaderState](https://docs.rs/solana-program/latest/solana_program/bpf_loader_upgradeable/enum.UpgradeableLoaderState.html).
-  In V2, use `anchor_lang::pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState`.
   `UpgradableLoaderState` can also be matched on to get `ProgramData`, but when
   `ProgramData` is used instead, anchor does the serialization and checking that
   it is actually program data for you
