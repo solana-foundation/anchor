@@ -53,7 +53,6 @@ pub use crate::pinocchio_runtime::instruction::AccountMeta;
 pub use crate::pinocchio_runtime::program_error::ProgramError;
 pub use crate::pinocchio_runtime::pubkey::Pubkey;
 
-
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -495,8 +494,7 @@ pub trait CheckId {
 impl<T: Ids> CheckId for T {
     fn check_id(id: &Pubkey) -> Result<()> {
         if !Self::ids().contains(id) {
-            Err(error::Error::from(error::ErrorCode::InvalidProgramId)
-                .with_account_name(&id))
+            Err(error::Error::from(error::ErrorCode::InvalidProgramId).with_account_name(*id))
         } else {
             Ok(())
         }
