@@ -103,6 +103,14 @@ export type InstructionAccountAddresses<
   I extends AllInstructions<IDL>
 > = InstructionAccountsAddresses<I["accounts"][number]>;
 
+/**
+ * Returns a type of instruction name to the resolved account addresses.
+ */
+export type MethodPubkeys<
+  IDL extends Idl,
+  M extends keyof AllInstructionsMap<IDL>
+> = InstructionAccountAddresses<IDL, AllInstructionsMap<IDL>[M]>;
+
 type InstructionAccountsAddresses<
   A extends IdlInstructionAccountItem = IdlInstructionAccountItem
 > = {
