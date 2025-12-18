@@ -4682,7 +4682,7 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
                     )
                 }
             })?;
-        let script_with_args = format!("{script_cmd} {}", script_args.join(" "));
+        let script_with_args = format!("{script} {}", script_args.join(" "));
         let exit = std::process::Command::new("bash")
             .arg("-c")
             .arg(&script_with_args)
