@@ -11,6 +11,7 @@ pub fn gen_utils_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
     quote! {
         /// Program utilities.
+        #[cfg(not(target_os = "solana"))]
         pub mod utils {
             use super::*;
 
