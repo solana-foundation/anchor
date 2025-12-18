@@ -15,6 +15,7 @@ path = "src/bin/main.rs"
 dev = []
 
 [dependencies]
+anchor-cli-macros = { path = "cli-macros" }
 anchor-client = { path = "../client", version = "0.32.1" }
 anchor-lang = { path = "../lang", version = "0.32.1" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }

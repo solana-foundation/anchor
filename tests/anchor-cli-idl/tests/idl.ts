@@ -84,4 +84,16 @@ describe("Test CLI IDL commands", () => {
     );
     assert.deepEqual(idlActual, idlExpected);
   });
+
+  it("Can initialize IDL account with relative path from subdirectory", async () => {
+    execSync(`anchor idl close ${programOne.programId}`, { stdio: "inherit" });
+
+    execSync(
+      `cd target/idl && anchor idl init --filepath idl_commands_one.json ${programOne.programId}`,
+      { stdio: "inherit" }
+    );
+
+    const idl = await anchor.Program.fetchIdl(programOne.programId, provider);
+    assert.deepEqual(idl, programOne.rawIdl);
+  });
 });

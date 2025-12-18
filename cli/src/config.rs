@@ -1,4 +1,4 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
+use crate::{get_keypair, is_hidden, keys_sync, AbsolutePath, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -30,7 +30,7 @@ use walkdir::WalkDir;
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
 
 impl FromStr for CaseInsensitiveCommitmentLevel {
@@ -59,7 +59,7 @@ pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -350,7 +350,9 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -480,13 +482,13 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum ProgramArch {
     Bpf,
     Sbf,
@@ -587,7 +589,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        get_keypair(&self.provider.wallet.to_string())
+        get_keypair(Path::new(&self.provider.wallet.0))
     }
 
     pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
@@ -1458,7 +1460,7 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        get_keypair(file.path().to_str().unwrap())
+        get_keypair(file.path())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
@@ -1581,24 +1583,20 @@ pub struct RunbookExecution {
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
-        pub struct $my_struct(String);
+        #[derive(Clone, Debug, AbsolutePath)]
+        pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(
-                    home_dir()
-                        .unwrap()
-                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
-                        .display()
-                        .to_string(),
-                )
+                $my_struct(home_dir().unwrap().join($path))
             }
         }
 
         impl $my_struct {
             fn stringify_with_tilde(&self) -> String {
                 self.0
+                    .display()
+                    .to_string()
                     .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
             }
         }
@@ -1607,13 +1605,13 @@ macro_rules! home_path {
             type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(s.to_owned()))
+                Ok(Self(::std::path::PathBuf::from(s)))
             }
         }
 
         impl fmt::Display for $my_struct {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, "{}", self.0.display())
             }
         }
     };

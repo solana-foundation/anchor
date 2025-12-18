@@ -1,7 +1,7 @@
 use std::{
     fs,
     io::{self, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, bail, Result};
@@ -87,7 +87,7 @@ pub fn keygen(_cfg_override: &ConfigOverride, cmd: KeygenCommand) -> Result<()> 
 }
 
 fn keygen_new(
-    outfile: Option<String>,
+    outfile: Option<PathBuf>,
     force: bool,
     no_passphrase: bool,
     silent: bool,
@@ -99,7 +99,7 @@ fn keygen_new(
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
+        path
     });
 
     // Check for overwrite
@@ -107,12 +107,12 @@ fn keygen_new(
         if !force {
             bail!(
                 "Refusing to overwrite {} without --force flag",
-                outfile_path
+                outfile_path.display()
             );
         }
         println!(
             "⚠️  Warning: Overwriting existing keypair at {}",
-            outfile_path
+            outfile_path.display()
         );
     }
 
@@ -162,9 +162,13 @@ fn keygen_new(
     if let Some(outdir) = Path::new(&outfile_path).parent() {
         fs::create_dir_all(outdir)?;
     }
-    keypair
-        .write_to_file(&outfile_path)
-        .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile_path, e))?;
+    keypair.write_to_file(&outfile_path).map_err(|e| {
+        anyhow!(
+            "Failed to write keypair to {}: {}",
+            outfile_path.display(),
+            e
+        )
+    })?;
 
     // Set restrictive permissions (owner read/write only)
     #[cfg(unix)]
@@ -175,7 +179,7 @@ fn keygen_new(
         fs::set_permissions(&outfile_path, perms)?;
     }
 
-    print_step(&format!("Keypair saved to {}", outfile_path));
+    print_step(&format!("Keypair saved to {}", outfile_path.display()));
 
     let phrase: &str = mnemonic.phrase();
     let divider = "━".repeat(phrase.len().max(60));
@@ -201,13 +205,13 @@ fn keygen_new(
     Ok(())
 }
 
-fn keygen_pubkey(keypair_path: Option<String>) -> Result<()> {
+fn keygen_pubkey(keypair_path: Option<PathBuf>) -> Result<()> {
     let path = keypair_path.unwrap_or_else(|| {
         let mut p = home_dir().expect("home directory");
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
+        p
     });
 
     let keypair = get_keypair(&path)?;
@@ -216,7 +220,7 @@ fn keygen_pubkey(keypair_path: Option<String>) -> Result<()> {
 }
 
 fn keygen_recover(
-    outfile: Option<String>,
+    outfile: Option<PathBuf>,
     force: bool,
     _skip_seed_phrase_validation: bool,
     no_passphrase: bool,
@@ -230,7 +234,7 @@ fn keygen_recover(
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
+        path
     });
 
     // Check for overwrite
@@ -238,12 +242,12 @@ fn keygen_recover(
         if !force {
             bail!(
                 "Refusing to overwrite {} without --force flag",
-                outfile_path
+                outfile_path.display()
             );
         }
         println!(
             "⚠️  Warning: Overwriting existing keypair at {}",
-            outfile_path
+            outfile_path.display()
         );
     }
 
@@ -281,9 +285,13 @@ fn keygen_recover(
     if let Some(outdir) = Path::new(&outfile_path).parent() {
         fs::create_dir_all(outdir)?;
     }
-    keypair
-        .write_to_file(&outfile_path)
-        .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile_path, e))?;
+    keypair.write_to_file(&outfile_path).map_err(|e| {
+        anyhow!(
+            "Failed to write keypair to {}: {}",
+            outfile_path.display(),
+            e
+        )
+    })?;
 
     // Set restrictive permissions (owner read/write only)
     #[cfg(unix)]
@@ -294,7 +302,7 @@ fn keygen_recover(
         fs::set_permissions(&outfile_path, perms)?;
     }
 
-    print_step(&format!("Keypair recovered to {}", outfile_path));
+    print_step(&format!("Keypair recovered to {}", outfile_path.display()));
 
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📋 Public Key: {}", keypair.pubkey());
@@ -303,7 +311,7 @@ fn keygen_recover(
     Ok(())
 }
 
-fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
+fn keygen_verify(pubkey: Pubkey, keypair_path: Option<PathBuf>) -> Result<()> {
     println!("\n🔍 Verifying keypair");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -312,10 +320,10 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
+        p
     });
 
-    print_step(&format!("Loading keypair from {}", path));
+    print_step(&format!("Loading keypair from {}", path.display()));
     let keypair = get_keypair(&path)?;
 
     // Create a simple message to sign
@@ -354,12 +362,11 @@ mod tests {
     use super::*;
     use tempfile::{tempdir, TempDir};
 
-    fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> String {
-        let path = out_dir.path().join(name);
-        path.into_os_string().into_string().unwrap()
+    fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> PathBuf {
+        out_dir.path().join(name)
     }
 
-    fn read_keypair_file(path: &str) -> Result<Keypair> {
+    fn read_keypair_file(path: &Path) -> Result<Keypair> {
         get_keypair(path)
     }
 
