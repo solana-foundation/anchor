@@ -1,6 +1,7 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
 use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
 use std::fmt;
@@ -169,7 +170,7 @@ where
 /// ```
 pub struct CpiContext<'a, 'b, 'c, 'info, T>
 where
-    T: ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountInfos<'info>,
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountInfo<'info>>,
@@ -179,7 +180,7 @@ where
 
 impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, 'info, T>
 where
-    T: ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountInfos<'info>,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -225,5 +226,24 @@ impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountInfos<'info>
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
         infos
+    }
+}
+
+impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountMetas
+    for CpiContext<'_, '_, '_, 'info, T>
+{
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+        let mut metas = self.accounts.to_account_metas(is_signer);
+        metas.append(
+            &mut self
+                .remaining_accounts
+                .iter()
+                .map(|acc| match acc.is_writable {
+                    false => AccountMeta::new_readonly(*acc.key, acc.is_signer),
+                    true => AccountMeta::new(*acc.key, acc.is_signer),
+                })
+                .collect(),
+        );
+        metas
     }
 }

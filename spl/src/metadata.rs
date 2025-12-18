@@ -2,7 +2,7 @@ use anchor_lang::context::CpiContext;
 use anchor_lang::error::ErrorCode;
 use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{system_program, Result, ToAccountInfos};
+use anchor_lang::{system_program, Result, ToAccountInfos, ToAccountMetas};
 use std::ops::Deref;
 
 pub use mpl_token_metadata;
@@ -564,6 +564,19 @@ impl<'info> ToAccountInfos<'info> for ApproveCollectionAuthority<'info> {
             self.metadata.to_owned(),
             self.mint.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for ApproveCollectionAuthority<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.collection_authority_record.to_account_metas(is_signer));
+        account_metas.extend(self.new_collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas
     }
 }
 

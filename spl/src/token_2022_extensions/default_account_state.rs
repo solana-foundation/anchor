@@ -1,6 +1,6 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::prelude::AccountInfo;
-use anchor_lang::{Result, ToAccountInfos};
+use anchor_lang::{Result, ToAccountInfos, ToAccountMetas};
 use spl_token_2022::state::AccountState;
 use spl_token_2022_interface as spl_token_2022;
 
@@ -29,6 +29,15 @@ pub struct DefaultAccountStateInitialize<'info> {
 impl<'info> ToAccountInfos<'info> for DefaultAccountStateInitialize<'info> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         vec![self.token_program_id.to_owned(), self.mint.to_owned()]
+    }
+}
+
+impl<'info> ToAccountMetas for DefaultAccountStateInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.token_program_id.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas
     }
 }
 
@@ -69,5 +78,15 @@ impl<'info> ToAccountInfos<'info> for DefaultAccountStateUpdate<'info> {
             self.mint.to_owned(),
             self.freeze_authority.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for DefaultAccountStateUpdate<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.token_program_id.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.freeze_authority.to_account_metas(is_signer));
+        account_metas
     }
 }

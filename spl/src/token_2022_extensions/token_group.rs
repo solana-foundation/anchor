@@ -1,7 +1,7 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{Result, ToAccountInfos};
+use anchor_lang::{Result, ToAccountInfos, ToAccountMetas};
 
 pub fn token_group_initialize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenGroupInitialize<'info>>,
@@ -44,6 +44,17 @@ impl<'info> ToAccountInfos<'info> for TokenGroupInitialize<'info> {
             self.mint.to_owned(),
             self.mint_authority.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenGroupInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.group.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.mint_authority.to_account_metas(is_signer));
+        account_metas
     }
 }
 
@@ -92,5 +103,18 @@ impl<'info> ToAccountInfos<'info> for TokenMemberInitialize<'info> {
             self.group.to_owned(),
             self.group_update_authority.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMemberInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.member.to_account_metas(is_signer));
+        account_metas.extend(self.member_mint.to_account_metas(is_signer));
+        account_metas.extend(self.member_mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.group.to_account_metas(is_signer));
+        account_metas.extend(self.group_update_authority.to_account_metas(is_signer));
+        account_metas
     }
 }

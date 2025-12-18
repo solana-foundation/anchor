@@ -25,7 +25,7 @@ pub mod cashiers_check {
         let cpi_accounts = Transfer {
             from: ctx.accounts.from.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
-            authority: ctx.accounts.owner.clone(),
+            authority: ctx.accounts.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(cpi_program_id, cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
@@ -53,7 +53,7 @@ pub mod cashiers_check {
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.to.to_account_info(),
-            authority: ctx.accounts.check_signer.clone(),
+            authority: ctx.accounts.check_signer.to_account_info(),
         };
         let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;
@@ -73,7 +73,7 @@ pub mod cashiers_check {
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.from.to_account_info(),
-            authority: ctx.accounts.check_signer.clone(),
+            authority: ctx.accounts.check_signer.to_account_info(),
         };
         let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;

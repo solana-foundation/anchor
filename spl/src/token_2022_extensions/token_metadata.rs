@@ -1,6 +1,6 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::prelude::AccountInfo;
-use anchor_lang::{Result, ToAccountInfos};
+use anchor_lang::{Result, ToAccountInfos, ToAccountMetas};
 
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
 use spl_token_metadata_interface::state::Field;
@@ -55,6 +55,18 @@ impl<'info> ToAccountInfos<'info> for TokenMetadataInitialize<'info> {
     }
 }
 
+impl<'info> ToAccountMetas for TokenMetadataInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub fn token_metadata_update_authority<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenMetadataUpdateAuthority<'info>>,
     new_authority: OptionalNonZeroPubkey,
@@ -95,6 +107,17 @@ impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateAuthority<'info> {
     }
 }
 
+impl<'info> ToAccountMetas for TokenMetadataUpdateAuthority<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.current_authority.to_account_metas(is_signer));
+        account_metas.extend(self.new_authority.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub fn token_metadata_update_field<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenMetadataUpdateField<'info>>,
     field: Field,
@@ -132,5 +155,15 @@ impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateField<'info> {
             self.metadata.to_owned(),
             self.update_authority.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMetadataUpdateField<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas
     }
 }

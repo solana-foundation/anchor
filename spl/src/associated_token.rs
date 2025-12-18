@@ -1,7 +1,7 @@
 use anchor_lang::context::CpiContext;
 use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{Result, ToAccountInfos};
+use anchor_lang::{Result, ToAccountInfos, ToAccountMetas};
 
 pub use ::spl_associated_token_account_interface as spl_associated_token_account;
 pub use ::spl_associated_token_account_interface::{
@@ -74,6 +74,19 @@ impl<'info> ToAccountInfos<'info> for Create<'info> {
             self.system_program.to_owned(),
             self.token_program.to_owned(),
         ]
+    }
+}
+
+impl<'info> ToAccountMetas for Create<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.associated_token.to_account_metas(is_signer));
+        account_metas.extend(self.authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas
     }
 }
 
