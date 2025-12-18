@@ -164,6 +164,9 @@ pub mod pinocchio_runtime {
     pub mod system_instruction {
         pub use pinocchio_system::instructions::*;
     }
+    pub mod program_pack {
+        pub use solana_program_pack::*;
+    }
 
     pub mod program_memory {
         pub use solana_program_memory::*;
