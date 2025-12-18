@@ -1,79 +1,55 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
-use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 
-pub use ::spl_associated_token_account_interface as spl_associated_token_account;
-pub use ::spl_associated_token_account_interface::{
-    address::{get_associated_token_address, get_associated_token_address_with_program_id},
-    program::ID,
-};
+pub use ::pinocchio_associated_token_account as spl_associated_token_account;
 
-pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Result<()> {
-    let ix = spl_associated_token_account::instruction::create_associated_token_account(
-        ctx.accounts.payer.key,
-        ctx.accounts.authority.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.token_program.key,
-    );
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.payer,
-            ctx.accounts.associated_token,
-            ctx.accounts.authority,
-            ctx.accounts.mint,
-            ctx.accounts.system_program,
-            ctx.accounts.token_program,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+pub fn create(ctx: CpiContext<'_, '_, 'static, Create>) -> Result<()> {
+    let ix = spl_associated_token_account::instructions::Create{
+        funding_account: &ctx.accounts.payer,
+        account: &ctx.accounts.associated_token,
+        wallet: &ctx.accounts.authority,
+        mint: &ctx.accounts.mint,
+        system_program: &ctx.accounts.system_program,
+        token_program: &ctx.accounts.token_program,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn create_idempotent<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateIdempotent<'info>>,
+pub fn create_idempotent(
+    ctx: CpiContext<'_, '_, 'static, CreateIdempotent>,
 ) -> Result<()> {
-    let ix = spl_associated_token_account::instruction::create_associated_token_account_idempotent(
-        ctx.accounts.payer.key,
-        ctx.accounts.authority.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.token_program.key,
-    );
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.payer,
-            ctx.accounts.associated_token,
-            ctx.accounts.authority,
-            ctx.accounts.mint,
-            ctx.accounts.system_program,
-            ctx.accounts.token_program,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let ix = spl_associated_token_account::instructions::CreateIdempotent{
+        funding_account: &ctx.accounts.payer,
+        account: &ctx.accounts.associated_token,
+        wallet: &ctx.accounts.authority,
+        mint: &ctx.accounts.mint,
+        system_program: &ctx.accounts.system_program,
+        token_program: &ctx.accounts.token_program,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct Create<'info> {
-    pub payer: AccountInfo<'info>,
-    pub associated_token: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct Create {
+    pub payer: AccountInfo,
+    pub associated_token: AccountInfo,
+    pub authority: AccountInfo,
+    pub mint: AccountInfo,
+    pub system_program: AccountInfo,
+    pub token_program: AccountInfo,
 }
 
-type CreateIdempotent<'info> = Create<'info>;
+type CreateIdempotent = Create;
 
 #[derive(Clone)]
 pub struct AssociatedToken;
 
 impl anchor_lang::Id for AssociatedToken {
     fn id() -> Pubkey {
-        ID
+        spl_associated_token_account::ID
     }
 }

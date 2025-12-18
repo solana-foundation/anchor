@@ -46,3 +46,7 @@ spl-token-interface = { version = "2", optional = true }
 spl-token-2022-interface = { version = "2", optional = true }
 spl-token-group-interface = { version = "0.7", optional = true }
 spl-token-metadata-interface = { version = "0.8", optional = true }
+
+pinocchio-associated-token-account.workspace = true
+pinocchio-token-2022.workspace = true
+pinocchio-token.workspace = true
