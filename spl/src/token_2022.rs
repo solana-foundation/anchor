@@ -1,8 +1,7 @@
-use anchor_lang::prelude::UncheckedAccount;
+use anchor_lang::context::CpiContext;
+use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
-use anchor_lang::ToAccountInfo;
-use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Result, ToAccountInfos};
 
 pub use spl_token_2022::ID;
 pub use spl_token_2022_interface as spl_token_2022;
@@ -27,9 +26,9 @@ pub fn transfer<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.from.to_account_info(),
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.from,
+            ctx.accounts.to,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -54,10 +53,10 @@ pub fn transfer_checked<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.from.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.from,
+            ctx.accounts.mint,
+            ctx.accounts.to,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -79,9 +78,9 @@ pub fn mint_to<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.to,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -105,9 +104,9 @@ pub fn mint_to_checked<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.to,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -126,9 +125,9 @@ pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64)
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.from.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.from,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -152,9 +151,9 @@ pub fn burn_checked<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.from.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.from,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -176,9 +175,9 @@ pub fn approve<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.delegate.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.to,
+            ctx.accounts.delegate,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -203,10 +202,10 @@ pub fn approve_checked<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.to.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.delegate.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.to,
+            ctx.accounts.mint,
+            ctx.accounts.delegate,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -223,8 +222,8 @@ pub fn revoke<'info>(ctx: CpiContext<'_, '_, '_, 'info, Revoke<'info>>) -> Resul
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.source.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.source,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -243,10 +242,10 @@ pub fn initialize_account<'info>(
     anchor_lang::solana_program::program::invoke(
         &ix,
         &[
-            ctx.accounts.account.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
-            ctx.accounts.rent.to_account_info(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
+            ctx.accounts.rent,
         ],
     )
     .map_err(Into::into)
@@ -264,8 +263,8 @@ pub fn initialize_account3<'info>(
     anchor_lang::solana_program::program::invoke(
         &ix,
         &[
-            ctx.accounts.account.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
         ],
     )
     .map_err(Into::into)
@@ -282,9 +281,9 @@ pub fn close_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, CloseAccount<'inf
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.to_account_info(),
-            ctx.accounts.destination.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.account,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -304,9 +303,9 @@ pub fn freeze_account<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -324,9 +323,9 @@ pub fn thaw_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, ThawAccount<'info>
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.account,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
@@ -349,8 +348,8 @@ pub fn initialize_mint<'info>(
     anchor_lang::solana_program::program::invoke(
         &ix,
         &[
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.rent.to_account_info(),
+            ctx.accounts.mint,
+            ctx.accounts.rent,
         ],
     )
     .map_err(Into::into)
@@ -369,7 +368,7 @@ pub fn initialize_mint2<'info>(
         freeze_authority,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint.to_account_info()])
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint])
         .map_err(Into::into)
 }
 
@@ -389,8 +388,8 @@ pub fn set_authority<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.account_or_mint.to_account_info(),
-            ctx.accounts.current_authority.to_account_info(),
+            ctx.accounts.account_or_mint,
+            ctx.accounts.current_authority,
         ],
         ctx.signer_seeds,
     )
@@ -399,7 +398,7 @@ pub fn set_authority<'info>(
 
 pub fn sync_native<'info>(ctx: CpiContext<'_, '_, '_, 'info, SyncNative<'info>>) -> Result<()> {
     let ix = spl_token_2022::instruction::sync_native(&ctx.program_id, ctx.accounts.account.key)?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account.to_account_info()])
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])
         .map_err(Into::into)
 }
 
@@ -412,7 +411,7 @@ pub fn get_account_data_size<'info>(
         ctx.accounts.mint.key,
         extension_types,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint.to_account_info()])?;
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
@@ -436,7 +435,7 @@ pub fn initialize_mint_close_authority<'info>(
         ctx.accounts.mint.key,
         close_authority,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint.to_account_info()])
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.mint])
         .map_err(Into::into)
 }
 
@@ -447,7 +446,7 @@ pub fn initialize_immutable_owner<'info>(
         &ctx.program_id,
         ctx.accounts.account.key,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account.to_account_info()])
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])
         .map_err(Into::into)
 }
 
@@ -460,7 +459,7 @@ pub fn amount_to_ui_amount<'info>(
         ctx.accounts.account.key,
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account.to_account_info()])?;
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
@@ -484,7 +483,7 @@ pub fn ui_amount_to_amount<'info>(
         ctx.accounts.account.key,
         ui_amount,
     )?;
-    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account.to_account_info()])?;
+    anchor_lang::solana_program::program::invoke(&ix, &[ctx.accounts.account])?;
     anchor_lang::solana_program::program::get_return_data()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
@@ -499,151 +498,324 @@ pub fn ui_amount_to_amount<'info>(
         .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct Transfer<'info> {
-    pub from: UncheckedAccount<'info>,
-    pub to: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub from: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Transfer<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.from.to_owned(),
+            self.to.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct TransferChecked<'info> {
-    pub from: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub to: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub from: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for TransferChecked<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.from.to_owned(),
+            self.mint.to_owned(),
+            self.to.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct MintTo<'info> {
-    pub mint: UncheckedAccount<'info>,
-    pub to: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for MintTo<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.mint.to_owned(),
+            self.to.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct MintToChecked<'info> {
-    pub mint: UncheckedAccount<'info>,
-    pub to: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
+    pub to: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for MintToChecked<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.mint.to_owned(),
+            self.to.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct Burn<'info> {
-    pub mint: UncheckedAccount<'info>,
-    pub from: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
+    pub from: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Burn<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.mint.to_owned(),
+            self.from.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct BurnChecked<'info> {
-    pub mint: UncheckedAccount<'info>,
-    pub from: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
+    pub from: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for BurnChecked<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.mint.to_owned(),
+            self.from.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct Approve<'info> {
-    pub to: UncheckedAccount<'info>,
-    pub delegate: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub to: AccountInfo<'info>,
+    pub delegate: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Approve<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.to.to_owned(),
+            self.delegate.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct ApproveChecked<'info> {
-    pub to: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub delegate: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub to: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub delegate: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for ApproveChecked<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.to.to_owned(),
+            self.mint.to_owned(),
+            self.delegate.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct Revoke<'info> {
-    pub source: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub source: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Revoke<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.source.to_owned(), self.authority.to_owned()]
+    }
+}
+
 pub struct InitializeAccount<'info> {
-    pub account: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
-    pub rent: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.mint.to_owned(),
+            self.authority.to_owned(),
+            self.rent.to_owned(),
+        ]
+    }
+}
+
 pub struct InitializeAccount3<'info> {
-    pub account: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeAccount3<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.mint.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct CloseAccount<'info> {
-    pub account: UncheckedAccount<'info>,
-    pub destination: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for CloseAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.destination.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct FreezeAccount<'info> {
-    pub account: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for FreezeAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.mint.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct ThawAccount<'info> {
-    pub account: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for ThawAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.mint.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
 pub struct InitializeMint<'info> {
-    pub mint: UncheckedAccount<'info>,
-    pub rent: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
+    pub rent: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeMint<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.mint.to_owned(), self.rent.to_owned()]
+    }
+}
+
 pub struct InitializeMint2<'info> {
-    pub mint: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeMint2<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.mint.to_owned()]
+    }
+}
+
 pub struct SetAuthority<'info> {
-    pub current_authority: UncheckedAccount<'info>,
-    pub account_or_mint: UncheckedAccount<'info>,
+    pub current_authority: AccountInfo<'info>,
+    pub account_or_mint: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for SetAuthority<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.current_authority.to_owned(),
+            self.account_or_mint.to_owned(),
+        ]
+    }
+}
+
 pub struct SyncNative<'info> {
-    pub account: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for SyncNative<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.account.to_owned()]
+    }
+}
+
 pub struct GetAccountDataSize<'info> {
-    pub mint: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for GetAccountDataSize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.mint.to_owned()]
+    }
+}
+
 pub struct InitializeMintCloseAuthority<'info> {
-    pub mint: UncheckedAccount<'info>,
+    pub mint: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeMintCloseAuthority<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.mint.to_owned()]
+    }
+}
+
 pub struct InitializeImmutableOwner<'info> {
-    pub account: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for InitializeImmutableOwner<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.account.to_owned()]
+    }
+}
+
 pub struct AmountToUiAmount<'info> {
-    pub account: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for AmountToUiAmount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.account.to_owned()]
+    }
+}
+
 pub struct UiAmountToAmount<'info> {
-    pub account: UncheckedAccount<'info>,
+    pub account: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for UiAmountToAmount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.account.to_owned()]
+    }
 }
 
 #[derive(Clone)]

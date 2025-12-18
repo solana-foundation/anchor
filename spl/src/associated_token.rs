@@ -1,7 +1,7 @@
-use anchor_lang::prelude::UncheckedAccount;
+use anchor_lang::context::CpiContext;
+use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Result, ToAccountInfo};
+use anchor_lang::{Result, ToAccountInfos};
 
 pub use ::spl_associated_token_account_interface as spl_associated_token_account;
 pub use ::spl_associated_token_account_interface::{
@@ -19,12 +19,12 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.associated_token.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.payer,
+            ctx.accounts.associated_token,
+            ctx.accounts.authority,
+            ctx.accounts.mint,
+            ctx.accounts.system_program,
+            ctx.accounts.token_program,
         ],
         ctx.signer_seeds,
     )
@@ -43,26 +43,38 @@ pub fn create_idempotent<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.associated_token.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.payer,
+            ctx.accounts.associated_token,
+            ctx.accounts.authority,
+            ctx.accounts.mint,
+            ctx.accounts.system_program,
+            ctx.accounts.token_program,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct Create<'info> {
-    pub payer: UncheckedAccount<'info>,
-    pub associated_token: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub system_program: UncheckedAccount<'info>,
-    pub token_program: UncheckedAccount<'info>,
+    pub payer: AccountInfo<'info>,
+    pub associated_token: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for Create<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.payer.to_owned(),
+            self.associated_token.to_owned(),
+            self.authority.to_owned(),
+            self.mint.to_owned(),
+            self.system_program.to_owned(),
+            self.token_program.to_owned(),
+        ]
+    }
 }
 
 type CreateIdempotent<'info> = Create<'info>;

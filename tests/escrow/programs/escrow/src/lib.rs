@@ -193,10 +193,7 @@ impl<'info> From<&mut InitializeEscrow<'info>>
 {
     fn from(accounts: &mut InitializeEscrow<'info>) -> Self {
         let cpi_accounts = SetAuthority {
-            account_or_mint: accounts
-                .initializer_deposit_token_account
-                .to_account_info()
-                .clone(),
+            account_or_mint: accounts.initializer_deposit_token_account.to_account_info(),
             current_authority: accounts.initializer.to_account_info(),
         };
         let cpi_program_id = accounts.token_program.key();
@@ -208,7 +205,7 @@ impl<'info> CancelEscrow<'info> {
     fn into_set_authority_context(&self) -> CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
         let cpi_accounts = SetAuthority {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
-            current_authority: self.pda_account.clone(),
+            current_authority: self.pda_account.to_account_info(),
         };
         let cpi_program_id = self.token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -219,7 +216,7 @@ impl<'info> Exchange<'info> {
     fn into_set_authority_context(&self) -> CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
         let cpi_accounts = SetAuthority {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
-            current_authority: self.pda_account.clone(),
+            current_authority: self.pda_account.to_account_info(),
         };
         let cpi_program_id = self.receive_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -234,7 +231,7 @@ impl<'info> Exchange<'info> {
             from: self.pda_deposit_token_account.to_account_info(),
             mint: self.receive_mint.to_account_info(),
             to: self.taker_receive_token_account.to_account_info(),
-            authority: self.pda_account.clone(),
+            authority: self.pda_account.to_account_info(),
         };
         let cpi_program_id = self.receive_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -248,11 +245,8 @@ impl<'info> Exchange<'info> {
         let cpi_accounts = TransferChecked {
             from: self.taker_deposit_token_account.to_account_info(),
             mint: self.deposit_mint.to_account_info(),
-            to: self
-                .initializer_receive_token_account
-                .to_account_info()
-                .clone(),
-            authority: self.taker.clone(),
+            to: self.initializer_receive_token_account.to_account_info(),
+            authority: self.taker.to_account_info(),
         };
         let cpi_program_id = self.deposit_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)

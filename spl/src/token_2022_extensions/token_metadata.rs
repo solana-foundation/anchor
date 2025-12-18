@@ -1,7 +1,6 @@
-use anchor_lang::prelude::UncheckedAccount;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Result, ToAccountInfo};
+use anchor_lang::context::CpiContext;
+use anchor_lang::prelude::AccountInfo;
+use anchor_lang::{Result, ToAccountInfos};
 
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
 use spl_token_metadata_interface::state::Field;
@@ -25,24 +24,35 @@ pub fn token_metadata_initialize<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id.to_account_info(),
-            ctx.accounts.metadata.to_account_info(),
-            ctx.accounts.update_authority.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.mint_authority.to_account_info(),
+            ctx.accounts.program_id,
+            ctx.accounts.metadata,
+            ctx.accounts.update_authority,
+            ctx.accounts.mint,
+            ctx.accounts.mint_authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataInitialize<'info> {
-    pub program_id: UncheckedAccount<'info>,
-    pub metadata: UncheckedAccount<'info>,
-    pub update_authority: UncheckedAccount<'info>,
-    pub mint_authority: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
+    pub program_id: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+    pub mint_authority: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataInitialize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.update_authority.to_owned(),
+            self.mint_authority.to_owned(),
+            self.mint.to_owned(),
+        ]
+    }
 }
 
 pub fn token_metadata_update_authority<'info>(
@@ -58,21 +68,31 @@ pub fn token_metadata_update_authority<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id.to_account_info(),
-            ctx.accounts.metadata.to_account_info(),
-            ctx.accounts.current_authority.to_account_info(),
+            ctx.accounts.program_id,
+            ctx.accounts.metadata,
+            ctx.accounts.current_authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataUpdateAuthority<'info> {
-    pub program_id: UncheckedAccount<'info>,
-    pub metadata: UncheckedAccount<'info>,
-    pub current_authority: UncheckedAccount<'info>,
-    pub new_authority: UncheckedAccount<'info>,
+    pub program_id: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub current_authority: AccountInfo<'info>,
+    pub new_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateAuthority<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.current_authority.to_owned(),
+            self.new_authority.to_owned(),
+        ]
+    }
 }
 
 pub fn token_metadata_update_field<'info>(
@@ -90,18 +110,27 @@ pub fn token_metadata_update_field<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.program_id.to_account_info(),
-            ctx.accounts.metadata.to_account_info(),
-            ctx.accounts.update_authority.to_account_info(),
+            ctx.accounts.program_id,
+            ctx.accounts.metadata,
+            ctx.accounts.update_authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataUpdateField<'info> {
-    pub program_id: UncheckedAccount<'info>,
-    pub metadata: UncheckedAccount<'info>,
-    pub update_authority: UncheckedAccount<'info>,
+    pub program_id: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateField<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.update_authority.to_owned(),
+        ]
+    }
 }

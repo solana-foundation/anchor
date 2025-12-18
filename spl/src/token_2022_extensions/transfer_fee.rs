@@ -1,7 +1,7 @@
-use anchor_lang::prelude::{AccountInfo, UncheckedAccount};
+use anchor_lang::context::CpiContext;
+use anchor_lang::prelude::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Result, ToAccountInfo};
+use anchor_lang::{Result, ToAccountInfos};
 use spl_token_2022_interface as spl_token_2022;
 
 pub fn transfer_fee_initialize<'info>(
@@ -21,19 +21,21 @@ pub fn transfer_fee_initialize<'info>(
     )?;
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &[
-            ctx.accounts.token_program_id.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-        ],
+        &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TransferFeeInitialize<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TransferFeeInitialize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.token_program_id.to_owned(), self.mint.to_owned()]
+    }
 }
 
 pub fn transfer_fee_set<'info>(
@@ -52,20 +54,29 @@ pub fn transfer_fee_set<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TransferFeeSetTransferFee<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TransferFeeSetTransferFee<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.token_program_id.to_owned(),
+            self.mint.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
 }
 
 pub fn transfer_checked_with_fee<'info>(
@@ -88,24 +99,35 @@ pub fn transfer_checked_with_fee<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id.to_account_info(),
-            ctx.accounts.source.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.destination.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.token_program_id,
+            ctx.accounts.source,
+            ctx.accounts.mint,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TransferCheckedWithFee<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub source: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub destination: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub source: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TransferCheckedWithFee<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.token_program_id.to_owned(),
+            self.source.to_owned(),
+            self.mint.to_owned(),
+            self.destination.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
 }
 
 pub fn harvest_withheld_tokens_to_mint<'info>(
@@ -119,8 +141,8 @@ pub fn harvest_withheld_tokens_to_mint<'info>(
     )?;
 
     let mut account_infos = vec![
-        ctx.accounts.token_program_id.to_account_info(),
-        ctx.accounts.mint.to_account_info(),
+        ctx.accounts.token_program_id,
+        ctx.accounts.mint,
     ];
     account_infos.extend_from_slice(&sources);
 
@@ -128,10 +150,15 @@ pub fn harvest_withheld_tokens_to_mint<'info>(
         .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct HarvestWithheldTokensToMint<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for HarvestWithheldTokensToMint<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.token_program_id.to_owned(), self.mint.to_owned()]
+    }
 }
 
 pub fn withdraw_withheld_tokens_from_mint<'info>(
@@ -148,22 +175,32 @@ pub fn withdraw_withheld_tokens_from_mint<'info>(
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[
-            ctx.accounts.token_program_id.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.destination.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
         ],
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromMint<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub destination: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for WithdrawWithheldTokensFromMint<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.token_program_id.to_owned(),
+            self.mint.to_owned(),
+            self.destination.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
 }
 
 pub fn withdraw_withheld_tokens_from_accounts<'info>(
@@ -180,10 +217,10 @@ pub fn withdraw_withheld_tokens_from_accounts<'info>(
     )?;
 
     let mut account_infos = vec![
-        ctx.accounts.token_program_id.to_account_info(),
-        ctx.accounts.mint.to_account_info(),
-        ctx.accounts.destination.to_account_info(),
-        ctx.accounts.authority.to_account_info(),
+        ctx.accounts.token_program_id,
+        ctx.accounts.mint,
+        ctx.accounts.destination,
+        ctx.accounts.authority,
     ];
     account_infos.extend_from_slice(&sources);
 
@@ -191,10 +228,20 @@ pub fn withdraw_withheld_tokens_from_accounts<'info>(
         .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromAccounts<'info> {
-    pub token_program_id: UncheckedAccount<'info>,
-    pub mint: UncheckedAccount<'info>,
-    pub destination: UncheckedAccount<'info>,
-    pub authority: UncheckedAccount<'info>,
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for WithdrawWithheldTokensFromAccounts<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.token_program_id.to_owned(),
+            self.mint.to_owned(),
+            self.destination.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
 }

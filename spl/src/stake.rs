@@ -1,8 +1,7 @@
-use anchor_lang::{
-    context::CpiContext,
-    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
-};
+use anchor_lang::context::CpiContext;
+use anchor_lang::prelude::AccountInfo;
+use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::{Result, ToAccountInfos};
 use borsh::BorshDeserialize;
 use solana_stake_interface::{
     self as stake,
@@ -77,49 +76,79 @@ pub fn deactivate_stake<'info>(
 
 // CPI accounts
 
-#[derive(Accounts)]
 pub struct Authorize<'info> {
     /// The stake account to be updated
-    pub stake: UncheckedAccount<'info>,
+    pub stake: AccountInfo<'info>,
 
     /// The existing authority
-    pub authorized: UncheckedAccount<'info>,
+    pub authorized: AccountInfo<'info>,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: UncheckedAccount<'info>,
+    pub new_authorized: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: UncheckedAccount<'info>,
+    pub clock: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Authorize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.authorized.to_owned(),
+            self.new_authorized.to_owned(),
+            self.clock.to_owned(),
+        ]
+    }
+}
+
 pub struct Withdraw<'info> {
     /// The stake account to be updated
-    pub stake: UncheckedAccount<'info>,
+    pub stake: AccountInfo<'info>,
 
     /// The stake account's withdraw authority
-    pub withdrawer: UncheckedAccount<'info>,
+    pub withdrawer: AccountInfo<'info>,
 
     /// Account to send withdrawn lamports to
-    pub to: UncheckedAccount<'info>,
+    pub to: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: UncheckedAccount<'info>,
+    pub clock: AccountInfo<'info>,
 
     /// StakeHistory sysvar
-    pub stake_history: UncheckedAccount<'info>,
+    pub stake_history: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Withdraw<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.withdrawer.to_owned(),
+            self.to.to_owned(),
+            self.clock.to_owned(),
+            self.stake_history.to_owned(),
+        ]
+    }
+}
+
 pub struct DeactivateStake<'info> {
     /// The stake account to be deactivated
-    pub stake: UncheckedAccount<'info>,
+    pub stake: AccountInfo<'info>,
 
     /// The stake account's stake authority
-    pub staker: UncheckedAccount<'info>,
+    pub staker: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: UncheckedAccount<'info>,
+    pub clock: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for DeactivateStake<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.staker.to_owned(),
+            self.clock.to_owned(),
+        ]
+    }
 }
 
 // State
