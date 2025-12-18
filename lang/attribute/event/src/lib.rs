@@ -214,7 +214,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// pub struct MyInstruction<'info> {
 ///    pub signer: Signer<'info>,
 ///    /// CHECK: Only the event authority can invoke self-CPI
-///    #[account(seeds = [b"__event_authority"], bump)]
+///    #[account(address = crate::EVENT_AUTHORITY_AND_BUMP.0)]
 ///    pub event_authority: AccountInfo<'info>,
 ///    /// CHECK: Self-CPI will fail if the program is not the current program
 ///    pub program: AccountInfo<'info>,
