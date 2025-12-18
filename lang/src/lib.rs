@@ -47,11 +47,12 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
-use crate::pinocchio_runtime::{
-    account_info::*, instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
-};
-// Re-export AccountInfo for macro expansion
-pub use crate::pinocchio_runtime::account_info::AccountInfo;
+pub use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
+pub use crate::pinocchio_runtime::instruction::AccountMeta;
+pub use crate::pinocchio_runtime::program_error::ProgramError;
+pub use crate::pinocchio_runtime::pubkey::Pubkey;
+
+
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -84,7 +85,7 @@ pub mod pinocchio_runtime {
         pub use pinocchio::account::*;
         pub type AccountInfo = AccountView;
 
-        pub fn next_account_info<'a, 'b, I: Iterator<Item = AccountInfo>>(
+        pub fn next_account_info<I: Iterator<Item = AccountInfo>>(
             iter: &mut I,
         ) -> Result<I::Item, pinocchio::error::ProgramError> {
             iter.next()
@@ -111,17 +112,7 @@ pub mod pinocchio_runtime {
     }
 
     pub mod bpf_loader_upgradeable {
-        #[allow(deprecated)]
-        pub use solana_loader_v3_interface::{
-            instruction::{
-                close, close_any, create_buffer, deploy_with_max_program_len, extend_program,
-                is_close_instruction, is_set_authority_checked_instruction,
-                is_set_authority_instruction, is_upgrade_instruction, set_buffer_authority,
-                set_buffer_authority_checked, set_upgrade_authority, set_upgrade_authority_checked,
-                upgrade, write,
-            },
-            state::UpgradeableLoaderState,
-        };
+        pub use solana_loader_v3_interface::state::UpgradeableLoaderState;
 
         pub fn get_program_data_address(
             program_address: &crate::pinocchio_runtime::Address,
@@ -173,14 +164,6 @@ pub mod pinocchio_runtime {
 
     pub mod system_instruction {
         pub use pinocchio_system::instructions::*;
-    }
-
-    pub mod program_option {
-        pub use solana_program_option::*;
-    }
-
-    pub mod program_pack {
-        pub use solana_program_pack::*;
     }
 
     pub mod program_memory {
@@ -299,7 +282,7 @@ pub trait ToAccountMetas<'info> {
     /// a transaction from a client to another program but sign the transaction
     /// before the relay. The client cannot mark the field as a signer, and so
     /// we have to override the is_signer meta field given by the client.
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>>;
 }
 
 /// Transformation to
@@ -495,12 +478,12 @@ pub trait CheckOwner {
     fn check_owner(owner: &Pubkey) -> Result<()>;
 }
 
-impl<T: Owner> CheckOwner for T {
+impl<T: Owners> CheckOwner for T {
     fn check_owner(owner: &Pubkey) -> Result<()> {
-        if Self::owner() != *owner {
+        if !Self::owners().contains(owner) {
             Err(
                 error::Error::from(error::ErrorCode::AccountOwnedByWrongProgram)
-                    .with_account_name(pubkey_to_string(owner)),
+                    .with_account_name(*owner),
             )
         } else {
             Ok(())
@@ -527,16 +510,11 @@ impl<T: Ids> CheckId for T {
     fn check_id(id: &Pubkey) -> Result<()> {
         if !Self::ids().contains(id) {
             Err(error::Error::from(error::ErrorCode::InvalidProgramId)
-                .with_account_name(pubkey_to_string(id)))
+                .with_account_name(&id))
         } else {
             Ok(())
         }
     }
-}
-
-/// Converts a Pubkey to its base58 string representation.
-fn pubkey_to_string(pubkey: &Pubkey) -> String {
-    bs58::encode(pubkey.as_ref()).into_string()
 }
 
 /// Defines the Pubkey of an account.
@@ -629,10 +607,7 @@ pub mod __private {
             Pubkey::from(*self)
         }
         fn set(input: &Pubkey) -> [u8; 32] {
-            let bytes = input.as_ref();
-            let mut result = [0u8; 32];
-            result.copy_from_slice(bytes);
-            result
+            input.to_bytes()
         }
     }
 
