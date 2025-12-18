@@ -639,7 +639,6 @@ pub enum ProgramCommand {
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
-        program_id: Pubkey,
         #[clap(short, long)]
         filepath: String,
         #[clap(long)]
@@ -651,7 +650,6 @@ pub enum IdlCommand {
     /// Upgrades the IDL to the new file. An alias for first writing and then
     /// then setting the idl buffer account.
     Upgrade {
-        program_id: Pubkey,
         #[clap(short, long)]
         filepath: String,
         #[clap(long)]
@@ -2393,22 +2391,14 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     match subcmd {
         IdlCommand::Init {
-            program_id,
             filepath,
             priority_fee,
             non_canonical,
-        } => idl_init(
-            cfg_override,
-            program_id,
-            filepath,
-            priority_fee,
-            non_canonical,
-        ),
+        } => idl_init(cfg_override, filepath, priority_fee, non_canonical),
         IdlCommand::Upgrade {
-            program_id,
             filepath,
             priority_fee,
-        } => idl_upgrade(cfg_override, program_id, filepath, priority_fee),
+        } => idl_upgrade(cfg_override, filepath, priority_fee),
         IdlCommand::Build {
             program_name,
             out,
@@ -2474,7 +2464,6 @@ fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
 
 fn idl_init(
     cfg_override: &ConfigOverride,
-    program_id: Pubkey,
     idl_filepath: String,
     priority_fee: Option<u64>,
     non_canonical: bool,
@@ -2489,7 +2478,11 @@ fn idl_init(
         return Ok(());
     }
 
-    let program_id_str = program_id.to_string();
+    let program_id_str = {
+        let idl = fs::read(&idl_filepath)?;
+        let idl = convert_idl(&idl)?;
+        idl.address
+    };
 
     // Build args with global options first, then command and command args
     let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
@@ -2530,7 +2523,6 @@ fn idl_init(
 
 fn idl_upgrade(
     cfg_override: &ConfigOverride,
-    program_id: Pubkey,
     idl_filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
@@ -2544,7 +2536,11 @@ fn idl_upgrade(
         return Ok(());
     }
 
-    let program_id_str = program_id.to_string();
+    let program_id_str = {
+        let idl = fs::read(&idl_filepath)?;
+        let idl = convert_idl(&idl)?;
+        idl.address
+    };
 
     // Build args with global options first, then command and command args
     let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
