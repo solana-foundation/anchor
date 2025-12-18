@@ -587,6 +587,28 @@ pub struct BubblegumSetCollectionSize<'info> {
     pub bubblegum_signer: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for BubblegumSetCollectionSize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata_account.to_owned(),
+            self.update_authority.to_owned(),
+            self.mint.to_owned(),
+            self.bubblegum_signer.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for BubblegumSetCollectionSize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata_account.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.bubblegum_signer.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct BurnEditionNft<'info> {
     pub metadata: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
@@ -600,6 +622,40 @@ pub struct BurnEditionNft<'info> {
     pub spl_token: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for BurnEditionNft<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.owner.to_owned(),
+            self.print_edition_mint.to_owned(),
+            self.master_edition_mint.to_owned(),
+            self.print_edition_token.to_owned(),
+            self.master_edition_token.to_owned(),
+            self.master_edition.to_owned(),
+            self.print_edition.to_owned(),
+            self.edition_marker.to_owned(),
+            self.spl_token.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for BurnEditionNft<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.owner.to_account_metas(is_signer));
+        account_metas.extend(self.print_edition_mint.to_account_metas(is_signer));
+        account_metas.extend(self.master_edition_mint.to_account_metas(is_signer));
+        account_metas.extend(self.print_edition_token.to_account_metas(is_signer));
+        account_metas.extend(self.master_edition_token.to_account_metas(is_signer));
+        account_metas.extend(self.master_edition.to_account_metas(is_signer));
+        account_metas.extend(self.print_edition.to_account_metas(is_signer));
+        account_metas.extend(self.edition_marker.to_account_metas(is_signer));
+        account_metas.extend(self.spl_token.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct BurnNft<'info> {
     pub metadata: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
@@ -607,6 +663,32 @@ pub struct BurnNft<'info> {
     pub token: AccountInfo<'info>,
     pub edition: AccountInfo<'info>,
     pub spl_token: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for BurnNft<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.owner.to_owned(),
+            self.mint.to_owned(),
+            self.token.to_owned(),
+            self.edition.to_owned(),
+            self.spl_token.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for BurnNft<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.owner.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.token.to_account_metas(is_signer));
+        account_metas.extend(self.edition.to_account_metas(is_signer));
+        account_metas.extend(self.spl_token.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct CreateMetadataAccountsV3<'info> {
@@ -619,9 +701,52 @@ pub struct CreateMetadataAccountsV3<'info> {
     pub rent: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for CreateMetadataAccountsV3<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.mint.to_owned(),
+            self.mint_authority.to_owned(),
+            self.payer.to_owned(),
+            self.update_authority.to_owned(),
+            self.system_program.to_owned(),
+            self.rent.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for CreateMetadataAccountsV3<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.rent.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct UpdateMetadataAccountsV2<'info> {
     pub metadata: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for UpdateMetadataAccountsV2<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.metadata.to_owned(), self.update_authority.to_owned()]
+    }
+}
+
+impl<'info> ToAccountMetas for UpdateMetadataAccountsV2<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct CreateMasterEditionV3<'info> {
@@ -634,6 +759,38 @@ pub struct CreateMasterEditionV3<'info> {
     pub token_program: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
     pub rent: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for CreateMasterEditionV3<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.edition.to_owned(),
+            self.mint.to_owned(),
+            self.update_authority.to_owned(),
+            self.mint_authority.to_owned(),
+            self.payer.to_owned(),
+            self.metadata.to_owned(),
+            self.token_program.to_owned(),
+            self.system_program.to_owned(),
+            self.rent.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for CreateMasterEditionV3<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.edition.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.rent.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct MintNewEditionFromMasterEditionViaToken<'info> {
@@ -661,12 +818,83 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
     pub metadata_mint: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for MintNewEditionFromMasterEditionViaToken<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.new_metadata.to_owned(),
+            self.new_edition.to_owned(),
+            self.master_edition.to_owned(),
+            self.new_mint.to_owned(),
+            self.edition_mark_pda.to_owned(),
+            self.new_mint_authority.to_owned(),
+            self.payer.to_owned(),
+            self.token_account_owner.to_owned(),
+            self.token_account.to_owned(),
+            self.new_metadata_update_authority.to_owned(),
+            self.metadata.to_owned(),
+            self.token_program.to_owned(),
+            self.system_program.to_owned(),
+            self.rent.to_owned(),
+            self.metadata_mint.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for MintNewEditionFromMasterEditionViaToken<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.new_metadata.to_account_metas(is_signer));
+        account_metas.extend(self.new_edition.to_account_metas(is_signer));
+        account_metas.extend(self.master_edition.to_account_metas(is_signer));
+        account_metas.extend(self.new_mint.to_account_metas(is_signer));
+        account_metas.extend(self.edition_mark_pda.to_account_metas(is_signer));
+        account_metas.extend(self.new_mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.token_account_owner.to_account_metas(is_signer));
+        account_metas.extend(self.token_account.to_account_metas(is_signer));
+        account_metas.extend(
+            self.new_metadata_update_authority
+                .to_account_metas(is_signer),
+        );
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.rent.to_account_metas(is_signer));
+        account_metas.extend(self.metadata_mint.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct RevokeCollectionAuthority<'info> {
     pub collection_authority_record: AccountInfo<'info>,
     pub delegate_authority: AccountInfo<'info>,
     pub revoke_authority: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for RevokeCollectionAuthority<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.collection_authority_record.to_owned(),
+            self.delegate_authority.to_owned(),
+            self.revoke_authority.to_owned(),
+            self.metadata.to_owned(),
+            self.mint.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for RevokeCollectionAuthority<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.collection_authority_record.to_account_metas(is_signer));
+        account_metas.extend(self.delegate_authority.to_account_metas(is_signer));
+        account_metas.extend(self.revoke_authority.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct SetCollectionSize<'info> {
@@ -676,10 +904,52 @@ pub struct SetCollectionSize<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for SetCollectionSize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.mint.to_owned(),
+            self.update_authority.to_owned(),
+            self.system_program.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for SetCollectionSize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct SetTokenStandard<'info> {
     pub metadata_account: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
     pub mint_account: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for SetTokenStandard<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata_account.to_owned(),
+            self.update_authority.to_owned(),
+            self.mint_account.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for SetTokenStandard<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata_account.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint_account.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct VerifyCollection<'info> {
@@ -691,6 +961,32 @@ pub struct VerifyCollection<'info> {
     pub collection_master_edition: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for VerifyCollection<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.payer.to_owned(),
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection_metadata.to_owned(),
+            self.collection_master_edition.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for VerifyCollection<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection_metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_master_edition.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct VerifySizedCollectionItem<'info> {
     pub payer: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
@@ -698,6 +994,32 @@ pub struct VerifySizedCollectionItem<'info> {
     pub collection_mint: AccountInfo<'info>,
     pub collection_metadata: AccountInfo<'info>,
     pub collection_master_edition: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for VerifySizedCollectionItem<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.payer.to_owned(),
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection_metadata.to_owned(),
+            self.collection_master_edition.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for VerifySizedCollectionItem<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection_metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_master_edition.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct SetAndVerifyCollection<'info> {
@@ -710,6 +1032,34 @@ pub struct SetAndVerifyCollection<'info> {
     pub collection_master_edition: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for SetAndVerifyCollection<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.payer.to_owned(),
+            self.update_authority.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection_metadata.to_owned(),
+            self.collection_master_edition.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for SetAndVerifyCollection<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection_metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_master_edition.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct SetAndVerifySizedCollectionItem<'info> {
     pub metadata: AccountInfo<'info>,
     pub collection_authority: AccountInfo<'info>,
@@ -718,6 +1068,34 @@ pub struct SetAndVerifySizedCollectionItem<'info> {
     pub collection_mint: AccountInfo<'info>,
     pub collection_metadata: AccountInfo<'info>,
     pub collection_master_edition: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for SetAndVerifySizedCollectionItem<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.payer.to_owned(),
+            self.update_authority.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection_metadata.to_owned(),
+            self.collection_master_edition.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for SetAndVerifySizedCollectionItem<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection_metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_master_edition.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct FreezeDelegatedAccount<'info> {
@@ -729,6 +1107,32 @@ pub struct FreezeDelegatedAccount<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for FreezeDelegatedAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.delegate.to_owned(),
+            self.token_account.to_owned(),
+            self.edition.to_owned(),
+            self.mint.to_owned(),
+            self.token_program.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for FreezeDelegatedAccount<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.delegate.to_account_metas(is_signer));
+        account_metas.extend(self.token_account.to_account_metas(is_signer));
+        account_metas.extend(self.edition.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct ThawDelegatedAccount<'info> {
     pub metadata: AccountInfo<'info>,
     pub delegate: AccountInfo<'info>,
@@ -738,10 +1142,56 @@ pub struct ThawDelegatedAccount<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for ThawDelegatedAccount<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.delegate.to_owned(),
+            self.token_account.to_owned(),
+            self.edition.to_owned(),
+            self.mint.to_owned(),
+            self.token_program.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for ThawDelegatedAccount<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.delegate.to_account_metas(is_signer));
+        account_metas.extend(self.token_account.to_account_metas(is_signer));
+        account_metas.extend(self.edition.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct UpdatePrimarySaleHappenedViaToken<'info> {
     pub metadata: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
     pub token: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for UpdatePrimarySaleHappenedViaToken<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.owner.to_owned(),
+            self.token.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for UpdatePrimarySaleHappenedViaToken<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.owner.to_account_metas(is_signer));
+        account_metas.extend(self.token.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct SignMetadata<'info> {
@@ -749,9 +1199,39 @@ pub struct SignMetadata<'info> {
     pub metadata: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for SignMetadata<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.creator.to_owned(), self.metadata.to_owned()]
+    }
+}
+
+impl<'info> ToAccountMetas for SignMetadata<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.creator.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct RemoveCreatorVerification<'info> {
     pub creator: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for RemoveCreatorVerification<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.creator.to_owned(), self.metadata.to_owned()]
+    }
+}
+
+impl<'info> ToAccountMetas for RemoveCreatorVerification<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.creator.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub struct Utilize<'info> {
@@ -762,12 +1242,63 @@ pub struct Utilize<'info> {
     pub owner: AccountInfo<'info>,
 }
 
+impl<'info> ToAccountInfos<'info> for Utilize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.token_account.to_owned(),
+            self.mint.to_owned(),
+            self.use_authority.to_owned(),
+            self.owner.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for Utilize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.token_account.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.use_authority.to_account_metas(is_signer));
+        account_metas.extend(self.owner.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct UnverifyCollection<'info> {
     pub metadata: AccountInfo<'info>,
     pub collection_authority: AccountInfo<'info>,
     pub collection_mint: AccountInfo<'info>,
     pub collection: AccountInfo<'info>,
     pub collection_master_edition_account: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for UnverifyCollection<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection.to_owned(),
+            self.collection_master_edition_account.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for UnverifyCollection<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection.to_account_metas(is_signer));
+        account_metas.extend(
+            self.collection_master_edition_account
+                .to_account_metas(is_signer),
+        );
+        account_metas
+    }
 }
 
 pub struct UnverifySizedCollectionItem<'info> {
@@ -777,6 +1308,35 @@ pub struct UnverifySizedCollectionItem<'info> {
     pub collection_mint: AccountInfo<'info>,
     pub collection: AccountInfo<'info>,
     pub collection_master_edition_account: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for UnverifySizedCollectionItem<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.metadata.to_owned(),
+            self.collection_authority.to_owned(),
+            self.payer.to_owned(),
+            self.collection_mint.to_owned(),
+            self.collection.to_owned(),
+            self.collection_master_edition_account.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for UnverifySizedCollectionItem<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.collection_authority.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.collection_mint.to_account_metas(is_signer));
+        account_metas.extend(self.collection.to_account_metas(is_signer));
+        account_metas.extend(
+            self.collection_master_edition_account
+                .to_account_metas(is_signer),
+        );
+        account_metas
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

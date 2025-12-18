@@ -204,7 +204,7 @@ pub mod ido_pool {
         if ctx.accounts.user_redeemable.amount == 0 {
             let cpi_accounts = CloseAccount {
                 account: ctx.accounts.user_redeemable.to_account_info(),
-                destination: ctx.accounts.user_authority.clone(),
+                destination: ctx.accounts.user_authority.to_account_info(),
                 authority: ctx.accounts.ido_account.to_account_info(),
             };
             let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
@@ -266,7 +266,7 @@ pub mod ido_pool {
         if ctx.accounts.escrow_usdc.amount == 0 {
             let cpi_accounts = CloseAccount {
                 account: ctx.accounts.escrow_usdc.to_account_info(),
-                destination: ctx.accounts.user_authority.clone(),
+                destination: ctx.accounts.user_authority.to_account_info(),
                 authority: ctx.accounts.ido_account.to_account_info(),
             };
             let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
