@@ -192,7 +192,7 @@ pub fn create_account_with_seed(
 // }
 
 // pub fn create_nonce_account(
-//     ctx: CpiContext<'_, '_, 'info, CreateNonceAccount>,
+//     ctx: CpiContext<'_, '_, 'static, CreateNonceAccount>,
 //     lamports: u64,
 //     authority: &Pubkey,
 // ) -> Result<()> {
@@ -218,7 +218,7 @@ pub fn create_account_with_seed(
 // }
 
 // pub fn create_nonce_account_with_seed(
-//     ctx: CpiContext<'_, '_, 'info, CreateNonceAccountWithSeed>,
+//     ctx: CpiContext<'_, '_, 'static, CreateNonceAccountWithSeed>,
 //     lamports: u64,
 //     seed: &str,
 //     authority: &Pubkey,
