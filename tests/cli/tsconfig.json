@@ -2,7 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
 
-    "module": "nodenext",
+    "module": "none",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
     "target": "esnext",
     "lib": ["esnext"],
     "types": ["node", "mocha", "chai"],
@@ -22,7 +24,6 @@
     "strict": true,
     "jsx": "react-jsx",
     "isolatedModules": true,
-    "moduleDetection": "force",
     "skipLibCheck": true,
   },
   "include": ["./tests/**/*.ts"]
