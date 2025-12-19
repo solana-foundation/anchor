@@ -1,5 +1,5 @@
 use crate::config::{
-    get_default_ledger_path, get_solana_cfg_url, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
+    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
     Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
     SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
     STARTUP_WAIT, SURFPOOL_HOST,
@@ -2498,18 +2498,9 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     }
 }
 
-fn rpc_url(cfg_override: &ConfigOverride) -> Result<RpcClient> {
-    let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
-        None => {
-            if let Some(cluster) = cfg_override.cluster.as_ref() {
-                cluster.url().to_string()
-            } else {
-                get_solana_cfg_url()?
-            }
-        }
-    };
-    Ok(create_client(url))
+fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
+    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
+    Ok(cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config))
 }
 
 fn idl_init(
@@ -2706,7 +2697,7 @@ fn idl_fetch(
         args.push(out);
     }
 
-    let client = rpc_url(cfg_override)?.url();
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
     args.push(&client);
 
@@ -2774,7 +2765,7 @@ fn idl_close_metadata(
         args.push(&priority_fee_str);
     }
 
-    let client = rpc_url(cfg_override)?.url();
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
     args.push(&client);
 
@@ -2807,7 +2798,7 @@ fn idl_create_buffer(
         args.push(&priority_fee_str);
     }
 
-    let client = rpc_url(cfg_override)?.url();
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
     args.push(&client);
 
@@ -2848,7 +2839,7 @@ fn idl_set_buffer_authority(
         args.push(&priority_fee_str);
     }
 
-    let client = rpc_url(cfg_override)?.url();
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
     args.push(&client);
 
@@ -2890,7 +2881,7 @@ fn idl_write_buffer_metadata(
         args.push(&priority_fee_str);
     }
 
-    let client = rpc_url(cfg_override)?.url();
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
     args.push(&client);
 

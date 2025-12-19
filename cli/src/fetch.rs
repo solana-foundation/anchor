@@ -420,7 +420,7 @@ pub fn idl_fetch_historical(
     out_dir: Option<String>,
     out: Option<String>,
 ) -> Result<()> {
-    let client = rpc_url(cfg_override)?;
+    let client = RpcClient::new(rpc_url(cfg_override)?);
     let fetcher = IdlFetcher::new(&client);
 
     let signatures = fetch_idl_signatures(&client, &address)?;
