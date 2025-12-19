@@ -2,8 +2,6 @@ use anchor_lang::__private::bytemuck::Pod;
 use anchor_lang::pinocchio_runtime::program_pack::Pack;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
-use pinocchio_token_2022::extension::ExtensionType;
-use pinocchio_token_2022::extension::{BaseStateWithExtensions, Extension, StateWithExtensions};
 use std::ops::Deref;
 
 pub use crate::token_2022::*;
@@ -17,9 +15,7 @@ pub struct TokenAccount(pinocchio_token_2022::state::TokenAccount);
 
 impl anchor_lang::AccountDeserialize for TokenAccount {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        pinocchio_token_2022::extension::StateWithExtensions::<pinocchio_token_2022::state::TokenAccount>::unpack(
-            buf,
-        )
+       todo!()
         .map(|t| TokenAccount(t.base))
         .map_err(Into::into)
     }
@@ -46,7 +42,7 @@ pub struct Mint(pinocchio_token_2022::state::Mint);
 
 impl anchor_lang::AccountDeserialize for Mint {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        pinocchio_token_2022::extension::StateWithExtensions::<pinocchio_token_2022::state::Mint>::unpack(buf)
+        todo!()
             .map(|t| Mint(t.base))
             .map_err(Into::into)
     }
@@ -81,11 +77,9 @@ pub type ExtensionsVec = Vec<ExtensionType>;
 
 pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang::Result<usize> {
     if let Some(extensions) = extensions {
-        Ok(ExtensionType::try_calculate_account_len::<
-            pinocchio_token_2022::state::Mint,
-        >(extensions)?)
+        Ok(todo!())
     } else {
-        Ok(pinocchio_token_2022::state::Mint::LEN)
+        Ok(todo!())
     }
 }
 
@@ -93,8 +87,7 @@ pub fn get_mint_extension_data<T: Extension + Pod>(
     account: &AccountInfo,
 ) -> anchor_lang::Result<T> {
     let mint_data = account.data.borrow();
-    let mint_with_extension =
-        StateWithExtensions::<pinocchio_token_2022::state::Mint>::unpack(&mint_data)?;
+    let mint_with_extension =todo!();
     let extension_data = *mint_with_extension.get_extension::<T>()?;
     Ok(extension_data)
 }

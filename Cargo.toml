@@ -58,6 +58,7 @@ pinocchio-system = { git = "https://github.com/anza-xyz/pinocchio", branch = "ma
 pinocchio-token-2022 = { git = "https://github.com/anza-xyz/pinocchio", branch = "main" }
 pinocchio-token = { git = "https://github.com/anza-xyz/pinocchio", branch = "main" }
 pinocchio-associated-token-account = { git = "https://github.com/anza-xyz/pinocchio", branch = "main" }
+pinocchio-memo = { git = "https://github.com/anza-xyz/pinocchio", branch = "main" }
 
 [profile.release]
 lto = true

@@ -375,6 +375,7 @@ dependencies = [
  "borsh 1.5.7",
  "mpl-token-metadata",
  "pinocchio-associated-token-account",
+ "pinocchio-memo",
  "pinocchio-token",
  "pinocchio-token-2022",
  "solana-stake-interface",
@@ -3023,6 +3024,17 @@ dependencies = [
 
 [[package]]
 name = "pinocchio-associated-token-account"
+version = "0.2.0"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#1626db1492144d3934700085df6e715841bcccbe"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.0.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-memo"
 version = "0.2.0"
 source = "git+https://github.com/anza-xyz/pinocchio?branch=main#1626db1492144d3934700085df6e715841bcccbe"
 dependencies = [
