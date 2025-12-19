@@ -11,8 +11,7 @@ pub fn token_group_initialize(
     max_size: u64,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(
-        ctx.signer_seeds).map_err(Into::into)
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 #[derive(Accounts)]

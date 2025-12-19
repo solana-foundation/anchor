@@ -141,7 +141,6 @@ pub fn initialize_account(ctx: CpiContext<'_, '_, 'static, InitializeAccount>) -
     ix.invoke().map_err(Into::into)
 }
 
-
 pub fn initialize_account3(ctx: CpiContext<'_, '_, 'static, InitializeAccount3>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeAccount3 {
         account: &ctx.accounts.account,
@@ -190,7 +189,7 @@ pub fn initialize_mint(
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeMint {
         mint: &ctx.accounts.mint,
-        freeze_authority: freeze_authority,
+        freeze_authority,
         decimals,
         token_program: &ctx.program_id,
         rent_sysvar: &ctx.accounts.rent,
@@ -207,7 +206,7 @@ pub fn initialize_mint2(
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeMint2 {
         mint: &ctx.accounts.mint,
-        freeze_authority: freeze_authority,
+        freeze_authority,
         decimals,
         token_program: &ctx.program_id,
         mint_authority: authority,
@@ -223,8 +222,8 @@ pub fn set_authority(
     let ix = pinocchio_token_2022::instructions::SetAuthority {
         account: &ctx.accounts.account_or_mint,
         authority: &ctx.accounts.current_authority,
-        authority_type: authority_type,
-        new_authority: new_authority,
+        authority_type,
+        new_authority,
         token_program: &ctx.program_id,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)

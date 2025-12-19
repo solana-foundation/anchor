@@ -1,17 +1,15 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
-use anchor_lang::pinocchio_runtime::program_pack::Pack;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Key, Result};
 use std::ops::Deref;
 
-use pinocchio_token as spl_token;
 use pinocchio_token::ID;
 
 pub fn transfer(ctx: CpiContext<'_, '_, 'static, Transfer>, amount: u64) -> Result<()> {
-    let ix = spl_token::instructions::Transfer {
+    let ix = pinocchio_token::instructions::Transfer {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
         authority: &ctx.accounts.authority,
@@ -25,7 +23,7 @@ pub fn transfer_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let ix = spl_token::instructions::TransferChecked {
+    let ix = pinocchio_token::instructions::TransferChecked {
         from: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
         to: &ctx.accounts.to,
@@ -37,7 +35,7 @@ pub fn transfer_checked(
 }
 
 pub fn mint_to(ctx: CpiContext<'_, '_, 'static, MintTo>, amount: u64) -> Result<()> {
-    let ix = spl_token::instructions::MintTo {
+    let ix = pinocchio_token::instructions::MintTo {
         mint: &ctx.accounts.mint,
         account: &ctx.accounts.to,
         mint_authority: &ctx.accounts.authority,
@@ -47,7 +45,7 @@ pub fn mint_to(ctx: CpiContext<'_, '_, 'static, MintTo>, amount: u64) -> Result<
 }
 
 pub fn burn(ctx: CpiContext<'_, '_, 'static, Burn>, amount: u64) -> Result<()> {
-    let ix = spl_token::instructions::Burn {
+    let ix = pinocchio_token::instructions::Burn {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
@@ -61,7 +59,7 @@ pub fn burn_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let ix = spl_token::instructions::BurnChecked {
+    let ix = pinocchio_token::instructions::BurnChecked {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
@@ -72,7 +70,7 @@ pub fn burn_checked(
 }
 
 pub fn approve(ctx: CpiContext<'_, '_, 'static, Approve>, amount: u64) -> Result<()> {
-    let ix = spl_token::instructions::Approve {
+    let ix = pinocchio_token::instructions::Approve {
         source: &ctx.accounts.to,
         delegate: &ctx.accounts.delegate,
         authority: &ctx.accounts.authority,
@@ -86,7 +84,7 @@ pub fn approve_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let ix = spl_token::instructions::ApproveChecked {
+    let ix = pinocchio_token::instructions::ApproveChecked {
         source: &ctx.accounts.to,
         mint: &ctx.accounts.mint,
         delegate: &ctx.accounts.delegate,
@@ -98,7 +96,7 @@ pub fn approve_checked(
 }
 
 pub fn revoke(ctx: CpiContext<'_, '_, 'static, Revoke>) -> Result<()> {
-    let ix = spl_token::instructions::Revoke {
+    let ix = pinocchio_token::instructions::Revoke {
         source: &ctx.accounts.source,
         authority: &ctx.accounts.authority,
     };
@@ -106,7 +104,7 @@ pub fn revoke(ctx: CpiContext<'_, '_, 'static, Revoke>) -> Result<()> {
 }
 
 pub fn initialize_account(ctx: CpiContext<'_, '_, 'static, InitializeAccount>) -> Result<()> {
-    let ix = spl_token::instructions::InitializeAccount {
+    let ix = pinocchio_token::instructions::InitializeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
         owner: &ctx.accounts.authority,
@@ -116,16 +114,16 @@ pub fn initialize_account(ctx: CpiContext<'_, '_, 'static, InitializeAccount>) -
 }
 
 pub fn initialize_account3(ctx: CpiContext<'_, '_, 'static, InitializeAccount3>) -> Result<()> {
-    let ix = spl_token::instructions::InitializeAccount3 {
+    let ix = pinocchio_token::instructions::InitializeAccount3 {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
-        owner: &ctx.accounts.authority,
+        owner: &ctx.accounts.authority.key(),
     };
     ix.invoke().map_err(Into::into)
 }
 
 pub fn close_account(ctx: CpiContext<'_, '_, 'static, CloseAccount>) -> Result<()> {
-    let ix = spl_token::instructions::CloseAccount {
+    let ix = pinocchio_token::instructions::CloseAccount {
         account: &ctx.accounts.account,
         destination: &ctx.accounts.destination,
         authority: &ctx.accounts.authority,
@@ -134,7 +132,7 @@ pub fn close_account(ctx: CpiContext<'_, '_, 'static, CloseAccount>) -> Result<(
 }
 
 pub fn freeze_account(ctx: CpiContext<'_, '_, 'static, FreezeAccount>) -> Result<()> {
-    let ix = spl_token::instructions::FreezeAccount {
+    let ix = pinocchio_token::instructions::FreezeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
         freeze_authority: &ctx.accounts.authority,
@@ -143,7 +141,7 @@ pub fn freeze_account(ctx: CpiContext<'_, '_, 'static, FreezeAccount>) -> Result
 }
 
 pub fn thaw_account(ctx: CpiContext<'_, '_, 'static, ThawAccount>) -> Result<()> {
-    let ix = spl_token::instructions::ThawAccount {
+    let ix = pinocchio_token::instructions::ThawAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
         freeze_authority: &ctx.accounts.authority,
@@ -157,7 +155,7 @@ pub fn initialize_mint(
     authority: &Pubkey,
     freeze_authority: Option<&Pubkey>,
 ) -> Result<()> {
-    let ix = spl_token::instructions::InitializeMint {
+    let ix = pinocchio_token::instructions::InitializeMint {
         mint: &ctx.accounts.mint,
         rent_sysvar: &ctx.accounts.rent,
         decimals,
@@ -173,7 +171,7 @@ pub fn initialize_mint2(
     authority: &Pubkey,
     freeze_authority: Option<&Pubkey>,
 ) -> Result<()> {
-    let ix = spl_token::instructions::InitializeMint2 {
+    let ix = pinocchio_token::instructions::InitializeMint2 {
         mint: &ctx.accounts.mint,
         decimals,
         mint_authority: authority,
@@ -184,10 +182,10 @@ pub fn initialize_mint2(
 
 pub fn set_authority(
     ctx: CpiContext<'_, '_, 'static, SetAuthority>,
-    authority_type: spl_token::instructions::AuthorityType,
+    authority_type: pinocchio_token::instructions::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
-    let ix = spl_token::instructions::SetAuthority {
+    let ix = pinocchio_token::instructions::SetAuthority {
         account: &ctx.accounts.account_or_mint,
         authority: &ctx.accounts.current_authority,
         authority_type,
@@ -197,7 +195,7 @@ pub fn set_authority(
 }
 
 pub fn sync_native(ctx: CpiContext<'_, '_, 'static, SyncNative>) -> Result<()> {
-    let ix = spl_token::instructions::SyncNative {
+    let ix = pinocchio_token::instructions::SyncNative {
         native_token: &ctx.accounts.account,
     };
     ix.invoke().map_err(Into::into)
@@ -318,18 +316,19 @@ pub struct SyncNative {
     pub account: AccountInfo,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct TokenAccount(spl_token::state::TokenAccount);
+#[derive()]
+pub struct TokenAccount(pinocchio_token::state::TokenAccount);
 
 impl TokenAccount {
-    pub const LEN: usize = spl_token::state::TokenAccount::LEN;
+    pub const LEN: usize = pinocchio_token::state::TokenAccount::LEN;
 }
 
 impl anchor_lang::AccountDeserialize for TokenAccount {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        spl_token::state::TokenAccount::unpack(buf)
-            .map(TokenAccount)
-            .map_err(Into::into)
+        let token_account_ref =
+            unsafe { pinocchio_token::state::TokenAccount::from_bytes_unchecked(buf) };
+        let token_account = unsafe { std::ptr::read(token_account_ref) };
+        Ok(TokenAccount(token_account))
     }
 }
 
@@ -342,24 +341,24 @@ impl anchor_lang::Owner for TokenAccount {
 }
 
 impl Deref for TokenAccount {
-    type Target = spl_token::state::TokenAccount;
+    type Target = pinocchio_token::state::TokenAccount;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Mint(spl_token::state::Mint);
+#[derive()]
+pub struct Mint(pinocchio_token::state::Mint);
 
 impl Mint {
-    pub const LEN: usize = spl_token::state::Mint::LEN;
+    pub const LEN: usize = pinocchio_token::state::Mint::LEN;
 }
 
 impl anchor_lang::AccountDeserialize for Mint {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        spl_token::state::Mint::unpack(buf)
-            .map(Mint)
-            .map_err(Into::into)
+        let mint_ref = unsafe { pinocchio_token::state::Mint::from_bytes_unchecked(buf) };
+        let mint = unsafe { std::ptr::read(mint_ref) };
+        Ok(Mint(mint))
     }
 }
 
@@ -372,7 +371,7 @@ impl anchor_lang::Owner for Mint {
 }
 
 impl Deref for Mint {
-    type Target = spl_token::state::Mint;
+    type Target = pinocchio_token::state::Mint;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -394,21 +393,21 @@ pub mod accessor {
     use super::*;
 
     pub fn amount(account: &AccountInfo) -> Result<u64> {
-        let bytes = account.try_borrow_data()?;
+        let bytes = account.try_borrow()?;
         let mut amount_bytes = [0u8; 8];
         amount_bytes.copy_from_slice(&bytes[64..72]);
         Ok(u64::from_le_bytes(amount_bytes))
     }
 
     pub fn mint(account: &AccountInfo) -> Result<Pubkey> {
-        let bytes = account.try_borrow_data()?;
+        let bytes = account.try_borrow()?;
         let mut mint_bytes = [0u8; 32];
         mint_bytes.copy_from_slice(&bytes[..32]);
         Ok(Pubkey::new_from_array(mint_bytes))
     }
 
     pub fn authority(account: &AccountInfo) -> Result<Pubkey> {
-        let bytes = account.try_borrow_data()?;
+        let bytes = account.try_borrow()?;
         let mut owner_bytes = [0u8; 32];
         owner_bytes.copy_from_slice(&bytes[32..64]);
         Ok(Pubkey::new_from_array(owner_bytes))
