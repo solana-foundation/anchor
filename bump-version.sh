@@ -45,9 +45,9 @@ popd
 # Potential for collisions in `package.json` files, handle those separately
 # Replace only matching "version": "x.xx.x" and "@coral-xyz/anchor": "x.xx.x"
 git grep -l $old_version -- "**/package.json" | \
-    xargs sed "${sedi[@]}" \
-    -e "s/@coral-xyz\/anchor\": \"$old_version\"/@coral-xyz\/anchor\": \"$version\"/g" \
-    -e "s/\"version\": \"$old_version\"/\"version\": \"$version\"/g"
+    xargs sed -E "${sedi[@]}" \
+    -e "s/\"version\": \"$old_version\"/\"version\": \"$version\"/g" \
+    -e "s/@coral-xyz\/(.*)\": \"(.*)$old_version\"/@coral-xyz\/\1\": \"\2$version\"/g"
 
 # Insert version number into CHANGELOG
 sed "${sedi[@]}" -e \
