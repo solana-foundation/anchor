@@ -22,9 +22,9 @@ pub const APPROVE_ACCOUNT_SEED: &[u8] = b"approve-account";
 pub const META_LIST_ACCOUNT_SEED: &[u8] = b"extra-account-metas";
 
 pub fn update_account_lamports_to_minimum_balance<'info>(
-    account: UncheckedAccount<'info>,
-    payer: UncheckedAccount<'info>,
-    system_program: UncheckedAccount<'info>,
+    account: AccountInfo<'info>,
+    payer: AccountInfo<'info>,
+    system_program: AccountInfo<'info>,
 ) -> Result<()> {
     let extra_lamports = Rent::get()?.minimum_balance(account.data_len()) - account.get_lamports();
     if extra_lamports > 0 {

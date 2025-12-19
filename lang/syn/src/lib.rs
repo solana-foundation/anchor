@@ -391,7 +391,7 @@ impl Field {
         };
         match &self.ty {
             Ty::UncheckedAccount => {
-                quote! { UncheckedAccount::try_from(&#field) }
+                quote! { UncheckedAccount::from(#field) }
             }
             Ty::Account(AccountTy { boxed, .. })
             | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => {
