@@ -20,7 +20,7 @@ pub struct GroupPointerInitialize {
     pub mint: AccountInfo,
 }
 
-    pub fn group_pointer_update(
+pub fn group_pointer_update(
     ctx: CpiContext<'_, '_, 'static, GroupPointerUpdate>,
     group_address: Option<Pubkey>,
 ) -> Result<()> {

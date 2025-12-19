@@ -6,9 +6,8 @@ use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn cpi_guard_enable(ctx: CpiContext<'_, '_, 'static, CpiGuard>) -> Result<()> {
-        let ix = todo!();
+    let ix = todo!();
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
-
 }
 
 pub fn cpi_guard_disable(ctx: CpiContext<'_, '_, 'static, CpiGuard>) -> Result<()> {
