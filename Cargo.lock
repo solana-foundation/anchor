@@ -3183,6 +3183,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pinocchio-memo"
+version = "0.2.0"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#1626db1492144d3934700085df6e715841bcccbe"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.0.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
 name = "pinocchio-system"
 version = "0.5.0"
 source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
