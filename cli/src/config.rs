@@ -28,6 +28,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 use walkdir::WalkDir;
 
+pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
@@ -328,10 +329,19 @@ pub struct Config {
     // Separate entry next to test_config because
     // "anchor localnet" only has access to the Anchor.toml,
     // not the Test.toml files
+    pub validator: Option<ValidatorType>,
     pub test_validator: Option<TestValidator>,
     pub test_config: Option<TestConfig>,
+    pub surfpool_config: Option<SurfpoolConfig>,
 }
 
+#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ValidatorType {
+    /// Use Surfpool validator (default)
+    Surfpool,
+    /// Use Solana test validator
+    Legacy,
+}
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct ToolchainConfig {
     pub anchor_version: Option<String>,
@@ -618,6 +628,7 @@ struct _Config {
     scripts: Option<ScriptsConfig>,
     hooks: Option<HooksConfig>,
     test: Option<_TestValidator>,
+    surfpool: Option<_SurfpoolConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -719,6 +730,7 @@ impl fmt::Display for Config {
             programs,
             workspace: (!self.workspace.members.is_empty() || !self.workspace.exclude.is_empty())
                 .then(|| self.workspace.clone()),
+            surfpool: self.surfpool_config.clone().map(Into::into),
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
@@ -742,10 +754,12 @@ impl FromStr for Config {
             },
             scripts: cfg.scripts.unwrap_or_default(),
             hooks: cfg.hooks.unwrap_or_default(),
+            validator: None, // Will be set based on CLI flags
             test_validator: cfg.test.map(Into::into),
             test_config: None,
             programs: cfg.programs.map_or(Ok(BTreeMap::new()), deser_programs)?,
             workspace: cfg.workspace.unwrap_or_default(),
+            surfpool_config: cfg.surfpool.map(Into::into),
         })
     }
 }
@@ -831,6 +845,23 @@ pub struct TestValidator {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct SurfpoolConfig {
+    pub startup_wait: i32,
+    pub shutdown_wait: i32,
+    pub rpc_port: u16,
+    pub ws_port: Option<u16>,
+    pub host: String,
+    pub online: Option<bool>,
+    pub datasource_rpc_url: Option<String>,
+    pub airdrop_addresses: Option<Vec<String>>,
+    pub manifest_file_path: Option<String>,
+    pub runbooks: Option<Vec<String>>,
+    pub slot_time: Option<u16>,
+    pub log_level: Option<String>,
+    pub block_production_mode: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct _TestValidator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis: Option<Vec<GenesisEntry>>,
@@ -844,6 +875,75 @@ pub struct _TestValidator {
     pub upgradeable: Option<bool>,
 }
 
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct _SurfpoolConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub startup_wait: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shutdown_wait: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rpc_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ws_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub online: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub datasource_rpc_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub airdrop_addresses: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manifest_file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runbooks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_time: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_production_mode: Option<String>,
+}
+
+impl From<_SurfpoolConfig> for SurfpoolConfig {
+    fn from(_surfpool_config: _SurfpoolConfig) -> Self {
+        Self {
+            startup_wait: _surfpool_config.startup_wait.unwrap_or(STARTUP_WAIT),
+            shutdown_wait: _surfpool_config.shutdown_wait.unwrap_or(SHUTDOWN_WAIT),
+            rpc_port: _surfpool_config.rpc_port.unwrap_or(DEFAULT_RPC_PORT),
+            host: _surfpool_config.host.unwrap_or(SURFPOOL_HOST.to_string()),
+            ws_port: _surfpool_config.ws_port,
+            online: _surfpool_config.online,
+            datasource_rpc_url: _surfpool_config.datasource_rpc_url,
+            airdrop_addresses: _surfpool_config.airdrop_addresses,
+            manifest_file_path: _surfpool_config.manifest_file_path,
+            runbooks: _surfpool_config.runbooks,
+            slot_time: _surfpool_config.slot_time,
+            log_level: _surfpool_config.log_level,
+            block_production_mode: _surfpool_config.block_production_mode,
+        }
+    }
+}
+
+impl From<SurfpoolConfig> for _SurfpoolConfig {
+    fn from(surfpool_config: SurfpoolConfig) -> Self {
+        Self {
+            startup_wait: Some(surfpool_config.startup_wait),
+            shutdown_wait: Some(surfpool_config.shutdown_wait),
+            rpc_port: Some(surfpool_config.rpc_port),
+            ws_port: surfpool_config.ws_port,
+            host: Some(surfpool_config.host),
+            online: surfpool_config.online,
+            datasource_rpc_url: surfpool_config.datasource_rpc_url,
+            airdrop_addresses: surfpool_config.airdrop_addresses,
+            manifest_file_path: surfpool_config.manifest_file_path,
+            runbooks: surfpool_config.runbooks,
+            slot_time: surfpool_config.slot_time,
+            log_level: surfpool_config.log_level,
+            block_production_mode: surfpool_config.block_production_mode,
+        }
+    }
+}
 pub const STARTUP_WAIT: i32 = 5000;
 pub const SHUTDOWN_WAIT: i32 = 2000;
 
@@ -1459,6 +1559,23 @@ impl AnchorPackage {
         let address = program_details.address.to_string();
         Ok(Self { name, address, idl })
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfnetInfoResponse {
+    pub runbook_executions: Vec<RunbookExecution>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunbookExecution {
+    #[serde(rename = "startedAt")]
+    pub started_at: u32,
+    #[serde(rename = "completedAt")]
+    pub completed_at: Option<u32>,
+    #[serde(rename = "runbookId")]
+    pub runbook_id: String,
+    pub errors: Option<Vec<String>>,
 }
 
 #[macro_export]

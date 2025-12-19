@@ -1,6 +1,7 @@
 use anchor_lang_idl::types::{
-    Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlRepr, IdlSerialization,
-    IdlType, IdlTypeDef, IdlTypeDefGeneric, IdlTypeDefTy,
+    Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlInstructionAccountItem,
+    IdlInstructionAccounts, IdlRepr, IdlSerialization, IdlType, IdlTypeDef, IdlTypeDefGeneric,
+    IdlTypeDefTy,
 };
 use proc_macro2::Literal;
 use quote::{format_ident, quote};
@@ -368,4 +369,72 @@ fn handle_defined_fields<R>(
         },
         _ => unit_cb(),
     }
+}
+
+/// Combine regular instruction accounts with non-instruction composite accounts.
+pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
+    // It's possible to declare an accounts struct and not use it as an instruction, see
+    // https://github.com/coral-xyz/anchor/issues/3274
+    //
+    // NOTE: Returned accounts will not be unique if non-instruction composite accounts have been
+    // used multiple times https://github.com/solana-foundation/anchor/issues/3349
+    fn get_non_instruction_composite_accounts<'a>(
+        accs: &'a [IdlInstructionAccountItem],
+        idl: &'a Idl,
+    ) -> Vec<&'a IdlInstructionAccounts> {
+        accs.iter()
+            .flat_map(|acc| match acc {
+                IdlInstructionAccountItem::Composite(accs)
+                    if !idl
+                        .instructions
+                        .iter()
+                        .any(|ix| ix.accounts == accs.accounts) =>
+                {
+                    let mut nica = get_non_instruction_composite_accounts(&accs.accounts, idl);
+                    nica.push(accs);
+                    nica
+                }
+                _ => Default::default(),
+            })
+            .collect()
+    }
+
+    let ix_accs = idl
+        .instructions
+        .iter()
+        .flat_map(|ix| ix.accounts.to_owned())
+        .collect::<Vec<_>>();
+    get_non_instruction_composite_accounts(&ix_accs, idl)
+        .into_iter()
+        .fold(Vec::<IdlInstructionAccounts>::default(), |mut all, accs| {
+            // Make sure they are unique
+            if all.iter().all(|a| a.accounts != accs.accounts) {
+                // The name is not guaranteed to be the same as the one used in the actual source
+                // code of the program because the IDL only stores the field names
+                let name = if all.iter().all(|a| a.name != accs.name) {
+                    accs.name.to_owned()
+                } else {
+                    // Append numbers to the field name until we find a unique name
+                    (2..)
+                        .find_map(|i| {
+                            let name = format!("{}{i}", accs.name);
+                            all.iter().all(|a| a.name != name).then_some(name)
+                        })
+                        .expect("Should always find a valid name")
+                };
+
+                all.push(IdlInstructionAccounts {
+                    name,
+                    accounts: accs.accounts.to_owned(),
+                })
+            }
+
+            all
+        })
+        .into_iter()
+        .chain(idl.instructions.iter().map(|ix| IdlInstructionAccounts {
+            name: ix.name.to_owned(),
+            accounts: ix.accounts.to_owned(),
+        }))
+        .collect()
 }

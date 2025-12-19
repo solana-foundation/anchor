@@ -284,7 +284,7 @@ fn deploy_workspace(
     // For Cargo workspaces, we don't have cluster/wallet in config, so just print basic info
     if let Ok(Some(cfg)) = Config::discover(cfg_override) {
         // Anchor workspace - we have cluster/wallet config
-        let url = crate::cluster_url(&cfg, &cfg.test_validator);
+        let url = crate::cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config);
         let keypair = cfg.provider.wallet.to_string();
         println!("Deploying cluster: {url}");
         println!("Upgrade authority: {keypair}");
@@ -711,10 +711,10 @@ pub fn program_deploy(
 
                 if idl_account_exists {
                     // IDL account exists, upgrade it
-                    crate::idl_upgrade(cfg_override, program_id, idl_filepath, None)?;
+                    crate::idl_upgrade(cfg_override, idl_filepath, None)?;
                 } else {
                     // IDL account doesn't exist, create it
-                    crate::idl_init(cfg_override, program_id, idl_filepath, None, false)?;
+                    crate::idl_init(cfg_override, idl_filepath, None, false)?;
                 }
 
                 println!("✓ Idl account created: {}", idl_address);
