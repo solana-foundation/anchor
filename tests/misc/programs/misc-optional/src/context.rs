@@ -749,7 +749,7 @@ pub struct InitManyAssociatedTokenAccounts<'info> {
 pub struct TestMultipleZeroConstraint<'info> {
     #[account(zero)]
     pub one: Option<Account<'info, Data>>,
-    #[account(zero)]
+    #[account(zero, dup)] // Allow duplicate accounts to test the error
     pub two: Option<Account<'info, Data>>,
 }
 
@@ -757,7 +757,7 @@ pub struct TestMultipleZeroConstraint<'info> {
 pub struct TestInitAndZero<'info> {
     #[account(init, payer = payer, space = Data::DISCRIMINATOR.len() + Data::LEN)]
     pub init: Option<Account<'info, Data>>,
-    #[account(zero)]
+    #[account(zero, dup)] // Allow duplicate accounts to test the error
     pub zero: Option<Account<'info, Data>>,
     #[account(mut)]
     pub payer: Option<Signer<'info>>,

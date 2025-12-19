@@ -12,3 +12,6 @@ remaining_accounts = "RemainingAccounts11111111111111111111111111"
 
 [workspace]
 exclude = ["programs/shared"]
+
+[surfpool]
+block_production_mode = "clock"

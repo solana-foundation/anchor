@@ -6,7 +6,7 @@ on:
       cache:
         required: true
         type: boolean
-      solana_cli_version:
+      solana_version:
         required: true
         type: string
       node_version:
@@ -18,12 +18,16 @@ on:
       anchor_binary_name:
         required: true
         type: string
+      surfpool_cli_version:
+        required: true
+        type: string
 env:
   CACHE: ${{ inputs.cache }}
-  SOLANA_CLI_VERSION: ${{ inputs.solana_cli_version }}
+  SOLANA_VERSION: ${{ inputs.solana_version }}
   NODE_VERSION: ${{ inputs.node_version }}
   CARGO_PROFILE: ${{ inputs.cargo_profile }}
   ANCHOR_BINARY_NAME: ${{ inputs.anchor_binary_name }}
+  SURFPOOL_CLI_VERSION: ${{ inputs.surfpool_cli_version }}
   CARGO_CACHE_PATH: |
     ~/.cargo/bin/
     ~/.cargo/registry/index/
@@ -111,6 +115,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-ts/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -118,7 +123,7 @@ jobs:
         id: cache-basic-0
         with:
           path: ./examples/tutorial/basic-0/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -126,7 +131,7 @@ jobs:
         id: cache-basic-1
         with:
           path: ./examples/tutorial/basic-1/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -134,7 +139,7 @@ jobs:
         id: cache-basic-2
         with:
           path: ./examples/tutorial/basic-2/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -142,7 +147,7 @@ jobs:
         id: cache-basic-3
         with:
           path: ./examples/tutorial/basic-3/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -150,7 +155,7 @@ jobs:
         id: cache-basic-4
         with:
           path: ./examples/tutorial/basic-4/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-4/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - run: cd examples/tutorial && yarn workspaces run test
       - uses: ./.github/actions/git-diff/
@@ -234,8 +239,9 @@ jobs:
         id: cache-test-target
         with:
           path: client/example/target
-          key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-client/example-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
       - run: cd client/example && ./run-test.sh
       - uses: ./.github/actions/git-diff/
 
@@ -249,6 +255,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -270,10 +277,10 @@ jobs:
         id: cache-test-target
         with:
           path: tests/bpf-upgradeable-state/target
-          key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-tests/bpf-upgradeable-state-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: solana-test-validator -r --quiet &
-        name: start validator
+      - run: surfpool start --ci --offline &
+        name: start surfpool
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
       - run: cd tests/bpf-upgradeable-state
       - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint --ignore-keys
@@ -346,6 +353,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -412,12 +420,14 @@ jobs:
             path: tests/cashiers-check
           - cmd: cd tests/declare-id && anchor test --skip-lint && npx tsc --noEmit
             path: tests/declare-id
-          - cmd: cd tests/declare-program && anchor test --skip-lint
+          - cmd: cd tests/declare-program && anchor test --skip-lint && cargo test
             path: tests/declare-program
           - cmd: cd tests/custom-program && anchor test --skip-lint
             path: tests/custom-program
           - cmd: cd tests/typescript && anchor test --skip-lint && npx tsc --noEmit
             path: tests/typescript
+          - cmd: cd tests/duplicate-mutable-accounts && anchor test --skip-lint
+            path: tests/duplicate-mutable-accounts
           # zero-copy tests cause `/usr/bin/ld: final link failed: No space left on device`
           # on GitHub runners. It is likely caused by `cargo test-sbf` since all other tests
           # don't have this problem.
@@ -473,6 +483,7 @@ jobs:
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
+      - uses: ./.github/actions/setup-surfpool/
 
       - uses: actions/cache@v3
         if: ${{ env.CACHE != 'false' }}
@@ -494,7 +505,7 @@ jobs:
         id: cache-test-target
         with:
           path: ${{ matrix.node.path }}/target
-          key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
       - run: ${{ matrix.node.cmd }}
         name: ${{ matrix.node.path }} program test

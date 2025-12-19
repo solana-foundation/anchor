@@ -3,13 +3,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.localnet]
-errors = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+duplicate_mutable_accounts = "4D6rvpR7TSPwmFottLGa5gpzMcJ76kN8bimQHV9rogjH"
 
 [scripts]
 test = "yarn run ts-mocha -t 1000000 tests/*.ts"
-
-[features]
-seeds = false
-
-[surfpool]
-block_production_mode = "clock"

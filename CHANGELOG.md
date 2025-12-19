@@ -13,12 +13,19 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
+- lang: lang: Add instruction parser to `declare_program!` ([#4118](https://github.com/solana-foundation/anchor/pull/4118)).
 
 ### Fixes
 
+- lang: Fix wrong generated error code in declare_program! ([#4129](https://github.com/solana-foundation/anchor/pull/4129)).
 - idl: Fix defined types with unsupported fields not producing an error ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
+- lang: Fix using non-instruction composite accounts multiple times with `declare_program!` ([#4113](https://github.com/solana-foundation/anchor/pull/4113)).
+- lang: Fix `declare_program!` messing up IDL errors generation ([#4126](https://github.com/solana-foundation/anchor/pull/4126)).
 
 ### Breaking
+
+- lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
+- cli: Remove program id arguments of `idl init` and `idl upgrade` commands ([#4130](https://github.com/solana-foundation/anchor/pull/4130)).
 
 ## [0.32.1] - 2025-10-09
 
