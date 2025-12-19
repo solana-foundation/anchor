@@ -258,6 +258,61 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "update_non_instruction_composite2",
+      "discriminator": [
+        218,
+        106,
+        203,
+        167,
+        112,
+        177,
+        145,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "non_instruction_update",
+          "accounts": [
+            {
+              "name": "program",
+              "address": "Externa111111111111111111111111111111111111"
+            }
+          ]
+        },
+        {
+          "name": "non_instruction_update_with_different_ident",
+          "accounts": [
+            {
+              "name": "authority",
+              "signer": true
+            },
+            {
+              "name": "my_account",
+              "writable": true,
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "account",
+                    "path": "authority"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "program",
+              "address": "Externa111111111111111111111111111111111111"
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -288,6 +343,16 @@
         90,
         148
       ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MyNormalError"
+    },
+    {
+      "code": 6500,
+      "name": "MyErrorWithSpecialOffset"
     }
   ],
   "types": [

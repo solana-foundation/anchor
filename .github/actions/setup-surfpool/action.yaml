@@ -1,0 +1,29 @@
+name: "Setup Surfpool"
+description: "Installs and caches the Surfpool CLI"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v3
+      name: Cache Surfpool Binary
+      id: cache-surfpool
+      with:
+        path: /usr/local/bin/surfpool
+        key: surfpool-${{ runner.os }}-v${{ env.SURFPOOL_CLI_VERSION }}
+
+    - uses: nick-fields/retry@v2
+      if: steps.cache-surfpool.outputs.cache-hit != 'true'
+      with:
+        retry_wait_seconds: 300
+        timeout_minutes: 2
+        max_attempts: 10
+        retry_on: error
+        shell: bash
+        command: |
+          echo "Installing Surfpool version ${{ env.SURFPOOL_CLI_VERSION }}"
+          curl -sL https://run.surfpool.run/ | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$PATH"
+          ls -al $HOME/.local/bin
+
+    
+

@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   no-caching-tests:
@@ -13,7 +13,8 @@ jobs:
     uses: ./.github/workflows/reusable-tests.yaml
     with:
       cache: false
-      solana_cli_version: 2.3.0
+      solana_version: 3.0.0
       node_version: 20.18.0
       cargo_profile: release
       anchor_binary_name: anchor-binary-no-caching
+      surfpool_cli_version: 0.11.2
