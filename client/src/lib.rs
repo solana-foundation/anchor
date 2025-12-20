@@ -566,7 +566,7 @@ pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<'info, 'a, 'b, 'c, 'd, C: Deref<Target = impl Signer> + Clone, S: AsSigner>
+impl<'a, 'b, 'c, 'd, C: Deref<Target = impl Signer> + Clone, S: AsSigner>
     RequestBuilder<'a, 'b, 'c, 'd, C, S>
 {
     #[must_use]

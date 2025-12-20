@@ -221,9 +221,7 @@ where
     }
 }
 
-impl<T: ToAccountInfos + ToAccountMetas<'static>> ToAccountInfos
-    for CpiContext<'_, '_, T>
-{
+impl<T: ToAccountInfos + ToAccountMetas<'static>> ToAccountInfos for CpiContext<'_, '_, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
