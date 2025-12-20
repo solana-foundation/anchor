@@ -10,7 +10,7 @@ use pinocchio_token_2022::ID;
     since = "0.28.0",
     note = "please use `transfer_checked` or `transfer_checked_with_fee` instead"
 )]
-pub fn transfer(ctx: CpiContext<'_, '_, 'static, Transfer>, amount: u64) -> Result<()> {
+pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, amount: u64) -> Result<()> {
     #[allow(deprecated)]
     let ix = pinocchio_token_2022::instructions::Transfer {
         from: &ctx.accounts.from,
@@ -23,7 +23,7 @@ pub fn transfer(ctx: CpiContext<'_, '_, 'static, Transfer>, amount: u64) -> Resu
 }
 
 pub fn transfer_checked(
-    ctx: CpiContext<'_, '_, 'static, TransferChecked>,
+    ctx: CpiContext<'_, '_, TransferChecked>,
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
@@ -39,7 +39,7 @@ pub fn transfer_checked(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn mint_to(ctx: CpiContext<'_, '_, 'static, MintTo>, amount: u64) -> Result<()> {
+pub fn mint_to(ctx: CpiContext<'_, '_, MintTo>, amount: u64) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::MintTo {
         mint: &ctx.accounts.mint,
         amount,
@@ -51,7 +51,7 @@ pub fn mint_to(ctx: CpiContext<'_, '_, 'static, MintTo>, amount: u64) -> Result<
 }
 
 pub fn mint_to_checked(
-    ctx: CpiContext<'_, '_, 'static, MintToChecked>,
+    ctx: CpiContext<'_, '_, MintToChecked>,
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
@@ -66,7 +66,7 @@ pub fn mint_to_checked(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn burn(ctx: CpiContext<'_, '_, 'static, Burn>, amount: u64) -> Result<()> {
+pub fn burn(ctx: CpiContext<'_, '_, Burn>, amount: u64) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::Burn {
         mint: &ctx.accounts.mint,
         account: &ctx.accounts.from,
@@ -77,11 +77,7 @@ pub fn burn(ctx: CpiContext<'_, '_, 'static, Burn>, amount: u64) -> Result<()> {
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn burn_checked(
-    ctx: CpiContext<'_, '_, 'static, BurnChecked>,
-    amount: u64,
-    decimals: u8,
-) -> Result<()> {
+pub fn burn_checked(ctx: CpiContext<'_, '_, BurnChecked>, amount: u64, decimals: u8) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::BurnChecked {
         mint: &ctx.accounts.mint,
         account: &ctx.accounts.from,
@@ -93,7 +89,7 @@ pub fn burn_checked(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn approve(ctx: CpiContext<'_, '_, 'static, Approve>, amount: u64) -> Result<()> {
+pub fn approve(ctx: CpiContext<'_, '_, Approve>, amount: u64) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::Approve {
         source: &ctx.accounts.to,
         delegate: &ctx.accounts.delegate,
@@ -105,7 +101,7 @@ pub fn approve(ctx: CpiContext<'_, '_, 'static, Approve>, amount: u64) -> Result
 }
 
 pub fn approve_checked(
-    ctx: CpiContext<'_, '_, 'static, ApproveChecked>,
+    ctx: CpiContext<'_, '_, ApproveChecked>,
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
@@ -121,7 +117,7 @@ pub fn approve_checked(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn revoke(ctx: CpiContext<'_, '_, 'static, Revoke>) -> Result<()> {
+pub fn revoke(ctx: CpiContext<'_, '_, Revoke>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::Revoke {
         source: &ctx.accounts.source,
         authority: &ctx.accounts.authority,
@@ -130,7 +126,7 @@ pub fn revoke(ctx: CpiContext<'_, '_, 'static, Revoke>) -> Result<()> {
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn initialize_account(ctx: CpiContext<'_, '_, 'static, InitializeAccount>) -> Result<()> {
+pub fn initialize_account(ctx: CpiContext<'_, '_, InitializeAccount>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -141,7 +137,7 @@ pub fn initialize_account(ctx: CpiContext<'_, '_, 'static, InitializeAccount>) -
     ix.invoke().map_err(Into::into)
 }
 
-pub fn initialize_account3(ctx: CpiContext<'_, '_, 'static, InitializeAccount3>) -> Result<()> {
+pub fn initialize_account3(ctx: CpiContext<'_, '_, InitializeAccount3>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeAccount3 {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -151,7 +147,7 @@ pub fn initialize_account3(ctx: CpiContext<'_, '_, 'static, InitializeAccount3>)
     ix.invoke().map_err(Into::into)
 }
 
-pub fn close_account(ctx: CpiContext<'_, '_, 'static, CloseAccount>) -> Result<()> {
+pub fn close_account(ctx: CpiContext<'_, '_, CloseAccount>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::CloseAccount {
         account: &ctx.accounts.account,
         destination: &ctx.accounts.destination,
@@ -161,7 +157,7 @@ pub fn close_account(ctx: CpiContext<'_, '_, 'static, CloseAccount>) -> Result<(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn freeze_account(ctx: CpiContext<'_, '_, 'static, FreezeAccount>) -> Result<()> {
+pub fn freeze_account(ctx: CpiContext<'_, '_, FreezeAccount>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::FreezeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -171,7 +167,7 @@ pub fn freeze_account(ctx: CpiContext<'_, '_, 'static, FreezeAccount>) -> Result
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn thaw_account(ctx: CpiContext<'_, '_, 'static, ThawAccount>) -> Result<()> {
+pub fn thaw_account(ctx: CpiContext<'_, '_, ThawAccount>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::ThawAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -182,7 +178,7 @@ pub fn thaw_account(ctx: CpiContext<'_, '_, 'static, ThawAccount>) -> Result<()>
 }
 
 pub fn initialize_mint(
-    ctx: CpiContext<'_, '_, 'static, InitializeMint>,
+    ctx: CpiContext<'_, '_, InitializeMint>,
     decimals: u8,
     authority: &Pubkey,
     freeze_authority: Option<&Pubkey>,
@@ -199,7 +195,7 @@ pub fn initialize_mint(
 }
 
 pub fn initialize_mint2(
-    ctx: CpiContext<'_, '_, 'static, InitializeMint2>,
+    ctx: CpiContext<'_, '_, InitializeMint2>,
     decimals: u8,
     authority: &Pubkey,
     freeze_authority: Option<&Pubkey>,
@@ -215,7 +211,7 @@ pub fn initialize_mint2(
 }
 
 pub fn set_authority(
-    ctx: CpiContext<'_, '_, 'static, SetAuthority>,
+    ctx: CpiContext<'_, '_, SetAuthority>,
     authority_type: pinocchio_token_2022::instructions::AuthorityType,
     new_authority: Option<&Pubkey>,
 ) -> Result<()> {
@@ -229,7 +225,7 @@ pub fn set_authority(
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn sync_native(ctx: CpiContext<'_, '_, 'static, SyncNative>) -> Result<()> {
+pub fn sync_native(ctx: CpiContext<'_, '_, SyncNative>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::SyncNative {
         native_token: &ctx.accounts.account,
         token_program: &ctx.program_id,

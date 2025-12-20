@@ -7,7 +7,7 @@ use anchor_lang::{Key, Result};
 
 pub use ::pinocchio_associated_token_account as spl_associated_token_account;
 
-pub fn create(ctx: CpiContext<'_, '_, 'static, Create>) -> Result<()> {
+pub fn create(ctx: CpiContext<'_, '_, Create>) -> Result<()> {
     let ix = spl_associated_token_account::instructions::Create {
         funding_account: &ctx.accounts.payer,
         account: &ctx.accounts.associated_token,
@@ -19,7 +19,7 @@ pub fn create(ctx: CpiContext<'_, '_, 'static, Create>) -> Result<()> {
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn create_idempotent(ctx: CpiContext<'_, '_, 'static, CreateIdempotent>) -> Result<()> {
+pub fn create_idempotent(ctx: CpiContext<'_, '_, CreateIdempotent>) -> Result<()> {
     let ix = spl_associated_token_account::instructions::CreateIdempotent {
         funding_account: &ctx.accounts.payer,
         account: &ctx.accounts.associated_token,
