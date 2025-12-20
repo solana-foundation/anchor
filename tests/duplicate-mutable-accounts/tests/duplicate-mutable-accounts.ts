@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program, AnchorError } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program, AnchorError } from "@anchor-lang/core";
 import { DuplicateMutableAccounts } from "../target/types/duplicate_mutable_accounts";
 import { assert } from "chai";
 
