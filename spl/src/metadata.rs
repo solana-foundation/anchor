@@ -55,9 +55,7 @@ pub fn bubblegum_set_collection_size(
     .map_err(Into::into)
 }
 
-pub fn burn_edition_nft(
-    ctx: CpiContext<'_, '_, BurnEditionNft>,
-) -> Result<()> {
+pub fn burn_edition_nft(ctx: CpiContext<'_, '_, BurnEditionNft>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BurnEditionNft {
         edition_marker_account: *ctx.accounts.edition_marker.key,
         master_edition_account: *ctx.accounts.master_edition.key,
@@ -370,9 +368,7 @@ pub fn set_and_verify_sized_collection_item(
     .map_err(Into::into)
 }
 
-pub fn freeze_delegated_account(
-    ctx: CpiContext<'_, '_, FreezeDelegatedAccount>,
-) -> Result<()> {
+pub fn freeze_delegated_account(ctx: CpiContext<'_, '_, FreezeDelegatedAccount>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::FreezeDelegatedAccount {
         delegate: *ctx.accounts.delegate.key,
         edition: *ctx.accounts.edition.key,
@@ -389,9 +385,7 @@ pub fn freeze_delegated_account(
     .map_err(Into::into)
 }
 
-pub fn thaw_delegated_account(
-    ctx: CpiContext<'_, '_, ThawDelegatedAccount>,
-) -> Result<()> {
+pub fn thaw_delegated_account(ctx: CpiContext<'_, '_, ThawDelegatedAccount>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::ThawDelegatedAccount {
         delegate: *ctx.accounts.delegate.key,
         edition: *ctx.accounts.edition.key,
