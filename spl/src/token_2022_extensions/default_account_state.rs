@@ -2,12 +2,12 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 use pinocchio_token_2022::state::AccountState;
 
 pub fn default_account_state_initialize(
-    ctx: CpiContext<'_, '_, 'static, DefaultAccountStateInitialize>,
+    ctx: CpiContext<'_, '_, DefaultAccountStateInitialize>,
     state: &AccountState,
 ) -> Result<()> {
     let ix = todo!();
@@ -21,7 +21,7 @@ pub struct DefaultAccountStateInitialize {
 }
 
 pub fn default_account_state_update(
-    ctx: CpiContext<'_, '_, 'static, DefaultAccountStateUpdate>,
+    ctx: CpiContext<'_, '_, DefaultAccountStateUpdate>,
     state: &AccountState,
 ) -> Result<()> {
     let ix = todo!();

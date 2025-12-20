@@ -2,11 +2,11 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn transfer_fee_initialize(
-    ctx: CpiContext<'_, '_, 'static, TransferFeeInitialize>,
+    ctx: CpiContext<'_, '_, TransferFeeInitialize>,
     transfer_fee_config_authority: Option<&Pubkey>,
     withdraw_withheld_authority: Option<&Pubkey>,
     transfer_fee_basis_points: u16,
@@ -23,7 +23,7 @@ pub struct TransferFeeInitialize {
 }
 
 pub fn transfer_fee_set(
-    ctx: CpiContext<'_, '_, 'static, TransferFeeSetTransferFee>,
+    ctx: CpiContext<'_, '_, TransferFeeSetTransferFee>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
@@ -39,7 +39,7 @@ pub struct TransferFeeSetTransferFee {
 }
 
 pub fn transfer_checked_with_fee(
-    ctx: CpiContext<'_, '_, 'static, TransferCheckedWithFee>,
+    ctx: CpiContext<'_, '_, TransferCheckedWithFee>,
     amount: u64,
     decimals: u8,
     fee: u64,
@@ -58,7 +58,7 @@ pub struct TransferCheckedWithFee {
 }
 
 pub fn harvest_withheld_tokens_to_mint(
-    ctx: CpiContext<'_, '_, 'static, HarvestWithheldTokensToMint>,
+    ctx: CpiContext<'_, '_, HarvestWithheldTokensToMint>,
     sources: Vec<AccountInfo>,
 ) -> Result<()> {
     let ix = todo!();
@@ -72,7 +72,7 @@ pub struct HarvestWithheldTokensToMint {
 }
 
 pub fn withdraw_withheld_tokens_from_mint(
-    ctx: CpiContext<'_, '_, 'static, WithdrawWithheldTokensFromMint>,
+    ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromMint>,
 ) -> Result<()> {
     let ix = todo!();
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
@@ -87,7 +87,7 @@ pub struct WithdrawWithheldTokensFromMint {
 }
 
 pub fn withdraw_withheld_tokens_from_accounts(
-    ctx: CpiContext<'_, '_, 'static, WithdrawWithheldTokensFromAccounts>,
+    ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromAccounts>,
     sources: Vec<AccountInfo>,
 ) -> Result<()> {
     let ix = todo!();

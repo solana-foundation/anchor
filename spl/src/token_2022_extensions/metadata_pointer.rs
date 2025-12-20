@@ -2,11 +2,11 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn metadata_pointer_initialize(
-    ctx: CpiContext<'_, '_, 'static, MetadataPointerInitialize>,
+    ctx: CpiContext<'_, '_, MetadataPointerInitialize>,
     authority: Option<Pubkey>,
     metadata_address: Option<Pubkey>,
 ) -> Result<()> {

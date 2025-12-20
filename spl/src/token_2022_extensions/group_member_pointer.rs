@@ -2,11 +2,11 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn group_member_pointer_initialize(
-    ctx: CpiContext<'_, '_, 'static, GroupMemberPointerInitialize>,
+    ctx: CpiContext<'_, '_, GroupMemberPointerInitialize>,
     authority: Option<Pubkey>,
     member_address: Option<Pubkey>,
 ) -> Result<()> {
@@ -21,7 +21,7 @@ pub struct GroupMemberPointerInitialize {
 }
 
 pub fn group_member_pointer_update(
-    ctx: CpiContext<'_, '_, 'static, GroupMemberPointerUpdate>,
+    ctx: CpiContext<'_, '_, GroupMemberPointerUpdate>,
     member_address: Option<Pubkey>,
 ) -> Result<()> {
     let ix = todo!();
