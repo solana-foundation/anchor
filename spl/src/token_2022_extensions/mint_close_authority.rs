@@ -2,8 +2,8 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
+use anchor_lang::{Key, Result};
 
 pub fn mint_close_authority_initialize(
     ctx: CpiContext<'_, '_, MintCloseAuthorityInitialize>,

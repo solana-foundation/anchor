@@ -63,9 +63,7 @@ pub fn withdraw(
         .map_err(Into::into)
 }
 
-pub fn deactivate_stake(
-    ctx: CpiContext<'_, '_, DeactivateStake>,
-) -> Result<()> {
+pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> {
     let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
