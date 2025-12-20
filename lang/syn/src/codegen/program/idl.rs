@@ -35,92 +35,92 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
 
         // Accounts for the Create instruction.
         #[derive(Accounts)]
-        pub struct IdlCreateAccounts<'info> {
+        pub struct IdlCreateAccounts {
             // Payer of the transaction.
             #[account(signer)]
-            pub from: AccountInfo<'info>,
+            pub from: AccountInfo,
             // The deterministically defined "state" account being created via
             // `create_account_with_seed`.
             #[account(mut)]
-            pub to: AccountInfo<'info>,
+            pub to: AccountInfo,
             // The program-derived-address signing off on the account creation.
             // Seeds = &[] + bump seed.
             #[account(seeds = [], bump)]
-            pub base: AccountInfo<'info>,
+            pub base: AccountInfo,
             // The system program.
-            pub system_program: Program<'info, System>,
+            pub system_program: Program<System>,
             // The program whose state is being constructed.
             #[account(executable)]
-            pub program: AccountInfo<'info>,
+            pub program: AccountInfo,
         }
 
         // Accounts for Idl instructions.
         #[derive(Accounts)]
-        pub struct IdlAccounts<'info> {
+        pub struct IdlAccounts {
             #[account(mut, has_one = authority)]
-            pub idl: Account<'info, IdlAccount>,
+            pub idl: Account<IdlAccount>,
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
-            pub authority: Signer<'info>,
+            pub authority: Signer,
         }
 
         // Accounts for resize account instruction
         #[derive(Accounts)]
-        pub struct IdlResizeAccount<'info> {
+        pub struct IdlResizeAccount {
             #[account(mut, has_one = authority)]
-            pub idl: Account<'info, IdlAccount>,
+            pub idl: Account<IdlAccount>,
             #[account(mut, constraint = authority.key != &ERASED_AUTHORITY)]
-            pub authority: Signer<'info>,
-            pub system_program: Program<'info, System>,
+            pub authority: Signer,
+            pub system_program: Program<System>,
         }
 
         // Accounts for creating an idl buffer.
         #[derive(Accounts)]
-        pub struct IdlCreateBuffer<'info> {
+        pub struct IdlCreateBuffer {
             #[account(zero)]
-            pub buffer: Account<'info, IdlAccount>,
+            pub buffer: Account<IdlAccount>,
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
-            pub authority: Signer<'info>,
+            pub authority: Signer,
         }
 
         // Accounts for upgrading the canonical IdlAccount with the buffer.
         #[derive(Accounts)]
-        pub struct IdlSetBuffer<'info> {
+        pub struct IdlSetBuffer {
             // The buffer with the new idl data.
             #[account(mut, constraint = buffer.authority == idl.authority)]
-            pub buffer: Account<'info, IdlAccount>,
+            pub buffer: Account<IdlAccount>,
             // The idl account to be updated with the buffer's data.
             #[account(mut, has_one = authority)]
-            pub idl: Account<'info, IdlAccount>,
+            pub idl: Account<IdlAccount>,
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
-            pub authority: Signer<'info>,
+            pub authority: Signer,
         }
 
         // Accounts for closing the canonical Idl buffer.
         #[derive(Accounts)]
-        pub struct IdlCloseAccount<'info> {
+        pub struct IdlCloseAccount {
             #[account(mut, has_one = authority, close = sol_destination)]
-            pub account: Account<'info, IdlAccount>,
+            pub account: Account<IdlAccount>,
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
-            pub authority: Signer<'info>,
+            pub authority: Signer,
             #[account(mut)]
-            pub sol_destination: AccountInfo<'info>,
+            pub sol_destination: AccountInfo,
         }
 
 
         use std::cell::{Ref, RefMut};
 
-        pub trait IdlTrailingData<'info> {
-            fn trailing_data(self) -> Ref<'info, [u8]>;
-            fn trailing_data_mut(self) -> RefMut<'info, [u8]>;
+        pub trait IdlTrailingData {
+            fn trailing_data(self) -> Ref<[u8]>;
+            fn trailing_data_mut(self) -> RefMut<[u8]>;
         }
 
-        impl<'a, 'info: 'a> IdlTrailingData<'a> for &'a Account<'info, IdlAccount> {
-            fn trailing_data(self) -> Ref<'a, [u8]> {
-                let info: &AccountInfo<'info> = self.as_ref();
+        impl IdlTrailingData for Account<IdlAccount> {
+            fn trailing_data(self) -> Ref<[u8]> {
+                let info: &AccountInfo = self.as_ref();
                 Ref::map(info.try_borrow_data().unwrap(), |d| &d[44..])
             }
-            fn trailing_data_mut(self) -> RefMut<'a, [u8]> {
-                let info: &AccountInfo<'info> = self.as_ref();
+            fn trailing_data_mut(self) -> RefMut<[u8]> {
+                let info: &AccountInfo = self;
                 RefMut::map(info.try_borrow_mut_data().unwrap(), |d| &mut d[44..])
             }
         }

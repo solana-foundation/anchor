@@ -2,11 +2,11 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn interest_bearing_mint_initialize(
-    ctx: CpiContext<'_, '_, 'static, InterestBearingMintInitialize>,
+    ctx: CpiContext<'_, '_, InterestBearingMintInitialize>,
     rate_authority: Option<Pubkey>,
     rate: i16,
 ) -> Result<()> {
@@ -21,7 +21,7 @@ pub struct InterestBearingMintInitialize {
 }
 
 pub fn interest_bearing_mint_update_rate(
-    ctx: CpiContext<'_, '_, 'static, InterestBearingMintUpdateRate>,
+    ctx: CpiContext<'_, '_, InterestBearingMintUpdateRate>,
     rate: i16,
 ) -> Result<()> {
     let ix = todo!();
