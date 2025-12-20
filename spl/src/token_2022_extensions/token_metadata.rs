@@ -2,14 +2,14 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
 use spl_token_metadata_interface::state::Field;
 
 pub fn token_metadata_initialize(
-    ctx: CpiContext<'_, '_, 'static, TokenMetadataInitialize>,
+    ctx: CpiContext<'_, '_, TokenMetadataInitialize>,
     name: String,
     symbol: String,
     uri: String,
@@ -28,7 +28,7 @@ pub struct TokenMetadataInitialize {
 }
 
 pub fn token_metadata_update_authority(
-    ctx: CpiContext<'_, '_, 'static, TokenMetadataUpdateAuthority>,
+    ctx: CpiContext<'_, '_, TokenMetadataUpdateAuthority>,
     new_authority: OptionalNonZeroPubkey,
 ) -> Result<()> {
     let ix = todo!();
@@ -44,7 +44,7 @@ pub struct TokenMetadataUpdateAuthority {
 }
 
 pub fn token_metadata_update_field(
-    ctx: CpiContext<'_, '_, 'static, TokenMetadataUpdateField>,
+    ctx: CpiContext<'_, '_, TokenMetadataUpdateField>,
     field: Field,
     value: String,
 ) -> Result<()> {

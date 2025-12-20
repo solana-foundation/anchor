@@ -2,11 +2,11 @@
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::Result;
+use anchor_lang::{Result, Key};
 use anchor_lang::{context::CpiContext, Accounts};
 
 pub fn token_group_initialize(
-    ctx: CpiContext<'_, '_, 'static, TokenGroupInitialize>,
+    ctx: CpiContext<'_, '_, TokenGroupInitialize>,
     update_authority: Option<Pubkey>,
     max_size: u64,
 ) -> Result<()> {
@@ -22,9 +22,7 @@ pub struct TokenGroupInitialize {
     pub mint_authority: AccountInfo,
 }
 
-pub fn token_member_initialize(
-    ctx: CpiContext<'_, '_, 'static, TokenMemberInitialize>,
-) -> Result<()> {
+pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -> Result<()> {
     let ix = todo!();
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

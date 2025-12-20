@@ -40,29 +40,19 @@ pub fn add_event_cpi_accounts(
 
     let fields = fields.into_iter().collect::<Vec<_>>();
 
-    let info_lifetime = generics
-        .lifetimes()
-        .next()
-        .map(|lifetime| quote! {#lifetime})
-        .unwrap_or(quote! {'info});
-    let generics = generics
-        .lt_token
-        .map(|_| quote! {#generics})
-        .unwrap_or(quote! {<'info>});
-
     let authority = EventAuthority::get();
     let authority_name = authority.name_token_stream();
 
     let accounts_struct = quote! {
         #(#attrs)*
-        #vis #struct_token #ident #generics {
+        #vis #struct_token #ident {
             #(#fields,)*
 
             /// CHECK: Only the event authority can invoke self-CPI
             #[account(address = crate::EVENT_AUTHORITY_AND_BUMP.0)]
-            pub #authority_name: AccountInfo<#info_lifetime>,
+            pub #authority_name: AccountInfo,
             /// CHECK: Self-CPI will fail if the program is not the current program
-            pub program: AccountInfo<#info_lifetime>,
+            pub program: AccountInfo,
         }
     };
     syn::parse2(accounts_struct)
