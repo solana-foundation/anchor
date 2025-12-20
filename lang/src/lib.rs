@@ -50,9 +50,9 @@ mod lazy;
 pub use crate::bpf_upgradeable_state::*;
 pub use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
 pub use crate::pinocchio_runtime::instruction::AccountMeta;
+pub use crate::pinocchio_runtime::msg;
 pub use crate::pinocchio_runtime::program_error::ProgramError;
 pub use crate::pinocchio_runtime::pubkey::Pubkey;
-pub use crate::pinocchio_runtime::msg;
 
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
@@ -526,12 +526,12 @@ pub mod prelude {
         accounts::signer::Signer, accounts::system_account::SystemAccount,
         accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
         context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
+        event, instruction, msg, pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
         program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
         require_keys_neq, require_neq, source, system_program::System, zero_copy,
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
         AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
-        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas, msg
+        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     // V2: Using pinocchio_runtime types
     pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountInfo};
