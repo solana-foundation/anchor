@@ -6,7 +6,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
-        anchor_lang::pinocchio_runtime::entrypoint::entrypoint!(entry);
+        anchor_lang::pinocchio_runtime::entrypoint!(entry);
         /// The Anchor codegen exposes a programming model where a user defines
         /// a set of methods inside of a `#[program]` module in a way similar
         /// to writing RPC request handlers. The macro then generates a bunch of
@@ -44,9 +44,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// Note: Pinocchio's entrypoint provides accounts in a zero-copy format using raw pointers,
         /// while Solana's AccountInfo uses RefCell for interior mutability. The conversion needs
         /// to preserve is_signer, is_writable, and other account metadata.
-        pub fn entry<'info>(
-            program_id: &anchor_lang::pinocchio_runtime::pubkey::PinocchioPubkey,
-            accounts: &'info [AccountInfo],
+        pub fn entry(
+            program_id: &Pubkey,
+            accounts: &[AccountInfo],
             data: &[u8]
         ) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
             // Convert Pinocchio's Pubkey ([u8; 32]) to Solana's Pubkey
@@ -60,7 +60,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             })
         }
 
-        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
+        fn try_entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
