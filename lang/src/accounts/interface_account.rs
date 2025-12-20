@@ -234,28 +234,19 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> InterfaceAccount<'a, T> {
-    /// Deserializes the given `info` into a `InterfaceAccount`.
-    ///
-    /// This **does not** check an Anchor discriminator. It first validates
-    /// program ownership via `T::check_owner`, then deserializes using
-    /// `AccountDeserialize::try_deserialize_unchecked`.
+    /// Deserializes the given `info` into an `InterfaceAccount`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
-        // accounts) that do not have Anchor discriminators. Because of that, we
-        // intentionally skip the Anchor discriminator check here and instead:
-        //
-        // 1) Validate program ownership via `T::check_owner(info.owner)?`
-        // 2) Deserialize without a discriminator by delegating to
-        //    `T::try_deserialize_unchecked`
-        Self::try_from_unchecked(info)
+        if info.owner == &system_program::ID && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        T::check_owner(info.owner)?;
+        let mut data: &[u8] = &info.try_borrow_data()?;
+        Ok(Self::new(info, T::try_deserialize(&mut data)?))
     }
 
-    /// Deserializes the given `info` into a `InterfaceAccount` **without** checking
-    /// the account discriminator. This is intended for foreign program accounts.
-    /// Prefer `Self::try_from` when you also want the ownership check, but note
-    /// that both skip Anchor discriminator checks, and `try_from` additionally
-    /// enforces ownership.
+    /// Deserializes the given `info` into an `InterfaceAccount` without checking the account
+    /// discriminator. Be careful when using this and avoid it if possible.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
