@@ -61,7 +61,7 @@ impl<T: SolanaSysvar> AsRef<AccountInfo> for Sysvar<T> {
     }
 }
 
-impl<T: SolanaSysvar> Deref for Sysvar< T> {
+impl<T: SolanaSysvar> Deref for Sysvar<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
