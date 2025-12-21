@@ -175,7 +175,7 @@ fn get_address(acc: &Field) -> TokenStream {
                         .ident
                         .to_string()
                         .chars()
-                        .all(|c| c.is_uppercase() || c == '_'),
+                        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'),
                     // Allow `const fn`s (assume any stand-alone function call without an argument)
                     // e.g. `crate::id()`
                     syn::Expr::Call(expr) => expr.args.is_empty(),
