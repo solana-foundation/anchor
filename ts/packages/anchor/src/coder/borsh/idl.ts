@@ -87,10 +87,24 @@ export class IdlCoder {
           );
         }
         if ("vec" in field.type) {
-          return borsh.vec(
-            IdlCoder.fieldLayout({ type: field.type.vec }, types, genericArgs),
-            fieldName
-          );
+          // Handle both formats:
+          // 1. Simple: "vec": "u64" (backward compatible, defaults to u32)
+          // 2. Object: "vec": { "type": "u64", "length": "u8" }
+          const vecValue = field.type.vec;
+          if (typeof vecValue === "string" || !("type" in vecValue)) {
+            const innerType = typeof vecValue === "string" ? vecValue : (vecValue as any);
+            return borsh.vec(
+              IdlCoder.fieldLayout({ type: innerType }, types, genericArgs),
+              fieldName
+            );
+          } else {
+            const length = vecValue.length || "u32";
+            return borsh.vecWithLength(
+              IdlCoder.fieldLayout({ type: vecValue.type }, types, genericArgs),
+              length,
+              fieldName
+            );
+          }
         }
         if ("array" in field.type) {
           let [type, len] = field.type.array;
@@ -427,8 +441,12 @@ export class IdlCoder {
       }
 
       if ("vec" in type) {
+        const vecValue = type.vec;
+        const innerType = typeof vecValue === "string" || !("type" in vecValue) 
+          ? (typeof vecValue === "string" ? vecValue : vecValue as any)
+          : vecValue.type;
         const args = IdlCoder.resolveGenericArgs({
-          type: type.vec,
+          type: innerType,
           typeDef,
           genericArgs,
           isDefined,
