@@ -313,7 +313,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     async fn on_internal<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        mut f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<
         (
             JoinHandle<Result<(), ClientError>>,
