@@ -6,11 +6,11 @@ WARNING: All code related to staking is unaudited. Use at your own risk.
 
 The **Registry** program provides an on-chain mechanism for a group of stakers to
 
-* Share rewards proprtionally amongst a staking pool
+* Share rewards proportionally amongst a staking pool
 * Govern on chain protocols with stake weighted voting
 * Stake and earn locked tokens
 
-The program makes little assumptions about the form of stake or rewards.
+The program makes few assumptions about the form of stake or rewards.
 In the same way you can make a new SPL token with its own mint, you can create a new stake
 pool. Although the token being staked  must be a predefined mint upon pool initialization,
 rewards on a particular pool can be arbitrary SPL tokens, or, in the case of locked rewards,
@@ -52,7 +52,7 @@ four types of token vaults making up a set of balances owned by the program on b
 Each of these vaults provide a unit of balance isolation unique to a **Member**.
 That is, although the stake program appears to provide a pooling mechanism, funds between
 **Member** accounts are not commingled. They do not share SPL token accounts, and the only
-way for funds to move is for  a **Member**'s beneficiary to authorize instructions that either exit the
+way for funds to move is for a **Member**'s beneficiary to authorize instructions that either exit the
 system or move funds between a **Member**'s own vaults.
 
 ## Depositing and Withdrawing.
@@ -108,7 +108,7 @@ in a transaction (this is how it achieves parallelism), such a transaction's siz
 well over the limit. So modifying global state atomically in a single transaction is out of the
 question.
 
-So if you can't do this on chain, one can try doing it off chain. One could write an program to
+So if you can't do this on chain, one can try doing it off chain. One could write a program to
 snapshot the pool state, and just airdrop tokens onto the pool. This works, but
 adds an additional layer of trust. Who snapshots the pool state? At what time?
 How do you know they calculated the rewards correctly? What happens if my reward was not given?
