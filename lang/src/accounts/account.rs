@@ -496,7 +496,12 @@ mod tests {
             remaining.fill(0);
         }
 
-        for (i, item) in account_data_shrunk.iter().enumerate().take(original_len).skip(written_len) {
+        for (i, item) in account_data_shrunk
+            .iter()
+            .enumerate()
+            .take(original_len)
+            .skip(written_len)
+        {
             assert_eq!(
                 *item, 0,
                 "Byte at position {} should be zero (padding fix working), but is {}",
