@@ -1,8 +1,8 @@
 # basic-5
 
-This is a robot program developed as a Rust Smart Contract(running on Solana Blockchain).
+This is a robot program developed as a Rust Smart Contract (running on Solana Blockchain).
 It simplifies actions of a robot on-chain. 
-This program acts as an example for developers who are new to Solana ecosystem to learn on how the typescript client interacts with the program on-chain. 
+This program acts as an example for developers who are new to Solana ecosystem to learn how the TypeScript client interacts with the program on-chain. 
 
 Instructions of the program:
 
