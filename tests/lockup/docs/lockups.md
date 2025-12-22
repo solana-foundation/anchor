@@ -61,9 +61,9 @@ addition to the vesting schedule, a `realizer` program determines if and when a
 beneficiary can ever seize control over locked funds. It's effectively a function
 returning a boolean: is realized or not.
 
-The uses cases for a realizer are application specific.
+The use cases for a realizer are application specific.
 For example, in the case of the staking program, when a vesting account is distributed as a reward,
-the staking program sets itself as the realizor, ensuring that the only way for the vesting account
+the staking program sets itself as the realizer, ensuring that the only way for the vesting account
 to be realized is if the beneficiary completely unstakes and incurs the unbonding timelock alongside
 any other consequences of unstaking (e.g., the inability to vote on governance proposals).
 This implies that, if one never unstakes, one never receives locked token rewards, adding
@@ -123,5 +123,5 @@ transfer funds back into the lockup program on behalf of the **Vesting** account
 
 Assuming the `authority` account is set on the **Lockup** program, one can use this Whitelist
 mechanism to do major version upgrades of the lockup program. One can whitelist the
-new **Lockup** program, and then all **Vesting** accounts would invidiually perform the migration
-by transferring their funds to the new proigram via the `WhitelistWithdraw` instruction.
+new **Lockup** program, and then all **Vesting** accounts would individually perform the migration
+by transferring their funds to the new program via the `WhitelistWithdraw` instruction.
