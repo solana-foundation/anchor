@@ -69,14 +69,15 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::solana_program::program_error::ProgramError;
-use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::pinocchio_runtime::instruction::{AccountMeta, InstructionView};
+use anchor_lang::pinocchio_runtime::program_error::ProgramError;
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
-use solana_instruction::{AccountMeta, Instruction};
+use solana_instruction::{AccountMeta as SolanaAccountMeta, Instruction};
 use solana_program::hash::Hash;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
@@ -92,6 +93,7 @@ use solana_rpc_client_api::{
 use solana_signature::Signature;
 use solana_signer::{Signer, SignerError};
 use solana_transaction::Transaction;
+use std::convert::From;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -513,14 +515,47 @@ impl AsSigner for Box<dyn Signer + '_> {
     }
 }
 
+/// Wrapper type for `InstructionView` that implements `Into<Instruction>`
+pub struct InstructionViewWrapper<'a, 'b, 'c, 'd>(pub InstructionView<'a, 'b, 'c, 'd>);
+
+impl<'a, 'b, 'c, 'd> From<InstructionView<'a, 'b, 'c, 'd>>
+    for InstructionViewWrapper<'a, 'b, 'c, 'd>
+{
+    fn from(view: InstructionView<'a, 'b, 'c, 'd>) -> Self {
+        InstructionViewWrapper(view)
+    }
+}
+
+impl<'a, 'b, 'c, 'd> Into<Instruction> for InstructionViewWrapper<'a, 'b, 'c, 'd> {
+    fn into(self) -> Instruction {
+        let InstructionViewWrapper(view) = self;
+        // InstructionAccount fields: address, is_signer, is_writable
+        let accounts: Vec<SolanaAccountMeta> = view
+            .accounts
+            .iter()
+            .map(|meta| SolanaAccountMeta {
+                pubkey: *meta.address,
+                is_signer: meta.is_signer,
+                is_writable: meta.is_writable,
+            })
+            .collect();
+
+        Instruction {
+            program_id: *view.program_id,
+            accounts,
+            data: view.data.to_vec(),
+        }
+    }
+}
+
 /// `RequestBuilder` provides a builder interface to create and send
 /// transactions to a cluster.
-pub struct RequestBuilder<'a, C, S: 'a> {
+pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta>,
+    accounts: Vec<AccountMeta<'a>>,
     options: CommitmentConfig,
-    instructions: Vec<Instruction>,
+    instructions: Vec<InstructionView<'a, 'b, 'c, 'd>>,
     payer: C,
     instruction_data: Option<Vec<u8>>,
     signers: Vec<S>,
@@ -531,7 +566,9 @@ pub struct RequestBuilder<'a, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, S> {
+impl<'a, 'b, 'c, 'd, C: Deref<Target = impl Signer> + Clone, S: AsSigner>
+    RequestBuilder<'a, 'b, 'c, 'd, C, S>
+{
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -545,7 +582,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     #[must_use]
-    pub fn instruction(mut self, ix: Instruction) -> Self {
+    pub fn instruction(mut self, ix: InstructionView<'a, 'b, 'c, 'd>) -> Self {
         self.instructions.push(ix);
         self
     }
@@ -587,9 +624,18 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///     .send()?;
     /// ```
     #[must_use]
-    pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
-        self.accounts.append(&mut metas);
+    pub fn accounts(mut self, accounts: impl for<'any> ToAccountMetas<'any>) -> Self {
+        let metas = accounts.to_account_metas(None);
+        // Since AccountMeta stores owned data (Pubkey), we can safely convert
+        // Vec<AccountMeta<'any>> to Vec<AccountMeta<'a>> by recreating the AccountMeta values
+        for meta in metas {
+            // AccountMeta is Copy/Clone and stores owned data, so we can safely convert
+            // by using unsafe transmute since the lifetime is phantom
+            unsafe {
+                let meta_with_lifetime: AccountMeta<'a> = std::mem::transmute(meta);
+                self.accounts.push(meta_with_lifetime);
+            }
+        }
         self
     }
 
@@ -605,13 +651,13 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self
     }
 
-    pub fn instructions(&self) -> Vec<Instruction> {
+    pub fn instructions(&self) -> Vec<InstructionView<'_, '_, '_, '_>> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
-            instructions.push(Instruction {
-                program_id: self.program_id,
-                data: ix_data.clone(),
-                accounts: self.accounts.clone(),
+            instructions.push(InstructionView {
+                program_id: &self.program_id,
+                data: ix_data,
+                accounts: &self.accounts,
             });
         }
 
@@ -633,8 +679,12 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 
     pub fn transaction(&self) -> Transaction {
-        let instructions = &self.instructions();
-        Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
+        let instruction_views = self.instructions();
+        let instructions: Vec<Instruction> = instruction_views
+            .into_iter()
+            .map(|view| InstructionViewWrapper::from(view).into())
+            .collect();
+        Transaction::new_with_payer(&instructions, Some(&self.payer.pubkey()))
     }
 
     async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {

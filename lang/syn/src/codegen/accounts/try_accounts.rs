@@ -24,7 +24,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     let ty = &s.raw_field.ty;
                     quote! {
                         #[cfg(feature = "anchor-debug")]
-                        ::anchor_lang::solana_program::log::sol_log(stringify!(#name));
+                        ::anchor_lang::pinocchio_runtime::log::sol_log(stringify!(#name));
                         let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
@@ -47,11 +47,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             quote! {
                                 let #name = if __accounts.is_empty() {
                                     #empty_behavior
-                                } else if __accounts[0].key == __program_id {
+                                } else if __accounts[0].key() == __program_id {
                                     *__accounts = &__accounts[1..];
                                     None
                                 } else {
-                                    let account = &__accounts[0];
+                                    let account = __accounts[0];
                                     *__accounts = &__accounts[1..];
                                     Some(account)
                                 };
@@ -61,7 +61,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                                 if __accounts.is_empty() {
                                     return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                                 }
-                                let #name = &__accounts[0];
+                                let #name = __accounts[0];
                                 *__accounts = &__accounts[1..];
                             }
                         }
@@ -79,7 +79,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         };
                         quote! {
                             #[cfg(feature = "anchor-debug")]
-                            ::anchor_lang::solana_program::log::sol_log(stringify!(#typed_name));
+                            ::anchor_lang::pinocchio_runtime::log::sol_log(stringify!(#typed_name));
                             let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                             #warning
@@ -232,11 +232,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
             fn try_accounts(
-                __program_id: &anchor_lang::solana_program::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
+                __program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
+                __accounts: &mut &[anchor_lang::pinocchio_runtime::account_info::AccountInfo],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
+                __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de
@@ -350,12 +350,12 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
                 let mut __mutable_accounts = std::collections::HashSet::new();
 
                 for __remaining_account in __accounts.iter() {
-                    if __remaining_account.is_writable {
-                        if !__mutable_accounts.insert(*__remaining_account.key) {
+                    if __remaining_account.is_writable() {
+                        if !__mutable_accounts.insert(__remaining_account.key()) {
                             return Err(anchor_lang::error::Error::from(
                                 anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
                             )
-                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
                         }
                     }
                 }
@@ -398,12 +398,12 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
 
             // This prevents duplicates from being passed via remaining_accounts
             for __remaining_account in __accounts.iter() {
-                if __remaining_account.is_writable {
-                    if !__mutable_accounts.insert(*__remaining_account.key) {
+                if __remaining_account.is_writable() {
+                    if !__mutable_accounts.insert(__remaining_account.key()) {
                         return Err(anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
                         )
-                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
+                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
                     }
                 }
             }

@@ -10,22 +10,22 @@ use solana_pubkey::Pubkey;
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[derive(Accounts)]
-pub struct CustomLifetime<'a> {
-    pub non_generic: UncheckedAccount<'a>,
+pub struct CustomLifetime {
+    pub non_generic: UncheckedAccount,
 }
 
 #[derive(Accounts)]
-pub struct GenericsTest<'info, T, U, const N: usize>
+pub struct GenericsTest<T, U, const N: usize>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
     U: BorshSerialize + BorshDeserialize + Default + Clone,
 {
-    pub non_generic: AccountInfo<'info>,
-    pub generic: Account<'info, T>,
+    pub non_generic: AccountInfo,
+    pub generic: Account<T>,
 
-    pub const_generic: AccountLoader<'info, FooAccount<N>>,
-    pub const_generic_loader: AccountLoader<'info, FooAccount<N>>,
-    pub associated: Account<'info, Associated<U>>,
+    pub const_generic: AccountLoader<FooAccount<N>>,
+    pub const_generic_loader: AccountLoader<FooAccount<N>>,
+    pub associated: Account<Associated<U>>,
 }
 
 #[account(zero_copy(unsafe))]

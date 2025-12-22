@@ -13,10 +13,10 @@ use std::ops::Deref;
 
 // CPI functions
 
-pub fn authorize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Authorize<'info>>,
+pub fn authorize(
+    ctx: CpiContext<'_, '_, Authorize>,
     stake_authorize: StakeAuthorize,
-    custodian: Option<AccountInfo<'info>>,
+    custodian: Option<AccountInfo>,
 ) -> Result<()> {
     let ix = stake::instruction::authorize(
         ctx.accounts.stake.key,
@@ -37,10 +37,10 @@ pub fn authorize<'info>(
         .map_err(Into::into)
 }
 
-pub fn withdraw<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Withdraw<'info>>,
+pub fn withdraw(
+    ctx: CpiContext<'_, '_, Withdraw>,
     amount: u64,
-    custodian: Option<AccountInfo<'info>>,
+    custodian: Option<AccountInfo>,
 ) -> Result<()> {
     let ix = stake::instruction::withdraw(
         ctx.accounts.stake.key,
@@ -63,9 +63,7 @@ pub fn withdraw<'info>(
         .map_err(Into::into)
 }
 
-pub fn deactivate_stake<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, DeactivateStake<'info>>,
-) -> Result<()> {
+pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> {
     let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
@@ -78,48 +76,48 @@ pub fn deactivate_stake<'info>(
 // CPI accounts
 
 #[derive(Accounts)]
-pub struct Authorize<'info> {
+pub struct Authorize {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountInfo,
 
     /// The existing authority
-    pub authorized: AccountInfo<'info>,
+    pub authorized: AccountInfo,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: AccountInfo<'info>,
+    pub new_authorized: AccountInfo,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct Withdraw<'info> {
+pub struct Withdraw {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountInfo,
 
     /// The stake account's withdraw authority
-    pub withdrawer: AccountInfo<'info>,
+    pub withdrawer: AccountInfo,
 
     /// Account to send withdrawn lamports to
-    pub to: AccountInfo<'info>,
+    pub to: AccountInfo,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountInfo,
 
     /// StakeHistory sysvar
-    pub stake_history: AccountInfo<'info>,
+    pub stake_history: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct DeactivateStake<'info> {
+pub struct DeactivateStake {
     /// The stake account to be deactivated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountInfo,
 
     /// The stake account's stake authority
-    pub staker: AccountInfo<'info>,
+    pub staker: AccountInfo,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountInfo,
 }
 
 // State

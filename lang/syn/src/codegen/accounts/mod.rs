@@ -1,4 +1,4 @@
-use crate::AccountsStruct;
+use crate::{AccountField, AccountsStruct, Ty};
 use quote::quote;
 use std::iter;
 use syn::punctuated::Punctuated;
@@ -49,12 +49,22 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
-    let trait_lifetime = accs
-        .generics
-        .lifetimes()
-        .next()
-        .cloned()
-        .unwrap_or_else(|| syn::parse_str("'info").expect("Could not parse lifetime"));
+    let all_account_info = accs.generics.lifetimes().next().is_none()
+        && accs.fields.iter().all(|f| match f {
+            AccountField::Field(field) => matches!(field.ty, Ty::AccountInfo),
+            AccountField::CompositeField(_) => false, // Composite fields need lifetimes
+        });
+
+    let trait_lifetime = if all_account_info {
+        // Use 'static for AccountInfo-only structs since AccountInfo is Copy
+        syn::parse_str("'static").expect("Could not parse 'static lifetime")
+    } else {
+        accs.generics
+            .lifetimes()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| syn::parse_str("'info").expect("Could not parse lifetime"))
+    };
 
     let mut where_clause = accs.generics.where_clause.clone().unwrap_or(WhereClause {
         where_token: Default::default(),
@@ -72,7 +82,7 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
     let trait_lifetime = GenericParam::Lifetime(trait_lifetime);
 
     ParsedGenerics {
-        combined_generics: if accs.generics.lifetimes().next().is_some() {
+        combined_generics: if all_account_info || accs.generics.lifetimes().next().is_some() {
             accs.generics.params.clone()
         } else {
             iter::once(trait_lifetime.clone())

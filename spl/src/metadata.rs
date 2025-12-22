@@ -8,8 +8,8 @@ use std::ops::Deref;
 pub use mpl_token_metadata;
 pub use mpl_token_metadata::ID;
 
-pub fn approve_collection_authority<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,
+pub fn approve_collection_authority(
+    ctx: CpiContext<'_, '_, ApproveCollectionAuthority>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::ApproveCollectionAuthority {
         collection_authority_record: *ctx.accounts.collection_authority_record.key,
@@ -30,8 +30,8 @@ pub fn approve_collection_authority<'info>(
     .map_err(Into::into)
 }
 
-pub fn bubblegum_set_collection_size<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BubblegumSetCollectionSize<'info>>,
+pub fn bubblegum_set_collection_size(
+    ctx: CpiContext<'_, '_, BubblegumSetCollectionSize>,
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
@@ -55,9 +55,7 @@ pub fn bubblegum_set_collection_size<'info>(
     .map_err(Into::into)
 }
 
-pub fn burn_edition_nft<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BurnEditionNft<'info>>,
-) -> Result<()> {
+pub fn burn_edition_nft(ctx: CpiContext<'_, '_, BurnEditionNft>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BurnEditionNft {
         edition_marker_account: *ctx.accounts.edition_marker.key,
         master_edition_account: *ctx.accounts.master_edition.key,
@@ -94,8 +92,8 @@ pub fn burn_edition_nft<'info>(
 /// CpiContext::new(program, BurnNft { .. })
 ///     .with_remaining_accounts(vec![ctx.accounts.collection_metadata]);
 /// ```
-pub fn burn_nft<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BurnNft<'info>>,
+pub fn burn_nft(
+    ctx: CpiContext<'_, '_, BurnNft>,
     collection_metadata: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BurnNft {
@@ -116,8 +114,8 @@ pub fn burn_nft<'info>(
     .map_err(Into::into)
 }
 
-pub fn create_metadata_accounts_v3<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
+pub fn create_metadata_accounts_v3(
+    ctx: CpiContext<'_, '_, CreateMetadataAccountsV3>,
     data: mpl_token_metadata::types::DataV2,
     is_mutable: bool,
     update_authority_is_signer: bool,
@@ -150,8 +148,8 @@ pub fn create_metadata_accounts_v3<'info>(
     .map_err(Into::into)
 }
 
-pub fn update_metadata_accounts_v2<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UpdateMetadataAccountsV2<'info>>,
+pub fn update_metadata_accounts_v2(
+    ctx: CpiContext<'_, '_, UpdateMetadataAccountsV2>,
     new_update_authority: Option<Pubkey>,
     data: Option<mpl_token_metadata::types::DataV2>,
     primary_sale_happened: Option<bool>,
@@ -177,8 +175,8 @@ pub fn update_metadata_accounts_v2<'info>(
     .map_err(Into::into)
 }
 
-pub fn create_master_edition_v3<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateMasterEditionV3<'info>>,
+pub fn create_master_edition_v3(
+    ctx: CpiContext<'_, '_, CreateMasterEditionV3>,
     max_supply: Option<u64>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::CreateMasterEditionV3 {
@@ -203,8 +201,8 @@ pub fn create_master_edition_v3<'info>(
     .map_err(Into::into)
 }
 
-pub fn mint_new_edition_from_master_edition_via_token<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MintNewEditionFromMasterEditionViaToken<'info>>,
+pub fn mint_new_edition_from_master_edition_via_token(
+    ctx: CpiContext<'_, '_, MintNewEditionFromMasterEditionViaToken>,
     edition: u64,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::MintNewEditionFromMasterEditionViaToken {
@@ -237,8 +235,8 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
     .map_err(Into::into)
 }
 
-pub fn revoke_collection_authority<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, RevokeCollectionAuthority<'info>>,
+pub fn revoke_collection_authority(
+    ctx: CpiContext<'_, '_, RevokeCollectionAuthority>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::RevokeCollectionAuthority {
         collection_authority_record: *ctx.accounts.collection_authority_record.key,
@@ -256,8 +254,8 @@ pub fn revoke_collection_authority<'info>(
     .map_err(Into::into)
 }
 
-pub fn set_collection_size<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetCollectionSize<'info>>,
+pub fn set_collection_size(
+    ctx: CpiContext<'_, '_, SetCollectionSize>,
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
@@ -280,8 +278,8 @@ pub fn set_collection_size<'info>(
     .map_err(Into::into)
 }
 
-pub fn verify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, VerifyCollection<'info>>,
+pub fn verify_collection(
+    ctx: CpiContext<'_, '_, VerifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::VerifyCollection {
@@ -302,8 +300,8 @@ pub fn verify_collection<'info>(
     .map_err(Into::into)
 }
 
-pub fn verify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, VerifySizedCollectionItem<'info>>,
+pub fn verify_sized_collection_item(
+    ctx: CpiContext<'_, '_, VerifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::VerifySizedCollectionItem {
@@ -324,8 +322,8 @@ pub fn verify_sized_collection_item<'info>(
     .map_err(Into::into)
 }
 
-pub fn set_and_verify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifyCollection<'info>>,
+pub fn set_and_verify_collection(
+    ctx: CpiContext<'_, '_, SetAndVerifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetAndVerifyCollection {
@@ -347,8 +345,8 @@ pub fn set_and_verify_collection<'info>(
     .map_err(Into::into)
 }
 
-pub fn set_and_verify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifySizedCollectionItem<'info>>,
+pub fn set_and_verify_sized_collection_item(
+    ctx: CpiContext<'_, '_, SetAndVerifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetAndVerifySizedCollectionItem {
@@ -370,9 +368,7 @@ pub fn set_and_verify_sized_collection_item<'info>(
     .map_err(Into::into)
 }
 
-pub fn freeze_delegated_account<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, FreezeDelegatedAccount<'info>>,
-) -> Result<()> {
+pub fn freeze_delegated_account(ctx: CpiContext<'_, '_, FreezeDelegatedAccount>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::FreezeDelegatedAccount {
         delegate: *ctx.accounts.delegate.key,
         edition: *ctx.accounts.edition.key,
@@ -389,9 +385,7 @@ pub fn freeze_delegated_account<'info>(
     .map_err(Into::into)
 }
 
-pub fn thaw_delegated_account<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, ThawDelegatedAccount<'info>>,
-) -> Result<()> {
+pub fn thaw_delegated_account(ctx: CpiContext<'_, '_, ThawDelegatedAccount>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::ThawDelegatedAccount {
         delegate: *ctx.accounts.delegate.key,
         edition: *ctx.accounts.edition.key,
@@ -408,8 +402,8 @@ pub fn thaw_delegated_account<'info>(
     .map_err(Into::into)
 }
 
-pub fn update_primary_sale_happened_via_token<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UpdatePrimarySaleHappenedViaToken<'info>>,
+pub fn update_primary_sale_happened_via_token(
+    ctx: CpiContext<'_, '_, UpdatePrimarySaleHappenedViaToken>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UpdatePrimarySaleHappenedViaToken {
         metadata: *ctx.accounts.metadata.key,
@@ -425,8 +419,8 @@ pub fn update_primary_sale_happened_via_token<'info>(
     Ok(())
 }
 
-pub fn set_token_standard<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetTokenStandard<'info>>,
+pub fn set_token_standard(
+    ctx: CpiContext<'_, '_, SetTokenStandard>,
     edition_account: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetTokenStandard {
@@ -444,7 +438,7 @@ pub fn set_token_standard<'info>(
     .map_err(Into::into)
 }
 
-pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'info>>) -> Result<()> {
+pub fn sign_metadata(ctx: CpiContext<'_, '_, SignMetadata>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SignMetadata {
         creator: *ctx.accounts.creator.key,
         metadata: *ctx.accounts.metadata.key,
@@ -458,8 +452,8 @@ pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'inf
     Ok(())
 }
 
-pub fn remove_creator_verification<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, RemoveCreatorVerification<'info>>,
+pub fn remove_creator_verification(
+    ctx: CpiContext<'_, '_, RemoveCreatorVerification>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::RemoveCreatorVerification {
         creator: *ctx.accounts.creator.key,
@@ -474,8 +468,8 @@ pub fn remove_creator_verification<'info>(
     Ok(())
 }
 
-pub fn utilize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Utilize<'info>>,
+pub fn utilize(
+    ctx: CpiContext<'_, '_, Utilize>,
     use_authority_record: Option<Pubkey>,
     burner: Option<Pubkey>,
     number_of_uses: u64,
@@ -502,8 +496,8 @@ pub fn utilize<'info>(
     .map_err(Into::into)
 }
 
-pub fn unverify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UnverifyCollection<'info>>,
+pub fn unverify_collection(
+    ctx: CpiContext<'_, '_, UnverifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UnverifyCollection {
@@ -523,8 +517,8 @@ pub fn unverify_collection<'info>(
     .map_err(Into::into)
 }
 
-pub fn unverify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UnverifySizedCollectionItem<'info>>,
+pub fn unverify_sized_collection_item(
+    ctx: CpiContext<'_, '_, UnverifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UnverifySizedCollectionItem {
@@ -546,93 +540,93 @@ pub fn unverify_sized_collection_item<'info>(
 }
 
 #[derive(Accounts)]
-pub struct ApproveCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub new_collection_authority: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct ApproveCollectionAuthority {
+    pub collection_authority_record: AccountInfo,
+    pub new_collection_authority: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BubblegumSetCollectionSize<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub bubblegum_signer: AccountInfo<'info>,
+pub struct BubblegumSetCollectionSize {
+    pub metadata_account: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint: AccountInfo,
+    pub bubblegum_signer: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BurnEditionNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub print_edition_mint: AccountInfo<'info>,
-    pub master_edition_mint: AccountInfo<'info>,
-    pub print_edition_token: AccountInfo<'info>,
-    pub master_edition_token: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub print_edition: AccountInfo<'info>,
-    pub edition_marker: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+pub struct BurnEditionNft {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub print_edition_mint: AccountInfo,
+    pub master_edition_mint: AccountInfo,
+    pub print_edition_token: AccountInfo,
+    pub master_edition_token: AccountInfo,
+    pub master_edition: AccountInfo,
+    pub print_edition: AccountInfo,
+    pub edition_marker: AccountInfo,
+    pub spl_token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BurnNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+pub struct BurnNft {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub mint: AccountInfo,
+    pub token: AccountInfo,
+    pub edition: AccountInfo,
+    pub spl_token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct CreateMetadataAccountsV3<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct CreateMetadataAccountsV3 {
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
+    pub mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UpdateMetadataAccountsV2<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
+pub struct UpdateMetadataAccountsV2 {
+    pub metadata: AccountInfo,
+    pub update_authority: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct CreateMasterEditionV3<'info> {
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct CreateMasterEditionV3 {
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub token_program: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct MintNewEditionFromMasterEditionViaToken<'info> {
-    pub new_metadata: AccountInfo<'info>,
-    pub new_edition: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub new_mint: AccountInfo<'info>,
-    pub edition_mark_pda: AccountInfo<'info>,
-    pub new_mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub token_account_owner: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub new_metadata_update_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct MintNewEditionFromMasterEditionViaToken {
+    pub new_metadata: AccountInfo,
+    pub new_edition: AccountInfo,
+    pub master_edition: AccountInfo,
+    pub new_mint: AccountInfo,
+    pub edition_mark_pda: AccountInfo,
+    pub new_mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub token_account_owner: AccountInfo,
+    pub token_account: AccountInfo,
+    pub new_metadata_update_authority: AccountInfo,
+    pub metadata: AccountInfo,
+    pub token_program: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
     //
     // Not actually used by the program but still needed because it's needed
     // for the pda calculation in the helper. :/
@@ -640,140 +634,140 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
     // The better thing to do would be to remove this and have the instruction
     // helper pass in the `edition_mark_pda` directly.
     //
-    pub metadata_mint: AccountInfo<'info>,
+    pub metadata_mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct RevokeCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub delegate_authority: AccountInfo<'info>,
-    pub revoke_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct RevokeCollectionAuthority {
+    pub collection_authority_record: AccountInfo,
+    pub delegate_authority: AccountInfo,
+    pub revoke_authority: AccountInfo,
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetCollectionSize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+pub struct SetCollectionSize {
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub system_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetTokenStandard<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_account: AccountInfo<'info>,
+pub struct SetTokenStandard {
+    pub metadata_account: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint_account: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct VerifyCollection<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct VerifyCollection {
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct VerifySizedCollectionItem<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct VerifySizedCollectionItem {
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetAndVerifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct SetAndVerifyCollection {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetAndVerifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct SetAndVerifySizedCollectionItem {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct FreezeDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct FreezeDelegatedAccount {
+    pub metadata: AccountInfo,
+    pub delegate: AccountInfo,
+    pub token_account: AccountInfo,
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct ThawDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct ThawDelegatedAccount {
+    pub metadata: AccountInfo,
+    pub delegate: AccountInfo,
+    pub token_account: AccountInfo,
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UpdatePrimarySaleHappenedViaToken<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
+pub struct UpdatePrimarySaleHappenedViaToken {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SignMetadata<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+pub struct SignMetadata {
+    pub creator: AccountInfo,
+    pub metadata: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct RemoveCreatorVerification<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+pub struct RemoveCreatorVerification {
+    pub creator: AccountInfo,
+    pub metadata: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct Utilize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub use_authority: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
+pub struct Utilize {
+    pub metadata: AccountInfo,
+    pub token_account: AccountInfo,
+    pub mint: AccountInfo,
+    pub use_authority: AccountInfo,
+    pub owner: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UnverifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+pub struct UnverifyCollection {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection: AccountInfo,
+    pub collection_master_edition_account: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UnverifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+pub struct UnverifySizedCollectionItem {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection: AccountInfo,
+    pub collection_master_edition_account: AccountInfo,
 }
 
 #[derive(Clone, Debug, PartialEq)]

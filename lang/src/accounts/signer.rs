@@ -1,8 +1,8 @@
 //! Type validating that the account signed the transaction
 use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 use std::ops::Deref;
@@ -35,30 +35,30 @@ use std::ops::Deref;
 ///
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
-pub struct Signer<'info> {
-    info: &'info AccountInfo<'info>,
+pub struct Signer {
+    info: AccountInfo,
 }
 
-impl<'info> Signer<'info> {
-    fn new(info: &'info AccountInfo<'info>) -> Signer<'info> {
+impl Signer {
+    fn new(info: AccountInfo) -> Signer {
         Self { info }
     }
 
     /// Deserializes the given `info` into a `Signer`.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Signer<'info>> {
-        if !info.is_signer {
+    pub fn try_from(info: AccountInfo) -> Result<Signer> {
+        if !info.is_signer() {
             return Err(ErrorCode::AccountNotSigner.into());
         }
         Ok(Signer::new(info))
     }
 }
 
-impl<'info, B> Accounts<'info, B> for Signer<'info> {
+impl<'info, B> Accounts<'info, B> for Signer {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -66,47 +66,49 @@ impl<'info, B> Accounts<'info, B> for Signer<'info> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Signer::try_from(account)
     }
 }
 
-impl<'info> AccountsExit<'info> for Signer<'info> {}
+impl<'info> AccountsExit<'info> for Signer {}
 
-impl ToAccountMetas for Signer<'_> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+impl<'info> ToAccountMetas<'info> for Signer {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
 }
 
-impl<'info> ToAccountInfos<'info> for Signer<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+impl ToAccountInfos for Signer {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![self.info]
     }
 }
 
-impl<'info> AsRef<AccountInfo<'info>> for Signer<'info> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        self.info
+impl AsRef<AccountInfo> for Signer {
+    fn as_ref(&self) -> &AccountInfo {
+        &self.info
     }
 }
 
-impl<'info> Deref for Signer<'info> {
-    type Target = AccountInfo<'info>;
+impl Deref for Signer {
+    type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
-        self.info
+        &self.info
     }
 }
 
-impl Key for Signer<'_> {
+impl Key for Signer {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.address()
     }
 }
