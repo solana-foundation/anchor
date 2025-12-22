@@ -349,6 +349,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "AccountLoader"
             | "Account"
             | "LazyAccount"
+            | "Migration"
             | "Program"
             | "Interface"
             | "InterfaceAccount"
@@ -368,6 +369,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
         "LazyAccount" => Ty::LazyAccount(parse_lazy_account_ty(&path)?),
+        "Migration" => Ty::Migration(parse_migration_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
         "Interface" => Ty::Interface(parse_interface_ty(&path)?),
         "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
@@ -463,6 +465,49 @@ fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
 fn parse_lazy_account_ty(path: &syn::Path) -> ParseResult<LazyAccountTy> {
     let account_type_path = parse_account(path)?;
     Ok(LazyAccountTy { account_type_path })
+}
+
+fn parse_migration_ty(path: &syn::Path) -> ParseResult<MigrationTy> {
+    // Migration<'info, From, To>
+    let segments = &path.segments[0];
+    match &segments.arguments {
+        syn::PathArguments::AngleBracketed(args) => {
+            // Expected: <'info, From, To> - 3 args
+            if args.args.len() != 3 {
+                return Err(ParseError::new(
+                    args.args.span(),
+                    "Migration requires three arguments: lifetime, From type, and To type",
+                ));
+            }
+            // First arg is lifetime, second is From, third is To
+            let from_type_path = match &args.args[1] {
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => ty_path.clone(),
+                _ => {
+                    return Err(ParseError::new(
+                        args.args[1].span(),
+                        "From type must be a path",
+                    ));
+                }
+            };
+            let to_type_path = match &args.args[2] {
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => ty_path.clone(),
+                _ => {
+                    return Err(ParseError::new(
+                        args.args[2].span(),
+                        "To type must be a path",
+                    ));
+                }
+            };
+            Ok(MigrationTy {
+                from_type_path,
+                to_type_path,
+            })
+        }
+        _ => Err(ParseError::new(
+            segments.span(),
+            "Migration must have angle bracketed arguments",
+        )),
+    }
 }
 
 fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountTy> {
