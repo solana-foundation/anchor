@@ -257,9 +257,19 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
         // Only persist if the owner is the current program and the account is not closed.
         if expected_owner == program_id && !crate::common::is_closed(self.info) {
             let mut data = self.info.try_borrow_mut_data()?;
+            let original_len = data.len();
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             self.account.try_serialize(&mut writer)?;
+
+            // If the serialized size is smaller than the original account size,
+            // pad the remaining bytes with zeros to prevent spurious data from
+            // affecting future account schema changes.
+            let written_len = writer.position() as usize;
+            if written_len < original_len {
+                let remaining = &mut data[written_len..];
+                remaining.fill(0);
+            }
         }
         Ok(())
     }
@@ -430,5 +440,115 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
 impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'_, T> {
     fn key(&self) -> Pubkey {
         *self.info.key
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+
+    // Test account type with Vec<u8> that can shrink
+    #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+    struct TestAccount {
+        data: Vec<u8>,
+    }
+
+    impl Discriminator for TestAccount {
+        const DISCRIMINATOR: &'static [u8] = &[1, 2, 3, 4, 5, 6, 7, 8];
+    }
+
+    impl AccountSerialize for TestAccount {
+        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+            writer.write_all(Self::DISCRIMINATOR)?;
+            self.serialize(writer)?;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_account_shrink_padding_fix() {
+        // verifies the fix: when an account shrinks, remaining bytes are zeroed
+        let mut account_data = vec![0u8; 20];
+        let mut writer = BpfWriter::new(account_data.as_mut_slice());
+        let initial_account = TestAccount {
+            data: vec![1, 2, 3],
+        };
+        initial_account.try_serialize(&mut writer).unwrap();
+        let initial_written = writer.position() as usize;
+
+        let mut account_data_shrunk = account_data.clone();
+        let original_len = account_data_shrunk.len();
+        let mut writer_shrunk = BpfWriter::new(account_data_shrunk.as_mut_slice());
+        let shrunk_account = TestAccount { data: vec![1, 2] };
+        shrunk_account.try_serialize(&mut writer_shrunk).unwrap();
+        let shrunk_written = writer_shrunk.position() as usize;
+
+        // Verify we actually shrunk
+        assert!(
+            shrunk_written < initial_written,
+            "Account should have shrunk"
+        );
+
+        let written_len = shrunk_written;
+        if written_len < original_len {
+            let remaining = &mut account_data_shrunk[written_len..];
+            remaining.fill(0);
+        }
+
+        for (i, item) in account_data_shrunk.iter().enumerate().take(original_len).skip(written_len) {
+            assert_eq!(
+                *item, 0,
+                "Byte at position {} should be zero (padding fix working), but is {}",
+                i, *item
+            );
+        }
+
+        let data_start = TestAccount::DISCRIMINATOR.len();
+        assert_eq!(account_data_shrunk[data_start + 4], 1); // Vec length (4 bytes) + first element
+        assert_eq!(account_data_shrunk[data_start + 5], 2);
+        assert_eq!(
+            account_data_shrunk[data_start + 6],
+            0,
+            "Old spurious data should be zeroed"
+        );
+    }
+
+    #[test]
+    fn test_account_shrink_padding_fix_would_fail_without_fix() {
+        // WITHOUT the fix
+
+        let mut account_data = vec![0u8; 20];
+        let mut writer = BpfWriter::new(account_data.as_mut_slice());
+        let initial_account = TestAccount {
+            data: vec![1, 2, 3],
+        };
+        initial_account.try_serialize(&mut writer).unwrap();
+        let initial_written = writer.position() as usize;
+
+        // Shrink Vec to [1, 2] WITHOUT applying padding fix
+        let mut account_data_shrunk = account_data.clone();
+        let original_len = account_data_shrunk.len();
+        let mut writer_shrunk = BpfWriter::new(account_data_shrunk.as_mut_slice());
+        let shrunk_account = TestAccount { data: vec![1, 2] };
+        shrunk_account.try_serialize(&mut writer_shrunk).unwrap();
+        let written_len = writer_shrunk.position() as usize;
+
+        // WITHOUT FIX: No padding happens, so old data remains!
+        assert!(written_len < initial_written, "Account should have shrunk");
+        assert!(
+            written_len < original_len,
+            "Written length should be less than original"
+        );
+
+        // Find where the Vec data starts (after discriminator)
+        let data_start = TestAccount::DISCRIMINATOR.len();
+
+        let old_data_position = data_start + 6; // After discriminator + vec_len(4) + [1,2]
+        assert_eq!(
+            account_data_shrunk[old_data_position], 3,
+            "Old spurious data (the '3' byte) remains at position {}",
+            old_data_position
+        );
     }
 }
