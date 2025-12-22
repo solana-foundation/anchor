@@ -8,6 +8,7 @@ import {
   Idl,
   handleDefinedFields,
   IdlArrayLen,
+  IdlSerialization,
 } from "../../idl.js";
 import { IdlError } from "../../error.js";
 
@@ -17,7 +18,8 @@ export class IdlCoder {
   public static fieldLayout(
     field: PartialField,
     types: IdlTypeDef[] = [],
-    genericArgs?: IdlGenericArg[] | null
+    genericArgs?: IdlGenericArg[] | null,
+    serialization?: IdlSerialization
   ): Layout {
     const fieldName = field.name;
     switch (field.type) {
@@ -81,37 +83,39 @@ export class IdlCoder {
             IdlCoder.fieldLayout(
               { type: field.type.option },
               types,
-              genericArgs
+              genericArgs,
+              serialization
             ),
             fieldName
           );
         }
         if ("vec" in field.type) {
-          // Handle both formats:
-          // 1. Simple: "vec": "u64" (backward compatible, defaults to u32)
-          // 2. Object: "vec": { "type": "u64", "length": "u8" }
-          const vecValue = field.type.vec;
-          if (typeof vecValue === "string" || !("type" in vecValue)) {
-            const innerType = typeof vecValue === "string" ? vecValue : (vecValue as any);
-            return borsh.vec(
-              IdlCoder.fieldLayout({ type: innerType }, types, genericArgs),
-              fieldName
-            );
-          } else {
-            const length = vecValue.length || "u32";
-            return borsh.vecWithLength(
-              IdlCoder.fieldLayout({ type: vecValue.type }, types, genericArgs),
-              length,
-              fieldName
-            );
+          // Vec length prefix is determined by the serialization format:
+          // - "borsh" (default): 4 bytes (u32)
+          // - "borshu8": 1 byte (u8)
+          // - "borshu16": 2 bytes (u16)
+          const vecInnerType = field.type.vec;
+          const serializationFormat = serialization || "borsh";
+          
+          let lengthType: "u8" | "u16" | "u32" = "u32";
+          if (serializationFormat === "borshu8") {
+            lengthType = "u8";
+          } else if (serializationFormat === "borshu16") {
+            lengthType = "u16";
           }
+          
+          return borsh.vecWithLength(
+            IdlCoder.fieldLayout({ type: vecInnerType }, types, genericArgs, serialization),
+            lengthType,
+            fieldName
+          );
         }
         if ("array" in field.type) {
           let [type, len] = field.type.array;
           len = IdlCoder.resolveArrayLen(len, genericArgs);
 
           return borsh.array(
-            IdlCoder.fieldLayout({ type }, types, genericArgs),
+            IdlCoder.fieldLayout({ type }, types, genericArgs, serialization),
             len,
             fieldName
           );
@@ -142,7 +146,9 @@ export class IdlCoder {
 
           return IdlCoder.fieldLayout(
             { ...field, type: genericArg.type },
-            types
+            types,
+            undefined,
+            serialization
           );
         }
 
@@ -181,7 +187,7 @@ export class IdlCoder {
                     genericArgs,
                   })
                 : genericArgs;
-              return IdlCoder.fieldLayout(f, types, genArgs);
+              return IdlCoder.fieldLayout(f, types, genArgs, typeDef.serialization);
             }),
           (fields) =>
             fields.map((f, i) => {
@@ -195,7 +201,8 @@ export class IdlCoder {
               return IdlCoder.fieldLayout(
                 { name: i.toString(), type: f },
                 types,
-                genArgs
+                genArgs,
+                typeDef.serialization
               );
             })
         );
@@ -217,7 +224,7 @@ export class IdlCoder {
                       genericArgs,
                     })
                   : genericArgs;
-                return IdlCoder.fieldLayout(f, types, genArgs);
+                return IdlCoder.fieldLayout(f, types, genArgs, typeDef.serialization);
               }),
             (fields) =>
               fields.map((f, i) => {
@@ -231,7 +238,8 @@ export class IdlCoder {
                 return IdlCoder.fieldLayout(
                   { name: i.toString(), type: f },
                   types,
-                  genArgs
+                  genArgs,
+                  typeDef.serialization
                 );
               })
           );
@@ -249,7 +257,7 @@ export class IdlCoder {
       }
 
       case "type": {
-        return IdlCoder.fieldLayout({ type: typeDef.type.alias, name }, types);
+        return IdlCoder.fieldLayout({ type: typeDef.type.alias, name }, types, undefined, typeDef.serialization);
       }
     }
   }
