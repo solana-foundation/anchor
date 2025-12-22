@@ -4,6 +4,7 @@ import {
   offset,
   seq,
   struct,
+  u16,
   u32,
   u8,
   union,
@@ -196,7 +197,15 @@ export function vec<T>(
   elementLayout: Layout<T>,
   property?: string
 ): Layout<T[]> {
-  const length = u32("length");
+  return vecWithLength(elementLayout, "u32", property);
+}
+
+export function vecWithLength<T>(
+  elementLayout: Layout<T>,
+  lengthType: "u8" | "u16" | "u32" = "u32",
+  property?: string
+): Layout<T[]> {
+  const length = lengthType === "u8" ? u8("length") : lengthType === "u16" ? u16("length") : u32("length");
   const layout: Layout<{ values: T[] }> = struct([
     length,
     seq(elementLayout, offset(length, -length.span), "values"),

@@ -9,7 +9,9 @@ use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::AnchorDeserialize;
 use anchor_lang_idl::convert::convert_idl;
-use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
+use anchor_lang_idl::types::{
+    Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy, IdlVecLength,
+};
 use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
@@ -3124,15 +3126,23 @@ fn deserialize_idl_type_to_json(
                 deserialize_idl_type_to_json(ty, data, parent_idl)?
             }
         }
-        IdlType::Vec(ty) => {
-            let size: usize = <u32 as AnchorDeserialize>::deserialize(data)?
-                .try_into()
-                .unwrap();
+        IdlType::Vec(vec) => {
+            let size: usize = match vec.length() {
+                IdlVecLength::U8 => <u8 as AnchorDeserialize>::deserialize(data)?.into(),
+                IdlVecLength::U16 => <u16 as AnchorDeserialize>::deserialize(data)?.into(),
+                IdlVecLength::U32 => <u32 as AnchorDeserialize>::deserialize(data)?
+                    .try_into()
+                    .unwrap(),
+            };
 
             let mut vec_data: Vec<JsonValue> = Vec::with_capacity(size);
 
             for _ in 0..size {
-                vec_data.push(deserialize_idl_type_to_json(ty, data, parent_idl)?);
+                vec_data.push(deserialize_idl_type_to_json(
+                    vec.inner_type(),
+                    data,
+                    parent_idl,
+                )?);
             }
 
             JsonValue::Array(vec_data)
