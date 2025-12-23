@@ -99,11 +99,6 @@ impl<'info, T> Deref for Interface<'info, T> {
         &self.0
     }
 }
-impl<'info, T> AsRef<AccountInfo<'info>> for Interface<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        &self.0
-    }
-}
 
 impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     #[inline(never)]
