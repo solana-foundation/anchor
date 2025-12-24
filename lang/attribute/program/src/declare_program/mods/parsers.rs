@@ -4,15 +4,15 @@ use quote::{format_ident, quote};
 
 use super::common::{get_all_instruction_accounts, get_canonical_program_id};
 
-pub fn gen_utils_mod(idl: &Idl) -> proc_macro2::TokenStream {
+pub fn gen_parsers_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let account = gen_account(idl);
     let event = gen_event(idl);
     let instruction = gen_instruction(idl);
 
     quote! {
-        /// Program utilities.
+        /// Program parsers.
         #[cfg(not(target_os = "solana"))]
-        pub mod utils {
+        pub mod parsers {
             use super::*;
 
             #account

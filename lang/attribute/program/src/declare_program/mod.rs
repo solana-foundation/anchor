@@ -12,7 +12,7 @@ use common::gen_docs;
 use mods::{
     accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
     cpi::gen_cpi_mod, errors::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
-    program::gen_program_mod, types::gen_types_mod, utils::gen_utils_mod,
+    parsers::gen_parsers_mod, program::gen_program_mod, types::gen_types_mod,
 };
 
 pub struct DeclareProgram {
@@ -69,7 +69,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     let internal_mod = gen_internal_mod(idl);
 
     // Utils
-    let utils_mod = gen_utils_mod(idl);
+    let parsers_mod = gen_parsers_mod(idl);
 
     quote! {
         #docs
@@ -92,7 +92,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
             #client_mod
             #internal_mod
 
-            #utils_mod
+            #parsers_mod
         }
     }
 }
