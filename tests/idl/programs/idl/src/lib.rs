@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{token, token_interface};
+use std::num::{NonZero, NonZeroU64};
 
 declare_id!("id11111111111111111111111111111111111111111");
 
@@ -56,6 +57,8 @@ pub mod idl {
         enum_field_2: FooEnum,
         enum_field_3: FooEnum,
         enum_field_4: FooEnum,
+        non_zero_u8: NonZero<u8>,
+        non_zero_u64: NonZeroU64,
     ) -> Result<()> {
         ctx.accounts.state.set_inner(State {
             bool_field,
@@ -84,6 +87,8 @@ pub mod idl {
             enum_field_2,
             enum_field_3,
             enum_field_4,
+            non_zero_u8,
+            non_zero_u64,
         });
 
         Ok(())
@@ -200,6 +205,8 @@ pub struct State {
     enum_field_2: FooEnum,
     enum_field_3: FooEnum,
     enum_field_4: FooEnum,
+    non_zero_u8: NonZero<u8>,
+    non_zero_u64: NonZeroU64,
 }
 
 impl Default for State {
@@ -235,6 +242,8 @@ impl Default for State {
             },
             enum_field_3: FooEnum::Struct(BarStruct::default()),
             enum_field_4: FooEnum::NoFields,
+            non_zero_u8: NonZero::new(1).unwrap(),
+            non_zero_u64: NonZeroU64::new(1).unwrap(),
         }
     }
 }

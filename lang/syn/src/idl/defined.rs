@@ -380,6 +380,7 @@ pub fn gen_idl_type(
         syn::Type::Path(path) if the_only_segment_is(path, "bool") => {
             Ok((quote! { #idl::IdlType::Bool }, vec![]))
         }
+        // Integer types
         syn::Type::Path(path) if the_only_segment_is(path, "u8") => {
             Ok((quote! { #idl::IdlType::U8 }, vec![]))
         }
@@ -415,6 +416,56 @@ pub fn gen_idl_type(
         }
         syn::Type::Path(path) if the_only_segment_is(path, "i128") => {
             Ok((quote! { #idl::IdlType::I128 }, vec![]))
+        }
+        // Non-zero integer types
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroU8") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::U8)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroI8") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::I8)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroU16") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::U16)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroI16") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::I16)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroU32") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::U32)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroI32") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::I32)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroU64") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::U64)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroI64") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::I64)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroU128") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::U128)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZeroI128") => Ok((
+            quote! { #idl::IdlType::NonZero(Box::new(#idl::IdlType::I128)) },
+            vec![],
+        )),
+        syn::Type::Path(path) if the_only_segment_is(path, "NonZero") => {
+            let segment = get_first_segment(path);
+            let arg = get_angle_bracketed_type_args(segment)
+                .into_iter()
+                .next()
+                .unwrap();
+            let (inner, defined) = gen_idl_type(arg, generic_params)?;
+            Ok((quote! { #idl::IdlType::NonZero(Box::new(#inner)) }, defined))
         }
         syn::Type::Path(path)
             if the_only_segment_is(path, "String") || the_only_segment_is(path, "str") =>
