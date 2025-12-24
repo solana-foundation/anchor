@@ -42,18 +42,18 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// An enum that includes all accounts of the declared program as a tuple variant.
         ///
-        /// See [`Self::try_from_bytes`] to create an instance from bytes.
+        /// See [`Self::parse`] to create an instance from account data.
         pub enum Account {
             #(#variants,)*
         }
 
         impl Account {
-            /// Try to create an account based on the given bytes.
+            /// Parse an account based on the given account data.
             ///
             /// This method returns an error if the discriminator of the given bytes don't match
             /// with any of the existing accounts, or if the deserialization fails.
-            pub fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-                Self::try_from(bytes)
+            pub fn parse(data: &[u8]) -> Result<Self> {
+                Self::try_from(data)
             }
         }
 
@@ -88,18 +88,18 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// An enum that includes all events of the declared program as a tuple variant.
         ///
-        /// See [`Self::try_from_bytes`] to create an instance from bytes.
+        /// See [`Self::parse`] to create an instance from event data.
         pub enum Event {
             #(#variants,)*
         }
 
         impl Event {
-            /// Try to create an event based on the given bytes.
+            /// Parse an account based on the given event data.
             ///
             /// This method returns an error if the discriminator of the given bytes don't match
             /// with any of the existing events, or if the deserialization fails.
-            pub fn try_from_bytes(bytes: &[u8]) -> Result<Self> {
-                Self::try_from(bytes)
+            pub fn parse(data: &[u8]) -> Result<Self> {
+                Self::try_from(data)
             }
         }
 
@@ -188,14 +188,14 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// An enum that includes all instructions of the declared program.
         ///
-        /// See [`Self::try_from_solana_instruction`] to create an instance from
+        /// See [`Self::parse`] to create an instance from
         /// [`anchor_lang::solana_program::instruction::Instruction`].
         pub enum Instruction {
             #(#variants,)*
         }
 
         impl Instruction {
-            /// Try to create an instruction based on the given
+            ///  Parse an account based on the given
             /// [`anchor_lang::solana_program::instruction::Instruction`].
             ///
             /// This method checks:
@@ -210,7 +210,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
             /// - There are more accounts than expected
             /// - The account addresses match the ones that could be derived using the resolution
             ///   fields such as `address` and `pda`
-            pub fn try_from_solana_instruction(ix: &#solana_instruction) -> Result<Self> {
+            pub fn parse(ix: &#solana_instruction) -> Result<Self> {
                 Self::try_from(ix)
             }
         }
