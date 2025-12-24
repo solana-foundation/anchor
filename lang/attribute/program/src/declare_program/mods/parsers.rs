@@ -94,7 +94,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
         }
 
         impl Event {
-            /// Parse an account based on the given event data.
+            /// Parse an event based on the given event data.
             ///
             /// This method returns an error if the discriminator of the given bytes don't match
             /// with any of the existing events, or if the deserialization fails.
