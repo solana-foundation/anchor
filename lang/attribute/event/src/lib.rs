@@ -174,7 +174,11 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .collect();
 
             let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
-                crate::ID,
+                // In a doctest the ID will be in the current scope, not the crate root
+                #[cfg(not(doctest))]
+                { crate::ID },
+                #[cfg(doctest)]
+                { ID },
                 &ix_data,
                 vec![
                     anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
