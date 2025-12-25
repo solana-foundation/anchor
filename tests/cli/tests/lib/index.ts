@@ -119,12 +119,11 @@ export interface PatchWorkspaceArgs {
 }
 
 export function patchWorkspace({ workspaceDir }: PatchWorkspaceArgs) {
-  fs.rmSync(path.join(workspaceDir, "app"), {
-    recursive: true,
-  });
-  fs.rmSync(path.join(workspaceDir, "target"), {
-    recursive: true,
-  });
+  const appDir = path.join(workspaceDir, "app");
+  if (fs.existsSync(appDir)) fs.rmSync(appDir, { recursive: true });
+
+  const targetDir = path.join(workspaceDir, "target");
+  if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true });
 }
 
 export interface PatchProgramIdArgs {
