@@ -31,7 +31,7 @@ jobs:
             os: macos-latest
 
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: ubuntu-22.04
 
           - target: x86_64-apple-darwin
             os: macos-latest
@@ -52,7 +52,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Build release binary
-        run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+        run: |
+          cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+          cargo build --package avm --release --locked --target ${{ matrix.target }}
 
       - name: Prepare
         if: startsWith(github.ref, 'refs/tags/')
@@ -65,6 +67,7 @@ jobs:
 
           mkdir $DIST
           mv "target/${{ matrix.target }}/release/anchor$ext" $DIST/anchor-$version-${{ matrix.target }}$ext
+          mv "target/${{ matrix.target }}/release/avm$ext" $DIST/avm-$version-${{ matrix.target }}$ext
 
           echo "version=$version" >> $GITHUB_OUTPUT
 
