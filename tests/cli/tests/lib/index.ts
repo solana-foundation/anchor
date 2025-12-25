@@ -20,7 +20,10 @@ export function setupTest(testPath: string) {
     fs.cpSync(initDir, testDir, {
       recursive: true,
     });
-  else fs.mkdirSync(testDir);
+  else
+    fs.mkdirSync(testDir, {
+      recursive: true,
+    });
 
   return {
     testDir,
