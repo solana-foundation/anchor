@@ -1,12 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { expect } from "chai";
-import {
-  diffTest,
-  runCommands,
-  setupTest,
-  MOCK_BIN_DIR,
-} from "@/lib";
+import { diffTest, runCommands, setupTest, MOCK_BIN_DIR, rmDir } from "@/lib";
 
 const COMMAND_ROOT = "expand";
 const ANCHOR_BIN = path.join(MOCK_BIN_DIR, "anchor");
@@ -55,6 +50,8 @@ describe(COMMAND_ROOT, () => {
     const expandedFile = files.find(f => f.startsWith("test_program-0.1.0-") && f.endsWith(".rs"));
     expect(expandedFile).to.exist;
 
+    rmDir(path.join(workspaceDir, ".anchor"));
+
     diffTest(scenario);
   });
 
@@ -85,6 +82,8 @@ describe(COMMAND_ROOT, () => {
     // Verify directory structure
     const expandedMacrosDir = path.join(workspaceDir, ".anchor", "expanded-macros");
     expect(fs.existsSync(expandedMacrosDir)).to.be.true;
+
+    rmDir(path.join(workspaceDir, ".anchor"));
 
     diffTest(scenario);
   });

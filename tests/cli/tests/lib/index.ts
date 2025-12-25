@@ -12,7 +12,7 @@ export const MOCK_BIN_DIR = path.resolve(__dirname, "..", "mock-bin");
 
 export function setupTest(testPath: string) {
   const testDir = path.join(OUTPUT_DIR, testPath);
-  if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true });
+  rmDir(testDir);
 
   // Only copy from initialize if the directory exists
   const initDir = path.join(INITIALIZE_DIR, testPath);
@@ -28,6 +28,13 @@ export function setupTest(testPath: string) {
   return {
     testDir,
   };
+}
+
+export function rmDir(path: string) {
+  if (fs.existsSync(path))
+    fs.rmSync(path, {
+      recursive: true,
+    });
 }
 
 export function diffTest(testPath: string) {
@@ -119,11 +126,8 @@ export interface PatchWorkspaceArgs {
 }
 
 export function patchWorkspace({ workspaceDir }: PatchWorkspaceArgs) {
-  const appDir = path.join(workspaceDir, "app");
-  if (fs.existsSync(appDir)) fs.rmSync(appDir, { recursive: true });
-
-  const targetDir = path.join(workspaceDir, "target");
-  if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true });
+  rmDir(path.join(workspaceDir, "app"));
+  rmDir(path.join(workspaceDir, "target"));
 }
 
 export interface PatchProgramIdArgs {
