@@ -195,7 +195,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
         }
 
         impl Instruction {
-            ///  Parse an account based on the given
+            ///  Parse an instruction based on the given
             /// [`anchor_lang::solana_program::instruction::Instruction`].
             ///
             /// This method checks:
