@@ -192,6 +192,8 @@ pub struct IdlTypeDef {
 pub enum IdlSerialization {
     #[default]
     Borsh,
+    BorshU8,
+    BorshU16,
     Bytemuck,
     BytemuckUnsafe,
     Custom(String),
@@ -262,6 +264,19 @@ pub enum IdlArrayLen {
     Generic(String),
     #[serde(untagged)]
     Value(usize),
+}
+
+impl IdlSerialization {
+    /// Returns the number of bytes used for Vec length prefix in this serialization format.
+    pub fn vec_length_bytes(&self) -> usize {
+        match self {
+            IdlSerialization::Borsh => 4,
+            IdlSerialization::BorshU8 => 1,
+            IdlSerialization::BorshU16 => 2,
+            IdlSerialization::Bytemuck | IdlSerialization::BytemuckUnsafe => 8,
+            IdlSerialization::Custom(_) => 4,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -498,5 +513,18 @@ mod tests {
                 ],
             }
         )
+    }
+
+    #[test]
+    fn vec_serialization_format() {
+        // Test that IdlSerialization provides correct Vec length bytes
+        assert_eq!(IdlSerialization::Borsh.vec_length_bytes(), 4);
+        assert_eq!(IdlSerialization::BorshU8.vec_length_bytes(), 1);
+        assert_eq!(IdlSerialization::BorshU16.vec_length_bytes(), 2);
+        assert_eq!(IdlSerialization::Bytemuck.vec_length_bytes(), 8);
+        assert_eq!(
+            IdlSerialization::Custom("test".into()).vec_length_bytes(),
+            4
+        );
     }
 }
