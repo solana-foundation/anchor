@@ -240,9 +240,10 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         T::check_owner(info.owner)?;
 
         // Re-deserialize fresh data into the inner account.
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        let new_val = T::try_deserialize(&mut data)?;
-        self.account.set_inner(new_val);
+        self.account.set_inner({
+            let mut data: &[u8] = &info.try_borrow_data()?;
+            T::try_deserialize(&mut data)?
+        });
         Ok(())
     }
 }
