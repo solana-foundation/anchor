@@ -236,7 +236,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     ///
     /// This method also validates that the account is owned by one of the expected programs.
     pub fn reload(&mut self) -> Result<()> {
-        let info = self.account.to_account_info();
+        let info: &AccountInfo = self.account.as_ref();
         T::check_owner(info.owner)?;
 
         // Re-deserialize fresh data into the inner account.
