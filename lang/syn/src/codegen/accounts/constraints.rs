@@ -1682,9 +1682,8 @@ fn generate_create_account(
     // Field, payer, and system program are already validated to not be an Option at this point
     quote! {
         // If the account being initialized already has lamports, then
-        // return them all back to the payer so that the account has
-        // zero lamports when the system program's create instruction
-        // is eventually called.
+        // fallback to a safer method(`Transfer` + `Allocate` + `Assign`) 
+        // of creating the account to avoid `CreateAccount` call.
         let __current_lamports = #field.lamports();
         if __current_lamports == 0 {
             // Create the token account with right amount of lamports and space, and the correct owner.
@@ -1717,7 +1716,7 @@ fn generate_create_account(
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
             anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
-            // Assign to the spl token program.
+            // Assign to the owner program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
