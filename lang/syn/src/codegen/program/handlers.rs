@@ -130,15 +130,22 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
                             __program_id,
-                            // SAFETY: The transmute shortens the inner `AccountInfo` lifetimes to
-                            // match the lifetimes of other arguments. All references are going to
-                            // be valid at least for the duration of the user-defined instruction
-                            // handlers.
+                            // SAFETY: `core::mem::transmute` is used to *shrink* the lifetime of
+                            // the inner `AccountInfo` from `'info` to the local function lifetime.
+                            // No lifetime is extended by this operation.
                             //
-                            // This is done to avoid having to define multiple lifetimes for the
-                            // `Context` struct, which requies Anchor users to do the same in
-                            // various cases (e.g. remaining accounts usage), resulting in a poor
-                            // developer experience.
+                            // This is sound provided the following invariants hold:
+                            // (1) The `'info` lifetime strictly outlives the local function
+                            //     lifetime; therefore, the transmuted references cannot outlive
+                            //     their backing data.
+                            // (2) `AccountInfo` does not implement custom `Drop` logic and does not
+                            //     rely on its lifetime parameter during destruction.
+                            // (3) The `Context` value is dropped before the `__accounts` reference
+                            //     is dropped or otherwise accessed, preventing any use-after-scope.
+                            //
+                            // This lifetime narrowing is required to conform to the `Context`
+                            // struct’s single-lifetime parameterization, which uses a single
+                            // lifetime to keep the API simple and ergonomic.
                             unsafe {
                                 ::core::mem::transmute::<
                                     &mut #accounts_struct_name<'info>,
