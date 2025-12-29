@@ -19,7 +19,6 @@ interface-instructions = ["anchor-syn/interface-instructions"]
 anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["convert"] }
 anchor-syn = { path = "../../syn", version = "0.32.1" }
 anyhow = "1"
-bs58 = "0.5"
 heck = "0.3"
 proc-macro2 = "1"
 quote = "1"
