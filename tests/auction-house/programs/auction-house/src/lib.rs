@@ -10,8 +10,7 @@ use {
         },
     },
     anchor_spl::{
-        associated_token::{spl_associated_token_account, AssociatedToken},
-        metadata::mpl_token_metadata,
+        associated_token::AssociatedToken,
         token::{
             spl_token::{
                 self,
@@ -21,6 +20,8 @@ use {
         },
     },
 };
+
+declare_program!(mpl_token_metadata);
 
 declare_id!("hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk");
 
