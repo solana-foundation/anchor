@@ -1,7 +1,7 @@
 # @coral-xyz/anchor
 
 [![npm](https://img.shields.io/npm/v/@coral-xyz/anchor.svg?color=blue)](https://www.npmjs.com/package/@coral-xyz/anchor)
-[![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://coral-xyz.github.io/anchor/ts/index.html)
+[![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://www.anchor-lang.com/docs/clients/typescript)
 
 TypeScript client for Anchor programs.
 
