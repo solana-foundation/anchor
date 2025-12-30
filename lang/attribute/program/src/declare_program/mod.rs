@@ -110,9 +110,7 @@ fn gen_program_docs(idl: &Idl) -> proc_macro2::TokenStream {
 }
 
 fn gen_id(idl: &Idl) -> proc_macro2::TokenStream {
-    let address_bytes = bs58::decode(&idl.address)
-        .into_vec()
-        .expect("Invalid `idl.address`");
+    let address = &idl.address;
     let doc = format!("Program ID of program `{}`.", idl.metadata.name);
 
     quote! {
@@ -124,7 +122,7 @@ fn gen_id(idl: &Idl) -> proc_macro2::TokenStream {
 
         /// The name is intentionally prefixed with `__` in order to reduce to possibility of name
         /// clashes with the crate's `ID`.
-        static __ID: Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
-        const __ID_CONST : Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
+        static __ID: Pubkey = Pubkey::from_str_const(#address);
+        const __ID_CONST : Pubkey = Pubkey::from_str_const(#address);
     }
 }
