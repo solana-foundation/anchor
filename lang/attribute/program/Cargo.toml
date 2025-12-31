@@ -13,7 +13,6 @@ proc-macro = true
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
-interface-instructions = ["anchor-syn/interface-instructions"]
 
 [dependencies]
 anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["convert"] }
