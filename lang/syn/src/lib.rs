@@ -70,9 +70,6 @@ pub struct Ix {
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
-    // The discriminator based on the `#[interface]` attribute.
-    // TODO: Remove and use `overrides`
-    pub interface_discriminator: Option<[u8; 8]>,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
 }
