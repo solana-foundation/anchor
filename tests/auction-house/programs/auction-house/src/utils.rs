@@ -1,5 +1,5 @@
 use {
-    crate::{AuctionHouse, ErrorCode},
+    crate::{mpl_token_metadata, AuctionHouse, ErrorCode},
     anchor_lang::{
         prelude::*,
         solana_program::{
@@ -13,7 +13,6 @@ use {
         associated_token::spl_associated_token_account::{
             address::get_associated_token_address, instruction::create_associated_token_account,
         },
-        metadata::mpl_token_metadata,
         token::{
             spl_token::{self, instruction::initialize_account2, state::Account},
             Mint, Token, TokenAccount,
@@ -23,6 +22,7 @@ use {
     solana_sysvar::SysvarSerialize,
     std::{convert::TryInto, slice::Iter},
 };
+
 pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Result<Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: Account = assert_initialized(ata)?;
@@ -298,8 +298,9 @@ pub fn pay_creator_fees<'a>(
     size: u64,
     is_native: bool,
 ) -> Result<u64> {
-    let metadata =
-        mpl_token_metadata::accounts::Metadata::from_bytes(*metadata_info.data.borrow())?;
+    let metadata = mpl_token_metadata::accounts::Metadata::try_deserialize(
+        &mut &**metadata_info.data.borrow(),
+    )?;
     let fees = metadata.seller_fee_basis_points;
     let total_fee = (fees as u128)
         .checked_mul(size as u128)
