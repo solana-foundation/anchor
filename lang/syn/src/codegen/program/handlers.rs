@@ -33,7 +33,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             };
 
             let ix_name_log = format!("Instruction: {ix_name}");
-            let anchor = &ix.anchor_ident;
+            let accounts_struct_name = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
             let cfgs = &ix.cfgs;
             let maybe_set_return_data = match ret_type.to_string().as_str() {
@@ -45,15 +45,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 },
             };
 
-            let actual_param_count = ix.args.len();
-            let ix_name_str = ix_method_name.to_string();
-            let accounts_type_str = anchor.to_string();
 
             // Build clear error messages
+            let actual_param_count = ix.args.len();
             let count_error_msg = format!(
                 "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
-                accounts_type_str,
-                ix_name_str,
+                accounts_struct_name,
+                ix_method_name_str,
                 actual_param_count,
             );
 
@@ -69,12 +67,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     );
                     quote! {
                         // Type validation for argument #idx
-                        if #anchor::__ANCHOR_IX_PARAM_COUNT > #idx {
+                        if #accounts_struct_name::__ANCHOR_IX_PARAM_COUNT > #idx {
                             #[allow(unreachable_code)]
                             if false {
                                 // This code is never executed but is type-checked at compile time
                                 let __type_check_arg: #arg_ty = panic!();
-                                #anchor::#method_name(&__type_check_arg);
+                                #accounts_struct_name::#method_name(&__type_check_arg);
                             }
                         }
                     }
@@ -83,7 +81,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             let param_validation = quote! {
                 const _: () = {
-                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
+                    const EXPECTED_COUNT: usize = #accounts_struct_name::__ANCHOR_IX_PARAM_COUNT;
                     const HANDLER_PARAM_COUNT: usize = #actual_param_count;
 
                     // Count validation
@@ -100,9 +98,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #(#cfgs)*
                 #[inline(never)]
                 pub fn #ix_method_name<'info>(
-                    __program_id: &Pubkey,
-                    __accounts: &'info[AccountInfo<'info>],
-                    __ix_data: &[u8],
+                    __program_id: &'info Pubkey,
+                    __accounts: &'info [AccountInfo<'info>],
+                    __ix_data: &'info [u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
@@ -114,13 +112,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let instruction::#variant_arm = ix;
 
                     // Bump collector.
-                    let mut __bumps = <#anchor as anchor_lang::Bumps>::Bumps::default();
+                    let mut __bumps = <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
 
                     let mut __reallocs = std::collections::BTreeSet::new();
 
                     // Deserialize accounts.
-                    let mut __remaining_accounts: &[AccountInfo] = __accounts;
-                    let mut __accounts = #anchor::try_accounts(
+                    let mut __remaining_accounts = __accounts;
+                    let mut __accounts = #accounts_struct_name::try_accounts(
                         __program_id,
                         &mut __remaining_accounts,
                         __ix_data,
@@ -132,7 +130,28 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
                             __program_id,
-                            &mut __accounts,
+                            // SAFETY: `core::mem::transmute` is used to *shrink* the lifetime of
+                            // the inner `AccountInfo` from `'info` to the local function lifetime.
+                            // No lifetime is extended by this operation.
+                            //
+                            // This is sound provided the following invariants hold:
+                            // (1) The `'info` lifetime strictly outlives the local function
+                            //     lifetime; therefore, the transmuted references cannot outlive
+                            //     their backing data.
+                            // (2) `AccountInfo` does not implement custom `Drop` logic and does not
+                            //     rely on its lifetime parameter during destruction.
+                            // (3) The `Context` value is dropped before the `__accounts` reference
+                            //     is dropped or otherwise accessed, preventing any use-after-scope.
+                            //
+                            // This lifetime narrowing is required to conform to the `Context`
+                            // struct’s single-lifetime parameterization, which uses a single
+                            // lifetime to keep the API simple and ergonomic.
+                            unsafe {
+                                ::core::mem::transmute::<
+                                    &mut #accounts_struct_name<'info>,
+                                    &mut #accounts_struct_name<'_>
+                                >(&mut __accounts)
+                            },
                             __remaining_accounts,
                             __bumps,
                         ),

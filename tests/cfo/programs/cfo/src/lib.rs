@@ -87,7 +87,7 @@ pub mod cfo {
     }
 
     /// Transfers fees from the dex to the CFO.
-    pub fn sweep_fees<'info>(ctx: Context<'_, '_, '_, 'info, SweepFees<'info>>) -> Result<()> {
+    pub fn sweep_fees(ctx: Context<SweepFees>) -> Result<()> {
         let cpi_ctx = CpiContext::from(&*ctx.accounts);
         let seeds = [
             ctx.accounts.dex.dex_program.key.as_ref(),
@@ -99,10 +99,7 @@ pub mod cfo {
     /// Convert the CFO's entire non-SRM token balance into USDC.
     /// Assumes USDC is the quote currency.
     #[access_control(is_not_trading(&ctx.accounts.instructions))]
-    pub fn swap_to_usdc<'info>(
-        ctx: Context<'_, '_, '_, 'info, SwapToUsdc<'info>>,
-        min_exchange_rate: ExchangeRate,
-    ) -> Result<()> {
+    pub fn swap_to_usdc(ctx: Context<SwapToUsdc>, min_exchange_rate: ExchangeRate) -> Result<()> {
         let seeds = [
             ctx.accounts.dex_program.key.as_ref(),
             &[ctx.accounts.officer.bumps.bump],
@@ -120,10 +117,7 @@ pub mod cfo {
     /// Convert the CFO's entire token balance into SRM.
     /// Assumes SRM is the base currency.
     #[access_control(is_not_trading(&ctx.accounts.instructions))]
-    pub fn swap_to_srm<'info>(
-        ctx: Context<'_, '_, '_, 'info, SwapToSrm<'info>>,
-        min_exchange_rate: ExchangeRate,
-    ) -> Result<()> {
+    pub fn swap_to_srm(ctx: Context<SwapToSrm>, min_exchange_rate: ExchangeRate) -> Result<()> {
         let seeds = [
             ctx.accounts.dex_program.key.as_ref(),
             &[ctx.accounts.officer.bumps.bump],
@@ -141,7 +135,7 @@ pub mod cfo {
     /// Distributes srm tokens to the various categories. Before calling this,
     /// one must convert the fees into SRM via the swap APIs.
     #[access_control(is_distribution_ready(&ctx.accounts))]
-    pub fn distribute<'info>(ctx: Context<'_, '_, '_, 'info, Distribute<'info>>) -> Result<()> {
+    pub fn distribute(ctx: Context<Distribute>) -> Result<()> {
         let total_fees = ctx.accounts.srm_vault.amount;
         let seeds = [
             ctx.accounts.dex_program.key.as_ref(),
@@ -188,9 +182,7 @@ pub mod cfo {
     }
 
     #[access_control(is_stake_reward_ready(&ctx.accounts))]
-    pub fn drop_stake_reward<'info>(
-        ctx: Context<'_, '_, '_, 'info, DropStakeReward<'info>>,
-    ) -> Result<()> {
+    pub fn drop_stake_reward(ctx: Context<DropStakeReward>) -> Result<()> {
         // Common reward parameters.
         let expiry_ts = 1853942400; // 9/30/2028.
         let expiry_receiver = *ctx.accounts.officer.to_account_info().key;

@@ -464,10 +464,7 @@ mod registry {
     }
 
     #[access_control(reward_eligible(&ctx.accounts.cmn))]
-    pub fn claim_reward_locked<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, ClaimRewardLocked<'info>>,
-        nonce: u8,
-    ) -> Result<()> {
+    pub fn claim_reward_locked(ctx: Context<ClaimRewardLocked>, nonce: u8) -> Result<()> {
         let (start_ts, end_ts, period_count) = match ctx.accounts.cmn.vendor.kind {
             RewardVendorKind::Unlocked => return err!(ErrorCode::ExpectedLockedVendor),
             RewardVendorKind::Locked {
