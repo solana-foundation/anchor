@@ -383,12 +383,142 @@
   ],
   "constants": [
     {
-      "name": "MASTER_SEED",
-      "docs": [
-        "Master seed slice"
-      ],
+      "name": "ARRAY",
+      "type": {
+        "array": [
+          "u8",
+          4
+        ]
+      },
+      "value": "[1, 2, 3, 4]"
+    },
+    {
+      "name": "BOOL",
+      "type": "bool",
+      "value": "false"
+    },
+    {
+      "name": "BYTES",
       "type": "bytes",
-      "value": "[109, 97, 115, 116, 101, 114]"
+      "value": "[97, 98, 99]"
+    },
+    {
+      "name": "I128",
+      "type": "i128",
+      "value": "16"
+    },
+    {
+      "name": "I16",
+      "type": "i16",
+      "value": "2"
+    },
+    {
+      "name": "I32",
+      "type": "i32",
+      "value": "4"
+    },
+    {
+      "name": "I64",
+      "type": "i64",
+      "value": "8"
+    },
+    {
+      "name": "I8",
+      "type": "i8",
+      "value": "1"
+    },
+    {
+      "name": "NESTED_OPTION_ARRAY",
+      "type": {
+        "option": {
+          "option": {
+            "array": [
+              "u8",
+              4
+            ]
+          }
+        }
+      },
+      "value": "Some(Some([1, 2, 3, 4]))"
+    },
+    {
+      "name": "NESTED_OPTION_BOOL",
+      "type": {
+        "option": {
+          "option": "bool"
+        }
+      },
+      "value": "Some(Some(false))"
+    },
+    {
+      "name": "NESTED_OPTION_STRING",
+      "type": {
+        "option": {
+          "option": "string"
+        }
+      },
+      "value": "Some(Some(\"abc\"))"
+    },
+    {
+      "name": "OPTION_ARRAY",
+      "type": {
+        "option": {
+          "array": [
+            "u8",
+            4
+          ]
+        }
+      },
+      "value": "Some([1, 2, 3, 4])"
+    },
+    {
+      "name": "OPTION_BOOL",
+      "type": {
+        "option": "bool"
+      },
+      "value": "Some(false)"
+    },
+    {
+      "name": "OPTION_STRING",
+      "type": {
+        "option": "string"
+      },
+      "value": "Some(\"abc\")"
+    },
+    {
+      "name": "PUBKEY",
+      "type": "pubkey",
+      "value": "SomeAdress111111111111111111111111111111111"
+    },
+    {
+      "name": "STRING",
+      "type": "string",
+      "value": "\"abc\""
+    },
+    {
+      "name": "U128",
+      "type": "u128",
+      "value": "16"
+    },
+    {
+      "name": "U16",
+      "type": "u16",
+      "value": "2"
+    },
+    {
+      "name": "U32",
+      "type": "u32",
+      "value": "4"
+    },
+    {
+      "name": "U64",
+      "type": "u64",
+      "value": "8"
+    },
+    {
+      "name": "U8",
+      "type": "u8",
+      "value": "1"
     }
   ]
 }
