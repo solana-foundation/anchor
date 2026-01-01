@@ -66,12 +66,12 @@ pub fn generate(
                 if f.is_optional {
                     quote! {
                         #docs
-                        pub #name: Option<anchor_lang::solana_program::account_info::AccountInfo<'info>>
+                        pub #name: Option<anchor_lang::pinocchio_runtime::account_info::AccountInfo>
                     }
                 } else {
                     quote! {
                         #docs
-                        pub #name: anchor_lang::solana_program::account_info::AccountInfo<'info>
+                        pub #name: anchor_lang::pinocchio_runtime::account_info::AccountInfo
                     }
                 }
             }
@@ -97,22 +97,35 @@ pub fn generate(
                     false => quote! {false},
                     true => quote! {true},
                 };
-                let meta = match f.constraints.is_mutable() {
-                    false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
-                    true => quote! { anchor_lang::solana_program::instruction::AccountMeta::new },
-                };
                 let name = &f.ident;
+                let is_mutable = f.constraints.is_mutable();
                 if f.is_optional {
                     quote! {
                         if let Some(#name) = &self.#name {
-                            account_metas.push(#meta(anchor_lang::Key::key(#name), #is_signer));
+                            // For AccountInfo, use address() which returns &Pubkey directly
+                            let account_ref = #name;
+                            let meta = match (#is_mutable, #is_signer) {
+                                (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
+                                (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(account_ref.address()),
+                                (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(account_ref.address()),
+                                (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(account_ref.address()),
+                            };
+                            account_metas.push(meta);
                         } else {
-                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(#program_id, false));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
                         }
                     }
                 } else {
                     quote! {
-                        account_metas.push(#meta(anchor_lang::Key::key(&self.#name), #is_signer));
+                        // For AccountInfo, use address() which returns &Pubkey directly
+                        let account_ref = &self.#name;
+                        let meta = match (#is_mutable, #is_signer) {
+                            (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
+                            (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(account_ref.address()),
+                            (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(account_ref.address()),
+                            (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(account_ref.address()),
+                        };
+                        account_metas.push(meta);
                     }
                 }
             }
@@ -159,11 +172,19 @@ pub fn generate(
             })
             .collect()
     };
-    let generics = if account_struct_fields.is_empty() {
+    // Check if there are any composite fields (which need lifetimes)
+    // Regular fields are always AccountInfo in this module, so they don't need lifetimes
+    let has_composite_fields = accs
+        .fields
+        .iter()
+        .any(|f| matches!(f, AccountField::CompositeField(_)));
+
+    let generics = if account_struct_fields.is_empty() || !has_composite_fields {
         quote! {}
     } else {
         quote! {<'info>}
     };
+
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))
@@ -187,8 +208,8 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl #generics anchor_lang::ToAccountMetas for #name #generics {
-                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+            impl<'info> #generics anchor_lang::ToAccountMetas<'info> for #name #generics {
+                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::pinocchio_runtime::instruction::AccountMeta> {
                     let mut account_metas = vec![];
                     #(#account_struct_metas)*
                     account_metas
@@ -196,8 +217,8 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl<'info> anchor_lang::ToAccountInfos<'info> for #name #generics {
-                fn to_account_infos(&self) -> Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
+            impl anchor_lang::ToAccountInfos for #name #generics {
+                fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountInfo> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
                     account_infos

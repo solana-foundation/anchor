@@ -1,10 +1,10 @@
 //! Type validating that the account is the given Program
 
 use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
+use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
 };
@@ -94,19 +94,19 @@ use std::ops::Deref;
 /// - [`Token`](https://docs.rs/anchor-spl/latest/anchor_spl/token/struct.Token.html)
 ///
 #[derive(Clone)]
-pub struct Program<'info, T = ()> {
-    info: &'info AccountInfo<'info>,
+pub struct Program<T = ()> {
+    info: AccountInfo,
     _phantom: PhantomData<T>,
 }
 
-impl<T: fmt::Debug> fmt::Debug for Program<'_, T> {
+impl<T: fmt::Debug> fmt::Debug for Program<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Program").field("info", &self.info).finish()
     }
 }
 
-impl<'a, T> Program<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo<'a>) -> Program<'a, T> {
+impl<T> Program<T> {
+    pub(crate) fn new(info: AccountInfo) -> Program<T> {
         Self {
             info,
             _phantom: PhantomData,
@@ -114,8 +114,8 @@ impl<'a, T> Program<'a, T> {
     }
 
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        if *self.info.owner == bpf_loader_upgradeable::ID {
-            let mut data: &[u8] = &self.info.try_borrow_data()?;
+        if self.info.owned_by(&bpf_loader_upgradeable::ID) {
+            let mut data: &[u8] = &self.info.try_borrow()?;
             let upgradable_loader_state =
                 UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
 
@@ -143,28 +143,30 @@ impl<'a, T> Program<'a, T> {
     }
 }
 
-impl<'a, T: Id> TryFrom<&'a AccountInfo<'a>> for Program<'a, T> {
+impl<T: Id> TryFrom<AccountInfo> for Program<T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
+    fn try_from(info: AccountInfo) -> Result<Self> {
         // Special handling for unit type () - only check executable, not program ID
         let is_unit_type = T::id() == Pubkey::default();
 
-        if !is_unit_type && info.key != &T::id() {
-            return Err(Error::from(ErrorCode::InvalidProgramId).with_pubkeys((*info.key, T::id())));
+        if !is_unit_type && info.address() != &T::id() {
+            return Err(
+                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((info.key(), T::id()))
+            );
         }
-        if !info.executable {
+        if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
         Ok(Program::new(info))
     }
 }
 
-impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
+impl<'info, B, T: Id> Accounts<'info, B> for Program<T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &[AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -172,48 +174,50 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Program::try_from(account)
     }
 }
 
-impl<T> ToAccountMetas for Program<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+impl<'info, T> ToAccountMetas<'info> for Program<T> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for Program<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+impl<T> ToAccountInfos for Program<T> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![self.info]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo<'info>> for Program<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        self.info
+impl<T> AsRef<AccountInfo> for Program<T> {
+    fn as_ref(&self) -> &AccountInfo {
+        &self.info
     }
 }
 
-impl<'info, T> Deref for Program<'info, T> {
-    type Target = AccountInfo<'info>;
+impl<T> Deref for Program<T> {
+    type Target = AccountInfo;
 
     fn deref(&self) -> &Self::Target {
-        self.info
+        &self.info
     }
 }
 
-impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
+impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<T> {}
 
-impl<T: AccountDeserialize> Key for Program<'_, T> {
+impl<T: AccountDeserialize> Key for Program<T> {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.address()
     }
 }
 

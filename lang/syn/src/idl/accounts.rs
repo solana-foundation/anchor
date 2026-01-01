@@ -154,7 +154,7 @@ fn get_address(acc: &Field) -> TokenStream {
             } else {
                 let id_trait = matches!(acc.ty, Ty::Program(_))
                     .then(|| quote!(anchor_lang::Id))
-                    .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
+                    .unwrap_or_else(|| quote!(anchor_lang::pinocchio_runtime::sysvar::SysvarId));
                 quote! { Some(<#ty as #id_trait>::id().to_string()) }
             }
         }

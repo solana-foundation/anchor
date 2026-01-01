@@ -41,7 +41,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 _ => quote! {
                     let mut return_data = Vec::with_capacity(256);
                     result.serialize(&mut return_data).unwrap();
-                    anchor_lang::solana_program::program::set_return_data(&return_data);
+                    anchor_lang::pinocchio_runtime::program::set_return_data(&return_data);
                 },
             };
 
@@ -99,9 +99,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
-                pub fn #ix_method_name<'info>(
+                pub fn #ix_method_name(
                     __program_id: &Pubkey,
-                    __accounts: &'info[AccountInfo<'info>],
+                    __accounts: &[AccountInfo],
                     __ix_data: &[u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
