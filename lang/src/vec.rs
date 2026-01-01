@@ -39,14 +39,14 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::solana_program::pubkey::Pubkey;
+    use crate::{prelude::UncheckedAccount, solana_program::pubkey::Pubkey};
 
     use super::*;
 
     #[derive(Accounts)]
     pub struct Test<'info> {
         #[account(signer)]
-        test: AccountInfo<'info>,
+        test: UncheckedAccount<'info>,
     }
 
     #[test]
