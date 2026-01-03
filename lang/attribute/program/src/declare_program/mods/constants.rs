@@ -32,6 +32,8 @@ pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// Program constants.
         pub mod constants {
+            use super::*;
+
             #(#constants)*
         }
     }
