@@ -4,9 +4,48 @@ use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
-/// Master seed slice
 #[constant]
-pub const MASTER_SEED: &[u8] = b"master";
+pub const BOOL: bool = false;
+#[constant]
+pub const U8: u8 = 1;
+#[constant]
+pub const U16: u16 = 2;
+#[constant]
+pub const U32: u32 = 4;
+#[constant]
+pub const U64: u64 = 8;
+#[constant]
+pub const U128: u128 = 16;
+#[constant]
+pub const I8: i8 = 1;
+#[constant]
+pub const I16: i16 = 2;
+#[constant]
+pub const I32: i32 = 4;
+#[constant]
+pub const I64: i64 = 8;
+#[constant]
+pub const I128: i128 = 16;
+#[constant]
+pub const BYTES: &[u8] = b"abc";
+#[constant]
+pub const STRING: &str = "abc";
+#[constant]
+pub const PUBKEY: Pubkey = Pubkey::from_str_const("SomeAdress111111111111111111111111111111111");
+#[constant]
+pub const ARRAY: [u8; 4] = [1, 2, 3, 4];
+#[constant]
+pub const OPTION_BOOL: Option<bool> = Some(BOOL);
+#[constant]
+pub const NESTED_OPTION_BOOL: Option<Option<bool>> = Some(OPTION_BOOL);
+#[constant]
+pub const OPTION_STRING: Option<&str> = Some(STRING);
+#[constant]
+pub const NESTED_OPTION_STRING: Option<Option<&str>> = Some(OPTION_STRING);
+#[constant]
+pub const OPTION_ARRAY: Option<[u8; 4]> = Some(ARRAY);
+#[constant]
+pub const NESTED_OPTION_ARRAY: Option<Option<[u8; 4]>> = Some(OPTION_ARRAY);
 
 #[program]
 pub mod external {

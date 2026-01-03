@@ -40,11 +40,11 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
-    syn::parse_str(&convert_idl_type_to_str(ty)).unwrap()
+    syn::parse_str(&convert_idl_type_to_str(ty, false)).unwrap()
 }
 
 // TODO: Impl `ToString` for `IdlType`
-pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
+pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
     match ty {
         IdlType::Bool => "bool".into(),
         IdlType::U8 => "u8".into(),
@@ -61,14 +61,14 @@ pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
         IdlType::I128 => "i128".into(),
         IdlType::U256 => "u256".into(),
         IdlType::I256 => "i256".into(),
-        IdlType::Bytes => "Vec<u8>".into(),
-        IdlType::String => "String".into(),
+        IdlType::Bytes => if is_const { "&[u8]" } else { "Vec<u8>" }.into(),
+        IdlType::String => if is_const { "&str" } else { "String" }.into(),
         IdlType::Pubkey => "Pubkey".into(),
-        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty)),
-        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty)),
+        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)),
+        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty, is_const)),
         IdlType::Array(ty, len) => format!(
             "[{}; {}]",
-            convert_idl_type_to_str(ty),
+            convert_idl_type_to_str(ty, is_const),
             match len {
                 IdlArrayLen::Generic(len) => len.into(),
                 IdlArrayLen::Value(len) => len.to_string(),
@@ -77,7 +77,7 @@ pub fn convert_idl_type_to_str(ty: &IdlType) -> String {
         IdlType::Defined { name, generics } => generics
             .iter()
             .map(|generic| match generic {
-                IdlGenericArg::Type { ty } => convert_idl_type_to_str(ty),
+                IdlGenericArg::Type { ty } => convert_idl_type_to_str(ty, is_const),
                 IdlGenericArg::Const { value } => value.into(),
             })
             .reduce(|mut acc, cur| {

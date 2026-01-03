@@ -22,6 +22,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Fix using non-instruction composite accounts multiple times with `declare_program!` ([#4113](https://github.com/solana-foundation/anchor/pull/4113)).
 - lang: Fix `declare_program!` messing up IDL errors generation ([#4126](https://github.com/solana-foundation/anchor/pull/4126)).
 - idl: Fix `address` constraint not resolving constants that have numbers in their identifiers ([#4144](https://github.com/solana-foundation/anchor/pull/4144)).
+- lang: Fix constant nested string generation in `declare_program!` ([#4158](https://github.com/solana-foundation/anchor/pull/4158)).
 
 ### Breaking
 
