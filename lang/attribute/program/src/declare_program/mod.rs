@@ -74,9 +74,9 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     quote! {
         #docs
         pub mod #name {
-            #[cfg(target_os = "solana")]
+            #[cfg(any(target_os = "solana", feature = "idl-build"))]
             use ::anchor_lang;
-            #[cfg(not(target_os = "solana"))]
+            #[cfg(all(not(target_os = "solana"), not(feature = "idl-build")))]
             use super::anchor_lang;
 
             use anchor_lang::prelude::*;
