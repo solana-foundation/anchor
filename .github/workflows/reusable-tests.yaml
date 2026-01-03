@@ -472,6 +472,8 @@ jobs:
             path: tests/bench
           - cmd: cd tests/idl && ./test.sh
             path: tests/idl
+          - cmd: cd tests/interface-account && anchor test
+            path: tests/interface-account
           - cmd: cd tests/lazy-account && anchor test --skip-lint
             path: tests/lazy-account
           - cmd: cd tests/test-instruction-validation && ./test.sh
