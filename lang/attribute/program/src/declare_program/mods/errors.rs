@@ -15,6 +15,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
             /// Program error type definitions.
             #[cfg(not(feature = "idl-build"))]
             pub mod errors {
+                use super::*;
             }
         };
     }
@@ -23,6 +24,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
         /// Program error type definitions.
         #[cfg(not(feature = "idl-build"))]
         pub mod errors {
+            use super::*;
 
             #[anchor_lang::error_code(offset = 0)]
             pub enum ProgramError {
