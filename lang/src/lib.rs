@@ -498,6 +498,8 @@ pub mod prelude {
         InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
         ToAccountMetas,
     };
+    // Re-export the crate as anchor_lang for declare_program! macro
+    pub use crate as anchor_lang;
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
