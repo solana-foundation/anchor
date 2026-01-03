@@ -47,7 +47,7 @@ pub fn program(
 ///
 /// Both on-chain and off-chain usage is supported.
 ///
-/// **Note:** When using via `anchor_client`, you must have `anchor_lang` in scope:
+/// **Note:** When using in non-solana environments, for example via `anchor_client`, you must have `anchor_lang` in scope:
 /// ```ignore
 /// use anchor_client::anchor_lang;
 /// ```
