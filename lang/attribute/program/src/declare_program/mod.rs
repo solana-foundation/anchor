@@ -24,6 +24,7 @@ impl Parse for DeclareProgram {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name = input.parse()?;
         let idl = get_idl(&name).map_err(|e| syn::Error::new(name.span(), e))?;
+
         Ok(Self { name, idl })
     }
 }
@@ -74,6 +75,11 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     quote! {
         #docs
         pub mod #name {
+            #[cfg(target_os = "solana")]
+            use ::anchor_lang;
+            #[cfg(not(target_os = "solana"))]
+            use super::anchor_lang;
+
             use anchor_lang::prelude::*;
             use accounts::*;
             use events::*;
