@@ -1,6 +1,6 @@
 use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-    VERSION,
+    config::ProgramWorkspace, create_files, override_or_create_files, target_dir, Files,
+    PackageManager, VERSION,
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -240,7 +240,8 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
 
 /// Read the program keypair file or create a new one if it doesn't exist.
 pub fn get_or_create_program_id(name: &str) -> Pubkey {
-    let keypair_path = Path::new("target")
+    let keypair_path = target_dir()
+        .expect("Unable to determine `target` dir")
         .join("deploy")
         .join(format!("{}-keypair.json", name.to_snake_case()));
 
