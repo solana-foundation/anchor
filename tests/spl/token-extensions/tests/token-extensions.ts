@@ -222,7 +222,7 @@ describe("token extensions", () => {
       .accountsStrict({
         authority: payer.publicKey,
         mint: mint.publicKey,
-        tokenProgram: TOKEN_2022_PROGRAM_ID
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
       .signers([payer])
       .rpc();
