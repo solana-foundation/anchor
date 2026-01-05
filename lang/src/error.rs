@@ -191,7 +191,7 @@ pub enum ErrorCode {
     /// 2047 - Signature verification failed
     #[msg("Signature verification failed")]
     SignatureVerificationFailed,
-  
+
     // Migration errors
     /// 2048 - Account is already migrated
     #[msg("Account is already migrated")]
