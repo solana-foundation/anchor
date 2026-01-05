@@ -1122,7 +1122,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
-            },
+            }
             ConstraintToken::Dup(c) => self.add_dup(c),
             ConstraintToken::ExtensionPausableAuthority(c) => self.add_extension_pausable(c),
         }
@@ -1715,7 +1715,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         self.dup.replace(c);
         Ok(())
     }
-    
+
     fn add_extension_pausable(
         &mut self,
         c: Context<ConstraintExtensionAuthority>,
