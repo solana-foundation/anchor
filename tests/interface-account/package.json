@@ -12,5 +12,8 @@
   },
   "engines": {
     "node": ">=17"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1"
   }
 }
