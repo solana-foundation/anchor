@@ -471,7 +471,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::solana_program::clock::Epoch;
     use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
 
     const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -577,7 +576,6 @@ mod tests {
             data,
             owner,
             false,
-            Epoch::default(),
         )
     }
 
