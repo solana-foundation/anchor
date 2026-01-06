@@ -90,12 +90,21 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 
 /// Check for potential dependency improvements.
 ///
-/// The main problem people will run into with Solana v2 is that the `solana-program` version
+/// The main problem people will run into with Solana version bumps is that the `solana-program` version
 /// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
 /// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
 /// `anchor-spl` when possible.
 pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
     // Check `solana-program`
+    /// Check if this version requirement matches 3.0.0
+    fn compatible_solana_program(version_req: &str) -> bool {
+        let Ok(req) = VersionReq::parse(version_req) else {
+            // Assume incompatible if parsing fails
+            return false;
+        };
+        req.matches(&Version::new(3, 0, 0))
+    }
+
     cfg.get_rust_program_list()?
         .into_iter()
         .map(|path| path.join("Cargo.toml"))
@@ -103,7 +112,23 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .filter(|man| man.dependencies.contains_key("solana-program"))
+        .filter(|man| {
+            man.dependencies
+                .get("solana-program")
+                .is_some_and(|dep| match dep {
+                    cargo_toml::Dependency::Simple(version) => !compatible_solana_program(version),
+                    cargo_toml::Dependency::Detailed(detail) => {
+                        if let Some(version) = &detail.version {
+                            !compatible_solana_program(version)
+                        } else {
+                            // Conservatively warn on non-version dependencies
+                            true
+                        }
+                    }
+                    // Conservatively warn on inherited dependencies
+                    _ => true,
+                })
+        })
         .for_each(|man| {
             eprintln!(
                 "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
