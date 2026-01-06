@@ -108,7 +108,11 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
+    /// Constructs a new `Loader` without performing any account validation checks.
+    ///
+    /// This bypasses owner and discriminator validation. Prefer `try_from` or
+    /// `try_from_unchecked` when you want Anchor to enforce checks.
+    pub fn new_unchecked(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
         Self {
             acc_info,
             phantom: PhantomData,
@@ -134,7 +138,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
-        Ok(AccountLoader::new(acc_info))
+        Ok(AccountLoader::new_unchecked(acc_info))
     }
 
     /// Constructs a new `Loader` from an uninitialized account.
@@ -147,7 +151,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner, T::owner())));
         }
-        Ok(AccountLoader::new(acc_info))
+        Ok(AccountLoader::new_unchecked(acc_info))
     }
 
     /// Returns a Ref to the account data structure for reading.
