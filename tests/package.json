@@ -56,7 +56,6 @@
     "signature-verification"
   ],
   "dependencies": {
-    "@anchor-lang/core": "^0.32.1",
     "@project-serum/common": "^0.0.1-beta.3",
     "@project-serum/serum": "^0.13.60",
     "@solana/spl-token": "^0.1.8",

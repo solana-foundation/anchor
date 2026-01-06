@@ -1,4 +1,4 @@
-  import * as anchor from "@anchor-lang/core";
+import * as anchor from "@anchor-lang/core";
 import assert from "assert";
 
 import type { InterfaceAccount } from "../target/types/interface_account";
