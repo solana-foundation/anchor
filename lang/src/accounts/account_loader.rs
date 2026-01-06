@@ -108,7 +108,7 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
+    pub fn new(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
         Self {
             acc_info,
             phantom: PhantomData,
@@ -147,6 +147,50 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner, T::owner())));
         }
+        Ok(AccountLoader::new(acc_info))
+    }
+
+    /// Constructs a new `Loader` bypassing owner check but enforcing discriminator check.
+    ///
+    /// This function is useful when you need to load accounts that may be owned by
+    /// different programs but still want to ensure the discriminator matches.
+    ///
+    /// # Safety
+    ///
+    /// This function bypasses the owner check. The caller must ensure that:
+    /// - The account owner is acceptable for the use case
+    /// - The account data is valid for type `T`
+    ///
+    /// The discriminator is still validated to ensure type safety.
+    #[inline(never)]
+    pub fn try_from_unsafe(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
+        let data = &acc_info.try_borrow_data()?;
+        let disc = T::DISCRIMINATOR;
+        if data.len() < disc.len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
+
+        let given_disc = &data[..disc.len()];
+        if given_disc != disc {
+            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
+        }
+
+        Ok(AccountLoader::new(acc_info))
+    }
+
+    /// Constructs a new `Loader` bypassing both owner and discriminator checks.
+    ///
+    /// This function provides maximum flexibility for zero-copy deserialization
+    /// when you need to bypass all validation checks.
+    ///
+    /// # Safety
+    ///
+    /// This function bypasses all safety checks. The caller is fully responsible for:
+    /// - Ensuring the account owner is correct (if required)
+    /// - Ensuring the discriminator matches (if required)
+    /// - Ensuring the account data is valid for type `T`
+    #[inline(never)]
+    pub fn try_from_danger(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
         Ok(AccountLoader::new(acc_info))
     }
 
