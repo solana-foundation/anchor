@@ -355,6 +355,13 @@ impl Field {
                     }
                 }
             }
+            Ty::Migration(ty) => {
+                let from = &ty.from_type_path;
+                let to = &ty.to_type_path;
+                quote! {
+                    #container_ty<'info, #from, #to>
+                }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -484,6 +491,9 @@ impl Field {
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
+            Ty::Migration(_) => quote! {
+                anchor_lang::accounts::migration::Migration
+            },
             Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
             Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
             Ty::Interface(_) => quote! { anchor_lang::accounts::interface::Interface },
@@ -540,6 +550,13 @@ impl Field {
                     #ident
                 }
             }
+            Ty::Migration(ty) => {
+                // Return just the From type for IDL and other uses
+                let from = &ty.from_type_path;
+                quote! {
+                    #from
+                }
+            }
             Ty::Sysvar(ty) => match ty {
                 SysvarTy::Clock => quote! {Clock},
                 SysvarTy::Rent => quote! {Rent},
@@ -593,6 +610,7 @@ pub enum Ty {
     Sysvar(SysvarTy),
     Account(AccountTy),
     LazyAccount(LazyAccountTy),
+    Migration(MigrationTy),
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
@@ -633,6 +651,13 @@ pub struct AccountTy {
 pub struct LazyAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct MigrationTy {
+    // Migration<'info, From, To> - we need both From and To types
+    pub from_type_path: TypePath,
+    pub to_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq, Eq)]
