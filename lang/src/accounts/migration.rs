@@ -568,15 +568,7 @@ mod tests {
         lamports: &'a mut u64,
         data: &'a mut [u8],
     ) -> AccountInfo<'a> {
-        AccountInfo::new(
-            key,
-            false,
-            true,
-            lamports,
-            data,
-            owner,
-            false,
-        )
+        AccountInfo::new(key, false, true, lamports, data, owner, false)
     }
 
     // Verifies that a freshly deserialized Migration account reports
