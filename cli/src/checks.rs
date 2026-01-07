@@ -96,13 +96,24 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 /// `anchor-spl` when possible.
 pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
     // Check `solana-program`
-    /// Check if this version requirement matches 3.0.0
+    /// Check if this version requirement matches the one listed in our workspace
     fn compatible_solana_program(version_req: &str) -> bool {
         let Ok(req) = VersionReq::parse(version_req) else {
             // Assume incompatible if parsing fails
             return false;
         };
-        req.matches(&Version::new(3, 0, 0))
+        let workspace_toml =
+            cargo_toml::Manifest::from_str(include_str!("../../Cargo.toml")).unwrap();
+        let version = workspace_toml
+            .workspace
+            .as_ref()
+            .unwrap()
+            .dependencies
+            .get("solana-program")
+            .expect("this check should be removed if solana-program is no longer present")
+            .req();
+        let workspace_solana_prog_version = semver::Version::parse(version).unwrap();
+        req.matches(&workspace_solana_prog_version)
     }
 
     cfg.get_rust_program_list()?
