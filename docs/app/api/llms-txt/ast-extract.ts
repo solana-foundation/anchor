@@ -29,8 +29,21 @@ export async function extractTextFromMDX(mdxContent: string): Promise<string> {
         strong: ({ children }) => `**${extractChildrenText(children)}**`,
         em: ({ children }) => `*${extractChildrenText(children)}*`,
         a: ({ href, children }) => `${extractChildrenText(children)} (${href})`,
-        code: ({ children }) => `\`${extractChildrenText(children)}\``,
-        pre: ({ children }) => `\n${extractChildrenText(children)}\n`,
+        code: ({ children, className }) => {
+          const text = extractChildrenText(children);
+          if (className && /(?:^| )(?:language-|lang-)/.test(className)) {
+            return `${text}\n\n`;
+          }
+          return `\`${text}\``;
+        },
+        pre: ({ children }) => {
+          const codeText = extractChildrenText(children);
+          // Remove fumadocs code highlighting markers
+          const filteredText = codeText.split('\n')
+            .filter(line => !line.trim().startsWith('// [!code'))
+            .join('\n');
+          return `${filteredText}\n\n`;  // Add line break after code block
+        },
         blockquote: ({ children }) => `> ${extractChildrenText(children)}\n\n`,
         // Remove other JSX components but keep their text content
         Callout: ({ children }) => extractChildrenText(children),
@@ -57,7 +70,33 @@ function extractChildrenText(children: any): string {
   if (typeof children === 'number') return children.toString();
 
   if (Array.isArray(children)) {
-    return children.map(extractChildrenText).join('');
+    const parts = children.map(extractChildrenText).filter(Boolean);
+    let combined = '';
+    let prevPart = '';
+
+    for (const part of parts) {
+      if (!combined) {
+        combined = part;
+        prevPart = part;
+        continue;
+      }
+
+      const prevHasNewline = prevPart.includes('\n');
+      const nextHasNewline = part.includes('\n');
+      const prevEndsWithNewline = prevPart.endsWith('\n');
+      const nextStartsWithNewline = part.startsWith('\n');
+
+      if ((prevHasNewline || nextHasNewline) && !prevEndsWithNewline && !nextStartsWithNewline) {
+        combined += '\n';
+      } else if (needsInlineSpace(prevPart, part)) {
+        combined += ' ';
+      }
+
+      combined += part;
+      prevPart = part;
+    }
+
+    return combined;
   }
 
   if (typeof children === 'object' && children.props && children.props.children) {
@@ -65,6 +104,16 @@ function extractChildrenText(children: any): string {
   }
 
   return '';
+}
+
+function needsInlineSpace(prev: string, next: string): boolean {
+  if (!prev || !next) return false;
+  if (/\s$/.test(prev) || /^\s/.test(next)) return false;
+
+  const prevEndsWithWord = /[A-Za-z0-9\)\]]$/.test(prev);
+  const nextStartsWithWord = /^[A-Za-z0-9\(\[]/.test(next);
+
+  return prevEndsWithWord && nextStartsWithWord;
 }
 
 function extractTextFallback(content: string): string {
