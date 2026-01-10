@@ -382,6 +382,55 @@ describe("{}", () => {{
     )
 }
 
+pub fn js_bun(name: &str) -> String {
+    format!(
+        r#"import {{ describe, it }} from "bun:test";
+import * as anchor from "@anchor-lang/core";
+describe("{}", () => {{
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.AnchorProvider.env());
+
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const program = anchor.workspace.{};
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+"#,
+        name,
+        name.to_lower_camel_case(),
+    )
+}
+
+pub fn ts_bun(name: &str) -> String {
+    format!(
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ describe, it }} from "bun:test";
+import {{ Program }} from "@anchor-lang/core";
+import {{ {} }} from "../target/types/{}";
+
+describe("{}", () => {{
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.AnchorProvider.env());
+
+  const program = anchor.workspace.{} as Program<{}>;
+
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+"#,
+        name.to_pascal_case(),
+        name.to_snake_case(),
+        name,
+        name.to_lower_camel_case(),
+        name.to_pascal_case(),
+    )
+}
+
 pub fn package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
@@ -423,9 +472,9 @@ pub fn package_json(jest: bool, license: String) -> String {
     }
 }
 
-pub fn ts_package_json(jest: bool, license: String) -> String {
-    if jest {
-        format!(
+pub fn ts_package_json(test_runner: &TestTemplate, license: String) -> String {
+    match test_runner {
+        &TestTemplate::Jest => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -445,9 +494,28 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
-    } else {
-        format!(
+        ),
+        &TestTemplate::Bun => format!(
+            r#"{{
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@anchor-lang/core": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "@types/bn.js": "^5.1.0",
+    "@types/bun": "^1.3.5",
+    "prettier": "^2.6.2",
+    "typescript": "^5.7.3"
+  }}
+}}
+"#
+        ),
+        // default to Mocha
+        _ => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -469,7 +537,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
+        ),
     }
 }
 
@@ -527,9 +595,10 @@ describe("{}", () => {{
     )
 }
 
-pub fn ts_config(jest: bool) -> &'static str {
-    if jest {
-        r#"{
+pub fn ts_config(js_test_runner: &TestTemplate) -> &'static str {
+    match js_test_runner {
+        TestTemplate::Jest => {
+            r#"{
   "compilerOptions": {
     "types": ["jest"],
     "typeRoots": ["./node_modules/@types"],
@@ -540,8 +609,23 @@ pub fn ts_config(jest: bool) -> &'static str {
   }
 }
 "#
-    } else {
-        r#"{
+        }
+        TestTemplate::Bun => {
+            r#"{
+  "compilerOptions": {
+    "types": ["bun"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
+        }
+        // default to Mocha
+        _ => {
+            r#"{
   "compilerOptions": {
     "types": ["mocha", "chai"],
     "typeRoots": ["./node_modules/@types"],
@@ -552,6 +636,7 @@ pub fn ts_config(jest: bool) -> &'static str {
   }
 }
 "#
+        }
     }
 }
 
@@ -635,6 +720,8 @@ pub enum TestTemplate {
     Mocha,
     /// Generate template for Jest unit-test
     Jest,
+    /// Generate template for Bun unit-test
+    Bun,
     /// Generate template for Rust unit-test
     Rust,
     /// Generate template for Mollusk Rust unit-test
@@ -667,6 +754,11 @@ impl TestTemplate {
                     format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
+            Self::Bun => {
+                // Bun is so fast that it starts running tests before the
+                // local validator has procecessed the deployment
+                format!("sleep 0.3 && bun test")
+            }
             Self::Rust => "cargo test".to_owned(),
             Self::Mollusk => "cargo test-sbf".to_owned(),
         }
@@ -692,6 +784,18 @@ impl TestTemplate {
 
                 let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
                 test.write_all(jest(project_name).as_bytes())?;
+            }
+            Self::Bun => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    test.write_all(js_bun(project_name).as_bytes())?;
+                } else {
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    test.write_all(ts_bun(project_name).as_bytes())?;
+                }
             }
             Self::Rust => {
                 // Do not initialize git repo
