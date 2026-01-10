@@ -1,0 +1,31 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+account_generation_test = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 tests/*.ts"
+
+[test]
+startup_wait = 20000
+
+[test.validator]
+
+# Generate accounts with pre-funded SOL
+[[test.validator.generate_accounts]]
+address = "new"
+lamports = 1000000000  # 1 SOL
+
+[[test.validator.generate_accounts]]
+address = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+lamports = 5000000000  # 5 SOL
+
+# Generate popular mints
+[[test.validator.generate_token_mints]]
+mint = "USDC"
+
+[[test.validator.generate_token_mints]]
+mint = "mSOL"
+
