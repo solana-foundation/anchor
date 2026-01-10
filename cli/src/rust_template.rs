@@ -361,7 +361,7 @@ describe("{}", () => {{
     )
 }
 
-pub fn jest(name: &str) -> String {
+pub fn js_jest(name: &str) -> String {
     format!(
         r#"const anchor = require("@anchor-lang/core");
 
@@ -690,8 +690,13 @@ impl TestTemplate {
                 // Build the test suite.
                 fs::create_dir_all("tests")?;
 
-                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-                test.write_all(jest(project_name).as_bytes())?;
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    test.write_all(js_jest(project_name).as_bytes())?;
+                } else {
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    test.write_all(ts_jest(project_name).as_bytes())?;
+                }
             }
             Self::Rust => {
                 // Do not initialize git repo
