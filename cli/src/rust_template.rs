@@ -472,8 +472,8 @@ pub fn package_json(jest: bool, license: String) -> String {
     }
 }
 
-pub fn ts_package_json(test_runner: &TestTemplate, license: String) -> String {
-    match test_runner {
+pub fn ts_package_json(test_template: &TestTemplate, license: String) -> String {
+    match test_template {
         &TestTemplate::Jest => format!(
             r#"{{
   "license": "{license}",
@@ -595,8 +595,8 @@ describe("{}", () => {{
     )
 }
 
-pub fn ts_config(js_test_runner: &TestTemplate) -> &'static str {
-    match js_test_runner {
+pub fn ts_config(test_template: &TestTemplate) -> &'static str {
+    match test_template {
         TestTemplate::Jest => {
             r#"{
   "compilerOptions": {
