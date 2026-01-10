@@ -1133,17 +1133,25 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
-        } => init(
-            &opts.cfg_override,
-            name,
-            javascript,
-            no_install,
-            package_manager,
-            no_git,
-            template,
-            test_template,
-            force,
-        ),
+        } => {
+            // use Bun as a package manager when test template is Bun
+            let package_manager = match test_template {
+                TestTemplate::Bun => PackageManager::Bun,
+                _ => package_manager,
+            };
+
+            init(
+                &opts.cfg_override,
+                name,
+                javascript,
+                no_install,
+                package_manager,
+                no_git,
+                template,
+                test_template,
+                force,
+            )
+        }
         Command::New {
             name,
             template,
@@ -1439,7 +1447,8 @@ fn init(
         ts_config.write_all(rust_template::ts_config(&test_template).as_bytes())?;
 
         let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(&test_template, license).as_bytes())?;
+        ts_package_json
+            .write_all(rust_template::ts_package_json(&test_template, license).as_bytes())?;
 
         let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
