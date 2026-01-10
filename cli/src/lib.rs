@@ -1433,11 +1433,10 @@ fn init(
 
     let license = get_npm_init_license()?;
 
-    let jest = TestTemplate::Jest == test_template;
     if javascript {
         // Build javascript config
         let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
+        package_json.write_all(rust_template::js_package_json(&test_template, license).as_bytes())?;
 
         let mut deploy = File::create(migrations_path.join("deploy.js"))?;
         deploy.write_all(rust_template::deploy_script().as_bytes())?;

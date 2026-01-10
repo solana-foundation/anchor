@@ -431,9 +431,9 @@ describe("{}", () => {{
     )
 }
 
-pub fn package_json(jest: bool, license: String) -> String {
-    if jest {
-        format!(
+pub fn js_package_json(test_template: &TestTemplate, license: String) -> String {
+    match test_template {
+        TestTemplate::Jest => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -449,9 +449,24 @@ pub fn package_json(jest: bool, license: String) -> String {
   }}
 }}
     "#
-        )
-    } else {
-        format!(
+        ),
+        TestTemplate::Bun => format!(
+            r#"{{
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@anchor-lang/core": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "prettier": "^2.6.2"
+  }}
+}}
+"#
+        ),
+        _ => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -468,7 +483,7 @@ pub fn package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
+        ),
     }
 }
 
