@@ -1,16 +1,16 @@
 use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
-    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
-    SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
-    STARTUP_WAIT, SURFPOOL_HOST,
+    BootstrapMode, BuildConfig, Config, ConfigOverride, HookType, Manifest, PackageManager,
+    ProgramArch, ProgramDeployment, ProgramWorkspace, SHUTDOWN_WAIT, STARTUP_WAIT, SURFPOOL_HOST,
+    ScriptsConfig, SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath,
+    get_default_ledger_path,
 };
 use anchor_client::Cluster;
+use anchor_lang::AnchorDeserialize;
 use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::solana_program::bpf_loader_upgradeable;
-use anchor_lang::AnchorDeserialize;
 use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
@@ -18,7 +18,7 @@ use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
-use serde_json::{json, Map, Value as JsonValue};
+use serde_json::{Map, Value as JsonValue, json};
 use solana_cli_config::Config as SolanaCliConfig;
 use solana_commitment_config::CommitmentConfig;
 use solana_compute_budget_interface::ComputeBudgetInstruction;
@@ -38,14 +38,19 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command as ProcessCommand, Stdio};
+use std::process::{Command as ProcessCommand, Stdio};
 use std::string::ToString;
 use std::sync::LazyLock;
 
 mod account;
 mod checks;
 pub mod config;
+mod error;
+mod git;
+mod guard;
 mod keygen;
+mod path;
+mod process;
 mod program;
 pub mod rust_template;
 
@@ -62,7 +67,7 @@ pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     if let Ok(avm_home) = std::env::var("AVM_HOME") {
         PathBuf::from(avm_home)
     } else {
-        let mut user_home = dirs::home_dir().expect("Could not find home directory");
+        let mut user_home = dirs::home_dir().expect("Home directory not found");
         user_home.push(".avm");
         user_home
     }
@@ -925,9 +930,9 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
         }
 
         fn get_current_version(cmd_name: &str) -> Result<String> {
-            let output = std::process::Command::new(cmd_name)
+            let output = process::SafeCommand::new(cmd_name)
                 .arg("--version")
-                .output()?;
+                .run_with_output()?;
             if !output.status.success() {
                 return Err(anyhow!("Failed to run `{cmd_name} --version`"));
             }
@@ -966,15 +971,16 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                             See https://github.com/anza-xyz/agave/wiki/Agave-Transition, \
                             installing..."
                         );
-                        let install_script = std::process::Command::new("curl")
+                        let install_script = process::SafeCommand::new("curl")
                             .args([
                                 "-sSfL",
                                 &format!("https://release.{domain}/v{version}/install"),
                             ])
-                            .output()?;
-                        let is_successful = std::process::Command::new("sh")
+                            .run_with_output()?;
+                        let is_successful = process::SafeCommand::new("sh")
                             .args(["-c", std::str::from_utf8(&install_script.stdout)?])
-                            .spawn()?
+                            .spawn_with_combined_output()?
+                            .0
                             .wait_with_output()?
                             .status
                             .success();
@@ -983,7 +989,9 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         }
                     }
 
-                    let output = std::process::Command::new(cmd_name).arg("list").output()?;
+                    let output = process::SafeCommand::new(cmd_name)
+                        .arg("list")
+                        .run_with_output()?;
                     if !output.status.success() {
                         return Err(anyhow!("Failed to list installed `solana` versions"));
                     }
@@ -999,12 +1007,13 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         (Stdio::inherit(), Stdio::inherit())
                     };
 
-                    std::process::Command::new(cmd_name)
+                    process::SafeCommand::new(cmd_name)
                         .arg("init")
                         .arg(&version)
                         .stderr(stderr)
                         .stdout(stdout)
-                        .spawn()?
+                        .spawn_with_combined_output()?
+                        .0
                         .wait()
                         .map(|status| status.success())
                         .map_err(|err| anyhow!("Failed to run `{cmd_name}` command: {err}"))
@@ -1045,7 +1054,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                 .to_owned();
             if anchor_version != &current_version {
                 let binary_path = home_dir()
-                    .unwrap()
+                    .ok_or_else(|| anyhow!("Home directory not found"))?
                     .join(".avm")
                     .join("bin")
                     .join(format!("{ANCHOR_BINARY_PREFIX}{anchor_version}"));
@@ -1377,11 +1386,19 @@ fn init(
 
     let mut cfg = Config::default();
 
-    let test_script = test_template.get_test_script(javascript, &package_manager);
+    let is_pure_rust = matches!(test_template, TestTemplate::Rust | TestTemplate::Mollusk);
+
+    let test_script = if is_pure_rust {
+        test_template.get_test_script(javascript, None)
+    } else {
+        test_template.get_test_script(javascript, Some(&package_manager))
+    };
     cfg.scripts.insert("test".to_owned(), test_script);
 
     let package_manager_cmd = package_manager.to_string();
-    cfg.toolchain.package_manager = Some(package_manager);
+    if !is_pure_rust {
+        cfg.toolchain.package_manager = Some(package_manager);
+    }
 
     let mut localnet = BTreeMap::new();
     let program_id = rust_template::get_or_create_program_id(&rust_name);
@@ -1400,8 +1417,10 @@ fn init(
     // Initialize .gitignore file
     fs::write(".gitignore", rust_template::git_ignore())?;
 
-    // Initialize .prettierignore file
-    fs::write(".prettierignore", rust_template::prettier_ignore())?;
+    // Initialize .prettierignore file (skip for pure Rust projects >⩊<)
+    if !is_pure_rust {
+        fs::write(".prettierignore", rust_template::prettier_ignore())?;
+    }
 
     // Remove the default program if `--force` is passed
     if force {
@@ -1419,35 +1438,37 @@ fn init(
         TestTemplate::Mollusk == test_template,
     )?;
 
-    // Build the migrations directory.
-    let migrations_path = Path::new("migrations");
-    fs::create_dir_all(migrations_path)?;
+    if !is_pure_rust {
+        // Build the migrations directory.
+        let migrations_path = Path::new("migrations");
+        fs::create_dir_all(migrations_path)?;
 
-    let license = get_npm_init_license()?;
+        let license = get_npm_init_license()?;
 
-    let jest = TestTemplate::Jest == test_template;
-    if javascript {
-        // Build javascript config
-        let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
+        let jest = TestTemplate::Jest == test_template;
+        if javascript {
+            // Build javascript config
+            let mut package_json = File::create("package.json")?;
+            package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.js"))?;
-        deploy.write_all(rust_template::deploy_script().as_bytes())?;
-    } else {
-        // Build typescript config
-        let mut ts_config = File::create("tsconfig.json")?;
-        ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.js"))?;
+            deploy.write_all(rust_template::deploy_script().as_bytes())?;
+        } else {
+            // Build typescript config
+            let mut ts_config = File::create("tsconfig.json")?;
+            ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
-        let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
+            let mut ts_package_json = File::create("package.json")?;
+            ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
-        deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
+            deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+        }
     }
 
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
-    if !no_install {
+    if !no_install && !is_pure_rust {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
         if !package_manager_result.status.success() && package_manager_cmd != "npm" {
@@ -1458,15 +1479,10 @@ fn init(
         }
     }
 
-    if !no_git {
-        let git_result = std::process::Command::new("git")
-            .arg("init")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(|e| anyhow::format_err!("git init failed: {}", e))?;
-        if !git_result.status.success() {
-            eprintln!("Failed to automatically initialize a new git repository");
+    if !no_git && !git::has_git_repository(Path::new(".")) {
+        match git::init_repository(Path::new(".")) {
+            Ok(_) => println!("Initialized git repository"),
+            Err(e) => eprintln!("Failed to initialize git repository: {}", e),
         }
     }
 
@@ -1678,7 +1694,9 @@ fn expand_program(
         .output()
         .map_err(|e| anyhow::format_err!("{}", e))?;
     if !exit.status.success() {
-        eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
+        eprintln!(
+            "'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation"
+        );
         std::process::exit(exit.status.code().unwrap_or(1));
     }
 
@@ -2223,13 +2241,11 @@ fn docker_cleanup(container_name: &str, target_dir: &Path) -> Result<()> {
 }
 
 fn docker_exec(container_name: &str, args: &[&str]) -> Result<()> {
-    let exit = std::process::Command::new("docker")
+    let output = process::SafeCommand::new("docker")
         .args([&["exec", container_name], args].concat())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow!("Failed to run command \"{:?}\": {:?}", args, e))?;
-    if !exit.status.success() {
+        .run_inherit()?;
+
+    if !output.status.success() {
         Err(anyhow!("Failed to run command: {:?}", args))
     } else {
         Ok(())
@@ -3326,30 +3342,19 @@ fn run_test_suite(
     if is_localnet && !skip_local_validator {
         match validator_type {
             ValidatorType::Surfpool => {
-                let full_simnet_mode = false;
-                let flags = Some(surfpool_flags(
-                    cfg,
-                    surfpool_config,
-                    full_simnet_mode,
-                    skip_deploy,
-                    Some(test_suite_path.as_ref()),
-                )?);
                 validator_handle = Some(start_surfpool_validator(
-                    flags,
-                    surfpool_config,
-                    full_simnet_mode,
+                    cfg,
+                    false,
+                    surfpool_config.as_ref(),
+                    skip_deploy,
                 )?);
             }
             ValidatorType::Legacy => {
-                let flags = match skip_deploy {
-                    true => None,
-                    false => Some(validator_flags(cfg, test_validator)?),
-                };
                 validator_handle = Some(start_solana_test_validator(
                     cfg,
-                    test_validator,
-                    flags,
-                    true,
+                    test_validator.as_ref(),
+                    false,
+                    skip_deploy,
                 )?);
             }
         }
@@ -3401,13 +3406,21 @@ fn run_test_suite(
     // Keep validator running if needed.
     if test_result.is_ok() && detach {
         println!("Local validator still running. Press Ctrl + C quit.");
-        std::io::stdin().lock().lines().next().unwrap().unwrap();
+        if let Some(Ok(_)) = std::io::stdin().lock().lines().next() {
+            // Pressed enter, continue
+        }
     }
 
     // Check all errors and shut down.
-    if let Some(mut child) = validator_handle {
-        if let Err(err) = child.kill() {
-            println!("Failed to kill subprocess {}: {}", child.id(), err);
+    if let Some(child) = validator_handle {
+        let name = child.name().to_owned();
+        let pid = child.id();
+        if detach {
+            #[allow(clippy::zombie_processes)]
+            let _ = child.take();
+            println!("Validator {} (pid {}) running in background.", name, pid);
+        } else {
+            let _ = child.wait();
         }
     }
 
@@ -3440,8 +3453,13 @@ fn run_test_suite(
 fn validator_flags(
     cfg: &WithPath<Config>,
     test_validator: &Option<TestValidator>,
+    skip_deploy: bool,
 ) -> Result<Vec<String>> {
     let programs = cfg.programs.get(&Cluster::Localnet);
+
+    if skip_deploy {
+        return Ok(Vec::new());
+    }
 
     let test_upgradeable_program = test_validator
         .as_ref()
@@ -3873,37 +3891,39 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
     }
 
     // Also subscribe to logs for genesis programs
-    if let Some(test) = config.test_validator.as_ref() {
-        if let Some(genesis) = &test.genesis {
-            for entry in genesis {
-                let log_file_path = program_logs_dir.join(&entry.address).with_extension("log");
-                let address = entry.address.clone();
+    if let Some(genesis) = config
+        .test_validator
+        .as_ref()
+        .and_then(|t| t.genesis.as_ref())
+    {
+        for entry in genesis {
+            let log_file_path = program_logs_dir.join(&entry.address).with_extension("log");
+            let address = entry.address.clone();
 
-                // Subscribe to logs using PubsubClient
-                let (client, receiver) = match PubsubClient::logs_subscribe(
-                    &ws_url,
-                    RpcTransactionLogsFilter::Mentions(vec![address.clone()]),
-                    RpcTransactionLogsConfig {
-                        commitment: Some(CommitmentConfig::confirmed()),
-                    },
-                ) {
-                    Ok(result) => result,
-                    Err(e) => {
-                        eprintln!(
-                            "Warning: Failed to subscribe to logs for genesis program {}: {}",
-                            &entry.address, e
-                        );
-                        continue;
-                    }
-                };
+            // Subscribe to logs using PubsubClient
+            let (client, receiver) = match PubsubClient::logs_subscribe(
+                &ws_url,
+                RpcTransactionLogsFilter::Mentions(vec![address.clone()]),
+                RpcTransactionLogsConfig {
+                    commitment: Some(CommitmentConfig::confirmed()),
+                },
+            ) {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Failed to subscribe to logs for genesis program {}: {}",
+                        &entry.address, e
+                    );
+                    continue;
+                }
+            };
 
-                // Spawn thread to write logs to file
-                spawn_log_receiver_thread(receiver, log_file_path);
+            // Spawn thread to write logs to file
+            spawn_log_receiver_thread(receiver, log_file_path);
 
-                handles.push(LogStreamHandle {
-                    subscription: client,
-                });
-            }
+            handles.push(LogStreamHandle {
+                subscription: client,
+            });
         }
     }
 
@@ -3911,24 +3931,38 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
 }
 
 fn start_surfpool_validator(
-    flags: Option<Vec<String>>,
-    surfpool_config: &Option<SurfpoolConfig>,
-    full_simnet_mode: bool,
-) -> Result<Child> {
-    let rpc_url = surfpool_rpc_url(surfpool_config);
+    cfg: &WithPath<Config>,
+    test_log_stdout: bool,
+    surfpool_config: Option<&SurfpoolConfig>,
+    skip_deploy: bool,
+) -> Result<guard::ProcessGuard> {
+    let full_simnet_mode = !test_log_stdout;
+    let test_suite_path = None;
+
+    let flags = surfpool_flags(
+        cfg,
+        &surfpool_config.cloned(),
+        full_simnet_mode,
+        skip_deploy,
+        test_suite_path,
+    )?;
+
+    let rpc_url = surfpool_rpc_url(&surfpool_config.cloned());
 
     let (test_validator_stdout, test_validator_stderr) = match full_simnet_mode {
         true => (Stdio::inherit(), Stdio::inherit()),
         false => (Stdio::null(), Stdio::null()),
     };
 
-    let mut validator_handle = std::process::Command::new("surfpool")
+    let child = std::process::Command::new("surfpool")
         .arg("start")
-        .args(flags.unwrap_or_default())
+        .args(flags)
         .stdout(test_validator_stdout)
         .stderr(test_validator_stderr)
         .spawn()
         .map_err(|e| anyhow!("Failed to spawn `surfpool`: {e}"))?;
+
+    let mut validator_handle = guard::ProcessGuard::new(child, "surfpool");
 
     let client = create_client(rpc_url.clone());
 
@@ -3981,13 +4015,15 @@ fn start_surfpool_validator(
 }
 
 fn start_solana_test_validator(
-    cfg: &Config,
-    test_validator: &Option<TestValidator>,
-    flags: Option<Vec<String>>,
+    cfg: &WithPath<Config>,
+    test_validator: Option<&TestValidator>,
     test_log_stdout: bool,
-) -> Result<Child> {
+    skip_deploy: bool,
+) -> Result<guard::ProcessGuard> {
+    let flags = validator_flags(cfg, &test_validator.cloned(), skip_deploy)?;
+
     let (test_ledger_directory, test_ledger_log_filename) =
-        test_validator_file_paths(test_validator)?;
+        test_validator_file_paths(&test_validator.cloned())?;
 
     // Start a validator for testing.
     let (test_validator_stdout, test_validator_stderr) = match test_log_stdout {
@@ -4008,7 +4044,7 @@ fn start_solana_test_validator(
         false => (Stdio::inherit(), Stdio::inherit()),
     };
 
-    let rpc_url = test_validator_rpc_url(test_validator);
+    let rpc_url = test_validator_rpc_url(&test_validator.cloned());
 
     let rpc_port = cfg
         .test_validator
@@ -4031,16 +4067,18 @@ fn start_solana_test_validator(
         ));
     }
 
-    let mut validator_handle = std::process::Command::new("solana-test-validator")
+    let child = std::process::Command::new("solana-test-validator")
         .arg("--ledger")
         .arg(test_ledger_directory)
         .arg("--mint")
         .arg(cfg.wallet_kp()?.pubkey().to_string())
-        .args(flags.unwrap_or_default())
+        .args(flags)
         .stdout(test_validator_stdout)
         .stderr(test_validator_stderr)
         .spawn()
         .map_err(|e| anyhow!("Failed to spawn `solana-test-validator`: {e}"))?;
+
+    let mut validator_handle = guard::ProcessGuard::new(child, "solana-test-validator");
 
     // Wait for the validator to be ready.
     let client = create_client(rpc_url);
@@ -4290,10 +4328,16 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
                 rust_template::deploy_ts_script_host(&url, &module_path.display().to_string());
             fs::write(deploy_ts, deploy_script_host_str)?;
 
-            let pkg_manager_cmd = match &cfg.toolchain.package_manager {
-                Some(pkg_manager) => pkg_manager.to_string(),
-                None => PackageManager::default().to_string(),
-            };
+            let pkg_manager_cmd = cfg
+                .toolchain
+                .package_manager
+                .as_ref()
+                .map(|p| p.to_string())
+                .ok_or_else(|| {
+                    anyhow!(
+                        "No package manager configured. Cannot run TypeScript migration script."
+                    )
+                })?;
 
             std::process::Command::new(pkg_manager_cmd)
                 .args([
@@ -4320,10 +4364,7 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
                 .output()?
         };
 
-        if !exit.status.success() {
-            eprintln!("Deploy failed.");
-            std::process::exit(exit.status.code().unwrap());
-        }
+        process::check_success(&exit, "Deploy")?;
 
         println!("Deploy complete.");
         Ok(())
@@ -4353,7 +4394,9 @@ fn set_workspace_dir_or_exit() {
 
             let cargo_toml_path = current_dir.join("Cargo.toml");
             if !cargo_toml_path.exists() {
-                println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                println!(
+                    "Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs."
+                );
                 std::process::exit(1);
             }
 
@@ -4364,7 +4407,9 @@ fn set_workspace_dir_or_exit() {
                     // (already in the right place)
                 }
                 _ => {
-                    println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                    println!(
+                        "Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs."
+                    );
                     std::process::exit(1);
                 }
             }
@@ -4377,7 +4422,9 @@ fn set_workspace_dir_or_exit() {
                 }
                 Some(parent) => {
                     if std::env::set_current_dir(parent).is_err() {
-                        println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                        println!(
+                            "Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs."
+                        );
                         std::process::exit(1);
                     }
                 }
@@ -4596,26 +4643,22 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
             .get(&script)
             .ok_or_else(|| anyhow!("Unable to find script"))?;
         let script_with_args = format!("{script} {}", script_args.join(" "));
-        let exit = std::process::Command::new("bash")
+        let output = process::SafeCommand::new("bash")
             .arg("-c")
             .arg(&script_with_args)
-            .env("ANCHOR_PROVIDER_URL", url)
-            .env("ANCHOR_WALLET", cfg.provider.wallet.to_string())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .unwrap();
-        if !exit.status.success() {
-            std::process::exit(exit.status.code().unwrap_or(1));
-        }
+            .env("ANCHOR_PROVIDER_URL", &url)
+            .env("ANCHOR_WALLET", &cfg.provider.wallet.to_string())
+            .current_dir(".")
+            .run_inherit()?;
+
+        process::check_success(&output, "Script execution")?;
         Ok(())
     })?
 }
 
 fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
-    let anchor_dir = Path::new(&*shellexpand::tilde("~"))
-        .join(".config")
-        .join("anchor");
+    let home = dirs::home_dir().ok_or(crate::error::CliError::HomeDirNotFound)?;
+    let anchor_dir = home.join(".config").join("anchor");
     if !anchor_dir.exists() {
         fs::create_dir(&anchor_dir)?;
     }
@@ -4702,7 +4745,9 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                     }
 
                     if deployment.address.to_string() != actual_program_id {
-                        println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
+                        println!(
+                            "Found incorrect program id declaration in Anchor.toml for the program `{name}`"
+                        );
 
                         // Update the program id
                         deployment.address = Pubkey::try_from(actual_program_id.as_str()).unwrap();
@@ -4805,34 +4850,19 @@ fn localnet(
             )?;
         }
 
-        let validator_handle: Option<Child> = match validator_type {
-            ValidatorType::Surfpool => {
-                let full_simnet_mode = true;
-                let flags = Some(surfpool_flags(
-                    cfg,
-                    &cfg.surfpool_config,
-                    full_simnet_mode,
-                    skip_deploy,
-                    None,
-                )?);
-                Some(start_surfpool_validator(
-                    flags,
-                    &cfg.surfpool_config,
-                    full_simnet_mode,
-                )?)
-            }
-            ValidatorType::Legacy => {
-                let flags = match skip_deploy {
-                    true => None,
-                    false => Some(validator_flags(cfg, &cfg.test_validator)?),
-                };
-                Some(start_solana_test_validator(
-                    cfg,
-                    &cfg.test_validator,
-                    flags,
-                    false,
-                )?)
-            }
+        let validator_handle: Option<guard::ProcessGuard> = match validator_type {
+            ValidatorType::Surfpool => Some(start_surfpool_validator(
+                cfg,
+                false,
+                cfg.surfpool_config.as_ref(),
+                skip_deploy,
+            )?),
+            ValidatorType::Legacy => Some(start_solana_test_validator(
+                cfg,
+                cfg.test_validator.as_ref(),
+                false,
+                skip_deploy,
+            )?),
         };
 
         // Setup log reader.
@@ -4856,8 +4886,10 @@ fn localnet(
 
         // Check all errors and shut down.
         if let Some(mut handle) = validator_handle {
+            let pid = handle.id();
+            let name = handle.name().to_owned();
             if let Err(err) = handle.kill() {
-                println!("Failed to kill subprocess {}: {}", handle.id(), err);
+                println!("Failed to kill subprocess {} (pid {}): {}", name, pid, err);
             }
         }
 
@@ -4941,12 +4973,9 @@ fn add_recommended_deployment_solana_args(
     if !args.contains(&"--buffer".to_owned()) {
         let tmp_keypair_path = std::env::temp_dir().join("anchor-upgrade-buffer.json");
         if !tmp_keypair_path.exists() {
-            if let Err(err) = Keypair::new().write_to_file(&tmp_keypair_path) {
-                return Err(anyhow!(
-                    "Error creating keypair for buffer account, {:?}",
-                    err
-                ));
-            }
+            Keypair::new()
+                .write_to_file(&tmp_keypair_path)
+                .map_err(|err| anyhow!("Error creating keypair for buffer account, {:?}", err))?;
         }
 
         augmented_args.push("--buffer".to_owned());
@@ -5251,7 +5280,7 @@ mod tests {
             "await".to_string(),
             true,
             true,
-            PackageManager::default(),
+            PackageManager::Yarn,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5272,7 +5301,7 @@ mod tests {
             "fn".to_string(),
             true,
             true,
-            PackageManager::default(),
+            PackageManager::Yarn,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5293,7 +5322,7 @@ mod tests {
             "1project".to_string(),
             true,
             true,
-            PackageManager::default(),
+            PackageManager::Yarn,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),

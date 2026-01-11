@@ -1,7 +1,7 @@
 use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use solana_client::send_and_confirm_transactions_in_parallel::{
-    send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
+    SendAndConfirmConfigV2, send_and_confirm_transactions_in_parallel_blocking_v2,
 };
 use solana_commitment_config::CommitmentConfig;
 use solana_keypair::Keypair;
@@ -27,8 +27,8 @@ use std::{
 };
 
 use crate::{
-    config::{Config, Manifest, Program, WithPath},
     ConfigOverride, ProgramCommand,
+    config::{Config, Manifest, Program, WithPath},
 };
 
 /// Parse priority fee from solana args
@@ -140,12 +140,15 @@ fn is_solana_program(path: &Path) -> Result<bool> {
 
     // Check if it has cdylib (required for deployable Solana programs)
     // This is the definitive marker - libraries and client tools won't have this
-    if let Some(lib) = cargo_toml.get("lib") {
-        if let Some(crate_type) = lib.get("crate-type").and_then(|ct| ct.as_array()) {
-            if crate_type.iter().any(|ct| ct.as_str() == Some("cdylib")) {
-                return Ok(true);
-            }
-        }
+    let is_cdylib = cargo_toml
+        .get("lib")
+        .and_then(|lib| lib.get("crate-type"))
+        .and_then(|ct| ct.as_array())
+        .map(|ct| ct.iter().any(|c| c.as_str() == Some("cdylib")))
+        .unwrap_or(false);
+
+    if is_cdylib {
+        return Ok(true);
     }
 
     Ok(false)
@@ -302,11 +305,10 @@ fn deploy_workspace(
             Some(path) => Some(path.clone()),
             None => {
                 // Try to find program keypair
-                let keypair_path = program
+                program
                     .keypair_file()
                     .ok()
-                    .map(|kp| kp.path().display().to_string());
-                keypair_path
+                    .map(|kp| kp.path().display().to_string())
             }
         };
 
@@ -679,11 +681,13 @@ pub fn program_deploy(
             let cache_delay = Duration::from_secs(2);
 
             for attempt in 0..max_retries {
-                if let Ok(account) = rpc_client.get_account(&program_id) {
-                    if account.executable {
-                        thread::sleep(cache_delay);
-                        break;
-                    }
+                if rpc_client
+                    .get_account(&program_id)
+                    .map(|acc| acc.executable)
+                    .unwrap_or(false)
+                {
+                    thread::sleep(cache_delay);
+                    break;
                 }
 
                 if attempt == max_retries - 1 {
@@ -1141,15 +1145,13 @@ fn program_set_upgrade_authority(
             .map_err(|e| anyhow!("Failed to read new upgrade authority signer keypair: {}", e))?;
 
         // Verify the pubkey matches if both are provided
-        if let Some(pubkey) = new_upgrade_authority {
-            if pubkey != keypair.pubkey() {
-                return Err(anyhow!(
-                    "New upgrade authority pubkey mismatch: --new-upgrade-authority ({}) \
-                    doesn't match --new-upgrade-authority-signer keypair ({})",
-                    pubkey,
-                    keypair.pubkey()
-                ));
-            }
+        if let Some(pubkey) = new_upgrade_authority.filter(|&pk| pk != keypair.pubkey()) {
+            return Err(anyhow!(
+                "New upgrade authority pubkey mismatch: --new-upgrade-authority ({}) \
+                doesn't match --new-upgrade-authority-signer keypair ({})",
+                pubkey,
+                keypair.pubkey()
+            ));
         }
 
         println!("Using CHECKED mode - both current and new authority will sign (recommended)");
@@ -1264,19 +1266,22 @@ fn program_show(
                     println!("Program Data Address: {}", programdata_address);
 
                     // Fetch program data account
-                    if let Ok(programdata_account) = rpc_client.get_account(&programdata_address) {
-                        if let Ok(UpgradeableLoaderState::ProgramData {
-                            slot,
-                            upgrade_authority_address,
-                        }) = bincode::deserialize::<UpgradeableLoaderState>(
-                            &programdata_account.data,
-                        ) {
-                            println!("Slot: {}", slot);
-                            if let Some(authority) = upgrade_authority_address {
-                                println!("Upgrade Authority: {}", authority);
-                            } else {
-                                println!("Upgrade Authority: None (immutable)");
-                            }
+                    if let Ok(UpgradeableLoaderState::ProgramData {
+                        slot,
+                        upgrade_authority_address,
+                    }) = rpc_client
+                        .get_account(&programdata_address)
+                        .map_err(anyhow::Error::from)
+                        .and_then(|acc| {
+                            bincode::deserialize::<UpgradeableLoaderState>(&acc.data)
+                                .map_err(anyhow::Error::from)
+                        })
+                    {
+                        println!("Slot: {}", slot);
+                        if let Some(authority) = upgrade_authority_address {
+                            println!("Upgrade Authority: {}", authority);
+                        } else {
+                            println!("Upgrade Authority: None (immutable)");
                         }
                     }
                 }
@@ -1813,37 +1818,33 @@ pub fn send_deploy_messages(
         }
     }
 
-    if !write_messages.is_empty() {
-        if let Some(write_signer) = write_signer {
-            send_messages_in_batches(
-                rpc_client,
-                &write_messages,
-                &[fee_payer_signer, write_signer],
-                max_sign_attempts,
-                commitment,
-                send_transaction_config,
-            )?;
-        }
+    if let Some(write_signer) = write_signer.filter(|_| !write_messages.is_empty()) {
+        send_messages_in_batches(
+            rpc_client,
+            &write_messages,
+            &[fee_payer_signer, write_signer],
+            max_sign_attempts,
+            commitment,
+            send_transaction_config,
+        )?;
     }
 
-    if let Some(message) = final_message {
-        if let Some(final_signers) = final_signers {
-            let mut final_tx = Transaction::new_unsigned(message);
-            let blockhash = rpc_client.get_latest_blockhash()?;
-            let mut signers = final_signers.to_vec();
-            signers.push(fee_payer_signer);
-            final_tx.try_sign(&signers, blockhash)?;
+    if let Some((message, final_signers)) = final_message.zip(final_signers) {
+        let mut final_tx = Transaction::new_unsigned(message);
+        let blockhash = rpc_client.get_latest_blockhash()?;
+        let mut signers = final_signers.to_vec();
+        signers.push(fee_payer_signer);
+        final_tx.try_sign(&signers, blockhash)?;
 
-            return Ok(Some(
-                rpc_client
-                    .send_and_confirm_transaction_with_spinner_and_config(
-                        &final_tx,
-                        commitment,
-                        send_transaction_config,
-                    )
-                    .map_err(|e| anyhow!("Deploying program failed: {}", e))?,
-            ));
-        }
+        return Ok(Some(
+            rpc_client
+                .send_and_confirm_transaction_with_spinner_and_config(
+                    &final_tx,
+                    commitment,
+                    send_transaction_config,
+                )
+                .map_err(|e| anyhow!("Deploying program failed: {}", e))?,
+        ));
     }
 
     Ok(None)

@@ -1,11 +1,11 @@
 use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-    VERSION,
+    Files, PackageManager, VERSION, config::ProgramWorkspace, create_files,
+    override_or_create_files,
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
+use solana_keypair::{Keypair, read_keypair_file, write_keypair_file};
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use std::{
@@ -43,7 +43,9 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
 
     let template_files = match template {
         ProgramTemplate::Single => {
-            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            println!(
+                "Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default)."
+            );
             create_program_template_single(name, &program_path)
         }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
@@ -199,13 +201,17 @@ mollusk-svm = "~0.4"
     } else {
         ""
     };
+    let msrv = ANCHOR_MSRV;
 
     format!(
-        r#"[package]
+        r#"cargo-features = ["edition2024"]
+
+[package]
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition = "2024"
+rust-version = "{msrv}"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -642,12 +648,13 @@ pub enum TestTemplate {
 }
 
 impl TestTemplate {
-    pub fn get_test_script(&self, js: bool, pkg_manager: &PackageManager) -> String {
+    pub fn get_test_script(&self, js: bool, pkg_manager: Option<&PackageManager>) -> String {
         let pkg_manager_exec_cmd = match pkg_manager {
-            PackageManager::Yarn => "yarn run",
-            PackageManager::NPM => "npx",
-            PackageManager::PNPM => "pnpm exec",
-            PackageManager::Bun => "bunx",
+            Some(PackageManager::Yarn) => "yarn run",
+            Some(PackageManager::NPM) => "npx",
+            Some(PackageManager::PNPM) => "pnpm exec",
+            Some(PackageManager::Bun) => "bunx",
+            None => "",
         };
 
         match &self {
@@ -743,11 +750,13 @@ impl TestTemplate {
 
 pub fn tests_cargo_toml(name: &str) -> String {
     format!(
-        r#"[package]
+        r#"cargo-features = ["edition2024"]
+
+[package]
 name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition = "2024"
 rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]

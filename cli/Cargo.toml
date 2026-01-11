@@ -2,7 +2,7 @@
 name = "anchor-cli"
 version = "0.32.1"
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/coral-xyz/anchor"
 description = "Anchor CLI"
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "co
 anyhow = "1.0.32"
 base64 = "0.21"
 bincode = "1.3.3"
-cargo_toml = "0.19.2"
+cargo_toml = "0.21"
 chrono = "0.4.19"
 clap = { version = "4.5.17", features = ["derive"] }
 clap_complete = "4.5.26"
@@ -61,6 +61,8 @@ solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tar = "0.4.35"
 tempfile = "3"
+thiserror = "1.0"
 tiny-bip39 = "2.0"
 toml = "0.7.6"
 walkdir = "2.3.2"
+gix = "0.67"

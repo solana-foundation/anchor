@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use solana_commitment_config::CommitmentConfig;
 use solana_pubkey::Pubkey;
@@ -47,7 +47,7 @@ pub fn show_account(cfg_override: &ConfigOverride, cmd: ShowAccountCommand) -> R
 
     // Handle JSON output
     if let Some(format) = cmd.output {
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
 
         let json_output = serde_json::json!({
             "pubkey": cmd.account_address.to_string(),

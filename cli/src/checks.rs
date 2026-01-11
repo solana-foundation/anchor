@@ -1,11 +1,11 @@
 use std::{fs, path::Path};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use semver::{Version, VersionReq};
 
 use crate::{
-    config::{Config, Manifest, PackageManager, WithPath},
     VERSION,
+    config::{Config, Manifest, PackageManager, WithPath},
 };
 
 /// Check whether `overflow-checks` codegen option is enabled.
@@ -57,11 +57,16 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     }
 
     // Check TS package
-    let package_json = {
-        let package_json_path = cfg.path().parent().unwrap().join("package.json");
-        let package_json_content = fs::read_to_string(package_json_path)?;
-        serde_json::from_str::<serde_json::Value>(&package_json_content)?
-    };
+    let package_json_path = cfg.path().parent().unwrap().join("package.json");
+
+    // Pure Rust project >⩊<
+    if !package_json_path.exists() {
+        return Ok(());
+    }
+
+    let package_json_content = fs::read_to_string(&package_json_path)?;
+    let package_json: serde_json::Value = serde_json::from_str(&package_json_content)?;
+
     let mismatched_ts_version = package_json
         .get("dependencies")
         .and_then(|deps| deps.get("@anchor-lang/core"))
@@ -70,11 +75,19 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         .filter(|ver| !ver.matches(&cli_version));
 
     if let Some(ver) = mismatched_ts_version {
-        let update_cmd = match cfg.toolchain.package_manager.clone().unwrap_or_default() {
-            PackageManager::NPM => "npm update",
-            PackageManager::Yarn => "yarn upgrade",
-            PackageManager::PNPM => "pnpm update",
-            PackageManager::Bun => "bun update",
+        let update_cmd = match cfg.toolchain.package_manager.as_ref() {
+            Some(PackageManager::NPM) => "npm update",
+            Some(PackageManager::Yarn) => "yarn upgrade",
+            Some(PackageManager::PNPM) => "pnpm update",
+            Some(PackageManager::Bun) => "bun update",
+            None => {
+                eprintln!(
+                    "WARNING: `@anchor-lang/core` version({ver}) and the current CLI version\
+                        ({cli_version}) don't match.\n\n\t\
+                        No package manager configured. Please update manually.\n"
+                );
+                return Ok(());
+            }
         };
 
         eprintln!(

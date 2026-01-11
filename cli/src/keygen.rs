@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
 use console::{Key, Term};
 use dirs::home_dir;
@@ -14,7 +14,7 @@ use solana_pubkey::Pubkey;
 use solana_signer::{EncodableKey, Signer};
 use solana_transaction::Message;
 
-use crate::{config::ConfigOverride, get_keypair, KeygenCommand};
+use crate::{KeygenCommand, config::ConfigOverride, get_keypair};
 
 /// Secure password input with asterisk visual feedback
 /// - show_spaces: if true, spaces are visible (for seed phrases); if false, all characters are asterisks (for passphrases)
@@ -94,13 +94,15 @@ fn keygen_new(
     word_count: usize,
 ) -> Result<()> {
     // Determine output file path
-    let outfile_path = outfile.unwrap_or_else(|| {
-        let mut path = home_dir().expect("home directory");
+    let outfile_path = if let Some(outfile) = outfile {
+        outfile
+    } else {
+        let mut path = home_dir().ok_or_else(|| anyhow!("Home directory not found"))?;
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
-    });
+        crate::path::to_str(&path)?.to_string()
+    };
 
     // Check for overwrite
     if Path::new(&outfile_path).exists() {
@@ -155,7 +157,9 @@ fn keygen_new(
 
     // Create keypair from seed (use first 32 bytes as secret key)
     // Ed25519 keypair derivation: use the first 32 bytes of the seed as the secret key
-    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32].try_into().unwrap();
+    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32]
+        .try_into()
+        .map_err(|_| crate::error::CliError::InvalidSeed)?;
     let keypair = Keypair::new_from_array(secret_key_bytes);
 
     // Write keypair to file
@@ -202,13 +206,15 @@ fn keygen_new(
 }
 
 fn keygen_pubkey(keypair_path: Option<String>) -> Result<()> {
-    let path = keypair_path.unwrap_or_else(|| {
-        let mut p = home_dir().expect("home directory");
+    let path = if let Some(keypair_path) = keypair_path {
+        keypair_path
+    } else {
+        let mut p = home_dir().ok_or_else(|| anyhow!("Home directory not found"))?;
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
-    });
+        crate::path::to_str(&p)?.to_string()
+    };
 
     let keypair = get_keypair(&path)?;
     println!("{}", keypair.pubkey());
@@ -225,13 +231,15 @@ fn keygen_recover(
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Determine output file path
-    let outfile_path = outfile.unwrap_or_else(|| {
-        let mut path = home_dir().expect("home directory");
+    let outfile_path = if let Some(outfile) = outfile {
+        outfile
+    } else {
+        let mut path = home_dir().ok_or_else(|| anyhow!("Home directory not found"))?;
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
-    });
+        crate::path::to_str(&path)?.to_string()
+    };
 
     // Check for overwrite
     if Path::new(&outfile_path).exists() {
@@ -274,7 +282,9 @@ fn keygen_recover(
     let seed = Seed::new(&mnemonic, &passphrase);
 
     // Create keypair from seed (use first 32 bytes as secret key)
-    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32].try_into().unwrap();
+    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32]
+        .try_into()
+        .map_err(|_| anyhow!("Seed must be at least 32 bytes"))?;
     let keypair = Keypair::new_from_array(secret_key_bytes);
 
     // Write keypair to file
@@ -307,13 +317,15 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
     println!("\n🔍 Verifying keypair");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-    let path = keypair_path.unwrap_or_else(|| {
-        let mut p = home_dir().expect("home directory");
+    let path = if let Some(keypair_path) = keypair_path {
+        keypair_path
+    } else {
+        let mut p = home_dir().ok_or_else(|| anyhow!("Home directory not found"))?;
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
-    });
+        crate::path::to_str(&p)?.to_string()
+    };
 
     print_step(&format!("Loading keypair from {}", path));
     let keypair = get_keypair(&path)?;
@@ -352,7 +364,7 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
 
     fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> String {
         let path = out_dir.path().join(name);
@@ -381,10 +393,12 @@ mod tests {
         // Test: refuse to overwrite without --force
         let result = keygen_new(Some(outfile_path.clone()), false, true, true, 12);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Refusing to overwrite"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Refusing to overwrite")
+        );
 
         // Test: overwrite with --force flag
         keygen_new(Some(outfile_path.clone()), true, true, true, 12).unwrap();
@@ -509,9 +523,11 @@ mod tests {
         // Test: invalid word count should fail
         let result = keygen_new(Some(outfile_path), false, true, true, 9);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid word count"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Invalid word count")
+        );
     }
 }

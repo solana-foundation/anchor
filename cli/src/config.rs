@@ -1,7 +1,7 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
+use crate::{DEFAULT_RPC_PORT, get_keypair, is_hidden, keys_sync};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use clap::{Parser, ValueEnum};
 use dirs::home_dir;
 use heck::ToSnakeCase;
@@ -9,7 +9,7 @@ use reqwest::Url;
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
+use solana_cli_config::{CONFIG_FILE, Config as SolanaConfig};
 use solana_clock::Slot;
 use solana_commitment_config::CommitmentLevel;
 use solana_keypair::Keypair;
@@ -40,10 +40,11 @@ impl FromStr for CaseInsensitiveCommitmentLevel {
         // Convert to lowercase for case-insensitive matching
         let lowercase = s.to_lowercase();
         let commitment = CommitmentLevel::from_str(&lowercase).map_err(|_| {
-            format!(
+            crate::error::CliError::ConfigError(format!(
                 "Invalid commitment level '{}'. Valid values are: processed, confirmed, finalized",
                 s
-            )
+            ))
+            .to_string()
         })?;
         Ok(CaseInsensitiveCommitmentLevel(commitment))
     }
@@ -188,16 +189,21 @@ impl WithPath<Config> {
         //
         // If [workspace.members] exists, then use that.
         // Otherwise, default to `programs/*`.
-        let program_paths: Vec<PathBuf> = {
+        let mut program_paths: Vec<PathBuf> = {
             if members.is_empty() {
-                let path = self.path().parent().unwrap().join("programs");
+                let path = crate::path::parent_dir(self.path())?.join("programs");
                 if let Ok(entries) = fs::read_dir(path) {
                     entries
-                        .filter(|entry| entry.as_ref().map(|e| e.path().is_dir()).unwrap_or(false))
-                        .map(|dir| dir.map(|d| d.path().canonicalize().unwrap()))
-                        .collect::<Vec<Result<PathBuf, std::io::Error>>>()
-                        .into_iter()
-                        .collect::<Result<Vec<PathBuf>, std::io::Error>>()?
+                        .filter_map(|entry| {
+                            entry.ok().and_then(|e| {
+                                if e.path().is_dir() {
+                                    Some(crate::path::canonicalize_safe(&e.path()))
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .collect::<Result<Vec<PathBuf>>>()?
                 } else {
                     Vec::new()
                 }
@@ -207,10 +213,10 @@ impl WithPath<Config> {
         };
 
         // Filter out everything part of the exclude array.
-        Ok(program_paths
-            .into_iter()
-            .filter(|m| !exclude.contains(m))
-            .collect())
+        program_paths
+            .extract_if(.., |m| exclude.contains(m))
+            .for_each(drop);
+        Ok(program_paths)
     }
 
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
@@ -243,13 +249,15 @@ impl WithPath<Config> {
     pub fn get_programs(&self, name: Option<String>) -> Result<Vec<Program>> {
         let programs = self.read_all_programs()?;
         let programs = match name {
-            Some(name) => vec![programs
-                .into_iter()
-                .find(|program| {
-                    name == program.lib_name
-                        || name == program.path.file_name().unwrap().to_str().unwrap()
-                })
-                .ok_or_else(|| anyhow!("Program {name} not found"))?],
+            Some(name) => vec![
+                programs
+                    .into_iter()
+                    .find(|program| {
+                        name == program.lib_name
+                            || name == program.path.file_name().unwrap().to_str().unwrap()
+                    })
+                    .ok_or_else(|| anyhow!("Program {name} not found"))?,
+            ],
             None => programs,
         };
 
@@ -350,13 +358,12 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
     NPM,
     /// Use yarn as the package manager.
-    #[default]
     Yarn,
     /// Use pnpm as the package manager.
     PNPM,
@@ -557,20 +564,18 @@ impl Config {
                         format!("Error reading the directory with path: {}", cwd.display())
                     })?
                     .path();
-                if let Some(filename) = p.file_name() {
-                    if filename.to_str() == Some("Anchor.toml") {
-                        // Make sure the program id is correct (only on the initial build)
-                        let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
-                        if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
-                            println!("Updating program ids...");
-                            fs::create_dir_all(deploy_dir)?;
-                            keys_sync(&ConfigOverride::default(), None)?;
-                            cfg = Config::from_path(&p)?;
-                        }
-
-                        return Ok(Some(WithPath::new(cfg, p)));
+                if p.file_name().and_then(|f| f.to_str()) == Some("Anchor.toml") {
+                    // Make sure the program id is correct (only on the initial build)
+                    let mut cfg = Config::from_path(&p)?;
+                    let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                    if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
+                        println!("Updating program ids...");
+                        fs::create_dir_all(deploy_dir)?;
+                        keys_sync(&ConfigOverride::default(), None)?;
+                        cfg = Config::from_path(&p)?;
                     }
+
+                    return Ok(Some(WithPath::new(cfg, p)));
                 }
             }
 
@@ -707,11 +712,7 @@ impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let programs = {
             let c = ser_programs(&self.programs);
-            if c.is_empty() {
-                None
-            } else {
-                Some(c)
-            }
+            if c.is_empty() { None } else { Some(c) }
         };
         let cfg = _Config {
             toolchain: Some(self.toolchain.clone()),
@@ -1644,9 +1645,11 @@ mod tests {
         assert!(!config.features.skip_lint);
 
         // Make sure the layout of `provider.cluster` stays the same after serialization
-        assert!(config
-            .to_string()
-            .contains(r#"cluster = "http://my-url.com""#));
+        assert!(
+            config
+                .to_string()
+                .contains(r#"cluster = "http://my-url.com""#)
+        );
     }
 
     #[test]
