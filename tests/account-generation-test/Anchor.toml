@@ -16,16 +16,19 @@ startup_wait = 20000
 # Generate accounts with pre-funded SOL
 [[test.validator.generate_accounts]]
 address = "new"
-lamports = 1000000000  # 1 SOL
+lamports = 1000000000
 
 [[test.validator.generate_accounts]]
 address = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
-lamports = 5000000000  # 5 SOL
+lamports = 5000000000  
 
-# Generate popular mints
-[[test.validator.generate_token_mints]]
-mint = "USDC"
+
 
 [[test.validator.generate_token_mints]]
-mint = "mSOL"
+mint = "new"
+decimals = 9
+token_accounts = [
+  { owner = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", amount = 1000000000 },  # 1 token (9 decimals)
+  { owner = "new", amount = 500000000 }
+]
 

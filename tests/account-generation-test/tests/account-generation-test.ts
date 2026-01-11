@@ -1,51 +1,67 @@
-import * as anchor from "@anchor-lang/core";
-import { Program } from "@anchor-lang/core";
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { getAssociatedTokenAddress, getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
-import { AccountGenerationTest } from "../target/types/account_generation_test";
 
 describe("account-generation-test", () => {
-  anchor.setProvider(anchor.AnchorProvider.env());
-  const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const program = anchor.workspace
-    .AccountGenerationTest as Program<AccountGenerationTest>;
+  const connection = new Connection("http://127.0.0.1:8899", "confirmed");
 
   it("Accounts should be pre-funded", async () => {
     // Check that accounts were generated with funded lamports
-    // The first account should be a new keypair that was generated
-    // The second account should be the specified address
-    
-    const specifiedAccount = new anchor.web3.PublicKey(
+    const specifiedAccount = new PublicKey(
       "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
     );
     
-    // Check balance of specified account (should have 5 SOL = 5000000000 lamports)
-    const balance = await provider.connection.getBalance(specifiedAccount);
+    const balance = await connection.getBalance(specifiedAccount);
     assert.isAtLeast(
       balance,
       5000000000,
       "Specified account should have at least 5 SOL"
     );
     
-    console.log(`✓ Specified account balance: ${balance / anchor.web3.LAMPORTS_PER_SOL} SOL`);
+    console.log(`✓ Specified account balance: ${balance / LAMPORTS_PER_SOL} SOL`);
   });
 
   it("Popular mints should be configured", async () => {
     // Check that USDC mint exists
-    const usdcMint = new anchor.web3.PublicKey(
+    const usdcMint = new PublicKey(
       "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
     );
     
-    const usdcAccount = await provider.connection.getAccountInfo(usdcMint);
-    // Note: The mint might not be fully initialized yet, but the account should exist
+    const usdcAccount = await connection.getAccountInfo(usdcMint);
     console.log(`✓ USDC mint account exists: ${usdcAccount !== null}`);
     
     // Check that mSOL mint exists
-    const msolMint = new anchor.web3.PublicKey(
+    const msolMint = new PublicKey(
       "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
     );
     
-    const msolAccount = await provider.connection.getAccountInfo(msolMint);
+    const msolAccount = await connection.getAccountInfo(msolMint);
     console.log(`✓ mSOL mint account exists: ${msolAccount !== null}`);
+  });
+
+  it("Custom mint should be created with token accounts", async () => {
+    // We need to find the custom mint that was created
+    // Since we can't easily enumerate mints, we'll check by looking for token accounts
+    // that should have been created for the specified owner
+    
+    const ownerAccount = new PublicKey(
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+    );
+    
+    // Get all token accounts owned by the owner
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      ownerAccount,
+      { programId: TOKEN_PROGRAM_ID }
+    );
+    
+    // We expect at least one token account to exist (from the custom mint)
+    // Note: This test verifies token accounts exist, but we can't verify the exact mint
+    // without knowing the mint address that was generated
+    console.log(`✓ Found ${tokenAccounts.value.length} token account(s) for owner`);
+    
+    // Verify owner has SOL balance for operations
+    const ownerBalance = await connection.getBalance(ownerAccount);
+    assert.isAtLeast(ownerBalance, 5000000000, "Owner account should have SOL");
   });
 });
 

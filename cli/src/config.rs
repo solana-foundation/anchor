@@ -1212,15 +1212,7 @@ pub struct GenerateAccountEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GenerateTokenMintEntry {
-    // Shortcut: Use a popular mint by name (e.g., "USDC", "USDT", "mSOL")
-    PopularMint {
-        // Name of the popular mint to generate (e.g., "USDC", "USDT", "mSOL")
-        mint: String,
-        // Optional: Accounts to create token accounts for and fund with tokens.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        token_accounts: Option<Vec<GenerateTokenAccountEntry>>,
-    },
-    // Custom mint configuration
+    // Custom mint configuration (checked first because it has required field 'decimals')
     Custom {
         // Base58 pubkey string or "new" to generate a new keypair for the mint.
         mint: String,
@@ -1232,6 +1224,14 @@ pub enum GenerateTokenMintEntry {
         // Optional: Base58 pubkey string for the freeze authority. If not provided, no freeze authority.
         #[serde(skip_serializing_if = "Option::is_none")]
         freeze_authority: Option<String>,
+        // Optional: Accounts to create token accounts for and fund with tokens.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        token_accounts: Option<Vec<GenerateTokenAccountEntry>>,
+    },
+    // Shortcut: Use a popular mint by name (e.g., "USDC", "USDT", "mSOL")
+    PopularMint {
+        // Name of the popular mint to generate (e.g., "USDC", "USDT", "mSOL")
+        mint: String,
         // Optional: Accounts to create token accounts for and fund with tokens.
         #[serde(skip_serializing_if = "Option::is_none")]
         token_accounts: Option<Vec<GenerateTokenAccountEntry>>,

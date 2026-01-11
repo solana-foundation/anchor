@@ -5,9 +5,8 @@
         "test": "anchor test"
     },
     "dependencies": {
-        "@anchor-lang/core": "workspace:*",
-        "@anchor-lang/anchor": "workspace:*",
         "@solana/web3.js": "^1.87.6",
+        "@solana/spl-token": "^0.4.8",
         "chai": "^4.3.10",
         "mocha": "^10.2.0",
         "ts-mocha": "^10.0.0",

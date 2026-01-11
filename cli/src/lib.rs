@@ -23,7 +23,7 @@ use solana_cli_config::Config as SolanaCliConfig;
 use solana_commitment_config::CommitmentConfig;
 use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_instruction::Instruction;
-use solana_keypair::Keypair;
+use solana_keypair::{read_keypair_file, Keypair};
 use solana_pubkey::Pubkey;
 use solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription};
 use solana_rpc_client::rpc_client::RpcClient;
@@ -31,6 +31,7 @@ use solana_rpc_client_api::config::{RpcTransactionLogsConfig, RpcTransactionLogs
 use solana_rpc_client_api::request::RpcRequest;
 use solana_rpc_client_api::response::{Response as RpcResponse, RpcLogsResponse};
 use solana_signer::{EncodableKey, Signer};
+use solana_transaction::Transaction;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -3513,6 +3514,10 @@ fn validator_flags(
                     // these validator flags.
                     continue;
                 };
+                if key == "generate_accounts" || key == "generate_token_mints" {
+                    // These are handled separately after validator startup, not as flags
+                    continue;
+                };
                 if key == "account" {
                     for entry in value.as_array().unwrap() {
                         // Push the account flag for each array entry
@@ -4031,12 +4036,23 @@ fn start_solana_test_validator(
         ));
     }
 
-    let mut validator_handle = std::process::Command::new("solana-test-validator")
+    // Ensure SPL Token program is available by cloning it from mainnet
+    let token_program_id = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+    
+    let mut validator_cmd = std::process::Command::new("solana-test-validator");
+    validator_cmd
         .arg("--ledger")
         .arg(test_ledger_directory)
         .arg("--mint")
         .arg(cfg.wallet_kp()?.pubkey().to_string())
-        .args(flags.unwrap_or_default())
+        .arg("--clone-upgradeable-program")
+        .arg(token_program_id); // Clone SPL Token program from mainnet
+    
+    if let Some(flags) = flags {
+        validator_cmd.args(flags);
+    }
+    
+    let mut validator_handle = validator_cmd
         .stdout(test_validator_stdout)
         .stderr(test_validator_stderr)
         .spawn()
@@ -4069,7 +4085,9 @@ fn start_solana_test_validator(
     // Generate accounts and token mints if configured
     if let Some(test_validator) = test_validator {
         if let Some(validator) = &test_validator.validator {
-            generate_accounts_and_tokens(cfg, validator, &client)?;
+            if let Err(e) = generate_accounts_and_tokens(cfg, validator, &client) {
+                return Err(e);
+            }
         }
     }
 
@@ -4145,7 +4163,7 @@ fn generate_accounts_and_tokens(
     // Generate accounts with lamports
     if let Some(generate_accounts) = &validator.generate_accounts {
         for account_entry in generate_accounts {
-            let _account_pubkey = if account_entry.address == "new" {
+            if account_entry.address == "new" {
                 // Generate new keypair
                 let new_kp = Keypair::new();
                 let pubkey = new_kp.pubkey();
@@ -4164,7 +4182,6 @@ fn generate_accounts_and_tokens(
                     "✓ Generated account {} with {} lamports",
                     pubkey, account_entry.lamports
                 );
-                pubkey
             } else {
                 // Use specified address
                 let pubkey = Pubkey::try_from(account_entry.address.as_str())
@@ -4184,8 +4201,7 @@ fn generate_accounts_and_tokens(
                     "✓ Funded account {} with {} lamports",
                     pubkey, account_entry.lamports
                 );
-                pubkey
-            };
+            }
         }
     }
 
@@ -4193,37 +4209,6 @@ fn generate_accounts_and_tokens(
     if let Some(generate_token_mints) = &validator.generate_token_mints {
         for mint_entry in generate_token_mints {
             match mint_entry {
-                GenerateTokenMintEntry::PopularMint {
-                    mint,
-                    token_accounts,
-                } => {
-                    let (mint_pubkey, decimals) = resolve_popular_mint(mint)?;
-                    println!("✓ Using popular mint {} ({})", mint, mint_pubkey);
-
-                    // Create token mint if it doesn't exist
-                    create_token_mint_if_needed(
-                        client,
-                        &wallet_kp,
-                        &mint_pubkey,
-                        decimals,
-                        &wallet_pubkey,
-                        None,
-                    )?;
-
-                    // Create and fund token accounts if specified
-                    if let Some(token_accounts) = token_accounts {
-                        for token_account_entry in token_accounts {
-                            create_and_fund_token_account(
-                                client,
-                                &wallet_kp,
-                                &mint_pubkey,
-                                &token_account_entry.owner,
-                                token_account_entry.amount,
-                                decimals,
-                            )?;
-                        }
-                    }
-                }
                 GenerateTokenMintEntry::Custom {
                     mint,
                     decimals,
@@ -4231,12 +4216,21 @@ fn generate_accounts_and_tokens(
                     freeze_authority,
                     token_accounts,
                 } => {
-                    let mint_pubkey = if *mint == "new" {
+                    let (mint_pubkey, mint_keypair) = if *mint == "new" {
                         let new_kp = Keypair::new();
-                        new_kp.pubkey()
+                        (new_kp.pubkey(), Some(new_kp))
                     } else {
-                        Pubkey::try_from(mint.as_str())
-                            .map_err(|_| anyhow!("Invalid mint pubkey: {}", mint))?
+                        let pubkey = Pubkey::try_from(mint.as_str())
+                            .map_err(|_| anyhow!("Invalid mint pubkey: {}", mint))?;
+                        // For existing addresses, we can't create accounts without the keypair
+                        // Check if it exists, if not, error
+                        if client.get_account(&pubkey).is_err() {
+                            return Err(anyhow!(
+                                "Mint address '{}' does not exist. To create a new mint, use 'mint = \"new\"' instead.",
+                                pubkey
+                            ));
+                        }
+                        (pubkey, None)
                     };
 
                     let mint_auth = mint_authority
@@ -4252,14 +4246,14 @@ fn generate_accounts_and_tokens(
                         .transpose()
                         .map_err(|_| anyhow!("Invalid freeze authority pubkey"))?;
 
-                    // Create token mint
+                    // Create token mint (only if it's a new mint with keypair)
                     create_token_mint_if_needed(
                         client,
-                        &wallet_kp,
                         &mint_pubkey,
                         *decimals,
                         &mint_auth,
                         freeze_auth.as_ref(),
+                        mint_keypair.as_ref(),
                     )?;
 
                     println!(
@@ -4278,6 +4272,90 @@ fn generate_accounts_and_tokens(
                                 token_account_entry.amount,
                                 *decimals,
                             )?;
+                        }
+                    }
+                }
+                GenerateTokenMintEntry::PopularMint {
+                    mint,
+                    token_accounts,
+                } => {
+                    // Check if mint is "new" - this should be Custom
+                    if mint == "new" {
+                        return Err(anyhow!(
+                            "Mint 'new' should be specified as a Custom mint with 'decimals' field. \
+                            Use format: mint = \"new\", decimals = <number>"
+                        ));
+                    }
+
+                    // Check if it's a valid pubkey address
+                    if let Ok(mint_pubkey) = Pubkey::try_from(mint.as_str()) {
+                        // It's a mint address - check if it exists
+                        match client.get_account(&mint_pubkey) {
+                            Ok(account) => {
+                                // Mint exists, get decimals from account data
+                                let decimals = if account.data.len() >= 42 {
+                                    account.data[41] // decimals at offset 41
+                                } else {
+                                    9 // Default to 9 decimals if we can't read it
+                                };
+
+                                println!(
+                                    "✓ Using existing mint address {} ({} decimals)",
+                                    mint_pubkey, decimals
+                                );
+
+                                // Create and fund token accounts if specified
+                                if let Some(token_accounts) = token_accounts {
+                                    for token_account_entry in token_accounts {
+                                        create_and_fund_token_account(
+                                            client,
+                                            &wallet_kp,
+                                            &mint_pubkey,
+                                            &token_account_entry.owner,
+                                            token_account_entry.amount,
+                                            decimals,
+                                        )?;
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                // Mint doesn't exist - error saying it should be Custom
+                                return Err(anyhow!(
+                                    "Mint address '{}' does not exist. To use a mint address directly, \
+                                    specify it as a Custom mint with 'decimals' field: \
+                                    mint = \"{}\", decimals = <number>",
+                                    mint_pubkey, mint_pubkey
+                                ));
+                            }
+                        }
+                    } else {
+                        // It's a popular mint name, resolve it
+                        let (mint_pubkey, decimals) = resolve_popular_mint(mint)?;
+                        println!("✓ Using popular mint {} ({})", mint, mint_pubkey);
+
+                        // Check if popular mint exists on the validator
+                        // Popular mints on mainnet don't exist on local validators, so we can't create them
+                        if client.get_account(&mint_pubkey).is_err() {
+                            println!(
+                                "  ⚠ Popular mint {} ({}) does not exist on this validator. \
+                                Skipping mint creation and token account funding.",
+                                mint, mint_pubkey
+                            );
+                            continue; // Skip to next mint entry
+                        }
+
+                        // Mint exists, create and fund token accounts if specified
+                        if let Some(token_accounts) = token_accounts {
+                            for token_account_entry in token_accounts {
+                                create_and_fund_token_account(
+                                    client,
+                                    &wallet_kp,
+                                    &mint_pubkey,
+                                    &token_account_entry.owner,
+                                    token_account_entry.amount,
+                                    decimals,
+                                )?;
+                            }
                         }
                     }
                 }
@@ -4315,76 +4393,135 @@ fn resolve_popular_mint(name: &str) -> Result<(Pubkey, u8)> {
 
 /// SPL Token Program ID
 const SPL_TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-/// SPL Associated Token Account Program ID  
+/// SPL Associated Token Account Program ID
 const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID: &str =
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
 /// Create a token mint if it doesn't already exist
-/// Note: This is a simplified implementation that funds the mint account.
-/// Full SPL token mint creation requires the spl-token crate which has dependency conflicts.
-/// For now, we ensure the account exists and has rent-exempt balance.
-/// The actual mint initialization should be done via the SPL Token program in a separate step.
 fn create_token_mint_if_needed(
     client: &RpcClient,
-    _payer: &Keypair,
     mint: &Pubkey,
     decimals: u8,
     mint_authority: &Pubkey,
-    _freeze_authority: Option<&Pubkey>,
+    freeze_authority: Option<&Pubkey>,
+    mint_keypair: Option<&Keypair>,
 ) -> Result<()> {
-    // Check if mint already exists
     let token_program_id =
         Pubkey::try_from(SPL_TOKEN_PROGRAM_ID).map_err(|_| anyhow!("Invalid token program ID"))?;
+
+    // Wait for token program to be ready (validator might still be loading it)
+    let mut program_ready = false;
+    for _ in 0..50 {
+        if let Ok(account) = client.get_account(&token_program_id) {
+            if account.executable {
+                program_ready = true;
+                break;
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    if !program_ready {
+        return Err(anyhow!(
+            "SPL Token program ({}) is not available on this validator. \
+            Please ensure solana-test-validator is running correctly.",
+            token_program_id
+        ));
+    }
+
+    // If mint exists and is initialized, we're done
     if let Ok(account) = client.get_account(mint) {
         if account.owner == token_program_id {
-            // Mint already exists and is owned by token program
             return Ok(());
         }
     }
 
-    // Mint account size is 82 bytes
+    // Need keypair to create new mint
+    let mint_kp = mint_keypair.ok_or_else(|| {
+        anyhow!(
+            "Cannot create mint at {} without keypair. Use 'mint = \"new\"' to generate a new mint.",
+            mint
+        )
+    })?;
+
+    // Get wallet for paying fees
+    let wallet_path = shellexpand::tilde("~/.config/solana/id.json");
+    let wallet_kp = read_keypair_file(&wallet_path.to_string())
+        .map_err(|e| anyhow!("Failed to read wallet keypair: {}", e))?;
+
+    // Create account instruction
     let mint_space = 82;
     let min_balance = client.get_minimum_balance_for_rent_exemption(mint_space)?;
+    use solana_instruction::account_meta::AccountMeta;
+    let system_program_id = Pubkey::try_from("11111111111111111111111111111111")
+        .map_err(|_| anyhow!("Invalid system program ID"))?;
 
-    // Fund the mint account with rent-exempt balance
-    // Note: Full initialization requires SPL Token program instructions
-    // which would need the spl-token crate. For now, we just ensure the account
-    // has lamports. The actual mint initialization should be done via the SPL Token program
-    // in a separate step if needed.
-    let balance = client.get_balance(mint).unwrap_or(0);
-    if balance < min_balance {
-        let signature = client
-            .request_airdrop(mint, min_balance)
-            .map_err(|e| anyhow!("Failed to request airdrop for mint {}: {}", mint, e))?;
-        client
-            .confirm_transaction(&signature)
-            .map_err(|e| anyhow!("Failed to confirm airdrop for mint {}: {}", mint, e))?;
+    let mut create_account_data = vec![0u8; 4];
+    create_account_data.extend_from_slice(&min_balance.to_le_bytes());
+    create_account_data.extend_from_slice(&(mint_space as u64).to_le_bytes());
+    create_account_data.extend_from_slice(token_program_id.as_ref());
+
+    let create_account_ix = Instruction {
+        program_id: system_program_id,
+        accounts: vec![
+            AccountMeta::new(wallet_kp.pubkey(), true),
+            AccountMeta::new(mint_kp.pubkey(), true),
+        ],
+        data: create_account_data,
+    };
+
+    // Initialize mint instruction
+    let mut init_mint_data = vec![0u8];
+    init_mint_data.push(decimals);
+    init_mint_data.push(1); // Some(mint_authority)
+    init_mint_data.extend_from_slice(mint_authority.as_ref());
+    if let Some(freeze_auth) = freeze_authority {
+        init_mint_data.push(1); // Some(freeze_authority)
+        init_mint_data.extend_from_slice(freeze_auth.as_ref());
+    } else {
+        init_mint_data.push(0); // None
     }
 
-    // Note: Full implementation would require:
-    // 1. Creating account with SystemProgram::create_account
-    // 2. Initializing mint with SPL Token program's initialize_mint2 instruction
-    // This requires adding spl-token dependency (currently has version conflicts)
-    // or manually constructing the instruction data
+    let init_mint_ix = Instruction {
+        program_id: token_program_id,
+        accounts: vec![
+            AccountMeta::new(*mint, false),
+            AccountMeta::new_readonly(
+                Pubkey::try_from("SysvarRent111111111111111111111111111111111")
+                    .map_err(|_| anyhow!("Invalid rent sysvar ID"))?,
+                false,
+            ),
+            AccountMeta::new_readonly(*mint_authority, true), // mint_authority (signer)
+        ],
+        data: init_mint_data,
+    };
 
-    println!(
-        "  → Mint account {} prepared (decimals: {}, authority: {})",
-        mint, decimals, mint_authority
+    // Send transaction
+    let recent_blockhash = client.get_latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &[create_account_ix, init_mint_ix],
+        Some(&wallet_kp.pubkey()),
+        &[&wallet_kp as &dyn Signer, mint_kp],
+        recent_blockhash,
     );
+
+    client
+        .send_and_confirm_transaction(&tx)
+        .map_err(|e| anyhow!("Failed to create mint {}: {}", mint, e))?;
 
     Ok(())
 }
 
 /// Create and fund a token account
-/// Note: This is a simplified implementation. Full implementation requires spl-token crate.
 fn create_and_fund_token_account(
-    _client: &RpcClient,
-    _payer: &Keypair,
+    client: &RpcClient,
+    payer: &Keypair,
     mint: &Pubkey,
     owner: &str,
     amount: u64,
-    decimals: u8,
+    _decimals: u8,
 ) -> Result<()> {
+    // Resolve owner pubkey
     let owner_pubkey = if owner == "new" {
         Keypair::new().pubkey()
     } else {
@@ -4397,27 +4534,126 @@ fn create_and_fund_token_account(
     let associated_token_program_id = Pubkey::try_from(SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID)
         .map_err(|_| anyhow!("Invalid associated token program ID"))?;
 
-    let token_account = Pubkey::find_program_address(
+    let (token_account, _bump) = Pubkey::find_program_address(
         &[
             owner_pubkey.as_ref(),
             token_program_id.as_ref(),
             mint.as_ref(),
         ],
         &associated_token_program_id,
-    )
-    .0;
-
-    // TODO: Full implementation would require:
-    // 1. Creating associated token account using SPL Associated Token Account program
-    // 2. Minting tokens using SPL Token program's mint_to instruction
-    // This requires adding spl-token and spl-associated-token-account dependencies
-    // (currently have version conflicts with Solana 3.0)
-
-    println!(
-        "  → Token account {} for owner {} (mint: {}, amount: {}, decimals: {})",
-        token_account, owner_pubkey, mint, amount, decimals
     );
-    println!("    Note: Full token account creation requires spl-token crate integration");
+
+    let mut instructions = vec![];
+    let account_exists = client.get_account(&token_account).is_ok();
+
+    // Create associated token account if it doesn't exist
+    if !account_exists {
+        use solana_instruction::account_meta::AccountMeta;
+        let create_ata_ix = Instruction {
+            program_id: associated_token_program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(token_account, false),
+                AccountMeta::new_readonly(owner_pubkey, false),
+                AccountMeta::new_readonly(*mint, false),
+                AccountMeta::new_readonly(
+                    Pubkey::try_from("11111111111111111111111111111111")
+                        .map_err(|_| anyhow!("Invalid system program ID"))?,
+                    false,
+                ),
+                AccountMeta::new_readonly(token_program_id, false),
+            ],
+            data: vec![],
+        };
+        instructions.push(create_ata_ix);
+    }
+
+    // Get mint account to find mint authority
+    let mint_account = match client.get_account(mint) {
+        Ok(account) => account,
+        Err(_) => {
+            // Mint doesn't exist
+            // Skip token account creation
+            println!(
+                "Skipping token account creation: mint {} does not exist on this validator",
+                mint
+            );
+            return Ok(());
+        }
+    };
+
+    if mint_account.owner != token_program_id {
+        return Err(anyhow!("Account {} is not a valid token mint", mint));
+    }
+
+    // Mint account layout: mint_authority (COption<Pubkey> = 33 bytes), supply (u64 = 8 bytes),
+    // decimals (u8 = 1 byte), is_initialized (bool = 1 byte), freeze_authority (COption<Pubkey> = 33 bytes)
+    // Total: 82 bytes
+    // COption encoding: 1 byte (0 = None, 1 = Some) + 32 bytes (Pubkey if Some)
+    if mint_account.data.len() < 33 {
+        return Err(anyhow!("Invalid mint account data length"));
+    }
+
+    // Check if mint authority exists (first byte: 1 = Some, 0 = None)
+    if mint_account.data[0] == 0 {
+        return Err(anyhow!("Mint {} has no mint authority", mint));
+    }
+
+    // Extract mint authority (bytes 1-33)
+    let mint_authority = Pubkey::try_from(&mint_account.data[1..33])
+        .map_err(|_| anyhow!("Failed to parse mint authority"))?;
+
+    // Construct mint_to instruction
+    // Instruction discriminator: 7 (mint_to)
+    // Data: amount (u64, 8 bytes, little-endian)
+    use solana_instruction::account_meta::AccountMeta;
+    let mut mint_to_data = vec![7u8]; // Instruction discriminator for mint_to
+    mint_to_data.extend_from_slice(&amount.to_le_bytes()); // Amount as little-endian u64
+
+    let mint_to_ix = Instruction {
+        program_id: token_program_id,
+        accounts: vec![
+            AccountMeta::new(*mint, false),                  // mint
+            AccountMeta::new(token_account, false),          // destination
+            AccountMeta::new_readonly(mint_authority, true), // mint_authority (signer)
+        ],
+        data: mint_to_data,
+    };
+    instructions.push(mint_to_ix);
+
+    // Prepare signers - payer must be the mint authority
+    // If mint authority is different from payer, we can't proceed without the mint authority keypair
+    if mint_authority != payer.pubkey() {
+        return Err(anyhow!(
+            "Mint authority {} differs from payer {}. Mint authority keypair must be provided.",
+            mint_authority,
+            payer.pubkey()
+        ));
+    }
+
+    let signers: Vec<&dyn Signer> = vec![payer];
+
+    // Send transaction
+    let recent_blockhash = client.get_latest_blockhash()?;
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &signers,
+        recent_blockhash,
+    );
+
+    client
+        .send_and_confirm_transaction(&tx)
+        .map_err(|e| anyhow!("Failed to create token account and mint tokens: {}", e))?;
+
+    if account_exists {
+        println!("✓ Minted {} tokens to account {}", amount, token_account);
+    } else {
+        println!(
+            "✓ Created token account {} for owner {} and minted {} tokens",
+            token_account, owner_pubkey, amount
+        );
+    }
 
     Ok(())
 }
