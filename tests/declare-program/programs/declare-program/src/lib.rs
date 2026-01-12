@@ -12,6 +12,10 @@ declare_program!(external_legacy);
 // https://github.com/raydium-io/raydium-idl/blob/6123104304ebcb42be175cc297a2c221ac96bb96/raydium_clmm/amm_v3.json
 declare_program!(amm_v3);
 
+// Compilation check for optional accounts
+// https://github.com/solana-foundation/anchor/issues/4179
+declare_program!(optional);
+
 #[program]
 pub mod declare_program {
     use super::*;
