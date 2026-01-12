@@ -133,17 +133,40 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                     let name = format_ident!("{}", acc.name);
                     let signer = acc.signer;
                     let writable = acc.writable;
-                    quote! {
-                        #name: {
-                            let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
-                            if acc.is_signer != #signer {
-                                return Err(ProgramError::InvalidAccountData.into());
+                    let optional = acc.optional;
+                    if optional {
+                        // For optional accounts, the program ID is used as a placeholder when missing
+                        let program_id = get_canonical_program_id();
+                        quote! {
+                            #name: {
+                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
+                                // Check if this is a placeholder (program_id used for missing optional accounts)
+                                if acc.pubkey == #program_id {
+                                    None
+                                } else {
+                                    if acc.is_signer != #signer {
+                                        return Err(ProgramError::InvalidAccountData.into());
+                                    }
+                                    if acc.is_writable != #writable {
+                                        return Err(ProgramError::InvalidAccountData.into());
+                                    }
+                                    Some(acc.pubkey)
+                                }
                             }
-                            if acc.is_writable != #writable {
-                                return Err(ProgramError::InvalidAccountData.into());
-                            }
+                        }
+                    } else {
+                        quote! {
+                            #name: {
+                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
+                                if acc.is_signer != #signer {
+                                    return Err(ProgramError::InvalidAccountData.into());
+                                }
+                                if acc.is_writable != #writable {
+                                    return Err(ProgramError::InvalidAccountData.into());
+                                }
 
-                            acc.pubkey
+                                acc.pubkey
+                            }
                         }
                     }
                 }
