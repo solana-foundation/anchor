@@ -105,7 +105,7 @@ pub enum Command {
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
-        /// Initialize without `security.json` file (default = true)
+        /// Initialize without `security.json` file (default = false)
         /// The `security.json` will not be compiled into your binary as a section.
         /// Instead if you want to deploy it on-chain with `anchor program deploy --security-metadata`
         /// usage `anchor init --no-security-metadata` to not initialize it
