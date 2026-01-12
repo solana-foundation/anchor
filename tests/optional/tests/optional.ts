@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import {
   Program,
   web3,
@@ -8,7 +8,7 @@ import {
   LangErrorMessage,
   translateError,
   parseIdlErrors,
-} from "@coral-xyz/anchor";
+} from "@anchor-lang/core";
 import { Optional } from "../target/types/optional";
 import { AllowMissingOptionals } from "../target/types/allow_missing_optionals";
 import { assert, expect } from "chai";
@@ -765,7 +765,7 @@ describe("Optional", () => {
           .signers([dataAccountKeypair3])
           .rpc();
         assert.fail(
-          "Unexpected success in creating a transaction that should have failed with `ConstraintRaw` error"
+          "Unexpected success in creating a transaction that should have failed with `ConstraintAccountIsNone` error"
         );
       } catch (e) {
         // @ts-ignore

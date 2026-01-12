@@ -120,7 +120,7 @@ mod tests {
 
     macro_rules! len {
         ($val: expr) => {
-            $val.try_to_vec().unwrap().len()
+            borsh::to_vec(&$val).unwrap().len()
         };
     }
 
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn generic() {
         #[derive(AnchorSerialize, AnchorDeserialize)]
-        struct GenericStruct<T: Lazy> {
+        struct GenericStruct<T: Lazy + borsh::BorshSerialize> {
             t: T,
         }
 

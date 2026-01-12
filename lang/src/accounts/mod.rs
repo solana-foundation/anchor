@@ -6,6 +6,7 @@ pub mod account_loader;
 pub mod boxed;
 pub mod interface;
 pub mod interface_account;
+pub mod migration;
 pub mod option;
 pub mod program;
 pub mod signer;

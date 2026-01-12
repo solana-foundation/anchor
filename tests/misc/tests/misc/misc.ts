@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program, AnchorError, Wallet } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program, AnchorError, Wallet } from "@anchor-lang/core";
 import {
   PublicKey,
   Keypair,
@@ -997,13 +997,14 @@ const miscTest = (
 
       it("Can validate associated_token constraints", async () => {
         const localClient = await client;
-        await program.rpc.testValidateAssociatedToken({
-          accounts: {
+        await program.methods
+          .testValidateAssociatedToken()
+          .accountsStrict({
             token: associatedToken,
             mint: localClient.publicKey,
             wallet: provider.wallet.publicKey,
-          },
-        });
+          })
+          .rpc({ commitment: "confirmed" });
 
         let otherMint = await Token.createMint(
           program.provider.connection,
@@ -1016,13 +1017,14 @@ const miscTest = (
 
         await nativeAssert.rejects(
           async () => {
-            await program.rpc.testValidateAssociatedToken({
-              accounts: {
+            await program.methods
+              .testValidateAssociatedToken()
+              .accountsStrict({
                 token: associatedToken,
                 mint: otherMint.publicKey,
                 wallet: provider.wallet.publicKey,
-              },
-            });
+              })
+              .rpc({ commitment: "confirmed" });
           },
           (err) => {
             assert.strictEqual(err.error.errorCode.number, 2009);
@@ -1033,13 +1035,14 @@ const miscTest = (
 
       it("associated_token constraints check do not allow authority change", async () => {
         const localClient = await client;
-        await program.rpc.testValidateAssociatedToken({
-          accounts: {
+        await program.methods
+          .testValidateAssociatedToken()
+          .accountsStrict({
             token: associatedToken,
             mint: localClient.publicKey,
             wallet: provider.wallet.publicKey,
-          },
-        });
+          })
+          .rpc({ commitment: "confirmed" });
 
         await localClient.setAuthority(
           associatedToken,
@@ -1051,13 +1054,14 @@ const miscTest = (
 
         await nativeAssert.rejects(
           async () => {
-            await program.rpc.testValidateAssociatedToken({
-              accounts: {
+            await program.methods
+              .testValidateAssociatedToken()
+              .accountsStrict({
                 token: associatedToken,
                 mint: localClient.publicKey,
                 wallet: provider.wallet.publicKey,
-              },
-            });
+              })
+              .rpc({ commitment: "confirmed" });
           },
           (err) => {
             assert.strictEqual(err.error.errorCode.number, 2015);

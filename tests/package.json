@@ -16,6 +16,7 @@
     "composite",
     "custom-coder",
     "custom-discriminator",
+    "custom-program",
     "declare-id",
     "declare-program",
     "errors",
@@ -24,7 +25,7 @@
     "floats",
     "idl",
     "ido-pool",
-    "interface",
+    "interface-account",
     "lazy-account",
     "lockup",
     "misc",
@@ -50,7 +51,9 @@
     "cpi-returns",
     "multiple-suites",
     "multiple-suites-run-single",
-    "bpf-upgradeable-state"
+    "bpf-upgradeable-state",
+    "duplicate-mutable-accounts",
+    "signature-verification"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",

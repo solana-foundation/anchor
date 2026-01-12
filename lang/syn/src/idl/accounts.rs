@@ -128,7 +128,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     if let Some(ty) = <#defined>::create_type() {
                         let account = #idl::IdlAccount {
                             name: ty.name.clone(),
-                            discriminator: #defined::DISCRIMINATOR.into(),
+                            discriminator: <#defined>::DISCRIMINATOR.into(),
                         };
                         accounts.insert(account.name.clone(), account);
                         types.insert(ty.name.clone(), ty);
@@ -146,10 +146,17 @@ fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
         Ty::Program(_) | Ty::Sysvar(_) => {
             let ty = acc.account_ty();
-            let id_trait = matches!(acc.ty, Ty::Program(_))
-                .then(|| quote!(anchor_lang::Id))
-                .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
-            quote! { Some(<#ty as #id_trait>::id().to_string()) }
+            // Check if this is the unit type marker (for generic Program<'info>)
+            let ty_str = quote!(#ty).to_string();
+            if ty_str == "" || ty_str == "__SolanaProgramUnitType" {
+                // For generic programs, we don't have a specific address
+                quote! { None }
+            } else {
+                let id_trait = matches!(acc.ty, Ty::Program(_))
+                    .then(|| quote!(anchor_lang::Id))
+                    .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
+                quote! { Some(<#ty as #id_trait>::id().to_string()) }
+            }
         }
         _ => acc
             .constraints
@@ -168,7 +175,7 @@ fn get_address(acc: &Field) -> TokenStream {
                         .ident
                         .to_string()
                         .chars()
-                        .all(|c| c.is_uppercase() || c == '_'),
+                        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'),
                     // Allow `const fn`s (assume any stand-alone function call without an argument)
                     // e.g. `crate::id()`
                     syn::Expr::Call(expr) => expr.args.is_empty(),

@@ -4,9 +4,48 @@ use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
-/// Master seed slice
 #[constant]
-pub const MASTER_SEED: &[u8] = b"master";
+pub const BOOL: bool = false;
+#[constant]
+pub const U8: u8 = 1;
+#[constant]
+pub const U16: u16 = 2;
+#[constant]
+pub const U32: u32 = 4;
+#[constant]
+pub const U64: u64 = 8;
+#[constant]
+pub const U128: u128 = 16;
+#[constant]
+pub const I8: i8 = 1;
+#[constant]
+pub const I16: i16 = 2;
+#[constant]
+pub const I32: i32 = 4;
+#[constant]
+pub const I64: i64 = 8;
+#[constant]
+pub const I128: i128 = 16;
+#[constant]
+pub const BYTES: &[u8] = b"abc";
+#[constant]
+pub const STRING: &str = "abc";
+#[constant]
+pub const PUBKEY: Pubkey = Pubkey::from_str_const("SomeAdress111111111111111111111111111111111");
+#[constant]
+pub const ARRAY: [u8; 4] = [1, 2, 3, 4];
+#[constant]
+pub const OPTION_BOOL: Option<bool> = Some(BOOL);
+#[constant]
+pub const NESTED_OPTION_BOOL: Option<Option<bool>> = Some(OPTION_BOOL);
+#[constant]
+pub const OPTION_STRING: Option<&str> = Some(STRING);
+#[constant]
+pub const NESTED_OPTION_STRING: Option<Option<&str>> = Some(OPTION_STRING);
+#[constant]
+pub const OPTION_ARRAY: Option<[u8; 4]> = Some(ARRAY);
+#[constant]
+pub const NESTED_OPTION_ARRAY: Option<Option<[u8; 4]>> = Some(OPTION_ARRAY);
 
 #[program]
 pub mod external {
@@ -35,6 +74,18 @@ pub mod external {
         Ok(())
     }
 
+    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3349
+    pub fn update_non_instruction_composite2(
+        ctx: Context<UpdateNonInstructionComposite2>,
+        value: u32,
+    ) -> Result<()> {
+        ctx.accounts
+            .non_instruction_update_with_different_ident
+            .my_account
+            .field = value;
+        Ok(())
+    }
+
     // Compilation test for whether a defined type (an account in this case) can be used in `cpi` client.
     pub fn test_compilation_defined_type_param(
         _ctx: Context<TestCompilation>,
@@ -60,6 +111,14 @@ pub mod external {
     pub fn test_compilation_no_accounts(_ctx: Context<TestCompilationNoAccounts>) -> Result<()> {
         Ok(())
     }
+}
+
+#[error_code]
+pub enum ExternalProgramError {
+    // Should have offset 6000
+    MyNormalError,
+    // Should have offset 6500
+    MyErrorWithSpecialOffset = 500,
 }
 
 #[derive(Accounts)]
@@ -93,6 +152,24 @@ pub struct Update<'info> {
 }
 
 #[derive(Accounts)]
+pub struct UpdateComposite<'info> {
+    pub update: Update<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateNonInstructionComposite<'info> {
+    pub non_instruction_update: NonInstructionUpdate<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateNonInstructionComposite2<'info> {
+    // Intenionally using different composite account with the same identifier
+    // https://github.com/solana-foundation/anchor/pull/3350#pullrequestreview-2425405970
+    pub non_instruction_update: NonInstructionUpdate2<'info>,
+    pub non_instruction_update_with_different_ident: NonInstructionUpdate<'info>,
+}
+
+#[derive(Accounts)]
 pub struct NonInstructionUpdate<'info> {
     pub authority: Signer<'info>,
     #[account(mut, seeds = [authority.key.as_ref()], bump)]
@@ -101,13 +178,8 @@ pub struct NonInstructionUpdate<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UpdateComposite<'info> {
-    pub update: Update<'info>,
-}
-
-#[derive(Accounts)]
-pub struct UpdateNonInstructionComposite<'info> {
-    pub non_instruction_update: NonInstructionUpdate<'info>,
+pub struct NonInstructionUpdate2<'info> {
+    pub program: Program<'info, program::External>,
 }
 
 #[account]

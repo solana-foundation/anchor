@@ -8,11 +8,10 @@
 
 extern crate proc_macro;
 
-use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream, Result},
-    Expr, LitByte, LitStr,
+    Expr, LitStr,
 };
 
 fn parse_id(
@@ -21,7 +20,7 @@ fn parse_id(
 ) -> Result<proc_macro2::TokenStream> {
     let id = if input.peek(syn::LitStr) {
         let id_literal: LitStr = input.parse()?;
-        parse_pubkey(&id_literal, &pubkey_type)?
+        quote! { #pubkey_type::from_str_const(#id_literal) }
     } else {
         let expr: Expr = input.parse()?;
         quote! { #expr }
@@ -39,6 +38,17 @@ fn id_to_tokens(
     pubkey_type: proc_macro2::TokenStream,
     tokens: &mut proc_macro2::TokenStream,
 ) {
+    let event_authority_and_bump = {
+        #[cfg(feature = "event-cpi")]
+        quote! {
+            pub const EVENT_AUTHORITY_AND_BUMP: (#pubkey_type, u8) = {
+                let (address, bump) = anchor_lang::derive_program_address(&[b"__event_authority"], &ID_CONST.to_bytes());
+                (#pubkey_type::new_from_array(address), bump)
+            };
+        }
+        #[cfg(not(feature = "event-cpi"))]
+        quote! {}
+    };
     tokens.extend(quote! {
         /// The static program ID
         pub static ID: #pubkey_type = #id;
@@ -60,6 +70,8 @@ fn id_to_tokens(
         pub const fn id_const() -> #pubkey_type {
             ID_CONST
         }
+
+        #event_authority_and_bump
 
         #[cfg(test)]
         #[test]
@@ -108,25 +120,4 @@ impl ToTokens for Id {
             tokens,
         )
     }
-}
-
-fn parse_pubkey(
-    id_literal: &LitStr,
-    pubkey_type: &proc_macro2::TokenStream,
-) -> Result<proc_macro2::TokenStream> {
-    let id_vec = bs58::decode(id_literal.value())
-        .into_vec()
-        .map_err(|_| syn::Error::new_spanned(id_literal, "failed to decode base58 string"))?;
-    let id_array = <[u8; 32]>::try_from(<&[u8]>::clone(&&id_vec[..])).map_err(|_| {
-        syn::Error::new_spanned(
-            id_literal,
-            format!("pubkey array is not 32 bytes long: len={}", id_vec.len()),
-        )
-    })?;
-    let bytes = id_array.iter().map(|b| LitByte::new(*b, Span::call_site()));
-    Ok(quote! {
-        #pubkey_type::new_from_array(
-            [#(#bytes,)*]
-        )
-    })
 }

@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import * as token from "@coral-xyz/spl-token";
+import * as anchor from "@anchor-lang/core";
+import * as token from "@anchor-lang/spl-token";
 
 import { Bench } from "../target/types/bench";
 import { BenchData, ComputeUnits } from "../scripts/utils";
@@ -141,7 +141,10 @@ describe("Compute units", () => {
       .instruction();
     tx.add(createTokenIx, initTokenIx);
 
-    await tokenProgram.provider.sendAndConfirm!(tx, [mintKp, tokenKp]);
+    await tokenProgram.provider.sendAndConfirm!(tx, [mintKp, tokenKp], {
+      maxRetries: 3,
+      skipPreflight: true,
+    });
   });
 
   it("AccountInfo", async () => {

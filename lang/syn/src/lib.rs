@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod codegen;
 pub mod parser;
@@ -70,9 +70,6 @@ pub struct Ix {
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
-    // The discriminator based on the `#[interface]` attribute.
-    // TODO: Remove and use `overrides`
-    pub interface_discriminator: Option<[u8; 8]>,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
 }
@@ -282,6 +279,7 @@ pub struct Field {
     pub constraints: ConstraintGroup,
     pub ty: Ty,
     pub is_optional: bool,
+    pub ty_span: Span,
     /// IDL Doc comment
     pub docs: Option<Vec<String>>,
 }
@@ -341,6 +339,27 @@ impl Field {
                 };
                 quote! {
                     Sysvar<#account>
+                }
+            }
+            Ty::Program(ty) => {
+                let program = &ty.account_type_path;
+                // Check if this is the generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {
+                        #container_ty<'info>
+                    }
+                } else {
+                    quote! {
+                        #container_ty<'info, #program>
+                    }
+                }
+            }
+            Ty::Migration(ty) => {
+                let from = &ty.from_type_path;
+                let to = &ty.to_type_path;
+                quote! {
+                    #container_ty<'info, #from, #to>
                 }
             }
             _ => quote! {
@@ -472,6 +491,9 @@ impl Field {
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
+            Ty::Migration(_) => quote! {
+                anchor_lang::accounts::migration::Migration
+            },
             Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
             Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
             Ty::Interface(_) => quote! { anchor_lang::accounts::interface::Interface },
@@ -528,6 +550,13 @@ impl Field {
                     #ident
                 }
             }
+            Ty::Migration(ty) => {
+                // Return just the From type for IDL and other uses
+                let from = &ty.from_type_path;
+                quote! {
+                    #from
+                }
+            }
             Ty::Sysvar(ty) => match ty {
                 SysvarTy::Clock => quote! {Clock},
                 SysvarTy::Rent => quote! {Rent},
@@ -542,8 +571,14 @@ impl Field {
             },
             Ty::Program(ty) => {
                 let program = &ty.account_type_path;
-                quote! {
-                    #program
+                // Check if this is the special marker for generic Program<'info> (unit type)
+                let program_str = quote!(#program).to_string();
+                if program_str == "__SolanaProgramUnitType" {
+                    quote! {}
+                } else {
+                    quote! {
+                        #program
+                    }
                 }
             }
             Ty::Interface(ty) => {
@@ -575,6 +610,7 @@ pub enum Ty {
     Sysvar(SysvarTy),
     Account(AccountTy),
     LazyAccount(LazyAccountTy),
+    Migration(MigrationTy),
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
@@ -615,6 +651,13 @@ pub struct AccountTy {
 pub struct LazyAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct MigrationTy {
+    // Migration<'info, From, To> - we need both From and To types
+    pub from_type_path: TypePath,
+    pub to_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -659,9 +702,8 @@ impl Parse for ErrorArgs {
             return Err(ParseError::new(offset_span, "expected keyword offset"));
         }
         stream.parse::<Token![=]>()?;
-        Ok(ErrorArgs {
-            offset: stream.parse()?,
-        })
+        let offset: LitInt = stream.parse()?;
+        Ok(ErrorArgs { offset })
     }
 }
 
@@ -678,6 +720,7 @@ pub struct ConstraintGroup {
     pub init: Option<ConstraintInitGroup>,
     pub zeroed: Option<ConstraintZeroed>,
     pub mutable: Option<ConstraintMut>,
+    pub dup: Option<ConstraintDup>,
     pub signer: Option<ConstraintSigner>,
     pub owner: Option<ConstraintOwner>,
     pub rent_exempt: Option<ConstraintRentExempt>,
@@ -702,6 +745,10 @@ impl ConstraintGroup {
         self.mutable.is_some()
     }
 
+    pub fn is_dup(&self) -> bool {
+        self.dup.is_some()
+    }
+
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
     }
@@ -720,6 +767,7 @@ pub enum Constraint {
     Init(ConstraintInitGroup),
     Zeroed(ConstraintZeroed),
     Mut(ConstraintMut),
+    Dup(ConstraintDup),
     Signer(ConstraintSigner),
     HasOne(ConstraintHasOne),
     Raw(ConstraintRaw),
@@ -742,6 +790,7 @@ pub enum ConstraintToken {
     Init(Context<ConstraintInit>),
     Zeroed(Context<ConstraintZeroed>),
     Mut(Context<ConstraintMut>),
+    Dup(Context<ConstraintDup>),
     Signer(Context<ConstraintSigner>),
     HasOne(Context<ConstraintHasOne>),
     Raw(Context<ConstraintRaw>),
@@ -806,6 +855,9 @@ pub struct ConstraintZeroed {}
 pub struct ConstraintMut {
     pub error: Option<Expr>,
 }
+
+#[derive(Debug, Clone)]
+pub struct ConstraintDup {}
 
 #[derive(Debug, Clone)]
 pub struct ConstraintReallocGroup {
@@ -873,17 +925,107 @@ pub struct ConstraintInitGroup {
     pub kind: InitKind,
 }
 
+/// Seeds can be written as a literal slice (`[ a, b ]`) or any
+/// expression that produces `&[&[u8]]` at run time.
+#[derive(Debug, Clone)]
+pub enum SeedsExpr {
+    /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`
+    List(Punctuated<Expr, Token![,]>),
+    /// Example: `pda_seeds(key)`
+    Expr(Box<Expr>),
+}
+
+impl SeedsExpr {
+    /// Return the underlying `Punctuated` if this is the `List` form.
+    fn list_mut(&mut self) -> Option<&mut Punctuated<Expr, Token![,]>> {
+        match self {
+            SeedsExpr::List(list) => Some(list),
+            SeedsExpr::Expr(_) => None,
+        }
+    }
+
+    /// Mirrors `Punctuated::pop`: removes and returns the last element and its
+    /// trailing punctuation when this is the `List` variant. For the `Expr variant`,
+    /// which represents a single non-list seed expression, returns `None` because
+    /// there is no list to pop from.
+    pub fn pop(&mut self) -> Option<syn::punctuated::Pair<Expr, Token![,]>> {
+        self.list_mut()?.pop()
+    }
+
+    pub fn push_value(&mut self, value: Expr) {
+        if let Some(list) = self.list_mut() {
+            list.push_value(value);
+        }
+    }
+
+    /// Mirrors `Punctuated::push_value`: pushes a value without punctuation onto
+    /// the underlying list when this is the `List` variant. No-op for the `Expr`
+    /// variant.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            SeedsExpr::List(list) => list.is_empty(),
+            SeedsExpr::Expr(_) => false, // Treat as “one seed”
+        }
+    }
+
+    /// Immutable iteration over every seed expression, regardless of variant
+    pub fn iter(&self) -> Box<dyn Iterator<Item = &Expr> + '_> {
+        match self {
+            SeedsExpr::List(list) => Box::new(list.iter()),
+            SeedsExpr::Expr(expr) => Box::new(std::iter::once(expr.as_ref())),
+        }
+    }
+
+    /// The number of seeds represented: `list.len()` for `List` and `1` for `Expr`.
+    pub fn len(&self) -> usize {
+        match self {
+            SeedsExpr::List(list) => list.len(),
+            SeedsExpr::Expr(_) => 1,
+        }
+    }
+}
+
+/// Allow `quote!{ #seeds }`
+impl quote::ToTokens for SeedsExpr {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            SeedsExpr::List(list) => list.to_tokens(tokens),
+            SeedsExpr::Expr(expr) => expr.to_tokens(tokens),
+        }
+    }
+}
+
+impl syn::parse::Parse for SeedsExpr {
+    fn parse(stream: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+        if stream.peek(syn::token::Bracket) {
+            let content;
+            syn::bracketed!(content in stream);
+            let mut list: Punctuated<Expr, Token![,]> = content.parse_terminated(Expr::parse)?;
+
+            // Strip a trailing comma if present.
+            // Use `pop_punct` when we update to syn 2.0
+            if let Some(pair) = list.pop() {
+                list.push_value(pair.into_value());
+            }
+
+            Ok(SeedsExpr::List(list))
+        } else {
+            Ok(SeedsExpr::Expr(Box::new(stream.parse()?)))
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ConstraintSeedsGroup {
     pub is_init: bool,
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
     pub bump: Option<Expr>,         // None => bump was given without a target.
     pub program_seed: Option<Expr>, // None => use the current program's program_id.
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstraintSeeds {
-    pub seeds: Punctuated<Expr, Token![,]>,
+    pub seeds: SeedsExpr,
 }
 
 #[derive(Debug, Clone)]

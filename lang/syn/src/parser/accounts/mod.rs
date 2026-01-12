@@ -315,6 +315,7 @@ pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
                 ty,
                 is_optional,
                 constraints: account_constraints,
+                ty_span: f.ty.span(),
                 docs,
             })
         }
@@ -348,6 +349,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "AccountLoader"
             | "Account"
             | "LazyAccount"
+            | "Migration"
             | "Program"
             | "Interface"
             | "InterfaceAccount"
@@ -367,6 +369,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
         "LazyAccount" => Ty::LazyAccount(parse_lazy_account_ty(&path)?),
+        "Migration" => Ty::Migration(parse_migration_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
         "Interface" => Ty::Interface(parse_interface_ty(&path)?),
         "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
@@ -464,6 +467,49 @@ fn parse_lazy_account_ty(path: &syn::Path) -> ParseResult<LazyAccountTy> {
     Ok(LazyAccountTy { account_type_path })
 }
 
+fn parse_migration_ty(path: &syn::Path) -> ParseResult<MigrationTy> {
+    // Migration<'info, From, To>
+    let segments = &path.segments[0];
+    match &segments.arguments {
+        syn::PathArguments::AngleBracketed(args) => {
+            // Expected: <'info, From, To> - 3 args
+            if args.args.len() != 3 {
+                return Err(ParseError::new(
+                    args.args.span(),
+                    "Migration requires three arguments: lifetime, From type, and To type",
+                ));
+            }
+            // First arg is lifetime, second is From, third is To
+            let from_type_path = match &args.args[1] {
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => ty_path.clone(),
+                _ => {
+                    return Err(ParseError::new(
+                        args.args[1].span(),
+                        "From type must be a path",
+                    ));
+                }
+            };
+            let to_type_path = match &args.args[2] {
+                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => ty_path.clone(),
+                _ => {
+                    return Err(ParseError::new(
+                        args.args[2].span(),
+                        "To type must be a path",
+                    ));
+                }
+            };
+            Ok(MigrationTy {
+                from_type_path,
+                to_type_path,
+            })
+        }
+        _ => Err(ParseError::new(
+            segments.span(),
+            "Migration must have angle bracketed arguments",
+        )),
+    }
+}
+
 fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountTy> {
     let account_type_path = parse_account(path)?;
     let boxed = parser::tts_to_string(path)
@@ -476,13 +522,59 @@ fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountT
 }
 
 fn parse_program_ty(path: &syn::Path) -> ParseResult<ProgramTy> {
-    let account_type_path = parse_account(path)?;
+    let account_type_path = parse_program_account(path)?;
     Ok(ProgramTy { account_type_path })
 }
 
 fn parse_interface_ty(path: &syn::Path) -> ParseResult<InterfaceTy> {
     let account_type_path = parse_account(path)?;
     Ok(InterfaceTy { account_type_path })
+}
+
+// Special parsing function for Program that handles both Program<'info> and Program<'info, T>
+fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
+    let segments = &path.segments[0];
+    match &segments.arguments {
+        syn::PathArguments::AngleBracketed(args) => {
+            match args.args.len() {
+                // Program<'info> - only lifetime, no type parameter
+                1 => {
+                    // Create a special marker for unit type that gets handled later
+                    use syn::{Path, PathSegment, PathArguments};
+                    let path_segment = PathSegment {
+                        ident: syn::Ident::new("__SolanaProgramUnitType", proc_macro2::Span::call_site()),
+                        arguments: PathArguments::None,
+                    };
+
+                    Ok(syn::TypePath {
+                        qself: None,
+                        path: Path {
+                            leading_colon: None,
+                            segments: std::iter::once(path_segment).collect(),
+                        },
+                    })
+                }
+                // Program<'info, T> - lifetime and type
+                2 => {
+                    match &args.args[1] {
+                        syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+                        _ => Err(ParseError::new(
+                            args.args[1].span(),
+                            "second bracket argument must be a type",
+                        )),
+                    }
+                }
+                _ => Err(ParseError::new(
+                    args.args.span(),
+                    "Program must have either just a lifetime (Program<'info>) or a lifetime and type (Program<'info, T>)",
+                )),
+            }
+        }
+        _ => Err(ParseError::new(
+            segments.arguments.span(),
+            "expected angle brackets with lifetime or lifetime and type",
+        )),
+    }
 }
 
 // TODO: this whole method is a hack. Do something more idiomatic.

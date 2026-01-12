@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import {
   PublicKey,
   Keypair,
@@ -136,11 +136,12 @@ describe("transfer hook", () => {
       "confirmed"
     );
 
-    await sendAndConfirmTransaction(provider.connection, transaction, [
-      payer,
-      mint,
-      mintAuthority,
-    ]);
+    await sendAndConfirmTransaction(
+      provider.connection,
+      transaction,
+      [payer, mint, mintAuthority],
+      { maxRetries: 3, skipPreflight: true }
+    );
   });
 
   it("can create an `InitializeExtraAccountMetaList` instruction with the proper discriminator", async () => {
@@ -275,7 +276,8 @@ describe("transfer hook", () => {
     await sendAndConfirmTransaction(
       provider.connection,
       new Transaction().add(ix),
-      [payer, sourceAuthority]
+      [payer, sourceAuthority],
+      { maxRetries: 3, skipPreflight: true }
     );
 
     // Check the resulting token balances

@@ -1,6 +1,6 @@
 use crate::*;
 use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{bracketed, Token};
+use syn::{Expr, Ident, Token};
 
 pub fn parse(f: &syn::Field, f_ty: Option<&Ty>) -> ParseResult<ConstraintGroup> {
     let mut constraints = ConstraintGroupBuilder::new(f_ty);
@@ -50,6 +50,7 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
         "executable" => {
             ConstraintToken::Executable(Context::new(ident.span(), ConstraintExecutable {}))
         }
+        "dup" => ConstraintToken::Dup(Context::new(ident.span(), ConstraintDup {})),
         "mint" => {
             stream.parse::<Token![:]>()?;
             stream.parse::<Token![:]>()?;
@@ -364,14 +365,9 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     .span()
                     .join(stream.span())
                     .unwrap_or_else(|| ident.span());
-                let seeds;
-                let bracket = bracketed!(seeds in stream);
-                ConstraintToken::Seeds(Context::new(
-                    span.join(bracket.span).unwrap_or(span),
-                    ConstraintSeeds {
-                        seeds: seeds.parse_terminated(Expr::parse)?,
-                    },
-                ))
+
+                let seeds_expr: SeedsExpr = stream.parse()?;
+                ConstraintToken::Seeds(Context::new(span, ConstraintSeeds { seeds: seeds_expr }))
             }
         }
         "realloc" => {
@@ -543,6 +539,7 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub realloc: Option<Context<ConstraintRealloc>>,
     pub realloc_payer: Option<Context<ConstraintReallocPayer>>,
     pub realloc_zero: Option<Context<ConstraintReallocZero>>,
+    pub dup: Option<Context<ConstraintDup>>,
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
@@ -588,6 +585,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc: None,
             realloc_payer: None,
             realloc_zero: None,
+            dup: None,
         }
     }
 
@@ -800,6 +798,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             realloc,
             realloc_payer,
             realloc_zero,
+            dup,
         } = self;
 
         // Converts Option<Context<T>> -> Option<T>.
@@ -1031,6 +1030,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             seeds,
             token_account: if !is_init {token_account} else {None},
             mint: if !is_init {mint} else {None},
+            dup: into_inner!(dup),
         })
     }
 
@@ -1093,6 +1093,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
             }
+            ConstraintToken::Dup(c) => self.add_dup(c),
         }
     }
 
@@ -1194,10 +1195,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if !matches!(self.f_ty, Some(Ty::Account(_)))
             && !matches!(self.f_ty, Some(Ty::LazyAccount(_)))
             && !matches!(self.f_ty, Some(Ty::AccountLoader(_)))
+            && !matches!(self.f_ty, Some(Ty::Migration(_)))
         {
             return Err(ParseError::new(
                 c.span(),
-                "realloc must be on an Account, LazyAccount or AccountLoader",
+                "realloc must be on an Account, LazyAccount, AccountLoader, or Migration",
             ));
         }
         if self.mutable.is_none() {
@@ -1673,6 +1675,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ));
         }
         self.extension_permanent_delegate.replace(c);
+        Ok(())
+    }
+
+    fn add_dup(&mut self, c: Context<ConstraintDup>) -> ParseResult<()> {
+        if self.dup.is_some() {
+            return Err(ParseError::new(c.span(), "dup already provided"));
+        }
+        self.dup.replace(c);
         Ok(())
     }
 }

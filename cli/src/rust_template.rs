@@ -5,11 +5,9 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
-};
+use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
+use solana_pubkey::Pubkey;
+use solana_signer::Signer;
 use std::{
     fmt::Write as _,
     fs::{self, File},
@@ -18,13 +16,15 @@ use std::{
     process::Stdio,
 };
 
+const ANCHOR_MSRV: &str = "1.89.0";
+
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum ProgramTemplate {
-    /// Program with a single `lib.rs` file
-    #[default]
+    /// Program with a single `lib.rs` file (not recommended for production)
     Single,
-    /// Program with multiple files for instructions, state...
+    /// Program with multiple files for instructions, state... (recommended)
+    #[default]
     Multiple,
 }
 
@@ -33,6 +33,7 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
+        ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
             cargo_toml(name, with_mollusk),
@@ -41,11 +42,25 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     ];
 
     let template_files = match template {
-        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Single => {
+            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            create_program_template_single(name, &program_path)
+        }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
     };
 
     create_files(&[common_files, template_files].concat())
+}
+
+/// Helper to create a rust-toolchain.toml at the workspace root
+fn rust_toolchain_toml() -> String {
+    format!(
+        r#"[toolchain]
+channel = "{ANCHOR_MSRV}"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+"#
+    )
 }
 
 /// Create a program with a single `lib.rs` file.
@@ -131,7 +146,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -152,7 +167,7 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
@@ -249,7 +264,7 @@ token = "{token}"
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -272,7 +287,7 @@ main();
 
 pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
-        r#"import * as anchor from '@coral-xyz/anchor';
+        r#"import * as anchor from '@anchor-lang/core';
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -298,7 +313,7 @@ pub fn deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-const anchor = require("@coral-xyz/anchor");
+const anchor = require("@anchor-lang/core");
 
 module.exports = async function (provider) {
   // Configure client to use the provider.
@@ -314,7 +329,7 @@ pub fn ts_deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 
 module.exports = async function (provider: anchor.AnchorProvider) {
   // Configure client to use the provider.
@@ -327,7 +342,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
 
 pub fn mocha(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -348,7 +363,7 @@ describe("{}", () => {{
 
 pub fn jest(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -377,7 +392,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "jest": "^29.0.3",
@@ -395,7 +410,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -418,7 +433,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "@types/bn.js": "^5.1.0",
@@ -440,7 +455,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -460,8 +475,8 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
 
 pub fn ts_mocha(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -487,8 +502,8 @@ describe("{}", () => {{
 
 pub fn ts_jest(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -548,6 +563,7 @@ target
 node_modules
 test-ledger
 .yarn
+.surfpool
 "#
 }
 
@@ -569,7 +585,7 @@ pub fn node_shell(
 ) -> Result<String> {
     let mut eval_string = format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 const web3 = anchor.web3;
 const PublicKey = anchor.web3.PublicKey;
 const Keypair = anchor.web3.Keypair;
@@ -687,7 +703,7 @@ impl TestTemplate {
                     .arg("tests")
                     .stderr(Stdio::inherit())
                     .output()
-                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                    .map_err(|e| anyhow::format_err!("{}", e))?;
                 if !exit.status.success() {
                     eprintln!("'cargo new --lib tests' failed");
                     std::process::exit(exit.status.code().unwrap_or(1));
@@ -732,11 +748,12 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]
 anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
-"#,
+"#
     )
 }
 
@@ -770,7 +787,7 @@ fn test_initialize() {{
     let payer = read_keypair_file(&anchor_wallet).unwrap();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
 
     let tx = program

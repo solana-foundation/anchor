@@ -438,7 +438,7 @@ pub enum TokenError {
     #[msg("Invalid number of required signers")]
     InvalidNumberOfRequiredSigners,
     /// State is uninitialized.
-    #[msg("State is unititialized")]
+    #[msg("State is uninitialized")]
     UninitializedState,
 
     // 10

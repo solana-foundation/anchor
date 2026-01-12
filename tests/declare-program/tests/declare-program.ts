@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import assert from "assert";
 
 import type { DeclareProgram } from "../target/types/declare_program";
@@ -47,11 +47,13 @@ describe("declare-program", () => {
     assert.strictEqual(myAccount.field, value);
   });
 
-  it("Can use account utils", async () => {
-    await program.methods.accountUtils().rpc();
-  });
-
-  it("Can use event utils", async () => {
-    await program.methods.eventUtils().rpc();
+  it("Produces correct IDL", () => {
+    // The program itself doesn't have an error definition, therefore its IDL
+    // also shouldn't have the `errors` field.
+    //
+    // https://github.com/solana-foundation/anchor/pull/3757#discussion_r2424695717
+    //
+    // @ts-expect-error
+    if (program.idl.errors) throw new Error("The IDL should not have `errors`");
   });
 });

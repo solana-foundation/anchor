@@ -5,12 +5,12 @@ on:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   tests:
@@ -18,7 +18,11 @@ jobs:
     uses: ./.github/workflows/reusable-tests.yaml
     with:
       cache: true
-      solana_cli_version: 2.1.0
+      solana_version: 3.0.0
       node_version: 20.18.0
       cargo_profile: debug
       anchor_binary_name: anchor-binary
+      # TODO: currently this value is only used to invalidate the cache and install latest, it is not
+      # actually installing the specified version.
+      # Issue: https://github.com/solana-foundation/anchor/issues/4160
+      surfpool_cli_version: 1.0.0-rc1

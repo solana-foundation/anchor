@@ -182,12 +182,6 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         }
     }
 
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    pub fn reload(&mut self) -> Result<()> {
-        self.account.reload()
-    }
-
     pub fn into_inner(self) -> T {
         self.account.into_inner()
     }
@@ -214,7 +208,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> InterfaceAccount<'a, T> {
-    /// Deserializes the given `info` into a `InterfaceAccount`.
+    /// Deserializes the given `info` into an `InterfaceAccount`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
@@ -225,9 +219,8 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         Ok(Self::new(info, T::try_deserialize(&mut data)?))
     }
 
-    /// Deserializes the given `info` into a `InterfaceAccount` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
+    /// Deserializes the given `info` into an `InterfaceAccount` without checking the account
+    /// discriminator. Be careful when using this and avoid it if possible.
     #[inline(never)]
     pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
@@ -236,6 +229,22 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         T::check_owner(info.owner)?;
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
+    }
+
+    /// Reloads the account from storage. This is useful, for example, when observing side effects
+    /// after CPI.
+    ///
+    /// This method also validates that the account is owned by one of the expected programs.
+    pub fn reload(&mut self) -> Result<()> {
+        let info: &AccountInfo = self.account.as_ref();
+        T::check_owner(info.owner)?;
+
+        // Re-deserialize fresh data into the inner account.
+        self.account.set_inner({
+            let mut data: &[u8] = &info.try_borrow_data()?;
+            T::try_deserialize(&mut data)?
+        });
+        Ok(())
     }
 }
 
