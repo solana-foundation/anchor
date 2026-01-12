@@ -4,6 +4,7 @@ use crate::config::{
     SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
     STARTUP_WAIT, SURFPOOL_HOST,
 };
+use crate::rust_template::get_security_metadata_content;
 use anchor_client::Cluster;
 use anchor_lang::prelude::UpgradeableLoaderState;
 use anchor_lang::solana_program::bpf_loader_upgradeable;
@@ -12,7 +13,7 @@ use anchor_lang_idl::convert::convert_idl;
 use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
 use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
-use clap::{CommandFactory, Parser};
+use clap::{ArgAction, CommandFactory, Parser};
 use dirs::home_dir;
 use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
@@ -104,6 +105,12 @@ pub enum Command {
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
+        /// Initialize without `security.json` file (default = true)
+        /// The `security.json` will not be compiled into your binary as a section.
+        /// Instead if you want to deploy it on-chain with `anchor program deploy --security-metadata`
+        /// usage `anchor init --no-security-metadata` to not initialize it
+        #[clap(long = "no-security-metadata", short = 's', action = ArgAction::SetFalse)]
+        security_metadata: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -167,9 +174,9 @@ pub enum Command {
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
     },
-    /// Verifies the on-chain bytecode matches the locally compiled artifact.
-    /// Run this command inside a program subdirectory, i.e., in the dir
-    /// containing the program's Cargo.toml.
+    /// Permit Verify the on-chain programs with `solana-verify` tool.
+    /// Verified builds ensure that your deployed program matches exactly with your public source code.
+    /// More info check: https://github.com/Ellipsis-Labs/solana-verifiable-build
     Verify {
         /// The program ID to verify.
         program_id: Pubkey,
@@ -269,6 +276,9 @@ pub enum Command {
         /// Don't upload IDL during deployment (IDL is uploaded by default)
         #[clap(long)]
         no_idl: bool,
+        /// Deploy the `security.json` with program-metadata
+        #[clap(long, short = 's', default_value = "false")]
+        security_metadata: bool,
         /// Arguments to pass to the underlying `solana program deploy` command.
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -509,6 +519,10 @@ pub enum ProgramCommand {
         /// Make the program immutable after deployment (cannot be upgraded)
         #[clap(long = "final")]
         make_final: bool,
+        /// Deploy the `security.json` with program-metadata (default = false)
+        /// usage `anchor program deploy --security-metadata` to deploy it on-chain
+        #[clap(long, action = ArgAction::SetTrue, short = 's', default_value = "false")]
+        security_metadata: bool,
         /// Additional arguments to configure deployment (e.g., --with-compute-unit-price 1000)
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -1133,6 +1147,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            security_metadata,
         } => init(
             &opts.cfg_override,
             name,
@@ -1143,6 +1158,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            security_metadata,
         ),
         Command::New {
             name,
@@ -1205,6 +1221,7 @@ fn process_command(opts: Opts) -> Result<()> {
             program_keypair,
             verifiable,
             no_idl,
+            security_metadata,
             solana_args,
         } => {
             eprintln!(
@@ -1216,6 +1233,7 @@ fn process_command(opts: Opts) -> Result<()> {
                 program_keypair,
                 verifiable,
                 no_idl,
+                security_metadata,
                 solana_args,
             )
         }
@@ -1342,6 +1360,7 @@ fn init(
     template: ProgramTemplate,
     test_template: TestTemplate,
     force: bool,
+    security_metadata: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -1468,6 +1487,11 @@ fn init(
         if !git_result.status.success() {
             eprintln!("Failed to automatically initialize a new git repository");
         }
+    }
+
+    if security_metadata {
+        let content = get_security_metadata_content(&project_name);
+        fs::write("security.json", content)?;
     }
 
     println!("{project_name} initialized");
@@ -3225,7 +3249,7 @@ fn test(
         // In either case, skip the deploy if the user specifies.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
         if (!is_localnet || skip_local_validator) && !skip_deploy {
-            deploy(cfg_override, None, None, false, true, vec![])?;
+            deploy(cfg_override, None, None, false, true, false, vec![])?;
         }
 
         cfg.run_hooks(HookType::PreTest)?;
@@ -4198,6 +4222,7 @@ fn deploy(
     program_keypair: Option<String>,
     verifiable: bool,
     no_idl: bool,
+    security_metadata: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Execute the code within the workspace
@@ -4237,6 +4262,7 @@ fn deploy(
                 None, // max_len
                 no_idl,
                 false, // make_final
+                security_metadata,
                 solana_args.clone(),
             )?;
         }
@@ -5256,6 +5282,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5277,6 +5304,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5298,6 +5326,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }

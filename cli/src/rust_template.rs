@@ -838,3 +838,34 @@ fn test_initialize() {{
         ),
     )]
 }
+
+pub fn get_security_metadata_content(project_name: &str) -> String {
+    // Avoid breaking the json if the name contains special characters
+    let escaped_name = serde_json::to_string(project_name).unwrap();
+
+    format!(
+        r#"{{
+  "name": {escaped_name},
+  "logo": "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png",
+  "description": "A fresh Anchor program!",
+  "notification": "Hey, remember to publish your security.json with anchor program deploy --security-metadata! This helps maintain Solana transparency",
+  "sdk": "https://github.com/your-sdk",
+  "project_url": "https://github.com/your-project/",
+  "contacts": [
+    "email:security@example.com",
+    "discord:MyProgram#1234",
+    "twitter:@MyProgram"
+  ],
+  "policy": "https://example.com/security-policy",
+  "preferred_languages": ["en", "de", "pt"],
+  "encryption": "https://example.com/pgp-key",
+  "source_code": "https://github.com/your-source-code/",
+  "source_release": "v0.1.0",
+  "source_revision": "abc123def456",
+  "auditors": ["Audit Firm A", "Security Researcher B"],
+  "acknowledgements": "https://example.com/security-acknowledgements",
+  "expiry": "2026-01-11",
+  "version": "0.1.0"
+}}"#
+    )
+}
