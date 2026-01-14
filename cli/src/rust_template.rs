@@ -253,14 +253,6 @@ pub fn get_or_create_program_id(name: &str) -> Pubkey {
         .pubkey()
 }
 
-pub fn credentials(token: &str) -> String {
-    format!(
-        r#"[registry]
-token = "{token}"
-"#
-    )
-}
-
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
         r#"
