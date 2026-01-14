@@ -321,11 +321,6 @@ pub enum Command {
         #[clap(required = false, last = true)]
         script_args: Vec<String>,
     },
-    /// Saves an api token from the registry locally.
-    Login {
-        /// API access token.
-        token: String,
-    },
     /// Program keypair commands.
     Keys {
         #[clap(subcommand)]
@@ -1281,7 +1276,6 @@ fn process_command(opts: Opts) -> Result<()> {
             script,
             script_args,
         } => run(&opts.cfg_override, script, script_args),
-        Command::Login { token } => login(&opts.cfg_override, token),
         Command::Keys { subcmd } => keys(&opts.cfg_override, subcmd),
         Command::Localnet {
             skip_build,
@@ -4610,22 +4604,6 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
         }
         Ok(())
     })?
-}
-
-fn login(_cfg_override: &ConfigOverride, token: String) -> Result<()> {
-    let anchor_dir = Path::new(&*shellexpand::tilde("~"))
-        .join(".config")
-        .join("anchor");
-    if !anchor_dir.exists() {
-        fs::create_dir(&anchor_dir)?;
-    }
-
-    std::env::set_current_dir(&anchor_dir)?;
-
-    // Freely overwrite the entire file since it's not used for anything else.
-    let mut file = File::create("credentials")?;
-    file.write_all(rust_template::credentials(&token).as_bytes())?;
-    Ok(())
 }
 
 fn keys(cfg_override: &ConfigOverride, cmd: KeysCommand) -> Result<()> {
