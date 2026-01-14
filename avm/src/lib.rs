@@ -218,7 +218,8 @@ pub fn use_version(opt_version: Option<Version>) -> Result<()> {
             .expect("Expected input")?;
         match input.as_str() {
             "y" | "yes" => {
-                return install_version(InstallTarget::Version(version), false, false, false)
+                // Use force=true to allow overwriting any existing anchor binary
+                return install_version(InstallTarget::Version(version), true, false, false)
             }
             _ => return Err(anyhow!("Installation rejected.")),
         };
@@ -337,6 +338,9 @@ pub fn install_version(
             "--root".into(),
             AVM_HOME.to_str().unwrap().into(),
         ];
+        if force {
+            args.push("--force".into());
+        }
         match install_target {
             InstallTarget::Version(version) => {
                 args.extend_from_slice(&[
