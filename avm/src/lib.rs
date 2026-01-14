@@ -10,6 +10,22 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
+use reqwest::Certificate;
+use reqwest::blocking::Client;
+
+fn new_reqwest_client() -> Result<Client> {
+    let ca_pem_path = std::env::var("AVM_CA_CERT_PATH")
+        .map_err(|_| anyhow!("AVM_CA_CERT_PATH environment variable not set"))?;
+
+    let pem = fs::read(ca_pem_path)?;
+    let ca = Certificate::from_pem(&pem)?;
+
+    let client = Client::builder()
+        .add_root_certificate(ca)
+        .build()?;
+
+    Ok(client)
+}
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -231,7 +247,7 @@ pub fn update() -> Result<()> {
 ///
 /// returns the full commit sha3 for unique versioning downstream
 pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
-    let client = reqwest::blocking::Client::new();
+    let client = new_reqwest_client()?;
     let response = client
         .get(format!(
             "https://api.github.com/repos/coral-xyz/anchor/commits/{commit}"
@@ -259,7 +275,7 @@ pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
 
 fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
     // We read the version from cli/Cargo.toml since there is no simpler way to do so
-    let client = reqwest::blocking::Client::new();
+    let client = new_reqwest_client()?;
     let response = client
         .get(format!(
             "https://raw.githubusercontent.com/coral-xyz/anchor/{commit}/cli/Cargo.toml"
@@ -412,9 +428,11 @@ pub fn install_version(
         } else {
             ""
         };
-        let res = reqwest::blocking::get(format!(
+
+        let res = new_reqwest_client()?.get(format!(
             "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
-        ))?;
+        )).send()?;
+
         if !res.status().is_success() {
             return Err(anyhow!(
                 "Failed to download the binary for version `{version}` (status code: {})",
@@ -577,7 +595,7 @@ pub fn fetch_versions() -> Result<Vec<Version>, Error> {
         Version::parse(s.trim_start_matches('v')).map_err(de::Error::custom)
     }
 
-    let response = reqwest::blocking::Client::new()
+    let response = new_reqwest_client()?
         .get("https://api.github.com/repos/solana-foundation/anchor/releases")
         .header(
             USER_AGENT,
