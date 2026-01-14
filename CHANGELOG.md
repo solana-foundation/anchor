@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `Migration<'info, From, To>` account type for schema migrations between account types ([#4060](https://github.com/solana-foundation/anchor/pull/4060)).
 - cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
 - lang: lang: Add instruction parser to `declare_program!` ([#4118](https://github.com/solana-foundation/anchor/pull/4118)).
+- ts: Export all IDL types from the root. Users can now update `dist/cjs/idl` imports to import directly from `@anchor-lang/core` ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
 
 ### Fixes
 
@@ -53,7 +54,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
-- ts: Export IDL types from the root. Users can now update `dist/cjs/idl` imports to import directly from `@anchor-lang/core` ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
 - lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
 - lang: Use `solana-invoke` instead of `solana_cpi::invoke` ([#3900](https://github.com/solana-foundation/anchor/pull/3900)).
 - client: remove `solana-client` from `anchor-client` and `cli` ([#3877](https://github.com/solana-foundation/anchor/pull/3877)).
