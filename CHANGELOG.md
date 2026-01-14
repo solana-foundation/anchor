@@ -15,6 +15,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `Migration<'info, From, To>` account type for schema migrations between account types ([#4060](https://github.com/solana-foundation/anchor/pull/4060)).
 - cli: Added a `check_program_id_mismatch` in build time to check if the program ID in the source code matches the program ID in the keypair file ([#4018](https://github.com/solana-foundation/anchor/pull/4018)). This check will be skipped during `anchor test`.
 - lang: lang: Add instruction parser to `declare_program!` ([#4118](https://github.com/solana-foundation/anchor/pull/4118)).
+- ts: Export all IDL types from the root. Users can now update `dist/cjs/idl` imports to import directly from `@anchor-lang/core` ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
 
 ### Fixes
 
