@@ -1347,30 +1347,42 @@ fn init(
         return Err(anyhow!("Workspace already initialized"));
     }
 
-    // We need to format different cases for the dir and the name
-    let rust_name = name.to_snake_case();
-    let project_name = if name == rust_name {
-        rust_name.clone()
+    let project_name;
+    let rust_name;
+
+    if name == "." {
+        project_name = ".".to_string();
+        rust_name = "default".to_string();
     } else {
-        name.to_kebab_case()
-    };
+        // We need to format different cases for the dir and the name
+        rust_name = name.to_snake_case();
+
+        project_name = if name == rust_name {
+            rust_name.clone()
+        } else {
+            name.to_kebab_case()
+        };
+    }
 
     // Additional keywords that have not been added to the `syn` crate as reserved words
     // https://github.com/dtolnay/syn/pull/1098
     let extra_keywords = ["async", "await", "try"];
     // Anchor converts to snake case before writing the program name
-    if syn::parse_str::<syn::Ident>(&rust_name).is_err()
-        || extra_keywords.contains(&rust_name.as_str())
+    if project_name != "."
+        && (syn::parse_str::<syn::Ident>(&rust_name).is_err()
+            || extra_keywords.contains(&rust_name.as_str()))
     {
         return Err(anyhow!(
             "Anchor workspace name must be a valid Rust identifier. It may not be a Rust reserved word, start with a digit, or include certain disallowed characters. See https://doc.rust-lang.org/reference/identifiers.html for more detail.",
         ));
     }
 
-    if force {
-        fs::create_dir_all(&project_name)?;
-    } else {
-        fs::create_dir(&project_name)?;
+    if project_name != "." {
+        if force {
+            fs::create_dir_all(&project_name)?;
+        } else {
+            fs::create_dir(&project_name)?;
+        }
     }
     std::env::set_current_dir(&project_name)?;
     fs::create_dir_all("app")?;
@@ -1386,7 +1398,7 @@ fn init(
     let mut localnet = BTreeMap::new();
     let program_id = rust_template::get_or_create_program_id(&rust_name);
     localnet.insert(
-        rust_name,
+        rust_name.clone(),
         ProgramDeployment {
             address: program_id,
             path: None,
@@ -1405,19 +1417,11 @@ fn init(
 
     // Remove the default program if `--force` is passed
     if force {
-        fs::remove_dir_all(
-            std::env::current_dir()?
-                .join("programs")
-                .join(&project_name),
-        )?;
+        fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&rust_name))?;
     }
 
     // Build the program.
-    rust_template::create_program(
-        &project_name,
-        template,
-        TestTemplate::Mollusk == test_template,
-    )?;
+    rust_template::create_program(&rust_name, template, TestTemplate::Mollusk == test_template)?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1445,7 +1449,7 @@ fn init(
         deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
     }
 
-    test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
+    test_template.create_test_files(&rust_name, javascript, &program_id.to_string())?;
 
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
@@ -1470,7 +1474,7 @@ fn init(
         }
     }
 
-    println!("{project_name} initialized");
+    println!("{rust_name} initialized");
 
     Ok(())
 }
