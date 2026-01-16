@@ -231,6 +231,7 @@ export type IdlType =
   | "pubkey"
   | IdlTypeOption
   | IdlTypeCOption
+  | IdlTypeNonZero
   | IdlTypeVec
   | IdlTypeArray
   | IdlTypeDefined
@@ -242,6 +243,10 @@ export type IdlTypeOption = {
 
 export type IdlTypeCOption = {
   coption: IdlType;
+};
+
+export type IdlTypeNonZero = {
+  nonzero: IdlType;
 };
 
 export type IdlTypeVec = {
