@@ -183,9 +183,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let instruction::#variant_arm = ix;
 
                     // Bump collector.
-                    let mut __bumps = <#anchor as anchor_lang::Bumps>::Bumps::default();
+                    let mut __bumps = Box::new(<#anchor as anchor_lang::Bumps>::Bumps::default());
 
-                    let mut __reallocs = std::collections::BTreeSet::new();
+                    let mut __reallocs = Box::new(std::collections::BTreeSet::new());
 
                     // Deserialize accounts.
                     let mut __remaining_accounts: &[AccountInfo] = __accounts;
@@ -193,8 +193,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         __program_id,
                         &mut __remaining_accounts,
                         __ix_data,
-                        &mut __bumps,
-                        &mut __reallocs,
+                        &mut *__bumps,
+                        &mut *__reallocs,
                     )?;
 
                     // Invoke user defined handler.
@@ -203,7 +203,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             __program_id,
                             &mut __accounts,
                             __remaining_accounts,
-                            __bumps,
+                            *__bumps,
                         ),
                         #(#ix_arg_names),*
                     )?;
