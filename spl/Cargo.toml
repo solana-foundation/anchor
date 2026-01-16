@@ -31,7 +31,7 @@ token_2022_extensions = [
 ]
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
+anchor-lang = { path = "../lang", features = ["derive"] }
 # FIXME(edition2024): Not used directly, but upstream crates resolve to this version,
 # which uses Edition 2024
 base64ct = { version = "<1.8.0", optional = true }

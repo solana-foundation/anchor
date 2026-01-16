@@ -16,7 +16,7 @@ lazy-account = []
 event-cpi = []
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1", features = ["hash"] }
+anchor-syn = { path = "../../syn", features = ["hash"] }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

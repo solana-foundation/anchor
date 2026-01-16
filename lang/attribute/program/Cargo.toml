@@ -15,7 +15,7 @@ idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
 anchor-lang-idl = { path = "../../../idl", version = "0.1.2", features = ["convert"] }
-anchor-syn = { path = "../../syn", version = "0.32.1" }
+anchor-syn = { path = "../../syn" }
 anyhow = "1"
 heck = "0.3"
 proc-macro2 = "1"

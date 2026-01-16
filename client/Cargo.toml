@@ -16,7 +16,7 @@ debug = []
 mock = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.32.1" }
+anchor-lang = { path = "../lang" }
 anyhow = "1"
 futures = "0.3"
 regex = "1"
