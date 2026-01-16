@@ -1,10 +1,10 @@
 [package]
 name = "anchor-client"
-version = "0.32.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "An RPC client to interact with Anchor programs"
+repository.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

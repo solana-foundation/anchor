@@ -1,10 +1,9 @@
 [package]
 name = "anchor-lang"
-version = "0.32.1"
-authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "Solana Sealevel eDSL"
 
 [package.metadata.docs.rs]
