@@ -111,6 +111,12 @@ pub mod external {
     pub fn test_compilation_no_accounts(_ctx: Context<TestCompilationNoAccounts>) -> Result<()> {
         Ok(())
     }
+
+    // Test optional accounts parsing
+    pub fn update_with_optional(ctx: Context<UpdateWithOptional>, value: u32) -> Result<()> {
+        ctx.accounts.my_account.field = value;
+        Ok(())
+    }
 }
 
 #[error_code]
@@ -180,6 +186,16 @@ pub struct NonInstructionUpdate<'info> {
 #[derive(Accounts)]
 pub struct NonInstructionUpdate2<'info> {
     pub program: Program<'info, program::External>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateWithOptional<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    pub my_account: Account<'info, MyAccount>,
+    /// CHECK: Optional account for testing
+    #[account(mut)]
+    pub optional_account: Option<AccountInfo<'info>>,
 }
 
 #[account]

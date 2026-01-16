@@ -222,6 +222,60 @@ pub fn test_instruction_parser() {
         val.serialize(&mut w).unwrap();
         w
     }
+
+    // Test optional account parsing
+    let authority = Pubkey::from_str_const("Authority1111111111111111111111111111111111");
+    let my_account = Pubkey::from_str_const("MyAccount1111111111111111111111111111111111");
+    let optional_account = Pubkey::from_str_const("optiona1Acc11111111111111111111111111111111");
+    let expected_args = external::client::args::UpdateWithOptional { value: 5 };
+
+    // Test with optional account present (Some)
+    match Instruction::parse(&SolanaInstruction::new_with_bytes(
+        external::ID,
+        &[
+            external::client::args::UpdateWithOptional::DISCRIMINATOR,
+            &ser(&expected_args),
+        ]
+        .concat(),
+        vec![
+            AccountMeta::new_readonly(authority, true),
+            AccountMeta::new(my_account, false),
+            AccountMeta::new(optional_account, false),
+        ],
+    )) {
+        Ok(Instruction::UpdateWithOptional { accounts, args }) => {
+            assert_eq!(accounts.authority, authority);
+            assert_eq!(accounts.my_account, my_account);
+            assert_eq!(accounts.optional_account, Some(optional_account));
+            assert_eq!(args.value, expected_args.value);
+        }
+        Ok(_) => panic!("Expected UpdateWithOptional instruction variant"),
+        Err(e) => panic!("Expected Ok result, got error: {:?}", e),
+    };
+
+    // Test with optional account missing (None - using program ID as placeholder)
+    match Instruction::parse(&SolanaInstruction::new_with_bytes(
+        external::ID,
+        &[
+            external::client::args::UpdateWithOptional::DISCRIMINATOR,
+            &ser(&expected_args),
+        ]
+        .concat(),
+        vec![
+            AccountMeta::new_readonly(authority, true),
+            AccountMeta::new(my_account, false),
+            AccountMeta::new(external::ID, false), // Program ID as placeholder for missing optional
+        ],
+    )) {
+        Ok(Instruction::UpdateWithOptional { accounts, args }) => {
+            assert_eq!(accounts.authority, authority);
+            assert_eq!(accounts.my_account, my_account);
+            assert_eq!(accounts.optional_account, None);
+            assert_eq!(args.value, expected_args.value);
+        }
+        Ok(_) => panic!("Expected UpdateWithOptional instruction variant"),
+        Err(e) => panic!("Expected Ok result, got error: {:?}", e),
+    };
 }
 
 #[test]

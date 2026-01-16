@@ -313,6 +313,48 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "update_with_optional",
+      "discriminator": [
+        119,
+        204,
+        186,
+        47,
+        151,
+        121,
+        221,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "optional_account",
+          "writable": true,
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u32"
+        }
+      ]
     }
   ],
   "accounts": [
