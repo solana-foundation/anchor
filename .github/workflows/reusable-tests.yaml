@@ -503,7 +503,13 @@ jobs:
   test-cli:
     needs: setup-anchor-cli
     name: Test Anchor CLI
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
@@ -533,10 +539,11 @@ jobs:
           path: tests/cli/output
           key: cargo-${{ runner.os }}-tests/cli-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: sudo apt-get install -y jq
-        name: Install jq
-
-      - run: cd tests/cli && yarn install --frozen-lockfile && yarn test
-        name: Run CLI tests
+      - name: Run CLI tests on ${matrix.os}
+        shell: bash
+        run: |
+          cd tests/cli
+          yarn install --frozen-lockfile
+          yarn test
 
       - uses: ./.github/actions/git-diff/
