@@ -45,6 +45,7 @@ use std::sync::LazyLock;
 mod account;
 mod checks;
 pub mod config;
+mod fetch;
 mod keygen;
 mod program;
 pub mod rust_template;
@@ -674,11 +675,30 @@ pub enum IdlCommand {
     },
     /// Fetches an IDL for the given address from a cluster.
     /// The address can be a program, IDL account, or IDL buffer.
+    ///
+    /// Note: Historical filters can be supplied to fetch historical IDL versions.
+    /// If any historical flag is provided, this command will fetch historical
+    /// IDLs for the given program id (the `address` is interpreted as a program id).
     Fetch {
         address: Pubkey,
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
+        /// Fetch all historical versions (historical mode)
+        #[clap(long)]
+        all: bool,
+        /// Fetch IDL at specific slot (historical mode)
+        #[clap(long)]
+        slot: Option<u64>,
+        /// Fetch IDL before this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        before: Option<String>,
+        /// Fetch IDL after this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        after: Option<String>,
+        /// Output directory for multiple versions (historical mode)
+        #[clap(long)]
+        out_dir: Option<String>,
         /// Fetch non-canonical metadata account (third-party metadata)
         #[clap(long)]
         non_canonical: bool,
@@ -2412,8 +2432,29 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         IdlCommand::Fetch {
             address,
             out,
+            all,
+            slot,
+            before,
+            after,
+            out_dir,
             non_canonical,
-        } => idl_fetch(cfg_override, address, out, non_canonical),
+        } => {
+            // If any historical flag is provided, route to historical fetch
+            if slot.is_some() || before.is_some() || after.is_some() || all {
+                fetch::idl_fetch_historical(
+                    cfg_override,
+                    address,
+                    all,
+                    slot,
+                    before,
+                    after,
+                    out_dir,
+                    out,
+                )
+            } else {
+                idl_fetch(cfg_override, address, out, non_canonical)
+            }
+        }
         IdlCommand::Convert {
             path,
             out,
@@ -2649,9 +2690,10 @@ fn idl_fetch(
         args.push("-o");
         args.push(out);
     }
-    let url = rpc_url(cfg_override)?;
+
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2717,9 +2759,9 @@ fn idl_close_metadata(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2750,9 +2792,9 @@ fn idl_create_buffer(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2791,9 +2833,9 @@ fn idl_set_buffer_authority(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
@@ -2833,9 +2875,9 @@ fn idl_write_buffer_metadata(
         args.push(&priority_fee_str);
     }
 
-    let url = rpc_url(cfg_override)?;
+    let client = rpc_url(cfg_override)?;
     args.push("--rpc");
-    args.push(&url);
+    args.push(&client);
 
     let status = ProcessCommand::new("npx")
         .arg("@solana-program/program-metadata")
