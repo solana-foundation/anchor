@@ -94,19 +94,11 @@ export class IdlCoder {
           // - "borsh" (default): 4 bytes (u32)
           // - "borshu8": 1 byte (u8)
           // - "borshu16": 2 bytes (u16)
-          const vecInnerType = field.type.vec;
-          const serializationFormat = serialization || "borsh";
-
-          let lengthType: "u8" | "u16" | "u32" = "u32";
-          if (serializationFormat === "borshu8") {
-            lengthType = "u8";
-          } else if (serializationFormat === "borshu16") {
-            lengthType = "u16";
-          }
+          const lengthType = serialization === "borshu8" ? "u8" : serialization === "borshu16" ? "u16" : "u32";
 
           return borsh.vecWithLength(
             IdlCoder.fieldLayout(
-              { type: vecInnerType },
+              { type: field.type.vec },
               types,
               genericArgs,
               serialization
@@ -152,7 +144,7 @@ export class IdlCoder {
           return IdlCoder.fieldLayout(
             { ...field, type: genericArg.type },
             types,
-            undefined,
+            null,
             serialization
           );
         }
@@ -275,7 +267,7 @@ export class IdlCoder {
         return IdlCoder.fieldLayout(
           { type: typeDef.type.alias, name },
           types,
-          undefined,
+          null,
           typeDef.serialization
         );
       }
@@ -469,15 +461,8 @@ export class IdlCoder {
       }
 
       if ("vec" in type) {
-        const vecValue = type.vec;
-        const innerType =
-          typeof vecValue === "string" || !("type" in vecValue)
-            ? typeof vecValue === "string"
-              ? vecValue
-              : (vecValue as any)
-            : vecValue.type;
         const args = IdlCoder.resolveGenericArgs({
-          type: innerType,
+          type: type.vec,
           typeDef,
           genericArgs,
           isDefined,

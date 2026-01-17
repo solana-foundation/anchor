@@ -65,7 +65,7 @@ pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
         IdlType::String => if is_const { "&str" } else { "String" }.into(),
         IdlType::Pubkey => "Pubkey".into(),
         IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)),
-        IdlType::Vec(vec) => format!("Vec<{}>", convert_idl_type_to_str(vec.inner_type(), is_const)),
+        IdlType::Vec(inner) => format!("Vec<{}>", convert_idl_type_to_str(inner, is_const)),
         IdlType::Array(ty, len) => format!(
             "[{}; {}]",
             convert_idl_type_to_str(ty, is_const),
@@ -132,19 +132,27 @@ pub fn convert_idl_type_def_to_ts(
 
         let ser_attr = match &ty_def.serialization {
             IdlSerialization::Borsh => quote!(#[derive(AnchorSerialize, AnchorDeserialize)]),
+            IdlSerialization::BorshU8 => quote!(#[custom_borsh(u8)]),
+            IdlSerialization::BorshU16 => quote!(#[custom_borsh(u16)]),
             IdlSerialization::Bytemuck => quote!(#[zero_copy]),
             IdlSerialization::BytemuckUnsafe => quote!(#[zero_copy(unsafe)]),
             _ => unimplemented!("{:?}", ty_def.serialization),
         };
 
-        let clone_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
-            .then(|| quote!(#[derive(Clone)]))
-            .unwrap_or_default();
+        let clone_attr = matches!(
+            ty_def.serialization,
+            IdlSerialization::Borsh | IdlSerialization::BorshU8 | IdlSerialization::BorshU16
+        )
+        .then(|| quote!(#[derive(Clone)]))
+        .unwrap_or_default();
 
-        let copy_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
-            .then(|| can_derive_copy(ty_def, ty_defs).then(|| quote!(#[derive(Copy)])))
-            .flatten()
-            .unwrap_or_default();
+        let copy_attr = matches!(
+            ty_def.serialization,
+            IdlSerialization::Borsh | IdlSerialization::BorshU8 | IdlSerialization::BorshU16
+        )
+        .then(|| can_derive_copy(ty_def, ty_defs).then(|| quote!(#[derive(Copy)])))
+        .flatten()
+        .unwrap_or_default();
 
         quote! {
             #debug_attr
