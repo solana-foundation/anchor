@@ -26,7 +26,8 @@ bs58 = "0.5"
 # `idl-build` feature only
 cargo_toml = { version = "0.19", optional = true }
 heck = "0.3"
-proc-macro2 = { version = "1", features = ["span-locations"] }
+# `Span::local_file` required by the `idl-build` feature was stabilized in `1.0.100`
+proc-macro2 = { version = "1.0.100", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
