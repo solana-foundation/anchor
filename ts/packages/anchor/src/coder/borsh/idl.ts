@@ -94,7 +94,12 @@ export class IdlCoder {
           // - "borsh" (default): 4 bytes (u32)
           // - "borshu8": 1 byte (u8)
           // - "borshu16": 2 bytes (u16)
-          const lengthType = serialization === "borshu8" ? "u8" : serialization === "borshu16" ? "u16" : "u32";
+          const lengthType =
+            serialization === "borshu8"
+              ? "u8"
+              : serialization === "borshu16"
+              ? "u16"
+              : "u32";
 
           return borsh.vecWithLength(
             IdlCoder.fieldLayout(
