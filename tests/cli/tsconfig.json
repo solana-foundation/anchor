@@ -24,7 +24,12 @@
     "strict": true,
     "jsx": "react-jsx",
     "isolatedModules": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   },
-  "include": ["./tests/**/*.ts"]
+  "include": ["./tests/**/*.ts"],
+  "exclude": [
+    "./tests/commands/**/expected",
+    "./tests/commands/**/initialize",
+    "./tests/commands/**/output"
+  ]
 }

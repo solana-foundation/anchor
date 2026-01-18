@@ -6,25 +6,33 @@ import { getCaller } from "@/lib/stack";
 export const SCRIPT_DIR = path.resolve(__dirname, "..", "..");
 
 export const WORKSPACE_DIR = path.resolve(SCRIPT_DIR, "..", "..");
-export const EXPECTED_DIR = path.join(SCRIPT_DIR, "expected");
-export const INITIALIZE_DIR = path.join(SCRIPT_DIR, "initialize");
-export const OUTPUT_DIR = path.join(SCRIPT_DIR, "output");
 export const MOCK_BIN_DIR = path.resolve(__dirname, "..", "mock-bin");
 
 export interface SetupTestArgs {
+  testSubpath?: string;
   basePath?: string;
   initDir?: string;
   testDir?: string;
 }
 
-// `basePath` defaults to uses the calling file's directory
+// `testSubpath` defaults to "."
+// `basePath` defaults to `${calling file's directory}/${testSubpath}`
 // `initDir` defaults to `${basePath}/initialize`
 // `testDir` defaults to `${basePath}/output`
 //  if `testDir`, it's deleted
 //  if `initDir` exists, it's copied to `testDir`
 //  else, a new directory is created
-export function setupTest({ basePath, initDir, testDir }: SetupTestArgs = {}) {
-  basePath ??= path.dirname(getCaller());
+export function setupTest({
+  testSubpath,
+  basePath,
+  initDir,
+  testDir,
+}: SetupTestArgs = {}) {
+  if (!basePath) {
+    const caller = path.dirname(getCaller());
+    basePath = caller;
+    if (testSubpath) basePath = path.join(caller, testSubpath);
+  }
   initDir ??= path.join(basePath, "initialize");
   testDir ??= path.join(basePath, "output");
 
@@ -53,6 +61,7 @@ export function rmDir(path: string) {
 }
 
 export interface DiffTestArgs {
+  testSubpath?: string;
   basePath?: string;
   testDir?: string;
   expectedDir?: string;
@@ -63,11 +72,17 @@ export interface DiffTestArgs {
 // `expectedDir` defaults to `${basePath}/expected`
 // runs diff between `testDir` and `expectedDir`
 export function diffTest({
+  testSubpath,
   basePath,
   testDir,
   expectedDir,
 }: DiffTestArgs = {}) {
-  basePath ??= path.dirname(getCaller());
+  if (!basePath) {
+    const caller = path.dirname(getCaller());
+    basePath = caller;
+    if (testSubpath) basePath = path.join(caller, testSubpath);
+  }
+
   expectedDir ??= path.join(basePath, "output");
   testDir ??= path.join(basePath, "expected");
 
@@ -216,7 +231,7 @@ export function replaceInFile({
   find: RegExp | string;
   replace: string | ((substring: string, ...args: any[]) => string);
 }): void {
-  let contents = fs.readFileSync(file, { encoding: "utf8" });
+  let contents = fs.readFileSync(file, "utf8");
   contents = contents.replace(find, replace as string);
   fs.writeFileSync(file, contents);
 }
