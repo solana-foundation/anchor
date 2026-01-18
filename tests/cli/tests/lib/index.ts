@@ -83,11 +83,12 @@ export function runCommands({
 
   const script = commands.join("\n");
   try {
-    execFileSync("bash", ["-c", script], {
+    return execFileSync("bash", ["-c", script], {
       cwd,
       env: resolvedEnv,
       maxBuffer: 1024 * 1024 * 25,
       windowsHide: true,
+      encoding: "utf-8",
     });
   } catch (e: any) {
     const errorMessage = getErrorMessage(e);
@@ -95,7 +96,7 @@ export function runCommands({
     const stderr = e?.stderr ?? "";
 
     let message = [
-      `error code ${e?.code}: ${errorMessage}`,
+      `error code ${e?.code ?? "<none>"}: ${errorMessage}`,
       "",
       "while executing script:",
       script,

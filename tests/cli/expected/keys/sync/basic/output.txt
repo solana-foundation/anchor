@@ -1,3 +1,0 @@
-Syncing program ids for the configured cluster (localnet)
-
-All program id declarations are synced.
