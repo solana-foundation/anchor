@@ -47,11 +47,6 @@ pub fn program(
 ///
 /// Both on-chain and off-chain usage is supported.
 ///
-/// **Note:** When using in non-solana environments, for example via `anchor_client`, you must have `anchor_lang` in scope:
-/// ```ignore
-/// use anchor_client::anchor_lang;
-/// ```
-///
 /// Use `cargo doc --open` to see the generated modules and their documentation.
 ///
 /// # Note
@@ -62,6 +57,15 @@ pub fn program(
 /// A program should only be defined once. If you have multiple programs that depend on the same
 /// definition, you should consider creating a separate crate for the external program definition
 /// and reusing it in your programs.
+///
+/// # Off-chain usage
+///
+/// When using in off-chain environments, for example via `anchor_client`, you must have
+/// `anchor_lang` in scope:
+///
+/// ```ignore
+/// use anchor_client::anchor_lang;
+/// ```
 ///
 /// # Example
 ///
