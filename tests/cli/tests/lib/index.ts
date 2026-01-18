@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
+import { getCaller } from "@/lib/stack";
 
 export const SCRIPT_DIR = path.resolve(__dirname, "..", "..");
 
@@ -10,12 +11,26 @@ export const INITIALIZE_DIR = path.join(SCRIPT_DIR, "initialize");
 export const OUTPUT_DIR = path.join(SCRIPT_DIR, "output");
 export const MOCK_BIN_DIR = path.resolve(__dirname, "..", "mock-bin");
 
-export function setupTest(testPath: string) {
-  const testDir = path.join(OUTPUT_DIR, testPath);
-  rmDir(testDir);
+export interface SetupTestArgs {
+  basePath?: string;
+  initDir?: string;
+  testDir?: string;
+}
+
+// `basePath` defaults to uses the calling file's directory
+// `initDir` defaults to `${basePath}/initialize`
+// `testDir` defaults to `${basePath}/output`
+//  if `testDir`, it's deleted
+//  if `initDir` exists, it's copied to `testDir`
+//  else, a new directory is created
+export function setupTest({ basePath, initDir, testDir }: SetupTestArgs = {}) {
+  basePath ??= path.dirname(getCaller());
+  initDir ??= path.join(basePath, "initialize");
+  testDir ??= path.join(basePath, "output");
+
+  if (fs.existsSync(testDir)) rmDir(testDir);
 
   // Only copy from initialize if the directory exists
-  const initDir = path.join(INITIALIZE_DIR, testPath);
   if (fs.existsSync(initDir))
     fs.cpSync(initDir, testDir, {
       recursive: true,
@@ -37,13 +52,28 @@ export function rmDir(path: string) {
     });
 }
 
-export function diffTest(testPath: string) {
-  const expectedDir = path.join(EXPECTED_DIR, testPath);
-  const outputDir = path.join(OUTPUT_DIR, testPath);
+export interface DiffTestArgs {
+  basePath?: string;
+  testDir?: string;
+  expectedDir?: string;
+}
+
+// `basePath` defaults to uses the calling file's directory
+// `testDir` defaults to `${basePath}/output`
+// `expectedDir` defaults to `${basePath}/expected`
+// runs diff between `testDir` and `expectedDir`
+export function diffTest({
+  basePath,
+  testDir,
+  expectedDir,
+}: DiffTestArgs = {}) {
+  basePath ??= path.dirname(getCaller());
+  expectedDir ??= path.join(basePath, "output");
+  testDir ??= path.join(basePath, "expected");
 
   // try {
   runCommands({
-    commands: [`diff -u -r "${expectedDir}" "${outputDir}"`],
+    commands: [`diff -u -r "${expectedDir}" "${testDir}"`],
   });
   // }
   // catch(e){
@@ -186,7 +216,7 @@ export function replaceInFile({
   find: RegExp | string;
   replace: string | ((substring: string, ...args: any[]) => string);
 }): void {
-  let contents = fs.readFileSync(file).toString("utf8");
+  let contents = fs.readFileSync(file, { encoding: "utf8" });
   contents = contents.replace(find, replace as string);
   fs.writeFileSync(file, contents);
 }

@@ -1,2 +1,2 @@
-output
+tests/commands/**/output
 !yarn.lock
