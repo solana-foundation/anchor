@@ -15,7 +15,7 @@ mod basic_2 {
 
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
-        counter.count += 1;
+        counter.count = counter.count.checked_add(1).ok_or(error!(ErrorCode::Overflow))?;
         Ok(())
     }
 }
