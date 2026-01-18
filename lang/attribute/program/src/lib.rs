@@ -58,6 +58,15 @@ pub fn program(
 /// definition, you should consider creating a separate crate for the external program definition
 /// and reusing it in your programs.
 ///
+/// # Off-chain usage
+///
+/// When using in off-chain environments, for example via `anchor_client`, you must have
+/// `anchor_lang` in scope:
+///
+/// ```ignore
+/// use anchor_client::anchor_lang;
+/// ```
+///
 /// # Example
 ///
 /// A full on-chain CPI usage example can be found [here].
