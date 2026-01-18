@@ -7,13 +7,11 @@ import {
   MOCK_BIN_DIR,
 } from "@/lib";
 
-const COMMAND_NAME = "build";
-
 const idlStdoutFile = path.join(__dirname, "idl-stdout");
 
-describe(COMMAND_NAME, () => {
+describe("build", () => {
   it("should succeed", () => {
-    const { testDir } = setupTest(COMMAND_NAME);
+    const { testDir } = setupTest();
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const outputPath = path.join(testDir, "cargo-calls");
@@ -29,6 +27,6 @@ describe(COMMAND_NAME, () => {
       },
     });
 
-    diffTest(COMMAND_NAME);
+    diffTest();
   });
 });
