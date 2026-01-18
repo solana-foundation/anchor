@@ -8,11 +8,9 @@ import {
   diffTest,
 } from "@/lib";
 
-const COMMAND_NAME = "init";
-
-describe(COMMAND_NAME, () => {
+describe("init", () => {
   it("should succeed", () => {
-    const { testDir } = setupTest(COMMAND_NAME);
+    const { testDir } = setupTest();
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const programName = workspaceName;
@@ -30,6 +28,6 @@ describe(COMMAND_NAME, () => {
       programName,
     });
 
-    diffTest(COMMAND_NAME);
+    diffTest();
   });
 });
