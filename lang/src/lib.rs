@@ -495,8 +495,8 @@ pub mod prelude {
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
+        ToAccountInfos, ToAccountMetas,
     };
     // Re-export the crate as anchor_lang for declare_program! macro
     pub use crate as anchor_lang;
