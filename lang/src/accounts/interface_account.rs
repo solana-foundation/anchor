@@ -185,8 +185,18 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
     pub fn into_inner(self) -> T {
         self.account.into_inner()
     }
+}
 
+// Only implement set_inner for accounts that are marked as mutable.
+// This provides compile-time safety: accounts without #[account(mut)]
+// cannot be mutated because set_inner is not implemented.
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone + crate::__private::IsMutable>
+    InterfaceAccount<'a, T>
+{
     /// Sets the inner account.
+    ///
+    /// This method requires the account to be marked with `#[account(mut)]`
+    /// to ensure compile-time safety.
     ///
     /// Instead of this:
     /// ```ignore
@@ -229,22 +239,6 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         T::check_owner(info.owner)?;
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
-    }
-
-    /// Reloads the account from storage. This is useful, for example, when observing side effects
-    /// after CPI.
-    ///
-    /// This method also validates that the account is owned by one of the expected programs.
-    pub fn reload(&mut self) -> Result<()> {
-        let info: &AccountInfo = self.account.as_ref();
-        T::check_owner(info.owner)?;
-
-        // Re-deserialize fresh data into the inner account.
-        self.account.set_inner({
-            let mut data: &[u8] = &info.try_borrow_data()?;
-            T::try_deserialize(&mut data)?
-        });
-        Ok(())
     }
 }
 
@@ -321,7 +315,10 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAccoun
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for InterfaceAccount<'_, T> {
+impl<T> DerefMut for InterfaceAccount<'_, T>
+where
+    T: AccountSerialize + AccountDeserialize + Clone + crate::__private::IsMutable,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.account.deref_mut()
     }

@@ -1,0 +1,22 @@
+[package]
+name = "mut-compile-check-old-behavior"
+version = "0.1.0"
+description = "Demonstrates old Anchor behavior - should fail to compile with fix"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mut_compile_check_old_behavior"
+path = "src/lib.rs"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = []
+
+[dependencies]
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+

@@ -268,7 +268,22 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
         self.account
     }
 
+    // Private method for reload - doesn't require IsMutable since reload is a read operation
+    pub(crate) fn set_inner_unchecked(&mut self, inner: T) {
+        self.account = inner;
+    }
+}
+
+// Only implement set_inner for accounts that are marked as mutable.
+// This provides compile-time safety: accounts without #[account(mut)]
+// cannot be mutated because set_inner is not implemented.
+impl<'a, T: AccountSerialize + AccountDeserialize + Clone + crate::__private::IsMutable>
+    Account<'a, T>
+{
     /// Sets the inner account.
+    ///
+    /// This method requires the account to be marked with `#[account(mut)]`
+    /// to ensure compile-time safety.
     ///
     /// Instead of this:
     /// ```ignore
@@ -285,6 +300,12 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
     /// }
     /// ```
     pub fn set_inner(&mut self, inner: T) {
+        // AccountInfo api allows you to borrow mut even if the account isn't
+        // writable, so add this check for a better dev experience.
+        if !self.info.is_writable {
+            crate::solana_program::msg!("The given Account is not mutable");
+            panic!();
+        }
         self.account = inner;
     }
 }
@@ -416,9 +437,16 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> 
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, T> {
+// Only implement DerefMut for accounts that are marked as mutable.
+// This provides compile-time safety: accounts without #[account(mut)]
+// cannot be mutated because DerefMut is not implemented.
+impl<T> DerefMut for Account<'_, T>
+where
+    T: AccountSerialize + AccountDeserialize + Clone + crate::__private::IsMutable,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
-        #[cfg(feature = "anchor-debug")]
+        // AccountInfo api allows you to borrow mut even if the account isn't
+        // writable, so add this check for a better dev experience.
         if !self.info.is_writable {
             crate::solana_program::msg!("The given Account is not mutable");
             panic!();

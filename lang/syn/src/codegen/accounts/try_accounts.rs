@@ -226,8 +226,12 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    // Generate IsMutable implementations for account types with mut constraint
+    let is_mutable_impls = generate_is_mutable_impls(accs);
+
     quote! {
         #param_count_const
+        #is_mutable_impls
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
@@ -248,6 +252,31 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 Ok(#accounts_instance)
             }
         }
+    }
+}
+
+// Generates IsMutable trait implementations for account types with mut constraint
+fn generate_is_mutable_impls(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+    let impls: Vec<proc_macro2::TokenStream> = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::Field(f) if f.constraints.is_mutable() => match &f.ty {
+                Ty::Account(_) | Ty::InterfaceAccount(_) => {
+                    let account_ty = f.account_ty();
+                    Some(quote! {
+                        #[automatically_derived]
+                        impl anchor_lang::__private::IsMutable for #account_ty {}
+                    })
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+
+    quote! {
+        #(#impls)*
     }
 }
 

@@ -580,6 +580,12 @@ pub mod __private {
     pub trait IsSameType<T> {}
 
     impl<T> IsSameType<T> for T {}
+
+    /// Marker trait indicating that an account type allows mutations.
+    /// This trait is automatically implemented by Anchor's code generation
+    /// for accounts with the `#[account(mut)]` constraint.
+    #[doc(hidden)]
+    pub trait IsMutable {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.

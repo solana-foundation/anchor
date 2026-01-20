@@ -1,0 +1,22 @@
+[package]
+name = "mut-compile-check"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mut_compile_check"
+path = "src/lib.rs"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
+
