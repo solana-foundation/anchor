@@ -323,7 +323,9 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         }
 
         let mut data: &[u8] = &self.info.try_borrow_data()?;
-        self.account = T::try_deserialize(&mut data)?;
+        let new_val = T::try_deserialize(&mut data)?;
+        // Use unchecked method since reload is a read operation, not a mutation
+        self.set_inner_unchecked(new_val);
         Ok(())
     }
 

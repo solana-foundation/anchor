@@ -1,4 +1,4 @@
-//! Compile-time test to verify that accounts without `#[account(mut)]` 
+//! Compile-time test to verify that accounts without `#[account(mut)]`
 //! cannot be mutated at compile time.
 //!
 //! This test file contains code that SHOULD compile (with mut) and code
@@ -80,4 +80,3 @@ pub mod should_not_compile {
     }
 }
 */
-
