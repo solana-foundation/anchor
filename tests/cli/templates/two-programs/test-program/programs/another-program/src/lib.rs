@@ -9,10 +9,10 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("AgKXNirgW3gBxZVQWS3v2YhHyqgu1VdFRgRFC1ZGL3Dk");
+declare_id!("bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ");
 
 #[program]
-pub mod test_program {
+pub mod another_program {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {

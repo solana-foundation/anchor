@@ -11,7 +11,7 @@ const idlStdoutFile = path.join(__dirname, "idl-stdout");
 
 describe("build", () => {
   it("should succeed", () => {
-    const { testDir } = setupTest();
+    const { testDir } = setupTest({ templateName: "default-test-program" });
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const outputPath = path.join(testDir, "cargo-calls");
