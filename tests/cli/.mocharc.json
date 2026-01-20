@@ -4,6 +4,7 @@
   "watch-ignore": [
     "tests/commands/**/expected",
     "tests/commands/**/initialize",
-    "tests/commands/**/output"
+    "tests/commands/**/output",
+    "templates/**"
   ]
 }

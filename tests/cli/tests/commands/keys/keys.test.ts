@@ -7,7 +7,10 @@ describe("keys", () => {
   it("keys list", () => {
     const testSubpath = "list";
 
-    const { testDir } = setupTest({ testSubpath });
+    const { testDir } = setupTest({
+      templateName: "two-programs",
+      testSubpath,
+    });
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
 

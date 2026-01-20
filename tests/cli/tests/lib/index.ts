@@ -7,8 +7,10 @@ export const SCRIPT_DIR = path.resolve(__dirname, "..", "..");
 
 export const WORKSPACE_DIR = path.resolve(SCRIPT_DIR, "..", "..");
 export const MOCK_BIN_DIR = path.resolve(__dirname, "..", "mock-bin");
+export const TEMPLATE_DIR = path.resolve(SCRIPT_DIR, "templates");
 
 export interface SetupTestArgs {
+  templateName?: string;
   testSubpath?: string;
   basePath?: string;
   initDir?: string;
@@ -20,9 +22,11 @@ export interface SetupTestArgs {
 // `initDir` defaults to `${basePath}/initialize`
 // `testDir` defaults to `${basePath}/output`
 //  if `testDir`, it's deleted
-//  if `initDir` exists, it's copied to `testDir`
+//  if `templateName` is specified, `${TEMPLATE_DIR}/${templateName}` is copied to `testDir`
+//  else if `initDir` exists, it's copied to `testDir`
 //  else, a new directory is created
 export function setupTest({
+  templateName,
   testSubpath,
   basePath,
   initDir,
@@ -33,6 +37,17 @@ export function setupTest({
     basePath = caller;
     if (testSubpath) basePath = path.join(caller, testSubpath);
   }
+
+  // template name is specified, overried init dir
+  if (templateName) {
+    const templatePath = path.join(TEMPLATE_DIR, templateName);
+    if (!fs.existsSync(templatePath))
+      throw new Error(
+        `could not find template ${templateName} in ${TEMPLATE_DIR}`,
+      );
+    initDir = templatePath;
+  }
+
   initDir ??= path.join(basePath, "initialize");
   testDir ??= path.join(basePath, "output");
 

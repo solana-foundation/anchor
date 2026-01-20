@@ -10,7 +10,7 @@ import {
 
 describe("new", () => {
   it("should succeed", () => {
-    const { testDir } = setupTest();
+    const { testDir } = setupTest({ templateName: "default-test-program" });
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const programName = "another-program";
