@@ -17,7 +17,11 @@ describe("init", () => {
 
     runCommands({
       cwd: testDir,
-      commands: [anchorCommand(`init ${workspaceName} --no-install --no-git`)],
+      commands: [
+        anchorCommand(
+          `init ${workspaceName} --no-install --no-git --package-manager yarn`,
+        ),
+      ],
     });
 
     patchWorkspace({
