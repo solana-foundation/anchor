@@ -480,6 +480,8 @@ jobs:
             path: tests/test-instruction-validation
           - cmd: cd tests/signature-verification && anchor test
             path: tests/signature-verification
+          - cmd: cd tests/mut-compile-check && ./test-compile.sh
+            path: tests/mut-compile-check
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

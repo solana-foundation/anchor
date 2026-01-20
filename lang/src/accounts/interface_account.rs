@@ -1,7 +1,7 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
-use crate::error::ErrorCode;
+use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
@@ -182,8 +182,42 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         }
     }
 
+    /// Reloads the account from storage. This is useful, for example, when
+    /// observing side effects after CPI.
+    ///
+    /// No Anchor discriminator is checked during reload. Instead, this method enforces
+    /// owner stability by verifying that `info.owner == self.owner` (i.e., the pubkey
+    /// validated at construction) to avoid TOCTOU issues, and then re-deserializes `T`
+    /// from the updated bytes.
+    ///
+    /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
+    /// #[account] type.
+    pub fn reload(&mut self) -> Result<()> {
+        let info: &AccountInfo = AsRef::<AccountInfo>::as_ref(&self.account);
+
+        // Enforce owner stability: must match the one validated at construction.
+        if info.owner != &self.owner {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner, self.owner)));
+        }
+
+        // Re-deserialize fresh data into the inner account.
+        // Deserialize first, then drop the borrow before mutating self.account
+        let new_val = {
+            let mut data: &[u8] = &info.try_borrow_data()?;
+            T::try_deserialize_unchecked(&mut data)?
+        };
+        // Use unchecked method since reload is a read operation, not a mutation
+        self.account.set_inner_unchecked(new_val);
+        Ok(())
+    }
+
     pub fn into_inner(self) -> T {
         self.account.into_inner()
+    }
+
+    pub fn set_inner_unchecked(&mut self, inner: T) {
+        self.account.set_inner_unchecked(inner);
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::codegen::accounts::{bumps, constraints, generics, ParsedGenerics};
 use crate::{AccountField, AccountsStruct, Ty};
 use quote::{quote, quote_spanned};
+use std::collections::HashSet;
 use syn::Expr;
 
 // Generates the `Accounts` trait implementation.
@@ -257,20 +258,81 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
 // Generates IsMutable trait implementations for account types with mut constraint
 fn generate_is_mutable_impls(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+    // avoid duplicate implementations
+    let mut seen_types: HashSet<String> = HashSet::new();
     let impls: Vec<proc_macro2::TokenStream> = accs
         .fields
         .iter()
         .filter_map(|af| match af {
-            AccountField::Field(f) if f.constraints.is_mutable() => match &f.ty {
-                Ty::Account(_) | Ty::InterfaceAccount(_) => {
-                    let account_ty = f.account_ty();
+            AccountField::Field(f) if f.constraints.is_mutable() => {
+                let (account_ty, type_path) = match &f.ty {
+                    Ty::Account(ty) => {
+                        let account_ty = f.account_ty();
+                        (account_ty, &ty.account_type_path)
+                    }
+                    Ty::InterfaceAccount(ty) => {
+                        let account_ty = f.account_ty();
+                        (account_ty, &ty.account_type_path)
+                    }
+                    _ => return None,
+                };
+
+                let type_str = quote!(#account_ty).to_string();
+
+                // Check if this is a local type (can implement IsMutable) vs external type (cannot)
+                // Local types: simple identifiers, or paths starting with crate::, self::, super::
+                // External types: paths starting with external crate names
+                let is_local = {
+                    let path = &type_path.path;
+                    match path {
+                        syn::Path {
+                            leading_colon: None,
+                            segments,
+                        } if segments.len() == 1 => {
+                            // Simple identifier like "MyType" - definitely local
+                            true
+                        }
+                        syn::Path {
+                            leading_colon: None,
+                            segments,
+                        } if segments.len() > 1 => {
+                            // Multi-segment path - check if it starts with local keywords
+                            let first_segment = segments.first().map(|s| s.ident.to_string());
+                            matches!(
+                                first_segment.as_deref(),
+                                Some("crate") | Some("self") | Some("super")
+                            )
+                        }
+                        syn::Path {
+                            leading_colon: Some(_),
+                            segments,
+                        } => {
+                            // Absolute path like ::crate::module::Type
+                            // If it starts with crate, self, or super, it's local
+                            let first_segment = segments.first().map(|s| s.ident.to_string());
+                            matches!(
+                                first_segment.as_deref(),
+                                Some("crate") | Some("self") | Some("super")
+                            )
+                        }
+                        _ => false,
+                    }
+                };
+
+                if !is_local {
+                    // Skip external types to avoid orphan rule violations
+                    return None;
+                }
+
+                if seen_types.insert(type_str) {
                     Some(quote! {
                         #[automatically_derived]
                         impl anchor_lang::__private::IsMutable for #account_ty {}
                     })
+                } else {
+                    None
                 }
-                _ => None,
-            },
+            }
             _ => None,
         })
         .collect();
