@@ -26,6 +26,21 @@
       "args": []
     },
     {
+      "name": "destructured_context",
+      "discriminator": [
+        50,
+        11,
+        179,
+        128,
+        141,
+        194,
+        248,
+        238
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
       "name": "initialize",
       "discriminator": [
         175,
@@ -353,6 +368,36 @@
           "name": "SomeRetStruct"
         }
       }
+    },
+    {
+      "name": "partial_destructured_context",
+      "discriminator": [
+        139,
+        235,
+        49,
+        94,
+        149,
+        177,
+        72,
+        229
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "underscore_context",
+      "discriminator": [
+        109,
+        75,
+        168,
+        6,
+        114,
+        33,
+        83,
+        80
+      ],
+      "accounts": [],
+      "args": []
     }
   ],
   "accounts": [

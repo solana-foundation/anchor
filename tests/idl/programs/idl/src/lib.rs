@@ -27,6 +27,21 @@ pub mod idl {
         Ok(())
     }
 
+    pub fn destructured_context(Context { .. }: Context<CauseError>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn partial_destructured_context(
+        Context { accounts, .. }: Context<CauseError>,
+    ) -> Result<()> {
+        let _ = accounts;
+        Ok(())
+    }
+
+    pub fn underscore_context(_: Context<CauseError>) -> Result<()> {
+        Ok(())
+    }
+
     /// Initializes an account with specified values
     pub fn initialize_with_values(
         ctx: Context<Initialize>,
