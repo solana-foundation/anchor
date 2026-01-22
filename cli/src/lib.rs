@@ -1325,6 +1325,63 @@ fn process_command(opts: Opts) -> Result<()> {
     }
 }
 
+/// Finds an existing Cargo workspace by searching for a Cargo.toml with
+/// [workspace] section in the current directory or parent directories.
+///
+/// Returns the path to the workspace Cargo.toml if found, None otherwise.
+fn find_cargo_workspace() -> Option<PathBuf> {
+    let current_dir = std::env::current_dir().ok()?;
+
+    for ancestor in current_dir.ancestors() {
+        let cargo_toml_path = ancestor.join("Cargo.toml");
+        if cargo_toml_path.exists() {
+            if let Ok(contents) = fs::read_to_string(&cargo_toml_path) {
+                if let Ok(cargo_toml) = contents.parse::<toml::Table>() {
+                    if cargo_toml.contains_key("workspace") {
+                        return Some(cargo_toml_path);
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Adds a member path to an existing Cargo workspace's members array.
+fn add_member_to_workspace(workspace_path: &Path, member_path: &str) -> Result<()> {
+    let contents = fs::read_to_string(workspace_path)?;
+    let mut cargo_toml: toml::Table = contents.parse()?;
+
+    if let Some(workspace) = cargo_toml.get_mut("workspace") {
+        if let Some(workspace_table) = workspace.as_table_mut() {
+            if let Some(members) = workspace_table.get_mut("members") {
+                if let Some(members_array) = members.as_array_mut() {
+                    // Check if member already exists
+                    let member_exists = members_array
+                        .iter()
+                        .any(|m| m.as_str() == Some(member_path));
+
+                    if !member_exists {
+                        members_array.push(toml::Value::String(member_path.to_string()));
+                    }
+                }
+            } else {
+                // No members array, create one
+                workspace_table.insert(
+                    "members".to_string(),
+                    toml::Value::Array(vec![toml::Value::String(member_path.to_string())]),
+                );
+            }
+        }
+    }
+
+    let new_contents = toml::to_string_pretty(&cargo_toml)?;
+    fs::write(workspace_path, new_contents)?;
+
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn init(
     cfg_override: &ConfigOverride,
@@ -1360,6 +1417,11 @@ fn init(
             "Anchor workspace name must be a valid Rust identifier. It may not be a Rust reserved word, start with a digit, or include certain disallowed characters. See https://doc.rust-lang.org/reference/identifiers.html for more detail.",
         ));
     }
+
+    // Check for existing Cargo workspace BEFORE changing directory
+    // This allows us to add the new project to an existing workspace
+    // instead of creating a nested workspace (which Cargo doesn't support)
+    let existing_workspace = find_cargo_workspace();
 
     if force {
         fs::create_dir_all(&project_name)?;
@@ -1406,12 +1468,28 @@ fn init(
         )?;
     }
 
+    // Determine if we should skip workspace creation
+    let skip_workspace = existing_workspace.is_some();
+
     // Build the program.
     rust_template::create_program(
         &project_name,
         template,
         TestTemplate::Mollusk == test_template,
+        skip_workspace,
     )?;
+
+    // If we found an existing Cargo workspace, add this project's programs
+    // to the parent workspace members
+    if let Some(workspace_path) = &existing_workspace {
+        let member_path = format!("{}/programs/*", project_name);
+        add_member_to_workspace(workspace_path, &member_path)?;
+        println!(
+            "Added {} to existing Cargo workspace at {}",
+            member_path,
+            workspace_path.display()
+        );
+    }
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1513,7 +1591,9 @@ fn new(
                     fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                rust_template::create_program(&name, template, false)?;
+                // Skip workspace creation since we're adding to an existing
+                // Anchor workspace
+                rust_template::create_program(&name, template, false, true)?;
 
                 programs.insert(
                     name.clone(),
@@ -5278,5 +5358,89 @@ mod tests {
             false,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_find_cargo_workspace_none() {
+        // When in a temp directory with no Cargo.toml, should return None
+        let temp_dir = tempfile::tempdir().unwrap();
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let result = find_cargo_workspace();
+        assert!(result.is_none());
+
+        std::env::set_current_dir(original_dir).unwrap();
+    }
+
+    #[test]
+    fn test_find_cargo_workspace_found() {
+        // Create a temp directory with a workspace Cargo.toml
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cargo_toml_path = temp_dir.path().join("Cargo.toml");
+        fs::write(
+            &cargo_toml_path,
+            r#"[workspace]
+members = ["crates/*"]
+"#,
+        )
+        .unwrap();
+
+        // Create a subdirectory and run the test from there
+        let sub_dir = temp_dir.path().join("subdir");
+        fs::create_dir_all(&sub_dir).unwrap();
+
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&sub_dir).unwrap();
+
+        let result = find_cargo_workspace();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), cargo_toml_path);
+
+        std::env::set_current_dir(original_dir).unwrap();
+    }
+
+    #[test]
+    fn test_add_member_to_workspace() {
+        // Create a temp workspace Cargo.toml
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cargo_toml_path = temp_dir.path().join("Cargo.toml");
+        fs::write(
+            &cargo_toml_path,
+            r#"[workspace]
+members = ["crates/*"]
+"#,
+        )
+        .unwrap();
+
+        // Add a new member
+        add_member_to_workspace(&cargo_toml_path, "my-project/programs/*").unwrap();
+
+        // Verify the member was added
+        let contents = fs::read_to_string(&cargo_toml_path).unwrap();
+        assert!(contents.contains("my-project/programs/*"));
+        assert!(contents.contains("crates/*"));
+    }
+
+    #[test]
+    fn test_add_member_to_workspace_no_duplicate() {
+        // Create a temp workspace Cargo.toml with existing member
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cargo_toml_path = temp_dir.path().join("Cargo.toml");
+        fs::write(
+            &cargo_toml_path,
+            r#"[workspace]
+members = ["my-project/programs/*"]
+"#,
+        )
+        .unwrap();
+
+        // Try to add the same member again
+        add_member_to_workspace(&cargo_toml_path, "my-project/programs/*").unwrap();
+
+        // Verify no duplicate was added
+        let contents = fs::read_to_string(&cargo_toml_path).unwrap();
+        let count = contents.matches("my-project/programs/*").count();
+        assert_eq!(count, 1);
     }
 }
