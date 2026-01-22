@@ -6,7 +6,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
-        anchor_lang::solana_program::entrypoint!(entry);
+        anchor_lang::pinocchio_runtime::entrypoint!(entry);
         /// The Anchor codegen exposes a programming model where a user defines
         /// a set of methods inside of a `#[program]` module in a way similar
         /// to writing RPC request handlers. The macro then generates a bunch of
@@ -36,14 +36,31 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
-        pub fn entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::solana_program::entrypoint::ProgramResult {
-            try_entry(program_id, accounts, data).map_err(|e| {
+        /// Pinocchio's entrypoint passes program_id as &[u8; 32] and Pinocchio's AccountInfo.
+        /// Pinocchio's AccountInfo is compatible with Solana's runtime at the binary level,
+        /// but the Rust types are different. We need to accept Pinocchio's AccountInfo and
+        /// convert it to Solana's AccountInfo format that Anchor expects.
+        ///
+        /// Note: Pinocchio's entrypoint provides accounts in a zero-copy format using raw pointers,
+        /// while Solana's AccountInfo uses RefCell for interior mutability. The conversion needs
+        /// to preserve is_signer, is_writable, and other account metadata.
+        pub fn entry(
+            program_id: &Pubkey,
+            accounts: &[AccountInfo],
+            data: &[u8]
+        ) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
+            // Convert Pinocchio's Pubkey ([u8; 32]) to Solana's Pubkey
+            let program_id_pubkey = Pubkey::from(*program_id);
+
+            // Pinocchio's AccountInfo is now used directly throughout Anchor
+            // No conversion needed - Pinocchio's AccountInfo is compatible with Anchor's runtime
+            try_entry(&program_id_pubkey, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
         }
 
-        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], data: &[u8]) -> anchor_lang::Result<()> {
+        fn try_entry(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");

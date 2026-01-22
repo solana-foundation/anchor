@@ -63,7 +63,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     }
 
     /// Returns a request builder.
-    pub fn request(&self) -> RequestBuilder<'_, C, Box<dyn Signer + '_>> {
+    pub fn request(&self) -> RequestBuilder<'_, '_, '_, '_, C, Box<dyn Signer + '_>> {
         RequestBuilder::from(
             self.program_id,
             self.cfg.cluster.url(),
@@ -112,7 +112,9 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
     }
 }
 
-impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Box<dyn Signer + 'a>> {
+impl<'a, 'b, 'c, 'd, C: Deref<Target = impl Signer> + Clone>
+    RequestBuilder<'a, 'b, 'c, 'd, C, Box<dyn Signer + 'a>>
+{
     pub fn from(
         program_id: Pubkey,
         cluster: &str,
