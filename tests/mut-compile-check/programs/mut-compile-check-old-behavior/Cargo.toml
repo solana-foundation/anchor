@@ -1,0 +1,21 @@
+[package]
+name = "mut-compile-check-old-behavior"
+version = "0.1.0"
+description = "Demonstrates old Anchor behavior - compiles but mutation doesn't persist (the bug)"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mut_compile_check_old_behavior"
+path = "src/lib.rs"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }

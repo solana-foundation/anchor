@@ -9,6 +9,7 @@ pub mod interface_account;
 pub mod migration;
 pub mod option;
 pub mod program;
+pub mod read_only_account;
 pub mod signer;
 pub mod system_account;
 pub mod sysvar;
