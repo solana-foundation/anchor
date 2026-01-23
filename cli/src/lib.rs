@@ -1418,8 +1418,8 @@ fn init(
         ));
     }
 
-    // Check for existing Cargo workspace BEFORE changing directory
-    // This allows us to add the new project to an existing workspace
+    // Check for existing Cargo workspace before changing directory
+    // This allows adding the new project to an existing workspace
     // instead of creating a nested workspace (which Cargo doesn't support)
     let existing_workspace = find_cargo_workspace();
 
@@ -1479,7 +1479,7 @@ fn init(
         skip_workspace,
     )?;
 
-    // If we found an existing Cargo workspace, add this project's programs
+    // If found an existing Cargo workspace, add the project's programs
     // to the parent workspace members
     if let Some(workspace_path) = &existing_workspace {
         let member_path = format!("{}/programs/*", project_name);
@@ -1591,7 +1591,7 @@ fn new(
                     fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                // Skip workspace creation since we're adding to an existing
+                // Skip workspace creation since it's adding to an existing
                 // Anchor workspace
                 rust_template::create_program(&name, template, false, true)?;
 
