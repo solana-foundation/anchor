@@ -149,16 +149,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anchor-attribute-accounts"
-version = "0.32.1"
-dependencies = [
- "anchor-syn",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "anchor-attribute-constant"
 version = "0.32.1"
 dependencies = [

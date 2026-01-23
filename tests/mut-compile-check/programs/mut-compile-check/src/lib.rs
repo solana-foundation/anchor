@@ -35,12 +35,6 @@ pub mod mut_compile_check {
         msg!("Current value: {}", ctx.accounts.data.value);
         Ok(())
     }
-
-    /// Mutate ReadOnlyAccount - should fail at compile time
-    pub fn mutate_readonly(ctx: Context<ReadOnlyCtx>, new_value: u64) -> Result<()> {
-        ctx.accounts.data.value = new_value;
-        Ok(())
-    }
 }
 
 #[account]
