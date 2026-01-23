@@ -1,6 +1,6 @@
 //! Read-only account container that checks ownership on deserialization.
 //!
-//! This is used internally by the `#[derive(Accounts)]` macro for accounts that 
+//! This is used internally by the `#[derive(Accounts)]` macro for accounts that
 //! are not marked with `#[account(mut)]`.
 
 use crate::error::{Error, ErrorCode};
