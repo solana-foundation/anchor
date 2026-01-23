@@ -1,8 +1,7 @@
 //! Read-only account container that checks ownership on deserialization.
 //!
-//! Unlike [`Account`](crate::Account), this type does not implement [`DerefMut`],
-//! preventing mutation at compile time. This is used internally by the
-//! `#[derive(Accounts)]` macro for accounts that are not marked with `#[account(mut)]`.
+//! This is used internally by the `#[derive(Accounts)]` macro for accounts that 
+//! are not marked with `#[account(mut)]`.
 
 use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
@@ -20,10 +19,6 @@ use std::ops::Deref;
 /// Read-only wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
-/// This type is similar to [`Account`](crate::Account) but does **not** implement
-/// [`DerefMut`](std::ops::DerefMut), preventing any mutation of the account data
-/// at compile time.
-///
 /// # When is this used?
 ///
 /// The `#[derive(Accounts)]` macro automatically uses `ReadOnlyAccount` for accounts
@@ -37,17 +32,15 @@ use std::ops::Deref;
 ///
 /// #[derive(Accounts)]
 /// pub struct ReadData<'info> {
-///     // This will use ReadOnlyAccount internally since there's no #[account(mut)]
 ///     pub data_account: Account<'info, MyData>,
 /// }
 ///
 /// pub fn read_data(ctx: Context<ReadData>) -> Result<()> {
-///     // Reading is allowed
 ///     let value = ctx.accounts.data_account.value;
 ///     
 ///     // This would cause a compile-time error:
-///     // ctx.accounts.data_account.value = 42;
-///     //                           ^^^^^ cannot assign to data in a `&` reference
+///     ctx.accounts.data_account.value = 42;
+///     //                        ^^^^^ cannot assign to data in a `&` reference
 ///     
 ///     Ok(())
 /// }
@@ -81,11 +74,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> ReadOnlyAccount<'a, T
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> ReadOnlyAccount<'a, T> {
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    ///
-    /// This method also re-validates that the program owner has not
-    /// changed since the initial validation.
+    /// Reloads the account from storage.
     pub fn reload(&mut self) -> Result<()> {
         if self.info.owner != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
@@ -109,25 +98,6 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> ReadOnlyAccou
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         Ok(ReadOnlyAccount::new(info, T::try_deserialize(&mut data)?))
-    }
-
-    /// Deserializes the given `info` into a `ReadOnlyAccount` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
-    #[inline(never)]
-    pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<ReadOnlyAccount<'a, T>> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        if info.owner != &T::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, T::owner())));
-        }
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(ReadOnlyAccount::new(
-            info,
-            T::try_deserialize_unchecked(&mut data)?,
-        ))
     }
 }
 
@@ -208,10 +178,6 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for ReadOnlyAccount
         &self.account
     }
 }
-
-// NOTE: DerefMut is intentionally NOT implemented for ReadOnlyAccount.
-// This is the key difference from Account<> - attempting to mutate will
-// cause a compile-time error.
 
 impl<T: AccountSerialize + AccountDeserialize + Clone> Key for ReadOnlyAccount<'_, T> {
     fn key(&self) -> Pubkey {
