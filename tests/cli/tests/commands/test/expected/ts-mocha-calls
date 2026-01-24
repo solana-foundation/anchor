@@ -1,0 +1,10 @@
+{
+  "command": "ts-mocha",
+  "args": [
+    "-p",
+    "./tsconfig.json",
+    "-t",
+    "1000000",
+    "tests/**/*.ts"
+  ]
+}
