@@ -1,0 +1,1672 @@
+{
+  "address": "id11111111111111111111111111111111111111111",
+  "metadata": {
+    "name": "idl",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "account_and_event_arg_and_field",
+      "discriminator": [
+        42,
+        50,
+        168,
+        74,
+        160,
+        93,
+        226,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "account",
+          "type": {
+            "defined": {
+              "name": "AccountAndEventFieldAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "boxed",
+      "discriminator": [
+        118,
+        92,
+        208,
+        129,
+        11,
+        195,
+        230,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "u8",
+          "type": "u8"
+        },
+        {
+          "name": "u8_array",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "defined",
+          "type": {
+            "defined": {
+              "name": "idl::NamedStruct"
+            }
+          }
+        },
+        {
+          "name": "external",
+          "type": {
+            "defined": {
+              "name": "MyStruct"
+            }
+          }
+        },
+        {
+          "name": "external_non_anchor",
+          "type": {
+            "defined": {
+              "name": "Feature"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "discriminator": [
+        214,
+        44,
+        4,
+        247,
+        12,
+        41,
+        217,
+        110
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "enm",
+      "discriminator": [
+        221,
+        171,
+        236,
+        6,
+        173,
+        71,
+        159,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "full_enum",
+          "type": {
+            "defined": {
+              "name": "FullEnum"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "external",
+      "discriminator": [
+        82,
+        27,
+        246,
+        73,
+        115,
+        146,
+        48,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "my_struct",
+          "type": {
+            "defined": {
+              "name": "MyStruct"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "external_non_anchor",
+      "discriminator": [
+        81,
+        166,
+        69,
+        102,
+        182,
+        215,
+        232,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "feature",
+          "type": {
+            "defined": {
+              "name": "Feature"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "full_path",
+      "discriminator": [
+        216,
+        8,
+        211,
+        144,
+        235,
+        37,
+        174,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        },
+        {
+          "name": "external_program",
+          "address": "Externa1111111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "named_struct",
+          "type": {
+            "defined": {
+              "name": "idl::NamedStruct"
+            }
+          }
+        },
+        {
+          "name": "some_module_named_struct",
+          "type": {
+            "defined": {
+              "name": "idl::some_module::NamedStruct"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "generic",
+      "discriminator": [
+        63,
+        235,
+        150,
+        148,
+        7,
+        255,
+        185,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  110,
+                  101,
+                  114,
+                  105,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "generic_arg",
+          "type": {
+            "defined": {
+              "name": "GenericStruct",
+              "generics": [
+                {
+                  "kind": "type",
+                  "type": "u16"
+                },
+                {
+                  "kind": "const",
+                  "value": "4"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "generic_custom_struct",
+      "discriminator": [
+        125,
+        84,
+        254,
+        8,
+        221,
+        52,
+        15,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "my_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  101,
+                  110,
+                  101,
+                  114,
+                  105,
+                  99,
+                  67,
+                  117,
+                  115,
+                  116,
+                  111,
+                  109,
+                  83,
+                  116,
+                  114,
+                  117,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "generic_arg",
+          "type": {
+            "defined": {
+              "name": "GenericStruct",
+              "generics": [
+                {
+                  "kind": "type",
+                  "type": {
+                    "defined": {
+                      "name": "SomeStruct"
+                    }
+                  }
+                },
+                {
+                  "kind": "const",
+                  "value": "4"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "no_case_conversion",
+      "discriminator": [
+        178,
+        37,
+        117,
+        190,
+        15,
+        202,
+        219,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "case_conversion_account",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "field_name",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "primitive_types",
+      "discriminator": [
+        14,
+        226,
+        58,
+        237,
+        49,
+        39,
+        28,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "bool",
+          "type": "bool"
+        },
+        {
+          "name": "i8",
+          "type": "i8"
+        },
+        {
+          "name": "i16",
+          "type": "i16"
+        },
+        {
+          "name": "i32",
+          "type": "i32"
+        },
+        {
+          "name": "i64",
+          "type": "i64"
+        },
+        {
+          "name": "i128",
+          "type": "i128"
+        },
+        {
+          "name": "u8",
+          "type": "u8"
+        },
+        {
+          "name": "u16",
+          "type": "u16"
+        },
+        {
+          "name": "u32",
+          "type": "u32"
+        },
+        {
+          "name": "u64",
+          "type": "u64"
+        },
+        {
+          "name": "u128",
+          "type": "u128"
+        },
+        {
+          "name": "f32",
+          "type": "f32"
+        },
+        {
+          "name": "f64",
+          "type": "f64"
+        },
+        {
+          "name": "pubkey",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "return_type",
+      "discriminator": [
+        114,
+        136,
+        190,
+        113,
+        188,
+        46,
+        22,
+        101
+      ],
+      "accounts": [],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "idl::NamedStruct"
+        }
+      }
+    },
+    {
+      "name": "strct",
+      "discriminator": [
+        13,
+        53,
+        186,
+        90,
+        153,
+        185,
+        30,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "unit",
+          "type": {
+            "defined": {
+              "name": "UnitStruct"
+            }
+          }
+        },
+        {
+          "name": "named",
+          "type": {
+            "defined": {
+              "name": "idl::NamedStruct"
+            }
+          }
+        },
+        {
+          "name": "tuple",
+          "type": {
+            "defined": {
+              "name": "TupleStruct"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "test_compilation",
+      "discriminator": [
+        206,
+        236,
+        10,
+        30,
+        119,
+        161,
+        181,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "account"
+        },
+        {
+          "name": "zc_account"
+        },
+        {
+          "name": "zc_unsafe_account"
+        },
+        {
+          "name": "composite",
+          "accounts": [
+            {
+              "name": "account"
+            }
+          ]
+        },
+        {
+          "name": "token_account"
+        },
+        {
+          "name": "mint_account"
+        },
+        {
+          "name": "token_interface_account"
+        },
+        {
+          "name": "mint_interface_account"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_interface"
+        },
+        {
+          "name": "clock_sysvar",
+          "address": "SysvarC1ock11111111111111111111111111111111"
+        },
+        {
+          "name": "rent_sysvar",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "type_alias",
+      "discriminator": [
+        53,
+        132,
+        17,
+        249,
+        121,
+        194,
+        49,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "alias_u8",
+          "type": "u8"
+        },
+        {
+          "name": "alias_u8_array",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "alias_struct",
+          "type": {
+            "defined": {
+              "name": "idl::NamedStruct"
+            }
+          }
+        },
+        {
+          "name": "alias_vec_string",
+          "type": {
+            "vec": "string"
+          }
+        },
+        {
+          "name": "alias_option_vec_pubkey",
+          "type": {
+            "vec": {
+              "option": "pubkey"
+            }
+          }
+        },
+        {
+          "name": "alias_generic_const",
+          "type": {
+            "array": [
+              "u32",
+              4
+            ]
+          }
+        },
+        {
+          "name": "alias_multiple_generics_mixed",
+          "type": {
+            "vec": {
+              "array": [
+                "bool",
+                2
+              ]
+            }
+          }
+        },
+        {
+          "name": "alias_external",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "unsized_types",
+      "discriminator": [
+        33,
+        74,
+        7,
+        230,
+        191,
+        140,
+        102,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "string",
+          "type": "string"
+        },
+        {
+          "name": "bytes",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AccountAndEventFieldAccount",
+      "discriminator": [
+        21,
+        13,
+        231,
+        34,
+        197,
+        147,
+        125,
+        68
+      ]
+    },
+    {
+      "name": "AccountWithExternalField",
+      "discriminator": [
+        185,
+        166,
+        137,
+        12,
+        38,
+        85,
+        243,
+        108
+      ]
+    },
+    {
+      "name": "AccountWithNonAnchorExternalField",
+      "discriminator": [
+        230,
+        230,
+        118,
+        169,
+        253,
+        250,
+        98,
+        180
+      ]
+    },
+    {
+      "name": "AliasAccount",
+      "discriminator": [
+        64,
+        156,
+        83,
+        11,
+        51,
+        54,
+        23,
+        155
+      ]
+    },
+    {
+      "name": "BoxedAccount",
+      "discriminator": [
+        137,
+        156,
+        69,
+        116,
+        208,
+        235,
+        76,
+        234
+      ]
+    },
+    {
+      "name": "EnumAccount",
+      "discriminator": [
+        53,
+        221,
+        43,
+        191,
+        228,
+        94,
+        201,
+        208
+      ]
+    },
+    {
+      "name": "FullPathAccount",
+      "discriminator": [
+        141,
+        252,
+        239,
+        143,
+        180,
+        201,
+        44,
+        158
+      ]
+    },
+    {
+      "name": "GenericAccount",
+      "discriminator": [
+        10,
+        71,
+        68,
+        49,
+        51,
+        72,
+        147,
+        245
+      ]
+    },
+    {
+      "name": "GenericAccountCustomStruct",
+      "discriminator": [
+        204,
+        114,
+        181,
+        161,
+        45,
+        105,
+        142,
+        20
+      ]
+    },
+    {
+      "name": "PrimitiveAccount",
+      "discriminator": [
+        78,
+        81,
+        84,
+        129,
+        242,
+        184,
+        230,
+        181
+      ]
+    },
+    {
+      "name": "SimpleAccount",
+      "discriminator": [
+        165,
+        155,
+        224,
+        249,
+        219,
+        244,
+        78,
+        169
+      ]
+    },
+    {
+      "name": "StructAccount",
+      "discriminator": [
+        210,
+        141,
+        36,
+        44,
+        194,
+        55,
+        27,
+        33
+      ]
+    },
+    {
+      "name": "UnsizedAccount",
+      "discriminator": [
+        22,
+        15,
+        221,
+        217,
+        245,
+        178,
+        17,
+        7
+      ]
+    },
+    {
+      "name": "ZcAccount",
+      "discriminator": [
+        45,
+        202,
+        197,
+        147,
+        151,
+        95,
+        17,
+        110
+      ]
+    },
+    {
+      "name": "ZcUnsafeAccount",
+      "discriminator": [
+        6,
+        205,
+        145,
+        74,
+        247,
+        43,
+        49,
+        156
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "SimpleEvent",
+      "discriminator": [
+        72,
+        103,
+        116,
+        133,
+        133,
+        111,
+        132,
+        229
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 500000,
+      "name": "SomeError",
+      "msg": "Example error."
+    },
+    {
+      "code": 500001,
+      "name": "OtherError",
+      "msg": "Another error."
+    },
+    {
+      "code": 500002,
+      "name": "ErrorWithoutMsg"
+    },
+    {
+      "code": 500500,
+      "name": "WithDiscrim"
+    }
+  ],
+  "types": [
+    {
+      "name": "AccountAndEventFieldAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "simple_account",
+            "type": {
+              "defined": {
+                "name": "SimpleAccount"
+              }
+            }
+          },
+          {
+            "name": "simple_event",
+            "type": {
+              "defined": {
+                "name": "SimpleEvent"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AccountWithExternalField",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "my_struct",
+            "type": {
+              "defined": {
+                "name": "MyStruct"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AccountWithNonAnchorExternalField",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feature",
+            "type": {
+              "defined": {
+                "name": "Feature"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AliasAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "alias_u8",
+            "type": "u8"
+          },
+          {
+            "name": "alias_u8_array",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "alias_struct",
+            "type": {
+              "defined": {
+                "name": "idl::NamedStruct"
+              }
+            }
+          },
+          {
+            "name": "alias_vec_string",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "alias_option_vec_pubkey",
+            "type": {
+              "vec": {
+                "option": "pubkey"
+              }
+            }
+          },
+          {
+            "name": "alias_generic_const",
+            "type": {
+              "array": [
+                "u32",
+                4
+              ]
+            }
+          },
+          {
+            "name": "alias_multiple_generics_mixed",
+            "type": {
+              "vec": {
+                "array": [
+                  "bool",
+                  2
+                ]
+              }
+            }
+          },
+          {
+            "name": "alias_external",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BoxedAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "u8",
+            "type": "u8"
+          },
+          {
+            "name": "u8_array",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "defined",
+            "type": {
+              "defined": {
+                "name": "idl::NamedStruct"
+              }
+            }
+          },
+          {
+            "name": "external",
+            "type": {
+              "defined": {
+                "name": "MyStruct"
+              }
+            }
+          },
+          {
+            "name": "external_non_anchor",
+            "type": {
+              "defined": {
+                "name": "Feature"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EnumAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "full_enum",
+            "type": {
+              "defined": {
+                "name": "FullEnum"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Feature",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "activated_at",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FullEnum",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unit"
+          },
+          {
+            "name": "Named",
+            "fields": [
+              {
+                "name": "point_x",
+                "type": "u64"
+              },
+              {
+                "name": "point_y",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "Unnamed",
+            "fields": [
+              "u8",
+              "u8",
+              "u16",
+              "u16"
+            ]
+          },
+          {
+            "name": "UnnamedStruct",
+            "fields": [
+              {
+                "defined": {
+                  "name": "idl::NamedStruct"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "FullPathAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "named_struct",
+            "type": {
+              "defined": {
+                "name": "idl::NamedStruct"
+              }
+            }
+          },
+          {
+            "name": "some_module_named_struct",
+            "type": {
+              "defined": {
+                "name": "idl::some_module::NamedStruct"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GenericAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": {
+              "defined": {
+                "name": "GenericStruct",
+                "generics": [
+                  {
+                    "kind": "type",
+                    "type": "u16"
+                  },
+                  {
+                    "kind": "const",
+                    "value": "4"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GenericAccountCustomStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": {
+              "defined": {
+                "name": "GenericStruct",
+                "generics": [
+                  {
+                    "kind": "type",
+                    "type": {
+                      "defined": {
+                        "name": "SomeStruct"
+                      }
+                    }
+                  },
+                  {
+                    "kind": "const",
+                    "value": "4"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GenericStruct",
+      "generics": [
+        {
+          "kind": "type",
+          "name": "T"
+        },
+        {
+          "kind": "const",
+          "name": "N",
+          "type": "usize"
+        }
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "arr",
+            "type": {
+              "array": [
+                {
+                  "generic": "T"
+                },
+                {
+                  "generic": "N"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sub_field",
+            "type": {
+              "defined": {
+                "name": "SubGenericStruct",
+                "generics": [
+                  {
+                    "kind": "const",
+                    "value": "8"
+                  },
+                  {
+                    "kind": "type",
+                    "type": {
+                      "generic": "T"
+                    }
+                  },
+                  {
+                    "kind": "type",
+                    "type": {
+                      "vec": {
+                        "option": {
+                          "generic": "T"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MyStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "some_field",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrimitiveAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bool",
+            "type": "bool"
+          },
+          {
+            "name": "i8",
+            "type": "i8"
+          },
+          {
+            "name": "i16",
+            "type": "i16"
+          },
+          {
+            "name": "i32",
+            "type": "i32"
+          },
+          {
+            "name": "i64",
+            "type": "i64"
+          },
+          {
+            "name": "i128",
+            "type": "i128"
+          },
+          {
+            "name": "u8",
+            "type": "u8"
+          },
+          {
+            "name": "u16",
+            "type": "u16"
+          },
+          {
+            "name": "u32",
+            "type": "u32"
+          },
+          {
+            "name": "u64",
+            "type": "u64"
+          },
+          {
+            "name": "u128",
+            "type": "u128"
+          },
+          {
+            "name": "f32",
+            "type": "f32"
+          },
+          {
+            "name": "f64",
+            "type": "f64"
+          },
+          {
+            "name": "pubkey",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SimpleAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field_name",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SimpleEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field_name",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SomeStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StructAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "unit",
+            "type": {
+              "defined": {
+                "name": "UnitStruct"
+              }
+            }
+          },
+          {
+            "name": "named",
+            "type": {
+              "defined": {
+                "name": "idl::NamedStruct"
+              }
+            }
+          },
+          {
+            "name": "tuple",
+            "type": {
+              "defined": {
+                "name": "TupleStruct"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SubGenericStruct",
+      "generics": [
+        {
+          "kind": "const",
+          "name": "N",
+          "type": "usize"
+        },
+        {
+          "kind": "type",
+          "name": "T"
+        },
+        {
+          "kind": "type",
+          "name": "U"
+        }
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sub_arr",
+            "type": {
+              "array": [
+                {
+                  "generic": "T"
+                },
+                {
+                  "generic": "N"
+                }
+              ]
+            }
+          },
+          {
+            "name": "another",
+            "type": {
+              "generic": "U"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TupleStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          "u64",
+          "string"
+        ]
+      }
+    },
+    {
+      "name": "UnitStruct",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "UnsizedAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "string",
+            "type": "string"
+          },
+          {
+            "name": "bytes",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZcAccount",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "ZcUnsafeAccount",
+      "serialization": "bytemuckunsafe",
+      "repr": {
+        "kind": "rust",
+        "packed": true
+      },
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "idl::NamedStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "u8",
+            "type": "u8"
+          },
+          {
+            "name": "u16",
+            "type": "u16"
+          },
+          {
+            "name": "u32",
+            "type": "u32"
+          },
+          {
+            "name": "u64",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "idl::some_module::NamedStruct",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "BYTES_STR",
+      "type": "bytes",
+      "value": "[116, 101, 115, 116]"
+    },
+    {
+      "name": "BYTE_STR",
+      "type": "u8",
+      "value": "116"
+    },
+    {
+      "name": "I128",
+      "type": "i128",
+      "value": "1000000"
+    },
+    {
+      "name": "TEST_CONVERT_MODULE_PATHS",
+      "docs": [
+        "IDL test for the issue explained in https://github.com/coral-xyz/anchor/issues/3358",
+        "",
+        "For example, using [`SimpleAccount`] and adding the full path at the end of a doc comment",
+        "used to result in a false-positive when detecting conflicts.",
+        "",
+        "[`SimpleAccount`]: crate::SimpleAccount"
+      ],
+      "type": "bytes",
+      "value": "[99, 111, 110, 118, 101, 114, 116, 95, 109, 111, 100, 117, 108, 101, 95, 112, 97, 116, 104, 115]"
+    },
+    {
+      "name": "U8",
+      "type": "u8",
+      "value": "6"
+    }
+  ]
+}
