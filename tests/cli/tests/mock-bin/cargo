@@ -66,6 +66,46 @@ pub mod lib {
   }
 }
 
+function findWorkspaceRoot(startDir) {
+  let currentDir = startDir;
+  const root = path.parse(currentDir).root;
+
+  while (currentDir !== root) {
+    const anchorTomlPath = path.join(currentDir, "Anchor.toml");
+    if (fs.existsSync(anchorTomlPath)) {
+      return currentDir;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+
+  return null;
+}
+
+function writePlaceholderIdl() {
+  // Read template IDL from template directory
+  const templatePath = path.resolve(__dirname, "../../templates/idl/test-program.json");
+  const templateContent = fs.readFileSync(templatePath, "utf8");
+  const placeholderIdl = JSON.parse(templateContent);
+
+  const idlContent = JSON.stringify(placeholderIdl, null, 2) + "\n";
+  const idlFilename = "test_program.json";
+
+  // Write to current directory (program crate location)
+  const currentIdlDir = path.join(process.cwd(), "target", "idl");
+  fs.mkdirSync(currentIdlDir, { recursive: true });
+  const currentIdlFile = path.join(currentIdlDir, idlFilename);
+  fs.writeFileSync(currentIdlFile, idlContent);
+
+  // Find workspace root and write there too
+  const workspaceRoot = findWorkspaceRoot(process.cwd());
+  if (workspaceRoot && workspaceRoot !== process.cwd()) {
+    const workspaceIdlDir = path.join(workspaceRoot, "target", "idl");
+    fs.mkdirSync(workspaceIdlDir, { recursive: true });
+    const workspaceIdlFile = path.join(workspaceIdlDir, idlFilename);
+    fs.writeFileSync(workspaceIdlFile, idlContent);
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
 
@@ -89,6 +129,11 @@ function main() {
   const idlBuildStdoutFile = process.env.IDL_BUILD_STDOUT_FILE;
   if (idlBuildStdoutFile && args.includes("idl-build")) {
     console.log(fs.readFileSync(idlBuildStdoutFile).toString());
+  }
+
+  // Write placeholder IDL when building
+  if (args.includes("build") || args.includes("build-bpf") || args.includes("build-sbf") || args.includes("idl-build") || args.includes("__anchor_private_print_idl")) {
+    writePlaceholderIdl();
   }
 }
 

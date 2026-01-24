@@ -1,0 +1,31 @@
+#!/usr/bin/env /home/vscode/.nvm/versions/node/v25.4.0/bin/node
+
+const fs = require("fs");
+
+/**
+ * Minimal mock for `ts-mocha`.
+ *
+ * Behavior:
+ * - Logs invocation to file if MOCK_TS_MOCHA_OUTPUT_PATH is set
+ * - Exits with success
+ */
+
+function main() {
+
+  const args = process.argv.slice(2);
+
+  // Log invocation if output path is provided
+  const outputPath = process.env.MOCK_TS_MOCHA_OUTPUT_PATH;
+  if (outputPath) {
+    const entry = {
+      command: "ts-mocha",
+      args,
+    };
+    fs.appendFileSync(outputPath, JSON.stringify(entry, null, 2) + "\n");
+  }
+
+  process.exit(0);
+}
+
+main();
+

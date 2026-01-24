@@ -1,17 +1,34 @@
-#!/usr/bin/env node
+#!/usr/bin/env /home/vscode/.nvm/versions/node/v25.4.0/bin/node
 
 const fs = require("fs");
+const http = require("http");
 
 /**
  * Minimal mock for `solana-test-validator`.
  *
  * Behavior:
- * - Prints a startup message to stdout (captured by redirect in caller).
+ * - Logs invocation args to file
+ * - Starts HTTP server to handle RPC requests
+ * - Responds to getLatestBlockhash RPC calls
  * - Keeps the process alive until it receives SIGTERM/SIGINT.
  * - Exits with status 0 on shutdown.
  */
 
 function main() {
+  console.log("VALLIDATOR MOCK");
+  
+  const args = process.argv.slice(2);
+
+  // Log invocation if output path is provided
+  const outputPath = process.env.MOCK_SOLANA_TEST_VALIDATOR_OUTPUT_PATH;
+  if (outputPath) {
+    const entry = {
+      command: "solana-test-validator",
+      args,
+    };
+    fs.appendFileSync(outputPath, JSON.stringify(entry, null, 2) + "\n");
+  }
+
   const pidFile = process.env.SOLANA_TEST_VALIDATOR_PID_FILE;
   if (pidFile) {
     try {
@@ -21,9 +38,73 @@ function main() {
     }
   }
 
+  // Start HTTP server to handle RPC requests (after PID file)
+  const server = http.createServer((req, res) => {
+    if (req.method === "POST") {
+      let body = "";
+      
+      req.on("data", (chunk) => {
+        body += chunk.toString();
+      });
+      
+      req.on("end", () => {
+        try {
+          const rpcRequest = JSON.parse(body);
+          const method = rpcRequest.method;
+          
+          // Log RPC call
+          if (outputPath) {
+            const rpcLogEntry = {
+              rpcMethod: method,
+              id: rpcRequest.id,
+            };
+            fs.appendFileSync(outputPath, JSON.stringify(rpcLogEntry, null, 2) + "\n");
+          }
+          
+          // Handle getLatestBlockhash
+          if (method === "getLatestBlockhash") {
+            const response = {
+              jsonrpc: "2.0",
+              result: {
+                context: { slot: 1 },
+                value: {
+                  blockhash: "11111111111111111111111111111111",
+                  lastValidBlockHeight: 1,
+                },
+              },
+              id: 1,
+            };
+            
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(response));
+          } else {
+            // Method not found
+            const errorResponse = {
+              jsonrpc: "2.0",
+              error: { code: -32601, message: "Method not found" },
+              id: 1,
+            };
+            
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(errorResponse));
+          }
+        } catch (err) {
+          res.writeHead(400, { "Content-Type": "text/plain" });
+          res.end("Bad Request");
+        }
+      });
+    } else {
+      res.writeHead(405, { "Content-Type": "text/plain" });
+      res.end("Method Not Allowed");
+    }
+  });
+  
+  server.listen(8899);
+
   process.stdout.write("Mock solana-test-validator started\n");
 
   const shutdown = () => {
+    server.close();
     clearInterval(heartbeat);
     process.exit(0);
   };

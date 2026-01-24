@@ -1,0 +1,33 @@
+#!/usr/bin/env /home/vscode/.nvm/versions/node/v25.4.0/bin/node
+
+const { spawnSync } = require("child_process");
+
+/**
+ * Minimal mock for `yarn`.
+ *
+ * Behavior:
+ * - Intercepts `yarn run ts-mocha ...` and forwards to mock ts-mocha
+ * - Exits with the same status code as the forwarded command
+ */
+
+function main() {
+
+  const args = process.argv.slice(2);
+
+  // Check if this is `yarn run ts-mocha`
+  if (args.length >= 2 && args[0] === "run" && args[1] === "ts-mocha") {
+    // Forward to ts-mocha with remaining args
+    const tsMochaArgs = args.slice(2);
+    const result = spawnSync("ts-mocha", tsMochaArgs, {
+      stdio: "inherit",
+    });
+
+    process.exit(result.status ?? 0);
+  }
+
+  // If it's any other yarn command, just succeed silently
+  // (to avoid assumptions about what other yarn commands might be called)
+  process.exit(0);
+}
+
+main();
