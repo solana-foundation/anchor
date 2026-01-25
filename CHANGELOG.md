@@ -36,6 +36,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Rename `utils` module of `declare_program!` to `parsers` ([#4151](https://github.com/solana-foundation/anchor/pull/4151)).
 - lang: Remove the `interface-instructions` feature and the `#[interface]` attribute ([#4156](https://github.com/solana-foundation/anchor/pull/4156)).
 - cli: Remove the `login` command ([#4182](https://github.com/solana-foundation/anchor/pull/4182)).
+- idl: Exclude external accounts ([#4197](https://github.com/solana-foundation/anchor/pull/4197)).
 
 ## [0.32.1] - 2025-10-09
 
