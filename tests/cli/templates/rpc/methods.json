@@ -1,0 +1,524 @@
+{
+  "getAccountInfo": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "data": ["", "base64"],
+        "executable": false,
+        "lamports": 1000000000,
+        "owner": "11111111111111111111111111111111",
+        "rentEpoch": 2
+      }
+    },
+    "id": 1
+  },
+  "getBalance": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": 1000000000
+    },
+    "id": 1
+  },
+  "getBlock": {
+    "jsonrpc": "2.0",
+    "result": {
+      "blockHeight": 428,
+      "blockTime": 1616949699,
+      "blockhash": "4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZAMdL4VZHirAn",
+      "parentSlot": 429,
+      "previousBlockhash": "3XKhNq9EMkH3MqRNhJ5BwLKG5Z6tpCf7CNTB5k8F6Vjm",
+      "transactions": []
+    },
+    "id": 1
+  },
+  "getBlockCommitment": {
+    "jsonrpc": "2.0",
+    "result": {
+      "commitment": null,
+      "totalStake": 42
+    },
+    "id": 1
+  },
+  "getBlockHeight": {
+    "jsonrpc": "2.0",
+    "result": 1233,
+    "id": 1
+  },
+  "getBlockProduction": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "byIdentity": {},
+        "range": {
+          "firstSlot": 1,
+          "lastSlot": 1
+        }
+      }
+    },
+    "id": 1
+  },
+  "getBlocks": {
+    "jsonrpc": "2.0",
+    "result": [1, 2, 3],
+    "id": 1
+  },
+  "getBlocksWithLimit": {
+    "jsonrpc": "2.0",
+    "result": [1, 2, 3],
+    "id": 1
+  },
+  "getBlockTime": {
+    "jsonrpc": "2.0",
+    "result": 1616949699,
+    "id": 1
+  },
+  "getClusterNodes": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "gossip": "10.239.6.48:8001",
+        "pubkey": "9QzsJf7LPLj8GkXbYT3LFDKqsj2hHG7TA3xinJHu8epQ",
+        "rpc": "10.239.6.48:8899",
+        "tpu": "10.239.6.48:8856",
+        "version": "1.0.0"
+      }
+    ],
+    "id": 1
+  },
+  "getEpochInfo": {
+    "jsonrpc": "2.0",
+    "result": {
+      "absoluteSlot": 166598,
+      "blockHeight": 166500,
+      "epoch": 27,
+      "slotIndex": 2790,
+      "slotsInEpoch": 8192,
+      "transactionCount": 22661093
+    },
+    "id": 1
+  },
+  "getEpochSchedule": {
+    "jsonrpc": "2.0",
+    "result": {
+      "firstNormalEpoch": 8,
+      "firstNormalSlot": 8160,
+      "leaderScheduleSlotOffset": 8192,
+      "slotsPerEpoch": 8192,
+      "warmup": true
+    },
+    "id": 1
+  },
+  "getFeeForMessage": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": 5000
+    },
+    "id": 1
+  },
+  "getFirstAvailableBlock": {
+    "jsonrpc": "2.0",
+    "result": 1,
+    "id": 1
+  },
+  "getGenesisHash": {
+    "jsonrpc": "2.0",
+    "result": "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC",
+    "id": 1
+  },
+  "getHealth": {
+    "jsonrpc": "2.0",
+    "result": "ok",
+    "id": 1
+  },
+  "getHighestSnapshotSlot": {
+    "jsonrpc": "2.0",
+    "result": {
+      "full": 100,
+      "incremental": 110
+    },
+    "id": 1
+  },
+  "getIdentity": {
+    "jsonrpc": "2.0",
+    "result": {
+      "identity": "2r1F4iWqVcb8M1DbAjQuFpebkQHY9hcVU4WuW2DJBppN"
+    },
+    "id": 1
+  },
+  "getInflationGovernor": {
+    "jsonrpc": "2.0",
+    "result": {
+      "foundation": 0.05,
+      "foundationTerm": 7.0,
+      "initial": 0.15,
+      "taper": 0.15,
+      "terminal": 0.015
+    },
+    "id": 1
+  },
+  "getInflationRate": {
+    "jsonrpc": "2.0",
+    "result": {
+      "epoch": 100,
+      "foundation": 0.001,
+      "total": 0.149,
+      "validator": 0.148
+    },
+    "id": 1
+  },
+  "getInflationReward": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "amount": 2500,
+        "effectiveSlot": 224,
+        "epoch": 2,
+        "postBalance": 499999442500
+      }
+    ],
+    "id": 1
+  },
+  "getLargestAccounts": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": [
+        {
+          "address": "Vote111111111111111111111111111111111111111",
+          "lamports": 0
+        }
+      ]
+    },
+    "id": 1
+  },
+  "getLatestBlockhash": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "blockhash": "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N",
+        "lastValidBlockHeight": 3090
+      }
+    },
+    "id": 1
+  },
+  "getLeaderSchedule": {
+    "jsonrpc": "2.0",
+    "result": {
+      "4Qkev8aNZcqFNSRhQzwyLMFSsi94jHqE8WNVTJzTP99F": [0, 1, 2, 3]
+    },
+    "id": 1
+  },
+  "getMaxRetransmitSlot": {
+    "jsonrpc": "2.0",
+    "result": 1234,
+    "id": 1
+  },
+  "getMaxShredInsertSlot": {
+    "jsonrpc": "2.0",
+    "result": 1234,
+    "id": 1
+  },
+  "getMinimumBalanceForRentExemption": {
+    "jsonrpc": "2.0",
+    "result": 1238880,
+    "id": 1
+  },
+  "getMultipleAccounts": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": [
+        {
+          "data": ["", "base64"],
+          "executable": false,
+          "lamports": 1000000000,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 2
+        }
+      ]
+    },
+    "id": 1
+  },
+  "getProgramAccounts": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "account": {
+          "data": ["", "base64"],
+          "executable": false,
+          "lamports": 1000000000,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 2
+        },
+        "pubkey": "CxELquR1gPP8wHe33gZ4QxqGB3sZ9RSwsJ2KshVewkFY"
+      }
+    ],
+    "id": 1
+  },
+  "getRecentPerformanceSamples": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "numSlots": 126,
+        "numTransactions": 126,
+        "samplePeriodSecs": 60,
+        "slot": 348125
+      }
+    ],
+    "id": 1
+  },
+  "getRecentPrioritizationFees": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "prioritizationFee": 0,
+        "slot": 348125
+      }
+    ],
+    "id": 1
+  },
+  "getSignaturesForAddress": {
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "blockTime": 1616949699,
+        "confirmationStatus": "finalized",
+        "err": null,
+        "memo": null,
+        "signature": "5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqokgpiKRLuS83KUxyZyv2sUYv",
+        "slot": 114
+      }
+    ],
+    "id": 1
+  },
+  "getSignatureStatuses": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": [
+        {
+          "confirmationStatus": "finalized",
+          "confirmations": null,
+          "err": null,
+          "slot": 1
+        }
+      ]
+    },
+    "id": 1
+  },
+  "getSlot": {
+    "jsonrpc": "2.0",
+    "result": 1234,
+    "id": 1
+  },
+  "getSlotLeader": {
+    "jsonrpc": "2.0",
+    "result": "ENvAW7JScgYq6o4zKZwewtkzzJgDzuJAFxYasvmEQdpS",
+    "id": 1
+  },
+  "getSlotLeaders": {
+    "jsonrpc": "2.0",
+    "result": [
+      "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n",
+      "ChorusmmK7i1AxXeiTtQgQZhQNiXYU84ULeaYF1EH15n"
+    ],
+    "id": 1
+  },
+  "getStakeMinimumDelegation": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": 1000000000
+    },
+    "id": 1
+  },
+  "getSupply": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "circulating": 16000000,
+        "nonCirculating": 1000000,
+        "nonCirculatingAccounts": [],
+        "total": 17000000
+      }
+    },
+    "id": 1
+  },
+  "getTokenAccountBalance": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "amount": "9864",
+        "decimals": 2,
+        "uiAmount": 98.64,
+        "uiAmountString": "98.64"
+      }
+    },
+    "id": 1
+  },
+  "getTokenAccountsByDelegate": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": []
+    },
+    "id": 1
+  },
+  "getTokenAccountsByOwner": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": []
+    },
+    "id": 1
+  },
+  "getTokenLargestAccounts": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": []
+    },
+    "id": 1
+  },
+  "getTokenSupply": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "amount": "100000",
+        "decimals": 2,
+        "uiAmount": 1000.0,
+        "uiAmountString": "1000"
+      }
+    },
+    "id": 1
+  },
+  "getTransaction": {
+    "jsonrpc": "2.0",
+    "result": {
+      "blockTime": 1616949699,
+      "meta": {
+        "err": null,
+        "fee": 5000,
+        "postBalances": [499998932500, 26858640, 1, 1, 1],
+        "preBalances": [499998937500, 26858640, 1, 1, 1],
+        "status": {
+          "Ok": null
+        }
+      },
+      "slot": 430,
+      "transaction": {
+        "message": {
+          "accountKeys": [],
+          "header": {
+            "numReadonlySignedAccounts": 0,
+            "numReadonlyUnsignedAccounts": 3,
+            "numRequiredSignatures": 1
+          },
+          "instructions": [],
+          "recentBlockhash": "GH7ome3EiwEr7tu9JuTh2dpYWBJK3z69Xm1ZE3MEE6JC"
+        },
+        "signatures": []
+      }
+    },
+    "id": 1
+  },
+  "getTransactionCount": {
+    "jsonrpc": "2.0",
+    "result": 268,
+    "id": 1
+  },
+  "getVersion": {
+    "jsonrpc": "2.0",
+    "result": {
+      "solana-core": "1.16.0"
+    },
+    "id": 1
+  },
+  "getVoteAccounts": {
+    "jsonrpc": "2.0",
+    "result": {
+      "current": [],
+      "delinquent": []
+    },
+    "id": 1
+  },
+  "isBlockhashValid": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": true
+    },
+    "id": 1
+  },
+  "minimumLedgerSlot": {
+    "jsonrpc": "2.0",
+    "result": 1234,
+    "id": 1
+  },
+  "requestAirdrop": {
+    "jsonrpc": "2.0",
+    "result": "5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW",
+    "id": 1
+  },
+  "sendTransaction": {
+    "jsonrpc": "2.0",
+    "result": "2id3YC2jK9G5Wo2phDx4gJVAew8DcY5NAojnVuao8rkxwPYPe8cSwE5GzhEgJA2y8fVjDEo6iR6ykBvDxrTQrtpb",
+    "id": 1
+  },
+  "simulateTransaction": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "slot": 1
+      },
+      "value": {
+        "accounts": null,
+        "err": null,
+        "logs": [],
+        "returnData": null,
+        "unitsConsumed": 0
+      }
+    },
+    "id": 1
+  }
+}

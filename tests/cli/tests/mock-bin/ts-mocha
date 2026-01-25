@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/vscode/.nvm/versions/node/v25.4.0/bin/node
+#!/usr/bin/env node
 
 const fs = require("fs");
 

@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+
+const OUTPUT_PATH = process.env.MOCK_RPC_OUTPUT_PATH;
+const PORT = 8899;
+
+// Load methods fixture
+const methodsPath = path.resolve(__dirname, "../../templates/rpc/methods.json");
+const methods = JSON.parse(fs.readFileSync(methodsPath, "utf-8"));
+
+// Initialize log file
+if (OUTPUT_PATH) {
+  fs.writeFileSync(OUTPUT_PATH, "");
+}
+
+function logRpcCall(method, request, response) {
+  if (!OUTPUT_PATH) return;
+
+  const logEntry = [
+    `---- rpc method: ${method} ----`,
+    "--- RPC begin request ---",
+    JSON.stringify(request, null, 2),
+    "--- RPC end request ---",
+    "--- RPC begin response ---",
+    JSON.stringify(response, null, 2),
+    "--- RPC end response ---",
+    "",
+  ].join("\n");
+
+  fs.appendFileSync(OUTPUT_PATH, logEntry);
+}
+
+const server = http.createServer((req, res) => {
+  if (req.method !== "POST") {
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Method not allowed" }));
+    return;
+  }
+
+  let body = "";
+  req.on("data", (chunk) => {
+    body += chunk.toString();
+  });
+
+  req.on("end", () => {
+    let request;
+    try {
+      request = JSON.parse(body);
+    } catch (e) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
+    const method = request.method;
+    let response;
+
+    if (methods[method]) {
+      // Return the stored response
+      response = methods[method];
+    } else {
+      // Method not found error
+      response = {
+        jsonrpc: "2.0",
+        error: {
+          code: -32601,
+          message: "Method not found",
+        },
+        id: 1,
+      };
+    }
+
+    // Log the call
+    logRpcCall(method, request, response);
+
+    // Send response
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(response));
+  });
+});
+
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`RPC mock server listening on port ${PORT}`);
+});
+
+// Keep process alive
+process.on("SIGTERM", () => {
+  server.close(() => {
+    process.exit(0);
+  });
+});
