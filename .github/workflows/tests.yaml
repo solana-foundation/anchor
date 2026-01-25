@@ -25,4 +25,4 @@ jobs:
       # TODO: currently this value is only used to invalidate the cache and install latest, it is not
       # actually installing the specified version.
       # Issue: https://github.com/solana-foundation/anchor/issues/4160
-      surfpool_cli_version: 1.0.0-rc1
+      surfpool_cli_version: 1.0.0
