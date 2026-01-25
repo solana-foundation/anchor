@@ -1,0 +1,23 @@
+---- rpc method: getRecentPrioritizationFees ----
+--- RPC begin request ---
+{
+  "id": 0,
+  "jsonrpc": "2.0",
+  "method": "getRecentPrioritizationFees",
+  "params": [
+    []
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "prioritizationFee": 0,
+      "slot": 348125
+    }
+  ],
+  "id": 1
+}
+--- RPC end response ---
