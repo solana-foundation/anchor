@@ -8,7 +8,7 @@ else
 fi
 
 cd programs/idl
-anchor idl build -o $dir/new.json
+anchor idl build -o $dir/idl.json
 
 cd ../generics
 anchor idl build -o $dir/generics.json

@@ -17,288 +17,553 @@ pub const BYTES_STR: &[u8] = b"test";
 
 pub const NO_IDL: u16 = 55;
 
-/// IDL test program documentation.
 #[program]
 pub mod idl {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        ctx.accounts.state.set_inner(State::default());
+    pub fn no_case_conversion(ctx: Context<NoCaseConversion>, field_name: u8) -> Result<()> {
+        ctx.accounts.case_conversion_account.field_name = field_name;
+        emit!(SimpleEvent { field_name });
         Ok(())
     }
 
-    /// Initializes an account with specified values
-    pub fn initialize_with_values(
-        ctx: Context<Initialize>,
-        bool_field: bool,
-        u8_field: u8,
-        i8_field: i8,
-        u16_field: u16,
-        i16_field: i16,
-        u32_field: u32,
-        i32_field: i32,
-        f32_field: f32,
-        u64_field: u64,
-        i64_field: i64,
-        f64_field: f64,
-        u128_field: u128,
-        i128_field: i128,
-        bytes_field: Vec<u8>,
-        string_field: String,
-        pubkey_field: Pubkey,
-        vec_field: Vec<u64>,
-        vec_struct_field: Vec<FooStruct>,
-        option_field: Option<bool>,
-        option_struct_field: Option<FooStruct>,
-        struct_field: FooStruct,
-        array_field: [bool; 3],
-        enum_field_1: FooEnum,
-        enum_field_2: FooEnum,
-        enum_field_3: FooEnum,
-        enum_field_4: FooEnum,
+    pub fn empty(_ctx: Context<Empty>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn primitive_types(
+        ctx: Context<PrimitiveTypes>,
+        bool: bool,
+        i8: i8,
+        i16: i16,
+        i32: i32,
+        i64: i64,
+        i128: i128,
+        u8: u8,
+        u16: u16,
+        u32: u32,
+        u64: u64,
+        u128: u128,
+        f32: f32,
+        f64: f64,
+        pubkey: Pubkey,
     ) -> Result<()> {
-        ctx.accounts.state.set_inner(State {
-            bool_field,
-            u8_field,
-            i8_field,
-            u16_field,
-            i16_field,
-            u32_field,
-            i32_field,
-            f32_field,
-            u64_field,
-            i64_field,
-            f64_field,
-            u128_field,
-            i128_field,
-            bytes_field,
-            string_field,
-            pubkey_field,
-            vec_field,
-            vec_struct_field,
-            option_field,
-            option_struct_field,
-            struct_field,
-            array_field,
-            enum_field_1,
-            enum_field_2,
-            enum_field_3,
-            enum_field_4,
-        });
+        ctx.accounts.account.bool = bool;
 
+        ctx.accounts.account.i8 = i8;
+        ctx.accounts.account.i16 = i16;
+        ctx.accounts.account.i32 = i32;
+        ctx.accounts.account.i64 = i64;
+        ctx.accounts.account.i128 = i128;
+
+        ctx.accounts.account.u8 = u8;
+        ctx.accounts.account.u16 = u16;
+        ctx.accounts.account.u32 = u32;
+        ctx.accounts.account.u64 = u64;
+        ctx.accounts.account.u128 = u128;
+
+        ctx.accounts.account.f32 = f32;
+        ctx.accounts.account.f64 = f64;
+
+        ctx.accounts.account.pubkey = pubkey;
         Ok(())
     }
 
-    /// a separate instruction due to initialize_with_values having too many arguments
-    /// https://github.com/solana-labs/solana/issues/23978
-    pub fn initialize_with_values2(
-        ctx: Context<Initialize2>,
-        vec_of_option: Vec<Option<u64>>,
-        box_field: Box<bool>,
-    ) -> Result<SomeRetStruct> {
-        ctx.accounts.state.set_inner(State2 {
-            vec_of_option,
-            box_field,
-        });
-        Ok(SomeRetStruct { some_field: 3 })
+    pub fn unsized_types(ctx: Context<UnsizedTypes>, string: String, bytes: Vec<u8>) -> Result<()> {
+        ctx.accounts.account.string = string;
+        ctx.accounts.account.bytes = bytes;
+        Ok(())
     }
 
-    pub fn cause_error(_ctx: Context<CauseError>) -> Result<()> {
-        Err(error!(ErrorCode::SomeError))
+    pub fn strct(
+        ctx: Context<Struct>,
+        unit: UnitStruct,
+        named: NamedStruct,
+        tuple: TupleStruct,
+    ) -> Result<()> {
+        ctx.accounts.account.unit = unit;
+        ctx.accounts.account.named = named;
+        ctx.accounts.account.tuple = tuple;
+        Ok(())
+    }
+
+    pub fn enm(ctx: Context<Enum>, full_enum: FullEnum) -> Result<()> {
+        ctx.accounts.account.full_enum = full_enum;
+        Ok(())
+    }
+
+    pub fn type_alias(
+        ctx: Context<TypeAlias>,
+        alias_u8: AliasU8,
+        alias_u8_array: AliasU8Array,
+        alias_struct: AliasStruct,
+        alias_vec_string: AliasVec<String>,
+        alias_option_vec_pubkey: AliasOptionVec<Pubkey>,
+        alias_generic_const: AliasGenericConst<4>,
+        alias_multiple_generics_mixed: AliasMultipleGenericMixed<bool, 2>,
+        alias_external: UnixTimestamp,
+    ) -> Result<()> {
+        ctx.accounts.account.alias_u8 = alias_u8;
+        ctx.accounts.account.alias_u8_array = alias_u8_array;
+        ctx.accounts.account.alias_struct = alias_struct;
+        ctx.accounts.account.alias_vec_string = alias_vec_string;
+        ctx.accounts.account.alias_option_vec_pubkey = alias_option_vec_pubkey;
+        ctx.accounts.account.alias_generic_const = alias_generic_const;
+        ctx.accounts.account.alias_multiple_generics_mixed = alias_multiple_generics_mixed;
+        ctx.accounts.account.alias_external = alias_external;
+        Ok(())
+    }
+
+    pub fn boxed(
+        ctx: Context<Boxed>,
+        u8: Box<u8>,
+        u8_array: Box<[u8; 8]>,
+        defined: Box<NamedStruct>,
+        external: Box<external::MyStruct>,
+        external_non_anchor: Box<wrapped::Feature>,
+    ) -> Result<()> {
+        ctx.accounts.account.u8 = u8;
+        ctx.accounts.account.u8_array = u8_array;
+        ctx.accounts.account.defined = defined;
+        ctx.accounts.account.external = external;
+        ctx.accounts.account.external_non_anchor = external_non_anchor;
+        Ok(())
+    }
+
+    pub fn account_and_event_arg_and_field(
+        ctx: Context<AccountAndEventArgAndField>,
+        account: AccountAndEventFieldAccount,
+    ) -> Result<()> {
+        *ctx.accounts.account = account;
+        Ok(())
+    }
+
+    pub fn generic(ctx: Context<Generic>, generic_arg: GenericStruct<u16, 4>) -> Result<()> {
+        ctx.accounts.my_account.field = generic_arg;
+        Ok(())
+    }
+
+    pub fn generic_custom_struct(
+        ctx: Context<GenericCustomStruct>,
+        generic_arg: GenericStruct<SomeStruct, 4>,
+    ) -> Result<()> {
+        ctx.accounts.my_account.field = generic_arg;
+        Ok(())
+    }
+
+    pub fn full_path(
+        ctx: Context<FullPath>,
+        named_struct: NamedStruct,
+        some_module_named_struct: some_module::NamedStruct,
+    ) -> Result<()> {
+        ctx.accounts.account.named_struct = named_struct;
+        ctx.accounts.account.some_module_named_struct = some_module_named_struct;
+        Ok(())
+    }
+
+    pub fn return_type(_ctx: Context<ReturnType>) -> Result<NamedStruct> {
+        Ok(NamedStruct {
+            u8: 1,
+            u16: 2,
+            u32: 4,
+            u64: 8,
+        })
+    }
+
+    pub fn external(ctx: Context<External>, my_struct: external::MyStruct) -> Result<()> {
+        ctx.accounts.account.my_struct = my_struct;
+        Ok(())
+    }
+
+    pub fn external_non_anchor(
+        ctx: Context<ExternalNonAnchor>,
+        feature: wrapped::Feature,
+    ) -> Result<()> {
+        ctx.accounts.account.feature = feature;
+        Ok(())
+    }
+
+    pub fn test_compilation(_ctx: Context<TestCompilation>) -> Result<()> {
+        Ok(())
     }
 }
 
-/// Enum type
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum FooEnum {
-    /// Tuple kind
-    Unnamed(bool, u8, BarStruct),
-    UnnamedSingle(BarStruct),
-    Named {
-        /// A bool field inside a struct tuple kind
-        bool_field: bool,
-        u8_field: u8,
-        nested: BarStruct,
-    },
-    Struct(BarStruct),
-    OptionStruct(Option<BarStruct>),
-    VecStruct(Vec<BarStruct>),
-    NoFields,
-}
-
-/// Bar struct type
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BarStruct {
-    /// Some field
-    some_field: bool,
-    other_field: u8,
-}
-
-impl Default for BarStruct {
-    fn default() -> Self {
-        Self {
-            some_field: true,
-            other_field: 10,
-        }
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct FooStruct {
-    field1: u8,
-    field2: u16,
-    nested: BarStruct,
-    vec_nested: Vec<BarStruct>,
-    option_nested: Option<BarStruct>,
-    enum_field: FooEnum,
-}
-
-impl Default for FooStruct {
-    fn default() -> Self {
-        Self {
-            field1: 123,
-            field2: 999,
-            nested: BarStruct::default(),
-            vec_nested: vec![BarStruct::default()],
-            option_nested: Some(BarStruct::default()),
-            enum_field: FooEnum::Named {
-                bool_field: true,
-                u8_field: 15,
-                nested: BarStruct::default(),
-            },
-        }
-    }
-}
-
-/// An account containing various fields
-#[account]
-pub struct State {
-    /// A boolean field
-    bool_field: bool,
-    u8_field: u8,
-    i8_field: i8,
-    u16_field: u16,
-    i16_field: i16,
-    u32_field: u32,
-    i32_field: i32,
-    f32_field: f32,
-    u64_field: u64,
-    i64_field: i64,
-    f64_field: f64,
-    u128_field: u128,
-    i128_field: i128,
-    bytes_field: Vec<u8>,
-    string_field: String,
-    pubkey_field: Pubkey,
-    vec_field: Vec<u64>,
-    vec_struct_field: Vec<FooStruct>,
-    option_field: Option<bool>,
-    option_struct_field: Option<FooStruct>,
-    struct_field: FooStruct,
-    array_field: [bool; 3],
-    enum_field_1: FooEnum,
-    enum_field_2: FooEnum,
-    enum_field_3: FooEnum,
-    enum_field_4: FooEnum,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            bool_field: true,
-            u8_field: 234,
-            i8_field: -123,
-            u16_field: 62345,
-            i16_field: -31234,
-            u32_field: 1234567891,
-            i32_field: -1234567891,
-            f32_field: 123456.5,
-            u64_field: u64::MAX / 2 + 10,
-            i64_field: i64::MIN / 2 - 10,
-            f64_field: 1234567891.345,
-            u128_field: u128::MAX / 2 + 10,
-            i128_field: i128::MIN / 2 - 10,
-            bytes_field: vec![1, 2, 255, 254],
-            string_field: String::from("hello"),
-            pubkey_field: pubkey!("EPZP2wrcRtMxrAPJCXVEQaYD9eH7fH7h12YqKDcd4aS7"),
-            vec_field: vec![1, 2, 100, 1000, u64::MAX],
-            vec_struct_field: vec![FooStruct::default()],
-            option_field: None,
-            option_struct_field: Some(FooStruct::default()),
-            struct_field: FooStruct::default(),
-            array_field: [true, false, true],
-            enum_field_1: FooEnum::Unnamed(false, 10, BarStruct::default()),
-            enum_field_2: FooEnum::Named {
-                bool_field: true,
-                u8_field: 20,
-                nested: BarStruct::default(),
-            },
-            enum_field_3: FooEnum::Struct(BarStruct::default()),
-            enum_field_4: FooEnum::NoFields,
-        }
-    }
-}
+/// IDL test for the issue explained in https://github.com/coral-xyz/anchor/issues/3358
+///
+/// For example, using [`SimpleAccount`] and adding the full path at the end of a doc comment
+/// used to result in a false-positive when detecting conflicts.
+///
+/// [`SimpleAccount`]: crate::SimpleAccount
+#[constant]
+pub const TEST_CONVERT_MODULE_PATHS: &[u8] = b"convert_module_paths";
 
 #[account]
-pub struct State2 {
-    vec_of_option: Vec<Option<u64>>,
-    box_field: Box<bool>,
+#[derive(InitSpace)]
+pub struct SimpleAccount {
+    pub field_name: u8,
 }
-impl Default for State2 {
-    fn default() -> Self {
-        Self {
-            vec_of_option: vec![None, Some(10)],
-            box_field: Box::new(true),
-        }
+
+#[event]
+#[derive(Clone)]
+pub struct SimpleEvent {
+    pub field_name: u8,
+}
+
+#[derive(Accounts)]
+pub struct NoCaseConversion<'info> {
+    #[account(init, payer = payer, space = 8 + SimpleAccount::INIT_SPACE)]
+    pub case_conversion_account: Account<'info, SimpleAccount>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct Empty {}
+
+#[derive(Accounts)]
+pub struct PrimitiveTypes<'info> {
+    #[account(zero)]
+    pub account: Account<'info, PrimitiveAccount>,
+}
+
+#[account]
+pub struct PrimitiveAccount {
+    pub bool: bool,
+    pub i8: i8,
+    pub i16: i16,
+    pub i32: i32,
+    pub i64: i64,
+    pub i128: i128,
+    pub u8: u8,
+    pub u16: u16,
+    pub u32: u32,
+    pub u64: u64,
+    pub u128: u128,
+    pub f32: f32,
+    pub f64: f64,
+    pub pubkey: Pubkey,
+}
+
+#[derive(Accounts)]
+pub struct UnsizedTypes<'info> {
+    #[account(zero)]
+    pub account: Account<'info, UnsizedAccount>,
+}
+
+#[account]
+pub struct UnsizedAccount {
+    pub string: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Accounts)]
+pub struct Struct<'info> {
+    #[account(zero)]
+    pub account: Account<'info, StructAccount>,
+}
+
+#[account]
+pub struct StructAccount {
+    pub unit: UnitStruct,
+    pub named: NamedStruct,
+    pub tuple: TupleStruct,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+pub struct UnitStruct;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NamedStruct {
+    pub u8: u8,
+    pub u16: u16,
+    pub u32: u32,
+    pub u64: u64,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+pub struct TupleStruct(u64, String);
+
+#[derive(Accounts)]
+pub struct Enum<'info> {
+    #[account(zero)]
+    pub account: Account<'info, EnumAccount>,
+}
+
+#[account]
+pub struct EnumAccount {
+    pub full_enum: FullEnum,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FullEnum {
+    Unit,
+    Named { point_x: u64, point_y: u64 },
+    Unnamed(u8, u8, u16, u16),
+    UnnamedStruct(NamedStruct),
+}
+
+#[derive(Accounts)]
+pub struct TypeAlias<'info> {
+    #[account(zero)]
+    pub account: Account<'info, AliasAccount>,
+}
+
+#[account]
+pub struct AliasAccount {
+    pub alias_u8: AliasU8,
+    pub alias_u8_array: AliasU8Array,
+    pub alias_struct: AliasStruct,
+    pub alias_vec_string: AliasVec<String>,
+    pub alias_option_vec_pubkey: AliasOptionVec<Pubkey>,
+    pub alias_generic_const: AliasGenericConst<4>,
+    pub alias_multiple_generics_mixed: AliasMultipleGenericMixed<bool, 2>,
+    pub alias_external: UnixTimestamp,
+}
+
+pub type AliasU8 = u8;
+pub type AliasU8Array = [AliasU8; 8];
+pub type AliasStruct = NamedStruct;
+pub type AliasVec<T> = Vec<T>;
+pub type AliasOptionVec<T> = Vec<Option<T>>;
+pub type AliasGenericConst<const N: usize> = [u32; N];
+pub type AliasMultipleGenericMixed<T, const N: usize> = Vec<[T; N]>;
+
+// TODO: Remove this declaration and automatically resolve it from `solana-program`.
+// Splitting `solana-program` into multiple parts in Solana v2.1 broke resolution of type
+// aliases such as `UnixTimestamp` due to the resolution logic not being smart enough to figure
+// out where the declaration of the type comes from.
+pub type UnixTimestamp = i64;
+
+#[derive(Accounts)]
+pub struct Boxed<'info> {
+    #[account(zero)]
+    pub account: Account<'info, BoxedAccount>,
+}
+
+#[account]
+pub struct BoxedAccount {
+    pub u8: Box<u8>,
+    pub u8_array: Box<[u8; 8]>,
+    pub defined: Box<NamedStruct>,
+    pub external: Box<external::MyStruct>,
+    pub external_non_anchor: Box<wrapped::Feature>,
+}
+
+#[derive(Accounts)]
+pub struct AccountAndEventArgAndField<'info> {
+    #[account(zero)]
+    pub account: Account<'info, AccountAndEventFieldAccount>,
+}
+
+#[account]
+pub struct AccountAndEventFieldAccount {
+    pub simple_account: SimpleAccount,
+    pub simple_event: SimpleEvent,
+}
+
+#[derive(Accounts)]
+pub struct FullPath<'info> {
+    #[account(zero)]
+    pub account: Account<'info, FullPathAccount>,
+    pub external_program: Program<'info, external::program::External>,
+}
+
+#[account]
+pub struct FullPathAccount {
+    pub named_struct: NamedStruct,
+    pub some_module_named_struct: some_module::NamedStruct,
+}
+
+mod some_module {
+    use super::*;
+
+    #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+    pub struct NamedStruct {
+        pub data: u8,
     }
 }
 
 #[derive(Accounts)]
-pub struct NestedAccounts<'info> {
-    /// Sysvar clock
-    clock: Sysvar<'info, Clock>,
-    rent: Sysvar<'info, Rent>,
-}
-
-#[derive(Accounts)]
-pub struct Initialize<'info> {
-    /// State account
+pub struct Generic<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
     #[account(
         init,
-        space = 8 + 1000,
-        payer = payer,
+        payer = signer,
+        space = 1024,
+        seeds = [b"generic", signer.key.as_ref()],
+        bump
     )]
-    state: Account<'info, State>,
+    pub my_account: Account<'info, GenericAccount>,
+    pub system_program: Program<'info, System>,
+}
 
-    nested: NestedAccounts<'info>,
-    zc_account: AccountLoader<'info, SomeZcAccount>,
+#[derive(Accounts)]
+pub struct GenericCustomStruct<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    #[account(
+        init,
+        payer = signer,
+        space = 1024,
+        seeds = [b"genericCustomStruct", signer.key.as_ref()],
+        bump
+    )]
+    pub my_account: Account<'info, GenericAccountCustomStruct>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct GenericAccount {
+    pub field: GenericStruct<u16, 4>,
+}
+
+#[account]
+pub struct GenericAccountCustomStruct {
+    pub field: GenericStruct<SomeStruct, 4>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SomeStruct {
+    pub field: u16,
+}
+
+/// Compilation check for the issue described in https://github.com/coral-xyz/anchor/issues/3520
+// TODO: Use this from client-side (instead of hardcoding) once `program.constants` is supported
+const GENERIC_CONST: usize = 8;
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct GenericStruct<T: AnchorSerialize + AnchorDeserialize + Clone, const N: usize> {
+    arr: [T; N],
+    sub_field: SubGenericStruct<GENERIC_CONST, T, Vec<Option<T>>>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct SubGenericStruct<
+    const N: usize,
+    T: AnchorSerialize + AnchorDeserialize + Clone,
+    U: AnchorSerialize + AnchorDeserialize + Clone,
+> {
+    sub_arr: [T; N],
+    another: U,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub enum GenericEnum<T: AnchorSerialize + AnchorDeserialize + Clone> {
+    Unit,
+    Named { x: T },
+    Tuple(Vec<T>),
+}
+
+#[derive(Accounts)]
+pub struct ReturnType {}
+
+#[derive(Accounts)]
+pub struct External<'info> {
+    #[account(zero)]
+    pub account: Account<'info, AccountWithExternalField>,
+}
+
+#[account]
+pub struct AccountWithExternalField {
+    pub my_struct: external::MyStruct,
+}
+
+#[derive(Accounts)]
+pub struct ExternalNonAnchor<'info> {
+    #[account(zero)]
+    pub account: Account<'info, AccountWithNonAnchorExternalField>,
+}
+
+#[account]
+pub struct AccountWithNonAnchorExternalField {
+    pub feature: wrapped::Feature,
+}
+
+/// An example of wrapping a non-Anchor external type in order to include it in the IDL
+mod wrapped {
+    use super::*;
+
+    #[cfg(feature = "idl-build")]
+    use anchor_lang::idl::types::*;
+
+    pub struct Feature(anchor_lang::solana_program::feature::Feature);
+
+    impl AnchorSerialize for Feature {
+        fn serialize<W: std::io::prelude::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+            self.0.activated_at.serialize(writer)?;
+            Ok(())
+        }
+    }
+
+    impl AnchorDeserialize for Feature {
+        fn deserialize_reader<R: std::io::prelude::Read>(reader: &mut R) -> std::io::Result<Self> {
+            Ok(Self(anchor_lang::solana_program::feature::Feature {
+                activated_at: AnchorDeserialize::deserialize_reader(reader)?,
+            }))
+        }
+    }
+
+    impl Clone for Feature {
+        fn clone(&self) -> Self {
+            Self(anchor_lang::solana_program::feature::Feature {
+                activated_at: self.0.activated_at.clone(),
+            })
+        }
+    }
+
+    #[cfg(feature = "idl-build")]
+    impl IdlBuild for Feature {
+        fn create_type() -> Option<IdlTypeDef> {
+            Some(IdlTypeDef {
+                name: "Feature".into(),
+                ty: IdlTypeDefTy::Struct {
+                    fields: Some(IdlDefinedFields::Named(vec![IdlField {
+                        name: "activated_at".into(),
+                        ty: IdlType::Option(Box::new(IdlType::U64)),
+                        docs: Default::default(),
+                    }])),
+                },
+                docs: Default::default(),
+                generics: Default::default(),
+                serialization: Default::default(),
+                repr: Default::default(),
+            })
+        }
+    }
+}
+
+#[derive(Accounts)]
+pub struct TestCompilation<'info> {
+    account: Account<'info, SimpleAccount>,
+    zc_account: AccountLoader<'info, ZcAccount>,
+    zc_unsafe_account: AccountLoader<'info, ZcUnsafeAccount>,
+
+    composite: Composite<'info>,
 
     token_account: Account<'info, token::TokenAccount>,
     mint_account: Account<'info, token::Mint>,
     token_interface_account: InterfaceAccount<'info, token_interface::TokenAccount>,
     mint_interface_account: InterfaceAccount<'info, token_interface::Mint>,
 
-    #[account(mut)]
-    payer: Signer<'info>,
     system_program: Program<'info, System>,
+    token_program: Program<'info, token::Token>,
+    token_interface: Interface<'info, token_interface::TokenInterface>,
+
+    clock_sysvar: Sysvar<'info, Clock>,
+    rent_sysvar: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
-pub struct Initialize2<'info> {
-    #[account(
-        init,
-        space = 8 + 1000,
-        payer = payer,
-    )]
-    state: Account<'info, State2>,
-
-    #[account(mut)]
-    payer: Signer<'info>,
-    system_program: Program<'info, System>,
+pub struct Composite<'info> {
+    account: Account<'info, SimpleAccount>,
 }
 
-#[derive(Accounts)]
-pub struct CauseError {}
+#[account(zero_copy)]
+pub struct ZcAccount {}
+
+#[account(zero_copy(unsafe))]
+pub struct ZcUnsafeAccount {}
 
 #[error_code(offset = 500_000)]
 pub enum ErrorCode {
@@ -308,35 +573,4 @@ pub enum ErrorCode {
     OtherError,
     ErrorWithoutMsg,
     WithDiscrim = 500,
-}
-
-mod some_other_module {
-    use super::*;
-
-    #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-    pub struct MyStruct {
-        some_u8: u8,
-    }
-}
-
-#[event]
-pub struct SomeEvent {
-    bool_field: bool,
-    external_my_struct: external::MyStruct,
-    other_module_my_struct: some_other_module::MyStruct,
-}
-
-#[zero_copy]
-pub struct ZcStruct {
-    pub some_field: u16,
-}
-
-#[account(zero_copy)]
-pub struct SomeZcAccount {
-    field: ZcStruct,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SomeRetStruct {
-    pub some_field: u8,
 }
