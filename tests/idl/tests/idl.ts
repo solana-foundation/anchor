@@ -2,6 +2,7 @@ import * as anchor from "@anchor-lang/core";
 import BN from "bn.js";
 import { assert } from "chai";
 
+import type { External } from "../target/types/external";
 import type { Idl } from "../target/types/idl";
 
 describe("IDL", () => {
@@ -547,7 +548,7 @@ describe("IDL", () => {
         program.idl.accounts.find((acc) => acc.name === "zcAccount")
       );
       const zcAccount = program.idl.types.find((ty) => ty.name === "zcAccount");
-      if (!zcAccount) throw new Error("Zero copy accout not found");
+      if (!zcAccount) throw new Error("`zcAccount` not found");
 
       assert.strictEqual(zcAccount.serialization, "bytemuck");
       assert.deepEqual(zcAccount.repr, { kind: "c" });
@@ -560,11 +561,26 @@ describe("IDL", () => {
       const zcUnsafeAccount = program.idl.types.find(
         (ty) => ty.name === "zcUnsafeAccount"
       );
-      if (!zcUnsafeAccount)
-        throw new Error("Unsafe zero copy accout not found");
+      if (!zcUnsafeAccount) throw new Error("`zcUnsafeAccount` not found");
 
       assert.strictEqual(zcUnsafeAccount.serialization, "bytemuckunsafe");
       assert.deepEqual(zcUnsafeAccount.repr, { kind: "rust", packed: true });
+    });
+
+    it("Does not include external accounts", () => {
+      const external: anchor.Program<External> = anchor.workspace.external;
+      assert.isDefined(
+        external.idl.accounts.find((acc) => acc.name === "myAccount")
+      );
+      assert.isDefined(
+        external.idl.types.find((ty) => ty.name === "myAccount")
+      );
+
+      assert.isUndefined(
+        // @ts-expect-error
+        program.idl.accounts.find((acc) => acc.name === "myAccount")
+      );
+      assert.isDefined(program.idl.types.find((ty) => ty.name === "myAccount"));
     });
 
     it("Includes constants marked with `#[constant]`", () => {
