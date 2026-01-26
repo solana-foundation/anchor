@@ -348,6 +348,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "UncheckedAccount"
             | "AccountLoader"
             | "Account"
+            | "ReadOnlyAccount"
             | "LazyAccount"
             | "Migration"
             | "Program"
@@ -368,6 +369,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "UncheckedAccount" => Ty::UncheckedAccount,
         "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
         "Account" => Ty::Account(parse_account_ty(&path)?),
+        "ReadOnlyAccount" => Ty::ReadOnlyAccount(parse_read_only_account_ty(&path)?),
         "LazyAccount" => Ty::LazyAccount(parse_lazy_account_ty(&path)?),
         "Migration" => Ty::Migration(parse_migration_ty(&path)?),
         "Program" => Ty::Program(parse_program_ty(&path)?),
@@ -457,6 +459,17 @@ fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
         .replace(' ', "")
         .starts_with("Box<Account<");
     Ok(AccountTy {
+        account_type_path,
+        boxed,
+    })
+}
+
+fn parse_read_only_account_ty(path: &syn::Path) -> ParseResult<ReadOnlyAccountTy> {
+    let account_type_path = parse_account(path)?;
+    let boxed = parser::tts_to_string(path)
+        .replace(' ', "")
+        .starts_with("Box<ReadOnlyAccount<");
+    Ok(ReadOnlyAccountTy {
         account_type_path,
         boxed,
     })
