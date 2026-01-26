@@ -10,6 +10,7 @@ const withMDX = createMDX({
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  serverExternalPackages: ['markdown-to-jsx'],
   webpack: (config) => {
     // Existing config
     config.module.rules.push({
