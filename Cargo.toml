@@ -53,6 +53,12 @@ solana-sysvar = "~3.0.0"
 solana-sysvar-id = "3.0.0"
 solana-transaction = "3.0.0"
 
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/solana-foundation/anchor"
+version = "0.32.1"
+
 [profile.release]
 lto = true
 

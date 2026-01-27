@@ -1,7 +1,9 @@
 [package]
 name = "avm"
-version = "0.32.1"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "avm"

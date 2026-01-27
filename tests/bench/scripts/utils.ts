@@ -472,9 +472,8 @@ export class LockFile {
     try {
       await fs.rename(this.#CARGO_LOCK, this.#getLockPath(version));
     } catch {
-      // Lock file doesn't exist
-      // Run the tests to create the lock file
-      const result = runAnchorTest();
+      // Lock file doesn't exist; run `cargo generate-lockfile`
+      const result = spawn("cargo", ["generate-lockfile", "--quiet"]);
 
       // Check failure
       if (result.status !== 0) {
