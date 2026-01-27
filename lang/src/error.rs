@@ -1,12 +1,10 @@
-use {
-    crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
-    anchor_lang::error_code,
-    borsh::io::Error as BorshIoError,
-    std::{
-        fmt::{Debug, Display},
-        num::TryFromIntError,
-    },
-};
+use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
+use anchor_lang::error_code;
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use borsh::io::Error as BorshIoError;
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use core::num::TryFromIntError;
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -286,10 +284,11 @@ pub enum Error {
     ProgramError(Box<ProgramErrorWithOrigin>),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Error::AnchorError(ae) => Display::fmt(&ae, f),
             Error::ProgramError(pe) => Display::fmt(&pe, f),
@@ -408,7 +407,7 @@ impl PartialEq for ProgramErrorWithOrigin {
 impl Eq for ProgramErrorWithOrigin {}
 
 impl Display for ProgramErrorWithOrigin {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Display::fmt(&self.program_error, f)
     }
 }
@@ -559,7 +558,7 @@ impl AnchorError {
 }
 
 impl Display for AnchorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Debug::fmt(&self, f)
     }
 }
@@ -573,7 +572,7 @@ impl PartialEq for AnchorError {
 
 impl Eq for AnchorError {}
 
-impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
+impl core::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
     fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
         match e {
             Error::AnchorError(error) => {
