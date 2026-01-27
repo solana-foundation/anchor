@@ -1,0 +1,18 @@
+[package]
+name = "no-std-test"
+version = "0.1.0"
+description = "Test program for no_std compatibility"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "no_std_test"
+
+[features]
+no-entrypoint = []
+no-idl = []
+default = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }

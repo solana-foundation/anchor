@@ -4,7 +4,7 @@ use quote::quote;
 pub fn generate(error: Error) -> proc_macro2::TokenStream {
     let error_enum = &error.raw_enum;
     let enum_name = &error.ident;
-    // Each arm of the `match` statement for implementing `std::fmt::Display`
+    // Each arm of the `match` statement for implementing `core::fmt::Display`
     // on the user defined error code.
     let display_variant_dispatch: Vec<proc_macro2::TokenStream> = error
         .raw_enum
@@ -17,7 +17,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
             let display_msg = match &error_code.msg {
                 None => {
                     quote! {
-                        <Self as std::fmt::Debug>::fmt(self, fmt)
+                        <Self as core::fmt::Debug>::fmt(self, fmt)
                     }
                 }
                 Some(msg) => {
@@ -42,7 +42,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
             let ident = &variant.ident;
             let ident_name = ident.to_string();
             quote! {
-                #enum_name::#ident => #ident_name.to_string()
+                #enum_name::#ident => alloc::string::ToString::to_string(#ident_name)
             }
         })
         .collect();
@@ -56,13 +56,13 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
     };
 
     let ret = quote! {
-        #[derive(std::fmt::Debug, Clone, Copy)]
+        #[derive(core::fmt::Debug, Clone, Copy)]
         #[repr(u32)]
         #error_enum
 
         impl #enum_name {
             /// Gets the name of this [#enum_name].
-            pub fn name(&self) -> String {
+            pub fn name(&self) -> std::string::String {
                 match self {
                     #(#name_variant_dispatch),*
                 }
@@ -81,7 +81,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
                     anchor_lang::error::AnchorError {
                         error_name: error_code.name(),
                         error_code_number: error_code.into(),
-                        error_msg: error_code.to_string(),
+                        error_msg: alloc::string::ToString::to_string(&error_code),
                         error_origin: None,
                         compared_values: None
                     }
@@ -89,8 +89,8 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
             }
         }
 
-        impl std::fmt::Display for #enum_name {
-            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        impl core::fmt::Display for #enum_name {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
                 match self {
                     #(#display_variant_dispatch),*
                 }

@@ -439,15 +439,15 @@ fn generate_constraint_realloc(
         let __field_info = #field.to_account_info();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 
-        let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
-            .checked_sub(::std::convert::TryInto::try_into(__field_info.data_len()).unwrap())
+        let __delta_space = (core::convert::TryInto::<isize>::try_into(#new_space).unwrap())
+            .checked_sub(core::convert::TryInto::try_into(__field_info.data_len()).unwrap())
             .unwrap();
 
         if __delta_space != 0 {
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if core::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -575,7 +575,7 @@ fn generate_constraint_init_group(
                         __bumps.#field = #bump_tok;
 
                         // Build signer seeds at runtime = seeds + bump
-                        let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
+                        let mut __signer_seeds_vec: std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
                         __signer_seeds_vec.push(&[__bump][..]);
                         let __signer_seeds = __signer_seeds_vec;
 
@@ -1227,7 +1227,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             // expr, explicit bump -> concat slice + bump, then create_program_address.
             (SeedsExpr::Expr(expr), Some(b)) => quote! {
                 let __bump_bytes = [#b];
-                let __seeds_vec: ::std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
+                let __seeds_vec: std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
                 let __pda_address = Pubkey::create_program_address(
                     &__seeds_vec[..],
                     &#deriving_program_id,
