@@ -29,10 +29,18 @@ pub enum ProgramTemplate {
 }
 
 /// Create a program from the given name and template.
-pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
+///
+/// If `skip_workspace` is true, the workspace Cargo.toml will not be created.
+/// This is useful when adding a program to an existing Cargo workspace.
+pub fn create_program(
+    name: &str,
+    template: ProgramTemplate,
+    with_mollusk: bool,
+    skip_workspace: bool,
+) -> Result<()> {
     let program_path = Path::new("programs").join(name);
-    let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+
+    let mut common_files = vec![
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
@@ -40,6 +48,11 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
         ),
         // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
     ];
+
+    // Only create workspace Cargo.toml if not skipping
+    if !skip_workspace {
+        common_files.insert(0, ("Cargo.toml".into(), workspace_manifest().into()));
+    }
 
     let template_files = match template {
         ProgramTemplate::Single => {
