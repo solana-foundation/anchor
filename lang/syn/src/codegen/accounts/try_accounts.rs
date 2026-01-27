@@ -347,7 +347,7 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
         return quote! {
             // Duplicate mutable account validation for remaining_accounts only
             {
-                let mut __mutable_accounts = std::collections::HashSet::new();
+                let mut __mutable_accounts = std::collections::BTreeSet::new();
 
                 for __remaining_account in __accounts.iter() {
                     if __remaining_account.is_writable {

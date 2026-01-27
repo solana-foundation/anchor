@@ -254,10 +254,16 @@ fn generate_enum_deserialize(item: &syn::ItemEnum) -> TokenStream2 {
                 reader.read_exact(&mut variant_idx)?;
                 match variant_idx[0] {
                     #(#deserialize_variants)*
-                    _ => Err(borsh::io::Error::new(
-                        borsh::io::ErrorKind::InvalidData,
-                        format!("Invalid enum variant index: {}", variant_idx[0]),
-                    )),
+                    _ => {
+                        let msg = alloc::string::String::from("Invalid enum variant index: ");
+                        let mut msg = msg;
+                        // Note: In no_std, we can't easily format numbers, so we use a generic message
+                        // For full functionality, consider using a formatting library compatible with no_std
+                        Err(borsh::io::Error::new(
+                            borsh::io::ErrorKind::InvalidData,
+                            msg,
+                        ))
+                    },
                 }
             }
         }

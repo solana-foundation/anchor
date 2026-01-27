@@ -2,6 +2,7 @@
 #![allow(deprecated)]
 use crate::prelude::*;
 use crate::solana_program::pubkey::Pubkey;
+use alloc::string::String;
 
 pub use crate::solana_program::system_program::ID;
 

@@ -9,13 +9,14 @@ use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
     ToAccountMetas, ZeroCopy,
 };
-use std::cell::{Ref, RefMut};
-use std::collections::BTreeSet;
-use std::fmt;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::DerefMut;
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
+use core::cell::{Ref, RefMut};
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem;
+use core::ops::DerefMut;
+use crate::Write;
 
 /// Type facilitating on demand zero copy deserialization.
 ///

@@ -1,6 +1,7 @@
 use crate::error::ErrorCode;
 use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;
+use alloc::vec::Vec;
 use solana_sdk_ids::ed25519_program;
 
 /// Verifies an Ed25519 signature instruction assuming the signature, public key,
