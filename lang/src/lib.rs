@@ -61,9 +61,11 @@ pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
 
+pub use anchor_derive_serde::__erase;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
+
 pub mod solana_program {
     pub use solana_feature_gate_interface as feature;
 
