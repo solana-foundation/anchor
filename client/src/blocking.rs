@@ -1,6 +1,6 @@
 use crate::{
     ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
-    RequestBuilder,
+    RequestBuilder, TxVersion,
 };
 use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
 use solana_commitment_config::CommitmentConfig;
@@ -142,19 +142,86 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Box<dyn S
         self
     }
 
+    /// Sign and return a legacy transaction.
+    #[deprecated(note = "Use `signed_transaction_versioned(TxVersion::Legacy)` instead")]
     pub fn signed_transaction(&self) -> Result<Transaction, ClientError> {
-        self.handle.block_on(self.signed_transaction_internal())
+        self.handle
+            .block_on(self.signed_transaction_internal(TxVersion::Legacy))
+            .map(|tx| tx.into_legacy_transaction().expect("legacy transaction"))
     }
 
+    /// Sign and return a transaction with the specified version.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Legacy transaction
+    /// let tx = request.signed_transaction_versioned(TxVersion::Legacy)?;
+    ///
+    /// // V0 transaction
+    /// let tx = request.signed_transaction_versioned(TxVersion::V0(&[]))?;
+    /// ```
+    pub fn signed_transaction_versioned(
+        &self,
+        version: TxVersion<'_>,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        self.handle
+            .block_on(self.signed_transaction_internal(version))
+    }
+
+    /// Send a legacy transaction.
+    #[deprecated(note = "Use `send_versioned(TxVersion::Legacy)` instead")]
     pub fn send(&self) -> Result<Signature, ClientError> {
-        self.handle.block_on(self.send_internal())
+        self.handle.block_on(self.send_internal(TxVersion::Legacy))
     }
 
+    /// Send a transaction with the specified version.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Legacy transaction
+    /// let sig = request.send_versioned(TxVersion::Legacy)?;
+    ///
+    /// // V0 transaction with lookup tables
+    /// let sig = request.send_versioned(TxVersion::V0(&[lookup_table]))?;
+    /// ```
+    pub fn send_versioned(&self, version: TxVersion<'_>) -> Result<Signature, ClientError> {
+        self.handle.block_on(self.send_internal(version))
+    }
+
+    /// Send a legacy transaction with spinner and config.
+    #[deprecated(
+        note = "Use `send_with_spinner_and_config_versioned(TxVersion::Legacy, config)` instead"
+    )]
     pub fn send_with_spinner_and_config(
         &self,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
         self.handle
-            .block_on(self.send_with_spinner_and_config_internal(config))
+            .block_on(self.send_with_spinner_and_config_internal(TxVersion::Legacy, config))
+    }
+
+    /// Send a transaction with the specified version, spinner and config.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    /// * `config` - RPC send transaction configuration.
+    pub fn send_with_spinner_and_config_versioned(
+        &self,
+        version: TxVersion<'_>,
+        config: RpcSendTransactionConfig,
+    ) -> Result<Signature, ClientError> {
+        self.handle
+            .block_on(self.send_with_spinner_and_config_internal(version, config))
     }
 }
