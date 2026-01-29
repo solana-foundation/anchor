@@ -516,6 +516,8 @@ pub enum ClientError {
     SignerError(#[from] SignerError),
     #[error("{0}")]
     CompileError(#[from] solana_message::CompileError),
+    #[error("Expected a legacy transaction but got a versioned transaction")]
+    NotLegacyTransaction,
 }
 
 pub trait AsSigner {

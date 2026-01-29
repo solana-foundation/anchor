@@ -147,7 +147,10 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Box<dyn S
     pub fn signed_transaction(&self) -> Result<Transaction, ClientError> {
         self.handle
             .block_on(self.signed_transaction_internal(TxVersion::Legacy))
-            .map(|tx| tx.into_legacy_transaction().expect("legacy transaction"))
+            .and_then(|tx| {
+                tx.into_legacy_transaction()
+                    .ok_or(ClientError::NotLegacyTransaction)
+            })
     }
 
     /// Sign and return a transaction with the specified version.
