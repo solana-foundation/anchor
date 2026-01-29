@@ -175,8 +175,8 @@ pub fn generate(
 
             #[automatically_derived]
             impl anchor_lang::ToAccountMetas for #name {
-                fn to_account_metas(&self, is_signer: Option<bool>) -> std::vec::Vec<anchor_lang::solana_program::instruction::AccountMeta> {
-                    let mut account_metas = std::vec::Vec::new();
+                fn to_account_metas(&self, is_signer: Option<bool>) -> anchor_lang::prelude::Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+                    let mut account_metas = anchor_lang::prelude::Vec::new();
 
                     #(#account_struct_metas)*
 

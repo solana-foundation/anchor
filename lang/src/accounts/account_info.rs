@@ -2,13 +2,13 @@
 //! [Unchecked Account](crate::accounts::unchecked_account::UncheckedAccount)
 //! should be used instead.
 
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::ErrorCode;
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
 
 impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
     fn try_accounts(

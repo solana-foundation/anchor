@@ -23,8 +23,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::ToAccountInfos<#trait_generics> for #name <#struct_generics> #where_clause{
-            fn to_account_infos(&self) -> std::vec::Vec<anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>> {
-                let mut account_infos = std::vec::Vec::new();
+            fn to_account_infos(&self) -> anchor_lang::prelude::Vec<anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>> {
+                let mut account_infos = anchor_lang::prelude::Vec::new();
 
                 #(#to_acc_infos)*
 

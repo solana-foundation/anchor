@@ -1,10 +1,10 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
+use crate::compat::Vec;
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
-use alloc::vec::Vec;
 use core::fmt;
 
 /// Provides non-argument inputs to the program.

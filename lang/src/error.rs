@@ -1,7 +1,6 @@
+use crate::compat::{Box, String, ToString};
 use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use anchor_lang::error_code;
-use alloc::boxed::Box;
-use alloc::string::{String, ToString};
 use borsh::io::Error as BorshIoError;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use core::num::TryFromIntError;
@@ -333,6 +332,27 @@ impl From<BorshIoError> for Error {
     }
 }
 
+impl From<crate::WriteError> for Error {
+    fn from(error: crate::WriteError) -> Self {
+        match error {
+            crate::WriteError::WriteZero => Self::AnchorError(Box::new(AnchorError {
+                error_name: "WriteError".to_string(),
+                error_code_number: ErrorCode::AccountDidNotSerialize.into(),
+                error_msg: "Write zero".to_string(),
+                error_origin: None,
+                compared_values: None,
+            })),
+            crate::WriteError::Other => Self::AnchorError(Box::new(AnchorError {
+                error_name: "WriteError".to_string(),
+                error_code_number: ErrorCode::AccountDidNotSerialize.into(),
+                error_msg: "Write error".to_string(),
+                error_origin: None,
+                compared_values: None,
+            })),
+        }
+    }
+}
+
 impl From<ProgramErrorWithOrigin> for Error {
     fn from(pe: ProgramErrorWithOrigin) -> Self {
         Self::ProgramError(Box::new(pe))
@@ -344,7 +364,19 @@ impl From<TryFromIntError> for Error {
         Self::AnchorError(Box::new(AnchorError {
             error_name: ErrorCode::InvalidNumericConversion.name(),
             error_code_number: ErrorCode::InvalidNumericConversion.into(),
-            error_msg: format!("{e}"),
+            error_msg: {
+                #[cfg(not(feature = "std"))]
+                {
+                    use alloc::fmt::Write;
+                    let mut s = String::new();
+                    let _ = write!(s, "{e}");
+                    s
+                }
+                #[cfg(feature = "std")]
+                {
+                    format!("{e}")
+                }
+            },
             error_origin: None,
             compared_values: None,
         }))
@@ -455,13 +487,23 @@ impl ProgramErrorWithOrigin {
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 // using sol_log because msg! wrongly interprets 5 inputs as u64
-                anchor_lang::solana_program::log::sol_log(&format!(
-                    "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
-                    account_name,
-                    self.program_error,
-                    u64::from(self.program_error.clone()),
-                    self.program_error
-                ));
+                #[cfg(not(feature = "std"))]
+                {
+                    use alloc::fmt::Write;
+                    let mut msg = String::new();
+                    let _ = write!(msg, "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.", account_name, self.program_error, u64::from(self.program_error.clone()), self.program_error);
+                    anchor_lang::solana_program::log::sol_log(&msg);
+                }
+                #[cfg(feature = "std")]
+                {
+                    anchor_lang::solana_program::log::sol_log(&format!(
+                        "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                        account_name,
+                        self.program_error,
+                        u64::from(self.program_error.clone()),
+                        self.program_error
+                    ));
+                }
             }
         }
         match &self.compared_values {
@@ -525,10 +567,20 @@ impl AnchorError {
     pub fn log(&self) {
         match &self.error_origin {
             None => {
-                anchor_lang::solana_program::log::sol_log(&format!(
-                    "AnchorError occurred. Error Code: {}. Error Number: {}. Error Message: {}.",
-                    self.error_name, self.error_code_number, self.error_msg
-                ));
+                #[cfg(not(feature = "std"))]
+                {
+                    use alloc::fmt::Write;
+                    let mut msg = String::new();
+                    let _ = write!(msg, "AnchorError occurred. Error Code: {}. Error Number: {}. Error Message: {}.", self.error_name, self.error_code_number, self.error_msg);
+                    anchor_lang::solana_program::log::sol_log(&msg);
+                }
+                #[cfg(feature = "std")]
+                {
+                    anchor_lang::solana_program::log::sol_log(&format!(
+                        "AnchorError occurred. Error Code: {}. Error Number: {}. Error Message: {}.",
+                        self.error_name, self.error_code_number, self.error_msg
+                    ));
+                }
             }
             Some(ErrorOrigin::Source(source)) => {
                 anchor_lang::solana_program::msg!(
@@ -541,13 +593,23 @@ impl AnchorError {
                 );
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
-                anchor_lang::solana_program::log::sol_log(&format!(
-                    "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.",
-                    account_name,
-                    self.error_name,
-                    self.error_code_number,
-                    self.error_msg
-                ));
+                #[cfg(not(feature = "std"))]
+                {
+                    use alloc::fmt::Write;
+                    let mut msg = String::new();
+                    let _ = write!(msg, "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.", account_name, self.error_name, self.error_code_number, self.error_msg);
+                    anchor_lang::solana_program::log::sol_log(&msg);
+                }
+                #[cfg(feature = "std")]
+                {
+                    anchor_lang::solana_program::log::sol_log(&format!(
+                        "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.",
+                        account_name,
+                        self.error_name,
+                        self.error_code_number,
+                        self.error_msg
+                    ));
+                }
             }
         }
         match &self.compared_values {

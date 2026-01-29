@@ -42,7 +42,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
             let ident = &variant.ident;
             let ident_name = ident.to_string();
             quote! {
-                #enum_name::#ident => alloc::string::ToString::to_string(#ident_name)
+                #enum_name::#ident => anchor_lang::prelude::ToString::to_string(#ident_name)
             }
         })
         .collect();
@@ -62,7 +62,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
 
         impl #enum_name {
             /// Gets the name of this [#enum_name].
-            pub fn name(&self) -> std::string::String {
+            pub fn name(&self) -> anchor_lang::prelude::String {
                 match self {
                     #(#name_variant_dispatch),*
                 }
@@ -81,7 +81,7 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
                     anchor_lang::error::AnchorError {
                         error_name: error_code.name(),
                         error_code_number: error_code.into(),
-                        error_msg: alloc::string::ToString::to_string(&error_code),
+                        error_msg: anchor_lang::prelude::ToString::to_string(&error_code),
                         error_origin: None,
                         compared_values: None
                     }

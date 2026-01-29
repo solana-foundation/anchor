@@ -1,8 +1,8 @@
 //! Like [`Account`](crate::Account), but deserializes on-demand.
 
-use alloc::collections::BTreeSet;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
+use crate::compat::Arc;
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use core::cell::RefCell;
 use core::fmt;
 use core::mem::MaybeUninit;

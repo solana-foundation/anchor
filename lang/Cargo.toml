@@ -12,6 +12,8 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
+default = ["std"]
+std = []
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
 anchor-debug = [
     "anchor-attribute-access-control/anchor-debug",

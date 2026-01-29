@@ -1,6 +1,8 @@
 //! Account container that checks ownership on deserialization.
 
 use crate::accounts::account::Account;
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::ErrorCode;
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
@@ -10,8 +12,6 @@ use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
     Owners, Result, ToAccountInfos, ToAccountMetas,
 };
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
 use core::fmt;
 use core::ops::{Deref, DerefMut};
 

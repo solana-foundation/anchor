@@ -1,6 +1,8 @@
 //! Type validating that the account is one of a set of given Programs
 
 use crate::accounts::program::Program;
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
@@ -9,8 +11,6 @@ use crate::{
     AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
     ToAccountMetas,
 };
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
 use core::ops::Deref;
 
 /// Type validating that the account is one of a set of given Programs

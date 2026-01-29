@@ -1,13 +1,13 @@
 //! Explicit wrapper for AccountInfo types to emphasize
 //! that no checks are performed
 
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::ErrorCode;
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
 use core::ops::Deref;
 
 /// Explicit wrapper for AccountInfo types to emphasize

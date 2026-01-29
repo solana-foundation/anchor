@@ -116,7 +116,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     // Bump collector.
                     let mut __bumps = <#anchor as anchor_lang::Bumps>::Bumps::default();
 
-                    let mut __reallocs = std::collections::BTreeSet::new();
+                    let mut __reallocs = anchor_lang::prelude::BTreeSet::new();
 
                     // Deserialize accounts.
                     let mut __remaining_accounts: &[AccountInfo] = __accounts;
