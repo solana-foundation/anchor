@@ -299,6 +299,7 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
+    await waitNextSlot(provider.connection);
     // These have to be separate to make sure advance is in another slot.
     await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
@@ -383,6 +384,7 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
+    await waitNextSlot(provider.connection);
     await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
       .accounts({
@@ -399,6 +401,7 @@ describe("system-coder", () => {
           .instruction(),
       ])
       .rpc();
+    await waitNextSlot(provider.connection);
     await program.methods
       .authorizeNonceAccount(aliceKeypair.publicKey)
       .accounts({
@@ -423,3 +426,16 @@ describe("system-coder", () => {
     assert.equal(aliceBalanceAfter - aliceBalanceBefore, amount);
   });
 });
+
+async function waitNextSlot(connection: anchor.web3.Connection) {
+  const currentSlot = await connection.getSlot();
+
+  for (let i = 0; i < 20; i++) {
+    const slot = await connection.getSlot();
+    if (slot > currentSlot) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("Failed to wait for next slot");
+}
