@@ -74,7 +74,7 @@ pub async fn test_tokio(client: Client<Arc<Keypair>>, pid: Pubkey) -> Result<()>
         // Build and send a transaction.
         program
             .request()
-            .signer(counter)
+            .signers(&[counter])
             .accounts(basic_2_accounts::Create {
                 counter: counter_pubkey,
                 user: authority,
@@ -132,8 +132,7 @@ pub async fn composite<C: Deref<Target = impl Signer> + Clone>(
             500,
             &program.id(),
         ))
-        .signer(dummy_a.clone())
-        .signer(dummy_b.clone())
+        .signers(&[dummy_a.clone(), dummy_b.clone()])
         .accounts(Initialize {
             dummy_a: dummy_a.pubkey(),
             dummy_b: dummy_b.pubkey(),
@@ -190,7 +189,7 @@ pub async fn basic_2<C: Deref<Target = impl Signer> + Clone>(
     // Build and send a transaction.
     program
         .request()
-        .signer(counter.clone())
+        .signers(&[counter.clone()])
         .accounts(basic_2_accounts::Create {
             counter: counter.pubkey(),
             user: authority,
@@ -313,8 +312,7 @@ pub async fn optional<C: Deref<Target = impl Signer> + Clone>(
             DataAccount::LEN as u64,
             &program.id(),
         ))
-        .signer(data_account_keypair.clone())
-        .signer(required_keypair.clone())
+        .signers(&[required_keypair.clone(), data_account_keypair.clone()])
         .accounts(OptionalInitialize {
             payer: Some(program.payer()),
             required: required_keypair.pubkey(),
