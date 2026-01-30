@@ -409,6 +409,7 @@ describe("system-coder", () => {
         authorized: provider.wallet.publicKey,
       })
       .rpc();
+    await waitNextSlot(provider.connection);
     await program.methods
       .withdrawNonceAccount(new BN(amount))
       .accounts({
@@ -435,7 +436,7 @@ async function waitNextSlot(connection: anchor.web3.Connection) {
     if (slot > currentSlot) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
   throw new Error("Failed to wait for next slot");
 }
