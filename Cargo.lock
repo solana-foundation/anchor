@@ -318,6 +318,7 @@ dependencies = [
  "borsh 1.6.0",
  "bytemuck",
  "const-crypto",
+ "serde",
  "solana-account-info",
  "solana-clock",
  "solana-cpi",
@@ -336,7 +337,6 @@ dependencies = [
  "solana-program-pack",
  "solana-pubkey 4.1.0",
  "solana-sdk-ids",
- "solana-secp256k1-program",
  "solana-stake-interface",
  "solana-system-interface",
  "solana-sysvar",
@@ -5479,18 +5479,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "solana-secp256k1-program"
-version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad4cf8232f7aef9ff2dd95d701f63e3c11909dec2400def5c361be29d24291e7"
-dependencies = [
- "digest",
- "k256",
- "sha3",
- "solana-signature",
 ]
 
 [[package]]
