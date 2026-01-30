@@ -78,7 +78,7 @@ use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_program::hash::Hash;
-use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
+use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
     client_error::Error as SolanaClientError,
@@ -112,6 +112,7 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
+pub use solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError;
 pub use solana_signer::{Signer, SignerError};
 
 mod cluster;
