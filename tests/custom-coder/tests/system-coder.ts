@@ -8,6 +8,7 @@ import {
   PublicKey,
   SystemProgram,
   SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+  Transaction,
 } from "@solana/web3.js";
 import * as assert from "assert";
 import BN from "bn.js";
@@ -299,20 +300,30 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
-    await waitNextSlot(provider.connection);
+
+    let nonceAccount = await program.account.nonce.fetch(
+      nonceKeypair.publicKey
+    );
+    let previousNonce = nonceAccount.nonce.toString();
+
     // These have to be separate to make sure advance is in another slot.
-    await program.methods
+    const ix = await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
       .accounts({
         nonce: nonceKeypair.publicKey,
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .rpc();
+      .instruction();
+    const tx = new Transaction();
+    tx.add(ix);
+    tx.recentBlockhash = previousNonce;
+    tx.feePayer = provider.publicKey;
+
+    await provider.sendAndConfirm(tx, []);
     // assert
-    const nonceAccount = await program.account.nonce.fetch(
-      nonceKeypair.publicKey
-    );
+    nonceAccount = await program.account.nonce.fetch(nonceKeypair.publicKey);
     assert.notEqual(nonceAccount, null);
+    assert.notEqual(nonceAccount.nonce.toString(), previousNonce);
   });
 
   it("Authorizes a nonce account", async () => {
@@ -384,24 +395,39 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
-    await waitNextSlot(provider.connection);
-    await program.methods
-      .advanceNonceAccount(provider.wallet.publicKey)
-      .accounts({
-        nonce: nonceKeypair.publicKey,
-        recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-      })
-      .postInstructions([
-        await program.methods
-          .transfer(new BN(amount))
-          .accounts({
-            from: provider.wallet.publicKey,
-            to: nonceKeypair.publicKey,
-          })
-          .instruction(),
-      ])
-      .rpc();
-    await waitNextSlot(provider.connection);
+
+    let nonceAccount = await program.account.nonce.fetch(
+      nonceKeypair.publicKey
+    );
+    let previousNonce = nonceAccount.nonce.toString();
+
+    const tx = new Transaction();
+    tx.add(
+      await program.methods
+        .advanceNonceAccount(provider.wallet.publicKey)
+        .accounts({
+          nonce: nonceKeypair.publicKey,
+          recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        })
+        .instruction()
+    );
+    tx.add(
+      await program.methods
+        .transfer(new BN(amount))
+        .accounts({
+          from: provider.wallet.publicKey,
+          to: nonceKeypair.publicKey,
+        })
+        .instruction()
+    );
+    tx.feePayer = provider.publicKey;
+    tx.recentBlockhash = previousNonce;
+
+    await provider.sendAndConfirm(tx, []);
+
+    nonceAccount = await program.account.nonce.fetch(nonceKeypair.publicKey);
+    previousNonce = nonceAccount.nonce.toString();
+
     await program.methods
       .authorizeNonceAccount(aliceKeypair.publicKey)
       .accounts({
@@ -409,8 +435,8 @@ describe("system-coder", () => {
         authorized: provider.wallet.publicKey,
       })
       .rpc();
-    await waitNextSlot(provider.connection);
-    await program.methods
+
+    let withdrawIx = await program.methods
       .withdrawNonceAccount(new BN(amount))
       .accounts({
         authorized: aliceKeypair.publicKey,
@@ -418,8 +444,14 @@ describe("system-coder", () => {
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         to: aliceKeypair.publicKey,
       })
-      .signers([aliceKeypair])
-      .rpc();
+      .instruction();
+
+    const withdrawTx = new Transaction();
+    withdrawTx.add(withdrawIx);
+    withdrawTx.feePayer = provider.publicKey;
+    withdrawTx.recentBlockhash = previousNonce;
+    await provider.sendAndConfirm(withdrawTx, [aliceKeypair]);
+
     // assert
     const aliceBalanceAfter = (
       await program.provider.connection.getAccountInfo(aliceKeypair.publicKey)
@@ -427,16 +459,3 @@ describe("system-coder", () => {
     assert.equal(aliceBalanceAfter - aliceBalanceBefore, amount);
   });
 });
-
-async function waitNextSlot(connection: anchor.web3.Connection) {
-  const currentSlot = await connection.getSlot();
-
-  for (let i = 0; i < 20; i++) {
-    const slot = await connection.getSlot();
-    if (slot > currentSlot) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-  }
-  throw new Error("Failed to wait for next slot");
-}
