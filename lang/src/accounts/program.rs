@@ -1,5 +1,7 @@
 //! Type validating that the account is the given Program
 
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
@@ -8,10 +10,9 @@ use crate::solana_program::pubkey::Pubkey;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
 };
-use std::collections::BTreeSet;
-use std::fmt;
-use std::marker::PhantomData;
-use std::ops::Deref;
+use core::fmt;
+use core::marker::PhantomData;
+use core::ops::Deref;
 
 /// Type validating that the account is the given Program
 ///

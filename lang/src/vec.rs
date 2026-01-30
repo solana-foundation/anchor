@@ -1,10 +1,10 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
+use crate::compat::{BTreeSet, Vec};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
@@ -65,7 +65,7 @@ mod tests {
         let account2 =
             AccountInfo::new(&key, true, true, &mut lamports2, &mut data2, &owner, false);
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut reallocs = crate::compat::BTreeSet::new();
         let mut accounts = &[account1, account2][..];
         let parsed_accounts =
             Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
@@ -79,7 +79,7 @@ mod tests {
     fn test_accounts_trait_for_vec_empty() {
         let program_id = Pubkey::default();
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut reallocs = crate::compat::BTreeSet::new();
         let mut accounts = &[][..];
         Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
             .unwrap();

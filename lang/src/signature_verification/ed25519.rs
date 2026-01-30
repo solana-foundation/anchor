@@ -1,3 +1,4 @@
+use crate::compat::Vec;
 use crate::error::ErrorCode;
 use crate::prelude::*;
 use crate::solana_program::instruction::Instruction;

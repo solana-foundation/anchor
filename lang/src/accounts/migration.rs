@@ -1,6 +1,7 @@
 //! Account container for migrating from one account type to another.
 
 use crate::bpf_writer::BpfWriter;
+use crate::compat::{BTreeSet, Vec};
 use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
@@ -10,8 +11,7 @@ use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
     ToAccountInfos, ToAccountMetas,
 };
-use std::collections::BTreeSet;
-use std::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 
 /// Internal representation of the migration state.
 #[derive(Debug)]
@@ -493,9 +493,10 @@ mod tests {
     }
 
     impl AccountSerialize for AccountV1 {
-        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+        fn try_serialize<W: crate::Write>(&self, writer: &mut W) -> Result<()> {
             writer.write_all(&TEST_DISCRIMINATOR_V1)?;
-            AnchorSerialize::serialize(self, writer)?;
+            let mut adapter = crate::WriteAdapter::new(&mut *writer);
+            AnchorSerialize::serialize(self, &mut adapter)?;
             Ok(())
         }
     }
@@ -536,9 +537,10 @@ mod tests {
     }
 
     impl AccountSerialize for AccountV2 {
-        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+        fn try_serialize<W: crate::Write>(&self, writer: &mut W) -> Result<()> {
             writer.write_all(&TEST_DISCRIMINATOR_V2)?;
-            AnchorSerialize::serialize(self, writer)?;
+            let mut adapter = crate::WriteAdapter::new(&mut *writer);
+            AnchorSerialize::serialize(self, &mut adapter)?;
             Ok(())
         }
     }

@@ -13,12 +13,14 @@
 //! }
 //! ```
 
+use crate::compat::BTreeSet;
+use crate::compat::Box;
+use crate::compat::Vec;
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
-use std::ops::Deref;
+use core::ops::Deref;
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {
     fn try_accounts(

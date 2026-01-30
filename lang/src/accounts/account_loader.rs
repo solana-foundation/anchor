@@ -1,21 +1,22 @@
 //! Type facilitating on demand zero copy deserialization.
 
 use crate::bpf_writer::BpfWriter;
+use crate::compat::BTreeSet;
+use crate::compat::Vec;
 use crate::error::{Error, ErrorCode};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
+use crate::Write;
 use crate::{
     Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
     ToAccountMetas, ZeroCopy,
 };
-use std::cell::{Ref, RefMut};
-use std::collections::BTreeSet;
-use std::fmt;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::DerefMut;
+use core::cell::{Ref, RefMut};
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem;
+use core::ops::DerefMut;
 
 /// Type facilitating on demand zero copy deserialization.
 ///

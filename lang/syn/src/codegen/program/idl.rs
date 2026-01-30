@@ -107,7 +107,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
         }
 
 
-        use std::cell::{Ref, RefMut};
+        use core::cell::{Ref, RefMut};
 
         pub trait IdlTrailingData<'info> {
             fn trailing_data(self) -> Ref<'info, [u8]>;
@@ -147,7 +147,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             let owner = accounts.program.key;
             let to = Pubkey::create_with_seed(&base, seed, owner).unwrap();
             // Space: account discriminator || authority pubkey || vec len || vec data
-            let space = std::cmp::min(
+            let space = core::cmp::min(
                 IdlAccount::DISCRIMINATOR.len() + 32 + 4 + data_len as usize,
                 10_000
             );
@@ -189,7 +189,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             // Store the new account data.
             let mut data = accounts.to.try_borrow_mut_data()?;
             let dst: &mut [u8] = &mut data;
-            let mut cursor = std::io::Cursor::new(dst);
+            let mut cursor = borsh::io::Cursor::new(dst);
             idl_account.try_serialize(&mut cursor)?;
 
             Ok(())
@@ -213,7 +213,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             }
 
             let idl_ref = AsRef::<AccountInfo>::as_ref(&accounts.idl);
-            let new_account_space = idl_ref.data_len().checked_add(std::cmp::min(
+            let new_account_space = idl_ref.data_len().checked_add(core::cmp::min(
                 data_len
                     .checked_sub(idl_ref.data_len())
                     .expect("data_len should always be >= the current account space"),
@@ -276,9 +276,9 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             #[cfg(not(feature = "no-log-ix-name"))]
             anchor_lang::prelude::msg!("Instruction: IdlWrite");
 
-            let prev_len: usize = ::std::convert::TryInto::<usize>::try_into(accounts.idl.data_len).unwrap();
+            let prev_len: usize = core::convert::TryInto::<usize>::try_into(accounts.idl.data_len).unwrap();
             let new_len: usize = prev_len.checked_add(idl_data.len()).unwrap() as usize;
-            accounts.idl.data_len = accounts.idl.data_len.checked_add(::std::convert::TryInto::<u32>::try_into(idl_data.len()).unwrap()).unwrap();
+            accounts.idl.data_len = accounts.idl.data_len.checked_add(core::convert::TryInto::<u32>::try_into(idl_data.len()).unwrap()).unwrap();
 
             use IdlTrailingData;
             let mut idl_bytes = accounts.idl.trailing_data_mut();
@@ -313,7 +313,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             accounts.idl.data_len = accounts.buffer.data_len;
 
             use IdlTrailingData;
-            let buffer_len = ::std::convert::TryInto::<usize>::try_into(accounts.buffer.data_len).unwrap();
+            let buffer_len = core::convert::TryInto::<usize>::try_into(accounts.buffer.data_len).unwrap();
             let mut target = accounts.idl.trailing_data_mut();
             let source = &accounts.buffer.trailing_data()[..buffer_len];
             require_gte!(target.len(), buffer_len);
