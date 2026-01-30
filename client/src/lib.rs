@@ -79,12 +79,11 @@ use solana_instruction::AccountMeta;
 use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
-    client_error::Error as SolanaClientError,
     config::{
-        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
+        RpcTransactionLogsFilter,
     },
-    filter::{Memcmp, RpcFilterType},
+    filter::Memcmp,
     response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_signature::Signature;
@@ -113,6 +112,10 @@ pub use solana_commitment_config::CommitmentConfig;
 pub use solana_instruction::Instruction;
 pub use solana_program::hash::Hash;
 pub use solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError;
+pub use solana_rpc_client_api::{
+    client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
+    filter::RpcFilterType,
+};
 pub use solana_signer::{Signer, SignerError};
 pub use solana_transaction::Transaction;
 
