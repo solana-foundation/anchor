@@ -88,7 +88,6 @@ use solana_rpc_client_api::{
     response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_signature::Signature;
-use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -115,6 +114,7 @@ pub use solana_instruction::Instruction;
 pub use solana_program::hash::Hash;
 pub use solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError;
 pub use solana_signer::{Signer, SignerError};
+pub use solana_transaction::Transaction;
 
 mod cluster;
 
