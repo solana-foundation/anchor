@@ -90,7 +90,6 @@ use solana_rpc_client_api::{
     response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_signature::Signature;
-use solana_signer::{Signer, SignerError};
 use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
@@ -113,6 +112,7 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
+pub use solana_signer::{Signer, SignerError};
 
 mod cluster;
 
