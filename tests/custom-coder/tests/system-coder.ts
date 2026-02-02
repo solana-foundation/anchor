@@ -307,15 +307,13 @@ describe("system-coder", () => {
     let previousNonce = nonceAccount.nonce.toString();
 
     // These have to be separate to make sure advance is in another slot.
-    const ix = await program.methods
+    const tx = await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
       .accounts({
         nonce: nonceKeypair.publicKey,
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .instruction();
-    const tx = new Transaction();
-    tx.add(ix);
+      .transaction();
     tx.recentBlockhash = previousNonce;
     tx.feePayer = provider.publicKey;
 
@@ -401,25 +399,22 @@ describe("system-coder", () => {
     );
     let previousNonce = nonceAccount.nonce.toString();
 
-    const tx = new Transaction();
-    tx.add(
-      await program.methods
-        .advanceNonceAccount(provider.wallet.publicKey)
-        .accounts({
-          nonce: nonceKeypair.publicKey,
-          recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-        })
-        .instruction()
-    );
-    tx.add(
-      await program.methods
-        .transfer(new BN(amount))
-        .accounts({
-          from: provider.wallet.publicKey,
-          to: nonceKeypair.publicKey,
-        })
-        .instruction()
-    );
+    const tx = await program.methods
+      .advanceNonceAccount(provider.wallet.publicKey)
+      .accounts({
+        nonce: nonceKeypair.publicKey,
+        recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+      })
+      .postInstructions([
+        await program.methods
+          .transfer(new BN(amount))
+          .accounts({
+            from: provider.wallet.publicKey,
+            to: nonceKeypair.publicKey,
+          })
+          .instruction(),
+      ])
+      .transaction();
     tx.feePayer = provider.publicKey;
     tx.recentBlockhash = previousNonce;
 
@@ -436,18 +431,26 @@ describe("system-coder", () => {
       })
       .rpc();
 
-    let withdrawIx = await program.methods
-      .withdrawNonceAccount(new BN(amount))
+    let withdrawTx = await program.methods
+      .advanceNonceAccount(aliceKeypair.publicKey)
       .accounts({
-        authorized: aliceKeypair.publicKey,
         nonce: nonceKeypair.publicKey,
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-        to: aliceKeypair.publicKey,
+        authorized: aliceKeypair.publicKey,
       })
-      .instruction();
+      .postInstructions([
+        await program.methods
+          .withdrawNonceAccount(new BN(amount))
+          .accounts({
+            authorized: aliceKeypair.publicKey,
+            nonce: nonceKeypair.publicKey,
+            recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+            to: aliceKeypair.publicKey,
+          })
+          .instruction(),
+      ])
+      .transaction();
 
-    const withdrawTx = new Transaction();
-    withdrawTx.add(withdrawIx);
     withdrawTx.feePayer = provider.publicKey;
     withdrawTx.recentBlockhash = previousNonce;
     await provider.sendAndConfirm(withdrawTx, [aliceKeypair]);
