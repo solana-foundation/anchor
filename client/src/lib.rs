@@ -6,15 +6,13 @@
 //!
 //! A simple example that creates a client, sends a transaction and fetches an account:
 //!
-//! ```ignore
+//! ```no_run
 //! use std::rc::Rc;
 //!
 //! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
+//!     solana_keypair::{read_keypair_file, Keypair},
+//!     solana_signer::Signer,
+//!     solana_system_interface::program as system_program,
 //!     Client, Cluster,
 //! };
 //! use my_program::{accounts, instruction, MyAccount};
@@ -33,16 +31,16 @@
 //!         .request()
 //!         .accounts(accounts::Initialize {
 //!             my_account: my_account_kp.pubkey(),
-//!             payer: program.payer(),
+//!             user: program.payer(),
 //!             system_program: system_program::ID,
 //!         })
-//!         .args(instruction::Initialize { field: 42 })
+//!         .args(instruction::Initialize { data: 42 })
 //!         .signer(&my_account_kp)
 //!         .send()?;
 //!
 //!     // Fetch account
 //!     let my_account: MyAccount = program.account(my_account_kp.pubkey())?;
-//!     assert_eq!(my_account.field, 42);
+//!     assert_eq!(my_account.data, 42);
 //!
 //!     Ok(())
 //! }
@@ -76,8 +74,8 @@ use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
+use solana_hash::Hash;
 use solana_instruction::{AccountMeta, Instruction};
-use solana_program::hash::Hash;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
@@ -112,7 +110,13 @@ pub use anchor_lang;
 pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
+
 pub use solana_account_decoder;
+pub use solana_commitment_config;
+pub use solana_keypair;
+pub use solana_pubkey;
+pub use solana_signer;
+pub use solana_system_interface;
 
 mod cluster;
 

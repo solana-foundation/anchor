@@ -251,19 +251,24 @@ version = "0.32.1"
 dependencies = [
  "anchor-lang",
  "anyhow",
+ "basic-1",
  "futures",
  "regex",
  "serde",
  "solana-account",
  "solana-account-decoder",
  "solana-commitment-config",
+ "solana-hash",
  "solana-instruction",
+ "solana-keypair",
  "solana-program",
+ "solana-pubkey 4.0.0",
  "solana-pubsub-client",
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-signature",
  "solana-signer",
+ "solana-system-interface",
  "solana-transaction",
  "thiserror 1.0.66",
  "tokio",
@@ -640,6 +645,13 @@ name = "base64ct"
 version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
+
+[[package]]
+name = "basic-1"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
 
 [[package]]
 name = "bincode"

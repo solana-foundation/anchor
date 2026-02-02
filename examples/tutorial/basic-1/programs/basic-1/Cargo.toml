@@ -12,6 +12,8 @@ name = "basic_1"
 no-entrypoint = []
 cpi = ["no-entrypoint"]
 idl-build = ["anchor-lang/idl-build"]
+anchor-debug = ["anchor-lang/anchor-debug"]
+no-log-ix-name = []
 
 [dependencies]
 anchor-lang = { path = "../../../../../lang" }

@@ -1,3 +1,6 @@
+// FIXME: This lint is being triggered somewhere in macro output
+#![expect(clippy::diverging_sub_expression)]
+
 use anchor_lang::prelude::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

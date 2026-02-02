@@ -24,14 +24,24 @@ serde = { version = "1", features = ["derive"] }
 solana-account.workspace = true
 solana-account-decoder.workspace = true
 solana-commitment-config.workspace = true
+solana-hash.workspace = true
 solana-instruction.workspace = true
+solana-keypair.workspace = true
 solana-program.workspace = true
+solana-pubkey.workspace = true
 solana-pubsub-client.workspace = true
 solana-rpc-client.workspace = true
 solana-rpc-client-api.workspace = true
 solana-signature.workspace = true
 solana-signer.workspace = true
+solana-system-interface.workspace = true
 solana-transaction.workspace = true
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"
+
+[dev-dependencies]
+solana-pubkey.workspace = true
+my-program = { path = "../examples/tutorial/basic-1/programs/basic-1", package = "basic-1", features = [
+    "no-entrypoint",
+] }
