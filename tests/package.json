@@ -52,6 +52,7 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
+    "multiple-scripts",
     "duplicate-mutable-accounts",
     "signature-verification"
   ],
