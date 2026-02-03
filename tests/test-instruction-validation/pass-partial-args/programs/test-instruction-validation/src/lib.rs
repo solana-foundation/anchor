@@ -13,7 +13,7 @@ pub mod test_instruction_validation {
     pub fn partial_args(
         _ctx: Context<PartialArgs>,
         a: u64,  // Handler arg 0 - will be skipped
-        b: u32,  // Handler arg 1 - will be skipped
+        b: u32,  // Handler arg 1 - declared in #[instruction], will be used
         c: u64,  // Handler arg 2 - declared in #[instruction], will be used
         d: u8,   // Handler arg 3 - declared in #[instruction], will be used
     ) -> Result<()> {
