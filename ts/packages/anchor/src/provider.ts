@@ -7,7 +7,7 @@ import {
   ConfirmOptions,
   SimulatedTransactionResponse,
   Commitment,
-  SendTransactionError,
+  SendTransactionError
   SendOptions,
   VersionedTransaction,
   RpcResponseAndContext,
@@ -150,10 +150,11 @@ export class AnchorProvider implements Provider {
       }
     } else {
       tx.feePayer = tx.feePayer ?? this.wallet.publicKey;
-      tx.recentBlockhash = (
+      if(!tx.recentBlockhash){
+        tx.recentBlockhash = (
         await this.connection.getLatestBlockhash(opts.preflightCommitment)
-      ).blockhash;
-
+        ).blockhash;
+      }
       if (signers) {
         for (const signer of signers) {
           tx.partialSign(signer);
@@ -228,7 +229,9 @@ export class AnchorProvider implements Provider {
         let signers = r.signers ?? [];
 
         tx.feePayer = tx.feePayer ?? this.wallet.publicKey;
-        tx.recentBlockhash = recentBlockhash;
+        if(!tx.recentBlockhash){
+          tx.recentBlockhash = recentBlockhash;
+        }
 
         signers.forEach((kp) => {
           tx.partialSign(kp);
