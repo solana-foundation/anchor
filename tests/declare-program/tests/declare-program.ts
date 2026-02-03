@@ -10,12 +10,7 @@ describe("declare-program", () => {
     anchor.workspace.declareProgram;
   const externalProgram: anchor.Program<External> = anchor.workspace.external;
 
-  // TODO: Add a utility type that does this?
-  let pubkeys: Awaited<
-    ReturnType<
-      ReturnType<typeof externalProgram["methods"]["init"]>["rpcAndKeys"]
-    >
-  >["pubkeys"];
+  let pubkeys: anchor.MethodPubkeys<External, "init">;
 
   before(async () => {
     pubkeys = (await externalProgram.methods.init().rpcAndKeys()).pubkeys;
