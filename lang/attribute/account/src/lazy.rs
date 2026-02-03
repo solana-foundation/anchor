@@ -277,9 +277,19 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     // Make sure all fields are initialized
                     let acc = self.load()?;
                     let mut data = self.__info.try_borrow_mut_data()?;
+                    let original_len = data.len();
                     let dst: &mut [u8] = &mut data;
                     let mut writer = anchor_lang::__private::BpfWriter::new(dst);
                     acc.try_serialize(&mut writer)?;
+
+                    // If the serialized size is smaller than the original account size,
+                    // pad the remaining bytes with zeros to prevent spurious data from
+                    // affecting future account schema changes.
+                    let written_len = writer.position() as usize;
+                    if written_len < original_len {
+                        let remaining = &mut data[written_len..];
+                        remaining.fill(0);
+                    }
                 }
 
                 Ok(())
