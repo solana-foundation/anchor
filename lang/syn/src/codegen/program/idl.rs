@@ -38,20 +38,20 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
         pub struct IdlCreateAccounts<'info> {
             // Payer of the transaction.
             #[account(signer)]
-            pub from: AccountInfo<'info>,
+            pub from: UncheckedAccount<'info>,
             // The deterministically defined "state" account being created via
             // `create_account_with_seed`.
             #[account(mut)]
-            pub to: AccountInfo<'info>,
+            pub to: UncheckedAccount<'info>,
             // The program-derived-address signing off on the account creation.
             // Seeds = &[] + bump seed.
             #[account(seeds = [], bump)]
-            pub base: AccountInfo<'info>,
+            pub base: UncheckedAccount<'info>,
             // The system program.
             pub system_program: Program<'info, System>,
             // The program whose state is being constructed.
             #[account(executable)]
-            pub program: AccountInfo<'info>,
+            pub program: UncheckedAccount<'info>,
         }
 
         // Accounts for Idl instructions.
@@ -103,7 +103,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
             pub authority: Signer<'info>,
             #[account(mut)]
-            pub sol_destination: AccountInfo<'info>,
+            pub sol_destination: UncheckedAccount<'info>,
         }
 
 

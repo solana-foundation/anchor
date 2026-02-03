@@ -1119,7 +1119,7 @@ pub struct CreateAuctionHouse<'info> {
     treasury_mint: Account<'info, Mint>,
     #[account(mut)]
     payer: Signer<'info>,
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(mut)]
     fee_withdrawal_destination: UncheckedAccount<'info>,
     treasury_withdrawal_destination_owner: UncheckedAccount<'info>,
@@ -1193,7 +1193,7 @@ pub struct Deposit<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds=[
@@ -1248,7 +1248,7 @@ pub struct Withdraw<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
     associated_token_program: Program<'info, AssociatedToken>,
@@ -1262,7 +1262,7 @@ pub struct Sell<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1336,7 +1336,7 @@ pub struct Cancel<'info> {
     #[account(mut)]
     token_account: Account<'info, TokenAccount>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     treasury_mint: UncheckedAccount<'info>,
     #[account(
         seeds=[
@@ -1389,7 +1389,7 @@ pub struct Buy<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1461,7 +1461,7 @@ pub struct ExecuteSale<'info> {
     #[account(mut)]
     buyer_receipt_token_account: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
