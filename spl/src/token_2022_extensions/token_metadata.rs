@@ -107,3 +107,34 @@ pub struct TokenMetadataUpdateField<'info> {
     pub metadata: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
 }
+
+pub fn token_metadata_remove_key<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, TokenMetadataRemoveKey<'info>>,
+    key: String,
+    idempotent: bool,
+) -> Result<()> {
+    let ix = spl_token_metadata_interface::instruction::remove_key(
+        ctx.accounts.program_id.key,
+        ctx.accounts.metadata.key,
+        ctx.accounts.update_authority.key,
+        key,
+        idempotent,
+    );
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.program_id,
+            ctx.accounts.metadata,
+            ctx.accounts.update_authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+#[derive(Accounts)]
+pub struct TokenMetadataRemoveKey<'info> {
+    pub program_id: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+    pub update_authority: AccountInfo<'info>,
+}
