@@ -201,6 +201,37 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    // Generate helper to get instruction arg names for matching with handler args
+    let instruction_arg_names_helper = match &accs.instruction_api {
+        None => quote! {
+            #[doc(hidden)]
+            pub fn __anchor_ix_arg_names() -> &'static [&'static str] {
+                &[]
+            }
+        },
+        Some(ix_api) => {
+            let arg_names: Vec<proc_macro2::TokenStream> = ix_api
+                .iter()
+                .map(|expr| {
+                    if let Expr::Type(expr_type) = expr {
+                        let name = &expr_type.expr;
+                        quote! {
+                            stringify!(#name)
+                        }
+                    } else {
+                        panic!("Invalid instruction declaration");
+                    }
+                })
+                .collect();
+            quote! {
+                #[doc(hidden)]
+                pub fn __anchor_ix_arg_names() -> &'static [&'static str] {
+                    &[#(#arg_names),*]
+                }
+            }
+        }
+    };
+
     let param_count_const = match &accs.instruction_api {
         None => quote! {
             #[automatically_derived]
@@ -208,6 +239,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 #[doc(hidden)]
                 pub const __ANCHOR_IX_PARAM_COUNT: usize = 0;
 
+                #instruction_arg_names_helper
                 #type_validation_methods
             }
         },
@@ -220,6 +252,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     #[doc(hidden)]
                     pub const __ANCHOR_IX_PARAM_COUNT: usize = #count;
 
+                    #instruction_arg_names_helper
                     #type_validation_methods
                 }
             }
