@@ -133,7 +133,11 @@ pub fn account(
                 #[automatically_derived]
                 impl #impl_gen anchor_lang::Owner for #account_name #type_gen #where_clause {
                     fn owner() -> Pubkey {
-                        crate::ID
+                        // In a doctest the ID will be in the current scope, not the crate root
+                        #[cfg(not(doctest))]
+                        { crate::ID }
+                        #[cfg(doctest)]
+                        { ID }
                     }
                 }
             }
