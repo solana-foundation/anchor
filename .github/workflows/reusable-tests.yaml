@@ -480,6 +480,8 @@ jobs:
             path: tests/test-instruction-validation
           - cmd: cd tests/signature-verification && anchor test
             path: tests/signature-verification
+          - cmd: cd tests/solana-program-test-compatibility && cargo test-sbf
+            path: tests/solana-program-test-compatibility
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/

@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "0.32.1"
+solana_version = "3.0.0"
+
+[programs.localnet]
+solana_program_test_compatibility = "Cmpatiblt_entrypoint_test_1111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test-sbf -- --nocapture"
