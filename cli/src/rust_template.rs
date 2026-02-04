@@ -253,18 +253,10 @@ pub fn get_or_create_program_id(name: &str) -> Pubkey {
         .pubkey()
 }
 
-pub fn credentials(token: &str) -> String {
-    format!(
-        r#"[registry]
-token = "{token}"
-"#
-    )
-}
-
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -287,7 +279,7 @@ main();
 
 pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
-        r#"import * as anchor from '@coral-xyz/anchor';
+        r#"import * as anchor from '@anchor-lang/core';
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -313,7 +305,7 @@ pub fn deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-const anchor = require("@coral-xyz/anchor");
+const anchor = require("@anchor-lang/core");
 
 module.exports = async function (provider) {
   // Configure client to use the provider.
@@ -329,7 +321,7 @@ pub fn ts_deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 
 module.exports = async function (provider: anchor.AnchorProvider) {
   // Configure client to use the provider.
@@ -342,7 +334,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
 
 pub fn mocha(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -363,7 +355,7 @@ describe("{}", () => {{
 
 pub fn jest(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -392,7 +384,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "jest": "^29.0.3",
@@ -410,7 +402,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -433,7 +425,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "@types/bn.js": "^5.1.0",
@@ -455,7 +447,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -475,8 +467,8 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
 
 pub fn ts_mocha(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -502,8 +494,8 @@ describe("{}", () => {{
 
 pub fn ts_jest(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -563,6 +555,7 @@ target
 node_modules
 test-ledger
 .yarn
+.surfpool
 "#
 }
 
@@ -584,7 +577,7 @@ pub fn node_shell(
 ) -> Result<String> {
     let mut eval_string = format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 const web3 = anchor.web3;
 const PublicKey = anchor.web3.PublicKey;
 const Keypair = anchor.web3.Keypair;

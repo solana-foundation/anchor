@@ -1,7 +1,7 @@
 [package]
 name = "auction-house"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,7 +18,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
-anchor-spl = { path = "../../../../spl", features = ["metadata"] }
+anchor-spl = { path = "../../../../spl" }
 solana-sysvar = "3"
 thiserror = "1.0"
 arrayref = "0.3.6"

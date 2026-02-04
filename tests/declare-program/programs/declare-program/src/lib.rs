@@ -8,8 +8,8 @@ use external::program::External;
 // Compilation check for legacy IDL (pre Anchor `0.30`)
 declare_program!(external_legacy);
 
-// Compilation check for the Raydium AMM v3 program (Anchor v0.29.0)
-// https://github.com/raydium-io/raydium-idl/blob/c8507c78618eda1de96ff5e43bd29daefa7e9307/raydium_clmm/amm_v3.json
+// Compilation check for the Raydium AMM v3 program
+// https://github.com/raydium-io/raydium-idl/blob/6123104304ebcb42be175cc297a2c221ac96bb96/raydium_clmm/amm_v3.json
 declare_program!(amm_v3);
 
 #[program]
@@ -86,54 +86,6 @@ pub mod declare_program {
         external::cpi::update_non_instruction_composite2(cpi_ctx, value)?;
         cpi_my_account.reload()?;
         require_eq!(cpi_my_account.field, value);
-
-        Ok(())
-    }
-
-    pub fn account_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::utils::Account;
-
-        // Empty
-        if Account::try_from_bytes(&[]).is_ok() {
-            return Err(ProgramError::Custom(0).into());
-        }
-
-        const DISC: &[u8] = external::accounts::MyAccount::DISCRIMINATOR;
-
-        // Correct discriminator but invalid data
-        if Account::try_from_bytes(DISC).is_ok() {
-            return Err(ProgramError::Custom(1).into());
-        };
-
-        // Correct discriminator and valid data
-        match Account::try_from_bytes(&[DISC, &[1, 0, 0, 0]].concat()) {
-            Ok(Account::MyAccount(my_account)) => require_eq!(my_account.field, 1),
-            Err(e) => return Err(e.into()),
-        }
-
-        Ok(())
-    }
-
-    pub fn event_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::utils::Event;
-
-        // Empty
-        if Event::try_from_bytes(&[]).is_ok() {
-            return Err(ProgramError::Custom(0).into());
-        }
-
-        const DISC: &[u8] = external::events::MyEvent::DISCRIMINATOR;
-
-        // Correct discriminator but invalid data
-        if Event::try_from_bytes(DISC).is_ok() {
-            return Err(ProgramError::Custom(1).into());
-        };
-
-        // Correct discriminator and valid data
-        match Event::try_from_bytes(&[DISC, &[1, 0, 0, 0]].concat()) {
-            Ok(Event::MyEvent(my_event)) => require_eq!(my_event.value, 1),
-            Err(e) => return Err(e.into()),
-        }
 
         Ok(())
     }

@@ -192,6 +192,14 @@ pub enum ErrorCode {
     #[msg("Signature verification failed")]
     SignatureVerificationFailed,
 
+    // Migration errors
+    /// 2048 - Account is already migrated
+    #[msg("Account is already migrated")]
+    AccountAlreadyMigrated,
+    /// 2049 - Account must be migrated before exiting
+    #[msg("Account must be migrated before exiting")]
+    AccountNotMigrated,
+
     // Require
     /// 2500 - A require expression was violated
     #[msg("A require expression was violated")]

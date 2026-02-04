@@ -149,9 +149,6 @@ pub use anchor_attribute_event::{emit_cpi, event_cpi};
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
 
-#[cfg(feature = "interface-instructions")]
-pub use anchor_attribute_program::interface;
-
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 // Deprecated message for AccountInfo usage in Accounts struct
@@ -488,18 +485,21 @@ pub mod prelude {
     pub use super::{
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::program::Program,
-        accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
-        require_keys_eq, require_keys_neq, require_neq,
+        accounts::interface_account::InterfaceAccount, accounts::migration::Migration,
+        accounts::program::Program, accounts::signer::Signer,
+        accounts::system_account::SystemAccount, accounts::sysvar::Sysvar,
+        accounts::unchecked_account::UncheckedAccount, constant, context::Context,
+        context::CpiContext, declare_id, declare_program, emit, err, error, event, instruction,
+        program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
+        require_keys_neq, require_neq,
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
         AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
+        ToAccountInfos, ToAccountMetas,
     };
+    // Re-export the crate as anchor_lang for declare_program! macro
+    pub use crate as anchor_lang;
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
@@ -524,9 +524,6 @@ pub mod prelude {
 
     #[cfg(feature = "idl-build")]
     pub use super::idl::IdlBuild;
-
-    #[cfg(feature = "interface-instructions")]
-    pub use super::interface;
 
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
