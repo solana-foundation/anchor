@@ -1,0 +1,29 @@
+[workspace]
+members = [
+    "programs/*",
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+[profile.release.package."*"]
+opt-level = 3
+incremental = false
+
+[patch.crates-io]
+# Use local anchor-lang for tests
+anchor-lang = { path = "../../lang" }
+anchor-attribute-access-control = { path = "../../lang/attribute/access-control" }
+anchor-attribute-account = { path = "../../lang/attribute/account" }
+anchor-attribute-constant = { path = "../../lang/attribute/constant" }
+anchor-attribute-error = { path = "../../lang/attribute/error" }
+anchor-attribute-event = { path = "../../lang/attribute/event" }
+anchor-attribute-program = { path = "../../lang/attribute/program" }
+anchor-derive-accounts = { path = "../../lang/derive/accounts" }
+anchor-derive-space = { path = "../../lang/derive/space" }
+anchor-syn = { path = "../../lang/syn" }

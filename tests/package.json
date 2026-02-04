@@ -53,7 +53,8 @@
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
     "duplicate-mutable-accounts",
-    "signature-verification"
+    "signature-verification",
+    "solana-program-test-compatibility"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",
