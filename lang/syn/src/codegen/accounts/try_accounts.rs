@@ -202,35 +202,25 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     };
 
     // Generate helper to get instruction arg names for matching with handler args
-    let instruction_arg_names_helper = match &accs.instruction_api {
-        None => quote! {
+    let arg_names = accs.instruction_api.unwrap_or_default()
+        .iter()
+            .map(|expr| {
+                if let Expr::Type(expr_type) = expr {
+                      let name = &expr_type.expr;
+                      quote! {
+                          stringify!(#name)
+                      }
+                  } else {
+                      panic!("Invalid instruction declaration");
+                  }
+              })
+              .collect::<Vec<_>>();
+    let instruction_arg_names_helper = quote! {
             #[doc(hidden)]
             pub fn __anchor_ix_arg_names() -> &'static [&'static str] {
-                &[]
+                &[#(#arg_names),*]
             }
-        },
-        Some(ix_api) => {
-            let arg_names: Vec<proc_macro2::TokenStream> = ix_api
-                .iter()
-                .map(|expr| {
-                    if let Expr::Type(expr_type) = expr {
-                        let name = &expr_type.expr;
-                        quote! {
-                            stringify!(#name)
-                        }
-                    } else {
-                        panic!("Invalid instruction declaration");
-                    }
-                })
-                .collect();
-            quote! {
-                #[doc(hidden)]
-                pub fn __anchor_ix_arg_names() -> &'static [&'static str] {
-                    &[#(#arg_names),*]
-                }
-            }
-        }
-    };
+        };
 
     let param_count_const = match &accs.instruction_api {
         None => quote! {
