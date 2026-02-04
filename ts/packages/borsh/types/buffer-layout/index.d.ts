@@ -1,6 +1,6 @@
 
 declare module 'buffer-layout' {
-  // TODO: remove `any`.
+	// TODO: remove `any`.
   export class Layout<T = any> {
     span: number;
     property?: string;
@@ -12,7 +12,10 @@ declare module 'buffer-layout' {
     getSpan(b: Buffer, offset?: number): number;
     replicate(name: string): this;
   }
-  export class Structure<T = any> extends Layout<T> { }
+	// TODO: remove any.
+  export class Structure<T = any> extends Layout<T> {
+		span: any;
+	}
   export function greedy(
     elementSpan?: number,
     property?: string,
