@@ -32,11 +32,11 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             quote!(<'info>)
         };
 
-        let args = ix.args.iter().map(|arg| {
+        let args: Vec<_> = ix.args.iter().map(|arg| {
             let name = format_ident!("{}", arg.name);
             let ty = convert_idl_type_to_syn_type(&arg.ty);
             quote! { #name: #ty }
-        });
+        }).collect();
 
         let arg_value = if ix.args.is_empty() {
             quote! { #accounts_ident }
@@ -63,6 +63,9 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             )
         };
 
+        // Generate unchecked method name
+        let unchecked_method_name = format_ident!("{}_unchecked", method_name);
+
         quote! {
             pub fn #method_name<'a, 'b, 'c, 'info>(
                 ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
@@ -85,6 +88,36 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
 
                 let mut acc_infos = ctx.to_account_infos();
                 anchor_lang::solana_program::program::invoke_signed(
+                    &ix,
+                    &acc_infos,
+                    ctx.signer_seeds,
+                ).map_or_else(
+                    |e| Err(Into::into(e)),
+                    |_| { #ret_value }
+                )
+            }
+
+            pub fn #unchecked_method_name<'a, 'b, 'c, 'info>(
+                ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
+                #(#args),*
+            ) -> #ret_type {
+                let ix = {
+                    let ix = internal::args::#arg_value;
+                    let mut data = Vec::with_capacity(256);
+                    data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
+                    AnchorSerialize::serialize(&ix, &mut data)
+                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
+
+                    let accounts = ctx.to_account_metas(None);
+                    anchor_lang::solana_program::instruction::Instruction {
+                        program_id: ctx.program_id.key(),
+                        accounts,
+                        data,
+                    }
+                };
+
+                let mut acc_infos = ctx.to_account_infos();
+                anchor_lang::solana_program::program::invoke_signed_unchecked(
                     &ix,
                     &acc_infos,
                     ctx.signer_seeds,

@@ -89,6 +89,26 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    pub fn cpi_unchecked(ctx: Context<Cpi>, value: u32) -> Result<()> {
+        let cpi_my_account = &mut ctx.accounts.cpi_my_account;
+        require_keys_eq!(external::accounts::MyAccount::owner(), external::ID);
+
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.external_program.key(),
+            external::cpi::accounts::Update {
+                authority: ctx.accounts.authority.to_account_info(),
+                my_account: cpi_my_account.to_account_info(),
+            },
+        );
+        // Test the _unchecked variant
+        external::cpi::update_unchecked(cpi_ctx, value)?;
+
+        cpi_my_account.reload()?;
+        require_eq!(cpi_my_account.field, value);
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
