@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("HR8CJFL12vvXBMuP5FjamjNeRhPgkGv4f8DYUa93RdH8");
+declare_id!("6gynjaqtEViYqqWpaKsyEV74ey17wLjGBk9fjYefnpcA");
 
 #[program]
 pub mod raw_instruction {
@@ -13,8 +13,6 @@ pub mod raw_instruction {
     }
 
     /// Raw instruction that accepts &[u8] directly
-    /// Must be explicitly marked with #[raw] attribute to skip instruction deserialization
-    #[raw]
     pub fn raw_handler(ctx: Context<RawHandler>, data: &[u8]) -> Result<()> {
         msg!("Raw data length: {}", data.len());
         

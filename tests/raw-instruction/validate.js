@@ -1,7 +1,5 @@
 const fs = require("fs");
-const idl = JSON.parse(
-  fs.readFileSync("target/idl/raw_instruction.json", "utf8")
-);
+const idl = JSON.parse(fs.readFileSync("target/idl/raw_instruction.json", "utf8"));
 
 const rawIx = idl.instructions.find((ix) => ix.name === "raw_handler");
 if (!rawIx) {

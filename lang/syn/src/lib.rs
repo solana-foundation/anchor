@@ -72,8 +72,7 @@ pub struct Ix {
     pub anchor_ident: Ident,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
-    /// Whether this instruction accepts raw byte slice instead of deserialized args.
-    /// Must be explicitly marked with `#[raw]` attribute on the function.
+    /// Whether this instruction accepts raw byte slice instead of deserialized args
     pub is_raw: bool,
 }
 
@@ -750,12 +749,6 @@ impl ConstraintGroup {
 
     pub fn is_dup(&self) -> bool {
         self.dup.is_some()
-    }
-
-    /// Returns `true` when the field has `#[account(init, ...)]` but **not**
-    /// `#[account(init_if_needed, ...)]`.
-    pub fn is_pure_init(&self) -> bool {
-        matches!(&self.init, Some(c) if !c.if_needed)
     }
 
     pub fn is_signer(&self) -> bool {
