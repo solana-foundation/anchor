@@ -44,7 +44,6 @@ solana-pubsub-client = "3.0.0"
 solana-rpc-client = "3.0.0"
 solana-rpc-client-api = "3.0.0"
 solana-sdk-ids = "3.0.0"
-# FIXME: solana-secp256k1-program is blocking for stable as feature `edition2024` is required
 # solana-secp256k1-program = "3.0.0"
 solana-ed25519-program = "3.0.0"
 solana-signature = "3.0.0"
