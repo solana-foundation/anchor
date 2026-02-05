@@ -209,8 +209,8 @@ describe("raw-instruction", () => {
     const longBuffer = Buffer.alloc(16);
     value.toArrayLike(Buffer, "le", 8).copy(longBuffer);
     // Fill rest with different values
-    longBuffer.writeUInt32LE(0xDEADBEEF, 8);
-    longBuffer.writeUInt32LE(0xCAFEBABE, 12);
+    longBuffer.writeUInt32LE(0xdeadbeef, 8);
+    longBuffer.writeUInt32LE(0xcafebabe, 12);
 
     await (program.methods as any)
       [methodName](longBuffer)
@@ -353,7 +353,9 @@ describe("raw-instruction", () => {
       )?.name || "rawHandler";
 
     // Test with alternating pattern
-    const pattern1 = Buffer.from([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22]);
+    const pattern1 = Buffer.from([
+      0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22,
+    ]);
     await (program.methods as any)
       [methodName](pattern1)
       .accounts({
@@ -371,7 +373,9 @@ describe("raw-instruction", () => {
     expect(account1.data.toString()).to.equal(expected1.toString());
 
     // Test with all ones
-    const pattern2 = Buffer.from([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+    const pattern2 = Buffer.from([
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    ]);
     await (program.methods as any)
       [methodName](pattern2)
       .accounts({
@@ -417,7 +421,7 @@ describe("raw-instruction", () => {
       .instruction();
 
     const dataAfterDiscriminator = instruction.data.slice(8);
-    
+
     expect(dataAfterDiscriminator.length).to.equal(8);
     expect(dataAfterDiscriminator.equals(rawBytes)).to.be.true;
     expect(dataAfterDiscriminator[0]).to.equal(42);
@@ -445,7 +449,7 @@ describe("raw-instruction", () => {
     const value = new BN(777);
     const rawBytes = Buffer.alloc(8);
     value.toArrayLike(Buffer, "le", 8).copy(rawBytes);
-    
+
     // Convert to Uint8Array
     const uint8Array = new Uint8Array(rawBytes);
 
