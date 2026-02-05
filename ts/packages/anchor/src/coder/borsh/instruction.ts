@@ -63,12 +63,13 @@ export class BorshInstructionCoder implements InstructionCoder {
 
     // Check if this is a raw instruction (has only one "data" arg of type bytes)
     const idlIx = this.idl.instructions.find((i) => i.name === ixName);
-    if (
+    const isRaw =
       idlIx &&
       idlIx.args.length === 1 &&
       idlIx.args[0].name === "data" &&
-      idlIx.args[0].type === "bytes"
-    ) {
+      idlIx.args[0].type === "bytes";
+    
+    if (isRaw) {
       // Raw instruction: just concatenate discriminator + raw bytes
       const rawData = ix.data instanceof Buffer ? ix.data : Buffer.from(ix.data);
       return Buffer.concat([Buffer.from(encoder.discriminator), rawData]);
