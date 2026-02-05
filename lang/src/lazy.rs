@@ -68,7 +68,15 @@ impl<T: Lazy, const N: usize> Lazy for [T; N] {
 
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
-        N * T::size_of(buf)
+        if T::SIZED {
+            N * T::size_of(buf)
+        } else {
+            let mut offset = 0;
+            for _ in 0..N {
+                offset += T::size_of(&buf[offset..]);
+            }
+            offset
+        }
     }
 }
 
