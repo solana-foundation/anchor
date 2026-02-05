@@ -3,6 +3,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+raw_instruction = "6gynjaqtEViYqqWpaKsyEV74ey17wLjGBk9fjYefnpcA"
 
 [registry]
 url = "https://api.apr.dev"
