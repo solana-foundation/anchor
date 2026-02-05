@@ -3,6 +3,7 @@ import { Program } from "@anchor-lang/core";
 import type { RawInstruction } from "../target/types/raw_instruction";
 import { expect } from "chai";
 import { Buffer } from "buffer";
+import BN from "bn.js";
 
 describe("raw-instruction", () => {
   const provider = anchor.AnchorProvider.env();
@@ -12,7 +13,7 @@ describe("raw-instruction", () => {
 
   it("Initializes data account", async () => {
     const dataAccount = anchor.web3.Keypair.generate();
-    const initialValue = new anchor.BN(42);
+    const initialValue = new BN(42);
 
     await program.methods
       .initialize(initialValue)
@@ -32,7 +33,7 @@ describe("raw-instruction", () => {
 
   it("Handles raw instruction with &[u8]", async () => {
     const dataAccount = anchor.web3.Keypair.generate();
-    const initialValue = new anchor.BN(100);
+    const initialValue = new BN(100);
 
     // Initialize first
     await program.methods
@@ -46,7 +47,7 @@ describe("raw-instruction", () => {
       .rpc();
 
     // Now test raw instruction
-    const rawValue = new anchor.BN(200);
+    const rawValue = new BN(200);
     const rawBytes = Buffer.alloc(8);
     rawValue.toArrayLike(Buffer, "le", 8).copy(rawBytes);
 
