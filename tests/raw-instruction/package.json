@@ -1,22 +1,16 @@
 {
-  "name": "raw-instruction",
-  "version": "0.31.1",
-  "license": "(MIT OR Apache-2.0)",
-  "homepage": "https://github.com/coral-xyz/anchor#readme",
-  "bugs": {
-    "url": "https://github.com/coral-xyz/anchor/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/coral-xyz/anchor.git"
-  },
-  "engines": {
-    "node": ">=17"
-  },
   "scripts": {
-    "test": "anchor test"
+    "lint:fix": "prettier */*.js \"*/**/*.{js,ts,json}\" -w",
+    "lint": "prettier */*.js \"*/**/*.{js,ts,json}\" --check"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.87.6"
+    "@anchor-lang/core": "file:../../ts/packages/anchor",
+    "@solana/web3.js": "^1.87.6",
+    "chai": "^4.3.10"
+  },
+  "devDependencies": {
+    "prettier": "^2.6.2",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^4.3.5"
   }
 }
