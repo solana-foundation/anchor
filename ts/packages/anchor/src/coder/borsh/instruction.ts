@@ -36,7 +36,7 @@ export class BorshInstructionCoder implements InstructionCoder {
         ix.args.length === 1 &&
         ix.args[0].name === "data" &&
         ix.args[0].type === "bytes";
-      
+
       let layout: Layout;
       if (isRaw) {
         // For raw instructions, create a dummy layout (won't be used for encoding)
@@ -68,10 +68,11 @@ export class BorshInstructionCoder implements InstructionCoder {
       idlIx.args.length === 1 &&
       idlIx.args[0].name === "data" &&
       idlIx.args[0].type === "bytes";
-    
+
     if (isRaw) {
       // Raw instruction: just concatenate discriminator + raw bytes
-      const rawData = ix.data instanceof Buffer ? ix.data : Buffer.from(ix.data);
+      const rawData =
+        ix.data instanceof Buffer ? ix.data : Buffer.from(ix.data);
       return Buffer.concat([Buffer.from(encoder.discriminator), rawData]);
     }
 
@@ -103,7 +104,7 @@ export class BorshInstructionCoder implements InstructionCoder {
           idlIx.args.length === 1 &&
           idlIx.args[0].name === "data" &&
           idlIx.args[0].type === "bytes";
-        
+
         if (isRaw) {
           // For raw instructions, return the raw bytes as data
           return {
@@ -113,7 +114,9 @@ export class BorshInstructionCoder implements InstructionCoder {
         } else {
           return {
             name,
-            data: layout.layout.decode(ix.subarray(layout.discriminator.length)),
+            data: layout.layout.decode(
+              ix.subarray(layout.discriminator.length)
+            ),
           };
         }
       }
