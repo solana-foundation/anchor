@@ -33,8 +33,8 @@
     "test": "jest tests --detectOpenHandles"
   },
   "dependencies": {
-    "@anchor-lang/errors": "^0.32.1",
     "@anchor-lang/borsh": "^0.32.1",
+    "@anchor-lang/errors": "^0.32.1",
     "@noble/hashes": "^1.3.1",
     "@solana/web3.js": "^1.69.0",
     "bn.js": "^5.1.2",
