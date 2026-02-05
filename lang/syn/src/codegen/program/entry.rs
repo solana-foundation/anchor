@@ -39,10 +39,19 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
         pub fn entry<'info>(
-            program_id: &'info Pubkey,
+            program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &'info [u8]
+            data: &[u8],
         ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
+            // Log compute units at program start. Note: This won't be exactly 200,000 because
+            // the Solana runtime consumes CUs for tx deserialization, program loading,
+            // account loading, and signature verification before calling your program.
+            #[cfg(feature = "log-compute-units")]
+            anchor_lang::prelude::msg!(
+                "anchor-compute: program-start, {} units",
+                anchor_lang::solana_program::log::sol_remaining_compute_units()
+            );
+
             try_entry(program_id, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
@@ -50,14 +59,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
 
         fn try_entry<'info>(
-            program_id: &'info Pubkey,
+            program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &'info [u8]
+            data: &[u8],
         ) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");
             }
+
+            #[cfg(feature = "log-compute-units")]
+            anchor_lang::prelude::msg!(
+                "anchor-compute: entry, {} units",
+                anchor_lang::solana_program::log::sol_remaining_compute_units()
+            );
+
             if *program_id != ID {
                 return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into());
             }
