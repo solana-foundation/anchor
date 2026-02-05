@@ -31,10 +31,22 @@ export class BorshInstructionCoder implements InstructionCoder {
   public constructor(private idl: Idl) {
     const ixLayouts = idl.instructions.map((ix) => {
       const name = ix.name;
-      const fieldLayouts = ix.args.map((arg) =>
-        IdlCoder.fieldLayout(arg, idl.types)
-      );
-      const layout = borsh.struct(fieldLayouts, name);
+      // Check if this is a raw instruction (single "data" arg of type "bytes")
+      const isRaw =
+        ix.args.length === 1 &&
+        ix.args[0].name === "data" &&
+        ix.args[0].type === "bytes";
+      
+      let layout: Layout;
+      if (isRaw) {
+        // For raw instructions, create a dummy layout (won't be used for encoding)
+        layout = borsh.struct([], name);
+      } else {
+        const fieldLayouts = ix.args.map((arg) =>
+          IdlCoder.fieldLayout(arg, idl.types)
+        );
+        layout = borsh.struct(fieldLayouts, name);
+      }
       return [name, { discriminator: ix.discriminator, layout }] as const;
     });
     this.ixLayouts = new Map(ixLayouts);
@@ -44,12 +56,25 @@ export class BorshInstructionCoder implements InstructionCoder {
    * Encodes a program instruction.
    */
   public encode(ixName: string, ix: any): Buffer {
-    const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const encoder = this.ixLayouts.get(ixName);
     if (!encoder) {
       throw new Error(`Unknown method: ${ixName}`);
     }
 
+    // Check if this is a raw instruction (has only one "data" arg of type bytes)
+    const idlIx = this.idl.instructions.find((i) => i.name === ixName);
+    if (
+      idlIx &&
+      idlIx.args.length === 1 &&
+      idlIx.args[0].name === "data" &&
+      idlIx.args[0].type === "bytes"
+    ) {
+      // Raw instruction: just concatenate discriminator + raw bytes
+      const rawData = ix.data instanceof Buffer ? ix.data : Buffer.from(ix.data);
+      return Buffer.concat([Buffer.from(encoder.discriminator), rawData]);
+    }
+
+    const buffer = Buffer.alloc(1000); // TODO: use a tighter buffer.
     const len = encoder.layout.encode(ix, buffer);
     const data = buffer.slice(0, len);
 
@@ -71,10 +96,25 @@ export class BorshInstructionCoder implements InstructionCoder {
       const givenDisc = ix.subarray(0, layout.discriminator.length);
       const matches = givenDisc.equals(Buffer.from(layout.discriminator));
       if (matches) {
-        return {
-          name,
-          data: layout.layout.decode(ix.subarray(givenDisc.length)),
-        };
+        const idlIx = this.idl.instructions.find((i) => i.name === name);
+        const isRaw =
+          idlIx &&
+          idlIx.args.length === 1 &&
+          idlIx.args[0].name === "data" &&
+          idlIx.args[0].type === "bytes";
+        
+        if (isRaw) {
+          // For raw instructions, return the raw bytes as data
+          return {
+            name,
+            data: { data: ix.subarray(layout.discriminator.length) },
+          };
+        } else {
+          return {
+            name,
+            data: layout.layout.decode(ix.subarray(layout.discriminator.length)),
+          };
+        }
       }
     }
 

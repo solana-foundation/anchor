@@ -54,10 +54,30 @@ export default class InstructionNamespaceFactory {
         console.log("Outgoing account metas:", keys);
       }
 
+      // Check if this is a raw instruction
+      const isRawInstruction =
+        idlIx.args.length === 1 &&
+        idlIx.args[0].name === "data" &&
+        idlIx.args[0].type === "bytes";
+
+      let instructionData: Buffer;
+      if (isRawInstruction) {
+        // For raw instructions, the data is passed directly as Buffer/Uint8Array
+        const rawData = ixArgs[0];
+        if (!(rawData instanceof Buffer) && !(rawData instanceof Uint8Array)) {
+          throw new Error(
+            `Raw instruction "${idlIx.name}" expects data to be Buffer or Uint8Array`
+          );
+        }
+        instructionData = encodeFn(idlIx.name, { data: rawData });
+      } else {
+        instructionData = encodeFn(idlIx.name, toInstruction(idlIx, ...ixArgs));
+      }
+
       return new TransactionInstruction({
         keys,
         programId,
-        data: encodeFn(idlIx.name, toInstruction(idlIx, ...ixArgs)),
+        data: instructionData,
       });
     };
 

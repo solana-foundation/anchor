@@ -1,0 +1,22 @@
+[package]
+name = "raw-instruction"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "raw_instruction"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }

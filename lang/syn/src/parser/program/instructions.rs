@@ -30,6 +30,31 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
             let cfgs = parse_cfg(method);
             let returns = parse_return(method)?;
             let anchor_ident = ctx_accounts_ident(&ctx.raw_arg)?;
+
+            // Check if this is a raw instruction (has &[u8] or &mut [u8] argument)
+            let is_raw = args.iter().any(|arg| is_raw_byte_slice(&arg.raw_arg.ty));
+
+            // Validate: raw instructions should have exactly one &[u8] argument
+            if is_raw {
+                let raw_args_count = args
+                    .iter()
+                    .filter(|arg| is_raw_byte_slice(&arg.raw_arg.ty))
+                    .count();
+                if raw_args_count != 1 {
+                    return Err(ParseError::new(
+                        method.sig.span(),
+                        "Raw instructions must have exactly one &[u8] or &mut [u8] argument",
+                    ));
+                }
+                // Check that there are no other non-raw arguments
+                if args.len() != 1 {
+                    return Err(ParseError::new(
+                        method.sig.span(),
+                        "Raw instructions cannot have other arguments besides the &[u8] parameter",
+                    ));
+                }
+            }
+
             Ok(Ix {
                 raw_method: method.clone(),
                 ident: method.sig.ident.clone(),
@@ -39,6 +64,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
                 anchor_ident,
                 returns,
                 overrides,
+                is_raw,
             })
         })
         .collect::<ParseResult<Vec<Ix>>>()?;
@@ -83,6 +109,23 @@ fn parse_overrides(attrs: &[syn::Attribute]) -> ParseResult<Option<Overrides>> {
         })
         .map(|attr| attr.parse_args())
         .transpose()
+}
+
+/// Check if a type is `&[u8]` or `&mut [u8]`
+fn is_raw_byte_slice(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Reference(ty_ref) => {
+            // Check if it's &[u8] or &mut [u8]
+            match &*ty_ref.elem {
+                syn::Type::Slice(slice) => {
+                    // Check if the slice element type is u8
+                    matches!(&*slice.elem, syn::Type::Path(path) if path.path.is_ident("u8"))
+                }
+                _ => false,
+            }
+        }
+        _ => false,
+    }
 }
 
 pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {

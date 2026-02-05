@@ -16,24 +16,43 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     compile_error!("failed to parse ix method name after conversion to camelCase");
                 };
             };
-            let raw_args: Vec<proc_macro2::TokenStream> = ix
-                .args
-                .iter()
-                .map(|arg| {
-                    format!("pub {}", parser::tts_to_string(&arg.raw_arg))
-                        .parse()
-                        .unwrap()
-                })
-                .collect();
-            let impls = {
-                let discriminator = match ix.overrides.as_ref() {
-                    Some(overrides) if overrides.discriminator.is_some() => {
-                        overrides.discriminator.as_ref().unwrap().to_owned()
-                    }
-                    _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
-                };
 
+            let discriminator = match ix.overrides.as_ref() {
+                Some(overrides) if overrides.discriminator.is_some() => {
+                    overrides.discriminator.as_ref().unwrap().to_owned()
+                }
+                _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
+            };
+
+            // For raw instructions, only generate the discriminator impl
+            if ix.is_raw {
                 quote! {
+                    #(#ix_cfgs)*
+                    /// Raw instruction (accepts &[u8] directly).
+                    pub struct #ix_name_camel;
+
+                    #(#ix_cfgs)*
+                    impl anchor_lang::Discriminator for #ix_name_camel {
+                        const DISCRIMINATOR: &'static [u8] = #discriminator;
+                    }
+                    #(#ix_cfgs)*
+                    impl anchor_lang::Owner for #ix_name_camel {
+                        fn owner() -> Pubkey {
+                            ID
+                        }
+                    }
+                }
+            } else {
+                let raw_args: Vec<proc_macro2::TokenStream> = ix
+                    .args
+                    .iter()
+                    .map(|arg| {
+                        format!("pub {}", parser::tts_to_string(&arg.raw_arg))
+                            .parse()
+                            .unwrap()
+                    })
+                    .collect();
+                let impls = quote! {
                     #(#ix_cfgs)*
                     impl anchor_lang::Discriminator for #ix_name_camel {
                         const DISCRIMINATOR: &'static [u8] = #discriminator;
@@ -46,28 +65,28 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             ID
                         }
                     }
-                }
-            };
-            // If no args, output a "unit" variant instead of a struct variant.
-            if ix.args.is_empty() {
-                quote! {
-                    #(#ix_cfgs)*
-                    /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize)]
-                    pub struct #ix_name_camel;
+                };
+                // If no args, output a "unit" variant instead of a struct variant.
+                if ix.args.is_empty() {
+                    quote! {
+                        #(#ix_cfgs)*
+                        /// Instruction.
+                        #[derive(AnchorSerialize, AnchorDeserialize)]
+                        pub struct #ix_name_camel;
 
-                    #impls
-                }
-            } else {
-                quote! {
-                    #(#ix_cfgs)*
-                    /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize)]
-                    pub struct #ix_name_camel {
-                        #(#raw_args),*
+                        #impls
                     }
+                } else {
+                    quote! {
+                        #(#ix_cfgs)*
+                        /// Instruction.
+                        #[derive(AnchorSerialize, AnchorDeserialize)]
+                        pub struct #ix_name_camel {
+                            #(#raw_args),*
+                        }
 
-                    #impls
+                        #impls
+                    }
                 }
             }
         })
