@@ -52,7 +52,8 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
-    "duplicate-mutable-accounts"
+    "duplicate-mutable-accounts",
+    "log-compute-units"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",
