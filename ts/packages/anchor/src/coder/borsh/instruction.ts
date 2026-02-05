@@ -25,7 +25,7 @@ export class BorshInstructionCoder implements InstructionCoder {
   // Instruction args layout. Maps namespaced method
   private ixLayouts: Map<
     string,
-    { discriminator: IdlDiscriminator; layout: Layout }
+    { discriminator: IdlDiscriminator; layout: Layout; isRaw: boolean }
   >;
 
   public constructor(private idl: Idl) {
@@ -47,7 +47,10 @@ export class BorshInstructionCoder implements InstructionCoder {
         );
         layout = borsh.struct(fieldLayouts, name);
       }
-      return [name, { discriminator: ix.discriminator, layout }] as const;
+      return [
+        name,
+        { discriminator: ix.discriminator, layout, isRaw },
+      ] as const;
     });
     this.ixLayouts = new Map(ixLayouts);
   }
@@ -61,15 +64,7 @@ export class BorshInstructionCoder implements InstructionCoder {
       throw new Error(`Unknown method: ${ixName}`);
     }
 
-    // Check if this is a raw instruction (has only one "data" arg of type bytes)
-    const idlIx = this.idl.instructions.find((i) => i.name === ixName);
-    const isRaw =
-      idlIx &&
-      idlIx.args.length === 1 &&
-      idlIx.args[0].name === "data" &&
-      idlIx.args[0].type === "bytes";
-
-    if (isRaw) {
+    if (encoder.isRaw) {
       // Raw instruction: just concatenate discriminator + raw bytes
       const rawData =
         ix.data instanceof Buffer ? ix.data : Buffer.from(ix.data);
@@ -94,28 +89,21 @@ export class BorshInstructionCoder implements InstructionCoder {
       ix = encoding === "hex" ? Buffer.from(ix, "hex") : bs58.decode(ix);
     }
 
-    for (const [name, layout] of this.ixLayouts) {
-      const givenDisc = ix.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+    for (const [name, encoder] of this.ixLayouts) {
+      const givenDisc = ix.subarray(0, encoder.discriminator.length);
+      const matches = givenDisc.equals(Buffer.from(encoder.discriminator));
       if (matches) {
-        const idlIx = this.idl.instructions.find((i) => i.name === name);
-        const isRaw =
-          idlIx &&
-          idlIx.args.length === 1 &&
-          idlIx.args[0].name === "data" &&
-          idlIx.args[0].type === "bytes";
-
-        if (isRaw) {
+        if (encoder.isRaw) {
           // For raw instructions, return the raw bytes as data
           return {
             name,
-            data: { data: ix.subarray(layout.discriminator.length) },
+            data: { data: ix.subarray(encoder.discriminator.length) },
           };
         } else {
           return {
             name,
-            data: layout.layout.decode(
-              ix.subarray(layout.discriminator.length)
+            data: encoder.layout.decode(
+              ix.subarray(encoder.discriminator.length)
             ),
           };
         }
