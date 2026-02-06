@@ -128,3 +128,34 @@ pub fn instruction(
     // the arguments to transform the instruction.
     input
 }
+
+/// Marks an instruction as accepting raw byte slice (`&[u8]`) instead of deserialized arguments.
+///
+/// This attribute is **required** for functions that accept `&[u8]` or `&mut [u8]` arguments.
+/// Without this attribute, Anchor will attempt to deserialize instruction data using Borsh.
+///
+/// # Example
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
+/// #[program]
+/// pub mod my_program {
+///     use super::*;
+///
+///     #[raw]
+///     pub fn raw_handler(ctx: Context<RawHandler>, data: &[u8]) -> Result<()> {
+///         // Parse custom format from raw bytes
+///         Ok(())
+///     }
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn raw(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    // This macro itself is a no-op, but the `#[program]` macro will detect this attribute
+    // and mark the instruction as raw.
+    input
+}
