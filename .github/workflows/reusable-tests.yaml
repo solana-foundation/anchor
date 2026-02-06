@@ -480,7 +480,7 @@ jobs:
             path: tests/test-instruction-validation
           - cmd: cd tests/signature-verification && anchor test
             path: tests/signature-verification
-          - cmd: cd tests/raw-instruction && anchor test
+          - cmd: cd tests/raw-instruction && ./test-raw-attribute.sh
             path: tests/raw-instruction
     steps:
       - uses: actions/checkout@v3
