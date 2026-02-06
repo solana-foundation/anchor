@@ -478,6 +478,8 @@ jobs:
             path: tests/lazy-account
           - cmd: cd tests/test-instruction-validation && ./test.sh
             path: tests/test-instruction-validation
+          - cmd: cd tests/signature-verification && anchor test
+            path: tests/signature-verification
           - cmd: cd tests/raw-instruction && ./test-raw-attribute.sh
             path: tests/raw-instruction
     steps:
