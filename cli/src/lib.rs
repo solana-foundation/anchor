@@ -1141,6 +1141,42 @@ fn get_npm_init_license() -> Result<String> {
     Ok(license.trim().to_string())
 }
 
+fn ensure_program_feature(
+    cfg_override: &ConfigOverride,
+    program_name: Option<String>,
+    feature: &str,
+    flag_name: &str,
+) -> Result<()> {
+    let cfg = Config::discover(cfg_override)?
+        .ok_or_else(|| anyhow!("The `{flag_name}` flag requires an Anchor workspace."))?;
+    let programs = cfg.get_programs(program_name)?;
+    let mut missing = Vec::new();
+
+    for program in programs {
+        let cargo_toml = program.path.join("Cargo.toml");
+        let manifest = Manifest::from_path(&cargo_toml)?;
+        if !manifest.features.contains_key(feature) {
+            missing.push((program.lib_name, cargo_toml));
+        }
+    }
+
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let mut message = format!(
+        "`{flag_name}` requires each program to define the `{feature}` feature in its Cargo.toml.\nMissing in:\n"
+    );
+    for (name, path) in missing {
+        message.push_str(&format!("  - {name} ({})\n", path.display()));
+    }
+    message.push_str(&format!(
+        "\nAdd to each program's Cargo.toml:\n\n[features]\n{feature} = []\n\nOr run without `{flag_name}`."
+    ));
+
+    Err(anyhow!(message))
+}
+
 fn process_command(opts: Opts) -> Result<()> {
     match opts.command {
         Command::Init {
@@ -1188,6 +1224,12 @@ fn process_command(opts: Opts) -> Result<()> {
         } => {
             let mut cargo_args = cargo_args;
             if log_compute_units {
+                ensure_program_feature(
+                    &opts.cfg_override,
+                    program_name.clone(),
+                    "log-compute-units",
+                    "--log-compute-units",
+                )?;
                 cargo_args.push("--features".to_string());
                 cargo_args.push("log-compute-units".to_string());
             }
@@ -1288,6 +1330,14 @@ fn process_command(opts: Opts) -> Result<()> {
         } => {
             let mut cargo_args = cargo_args;
             if log_compute_units {
+                if !skip_build {
+                    ensure_program_feature(
+                        &opts.cfg_override,
+                        program_name.clone(),
+                        "log-compute-units",
+                        "--log-compute-units",
+                    )?;
+                }
                 cargo_args.push("--features".to_string());
                 cargo_args.push("log-compute-units".to_string());
             }
