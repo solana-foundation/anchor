@@ -1,0 +1,21 @@
+[package]
+name = "raw-instruction-fail"
+version = "0.1.0"
+description = "Test program that should fail - &[u8] without #[raw]"
+edition = "2021"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "raw_instruction_fail"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
