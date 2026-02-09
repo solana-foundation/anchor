@@ -369,7 +369,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
 
     /// Clears `data` and writes instruction data to it.
     ///
-    /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
+    /// We use a `Vec<u8>` here because of the additional flexibility of re-allocation (only if
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
         data.clear();
