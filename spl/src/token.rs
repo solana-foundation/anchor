@@ -10,6 +10,7 @@ use std::ops::Deref;
 pub use spl_token::ID;
 pub use spl_token_interface as spl_token;
 
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSplTokenTransfer")]
 pub fn transfer<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Transfer<'info>>,
     amount: u64,
@@ -441,6 +442,7 @@ pub struct SyncNative<'info> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Copy)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSplTokenAccount")]
 pub struct TokenAccount(spl_token::state::Account);
 
 impl TokenAccount {

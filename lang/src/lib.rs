@@ -286,6 +286,7 @@ pub trait ToAccountInfos<'info> {
 
 /// Transformation to an `AccountInfo` struct.
 pub trait ToAccountInfo<'info> {
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorToAccountInfo")]
     fn to_account_info(&self) -> AccountInfo<'info>;
 }
 
@@ -536,7 +537,8 @@ pub mod prelude {
     };
     // Re-export the crate as anchor_lang for declare_program! macro
     pub use crate as anchor_lang;
-    pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
+    pub use crate::solana_program::account_info::next_account_info;
+    pub use crate::solana_program::account_info::AccountInfo;
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;

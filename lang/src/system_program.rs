@@ -40,6 +40,7 @@ pub struct AdvanceNonceAccount<'info> {
     pub recent_blockhashes: AccountInfo<'info>,
 }
 
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSystemProgramAllocate")]
 pub fn allocate<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Allocate<'info>>,
     space: u64,
@@ -88,6 +89,7 @@ pub struct AllocateWithSeed<'info> {
     pub base: AccountInfo<'info>,
 }
 
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSystemProgramAssign")]
 pub fn assign<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Assign<'info>>,
     owner: &Pubkey,
@@ -157,6 +159,7 @@ pub struct AuthorizeNonceAccount<'info> {
     pub authorized: AccountInfo<'info>,
 }
 
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSystemProgramCreateAccount")]
 pub fn create_account<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, CreateAccount<'info>>,
     lamports: u64,
@@ -297,6 +300,7 @@ pub struct CreateNonceAccountWithSeed<'info> {
     pub rent: AccountInfo<'info>,
 }
 
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSystemProgramTransfer")]
 pub fn transfer<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Transfer<'info>>,
     lamports: u64,

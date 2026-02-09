@@ -93,6 +93,7 @@ use std::ops::DerefMut;
 /// }
 /// ```
 #[derive(Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccountLoader")]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
     acc_info: &'info AccountInfo<'info>,
     phantom: PhantomData<&'info T>,
