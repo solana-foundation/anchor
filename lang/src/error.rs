@@ -290,6 +290,22 @@ pub enum ErrorCode {
     #[msg("Error during numeric conversion")]
     InvalidNumericConversion = 4102,
 
+    // Token account init_if_needed field validation
+    /// 4200 - A token account delegate must not be set on initialization
+    #[msg("A token account delegate must not be set on initialization")]
+    ConstraintTokenDelegate = 4200,
+    /// 4201 - A token account close authority must not be set on initialization
+    #[msg("A token account close authority must not be set on initialization")]
+    ConstraintTokenCloseAuthority,
+    /// 4202 - A token account must be initialized, not frozen
+    #[msg("A token account must be initialized, not frozen")]
+    ConstraintTokenAccountState,
+
+    // Realloc payer signer enforcement
+    /// 4203 - The realloc payer must be a signer when the account shrinks
+    #[msg("The realloc payer must be a signer when the account shrinks")]
+    ConstraintReallocPayerNotSigner,
+
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
     #[msg("The API being used is deprecated and should no longer be used")]

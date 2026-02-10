@@ -464,6 +464,9 @@ fn generate_constraint_realloc(
                     )?;
                 }
             } else {
+                if !#payer.to_account_info().is_signer {
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintReallocPayerNotSigner).with_account_name(#account_name));
+                }
                 let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
                 **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
@@ -673,6 +676,12 @@ fn generate_constraint_init_group(
                         if owner_program != &#token_program.key() {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
                         }
+                        if pa.delegate.is_some() {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenDelegate).with_account_name(#name_str));
+                        }
+                        if pa.close_authority.is_some() {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenCloseAuthority).with_account_name(#name_str));
+                        }
                     }
                     Ok(pa)
                 }})()?;
@@ -747,6 +756,12 @@ fn generate_constraint_init_group(
 
                         if pa.key() != ::anchor_spl::associated_token::get_associated_token_address_with_program_id(&#owner.key(), &#mint.key(), &#token_program.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountNotAssociatedTokenAccount).with_account_name(#name_str));
+                        }
+                        if pa.delegate.is_some() {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenDelegate).with_account_name(#name_str));
+                        }
+                        if pa.close_authority.is_some() {
+                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenCloseAuthority).with_account_name(#name_str));
                         }
                     }
                     Ok(pa)
