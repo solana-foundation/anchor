@@ -288,3 +288,108 @@ fn v2_filter_logic_includes_init_if_needed() {
         "init_if_needed case: filters MUST disagree — this is the bug fix"
     );
 }
+
+// ---------------------------------------------------------------------------
+// V-3: Realloc payer signer enforcement on shrink path
+// ---------------------------------------------------------------------------
+
+/// Verify the new error code for realloc payer signer exists at 4203.
+#[test]
+fn v3_realloc_payer_signer_error_code_exists() {
+    let code: u32 = ErrorCode::ConstraintReallocPayerNotSigner.into();
+    assert_eq!(code, 4203);
+}
+
+/// Verify the error construction chain for the realloc payer signer check.
+/// The generated code uses: Error::from(ErrorCode::ConstraintReallocPayerNotSigner)
+///     .with_account_name(account_name)
+#[test]
+fn v3_realloc_payer_signer_error_carries_account_name() {
+    let err = Error::from(ErrorCode::ConstraintReallocPayerNotSigner)
+        .with_account_name("my_data_account");
+
+    match err {
+        Error::AnchorError(ae) => {
+            assert_eq!(ae.error_code_number, 4203);
+            assert_eq!(ae.error_name, "ConstraintReallocPayerNotSigner");
+            assert!(
+                ae.error_msg.contains("signer"),
+                "error message should mention signer: {}",
+                ae.error_msg
+            );
+            assert!(
+                ae.error_msg.contains("realloc"),
+                "error message should mention realloc: {}",
+                ae.error_msg
+            );
+            match &ae.error_origin {
+                Some(ErrorOrigin::AccountName(name)) => {
+                    assert_eq!(name, "my_data_account");
+                }
+                other => panic!(
+                    "expected ErrorOrigin::AccountName, got {:?}",
+                    other
+                ),
+            }
+        }
+        Error::ProgramError(_) => panic!("expected AnchorError, got ProgramError"),
+    }
+}
+
+/// Verify that V-3 error code 4203 follows sequentially after V-1 codes
+/// and does not collide with any existing error codes.
+#[test]
+fn v3_error_code_sequential_and_non_colliding() {
+    let v1_last: u32 = ErrorCode::ConstraintTokenAccountState.into();
+    let v3_code: u32 = ErrorCode::ConstraintReallocPayerNotSigner.into();
+
+    // Must follow immediately after the last V-1 code
+    assert_eq!(v3_code, v1_last + 1, "V-3 code should be sequential after V-1 codes");
+
+    // Must not collide with deprecated sentinel
+    assert_ne!(v3_code, u32::from(ErrorCode::Deprecated));
+    assert!(v3_code < u32::from(ErrorCode::Deprecated));
+}
+
+/// Demonstrate the asymmetry that V-3 fixes.
+///
+/// The realloc constraint generates two paths:
+/// - Grow: uses system program Transfer CPI, which inherently requires
+///   the `from` account (payer) to be a signer
+/// - Shrink: uses direct lamport manipulation via borrow_mut(), which
+///   has NO inherent signer check
+///
+/// Without the fix, if `realloc::payer` is not declared as `Signer<'info>`,
+/// anyone can pass their account as the payer during a shrink and receive
+/// the refunded lamports. The fix adds an explicit `is_signer` check in
+/// the shrink path to match the implicit check in the grow path.
+#[test]
+fn v3_documents_grow_vs_shrink_signer_asymmetry() {
+    // The grow path calls system_program::transfer which requires signer.
+    // The shrink path uses direct borrow_mut() which does NOT require signer.
+    // This test documents that the framework now has error code 4203 to
+    // enforce payer signer status in the shrink path.
+
+    // Verify the error exists and is an AnchorError (not ProgramError),
+    // meaning it's a framework-level constraint, not a Solana runtime error
+    let err: Error = ErrorCode::ConstraintReallocPayerNotSigner.into();
+    assert!(
+        matches!(err, Error::AnchorError(_)),
+        "realloc payer signer check should be a framework-level constraint"
+    );
+
+    // The error name clearly indicates this is about the realloc payer
+    match err {
+        Error::AnchorError(ae) => {
+            assert!(
+                ae.error_name.contains("Realloc"),
+                "error name should indicate realloc context"
+            );
+            assert!(
+                ae.error_name.contains("Signer"),
+                "error name should indicate signer requirement"
+            );
+        }
+        _ => unreachable!(),
+    }
+}
