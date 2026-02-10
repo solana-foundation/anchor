@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This security audit of the Anchor framework (solana-foundation/anchor) identified **two vulnerabilities** in the framework's code generation layer (`lang/syn/`). Both affect the `init_if_needed` feature — one through incomplete field validation of token accounts (High severity), and another through exclusion from the duplicate mutable account check (Medium severity). These vulnerabilities exist in the constraint code generation, meaning every Anchor program that uses the affected patterns inherits the weakness.
+This security audit of the Anchor framework (solana-foundation/anchor) identified **three vulnerabilities** in the framework's code generation layer (`lang/syn/`). Two affect the `init_if_needed` feature — one through incomplete field validation of token accounts (High severity), and another through exclusion from the duplicate mutable account check (Medium severity). A third vulnerability affects the `realloc` constraint, where the account shrink path lacks payer signer enforcement that is implicitly present in the grow path (Medium severity). These vulnerabilities exist in the constraint code generation, meaning every Anchor program that uses the affected patterns inherits the weakness.
 
 ## Findings Summary
 
@@ -10,6 +10,7 @@ This security audit of the Anchor framework (solana-foundation/anchor) identifie
 |-----|----------|-----------|--------|--------|
 | V-1 | High | `init_if_needed` Token/AssociatedToken validation (`constraints.rs`) | Fixed | Attacker retains unauthorized `close_authority` or `delegate` on victim's token account |
 | V-2 | Medium | `init_if_needed` excluded from duplicate mutable account check (`try_accounts.rs`) | Fixed | State corruption via double mutable reference to the same account |
+| V-3 | Medium | `realloc` payer signer not enforced on shrink path (`constraints.rs`) | Fixed | Unauthorized lamport receipt when account shrinks without payer signature verification |
 
 ## Target Repository
 
@@ -244,43 +245,196 @@ Narrow the duplicate check exclusion to only pure `init` accounts (which create 
 
 ---
 
+### V-3: Missing Payer Signer Enforcement on `realloc` Shrink Path
+
+#### Severity
+**Medium** — The `realloc` constraint's account shrink path transfers lamports to the payer via direct `borrow_mut()` manipulation without verifying the payer's signer status. The grow path implicitly enforces payer signature via system program Transfer CPI, creating an asymmetry where the shrink path has weaker security guarantees.
+
+#### Affected Component
+
+- **File:** `lang/syn/src/codegen/accounts/constraints.rs`
+- **Function:** `generate_constraint_realloc()`, lines 466–469
+- **Shrink path:** Direct lamport manipulation without `is_signer` check
+- **Grow path (comparison):** Lines 455–464, uses system program Transfer CPI which inherently validates signer
+
+#### Root Cause
+
+The `realloc` constraint generates two distinct code paths for handling account size changes:
+
+**Grow path** (account gets larger, `__delta_space > 0`):
+```rust
+anchor_lang::system_program::transfer(
+    anchor_lang::context::CpiContext::new(
+        system_program.key(),
+        anchor_lang::system_program::Transfer {
+            from: #payer.to_account_info(),
+            to: __field_info.clone(),
+        },
+    ),
+    amount,
+)?;
+```
+The system program's `Transfer` instruction inherently validates that the `from` account (the payer) is a signer. If the payer did not sign the transaction, this CPI fails.
+
+**Shrink path** (account gets smaller, `__delta_space < 0`):
+```rust
+// BEFORE FIX — no signer check
+let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
+**#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info()
+    .lamports().checked_add(__lamport_amt).unwrap();
+**__field_info.lamports.borrow_mut() = __field_info.lamports()
+    .checked_sub(__lamport_amt).unwrap();
+```
+Direct lamport manipulation via `borrow_mut()` — no CPI, no signer check. The Solana runtime allows a program to decrease lamports from accounts it owns and increase lamports for any writable account. No signature verification occurs.
+
+Additionally, the constraint parser (`lang/syn/src/parser/accounts/mod.rs`, lines 279–284) only enforces that `realloc::payer` must be **mutable** — it does NOT require the payer to be a signer.
+
+#### Attack Vector
+
+**Prerequisite:** The program developer declares the `realloc::payer` as a non-signer type:
+```rust
+#[derive(Accounts)]
+pub struct ResizeData<'info> {
+    #[account(
+        mut,
+        realloc = new_size,
+        realloc::payer = payer,
+        realloc::zero = false,
+    )]
+    pub data_account: Account<'info, MyData>,
+    /// CHECK: Payer for realloc — not declared as Signer
+    #[account(mut)]
+    pub payer: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+```
+
+**Step-by-step exploitation:**
+
+1. **Legitimate user grows the account:** Calls the instruction with `new_size > current_size`. The system program Transfer CPI requires the payer to sign → works correctly, payer pays rent.
+
+2. **Attacker shrinks the account:** Calls the same instruction with `new_size < current_size`. Passes **their own account** as the `payer` field.
+
+3. **No signer check on shrink path:** Since the payer is `AccountInfo<'info>` without a signer constraint, the attacker's account is accepted.
+
+4. **Lamports transferred to attacker:** The excess rent lamports from the shrunk account are transferred directly to the attacker's account via `borrow_mut()`.
+
+5. **Result:** The attacker receives lamports that should have been refunded to the original payer who funded the account growth.
+
+#### Before/After State Comparison
+
+**Normal operation (same payer for grow and shrink):**
+```
+Grow: payer (Alice) → pays 5000 lamports rent → data_account grows
+Shrink: payer (Alice) → receives 3000 lamports refund → data_account shrinks
+Net cost to Alice: 2000 lamports ✓
+```
+
+**With exploit (different payer for shrink):**
+```
+Grow: payer (Alice) → pays 5000 lamports rent → data_account grows
+Shrink: payer (Bob/attacker) → receives 3000 lamports refund → data_account shrinks
+Alice paid 5000, received 0 — lost 5000 lamports ✗
+Bob paid 0, received 3000 — gained 3000 lamports ✗
+```
+
+#### Impact Assessment
+
+- **Direct impact:** Unauthorized receipt of lamport refunds when accounts shrink. The original payer who funded the account growth does not receive their refund.
+- **Exploitability:** Requires the developer to declare the `realloc::payer` without a signer constraint (e.g., `AccountInfo<'info>` or `UncheckedAccount<'info>`). Many developers use `Signer<'info>` which provides implicit protection, but the framework does not enforce this.
+- **Financial impact:** Limited to rent-exempt minimum differences, typically small amounts (lamports per realloc operation). However, automated at scale across many accounts, this could be significant.
+- **Systemic risk:** The grow path's implicit signer enforcement may give developers a false sense of security, leading them to omit explicit signer constraints on the payer.
+
+#### Recommended Fix
+
+Add an explicit `is_signer` check on the payer in the shrink path, matching the implicit enforcement provided by the system program Transfer CPI in the grow path.
+
+**Code changes applied:**
+
+`lang/syn/src/codegen/accounts/constraints.rs` — Shrink path (before lamport manipulation):
+```rust
+if !#payer.to_account_info().is_signer {
+    return Err(anchor_lang::error::Error::from(
+        anchor_lang::error::ErrorCode::ConstraintReallocPayerNotSigner
+    ).with_account_name(#account_name));
+}
+```
+
+`lang/src/error.rs` — New error code appended after V-1 codes:
+```rust
+ConstraintReallocPayerNotSigner = 4203,
+```
+
+**Why this fix is correct:** The fix makes the shrink path's signer enforcement consistent with the grow path. A payer must prove identity (via signature) before receiving lamports from a program-owned account, regardless of whether the account is growing or shrinking. This prevents unauthorized parties from claiming rent refunds.
+
+#### Ecosystem Recommendations
+
+1. **Programs using `realloc`** should verify that their `realloc::payer` field is declared as `Signer<'info>` or has an explicit `#[account(signer)]` constraint.
+2. The Anchor documentation for `realloc` should note that the payer receives lamports on shrink and therefore should always be a signer.
+3. Consider adding a compile-time lint that warns when `realloc::payer` references an account without a signer constraint.
+
+---
+
 ## Proof of Concept
 
 ### Test File
 
 Tests are located in `lang/tests/security_init_if_needed.rs`. They verify:
 
-1. New error codes exist with correct values (4200, 4201, 4202)
-2. Existing error codes are not shifted by the additions
-3. The `ConstraintDuplicateMutableAccount` error code remains at 2040
+**V-1 (init_if_needed field validation):**
+1. Error codes 4200–4202 exist at correct offsets
+2. Existing error codes are not displaced by the new additions
+3. Error construction chain (`Error::from(ErrorCode) + .with_account_name()`) correctly propagates account names for both `ConstraintTokenDelegate` and `ConstraintTokenCloseAuthority`
+4. New error codes are distinct from existing token constraint errors
+5. Error code names match expected variant strings
+
+**V-2 (duplicate mutable account check):**
+1. `ConstraintDuplicateMutableAccount` error code is at 2040
+2. Error carries account name through the full error chain
+3. **Filter logic demonstration:** Tests the exact `matches!` expression from the fix against all three cases (no init, pure init, init_if_needed) and proves that the old filter (`is_none()`) incorrectly excluded init_if_needed while the new filter correctly includes it
+
+**V-3 (realloc payer signer enforcement):**
+1. Error code 4203 (`ConstraintReallocPayerNotSigner`) exists
+2. Error construction chain carries account name
+3. Error code is sequential after V-1 codes and non-colliding
+4. Documents the grow vs shrink signer asymmetry
 
 ### Test Output
 
 ```
-running 4 tests
-test test_existing_error_codes_unchanged ... ok
-test test_token_account_state_error_code_exists ... ok
-test test_token_close_authority_error_code_exists ... ok
-test test_token_delegate_error_code_exists ... ok
+running 13 tests
+test v1_close_authority_error_carries_account_name ... ok
+test v1_delegate_error_carries_account_name ... ok
+test v1_error_code_names_are_correct ... ok
+test v1_error_codes_at_correct_offset ... ok
+test v1_existing_error_codes_not_displaced ... ok
+test v1_new_codes_distinct_from_existing_token_constraints ... ok
+test v2_duplicate_mutable_error_carries_account_name ... ok
+test v2_duplicate_mutable_error_code_exists ... ok
+test v2_filter_logic_includes_init_if_needed ... ok
+test v3_documents_grow_vs_shrink_signer_asymmetry ... ok
+test v3_error_code_sequential_and_non_colliding ... ok
+test v3_realloc_payer_signer_error_carries_account_name ... ok
+test v3_realloc_payer_signer_error_code_exists ... ok
 
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 ### Full Test Suite Verification
 
-All 53 existing tests pass after applying both fixes:
+All existing tests pass after applying all three fixes:
 
 ```
 running 15 tests ... test result: ok. 15 passed (anchor_lang unit tests)
 running 5 tests ... test result: ok. 5 passed (account_reload)
 running 1 test ... test result: ok. 1 passed (generics_test)
 running 3 tests ... test result: ok. 3 passed (macros)
-running 4 tests ... test result: ok. 4 passed (security_init_if_needed)
+running 13 tests ... test result: ok. 13 passed (security_init_if_needed)
 running 1 test ... test result: ok. 1 passed (seeds_compile)
 running 1 test ... test result: ok. 1 passed (serialization)
 running 18 tests ... test result: ok. 18 passed (space)
 
-Total: 48 passed; 0 failed
+Total: 57 passed; 0 failed
 ```
 
 Build verification:
@@ -291,6 +445,16 @@ cargo check -p anchor-spl    ✓
 ```
 
 ---
+
+## Investigated Leads (Not Exploitable)
+
+The following potential attack vectors were investigated and determined to be non-exploitable:
+
+1. **Token-2022 extension data in `init_if_needed`**: Token-2022 accounts can have extensions, but dangerous extensions (`PermanentDelegate`, `TransferHook`, `TransferFee`) are mint-level, not token-account-level. Token account-level extensions (`CpiGuard`, `MemoTransfer`) present DoS potential but not fund theft. The `init_if_needed` deserialization correctly uses `StateWithExtensions::unpack()` and retains only the base state.
+
+2. **Close + `init_if_needed` in same transaction**: After `close()`, the account is reassigned to the system program with zero lamports and empty data. `init_if_needed` correctly detects the system-program-owned state and re-creates the account from scratch. No residual data attack is possible.
+
+3. **Discriminator collision across programs**: `Account<T>::try_from()` checks `info.owner != &T::owner()` (the program owner) BEFORE checking the discriminator. Cross-program accounts are rejected at the owner check, preventing discriminator-based type confusion.
 
 ## Methodology
 
@@ -303,6 +467,7 @@ Standard security audit approach: manual code review of the Anchor framework's c
 - Account deserialization (checked vs unchecked paths)
 - Serialization/exit behavior for mutable accounts
 - Close/realloc constraint interactions
+- Signer enforcement asymmetry across code paths
 
 Analysis prioritized framework-level vulnerabilities in the code generator, as these have maximum downstream impact — every Anchor program that uses the affected pattern inherits the weakness.
 
@@ -312,11 +477,10 @@ Analysis prioritized framework-level vulnerabilities in the code generator, as t
 - **Analysis depth:** Deep manual code review of core framework
 - **Files analyzed:** Core framework code in `lang/syn/src/codegen/`, `lang/src/accounts/`, `lang/src/`, `spl/src/`
 - **Out of scope:** CLI tooling (`cli/`), documentation, example programs, TypeScript client libraries
-- **Test verification:** All 48 existing tests pass; 4 new tests added
+- **Test verification:** All 57 tests pass (44 existing + 13 new security tests)
 - **Areas recommended for further review:**
-  - `realloc` payer signer enforcement for the shrink path (direct lamport manipulation without signer check — inconsistent with grow path which uses system program CPI)
-  - Token-2022 extension data handling in `init_if_needed` — extensions are deserialized via `StateWithExtensions::unpack` but only the base state is retained; extension-specific fields are not validated
-  - Interaction between `close` and `init_if_needed` across instructions within the same transaction
+  - Token-2022 mint-level extension validation for programs using `TokenInterface` with `init_if_needed` — while not directly exploitable through token account init, programs may benefit from opt-in extension checks
+  - `realloc` interaction with `close` constraint in the same instruction — both manipulate lamports directly and could potentially interact in unexpected ways
 
 ## Auditor
 
