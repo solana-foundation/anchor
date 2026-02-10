@@ -301,6 +301,11 @@ pub enum ErrorCode {
     #[msg("A token account must be initialized, not frozen")]
     ConstraintTokenAccountState,
 
+    // Realloc payer signer enforcement
+    /// 4203 - The realloc payer must be a signer when the account shrinks
+    #[msg("The realloc payer must be a signer when the account shrinks")]
+    ConstraintReallocPayerNotSigner,
+
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
     #[msg("The API being used is deprecated and should no longer be used")]

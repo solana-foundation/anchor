@@ -464,6 +464,9 @@ fn generate_constraint_realloc(
                     )?;
                 }
             } else {
+                if !#payer.to_account_info().is_signer {
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintReallocPayerNotSigner).with_account_name(#account_name));
+                }
                 let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
                 **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
