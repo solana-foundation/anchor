@@ -111,146 +111,151 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 actual_param_count,
             );
 
-            // Generate type validation calls - map instruction arg indices to handler arg indices
+            // Generate type validation calls using name->type maps
             // Try to find AccountsStruct in program module to match names at code generation time
             let type_validations: Vec<proc_macro2::TokenStream> = {
-                // Try to find the AccountsStruct for this anchor_ident by parsing the program module
-                let instruction_arg_names_opt: Option<Vec<String>> = program.program_mod.content.as_ref().and_then(|(_, items)| {
-                    items.iter().find_map(|item| {
-                        if let syn::Item::Struct(item_struct) = item {
-                            if item_struct.ident == *anchor {
-                                // Found the AccountsStruct, parse it to get instruction_api
-                                if let Ok(accs_struct) = accounts_parser::parse(item_struct) {
-                                    return accs_struct.instruction_api.as_ref().map(|ix_api| {
-                                        ix_api.iter().filter_map(|expr| {
-                                            if let syn::Expr::Type(_expr_type) = expr {
-                                                // Extract name from Expr::Type - the expr field is the name
-                                                // Format: name: type, so we need to extract just the name part
-                                                use crate::parser;
-                                                let full_str = parser::tts_to_string(expr);
-                                                // Format is "name : type", split by " : " and take first part
-                                                full_str.split(" : ").next().map(|s| s.trim().to_string())
-                                            } else {
-                                                None
-                                            }
-                                        }).collect::<Vec<_>>()
-                                    });
-                                }
-                            }
-                        }
-                        None
-                    })
-                });
-
-                let mut validations = Vec::new();
-                // Generate validation only for instruction args that exist
-                let max_ix_args = instruction_arg_names_opt.as_ref().map(|v| v.len()).unwrap_or(32).min(32);
-
-                for ix_arg_idx in 0..max_ix_args {
-                    let method_name = syn::Ident::new(
-                        &format!("__anchor_validate_ix_arg_type_{}", ix_arg_idx),
-                        proc_macro2::Span::call_site(),
-                    );
-                    // If we found instruction arg names, match them to handler args at code generation time
-                    if let Some(ref ix_arg_names) = instruction_arg_names_opt {
-                        if ix_arg_idx < ix_arg_names.len() {
-                            let ix_arg_name = &ix_arg_names[ix_arg_idx];
-                            // Find matching handler arg by name
-                            if let Some((_handler_idx, handler_arg)) = ix.args.iter().enumerate()
-                                .find(|(_, arg)| arg.name == ix_arg_name.as_str()) {
-                                let arg_ty = &handler_arg.raw_arg.ty;
-                                validations.push(quote! {
-                                    // Type validation for instruction arg at index #ix_arg_idx (matches handler arg #handler_idx)
-                                    #[allow(unreachable_code)]
-                                    if false {
-                                        let __type_check_arg: #arg_ty = panic!();
-                                        #anchor::#method_name(&__type_check_arg);
-                                    }
-                                });
-                                continue;
-                            }
-                        }
+                use std::collections::HashMap;
+                let handler_args_map: HashMap<String, &syn::Type> = ix.args
+                    .iter()
+                    .map(|arg| (arg.name.to_string(), &*arg.raw_arg.ty))
+                    .collect();
+                let extract_instruction_args = |item_struct: &syn::ItemStruct| -> Option<Vec<(String, Box<syn::Type>)>> {
+                    if item_struct.ident != *anchor {
+                        return None;
                     }
-
-                    // Fallback: use sequential validation only when we parsed instruction arg names
-                    // and can verify they match handler args sequentially
-                    // This maintains backward compatibility while allowing partial args
-                    if let Some(ref ix_names) = instruction_arg_names_opt {
-                        if ix_arg_idx < ix_names.len() && ix_arg_idx < ix.args.len() {
-                            let handler_arg = &ix.args[ix_arg_idx];
-                            let handler_name = handler_arg.name.to_string();
-                            // Only validate if names match at this position (sequential case)
-                            if ix_names[ix_arg_idx] == handler_name {
-                                let arg_ty = &handler_arg.raw_arg.ty;
-                                validations.push(quote! {
-                                    // Type validation for instruction arg at index #ix_arg_idx
-                                    // Sequential validation (verified name match at code generation time)
-                                    #[allow(unreachable_code)]
-                                    if false {
-                                        let __type_check_arg: #arg_ty = panic!();
-                                        #anchor::#method_name(&__type_check_arg);
+                    accounts_parser::parse(item_struct).ok()
+                        .and_then(|accs_struct| accs_struct.instruction_api.as_ref().map(|ix_api| {
+                            ix_api.iter().filter_map(|expr| {
+                                if let syn::Expr::Type(expr_type) = expr {
+                                    use crate::parser;
+                                    let name = parser::tts_to_string(&expr_type.expr).trim().to_string();
+                                    Some((name, expr_type.ty.clone()))
+                                } else {
+                                    None
+                                }
+                            }).collect()
+                        }))
+                };
+                let instruction_args_opt: Option<Vec<(String, Box<syn::Type>)>> = {
+                    let result = program.program_mod.content.as_ref()
+                        .and_then(|(_, items)| {
+                            items.iter().find_map(|item| {
+                                if let syn::Item::Struct(ref item_struct) = item {
+                                    extract_instruction_args(item_struct)
+                                } else {
+                                    None
+                                }
+                            })
+                        });
+                    result.or_else(|| {
+                        program.program_mod.ident.span().local_file()
+                            .and_then(|path| std::fs::read_to_string(&path).ok())
+                            .and_then(|content| syn::parse_file(&content).ok())
+                            .and_then(|file| {
+                                file.items.iter().find_map(|item| {
+                                    if let syn::Item::Struct(ref item_struct) = item {
+                                        extract_instruction_args(item_struct)
+                                    } else {
+                                        None
                                     }
-                                });
-                            }
-                        }
-                    } else {
-                        // Can't verify at code generation time - use sequential validation as fallback
-                        // This maintains backward compatibility for existing tests where args are declared sequentially
-                        // Note: For true partial args (non-sequential) when AccountsStruct is outside program module,
-                        // this may cause compile errors. The skip optimization still works, but compile-time type
-                        // checking is limited. Consider moving AccountsStruct into the program module for full support.
-                        if ix_arg_idx < ix.args.len() {
-                            let handler_arg = &ix.args[ix_arg_idx];
-                            let arg_ty = &handler_arg.raw_arg.ty;
+                                })
+                            })
+                    })
+                };
+                let mut validations = Vec::new();
+                if let Some(ref ix_args) = instruction_args_opt {
+                    for (ix_arg_idx, (ix_arg_name, _ix_arg_ty)) in ix_args.iter().enumerate() {
+                        let method_name = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", ix_arg_idx),
+                            proc_macro2::Span::call_site(),
+                        );
+
+                        if let Some(handler_ty) = handler_args_map.get(ix_arg_name) {
                             validations.push(quote! {
-                                // Type validation for instruction arg at index #ix_arg_idx
-                                // Sequential validation (fallback when name matching unavailable at code gen time)
                                 #[allow(unreachable_code)]
                                 if false {
-                                    let __type_check_arg: #arg_ty = panic!();
+                                    let __type_check_arg: #handler_ty = panic!();
                                     #anchor::#method_name(&__type_check_arg);
                                 }
                             });
                         }
                     }
+                } else {
+                    for handler_idx in 0..ix.args.len().min(32) {
+                        let handler_ty = &*ix.args[handler_idx].raw_arg.ty;
+                        let method_name = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", handler_idx),
+                            proc_macro2::Span::call_site(),
+                        );
+                        validations.push(quote! {
+                            #[allow(unreachable_code)]
+                            if false {
+                                let __type_check_arg: #handler_ty = panic!();
+                                #anchor::#method_name(&__type_check_arg);
+                            }
+                        });
+                    }
                 }
+
                 validations
             };
 
-            // Generate name validation - check each instruction arg exists in handler args
-            // Generate individual checks for better error messages
             let name_checks: Vec<proc_macro2::TokenStream> = {
-                // Try to get instruction arg names at code generation time
-                let instruction_arg_names_opt: Option<Vec<String>> = program.program_mod.content.as_ref().and_then(|(_, items)| {
-                    items.iter().find_map(|item| {
-                        if let syn::Item::Struct(item_struct) = item {
-                            if item_struct.ident == *anchor {
-                                if let Ok(accs_struct) = accounts_parser::parse(item_struct) {
-                                    return accs_struct.instruction_api.as_ref().map(|ix_api| {
-                                        ix_api.iter().filter_map(|expr| {
-                                            if let syn::Expr::Type(_) = expr {
-                                                use crate::parser;
-                                                let full_str = parser::tts_to_string(expr);
-                                                full_str.split(" : ").next().map(|s| s.trim().to_string())
-                                            } else {
-                                                None
-                                            }
-                                        }).collect::<Vec<_>>()
-                                    });
-                                }
-                            }
-                        }
-                        None
+                let handler_arg_names_set: std::collections::HashSet<String> = ix.args
+                    .iter()
+                    .map(|arg| {
+                        let name = arg.name.to_string();
+                        name.strip_prefix('_').unwrap_or(&name).to_string()
                     })
-                });
+                    .collect();
+                let extract_names = |item_struct: &syn::ItemStruct| -> Option<Vec<String>> {
+                    if item_struct.ident != *anchor {
+                        return None;
+                    }
+                    accounts_parser::parse(item_struct).ok()
+                        .and_then(|accs_struct| accs_struct.instruction_api.as_ref().map(|ix_api| {
+                            ix_api.iter().filter_map(|expr| {
+                                if let syn::Expr::Type(expr_type) = expr {
+                                    use crate::parser;
+                                    Some(parser::tts_to_string(&expr_type.expr).trim().to_string())
+                                } else {
+                                    None
+                                }
+                            }).collect()
+                        }))
+                };
+                let instruction_arg_names_opt: Option<Vec<String>> = {
+                    let result = program.program_mod.content.as_ref()
+                        .and_then(|(_, items)| {
+                            items.iter().find_map(|item| {
+                                if let syn::Item::Struct(ref item_struct) = item {
+                                    extract_names(item_struct)
+                                } else {
+                                    None
+                                }
+                            })
+                        });
+
+                    result.or_else(|| {
+                        program.program_mod.ident.span().local_file()
+                            .and_then(|path| std::fs::read_to_string(&path).ok())
+                            .and_then(|content| syn::parse_file(&content).ok())
+                            .and_then(|file| {
+                                file.items.iter().find_map(|item| {
+                                    if let syn::Item::Struct(ref item_struct) = item {
+                                        extract_names(item_struct)
+                                    } else {
+                                        None
+                                    }
+                                })
+                            })
+                    })
+                };
 
                 if let Some(ref ix_names) = instruction_arg_names_opt {
-                    // Generate const checks for each instruction arg name
                     ix_names.iter().enumerate().map(|(idx, ix_name)| {
-                        // Check if this instruction arg name exists in handler args
-                        let found_in_handler = handler_arg_names.iter().any(|h_name| h_name == ix_name);
-                        if !found_in_handler {
-                            // Generate compile-time error
+                        let normalized_ix_name = ix_name.strip_prefix('_').unwrap_or(ix_name);
+                        if !handler_arg_names_set.contains(normalized_ix_name) {
                             quote! {
                                 const _: () = {
                                     panic!(concat!(
@@ -265,8 +270,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         }
                     }).collect()
                 } else {
-                    // Fallback: skip name validation if we can't parse at code gen time
-                    // Runtime validation will catch mismatches during deserialization
                     vec![]
                 }
             };
