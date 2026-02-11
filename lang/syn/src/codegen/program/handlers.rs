@@ -50,17 +50,12 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_name_str = ix_method_name.to_string();
             let accounts_type_str = anchor.to_string();
 
-            // Match instruction arg names to handler arg names to find skip offset
-            // Generate code that matches instruction arg names to handler arg indices at compile time
             let handler_arg_names: Vec<String> = ix.args.iter().map(|arg| arg.name.to_string()).collect();
             let handler_arg_names_lit: Vec<proc_macro2::TokenStream> = handler_arg_names
                 .iter()
                 .map(|name| quote! { #name })
                 .collect();
 
-            // Generate skip code: deserialize and discard handler args that come before
-            // the first instruction arg. Match instruction arg names to handler arg names.
-            // This only supports skipping from the start and then reading sequentially.
             let (skip_code, use_skipped_data) = {
                 // Generate deserialize calls for each handler arg that might need to be skipped
                 let skip_deserializations: Vec<proc_macro2::TokenStream> = ix.args
@@ -279,20 +274,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
                     const HANDLER_PARAM_COUNT: usize = #actual_param_count;
 
-                    // Validation: instruction args count must not exceed handler args count
-                    // (allows partial args, but prevents declaring more args than handler has)
+                    // Validation instruction args count must not exceed handler args count
                     if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
                         panic!(#count_error_msg);
                     }
                 };
 
-                // Name validation: check instruction arg names exist in handler args
+                // Name validation
                 #(#name_checks)*
 
                 // Type validations
-                // Note: For partial args optimization, type validation is relaxed
-                // to allow #[instruction] to declare subset of handler args
-                // Full type checking happens at runtime during deserialization
                 #(#type_validations)*
             };
 
@@ -320,7 +311,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                     let mut __reallocs = std::collections::BTreeSet::new();
 
-                    // Deserialize accounts (using potentially skipped data if #[instruction] is present).
+                    // Deserialize accounts
                     let mut __remaining_accounts: &[AccountInfo] = __accounts;
                     let mut __accounts = #anchor::try_accounts(
                         __program_id,
