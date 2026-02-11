@@ -142,19 +142,60 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 }
                             })
                         });
+
                     result.or_else(|| {
-                        program.program_mod.ident.span().local_file()
-                            .and_then(|path| std::fs::read_to_string(&path).ok())
-                            .and_then(|content| syn::parse_file(&content).ok())
-                            .and_then(|file| {
-                                file.items.iter().find_map(|item| {
-                                    if let syn::Item::Struct(ref item_struct) = item {
-                                        extract_instruction_args(item_struct)
+                        let file_path = anchor.span().local_file()
+                            .or_else(|| program.program_mod.ident.span().local_file());
+
+                        if let Some(path) = file_path {
+                            std::fs::read_to_string(&path).ok()
+                                .and_then(|content| syn::parse_file(&content).ok())
+                                .and_then(|file| {
+                                    file.items.iter().find_map(|item| {
+                                        if let syn::Item::Struct(ref item_struct) = item {
+                                            extract_instruction_args(item_struct)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                        } else {
+                            // Fallback: try to find lib.rs relative to current directory
+                            // Try multiple possible locations
+                            let cwd = std::env::current_dir().ok()?;
+                            let mut possible_paths = vec![cwd.join("src").join("lib.rs")];
+
+                            // Search in programs directory
+                            if let Ok(programs_dir) = std::fs::read_dir(cwd.join("programs")) {
+                                for entry in programs_dir.flatten() {
+                                    if entry.file_type().ok().map(|t| t.is_dir()).unwrap_or(false) {
+                                        let lib_rs = entry.path().join("src").join("lib.rs");
+                                        if lib_rs.exists() {
+                                            possible_paths.push(lib_rs);
+                                        }
+                                    }
+                                }
+                            }
+
+                            possible_paths.into_iter()
+                                .find_map(|path| {
+                                    if path.exists() {
+                                        std::fs::read_to_string(&path).ok()
                                     } else {
                                         None
                                     }
                                 })
-                            })
+                                .and_then(|content| syn::parse_file(&content).ok())
+                                .and_then(|file| {
+                                    file.items.iter().find_map(|item| {
+                                        if let syn::Item::Struct(ref item_struct) = item {
+                                            extract_instruction_args(item_struct)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                        }
                     })
                 };
                 let mut validations = Vec::new();
@@ -232,18 +273,58 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         });
 
                     result.or_else(|| {
-                        program.program_mod.ident.span().local_file()
-                            .and_then(|path| std::fs::read_to_string(&path).ok())
-                            .and_then(|content| syn::parse_file(&content).ok())
-                            .and_then(|file| {
-                                file.items.iter().find_map(|item| {
-                                    if let syn::Item::Struct(ref item_struct) = item {
-                                        extract_names(item_struct)
+                        let file_path = anchor.span().local_file()
+                            .or_else(|| program.program_mod.ident.span().local_file());
+
+                        if let Some(path) = file_path {
+                            std::fs::read_to_string(&path).ok()
+                                .and_then(|content| syn::parse_file(&content).ok())
+                                .and_then(|file| {
+                                    file.items.iter().find_map(|item| {
+                                        if let syn::Item::Struct(ref item_struct) = item {
+                                            extract_names(item_struct)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                        } else {
+                            // Fallback: try to find lib.rs relative to current directory
+                            // Try multiple possible locations
+                            let cwd = std::env::current_dir().ok()?;
+                            let mut possible_paths = vec![cwd.join("src").join("lib.rs")];
+
+                            // Search in programs directory
+                            if let Ok(programs_dir) = std::fs::read_dir(cwd.join("programs")) {
+                                for entry in programs_dir.flatten() {
+                                    if entry.file_type().ok().map(|t| t.is_dir()).unwrap_or(false) {
+                                        let lib_rs = entry.path().join("src").join("lib.rs");
+                                        if lib_rs.exists() {
+                                            possible_paths.push(lib_rs);
+                                        }
+                                    }
+                                }
+                            }
+
+                            possible_paths.into_iter()
+                                .find_map(|path| {
+                                    if path.exists() {
+                                        std::fs::read_to_string(&path).ok()
                                     } else {
                                         None
                                     }
                                 })
-                            })
+                                .and_then(|content| syn::parse_file(&content).ok())
+                                .and_then(|file| {
+                                    file.items.iter().find_map(|item| {
+                                        if let syn::Item::Struct(ref item_struct) = item {
+                                            extract_names(item_struct)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                        }
                     })
                 };
 

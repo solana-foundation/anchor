@@ -42,10 +42,20 @@ else
 fi
 cd ..
 
-echo "Test 5: Running PASS-PARTIAL-ARGS case (expects successful compilation with partial #[instruction] args)..."
+echo "Test 5: Running PASS-PARTIAL-ARGS case (random #[instruction] args)..."
 cd pass-partial-args
 if cargo build 2>&1 | grep -q "Finished"; then
-    echo "PASS: PASS-PARTIAL-ARGS case compiled successfully - optimization working!"
+    echo "PASS: PASS-PARTIAL-ARGS case compiled successfully"
+else
+    echo "FAIL: Expected successful compilation but build failed"
+    exit 1
+fi
+cd ..
+
+echo "Test 6: Running PASS-NESTED-ARGS case (nested Accounts structs)..."
+cd pass-nested-args
+if cargo build 2>&1 | grep -q "Finished"; then
+    echo "PASS: PASS-NESTED-ARGS case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
     exit 1
