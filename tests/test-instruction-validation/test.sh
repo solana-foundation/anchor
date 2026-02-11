@@ -9,7 +9,6 @@ if echo "$output" | grep -q "expects MORE args"; then
     echo "PASS: FAIL-ARGS-COUNT case correctly caught parameter mismatch at compile time"
 else
     echo "FAIL: Expected compilation error but build succeeded or wrong error"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
@@ -22,7 +21,6 @@ if echo "$output" | grep -q "Finished"; then
     echo "PASS: PASS-ARGS-COUNT case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
@@ -35,7 +33,6 @@ if echo "$output" | grep -q "IsSameType"; then
     echo "PASS: Fail-TYPE case correctly caught type mismatch at compile time"
 else
     echo "FAIL: Expected compilation error but build succeeded or wrong error"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
@@ -48,7 +45,6 @@ if echo "$output" | grep -q "Finished"; then
     echo "PASS: PASS-TYPE case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
@@ -61,7 +57,6 @@ if echo "$output" | grep -q "Finished"; then
     echo "PASS: PASS-PARTIAL-ARGS case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
@@ -74,7 +69,6 @@ if echo "$output" | grep -q "Finished"; then
     echo "PASS: PASS-NESTED-ARGS case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
-    echo "Output:"
     echo "$output"
     exit 1
 fi
