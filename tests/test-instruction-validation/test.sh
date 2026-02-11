@@ -4,7 +4,7 @@ set -e
 
 echo "Test 1: Running FAIL-ARGS-COUNT case (expects compilation error)..."
 cd fail-args-count
-if cargo build 2>&1 | grep -q "expects MORE args"; then
+if anchor build 2>&1 | grep -q "expects MORE args"; then
     echo "PASS: FAIL-ARGS-COUNT case correctly caught parameter mismatch at compile time"
 else
     echo "FAIL: Expected compilation error but build succeeded or wrong error"
@@ -14,7 +14,7 @@ cd ..
 
 echo "Test 2: Running PASS-ARGS-COUNT case (expects successful compilation)..."
 cd pass-args-count
-if cargo build 2>&1 | grep -q "Finished"; then
+if anchor build 2>&1 | grep -q "Finished"; then
     echo "PASS: PASS-ARGS-COUNT case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
@@ -24,7 +24,7 @@ cd ..
 
 echo "Test 3: Running FAIL-TYPE case (expects compilation error)..."
 cd fail-type
-if cargo build 2>&1 | grep -q "IsSameType"; then
+if anchor build 2>&1 | grep -q "IsSameType"; then
     echo "PASS: Fail-TYPE case correctly caught type mismatch at compile time"
 else
     echo "FAIL: Expected compilation error but build succeeded or wrong error"
@@ -34,7 +34,7 @@ cd ..
 
 echo "Test 4: Running PASS-TYPE case (expects successful compilation)..."
 cd pass-type
-if cargo build 2>&1 | grep -q "Finished"; then
+if anchor build 2>&1 | grep -q "Finished"; then
     echo "PASS: PASS-TYPE case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
@@ -44,7 +44,7 @@ cd ..
 
 echo "Test 5: Running PASS-PARTIAL-ARGS case (random #[instruction] args)..."
 cd pass-partial-args
-if cargo build 2>&1 | grep -q "Finished"; then
+if anchor build 2>&1 | grep -q "Finished"; then
     echo "PASS: PASS-PARTIAL-ARGS case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"
@@ -54,7 +54,7 @@ cd ..
 
 echo "Test 6: Running PASS-NESTED-ARGS case (nested Accounts structs)..."
 cd pass-nested-args
-if cargo build 2>&1 | grep -q "Finished"; then
+if anchor test 2>&1 | grep -q "Finished"; then
     echo "PASS: PASS-NESTED-ARGS case compiled successfully"
 else
     echo "FAIL: Expected successful compilation but build failed"

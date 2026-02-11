@@ -13,6 +13,21 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         where_clause,
     } = generics(accs);
 
+    // Check if we have composite fields that might need the original instruction data
+    let has_composite_fields = accs
+        .fields
+        .iter()
+        .any(|af| matches!(af, AccountField::CompositeField(_)));
+
+    // If parent has #[instruction] and composite fields, we'll save __original_ix_data
+    // Otherwise, nested structs can use __ix_data directly
+    let use_original_ix_data = has_composite_fields && accs.instruction_api.is_some();
+    let nested_ix_data_var = if use_original_ix_data {
+        quote! { __original_ix_data }
+    } else {
+        quote! { __ix_data }
+    };
+
     // Deserialization for each field
     let deser_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
@@ -22,10 +37,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 AccountField::CompositeField(s) => {
                     let name = &s.ident;
                     let ty = &s.raw_field.ty;
+                    let nested_ix_data = nested_ix_data_var.clone();
                     quote! {
                         #[cfg(feature = "anchor-debug")]
                         ::anchor_lang::solana_program::log::sol_log(stringify!(#name));
-                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
+                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, #nested_ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
                 AccountField::Field(f) => {
@@ -95,7 +111,16 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let bumps_struct_name = bumps::generate_bumps_name(&accs.ident);
 
     let ix_de = match &accs.instruction_api {
-        None => quote! {},
+        None => {
+            // No instruction args
+            if has_composite_fields {
+                quote! {
+                    let __original_ix_data = __ix_data;
+                }
+            } else {
+                quote! {}
+            }
+        }
         Some(ix_api) => {
             let strct_inner = &ix_api;
             let field_names: Vec<proc_macro2::TokenStream> = ix_api
@@ -110,16 +135,32 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     _ => panic!("Invalid instruction declaration"),
                 })
                 .collect();
-            quote! {
-                let mut __ix_data = __ix_data;
-                #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
-                struct __Args {
-                    #strct_inner
+            // original __ix_data before deserializing
+            if has_composite_fields {
+                quote! {
+                    let __original_ix_data = __ix_data;
+                    let mut __ix_data = __ix_data;
+                    #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
+                    struct __Args {
+                        #strct_inner
+                    }
+                    let __Args {
+                        #(#field_names),*
+                    } = __Args::deserialize(&mut __ix_data)
+                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                 }
-                let __Args {
-                    #(#field_names),*
-                } = __Args::deserialize(&mut __ix_data)
-                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+            } else {
+                quote! {
+                    let mut __ix_data = __ix_data;
+                    #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
+                    struct __Args {
+                        #strct_inner
+                    }
+                    let __Args {
+                        #(#field_names),*
+                    } = __Args::deserialize(&mut __ix_data)
+                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                }
             }
         }
     };
