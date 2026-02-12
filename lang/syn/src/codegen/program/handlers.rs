@@ -107,11 +107,19 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
+                    // Log compute units at handler start (before any deserialization)
+                    #[cfg(feature = "log-compute-units")]
+                    anchor_lang::prelude::msg!("anchor-compute: begin, {} units", anchor_lang::solana_program::log::sol_remaining_compute_units());
+
                     #param_validation
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
                     let instruction::#variant_arm = ix;
+
+                    // Log compute units after instruction data deserialization
+                    #[cfg(feature = "log-compute-units")]
+                    anchor_lang::prelude::msg!("anchor-compute: ix-deser, {} units", anchor_lang::solana_program::log::sol_remaining_compute_units());
 
                     // Bump collector.
                     let mut __bumps = <#anchor as anchor_lang::Bumps>::Bumps::default();
@@ -128,6 +136,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         &mut __reallocs,
                     )?;
 
+                    // Log compute units after account deserialization (often most expensive)
+                    #[cfg(feature = "log-compute-units")]
+                    anchor_lang::prelude::msg!("anchor-compute: accts-deser, {} units", anchor_lang::solana_program::log::sol_remaining_compute_units());
+
                     // Invoke user defined handler.
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
@@ -138,6 +150,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         ),
                         #(#ix_arg_names),*
                     )?;
+
+                    // Log compute units after user handler execution
+                    #[cfg(feature = "log-compute-units")]
+                    anchor_lang::prelude::msg!("anchor-compute: handler, {} units", anchor_lang::solana_program::log::sol_remaining_compute_units());
 
                     // Maybe set Solana return data.
                     #maybe_set_return_data

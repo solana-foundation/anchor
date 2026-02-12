@@ -132,6 +132,25 @@ pub mod solana_program {
             #[cfg(not(target_os = "solana"))]
             core::hint::black_box(data);
         }
+
+        /// Print the remaining compute units available to the program.
+        pub fn sol_log_compute_units() {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_define_syscall::definitions::sol_log_compute_units_()
+            };
+        }
+
+        /// Get the remaining compute units available to the program.
+        pub fn sol_remaining_compute_units() -> u64 {
+            #[cfg(target_os = "solana")]
+            unsafe {
+                solana_define_syscall::definitions::sol_remaining_compute_units()
+            }
+
+            #[cfg(not(target_os = "solana"))]
+            0
+        }
     }
     pub mod sysvar {
         pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
@@ -502,6 +521,7 @@ pub mod prelude {
     pub use crate as anchor_lang;
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
+    pub use crate::solana_program::log::sol_remaining_compute_units;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
     pub use crate::solana_program::*;
