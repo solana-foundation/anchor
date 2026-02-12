@@ -40,7 +40,7 @@ pub struct Nested<'info> {
     #[account(
       has_one = my_account,
       seeds = [b"seed"],
-      bump = account.bump
+      bump
     )]
     account: Account<'info, MyAccount>,
 }
@@ -52,7 +52,7 @@ pub struct TestRelation<'info> {
     #[account(
       has_one = my_account,
       seeds = [b"seed"],
-      bump = account.bump
+      bump
     )]
     account: Account<'info, MyAccount>,
     nested: Nested<'info>,
