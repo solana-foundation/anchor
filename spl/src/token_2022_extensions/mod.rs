@@ -15,6 +15,7 @@ pub mod token_group;
 pub mod token_metadata;
 pub mod transfer_fee;
 pub mod transfer_hook;
+pub mod scaled_ui_amount;
 
 pub use cpi_guard::*;
 pub use default_account_state::*;
@@ -31,6 +32,7 @@ pub use token_group::*;
 pub use token_metadata::*;
 pub use transfer_fee::*;
 pub use transfer_hook::*;
+pub use scaled_ui_amount::*;
 
 pub use spl_pod;
 pub use spl_token_metadata_interface;
