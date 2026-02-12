@@ -24,6 +24,15 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 .enumerate()
                 .map(|(i, size)| (Literal::usize_unsuffixed(i), size))
                 .map(|(i, size)| quote! { Some(#i) => { #size } });
+            let sized = if enm
+                .variants
+                .iter()
+                .all(|variant| matches!(variant.fields, Fields::Unit))
+            {
+                quote!(true)
+            } else {
+                quote!(false)
+            };
 
             (
                 &enm.ident,
@@ -34,7 +43,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                         _ => unreachable!(),
                     }
                 },
-                quote!(false),
+                sized,
             )
         }
         Item::Union(_) => return Err(syn::Error::new(item.span(), "Unions are not supported")),
