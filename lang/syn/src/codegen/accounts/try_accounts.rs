@@ -322,7 +322,10 @@ fn is_init(af: &AccountField) -> bool {
 
 // Generates duplicate mutable account validation logic
 fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::TokenStream {
-    // Collect all mutable account fields without `dup` constraint, excluding UncheckedAccount, Signer, and init accounts.
+    // Collect all mutable account fields without `dup` constraint that serialize on exit.
+    // Only types that serialize on exit are included, as duplicate mutable accounts
+    // are problematic due to double serialization (the second write overwrites the first).
+    // Types like UncheckedAccount, Signer, SystemAccount, AccountLoader, etc. don't serialize on exit
     let candidates: Vec<_> = accs
         .fields
         .iter()
@@ -333,34 +336,30 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
                     && f.constraints.init.is_none() =>
             {
                 match &f.ty {
-                    crate::Ty::UncheckedAccount => None, // unchecked by design
-                    crate::Ty::Signer => None, // signers are excluded as they're typically payers
-                    _ => Some(f),
+                    // Only include types that serialize on exit
+                    crate::Ty::Account(_)
+                    | crate::Ty::LazyAccount(_)
+                    | crate::Ty::InterfaceAccount(_)
+                    | crate::Ty::Migration(_) => Some(f),
+                    _ => None,
                 }
             }
             _ => None,
         })
         .collect();
 
-    if candidates.is_empty() {
-        // No declared mutable accounts, but still need to check remaining_accounts
-        return quote! {
-            // Duplicate mutable account validation for remaining_accounts only
-            {
-                let mut __mutable_accounts = std::collections::HashSet::new();
+    // Collect composite field idents (nested account structs)
+    let composite_fields: Vec<_> = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::CompositeField(s) => Some(&s.ident),
+            _ => None,
+        })
+        .collect();
 
-                for __remaining_account in __accounts.iter() {
-                    if __remaining_account.is_writable {
-                        if !__mutable_accounts.insert(*__remaining_account.key) {
-                            return Err(anchor_lang::error::Error::from(
-                                anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
-                            )
-                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
-                        }
-                    }
-                }
-            }
-        };
+    if candidates.is_empty() && composite_fields.is_empty() {
+        return quote! {};
     }
 
     let mut field_keys = Vec::with_capacity(candidates.len());
@@ -379,12 +378,28 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
         field_name_strs.push(quote! { stringify!(#name) });
     }
 
+    // Generate code to check composite field keys
+    let composite_checks: Vec<proc_macro2::TokenStream> = composite_fields
+        .iter()
+        .map(|composite_name| {
+            quote! {
+                for key in #composite_name.duplicate_mutable_account_keys() {
+                    if !__mutable_accounts.insert(key) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        ).with_account_name(format!("{}", key)));
+                    }
+                }
+            }
+        })
+        .collect();
+
     quote! {
         // Duplicate mutable account validation - using HashSet
         {
             let mut __mutable_accounts = std::collections::HashSet::new();
 
-            // First, check declared mutable accounts for duplicates among themselves
+            // Check declared mutable accounts for duplicates among themselves
             #(
                 if let Some(key) = #field_keys {
                     // Check for duplicates and insert the key and account name
@@ -396,17 +411,8 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
                 }
             )*
 
-            // This prevents duplicates from being passed via remaining_accounts
-            for __remaining_account in __accounts.iter() {
-                if __remaining_account.is_writable {
-                    if !__mutable_accounts.insert(*__remaining_account.key) {
-                        return Err(anchor_lang::error::Error::from(
-                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
-                        )
-                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key)));
-                    }
-                }
-            }
+            // Check composite (nested) account struct keys for duplicates
+            #(#composite_checks)*
         }
     }
 }

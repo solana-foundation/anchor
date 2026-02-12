@@ -102,7 +102,35 @@ describe("duplicate-mutable-accounts", () => {
     assert.ok(true, "Readonly duplicates are allowed");
   });
 
-  it("Should block nested duplicate accounts", async () => {
+  // --- Composite field duplicate mutable account tests ---
+  it("Should block mixed duplicate: direct Field + CompositeField with same account", async () => {
+    try {
+      await program.methods
+        .mixedDuplicate()
+        .accounts({
+          account1: dataAccount1.publicKey,
+          wrapper: {
+            counter: dataAccount1.publicKey, // same account in composite
+          },
+        })
+        .rpc();
+
+      assert.fail(
+        "Same account as direct field and inside composite should be blocked"
+      );
+    } catch (e) {
+      assert.instanceOf(e, AnchorError);
+      const err = e as AnchorError;
+      assert.strictEqual(
+        err.error.errorCode.code,
+        "ConstraintDuplicateMutableAccount",
+        "Expected ConstraintDuplicateMutableAccount but got: " +
+          err.error.errorCode.code
+      );
+    }
+  });
+
+  it("Should block nested duplicate: two CompositeFields with same account", async () => {
     try {
       await program.methods
         .nestedDuplicate()
@@ -111,52 +139,39 @@ describe("duplicate-mutable-accounts", () => {
             counter: dataAccount1.publicKey,
           },
           wrapper2: {
-            counter: dataAccount1.publicKey, // Same counter in both wrappers!
+            counter: dataAccount1.publicKey, // same account in both wrappers
           },
         })
         .rpc();
 
-      assert.fail(
-        "Nested structures with duplicate accounts should be blocked"
-      );
+      assert.fail("Same account in two composite fields should be blocked");
     } catch (e) {
-      // Should be blocked with the fix
-      assert.ok(
-        e.message.includes("ConstraintDuplicateMutableAccount") ||
-          e.message.includes("duplicate") ||
-          e.message.includes("2040"),
-        "Nested duplicate correctly blocked"
+      assert.instanceOf(e, AnchorError);
+      const err = e as AnchorError;
+      assert.strictEqual(
+        err.error.errorCode.code,
+        "ConstraintDuplicateMutableAccount",
+        "Expected ConstraintDuplicateMutableAccount but got: " +
+          err.error.errorCode.code
       );
     }
   });
 
-  it("Should block duplicate in remainingAccounts", async () => {
-    try {
-      await program.methods
-        .failsDuplicateMutable()
-        .accounts({
-          account1: dataAccount1.publicKey,
-          account2: dataAccount2.publicKey, // Different account
-        })
-        .remainingAccounts([
-          {
-            pubkey: dataAccount1.publicKey, // duplicate via remainingAccounts
-            isWritable: true,
-            isSigner: false,
-          },
-        ])
-        .rpc();
-
-      assert.fail("Should have been blocked - remainingAccounts bypass failed");
-    } catch (e) {
-      // Should be blocked with framework-level security fix
-      assert.ok(
-        e.message.includes("ConstraintDuplicateMutableAccount") ||
-          e.message.includes("duplicate") ||
-          e.message.includes("2040"),
-        "Successfully blocked with framework-level validation"
-      );
-    }
+  it("Should allow duplicate in remainingAccounts", async () => {
+    await program.methods
+      .failsDuplicateMutable()
+      .accounts({
+        account1: dataAccount1.publicKey,
+        account2: dataAccount2.publicKey, // Different account
+      })
+      .remainingAccounts([
+        {
+          pubkey: dataAccount1.publicKey, // duplicate via remainingAccounts is allowed
+          isWritable: true,
+          isSigner: false,
+        },
+      ])
+      .rpc();
   });
 
   it("Should allow using remaining_accounts without duplicates", async () => {

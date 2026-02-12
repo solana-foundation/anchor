@@ -222,6 +222,13 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
     }
 }
 
+/// Returns the pubkeys of mutable accounts that serialize on exit.
+/// Used by the duplicate mutable account validation to check across
+/// composite (nested) account struct boundaries.
+pub trait DuplicateMutableAccountKeys {
+    fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
+}
+
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
 pub trait AccountsClose<'info>: ToAccountInfos<'info> {
@@ -493,9 +500,9 @@ pub mod prelude {
         require_keys_neq, require_neq,
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator,
+        DuplicateMutableAccountKeys, Id, InitSpace, Key, Lamports, Owner, Owners, ProgramData,
+        Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     // Re-export the crate as anchor_lang for declare_program! macro
     pub use crate as anchor_lang;
