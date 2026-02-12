@@ -196,6 +196,15 @@ mod tests {
             len!(MyEnum::Unnamed(1, 2))
         );
         assert!(!MyEnum::SIZED);
+
+        #[derive(AnchorSerialize, AnchorDeserialize)]
+        enum UnitEnum {
+            A,
+            B,
+        }
+        assert_eq!(UnitEnum::size_of(&[0]), len!(UnitEnum::A));
+        assert_eq!(UnitEnum::size_of(&[1]), len!(UnitEnum::B));
+        assert!(UnitEnum::SIZED);
     }
 
     #[test]
