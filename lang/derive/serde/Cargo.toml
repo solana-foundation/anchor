@@ -16,6 +16,7 @@ lazy-account = []
 
 [dependencies]
 anchor-syn = { path = "../../syn", version = "0.32.1" }
+proc-macro-crate = "3.4.0"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
