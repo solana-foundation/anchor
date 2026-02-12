@@ -64,7 +64,7 @@ impl_sized!(f64);
 impl_sized!(Pubkey);
 
 impl<T: Lazy, const N: usize> Lazy for [T; N] {
-    const SIZED: bool = T::SIZED;
+    const SIZED: bool = N == 0 || T::SIZED;
 
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
