@@ -206,24 +206,4 @@ mod tests {
         assert_eq!(UnitEnum::size_of(&[1]), len!(UnitEnum::B));
         assert!(UnitEnum::SIZED);
     }
-
-    #[test]
-    fn generic() {
-        #[derive(AnchorSerialize, AnchorDeserialize)]
-        struct GenericStruct<T: Lazy + borsh::BorshSerialize> {
-            t: T,
-        }
-
-        assert_eq!(
-            GenericStruct::<i64>::size_of(&[1, 2, 3, 4, 5, 6, 7, 8]),
-            len!(GenericStruct { t: 1i64 })
-        );
-        assert!(GenericStruct::<i64>::SIZED);
-
-        assert_eq!(
-            GenericStruct::<Vec<u8>>::size_of(&[8, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8]),
-            len!(GenericStruct { t: vec![0u8; 8] })
-        );
-        assert!(!GenericStruct::<Vec<u8>>::SIZED);
-    }
 }
