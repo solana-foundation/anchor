@@ -37,7 +37,7 @@ pub struct FooAccount<const N: usize> {
 #[derive(Default)]
 pub struct Associated<T>
 where
-    T: BorshDeserialize + BorshSerialize + Default,
+    T: BorshDeserialize + BorshSerialize + Clone + Default,
 {
     pub data: T,
 }
