@@ -246,4 +246,32 @@ describe("duplicate-mutable-accounts", () => {
       "Second account should have count 600"
     );
   });
+
+  it("Should block init_if_needed duplicate with mut account (already initialized)", async () => {
+    // dataAccount1 is already initialized from earlier tests.
+    // Passing it as both the init_if_needed field and the mut field should
+    // trigger the duplicate mutable account check.
+    try {
+      await program.methods
+        .initIfNeededDuplicateMutable()
+        .accounts({
+          accountInit: dataAccount1.publicKey,
+          accountMut: dataAccount1.publicKey, // same account — should be caught
+          payer: user_wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([user_wallet, dataAccount1])
+        .rpc();
+      assert.fail("init_if_needed + mut with same account should be blocked");
+    } catch (e) {
+      assert.instanceOf(e, AnchorError);
+      const err = e as AnchorError;
+      assert.strictEqual(
+        err.error.errorCode.code,
+        "ConstraintDuplicateMutableAccount",
+        "Expected ConstraintDuplicateMutableAccount but got: " +
+          err.error.errorCode.code
+      );
+    }
+  });
 });
