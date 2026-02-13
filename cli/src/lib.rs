@@ -43,11 +43,16 @@ use std::string::ToString;
 use std::sync::LazyLock;
 
 mod account;
+mod analyze;
 mod checks;
 pub mod config;
+mod doc_gen;
+mod forge;
 mod keygen;
+mod lint;
 mod program;
 pub mod rust_template;
+mod shield;
 
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -409,6 +414,42 @@ pub enum Command {
     Program {
         #[clap(subcommand)]
         subcmd: ProgramCommand,
+    },
+    /// Analyze Compute Unit usage.
+    Analyze {
+        /// Build and analyze only this program
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Arguments to pass to the underlying `cargo build-sbf` command
+        #[clap(required = false, last = true)]
+        cargo_args: Vec<String>,
+    },
+    /// Security linting for Anchor programs.
+    Lint {
+        /// Lint only this program
+        #[clap(short, long)]
+        program_name: Option<String>,
+    },
+    /// Generate documentation for Anchor programs.
+    Doc {
+        /// Generate doc only for this program
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Output directory for the documentation
+        #[clap(short, long)]
+        out: Option<String>,
+    },
+    /// AI-powered code generation for Anchor.
+    Forge {
+        /// Description of the instruction or account to generate
+        #[clap(last = true)]
+        description: Vec<String>,
+    },
+    /// Generate a security Shield for the program.
+    Shield {
+        /// Program name to shield
+        #[clap(short, long)]
+        program_name: Option<String>,
     },
 }
 
@@ -1322,6 +1363,14 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::ShowAccount { cmd } => account::show_account(&opts.cfg_override, cmd),
         Command::Keygen { subcmd } => keygen::keygen(&opts.cfg_override, subcmd),
         Command::Program { subcmd } => program::program(&opts.cfg_override, subcmd),
+        Command::Analyze {
+            program_name,
+            cargo_args,
+        } => analyze::analyze(&opts.cfg_override, program_name, cargo_args),
+        Command::Lint { program_name } => lint::lint(&opts.cfg_override, program_name),
+        Command::Doc { program_name, out } => doc_gen::doc_gen(&opts.cfg_override, program_name, out),
+        Command::Forge { description } => forge::forge(&opts.cfg_override, description),
+        Command::Shield { program_name } => shield::shield(&opts.cfg_override, program_name),
     }
 }
 
