@@ -64,7 +64,7 @@ impl_sized!(f64);
 impl_sized!(Pubkey);
 
 impl<T: Lazy, const N: usize> Lazy for [T; N] {
-    const SIZED: bool = T::SIZED;
+    const SIZED: bool = N == 0 || T::SIZED;
 
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
@@ -196,6 +196,15 @@ mod tests {
             len!(MyEnum::Unnamed(1, 2))
         );
         assert!(!MyEnum::SIZED);
+
+        #[derive(AnchorSerialize, AnchorDeserialize)]
+        enum UnitEnum {
+            A,
+            B,
+        }
+        assert_eq!(UnitEnum::size_of(&[0]), len!(UnitEnum::A));
+        assert_eq!(UnitEnum::size_of(&[1]), len!(UnitEnum::B));
+        assert!(UnitEnum::SIZED);
     }
 
     #[test]
