@@ -1,4 +1,4 @@
-//! Option<T> type for optional accounts.
+//! `Option<T>` type for optional accounts.
 //!
 //! # Example
 //! ```ignore
