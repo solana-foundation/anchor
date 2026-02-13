@@ -328,6 +328,12 @@ impl From<TryFromIntError> for Error {
     }
 }
 
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!("Infallible has no inhabitants")
+    }
+}
+
 impl Error {
     pub fn log(&self) {
         match self {
