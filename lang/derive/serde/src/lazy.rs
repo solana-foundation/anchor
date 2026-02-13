@@ -1,13 +1,15 @@
 use proc_macro2::Literal;
 use quote::{format_ident, quote};
+use syn::parse_quote;
 use syn::{spanned::Spanned, Fields, Item};
 
 pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let item = syn::parse::<Item>(input)?;
-    let (name, generics, size, sized) = match &item {
+    let (name, generics, field_types, size, sized) = match &item {
         Item::Struct(strct) => (
             &strct.ident,
             &strct.generics,
+            strct.fields.iter().map(|field| field.ty.clone()).collect(),
             sum_fields(&strct.fields),
             strct
                 .fields
@@ -28,6 +30,10 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
             (
                 &enm.ident,
                 &enm.generics,
+                enm.variants
+                    .iter()
+                    .flat_map(|variant| variant.fields.iter().map(|field| field.ty.clone()))
+                    .collect::<Vec<_>>(),
                 quote! {
                     1 + match buf.first() {
                         #(#arms,)*
@@ -41,7 +47,14 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
         _ => unreachable!(),
     };
 
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let mut impl_generics_with_bounds = generics.clone();
+    let where_clause = impl_generics_with_bounds.make_where_clause();
+    for ty in field_types {
+        where_clause
+            .predicates
+            .push(parse_quote!(#ty: anchor_lang::__private::Lazy));
+    }
+    let (impl_generics, ty_generics, where_clause) = impl_generics_with_bounds.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics anchor_lang::__private::Lazy for #name #ty_generics #where_clause {
