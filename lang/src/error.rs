@@ -172,31 +172,11 @@ pub enum ErrorCode {
     #[msg("A duplicate mutable account constraint was violated")]
     ConstraintDuplicateMutableAccount,
 
-    // Signature verification errors
-    /// 2040 - Invalid Ed25519 program id for signature verification
-    #[msg("Invalid Ed25519 program id for signature verification")]
-    Ed25519InvalidProgram,
-    /// 2041 - Invalid Secp256k1 program id for signature verification
-    #[msg("Invalid Secp256k1 program id for signature verification")]
-    Secp256k1InvalidProgram,
-    /// 2042 - Instruction unexpectedly had account metas
-    #[msg("Instruction unexpectedly had account metas")]
-    InstructionHasAccounts,
-    /// 2043 - Message length exceeds allowed maximum
-    #[msg("Message length exceeds allowed maximum")]
-    MessageTooLong,
-    /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
-    #[msg("Invalid Secp256k1 recovery id")]
-    InvalidRecoveryId,
-    /// 2047 - Signature verification failed
-    #[msg("Signature verification failed")]
-    SignatureVerificationFailed,
-
     // Migration errors
-    /// 2048 - Account is already migrated
+    /// 2041 - Account is already migrated
     #[msg("Account is already migrated")]
     AccountAlreadyMigrated,
-    /// 2049 - Account must be migrated before exiting
+    /// 2042 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
 

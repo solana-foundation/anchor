@@ -33,11 +33,17 @@ pub mod duplicate_mutable_accounts {
         Ok(())
     }
 
-    // Test nested account structures
+    // Should FAIL if same mutable account is passed to both composite fields.
     pub fn nested_duplicate(ctx: Context<NestedDuplicate>) -> Result<()> {
-        // Both wrappers contain mutable counters
         ctx.accounts.wrapper1.counter.count += 1;
         ctx.accounts.wrapper2.counter.count += 1;
+        Ok(())
+    }
+
+    // Should FAIL if same mutable account is used as a direct field AND inside a composite field.
+    pub fn mixed_duplicate(ctx: Context<MixedDuplicate>) -> Result<()> {
+        ctx.accounts.account1.count += 1;
+        ctx.accounts.wrapper.counter.count += 1;
         Ok(())
     }
 
@@ -107,17 +113,26 @@ pub struct AllowsDuplicateReadonly<'info> {
     pub account2: Account<'info, Counter>,
 }
 
-// Nested account structures
+// A nested (composite) account struct with a mutable account inside.
 #[derive(Accounts)]
 pub struct CounterWrapper<'info> {
     #[account(mut)]
     pub counter: Account<'info, Counter>,
 }
 
+// Two composite fields
 #[derive(Accounts)]
 pub struct NestedDuplicate<'info> {
     pub wrapper1: CounterWrapper<'info>,
     pub wrapper2: CounterWrapper<'info>,
+}
+
+// Direct field + composite field
+#[derive(Accounts)]
+pub struct MixedDuplicate<'info> {
+    #[account(mut)]
+    pub account1: Account<'info, Counter>,
+    pub wrapper: CounterWrapper<'info>,
 }
 
 // Test using remaining_accounts

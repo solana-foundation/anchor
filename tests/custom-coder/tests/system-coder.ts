@@ -8,6 +8,7 @@ import {
   PublicKey,
   SystemProgram,
   SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+  Transaction,
 } from "@solana/web3.js";
 import * as assert from "assert";
 import BN from "bn.js";
@@ -299,19 +300,28 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
+
+    let nonceAccount = await program.account.nonce.fetch(
+      nonceKeypair.publicKey
+    );
+    let previousNonce = nonceAccount.nonce.toString();
+
     // These have to be separate to make sure advance is in another slot.
-    await program.methods
+    const tx = await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
       .accounts({
         nonce: nonceKeypair.publicKey,
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
       })
-      .rpc();
+      .transaction();
+    tx.recentBlockhash = previousNonce;
+    tx.feePayer = provider.publicKey;
+
+    await provider.sendAndConfirm(tx, []);
     // assert
-    const nonceAccount = await program.account.nonce.fetch(
-      nonceKeypair.publicKey
-    );
+    nonceAccount = await program.account.nonce.fetch(nonceKeypair.publicKey);
     assert.notEqual(nonceAccount, null);
+    assert.notEqual(nonceAccount.nonce.toString(), previousNonce);
   });
 
   it("Authorizes a nonce account", async () => {
@@ -383,7 +393,13 @@ describe("system-coder", () => {
       ])
       .signers([nonceKeypair])
       .rpc();
-    await program.methods
+
+    let nonceAccount = await program.account.nonce.fetch(
+      nonceKeypair.publicKey
+    );
+    let previousNonce = nonceAccount.nonce.toString();
+
+    const tx = await program.methods
       .advanceNonceAccount(provider.wallet.publicKey)
       .accounts({
         nonce: nonceKeypair.publicKey,
@@ -398,7 +414,15 @@ describe("system-coder", () => {
           })
           .instruction(),
       ])
-      .rpc();
+      .transaction();
+    tx.feePayer = provider.publicKey;
+    tx.recentBlockhash = previousNonce;
+
+    await provider.sendAndConfirm(tx, []);
+
+    nonceAccount = await program.account.nonce.fetch(nonceKeypair.publicKey);
+    previousNonce = nonceAccount.nonce.toString();
+
     await program.methods
       .authorizeNonceAccount(aliceKeypair.publicKey)
       .accounts({
@@ -406,16 +430,31 @@ describe("system-coder", () => {
         authorized: provider.wallet.publicKey,
       })
       .rpc();
-    await program.methods
-      .withdrawNonceAccount(new BN(amount))
+
+    let withdrawTx = await program.methods
+      .advanceNonceAccount(aliceKeypair.publicKey)
       .accounts({
-        authorized: aliceKeypair.publicKey,
         nonce: nonceKeypair.publicKey,
         recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-        to: aliceKeypair.publicKey,
+        authorized: aliceKeypair.publicKey,
       })
-      .signers([aliceKeypair])
-      .rpc();
+      .postInstructions([
+        await program.methods
+          .withdrawNonceAccount(new BN(amount))
+          .accounts({
+            authorized: aliceKeypair.publicKey,
+            nonce: nonceKeypair.publicKey,
+            recentBlockhashes: SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+            to: aliceKeypair.publicKey,
+          })
+          .instruction(),
+      ])
+      .transaction();
+
+    withdrawTx.feePayer = provider.publicKey;
+    withdrawTx.recentBlockhash = previousNonce;
+    await provider.sendAndConfirm(withdrawTx, [aliceKeypair]);
+
     // assert
     const aliceBalanceAfter = (
       await program.provider.connection.getAccountInfo(aliceKeypair.publicKey)
