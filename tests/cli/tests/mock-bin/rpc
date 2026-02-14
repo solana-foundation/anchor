@@ -3,6 +3,8 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { Transaction } = require("@solana/web3.js");
+const bs58 = require("bs58")
 
 const OUTPUT_PATH = process.env.MOCK_RPC_OUTPUT_PATH;
 const PORT = 8899;
@@ -33,6 +35,21 @@ function logRpcCall(method, request, response) {
   fs.appendFileSync(OUTPUT_PATH, logEntry);
 }
 
+function getBase58SignatureFromSerializedTransactionUsingWeb3JsTransaction(
+  serializedTransactionBase64String,
+) {
+  try {
+    const serializedTransactionBuffer = Buffer.from(serializedTransactionBase64String, "base64");
+    const transaction = Transaction.from(serializedTransactionBuffer);
+    if (!transaction.signatures || transaction.signatures.length === 0) return "";
+    
+    const sigString = bs58.default.encode(transaction.signature);
+    return sigString
+  } catch (error) {
+    return "";
+  }
+}
+
 const server = http.createServer((req, res) => {
   if (req.method !== "POST") {
     res.writeHead(405, { "Content-Type": "application/json" });
@@ -58,17 +75,35 @@ const server = http.createServer((req, res) => {
     const method = request.method;
     let response;
 
-    if (methods[method]) {
+    if (method === "sendTransaction") {
+      const serializedTransactionBase64String = Array.isArray(request.params)
+        ? request.params[0]
+        : null;
+
+      const computedSignatureBase58StringFromSerializedTransaction =
+        typeof serializedTransactionBase64String === "string"
+          ? getBase58SignatureFromSerializedTransactionUsingWeb3JsTransaction(
+              serializedTransactionBase64String,
+            )
+          : null;
+
+      if (computedSignatureBase58StringFromSerializedTransaction) {
+        response = {
+          jsonrpc: "2.0",
+          result: computedSignatureBase58StringFromSerializedTransaction,
+          id: 1,
+        };
+      }
+    }
+
+    if (!response && methods[method]) {
       // Return the stored response
       response = methods[method];
-    } else {
-      // Method not found error
+    }
+    if (!response) {
       response = {
         jsonrpc: "2.0",
-        error: {
-          code: -32601,
-          message: "Method not found",
-        },
+        result: null,
         id: 1,
       };
     }
