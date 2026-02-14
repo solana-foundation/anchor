@@ -27,6 +27,8 @@
     "ts-mocha": "^10.0.0",
     "tsc": "^2.0.4",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^4.4.4"
+    "typescript": "^4.4.4",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0"
   }
 }
