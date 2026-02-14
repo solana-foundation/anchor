@@ -356,21 +356,32 @@ impl FromStr for IdlType {
                 }
 
                 if s.starts_with('[') {
-                    fn array_from_str(inner: &str) -> IdlType {
+                    fn array_from_str(inner: &str) -> Result<IdlType, anyhow::Error> {
                         match inner.strip_suffix(']') {
                             Some(nested_inner) => array_from_str(&nested_inner[1..]),
                             None => {
-                                let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
-                                let ty = IdlType::from_str(raw_type).unwrap();
+                                let (raw_type, raw_length) = inner.rsplit_once(';').ok_or_else(|| {
+                                    anyhow!(
+                                        "Invalid array type syntax: expected '[type; length]', found '{inner}'"
+                                    )
+                                })?;
+
+                                let ty = IdlType::from_str(raw_type).map_err(|e| {
+                                    anyhow!(
+                                        "Invalid array element type '{raw_type}' in '{inner}': {e}"
+                                    )
+                                })?;
+
                                 let len = match raw_length.replace('_', "").parse::<usize>() {
                                     Ok(len) => IdlArrayLen::Value(len),
                                     Err(_) => IdlArrayLen::Generic(raw_length.to_owned()),
                                 };
-                                IdlType::Array(Box::new(ty), len)
+
+                                Ok(IdlType::Array(Box::new(ty), len))
                             }
                         }
                     }
-                    return Ok(array_from_str(&s));
+                    return array_from_str(&s);
                 }
 
                 // Defined
@@ -470,6 +481,19 @@ mod tests {
             IdlType::from_str("[u64; T]").unwrap(),
             IdlType::Array(Box::new(IdlType::U64), IdlArrayLen::Generic("T".into()))
         );
+    }
+
+    #[test]
+    fn malformed_array_missing_semicolon_returns_err() {
+        // Previously this would panic due to `.rsplit_once(';').unwrap()`.
+        assert!(IdlType::from_str("[u8 32]").is_err());
+    }
+
+    #[test]
+    fn malformed_array_invalid_element_type_returns_err() {
+        // Previously this would panic due to `IdlType::from_str(raw_type).unwrap()`.
+        // Use a type that is *syntactically* invalid (missing '>') so `from_str` returns Err.
+        assert!(IdlType::from_str("[Option<Pubkey; 32]").is_err());
     }
 
     #[test]
