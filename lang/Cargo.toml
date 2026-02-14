@@ -13,6 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
+no-log-ix-name = []
 anchor-debug = [
     "anchor-attribute-access-control/anchor-debug",
     "anchor-attribute-account/anchor-debug",
