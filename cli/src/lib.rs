@@ -46,6 +46,7 @@ mod account;
 mod checks;
 pub mod config;
 mod keygen;
+mod lint;
 mod program;
 pub mod rust_template;
 
@@ -410,6 +411,25 @@ pub enum Command {
         #[clap(subcommand)]
         subcmd: ProgramCommand,
     },
+    /// Run Anchor lints on this workspace.
+    Lint {
+        #[clap(flatten)]
+        cmd: LintCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+
+pub struct LintCommand {
+    /// Git repository containing dylint library packages
+    #[clap(long, default_value = lint::DEFAULT_LINT_REPO)]
+    git: String,
+    /// Path containing dylint library packages
+    #[clap(long)]
+    path: Option<String>,
+    /// Subdirectories of the `--path`/`--git` argument containing lint library packages e.g. `lints/*`
+    #[clap(long)]
+    pattern: Option<String>,
 }
 
 #[derive(Debug, Parser)]
@@ -1322,6 +1342,7 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::ShowAccount { cmd } => account::show_account(&opts.cfg_override, cmd),
         Command::Keygen { subcmd } => keygen::keygen(&opts.cfg_override, subcmd),
         Command::Program { subcmd } => program::program(&opts.cfg_override, subcmd),
+        Command::Lint { cmd } => lint::run(cmd),
     }
 }
 

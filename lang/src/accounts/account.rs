@@ -224,6 +224,7 @@ use std::ops::{Deref, DerefMut};
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccount")]
 pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     account: T,
     info: &'info AccountInfo<'info>,
@@ -284,6 +285,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
     ///     ctx.accounts.user_to_create.set_inner(new_user);
     /// }
     /// ```
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccountSetInner")]
     pub fn set_inner(&mut self, inner: T) {
         self.account = inner;
     }
@@ -295,6 +297,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     ///
     /// This method also re-validates that the program owner has not
     /// changed since the initial validation
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorAccountReload")]
     pub fn reload(&mut self) -> Result<()> {
         if self.info.owner != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)

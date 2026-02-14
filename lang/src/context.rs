@@ -21,6 +21,7 @@ use std::fmt;
 ///     Ok(())
 /// }
 /// ```
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorContext")]
 pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
     /// Currently executing program id.
     pub program_id: &'a Pubkey,
@@ -168,6 +169,7 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiContext")]
 pub struct CpiContext<'a, 'b, 'c, 'info, T>
 where
     T: ToAccountMetas + ToAccountInfos<'info>,
@@ -213,6 +215,7 @@ where
     }
 
     #[must_use]
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiContextWithRemainingAccounts")]
     pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo<'info>>) -> Self {
         self.remaining_accounts = ra;
         self

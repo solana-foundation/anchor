@@ -12,6 +12,7 @@ pub use crate::token_2022_extensions::*;
 static IDS: [Pubkey; 2] = [spl_token_interface::ID, spl_token_2022_interface::ID];
 
 #[derive(Clone, Debug, Default, PartialEq, Copy)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSplTokenInterfaceAccount")]
 pub struct TokenAccount(spl_token_2022::state::Account);
 
 impl anchor_lang::AccountDeserialize for TokenAccount {
@@ -41,6 +42,7 @@ impl Deref for TokenAccount {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Copy)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSplTokenMint")]
 pub struct Mint(spl_token_2022::state::Mint);
 
 impl anchor_lang::AccountDeserialize for Mint {

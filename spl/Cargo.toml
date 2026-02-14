@@ -46,3 +46,11 @@ spl-token-interface = { version = "2", optional = true }
 spl-token-2022-interface = { version = "2", optional = true }
 spl-token-group-interface = { version = "0.7", optional = true }
 spl-token-metadata-interface = { version = "0.8", optional = true }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(dylint_lib, values(any()))',
+    'cfg(dylint, values(any()))',
+]

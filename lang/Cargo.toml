@@ -89,4 +89,8 @@ thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))']
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(dylint_lib, values(any()))',
+    'cfg(dylint, values(any()))',
+]

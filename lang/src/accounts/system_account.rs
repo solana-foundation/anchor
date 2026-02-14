@@ -11,6 +11,7 @@ use std::ops::Deref;
 ///
 /// - `SystemAccount.info.owner == SystemProgram`
 #[derive(Debug, Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSystemAccount")]
 pub struct SystemAccount<'info> {
     info: &'info AccountInfo<'info>,
 }

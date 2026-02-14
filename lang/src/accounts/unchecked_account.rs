@@ -12,6 +12,7 @@ use std::ops::Deref;
 /// Explicit wrapper for AccountInfo types to emphasize
 /// that no checks are performed
 #[derive(Debug, Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorUncheckedAccount")]
 pub struct UncheckedAccount<'info>(&'info AccountInfo<'info>);
 
 impl<'info> UncheckedAccount<'info> {
