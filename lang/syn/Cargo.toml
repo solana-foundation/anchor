@@ -34,3 +34,7 @@ serde_json = "1"
 sha2 = "0.10"
 syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"
+
+[[test]]
+name = "idl_attributes"
+required-features = ["idl-build"]
