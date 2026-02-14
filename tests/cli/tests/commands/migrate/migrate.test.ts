@@ -28,7 +28,7 @@ describe("migrate", () => {
         `lsof -ti:8899 | xargs -r kill -9 2>/dev/null || true`,
         // Install trap to cleanup validator on exit (with guard check)
         `trap '[ -f "${validatorPidFile}" ] && kill $(cat "${validatorPidFile}") 2>/dev/null || true; rm -f "${validatorPidFile}"' EXIT`,
-        // Run test command
+        // Run migrate command
         anchorCommand(`migrate --provider.wallet ${walletPath}`),
       ],
       prependPath: [MOCK_BIN_DIR],
