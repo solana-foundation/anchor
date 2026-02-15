@@ -15,6 +15,7 @@ describe("idl upgrade", () => {
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const outputPath = path.join(testDir, "cargo-calls");
+    const npxCallsOutputFilePath = path.join(testDir, "npx-calls");
     const validatorCallsPath = path.join(testDir, "solana-test-validator-calls");
     const rpcCallsPath = path.join(testDir, "rpc-calls");
     const walletPath = path.join(testDir, "../../../../../keypairs/aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x.json");
@@ -39,6 +40,7 @@ describe("idl upgrade", () => {
       prependPath: [MOCK_BIN_DIR],
       env: {
         MOCK_CARGO_OUTPUT_PATH: outputPath,
+        MOCK_NPX_OUTPUT_PATH: npxCallsOutputFilePath,
         MOCK_SOLANA_TEST_VALIDATOR_OUTPUT_PATH: validatorCallsPath,
         MOCK_RPC_OUTPUT_PATH: rpcCallsPath,
         IDL_BUILD_STDOUT_FILE: idlStdoutFile,
