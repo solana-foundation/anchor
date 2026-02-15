@@ -554,7 +554,7 @@ jobs:
           path: tests/cli/output
           key: cargo-${{ runner.os }}-tests/cli-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_CLI_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run CLI tests on ${matrix.os}
+      - name: Run CLI tests on ${{ matrix.os }}
         shell: bash
         run: |
           cd tests/cli
