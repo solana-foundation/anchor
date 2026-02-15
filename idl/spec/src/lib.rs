@@ -386,14 +386,10 @@ impl FromStr for IdlType {
 
                 // Defined
                 let (name, generics) = if let Some(i) = s.find('<') {
-                    let name = s
-                        .get(..i)
-                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing name"))?
-                        .to_owned();
+                    // `i` comes from `s.find('<')`, so it is always a valid UTF-8 boundary.
+                    let name = s[..i].to_owned();
 
-                    let generics_str = s
-                        .get(i + 1..)
-                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing generics"))?
+                    let generics_str = s[i + 1..]
                         .strip_suffix('>')
                         .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing closing '>'"))?;
 
@@ -551,5 +547,10 @@ mod tests {
     fn malformed_defined_empty_generics_returns_err() {
         // Previously this would panic due to `.strip_suffix('>').unwrap()` (and/or parse weirdly).
         assert!(IdlType::from_str("MyStruct<>").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_trailing_comma_returns_err() {
+        assert!(IdlType::from_str("MyStruct<Pubkey,>").is_err());
     }
 }
