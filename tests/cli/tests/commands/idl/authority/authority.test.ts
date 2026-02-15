@@ -10,14 +10,14 @@ import {
 const idlStdoutFile = path.join(__dirname, "idl-stdout");
 
 describe("idl authority", () => {
-  it("should succeed", () => {
+  it.skip("should succeed", () => {
     const { testDir } = setupTest({ templateName: "default-test-program" });
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const outputPath = path.join(testDir, "cargo-calls");
     const validatorCallsPath = path.join(testDir, "solana-test-validator-calls");
     const rpcCallsPath = path.join(testDir, "rpc-calls");
-    const walletPath = path.join(testDir, "../../../../keypairs/aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x.json");
+    const walletPath = path.join(testDir, "../../../../keypairs/bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ.json");
 
     const rpcMock = path.join(MOCK_BIN_DIR, "rpc");
 

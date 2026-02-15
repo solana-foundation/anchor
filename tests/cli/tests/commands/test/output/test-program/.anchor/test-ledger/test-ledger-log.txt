@@ -1,2 +1,0 @@
-VALLIDATOR MOCK
-Mock solana-test-validator started

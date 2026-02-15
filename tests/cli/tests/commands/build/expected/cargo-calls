@@ -1,7 +1,9 @@
 {
   "command": "cargo",
   "args": [
-    "build-sbf"
+    "build-sbf",
+    "--tools-version",
+    "v1.52"
   ]
 }
 {

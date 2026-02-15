@@ -1,4 +1,4 @@
-import * as anchor from '@coral-xyz/anchor';
+import * as anchor from '@anchor-lang/core';
 
 // Deploy script defined by the user.
 const userScript = require("/workspaces/devpool/anchor/tests/cli/tests/commands/migrate/output/test-program/migrations/deploy.ts");

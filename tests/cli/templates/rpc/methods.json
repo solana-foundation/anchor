@@ -43,7 +43,9 @@
         "space": 561
       }
     }
-  }
+  },
+  "aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x":
+  {"jsonrpc":"2.0","result":{"context":{"apiVersion":"3.0.13","slot":350},"value":{"data":{"parsed":{"info":{"programData":"txnSdQ2Kkp6GVaExPEgQ2AxzhAFzZWSKNzjyLs6fcKE"},"type":"program"},"program":"bpf-upgradeable-loader","space":36},"executable":true,"lamports":1141440,"owner":"BPFLoaderUpgradeab1e11111111111111111111111","rentEpoch":18446744073709551615,"space":36}},"id":1}
 },
   "getBalance": {
     "jsonrpc": "2.0",

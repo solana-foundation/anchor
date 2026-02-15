@@ -15,7 +15,7 @@ describe("idl fetch", () => {
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);
     const rpcCallsPath = path.join(testDir, "rpc-calls");
-    const walletPath = path.join(testDir, "../../../../keypairs/aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x.json")
+    const walletPath = path.join(testDir, "../../../../keypairs/bbHgTM8c4goW91FVeYMUUE8bQgGaqNZLNRLaoK4HqnJ.json");
 
     const rpcMock = path.join(MOCK_BIN_DIR, "rpc");
 

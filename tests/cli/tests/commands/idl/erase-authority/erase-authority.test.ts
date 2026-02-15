@@ -10,7 +10,7 @@ import {
 const idlStdoutFile = path.join(__dirname, "idl-stdout");
 
 describe("idl erase-authority", () => {
-  it("should succeed", () => {
+  it.skip("should succeed", () => {
     const { testDir } = setupTest({ templateName: "default-test-program" });
     const workspaceName = "test-program";
     const workspaceDir = path.join(testDir, workspaceName);

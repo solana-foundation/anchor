@@ -5,7 +5,7 @@
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.32.1"
+    "@anchor-lang/core": "^0.32.1"
   },
   "devDependencies": {
     "chai": "^4.3.4",
