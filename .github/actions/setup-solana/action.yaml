@@ -31,7 +31,7 @@ runs:
           else
             sh -c "$(curl -sSfL "${baseUrl}/install")"
           fi
-    - run: echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+    - run: echo "${HOME}/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
       shell: bash
     - run: solana-keygen new --no-bip39-passphrase
       shell: bash
