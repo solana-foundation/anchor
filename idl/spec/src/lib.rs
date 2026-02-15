@@ -338,20 +338,32 @@ impl FromStr for IdlType {
             "Pubkey" => IdlType::Pubkey,
             _ => {
                 if let Some(inner) = s.strip_prefix("Option<") {
-                    let inner_ty = Self::from_str(
-                        inner
-                            .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Option"))?,
-                    )?;
+                    let inner = inner
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid Option type '{s}': missing closing '>'"))?;
+
+                    if inner.is_empty() {
+                        return Err(anyhow!("Invalid Option type '{s}': empty inner type"));
+                    }
+
+                    let inner_ty = Self::from_str(inner)
+                        .map_err(|e| anyhow!("Invalid Option inner type '{inner}' in '{s}': {e}"))?;
+
                     return Ok(IdlType::Option(Box::new(inner_ty)));
                 }
 
                 if let Some(inner) = s.strip_prefix("Vec<") {
-                    let inner_ty = Self::from_str(
-                        inner
-                            .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Vec"))?,
-                    )?;
+                    let inner = inner
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid Vec type '{s}': missing closing '>'"))?;
+
+                    if inner.is_empty() {
+                        return Err(anyhow!("Invalid Vec type '{s}': empty inner type"));
+                    }
+
+                    let inner_ty = Self::from_str(inner)
+                        .map_err(|e| anyhow!("Invalid Vec inner type '{inner}' in '{s}': {e}"))?;
+
                     return Ok(IdlType::Vec(Box::new(inner_ty)));
                 }
 
@@ -451,11 +463,31 @@ mod tests {
     }
 
     #[test]
+    fn malformed_option_missing_closing_angle_returns_err() {
+        assert!(IdlType::from_str("Option<bool").is_err());
+    }
+
+    #[test]
+    fn malformed_option_empty_inner_returns_err() {
+        assert!(IdlType::from_str("Option<>").is_err());
+    }
+
+    #[test]
     fn vector() {
         assert_eq!(
             IdlType::from_str("Vec<bool>").unwrap(),
             IdlType::Vec(Box::new(IdlType::Bool))
         )
+    }
+
+    #[test]
+    fn malformed_vec_missing_closing_angle_returns_err() {
+        assert!(IdlType::from_str("Vec<bool").is_err());
+    }
+
+    #[test]
+    fn malformed_vec_empty_inner_returns_err() {
+        assert!(IdlType::from_str("Vec<>").is_err());
     }
 
     #[test]
