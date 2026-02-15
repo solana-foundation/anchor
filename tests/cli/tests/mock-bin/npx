@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+
+function main() {
+  const args = process.argv.slice(2);
+  const outputPath = process.env.MOCK_NPX_OUTPUT_PATH;
+  if (outputPath) {
+    const entry = {
+      command: "npx",
+      args,
+    };
+    fs.appendFileSync(outputPath, JSON.stringify(entry, null, 2) + "\n");
+  }
+  process.exit(0);
+}
+
+main();

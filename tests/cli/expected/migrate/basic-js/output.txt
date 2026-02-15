@@ -1,0 +1,4 @@
+Running migration deploy script
+Using JavaScript migration script
+
+Deploy complete.

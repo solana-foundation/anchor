@@ -1,0 +1,2 @@
+Expanded test_program into file .anchor/expanded-macros/test_program/test_program-0.1.0-2024-01-01_00-00-00.rs
+

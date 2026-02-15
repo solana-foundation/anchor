@@ -1,0 +1,14 @@
+{
+  "name": "idl_account_program",
+  "version": "0.3.0",
+  "instructions": [
+    {
+      "name": "sync_state",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "metadata": {
+    "address": "ProgramDerived111111111111111111111111111111"
+  }
+}
