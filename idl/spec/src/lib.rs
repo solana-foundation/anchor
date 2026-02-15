@@ -386,27 +386,44 @@ impl FromStr for IdlType {
 
                 // Defined
                 let (name, generics) = if let Some(i) = s.find('<') {
-                    (
-                        s.get(..i).unwrap().to_owned(),
-                        s.get(i + 1..)
-                            .unwrap()
-                            .strip_suffix('>')
-                            .unwrap()
-                            .split(',')
-                            .map(|g| g.trim().to_owned())
-                            .map(|g| {
-                                if g.parse::<bool>().is_ok()
-                                    || g.parse::<u128>().is_ok()
-                                    || g.parse::<i128>().is_ok()
-                                    || g.parse::<char>().is_ok()
-                                {
-                                    Ok(IdlGenericArg::Const { value: g })
-                                } else {
-                                    Self::from_str(&g).map(|ty| IdlGenericArg::Type { ty })
-                                }
-                            })
-                            .collect::<Result<Vec<_>, _>>()?,
-                    )
+                    let name = s
+                        .get(..i)
+                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing name"))?
+                        .to_owned();
+
+                    let generics_str = s
+                        .get(i + 1..)
+                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing generics"))?
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing closing '>'"))?;
+
+                    if generics_str.is_empty() {
+                        return Err(anyhow!("Invalid defined type '{s}': empty generics list"));
+                    }
+
+                    let generics = generics_str
+                        .split(',')
+                        .map(|g| g.trim().to_owned())
+                        .map(|g| {
+                            if g.is_empty() {
+                                return Err(anyhow!(
+                                    "Invalid defined type '{s}': empty generic argument"
+                                ));
+                            }
+
+                            if g.parse::<bool>().is_ok()
+                                || g.parse::<u128>().is_ok()
+                                || g.parse::<i128>().is_ok()
+                                || g.parse::<char>().is_ok()
+                            {
+                                Ok(IdlGenericArg::Const { value: g })
+                            } else {
+                                Self::from_str(&g).map(|ty| IdlGenericArg::Type { ty })
+                            }
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    (name, generics)
                 } else {
                     (s.to_owned(), vec![])
                 };
@@ -522,5 +539,17 @@ mod tests {
                 ],
             }
         )
+    }
+
+    #[test]
+    fn malformed_defined_missing_closing_angle_returns_err() {
+        // Previously this would panic due to `.strip_suffix('>').unwrap()`.
+        assert!(IdlType::from_str("MyStruct<Pubkey").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_empty_generics_returns_err() {
+        // Previously this would panic due to `.strip_suffix('>').unwrap()` (and/or parse weirdly).
+        assert!(IdlType::from_str("MyStruct<>").is_err());
     }
 }
