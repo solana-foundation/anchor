@@ -70,9 +70,6 @@ pub struct Ix {
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
-    // The discriminator based on the `#[interface]` attribute.
-    // TODO: Remove and use `overrides`
-    pub interface_discriminator: Option<[u8; 8]>,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
 }
@@ -358,6 +355,13 @@ impl Field {
                     }
                 }
             }
+            Ty::Migration(ty) => {
+                let from = &ty.from_type_path;
+                let to = &ty.to_type_path;
+                quote! {
+                    #container_ty<'info, #from, #to>
+                }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -487,6 +491,9 @@ impl Field {
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
+            Ty::Migration(_) => quote! {
+                anchor_lang::accounts::migration::Migration
+            },
             Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
             Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
             Ty::Interface(_) => quote! { anchor_lang::accounts::interface::Interface },
@@ -543,6 +550,13 @@ impl Field {
                     #ident
                 }
             }
+            Ty::Migration(ty) => {
+                // Return just the From type for IDL and other uses
+                let from = &ty.from_type_path;
+                quote! {
+                    #from
+                }
+            }
             Ty::Sysvar(ty) => match ty {
                 SysvarTy::Clock => quote! {Clock},
                 SysvarTy::Rent => quote! {Rent},
@@ -596,6 +610,7 @@ pub enum Ty {
     Sysvar(SysvarTy),
     Account(AccountTy),
     LazyAccount(LazyAccountTy),
+    Migration(MigrationTy),
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
@@ -636,6 +651,13 @@ pub struct AccountTy {
 pub struct LazyAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct MigrationTy {
+    // Migration<'info, From, To> - we need both From and To types
+    pub from_type_path: TypePath,
+    pub to_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -680,9 +702,8 @@ impl Parse for ErrorArgs {
             return Err(ParseError::new(offset_span, "expected keyword offset"));
         }
         stream.parse::<Token![=]>()?;
-        Ok(ErrorArgs {
-            offset: stream.parse()?,
-        })
+        let offset: LitInt = stream.parse()?;
+        Ok(ErrorArgs { offset })
     }
 }
 
@@ -699,6 +720,7 @@ pub struct ConstraintGroup {
     pub init: Option<ConstraintInitGroup>,
     pub zeroed: Option<ConstraintZeroed>,
     pub mutable: Option<ConstraintMut>,
+    pub dup: Option<ConstraintDup>,
     pub signer: Option<ConstraintSigner>,
     pub owner: Option<ConstraintOwner>,
     pub rent_exempt: Option<ConstraintRentExempt>,
@@ -723,6 +745,10 @@ impl ConstraintGroup {
         self.mutable.is_some()
     }
 
+    pub fn is_dup(&self) -> bool {
+        self.dup.is_some()
+    }
+
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
     }
@@ -741,6 +767,7 @@ pub enum Constraint {
     Init(ConstraintInitGroup),
     Zeroed(ConstraintZeroed),
     Mut(ConstraintMut),
+    Dup(ConstraintDup),
     Signer(ConstraintSigner),
     HasOne(ConstraintHasOne),
     Raw(ConstraintRaw),
@@ -763,6 +790,7 @@ pub enum ConstraintToken {
     Init(Context<ConstraintInit>),
     Zeroed(Context<ConstraintZeroed>),
     Mut(Context<ConstraintMut>),
+    Dup(Context<ConstraintDup>),
     Signer(Context<ConstraintSigner>),
     HasOne(Context<ConstraintHasOne>),
     Raw(Context<ConstraintRaw>),
@@ -827,6 +855,9 @@ pub struct ConstraintZeroed {}
 pub struct ConstraintMut {
     pub error: Option<Expr>,
 }
+
+#[derive(Debug, Clone)]
+pub struct ConstraintDup {}
 
 #[derive(Debug, Clone)]
 pub struct ConstraintReallocGroup {

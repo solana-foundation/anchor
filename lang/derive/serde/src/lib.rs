@@ -1,32 +1,28 @@
+//! Defines the [`AnchorSerialize`] and [`AnchorDeserialize`] derive macros
+//! These emit a `BorshSerialize`/`BorshDeserialize` implementation for the given type,
+//! as well as emitting IDL type information when the `idl-build` feature is enabled.
+
 extern crate proc_macro;
 
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
-use borsh_derive_internal::*;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use syn::{Ident, Item};
+use proc_macro_crate::FoundCrate;
+use quote::quote;
+use syn::Ident;
 
 fn gen_borsh_serialize(input: TokenStream) -> TokenStream2 {
-    let cratename = Ident::new("borsh", Span::call_site());
-
-    let item: Item = syn::parse(input).unwrap();
-    let res = match item {
-        Item::Struct(item) => struct_ser(&item, cratename),
-        Item::Enum(item) => enum_ser(&item, cratename),
-        Item::Union(item) => union_ser(&item, cratename),
-        // Derive macros can only be defined on structs, enums, and unions.
-        _ => unreachable!(),
-    };
-
-    match res {
-        Ok(res) => res,
-        Err(err) => err.to_compile_error(),
+    let input = TokenStream2::from(input);
+    let attrs = helper_attrs("BorshSerialize");
+    quote! {
+        #attrs
+        #input
     }
 }
 
-#[proc_macro_derive(AnchorSerialize, attributes(borsh_skip))]
+#[proc_macro_derive(AnchorSerialize)]
 pub fn anchor_serialize(input: TokenStream) -> TokenStream {
     #[cfg(not(feature = "idl-build"))]
     let ret = gen_borsh_serialize(input);
@@ -37,6 +33,7 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
     {
         use anchor_syn::idl::*;
         use quote::quote;
+        use syn::Item;
 
         let idl_build_impl = match syn::parse(input).unwrap() {
             Item::Struct(item) => impl_idl_build_struct(&item),
@@ -57,24 +54,15 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 }
 
 fn gen_borsh_deserialize(input: TokenStream) -> TokenStream2 {
-    let cratename = Ident::new("borsh", Span::call_site());
-
-    let item: Item = syn::parse(input).unwrap();
-    let res = match item {
-        Item::Struct(item) => struct_de(&item, cratename),
-        Item::Enum(item) => enum_de(&item, cratename),
-        Item::Union(item) => union_de(&item, cratename),
-        // Derive macros can only be defined on structs, enums, and unions.
-        _ => unreachable!(),
-    };
-
-    match res {
-        Ok(res) => res,
-        Err(err) => err.to_compile_error(),
+    let input = TokenStream2::from(input);
+    let attrs = helper_attrs("BorshDeserialize");
+    quote! {
+        #attrs
+        #input
     }
 }
 
-#[proc_macro_derive(AnchorDeserialize, attributes(borsh_skip, borsh_init))]
+#[proc_macro_derive(AnchorDeserialize)]
 pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     #[cfg(feature = "lazy-account")]
     {
@@ -88,6 +76,42 @@ pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
     }
     #[cfg(not(feature = "lazy-account"))]
     gen_borsh_deserialize(input).into()
+}
+
+fn helper_attrs(mac: &str) -> TokenStream2 {
+    // We need to emit the original borsh deserialization macros on our type,
+    // but derive macros can't emit other derives. To get around this, we use a hack:
+    // 1. Define an `__erase` attribute macro which deletes the item it is applied to
+    // 2. Emit a call to the derive, followed by a copy of the input struct with #[__erase] applied
+    // 3. This results in the trait implementations being produced, but the duplicate type definition being deleted
+
+    let mac_path = Ident::new(mac, Span::call_site());
+    let anchor = proc_macro_crate::crate_name("anchor-lang")
+        .expect("`anchor-derive-serde` must be used via `anchor-lang`");
+
+    let anchor_path = Ident::new(
+        match &anchor {
+            FoundCrate::Itself => "crate",
+            FoundCrate::Name(cr) => cr.as_str(),
+        },
+        Span::call_site(),
+    );
+    let borsh_path = quote! { #anchor_path::prelude::borsh };
+    let borsh_path_str = borsh_path.to_string();
+
+    quote! {
+        #[derive(#borsh_path::#mac_path)]
+        // Borsh derives used in a re-export require providing the path to `borsh`
+        #[borsh(crate = #borsh_path_str)]
+        #[#anchor_path::__erase]
+    }
+}
+
+/// Deletes the item it is applied to. Implementation detail and not part of public API.
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn __erase(_: TokenStream, _: TokenStream) -> TokenStream {
+    TokenStream::new()
 }
 
 #[cfg(feature = "lazy-account")]

@@ -238,3 +238,23 @@ Example:
 [toolchain]
 package_manager = "pnpm"
 ```
+
+### hooks
+
+The `hooks` table allows you to configure commands that may be run at specific stages of the build/test/deploy pipeline.
+
+Example:
+```toml
+[hooks]
+# Accepts kebab-case names...
+pre-build = "echo foo"
+# ...and snake-case names
+post_build = "echo bar"
+# Accepts a list of commands, run in series
+pre-test = ["echo 1", "echo 2"]
+# Non-zero exit codes will abort the CLI
+post-test = "exit 1"
+# Unused hooks may be omitted
+# pre-deploy = []
+# post-deploy = []
+```

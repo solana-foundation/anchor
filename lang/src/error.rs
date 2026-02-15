@@ -1,6 +1,6 @@
 use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use anchor_lang::error_code;
-use borsh::maybestd::io::Error as BorshIoError;
+use borsh::io::Error as BorshIoError;
 use std::fmt::{Debug, Display};
 use std::num::TryFromIntError;
 
@@ -34,16 +34,7 @@ pub enum ErrorCode {
     #[msg("The program could not serialize the given instruction")]
     InstructionDidNotSerialize,
 
-    // IDL instructions
-    /// 1000 - The program was compiled without idl instructions
-    #[msg("The program was compiled without idl instructions")]
-    IdlInstructionStub = 1000,
-    /// 1001 - Invalid program given to the IDL instruction
-    #[msg("Invalid program given to the IDL instruction")]
-    IdlInstructionInvalidProgram,
-    /// 1002 - IDL Account must be empty in order to resize
-    #[msg("IDL account must be empty in order to resize, try closing first")]
-    IdlAccountNotEmpty,
+    // Legacy IDL instructions have been removed in favor of Program Metadata
 
     // Event instructions
     /// 1500 - The program was compiled without `event-cpi` feature
@@ -177,6 +168,17 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - A duplicate mutable account constraint was violated
+    #[msg("A duplicate mutable account constraint was violated")]
+    ConstraintDuplicateMutableAccount,
+
+    // Migration errors
+    /// 2041 - Account is already migrated
+    #[msg("Account is already migrated")]
+    AccountAlreadyMigrated,
+    /// 2042 - Account must be migrated before exiting
+    #[msg("Account must be migrated before exiting")]
+    AccountNotMigrated,
 
     // Require
     /// 2500 - A require expression was violated

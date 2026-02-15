@@ -61,9 +61,11 @@ pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
 
+pub use anchor_derive_serde::__erase;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
+
 pub mod solana_program {
     pub use solana_feature_gate_interface as feature;
 
@@ -134,30 +136,10 @@ pub mod solana_program {
     }
     pub mod sysvar {
         pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
-        #[deprecated(since = "2.2.0", note = "Use `solana-sysvar` crate instead")]
-        #[allow(deprecated)]
-        pub use {
-            solana_sdk_ids::sysvar::{check_id, id, ID},
-            solana_sysvar::{
-                clock, epoch_rewards, epoch_schedule, fees, is_sysvar_id, last_restart_slot,
-                recent_blockhashes, rent, rewards, slot_hashes, slot_history, stake_history,
-                Sysvar, ALL_IDS,
-            },
-        };
         pub mod instructions {
             pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
             #[cfg(not(target_os = "solana"))]
             pub use solana_instructions_sysvar::construct_instructions_data;
-            #[deprecated(
-                since = "2.2.0",
-                note = "Use solana-instructions-sysvar crate instead"
-            )]
-            pub use solana_instructions_sysvar::{
-                get_instruction_relative, load_current_index_checked, load_instruction_at_checked,
-                store_current_index_checked, Instructions,
-            };
-            #[deprecated(since = "2.2.0", note = "Use solana-sdk-ids crate instead")]
-            pub use solana_sdk_ids::sysvar::instructions::{check_id, id, ID};
         }
     }
 }
@@ -167,9 +149,6 @@ pub use anchor_attribute_event::{emit_cpi, event_cpi};
 
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
-
-#[cfg(feature = "interface-instructions")]
-pub use anchor_attribute_program::interface;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
@@ -243,6 +222,13 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
         // no-op
         Ok(())
     }
+}
+
+/// Returns the pubkeys of mutable accounts that serialize on exit.
+/// Used by the duplicate mutable account validation to check across
+/// composite (nested) account struct boundaries.
+pub trait DuplicateMutableAccountKeys {
+    fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
 }
 
 /// The close procedure to initiate garabage collection of an account, allowing
@@ -507,35 +493,38 @@ pub mod prelude {
     pub use super::{
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::program::Program,
-        accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
-        require_keys_eq, require_keys_neq, require_neq,
+        accounts::interface_account::InterfaceAccount, accounts::migration::Migration,
+        accounts::program::Program, accounts::signer::Signer,
+        accounts::system_account::SystemAccount, accounts::sysvar::Sysvar,
+        accounts::unchecked_account::UncheckedAccount, constant, context::Context,
+        context::CpiContext, declare_id, declare_program, emit, err, error, event, instruction,
+        program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
+        require_keys_neq, require_neq,
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
+        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator,
+        DuplicateMutableAccountKeys, Id, InitSpace, Key, Lamports, Owner, Owners, ProgramData,
+        Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
+    // Re-export the crate as anchor_lang for declare_program! macro
+    pub use crate as anchor_lang;
     pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;
-    pub use crate::solana_program::sysvar::clock::Clock;
-    pub use crate::solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use crate::solana_program::sysvar::instructions::Instructions;
-    pub use crate::solana_program::sysvar::rent::Rent;
-    pub use crate::solana_program::sysvar::rewards::Rewards;
-    pub use crate::solana_program::sysvar::slot_hashes::SlotHashes;
-    pub use crate::solana_program::sysvar::slot_history::SlotHistory;
-    pub use crate::solana_program::sysvar::stake_history::StakeHistory;
-    pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
     pub use crate::solana_program::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
+    pub use solana_clock::Clock;
+    pub use solana_instructions_sysvar::Instructions;
+    pub use solana_stake_interface::stake_history::StakeHistory;
+    pub use solana_sysvar::epoch_schedule::EpochSchedule;
+    pub use solana_sysvar::rent::Rent;
+    pub use solana_sysvar::rewards::Rewards;
+    pub use solana_sysvar::slot_hashes::SlotHashes;
+    pub use solana_sysvar::slot_history::SlotHistory;
+    pub use solana_sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
 
     #[cfg(feature = "event-cpi")]
@@ -543,9 +532,6 @@ pub mod prelude {
 
     #[cfg(feature = "idl-build")]
     pub use super::idl::IdlBuild;
-
-    #[cfg(feature = "interface-instructions")]
-    pub use super::interface;
 
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
@@ -590,6 +576,18 @@ pub mod __private {
     pub use crate::lazy::Lazy;
     #[cfg(feature = "lazy-account")]
     pub use anchor_derive_serde::Lazy;
+
+    /// Trait for compile-time type equality checking.
+    /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
+    pub trait IsSameType<T> {}
+
+    impl<T> IsSameType<T> for T {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.

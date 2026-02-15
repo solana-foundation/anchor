@@ -7,9 +7,10 @@ use {
         solana_sdk::{
             commitment_config::CommitmentConfig,
             pubkey::Pubkey,
-            signature::{Keypair, Signer},
+            signature::Keypair,
             transaction::Transaction,
         },
+        solana_signer::Signer,
         Client, Cluster,
     },
     solana_program_test::{tokio, ProgramTest},

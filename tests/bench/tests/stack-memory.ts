@@ -43,7 +43,11 @@ describe("Stack memory", () => {
     // Expected error:
     // Error: Function _ZN5bench9__private8__global13account_info117h88e5c10f03de9fddE
     // Stack offset of 4424 exceeded max offset of 4096 by 328 bytes
-    const buildResult = spawn("anchor", ["build", "--skip-lint"]);
+    const buildResult = spawn("anchor", [
+      "build",
+      "--skip-lint",
+      "--ignore-keys",
+    ]);
     const output = buildResult.output.toString();
     const matches = output.matchAll(
       /global[\d]+([\w\d]+?)17.*by\s(\d+)\sbytes/g

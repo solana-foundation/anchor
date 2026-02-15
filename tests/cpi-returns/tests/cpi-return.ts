@@ -1,7 +1,7 @@
 import assert from "assert";
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import * as borsh from "borsh";
-import { Program } from "@coral-xyz/anchor";
+import { Program } from "@anchor-lang/core";
 import { Callee } from "../target/types/callee";
 import { Caller } from "../target/types/caller";
 import { ConfirmOptions } from "@solana/web3.js";
@@ -57,6 +57,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -81,6 +82,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
     const [key, , buffer] = getReturnLog(t);
     assert.equal(key, calleeProgram.programId);
@@ -98,6 +100,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -136,6 +139,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);

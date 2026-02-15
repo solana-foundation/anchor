@@ -77,7 +77,7 @@ impl CrateContext {
                         ctx.file.canonicalize().unwrap().display(),
                         span.start().line,
                         span.start().column,
-                        ident.to_string()
+                        ident
                     ));
                 };
             }

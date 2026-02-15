@@ -1,5 +1,4 @@
 use crate::codegen::program::common::*;
-use crate::program_codegen::idl::idl_accounts_and_functions;
 use crate::Program;
 use quote::{quote, ToTokens};
 
@@ -8,87 +7,6 @@ use quote::{quote, ToTokens};
 // so.
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let program_name = &program.name;
-    // A constant token stream that stores the accounts and functions, required to live
-    // inside the target program in order to get the program ID.
-    let idl_accounts_and_functions = idl_accounts_and_functions();
-    let non_inlined_idl: proc_macro2::TokenStream = {
-        quote! {
-            // Entry for all IDL related instructions. Use the "no-idl" feature
-            // to eliminate this code, for example, if one wants to make the
-            // IDL no longer mutable or if one doesn't want to store the IDL
-            // on chain.
-            #[inline(never)]
-            #[cfg(not(feature = "no-idl"))]
-            pub fn __idl_dispatch<'info>(program_id: &Pubkey, accounts: &'info [AccountInfo<'info>], idl_ix_data: &[u8]) -> anchor_lang::Result<()> {
-                let mut accounts = accounts;
-                let mut data: &[u8] = idl_ix_data;
-
-                let ix = anchor_lang::idl::IdlInstruction::deserialize(&mut data)
-                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
-
-                match ix {
-                    anchor_lang::idl::IdlInstruction::Create { data_len } => {
-                        let mut bumps = <IdlCreateAccounts as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlCreateAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_create_account(program_id, &mut accounts, data_len)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::Resize { data_len } => {
-                        let mut bumps = <IdlResizeAccount as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlResizeAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_resize_account(program_id, &mut accounts, data_len)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::Close => {
-                        let mut bumps = <IdlCloseAccount as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlCloseAccount::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_close_account(program_id, &mut accounts)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::CreateBuffer => {
-                        let mut bumps = <IdlCreateBuffer as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlCreateBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_create_buffer(program_id, &mut accounts)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::Write { data } => {
-                        let mut bumps = <IdlAccounts as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_write(program_id, &mut accounts, data)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::SetAuthority { new_authority } => {
-                        let mut bumps = <IdlAccounts as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlAccounts::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_set_authority(program_id, &mut accounts, new_authority)?;
-                        accounts.exit(program_id)?;
-                    },
-                    anchor_lang::idl::IdlInstruction::SetBuffer => {
-                        let mut bumps = <IdlSetBuffer as anchor_lang::Bumps>::Bumps::default();
-                        let mut reallocs = std::collections::BTreeSet::new();
-                        let mut accounts =
-                            IdlSetBuffer::try_accounts(program_id, &mut accounts, &[], &mut bumps, &mut reallocs)?;
-                        __idl_set_buffer(program_id, &mut accounts)?;
-                        accounts.exit(program_id)?;
-                    },
-                }
-                Ok(())
-            }
-
-        }
-    };
 
     let event_cpi_mod = generate_event_cpi_mod();
 
@@ -99,8 +17,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
-            let ix_name = generate_ix_variant_name(&ix_method_name_str);
-            let variant_arm = generate_ix_variant(&ix_method_name_str, &ix.args);
+            let ix_name = match generate_ix_variant_name(&ix_method_name_str) {
+                Ok(name) => quote! { #name },
+                Err(e) => {
+                    let err = e.to_string();
+                    return quote! { compile_error!(concat!("error generating ix variant name: `", #err, "`")) };
+                }
+            };
+            let variant_arm = match generate_ix_variant(&ix_method_name_str, &ix.args) {
+                Ok(v) => v,
+                Err(e) => {
+                    let err = e.to_string();
+                    return quote! { compile_error!(concat!("error generating ix variant arm: `", #err, "`")) };
+                }
+            };
+
             let ix_name_log = format!("Instruction: {ix_name}");
             let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
@@ -113,6 +44,58 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
+
+            let actual_param_count = ix.args.len();
+            let ix_name_str = ix_method_name.to_string();
+            let accounts_type_str = anchor.to_string();
+
+            // Build clear error messages
+            let count_error_msg = format!(
+                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
+                accounts_type_str,
+                ix_name_str,
+                actual_param_count,
+            );
+
+            // Generate type validation calls for each argument
+            let type_validations: Vec<proc_macro2::TokenStream> = ix.args
+                .iter()
+                .enumerate()
+                .map(|(idx, arg)| {
+                    let arg_ty = &arg.raw_arg.ty;
+                    let method_name = syn::Ident::new(
+                        &format!("__anchor_validate_ix_arg_type_{}", idx),
+                        proc_macro2::Span::call_site(),
+                    );
+                    quote! {
+                        // Type validation for argument #idx
+                        if #anchor::__ANCHOR_IX_PARAM_COUNT > #idx {
+                            #[allow(unreachable_code)]
+                            if false {
+                                // This code is never executed but is type-checked at compile time
+                                let __type_check_arg: #arg_ty = panic!();
+                                #anchor::#method_name(&__type_check_arg);
+                            }
+                        }
+                    }
+                })
+                .collect();
+
+            let param_validation = quote! {
+                const _: () = {
+                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
+                    const HANDLER_PARAM_COUNT: usize = #actual_param_count;
+
+                    // Count validation
+                    if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
+                        panic!(#count_error_msg);
+                    }
+                };
+
+                // Type validations
+                #(#type_validations)*
+            };
+
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
@@ -124,6 +107,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
+                    #param_validation
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
@@ -171,13 +155,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// wrapper.
         mod __private {
             use super::*;
-            /// __idl mod defines handlers for injected Anchor IDL instructions.
-            pub mod __idl {
-                use super::*;
-
-                #non_inlined_idl
-                #idl_accounts_and_functions
-            }
 
             /// __global mod defines wrapped handlers for global instructions.
             pub mod __global {

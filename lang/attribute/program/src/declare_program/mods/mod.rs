@@ -5,8 +5,8 @@ pub mod cpi;
 pub mod errors;
 pub mod events;
 pub mod internal;
+pub mod parsers;
 pub mod program;
 pub mod types;
-pub mod utils;
 
 use super::common;
