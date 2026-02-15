@@ -47,17 +47,181 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             };
 
             let actual_param_count = ix.args.len();
-            let ix_name_str = ix_method_name.to_string();
             let accounts_type_str = anchor.to_string();
 
             let handler_arg_names: Vec<String> = ix.args.iter().map(|arg| arg.name.to_string()).collect();
-            let handler_arg_names_lit: Vec<proc_macro2::TokenStream> = handler_arg_names
+            let handler_arg_names_normalized: Vec<String> = handler_arg_names
+                .iter()
+                .map(|n| n.strip_prefix('_').unwrap_or(n).to_string())
+                .collect();
+            let handler_arg_names_lit: Vec<proc_macro2::TokenStream> = handler_arg_names_normalized
                 .iter()
                 .map(|name| quote! { #name })
                 .collect();
 
-            let (skip_code, use_skipped_data) = {
-                // Generate deserialize calls for each handler arg that might need to be skipped
+            // Resolve #[instruction(...)] args once — shared by skip code, type, name, and order checks
+            let instruction_args: Option<Vec<(String, Box<syn::Type>)>> = {
+                let extract = |s: &syn::ItemStruct| -> Option<Vec<(String, Box<syn::Type>)>> {
+                    if s.ident != *anchor { return None; }
+                    accounts_parser::parse(s).ok()
+                        .and_then(|accs| accs.instruction_api.as_ref().map(|ix_api| {
+                            ix_api.iter().filter_map(|expr| {
+                                if let syn::Expr::Type(et) = expr {
+                                    use crate::parser;
+                                    Some((parser::tts_to_string(&et.expr).trim().to_string(), et.ty.clone()))
+                                } else { None }
+                            }).collect()
+                        }))
+                };
+                let find_in = |items: &[syn::Item]| {
+                    items.iter().find_map(|i| match i {
+                        syn::Item::Struct(ref s) => extract(s),
+                        _ => None,
+                    })
+                };
+                let parse_and_find = |content: String| {
+                    syn::parse_file(&content).ok().and_then(|f| find_in(&f.items))
+                };
+
+                program.program_mod.content.as_ref()
+                    .and_then(|(_, items)| find_in(items))
+                    .or_else(|| {
+                        let file_path = anchor.span().local_file()
+                            .or_else(|| program.program_mod.ident.span().local_file());
+                        if let Some(path) = file_path {
+                            return std::fs::read_to_string(&path).ok().and_then(parse_and_find);
+                        }
+                        let cwd = std::env::current_dir().ok()?;
+                        let mut paths = vec![cwd.join("src").join("lib.rs")];
+                        if let Ok(dir) = std::fs::read_dir(cwd.join("programs")) {
+                            for entry in dir.flatten() {
+                                if entry.file_type().ok().map(|t| t.is_dir()).unwrap_or(false) {
+                                    let p = entry.path().join("src").join("lib.rs");
+                                    if p.exists() { paths.push(p); }
+                                }
+                            }
+                        }
+                        paths.into_iter()
+                            .find_map(|p| if p.exists() { std::fs::read_to_string(&p).ok() } else { None })
+                            .and_then(parse_and_find)
+                    })
+            };
+
+            // Determine mode: if the first #[instruction] arg name matches a handler arg,
+            // use name-based matching (skip logic + validation). Otherwise fall back to
+            // positional model (no skipping, no name/order checks).
+            let name_mode = if let Some(ref ix_args) = instruction_args {
+                if let Some((first_name, _)) = ix_args.first() {
+                    let first_norm = first_name.strip_prefix('_').unwrap_or(first_name);
+                    handler_arg_names_normalized.iter().any(|n| n == first_norm)
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
+            // Generate skip code that handles both contiguous and non-contiguous #[instruction] args.
+            let (skip_code, use_skipped_data) = if let Some(ref ix_args) = instruction_args {
+                if ix_args.is_empty() {
+                    (
+                        quote! { let __ix_data_for_accounts: &[u8] = &[]; },
+                        quote! { __ix_data_for_accounts },
+                    )
+                } else if !name_mode {
+                    // Positional mode: names don't match handler args, pass data as-is
+                    (
+                        quote! { let __ix_data_for_accounts = __ix_data; },
+                        quote! { __ix_data_for_accounts },
+                    )
+                } else {
+                    use std::collections::HashSet;
+                    let ix_name_set: HashSet<String> = ix_args.iter()
+                        .map(|(name, _)| name.strip_prefix('_').unwrap_or(name).to_string())
+                        .collect();
+
+                    // Map instruction arg names to their positions in the handler signature
+                    let ix_positions: Vec<usize> = handler_arg_names_normalized.iter().enumerate()
+                        .filter(|(_, name)| ix_name_set.contains(name.as_str()))
+                        .map(|(i, _)| i)
+                        .collect();
+
+                    if ix_positions.is_empty() {
+                        // Names didn't match — compile-time name check will catch this
+                        (
+                            quote! { let __ix_data_for_accounts = __ix_data; },
+                            quote! { __ix_data_for_accounts },
+                        )
+                    } else {
+                        let first_pos = ix_positions[0];
+                        let is_contiguous = ix_positions.len() == 1
+                            || ix_positions.windows(2).all(|w| w[1] == w[0] + 1);
+
+                        if is_contiguous {
+                            // Simple prefix-skip: deserialize-and-discard handler args before first instruction arg
+                            let prefix_skips: Vec<proc_macro2::TokenStream> = ix.args.iter()
+                                .take(first_pos)
+                                .map(|arg| {
+                                    let arg_ty = &arg.raw_arg.ty;
+                                    quote! {
+                                        let _: #arg_ty = anchor_lang::AnchorDeserialize::deserialize(&mut __ix_data_for_accounts)
+                                            .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                                    }
+                                })
+                                .collect();
+
+                            (
+                                quote! {
+                                    let mut __ix_data_for_accounts = __ix_data;
+                                    #(#prefix_skips)*
+                                },
+                                quote! { __ix_data_for_accounts },
+                            )
+                        } else {
+                            // Non-contiguous: selectively copy instruction arg bytes into a Vec,
+                            // skipping intermediate handler args that aren't in #[instruction].
+                            let last_pos = *ix_positions.last().unwrap();
+                            let selective_ops: Vec<proc_macro2::TokenStream> = ix.args.iter()
+                                .take(last_pos + 1)
+                                .enumerate()
+                                .map(|(idx, arg)| {
+                                    let arg_ty = &arg.raw_arg.ty;
+                                    if ix_name_set.contains(handler_arg_names_normalized[idx].as_str()) {
+                                        // Instruction arg — record byte span and copy to output
+                                        quote! {
+                                            {
+                                                let __start = __ix_data.len() - __ix_data_cursor.len();
+                                                let _: #arg_ty = anchor_lang::AnchorDeserialize::deserialize(&mut __ix_data_cursor)
+                                                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                                                let __end = __ix_data.len() - __ix_data_cursor.len();
+                                                __ix_data_for_accounts.extend_from_slice(&__ix_data[__start..__end]);
+                                            }
+                                        }
+                                    } else {
+                                        // Not an instruction arg — deserialize and discard to advance cursor
+                                        quote! {
+                                            {
+                                                let _: #arg_ty = anchor_lang::AnchorDeserialize::deserialize(&mut __ix_data_cursor)
+                                                    .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                                            }
+                                        }
+                                    }
+                                })
+                                .collect();
+
+                            (
+                                quote! {
+                                    let mut __ix_data_cursor = &__ix_data[..];
+                                    let mut __ix_data_for_accounts: Vec<u8> = Vec::new();
+                                    #(#selective_ops)*
+                                },
+                                quote! { &__ix_data_for_accounts },
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Fallback: runtime prefix-skip (when instruction_args couldn't be resolved at macro time)
                 let skip_deserializations: Vec<proc_macro2::TokenStream> = ix.args
                     .iter()
                     .enumerate()
@@ -72,279 +236,119 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     })
                     .collect();
 
-                let skip_code_gen = quote! {
-                    let mut __ix_data_for_accounts = __ix_data;
-                    // Match instruction arg names to handler arg names to find which args to skip
-                    const HANDLER_ARG_NAMES: &[&str] = &[#(#handler_arg_names_lit),*];
-                    let ix_arg_names = #anchor::__anchor_ix_arg_names();
+                (
+                    quote! {
+                        let mut __ix_data_for_accounts = __ix_data;
+                        const HANDLER_ARG_NAMES: &[&str] = &[#(#handler_arg_names_lit),*];
+                        let ix_arg_names = #anchor::__anchor_ix_arg_names();
 
-                    if !ix_arg_names.is_empty() && !HANDLER_ARG_NAMES.is_empty() {
-                        // Find the first handler arg index that matches the first instruction arg
-                        let mut first_match_idx = None;
-                        for (handler_idx, handler_name) in HANDLER_ARG_NAMES.iter().enumerate() {
-                            if handler_name == &ix_arg_names[0] {
-                                first_match_idx = Some(handler_idx);
-                                break;
+                        if !ix_arg_names.is_empty() && !HANDLER_ARG_NAMES.is_empty() {
+                            let __first_ix = ix_arg_names[0].strip_prefix('_').unwrap_or(ix_arg_names[0]);
+                            let mut first_match_idx = None;
+                            for (handler_idx, handler_name) in HANDLER_ARG_NAMES.iter().enumerate() {
+                                if *handler_name == __first_ix {
+                                    first_match_idx = Some(handler_idx);
+                                    break;
+                                }
+                            }
+
+                            if let Some(skip_count) = first_match_idx {
+                                #(#skip_deserializations)*
                             }
                         }
-
-                        if let Some(skip_count) = first_match_idx {
-                            // Deserialize and discard handler args before the first instruction arg
-                            #(#skip_deserializations)*
-                        }
-                    }
-                };
-
-                (skip_code_gen, quote! { __ix_data_for_accounts })
+                    },
+                    quote! { __ix_data_for_accounts },
+                )
             };
 
             // Build clear error messages
             let count_error_msg = format!(
-                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
+                "{}'s expects more args than ix function `{}` provides.",
                 accounts_type_str,
-                ix_name_str,
-                actual_param_count,
+                ix_method_name_str
             );
 
-            // Generate type validation calls using name->type maps
-            // Try to find AccountsStruct in program module to match names at code generation time
+            // Type validation
             let type_validations: Vec<proc_macro2::TokenStream> = {
                 use std::collections::HashMap;
-                let handler_args_map: HashMap<String, &syn::Type> = ix.args
-                    .iter()
+                let handler_args_map: HashMap<String, &syn::Type> = ix.args.iter()
                     .map(|arg| (arg.name.to_string(), &*arg.raw_arg.ty))
                     .collect();
-                let extract_instruction_args = |item_struct: &syn::ItemStruct| -> Option<Vec<(String, Box<syn::Type>)>> {
-                    if item_struct.ident != *anchor {
-                        return None;
-                    }
-                    accounts_parser::parse(item_struct).ok()
-                        .and_then(|accs_struct| accs_struct.instruction_api.as_ref().map(|ix_api| {
-                            ix_api.iter().filter_map(|expr| {
-                                if let syn::Expr::Type(expr_type) = expr {
-                                    use crate::parser;
-                                    let name = parser::tts_to_string(&expr_type.expr).trim().to_string();
-                                    Some((name, expr_type.ty.clone()))
-                                } else {
-                                    None
-                                }
-                            }).collect()
-                        }))
-                };
-                let instruction_args_opt: Option<Vec<(String, Box<syn::Type>)>> = {
-                    let result = program.program_mod.content.as_ref()
-                        .and_then(|(_, items)| {
-                            items.iter().find_map(|item| {
-                                if let syn::Item::Struct(ref item_struct) = item {
-                                    extract_instruction_args(item_struct)
-                                } else {
-                                    None
-                                }
-                            })
-                        });
 
-                    result.or_else(|| {
-                        let file_path = anchor.span().local_file()
-                            .or_else(|| program.program_mod.ident.span().local_file());
-
-                        if let Some(path) = file_path {
-                            std::fs::read_to_string(&path).ok()
-                                .and_then(|content| syn::parse_file(&content).ok())
-                                .and_then(|file| {
-                                    file.items.iter().find_map(|item| {
-                                        if let syn::Item::Struct(ref item_struct) = item {
-                                            extract_instruction_args(item_struct)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                })
-                        } else {
-                            // Fallback: try to find lib.rs relative to current directory
-                            // Try multiple possible locations
-                            let cwd = std::env::current_dir().ok()?;
-                            let mut possible_paths = vec![cwd.join("src").join("lib.rs")];
-
-                            // Search in programs directory
-                            if let Ok(programs_dir) = std::fs::read_dir(cwd.join("programs")) {
-                                for entry in programs_dir.flatten() {
-                                    if entry.file_type().ok().map(|t| t.is_dir()).unwrap_or(false) {
-                                        let lib_rs = entry.path().join("src").join("lib.rs");
-                                        if lib_rs.exists() {
-                                            possible_paths.push(lib_rs);
-                                        }
-                                    }
-                                }
-                            }
-
-                            possible_paths.into_iter()
-                                .find_map(|path| {
-                                    if path.exists() {
-                                        std::fs::read_to_string(&path).ok()
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .and_then(|content| syn::parse_file(&content).ok())
-                                .and_then(|file| {
-                                    file.items.iter().find_map(|item| {
-                                        if let syn::Item::Struct(ref item_struct) = item {
-                                            extract_instruction_args(item_struct)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                })
-                        }
-                    })
-                };
-                let mut validations = Vec::new();
-                if let Some(ref ix_args) = instruction_args_opt {
-                    for (ix_arg_idx, (ix_arg_name, _ix_arg_ty)) in ix_args.iter().enumerate() {
-                        let method_name = syn::Ident::new(
-                            &format!("__anchor_validate_ix_arg_type_{}", ix_arg_idx),
+                if name_mode {
+                    let ix_args = instruction_args.as_ref().unwrap();
+                    ix_args.iter().enumerate().filter_map(|(idx, (name, _))| {
+                        let method = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", idx),
                             proc_macro2::Span::call_site(),
                         );
-
-                        if let Some(handler_ty) = handler_args_map.get(ix_arg_name) {
-                            validations.push(quote! {
-                                #[allow(unreachable_code)]
-                                if false {
-                                    let __type_check_arg: #handler_ty = panic!();
-                                    #anchor::#method_name(&__type_check_arg);
-                                }
-                            });
-                        }
-                    }
-                } else {
-                    for handler_idx in 0..ix.args.len().min(32) {
-                        let handler_ty = &*ix.args[handler_idx].raw_arg.ty;
-                        let method_name = syn::Ident::new(
-                            &format!("__anchor_validate_ix_arg_type_{}", handler_idx),
-                            proc_macro2::Span::call_site(),
-                        );
-                        validations.push(quote! {
+                        handler_args_map.get(name).map(|ty| quote! {
                             #[allow(unreachable_code)]
                             if false {
-                                let __type_check_arg: #handler_ty = panic!();
-                                #anchor::#method_name(&__type_check_arg);
+                                let __type_check_arg: #ty = panic!();
+                                #anchor::#method(&__type_check_arg);
                             }
-                        });
-                    }
-                }
-
-                validations
-            };
-
-            let name_checks: Vec<proc_macro2::TokenStream> = {
-                let handler_arg_names_set: std::collections::HashSet<String> = ix.args
-                    .iter()
-                    .map(|arg| {
-                        let name = arg.name.to_string();
-                        name.strip_prefix('_').unwrap_or(&name).to_string()
-                    })
-                    .collect();
-                let extract_names = |item_struct: &syn::ItemStruct| -> Option<Vec<String>> {
-                    if item_struct.ident != *anchor {
-                        return None;
-                    }
-                    accounts_parser::parse(item_struct).ok()
-                        .and_then(|accs_struct| accs_struct.instruction_api.as_ref().map(|ix_api| {
-                            ix_api.iter().filter_map(|expr| {
-                                if let syn::Expr::Type(expr_type) = expr {
-                                    use crate::parser;
-                                    Some(parser::tts_to_string(&expr_type.expr).trim().to_string())
-                                } else {
-                                    None
-                                }
-                            }).collect()
-                        }))
-                };
-                let instruction_arg_names_opt: Option<Vec<String>> = {
-                    let result = program.program_mod.content.as_ref()
-                        .and_then(|(_, items)| {
-                            items.iter().find_map(|item| {
-                                if let syn::Item::Struct(ref item_struct) = item {
-                                    extract_names(item_struct)
-                                } else {
-                                    None
-                                }
-                            })
-                        });
-
-                    result.or_else(|| {
-                        let file_path = anchor.span().local_file()
-                            .or_else(|| program.program_mod.ident.span().local_file());
-
-                        if let Some(path) = file_path {
-                            std::fs::read_to_string(&path).ok()
-                                .and_then(|content| syn::parse_file(&content).ok())
-                                .and_then(|file| {
-                                    file.items.iter().find_map(|item| {
-                                        if let syn::Item::Struct(ref item_struct) = item {
-                                            extract_names(item_struct)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                })
-                        } else {
-                            // Fallback: try to find lib.rs relative to current directory
-                            // Try multiple possible locations
-                            let cwd = std::env::current_dir().ok()?;
-                            let mut possible_paths = vec![cwd.join("src").join("lib.rs")];
-
-                            // Search in programs directory
-                            if let Ok(programs_dir) = std::fs::read_dir(cwd.join("programs")) {
-                                for entry in programs_dir.flatten() {
-                                    if entry.file_type().ok().map(|t| t.is_dir()).unwrap_or(false) {
-                                        let lib_rs = entry.path().join("src").join("lib.rs");
-                                        if lib_rs.exists() {
-                                            possible_paths.push(lib_rs);
-                                        }
-                                    }
-                                }
+                        })
+                    }).collect()
+                } else {
+                    (0..ix.args.len().min(32)).map(|idx| {
+                        let ty = &*ix.args[idx].raw_arg.ty;
+                        let method = syn::Ident::new(
+                            &format!("__anchor_validate_ix_arg_type_{}", idx),
+                            proc_macro2::Span::call_site(),
+                        );
+                        quote! {
+                            #[allow(unreachable_code)]
+                            if false {
+                                let __type_check_arg: #ty = panic!();
+                                #anchor::#method(&__type_check_arg);
                             }
-
-                            possible_paths.into_iter()
-                                .find_map(|path| {
-                                    if path.exists() {
-                                        std::fs::read_to_string(&path).ok()
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .and_then(|content| syn::parse_file(&content).ok())
-                                .and_then(|file| {
-                                    file.items.iter().find_map(|item| {
-                                        if let syn::Item::Struct(ref item_struct) = item {
-                                            extract_names(item_struct)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                })
-                        }
-                    })
-                };
-
-                if let Some(ref ix_names) = instruction_arg_names_opt {
-                    ix_names.iter().enumerate().map(|(idx, ix_name)| {
-                        let normalized_ix_name = ix_name.strip_prefix('_').unwrap_or(ix_name);
-                        if !handler_arg_names_set.contains(normalized_ix_name) {
-                            quote! {
-                                const _: () = {
-                                    panic!(concat!(
-                                        #count_error_msg,
-                                        " Instruction arg '", #ix_name, "' at index ", #idx,
-                                        " not found in handler args."
-                                    ));
-                                };
-                            }
-                        } else {
-                            quote! {}
                         }
                     }).collect()
+                }
+            };
+
+            // Name + order validation (only in name-based mode)
+            let name_and_order_checks: Vec<proc_macro2::TokenStream> = {
+                if name_mode {
+                    let ix_args = instruction_args.as_ref().unwrap();
+                    use std::collections::HashMap;
+                    let handler_set: std::collections::HashSet<&str> = handler_arg_names_normalized.iter()
+                        .map(|s| s.as_str()).collect();
+                    let handler_pos: HashMap<&str, usize> = handler_arg_names_normalized.iter()
+                        .enumerate().map(|(i, n)| (n.as_str(), i)).collect();
+
+                    let mut checks = Vec::new();
+
+                    // Every #[instruction] arg must exist in handler
+                    for (idx, (name, _)) in ix_args.iter().enumerate() {
+                        let norm = name.strip_prefix('_').unwrap_or(name);
+                        if !handler_set.contains(norm) {
+                            let msg = format!(
+                                "{}'s ix arg '{}' at index {} is not found in {}.",
+                                accounts_type_str, name, idx, ix_method_name_str
+                            );
+                            checks.push(quote! { const _: () = { panic!(#msg); }; });
+                        }
+                    }
+
+                    // Positions in handler must be strictly increasing
+                    let named_positions: Vec<(&str, usize)> = ix_args.iter()
+                        .filter_map(|(name, _)| {
+                            let norm = name.strip_prefix('_').unwrap_or(name);
+                            handler_pos.get(norm).map(|&pos| (norm, pos))
+                        })
+                        .collect();
+                    for w in named_positions.windows(2) {
+                        if w[0].1 >= w[1].1 {
+                            let msg = format!(
+                                "{}'s ix arg '{}' is not found after '{}'.",
+                                accounts_type_str, w[1].0, w[0].0
+                            );
+                            checks.push(quote! { const _: () = { panic!(#msg); }; });
+                        }
+                    }
+                    checks
                 } else {
                     vec![]
                 }
@@ -354,17 +358,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 const _: () = {
                     const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
                     const HANDLER_PARAM_COUNT: usize = #actual_param_count;
-
-                    // Validation instruction args count must not exceed handler args count
                     if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
                         panic!(#count_error_msg);
                     }
                 };
-
-                // Name validation
-                #(#name_checks)*
-
-                // Type validations
+                #(#name_and_order_checks)*
                 #(#type_validations)*
             };
 

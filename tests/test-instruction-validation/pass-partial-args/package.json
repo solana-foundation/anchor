@@ -1,5 +1,5 @@
 {
-  "name": "test-instruction-validation-pass-nested-args",
+  "name": "test-instruction-validation-pass-partial-args",
   "version": "0.32.1",
   "license": "(MIT OR Apache-2.0)",
   "homepage": "https://github.com/coral-xyz/anchor#readme",
