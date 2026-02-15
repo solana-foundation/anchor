@@ -75,6 +75,21 @@ const server = http.createServer((req, res) => {
     const method = request.method;
     let response;
 
+    if (method === "getAccountInfo") {
+      const requestedAccountPublicKeyFromRpcParams = Array.isArray(request.params)
+        ? request.params[0]
+        : null;
+      const getAccountInfoResponseByPublicKey = methods.getAccountInfo;
+      if (getAccountInfoResponseByPublicKey && typeof getAccountInfoResponseByPublicKey === "object") {
+        const responseForRequestedAccountPublicKey = requestedAccountPublicKeyFromRpcParams
+          ? getAccountInfoResponseByPublicKey[requestedAccountPublicKeyFromRpcParams]
+          : null;
+        const fallbackResponseForAccountPublicKey =
+          getAccountInfoResponseByPublicKey["SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"];
+        response = responseForRequestedAccountPublicKey || fallbackResponseForAccountPublicKey;
+      }
+    }
+
     if (method === "sendTransaction") {
       const serializedTransactionBase64String = Array.isArray(request.params)
         ? request.params[0]

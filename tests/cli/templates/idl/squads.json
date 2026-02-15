@@ -1,0 +1,3270 @@
+{
+  "version": "2.0.0",
+  "name": "squads_multisig_program",
+  "metadata": {
+    "address": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  },
+  "instructions": [
+    {
+      "name": "programConfigInit",
+      "docs": [
+        "Initialize the program config."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "initializer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The hard-coded account that is used to initialize the program config once."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProgramConfigInitArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "programConfigSetAuthority",
+      "docs": [
+        "Set the `authority` parameter of the program config."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProgramConfigSetAuthorityArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "programConfigSetMultisigCreationFee",
+      "docs": [
+        "Set the `multisig_creation_fee` parameter of the program config."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProgramConfigSetMultisigCreationFeeArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "programConfigSetTreasury",
+      "docs": [
+        "Set the `treasury` parameter of the program config."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProgramConfigSetTreasuryArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigCreate",
+      "docs": [
+        "Create a multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "createKey",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "An ephemeral signer that is used as a seed for the Multisig PDA.",
+            "Must be a signer to prevent front-running attack by someone else but the original creator."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The creator of the multisig."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigCreateV2",
+      "docs": [
+        "Create a multisig."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Global program config account."
+          ]
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The treasury where the creation fee is transferred to."
+          ]
+        },
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "createKey",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "An ephemeral signer that is used as a seed for the Multisig PDA.",
+            "Must be a signer to prevent front-running attack by someone else but the original creator."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The creator of the multisig."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigCreateArgsV2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigAddMember",
+      "docs": [
+        "Add a new member to the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigAddMemberArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigRemoveMember",
+      "docs": [
+        "Remove a member/key from the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigRemoveMemberArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigSetTimeLock",
+      "docs": [
+        "Set the `time_lock` config parameter for the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigSetTimeLockArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigChangeThreshold",
+      "docs": [
+        "Set the `threshold` config parameter for the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigChangeThresholdArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigSetConfigAuthority",
+      "docs": [
+        "Set the multisig `config_authority`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigSetConfigAuthorityArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigSetRentCollector",
+      "docs": [
+        "Set the multisig `rent_collector`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
+            "for example when adding a new member or a spending limit.",
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigSetRentCollectorArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigAddSpendingLimit",
+      "docs": [
+        "Create a new spending limit for the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "spendingLimit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigAddSpendingLimitArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multisigRemoveSpendingLimit",
+      "docs": [
+        "Remove the spending limit from the controlled multisig."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "configAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Multisig `config_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "spendingLimit",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "This is usually the same as `config_authority`, but can be a different account if needed."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MultisigRemoveSpendingLimitArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "configTransactionCreate",
+      "docs": [
+        "Create a new config transaction."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ConfigTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "configTransactionExecute",
+      "docs": [
+        "Execute a config transaction.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The multisig account that owns the transaction."
+          ]
+        },
+        {
+          "name": "member",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "One of the multisig members with `Execute` permission."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged/credited in case the config transaction causes space reallocation,",
+            "for example when adding a new member, adding or removing a spending limit.",
+            "This is usually the same as `member`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "vaultTransactionCreate",
+      "docs": [
+        "Create a new vault transaction."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VaultTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "vaultTransactionExecute",
+      "docs": [
+        "Execute a vault transaction.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "member",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "batchCreate",
+      "docs": [
+        "Create a new batch."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the batch."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BatchCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "batchAddTransaction",
+      "docs": [
+        "Add a transaction to the batch."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Multisig account this batch belongs to."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`VaultBatchTransaction` account to initialize and add to the `batch`."
+          ]
+        },
+        {
+          "name": "member",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Member of the multisig."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "BatchAddTransactionArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "batchExecuteTransaction",
+      "docs": [
+        "Execute a transaction from the batch."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Multisig account this batch belongs to."
+          ]
+        },
+        {
+          "name": "member",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Member of the multisig."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch.",
+            "If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Batch transaction to execute."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "proposalCreate",
+      "docs": [
+        "Create a new multisig proposal."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the proposal."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the proposal account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProposalCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "proposalActivate",
+      "docs": [
+        "Update status of a multisig proposal from `Draft` to `Active`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "member",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "proposalApprove",
+      "docs": [
+        "Approve a multisig proposal on behalf of the `member`.",
+        "The proposal must be `Active`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "member",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProposalVoteArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "proposalReject",
+      "docs": [
+        "Reject a multisig proposal on behalf of the `member`.",
+        "The proposal must be `Active`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "member",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProposalVoteArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "proposalCancel",
+      "docs": [
+        "Cancel a multisig proposal on behalf of the `member`.",
+        "The proposal must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "member",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ProposalVoteArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "spendingLimitUse",
+      "docs": [
+        "Use a spending limit to transfer tokens from a multisig vault to a destination account."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The multisig account the `spending_limit` is for."
+          ]
+        },
+        {
+          "name": "member",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "spendingLimit",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The SpendingLimit account to use."
+          ]
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Multisig vault account to transfer tokens from."
+          ]
+        },
+        {
+          "name": "destination",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Destination account to transfer tokens to."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "In case `spending_limit.mint` is SOL."
+          ]
+        },
+        {
+          "name": "mint",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "The mint of the tokens to transfer in case `spending_limit.mint` is an SPL token."
+          ]
+        },
+        {
+          "name": "vaultTokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Multisig vault token account to transfer tokens from in case `spending_limit.mint` is an SPL token."
+          ]
+        },
+        {
+          "name": "destinationTokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "Destination token account in case `spending_limit.mint` is an SPL token."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "In case `spending_limit.mint` is an SPL token."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SpendingLimitUseArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "configTransactionAccountsClose",
+      "docs": [
+        "Closes a `ConfigTransaction` and the corresponding `Proposal`.",
+        "`transaction` can be closed if either:",
+        "- the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.",
+        "- the `proposal` is stale."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "ConfigTransaction corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "rentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "vaultTransactionAccountsClose",
+      "docs": [
+        "Closes a `VaultTransaction` and the corresponding `Proposal`.",
+        "`transaction` can be closed if either:",
+        "- the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.",
+        "- the `proposal` is stale and not `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "VaultTransaction corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "rentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "vaultBatchTransactionAccountClose",
+      "docs": [
+        "Closes a `VaultBatchTransaction` belonging to the `batch` and `proposal`.",
+        "`transaction` can be closed if either:",
+        "- it's marked as executed within the `batch`;",
+        "- the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.",
+        "- the `proposal` is stale and not `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`Batch` corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`VaultBatchTransaction` account to close.",
+            "The transaction must be the current last one in the batch."
+          ]
+        },
+        {
+          "name": "rentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "batchAccountsClose",
+      "docs": [
+        "Closes Batch and the corresponding Proposal accounts for proposals in terminal states:",
+        "`Executed`, `Rejected`, or `Cancelled` or stale proposals that aren't `Approved`.",
+        "",
+        "This instruction is only allowed to be executed when all `VaultBatchTransaction` accounts",
+        "in the `batch` are already closed: `batch.size == 0`."
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`Batch` corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "rentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Batch",
+      "docs": [
+        "Stores data required for serial execution of a batch of multisig vault transactions.",
+        "Vault transaction is a transaction that's executed on behalf of the multisig vault PDA",
+        "and wraps arbitrary Solana instructions, typically calling into other Solana programs.",
+        "The transactions themselves are stored in separate PDAs associated with the this account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multisig",
+            "docs": [
+              "The multisig this belongs to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "Member of the Multisig who submitted the batch."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Index of this batch within the multisig transactions."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "Index of the vault this batch belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "docs": [
+              "Derivation bump of the vault PDA this batch belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "size",
+            "docs": [
+              "Number of transactions in the batch."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "executedTransactionIndex",
+            "docs": [
+              "Index of the last executed transaction within the batch.",
+              "0 means that no transactions have been executed yet."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultBatchTransaction",
+      "docs": [
+        "Stores data required for execution of one transaction from a batch."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSignerBumps",
+            "docs": [
+              "Derivation bumps for additional signers.",
+              "Some transactions require multiple signers. Often these additional signers are \"ephemeral\" keypairs",
+              "that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.",
+              "When wrapping such transactions into multisig ones, we replace these \"ephemeral\" signing keypairs",
+              "with PDAs derived from the transaction's `transaction_index` and controlled by the Multisig Program;",
+              "during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,",
+              "thus \"signing\" on behalf of these PDAs."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "message",
+            "docs": [
+              "data required for executing the transaction."
+            ],
+            "type": {
+              "defined": "VaultTransactionMessage"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigTransaction",
+      "docs": [
+        "Stores data required for execution of a multisig configuration transaction.",
+        "Config transaction can perform a predefined set of actions on the Multisig PDA, such as adding/removing members,",
+        "changing the threshold, etc."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multisig",
+            "docs": [
+              "The multisig this belongs to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "Member of the Multisig who submitted the transaction."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Index of this transaction within the multisig."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "bump for the transaction seeds."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "actions",
+            "docs": [
+              "Action to be performed on the multisig."
+            ],
+            "type": {
+              "vec": {
+                "defined": "ConfigAction"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Multisig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "createKey",
+            "docs": [
+              "Key that is used to seed the multisig PDA."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "configAuthority",
+            "docs": [
+              "The authority that can change the multisig config.",
+              "This is a very important parameter as this authority can change the members and threshold.",
+              "",
+              "The convention is to set this to `Pubkey::default()`.",
+              "In this case, the multisig becomes autonomous, so every config change goes through",
+              "the normal process of voting by the members.",
+              "",
+              "However, if this parameter is set to any other key, all the config changes for this multisig",
+              "will need to be signed by the `config_authority`. We call such a multisig a \"controlled multisig\"."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "threshold",
+            "docs": [
+              "Threshold for signatures."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "timeLock",
+            "docs": [
+              "How many seconds must pass between transaction voting settlement and execution."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Last transaction index. 0 means no transactions have been created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "staleTransactionIndex",
+            "docs": [
+              "Last stale transaction index. All transactions up until this index are stale.",
+              "This index is updated when multisig config (members/threshold/time_lock) changes."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rentCollector",
+            "docs": [
+              "The address where the rent for the accounts related to executed, rejected, or cancelled",
+              "transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Bump for the multisig PDA seed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "members",
+            "docs": [
+              "Members of the multisig."
+            ],
+            "type": {
+              "vec": {
+                "defined": "Member"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfig",
+      "docs": [
+        "Global program configuration account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "The authority which can update the config."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "multisigCreationFee",
+            "docs": [
+              "The lamports amount charged for creating a new multisig account.",
+              "This fee is sent to the `treasury` account."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "The treasury account to send charged fees to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved for future use."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Proposal",
+      "docs": [
+        "Stores the data required for tracking the status of a multisig proposal.",
+        "Each `Proposal` has a 1:1 association with a transaction account, e.g. a `VaultTransaction` or a `ConfigTransaction`;",
+        "the latter can be executed only after the `Proposal` has been approved and its time lock is released."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multisig",
+            "docs": [
+              "The multisig this belongs to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Index of the multisig transaction this proposal is associated with."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "docs": [
+              "The status of the transaction."
+            ],
+            "type": {
+              "defined": "ProposalStatus"
+            }
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "approved",
+            "docs": [
+              "Keys that have approved/signed."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "rejected",
+            "docs": [
+              "Keys that have rejected."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "cancelled",
+            "docs": [
+              "Keys that have cancelled (Approved only)."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpendingLimit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multisig",
+            "docs": [
+              "The multisig this belongs to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "createKey",
+            "docs": [
+              "Key that is used to seed the SpendingLimit PDA."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "The index of the vault that the spending limit is for."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint the spending limit is for.",
+              "Pubkey::default() means SOL.",
+              "use NATIVE_MINT for Wrapped SOL."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "The amount of tokens that can be spent in a period.",
+              "This amount is in decimals of the mint,",
+              "so 1 SOL would be `1_000_000_000` and 1 USDC would be `1_000_000`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "period",
+            "docs": [
+              "The reset period of the spending limit.",
+              "When it passes, the remaining amount is reset, unless it's `Period::OneTime`."
+            ],
+            "type": {
+              "defined": "Period"
+            }
+          },
+          {
+            "name": "remainingAmount",
+            "docs": [
+              "The remaining amount of tokens that can be spent in the current period.",
+              "When reaches 0, the spending limit cannot be used anymore until the period reset."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lastReset",
+            "docs": [
+              "Unix timestamp marking the last time the spending limit was reset (or created)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "members",
+            "docs": [
+              "Members of the multisig that can use the spending limit.",
+              "In case a member is removed from the multisig, the spending limit will remain existent",
+              "(until explicitly deleted), but the removed member will not be able to use it anymore."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "destinations",
+            "docs": [
+              "The destination addresses the spending limit is allowed to sent funds to.",
+              "If empty, funds can be sent to any address."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultTransaction",
+      "docs": [
+        "Stores data required for tracking the voting and execution status of a vault transaction.",
+        "Vault transaction is a transaction that's executed on behalf of the multisig vault PDA",
+        "and wraps arbitrary Solana instructions, typically calling into other Solana programs."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multisig",
+            "docs": [
+              "The multisig this belongs to."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "Member of the Multisig who submitted the transaction."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Index of this transaction within the multisig."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "bump for the transaction seeds."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "Index of the vault this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "docs": [
+              "Derivation bump of the vault PDA this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSignerBumps",
+            "docs": [
+              "Derivation bumps for additional signers.",
+              "Some transactions require multiple signers. Often these additional signers are \"ephemeral\" keypairs",
+              "that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.",
+              "When wrapping such transactions into multisig ones, we replace these \"ephemeral\" signing keypairs",
+              "with PDAs derived from the MultisigTransaction's `transaction_index` and controlled by the Multisig Program;",
+              "during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,",
+              "thus \"signing\" on behalf of these PDAs."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "message",
+            "docs": [
+              "data required for executing the transaction."
+            ],
+            "type": {
+              "defined": "VaultTransactionMessage"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "BatchAddTransactionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ephemeralSigners",
+            "docs": [
+              "Number of ephemeral signing PDAs required by the transaction."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BatchCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "Index of the vault this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigTransactionCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "actions",
+            "type": {
+              "vec": {
+                "defined": "ConfigAction"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigAddSpendingLimitArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "createKey",
+            "docs": [
+              "Key that is used to seed the SpendingLimit PDA."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "The index of the vault that the spending limit is for."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint the spending limit is for."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "The amount of tokens that can be spent in a period.",
+              "This amount is in decimals of the mint,",
+              "so 1 SOL would be `1_000_000_000` and 1 USDC would be `1_000_000`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "period",
+            "docs": [
+              "The reset period of the spending limit.",
+              "When it passes, the remaining amount is reset, unless it's `Period::OneTime`."
+            ],
+            "type": {
+              "defined": "Period"
+            }
+          },
+          {
+            "name": "members",
+            "docs": [
+              "Members of the multisig that can use the spending limit.",
+              "In case a member is removed from the multisig, the spending limit will remain existent",
+              "(until explicitly deleted), but the removed member will not be able to use it anymore."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "destinations",
+            "docs": [
+              "The destination addresses the spending limit is allowed to sent funds to.",
+              "If empty, funds can be sent to any address."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigAddMemberArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newMember",
+            "type": {
+              "defined": "Member"
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigRemoveMemberArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMember",
+            "type": "publicKey"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigChangeThresholdArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newThreshold",
+            "type": "u16"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigSetTimeLockArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "timeLock",
+            "type": "u32"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigSetConfigAuthorityArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "configAuthority",
+            "type": "publicKey"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigSetRentCollectorArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rentCollector",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "configAuthority",
+            "docs": [
+              "The authority that can configure the multisig: add/remove members, change the threshold, etc.",
+              "Should be set to `None` for autonomous multisigs."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "threshold",
+            "docs": [
+              "The number of signatures required to execute a transaction."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "members",
+            "docs": [
+              "The members of the multisig."
+            ],
+            "type": {
+              "vec": {
+                "defined": "Member"
+              }
+            }
+          },
+          {
+            "name": "timeLock",
+            "docs": [
+              "How many seconds must pass between transaction voting, settlement, and execution."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigCreateArgsV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "configAuthority",
+            "docs": [
+              "The authority that can configure the multisig: add/remove members, change the threshold, etc.",
+              "Should be set to `None` for autonomous multisigs."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "threshold",
+            "docs": [
+              "The number of signatures required to execute a transaction."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "members",
+            "docs": [
+              "The members of the multisig."
+            ],
+            "type": {
+              "vec": {
+                "defined": "Member"
+              }
+            }
+          },
+          {
+            "name": "timeLock",
+            "docs": [
+              "How many seconds must pass between transaction voting, settlement, and execution."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "rentCollector",
+            "docs": [
+              "The address where the rent for the accounts related to executed, rejected, or cancelled",
+              "transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigRemoveSpendingLimitArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfigInitArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "The authority that can configure the program config: change the treasury, etc."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "multisigCreationFee",
+            "docs": [
+              "The fee that is charged for creating a new multisig."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "The treasury where the creation fee is transferred to."
+            ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfigSetAuthorityArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newAuthority",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfigSetMultisigCreationFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newMultisigCreationFee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfigSetTreasuryArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newTreasury",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Index of the multisig transaction this proposal is associated with."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "draft",
+            "docs": [
+              "Whether the proposal should be initialized with status `Draft`."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalVoteArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpendingLimitUseArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens to transfer."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Decimals of the token mint. Used for double-checking against incorrect order of magnitude of `amount`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo used for indexing."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultTransactionCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vaultIndex",
+            "docs": [
+              "Index of the vault this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSigners",
+            "docs": [
+              "Number of ephemeral signing PDAs required by the transaction."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionMessage",
+      "docs": [
+        "Unvalidated instruction data, must be treated as untrusted."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numSigners",
+            "docs": [
+              "The number of signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableSigners",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableNonSigners",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountKeys",
+            "docs": [
+              "The list of unique account public keys (including program IDs) that will be used in the provided instructions."
+            ],
+            "type": {
+              "defined": "SmallVec<u8,Pubkey>"
+            }
+          },
+          {
+            "name": "instructions",
+            "docs": [
+              "The list of instructions to execute."
+            ],
+            "type": {
+              "defined": "SmallVec<u8,CompiledInstruction>"
+            }
+          },
+          {
+            "name": "addressTableLookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "defined": "SmallVec<u8,MessageAddressTableLookup>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompiledInstruction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountIndexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
+          },
+          {
+            "name": "data",
+            "docs": [
+              "Instruction data."
+            ],
+            "type": {
+              "defined": "SmallVec<u16,u8>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts in a single tx."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountKey",
+            "docs": [
+              "Address lookup table account key"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "writableIndexes",
+            "docs": [
+              "List of indexes used to load writable account addresses"
+            ],
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
+          },
+          {
+            "name": "readonlyIndexes",
+            "docs": [
+              "List of indexes used to load readonly account addresses"
+            ],
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Member",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": "publicKey"
+          },
+          {
+            "name": "permissions",
+            "type": {
+              "defined": "Permissions"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Permissions",
+      "docs": [
+        "Bitmask for permissions."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mask",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultTransactionMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numSigners",
+            "docs": [
+              "The number of signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableSigners",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableNonSigners",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountKeys",
+            "docs": [
+              "Unique account pubkeys (including program IDs) required for execution of the tx.",
+              "The signer pubkeys appear at the beginning of the vec, with writable pubkeys first, and read-only pubkeys following.",
+              "The non-signer pubkeys follow with writable pubkeys first and read-only ones following.",
+              "Program IDs are also stored at the end of the vec along with other non-signer non-writable pubkeys:",
+              "",
+              "```plaintext",
+              "[pubkey1, pubkey2, pubkey3, pubkey4, pubkey5, pubkey6, pubkey7, pubkey8]",
+              "|---writable---|  |---readonly---|  |---writable---|  |---readonly---|",
+              "|------------signers-------------|  |----------non-singers-----------|",
+              "```"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructions",
+            "docs": [
+              "List of instructions making up the tx."
+            ],
+            "type": {
+              "vec": {
+                "defined": "MultisigCompiledInstruction"
+              }
+            }
+          },
+          {
+            "name": "addressTableLookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "vec": {
+                "defined": "MultisigMessageAddressTableLookup"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigCompiledInstruction",
+      "docs": [
+        "Concise serialization schema for instructions that make up a transaction.",
+        "Closely mimics the Solana transaction wire format."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountIndexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "Instruction data."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MultisigMessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts into a transaction."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountKey",
+            "docs": [
+              "Address lookup table account key."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "writableIndexes",
+            "docs": [
+              "List of indexes used to load writable accounts."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "readonlyIndexes",
+            "docs": [
+              "List of indexes used to load readonly accounts."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vote",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Approve"
+          },
+          {
+            "name": "Reject"
+          },
+          {
+            "name": "Cancel"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigAction",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AddMember",
+            "fields": [
+              {
+                "name": "newMember",
+                "type": {
+                  "defined": "Member"
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveMember",
+            "fields": [
+              {
+                "name": "oldMember",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "ChangeThreshold",
+            "fields": [
+              {
+                "name": "newThreshold",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "SetTimeLock",
+            "fields": [
+              {
+                "name": "newTimeLock",
+                "type": "u32"
+              }
+            ]
+          },
+          {
+            "name": "AddSpendingLimit",
+            "fields": [
+              {
+                "name": "createKey",
+                "docs": [
+                  "Key that is used to seed the SpendingLimit PDA."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "vaultIndex",
+                "docs": [
+                  "The index of the vault that the spending limit is for."
+                ],
+                "type": "u8"
+              },
+              {
+                "name": "mint",
+                "docs": [
+                  "The token mint the spending limit is for."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "amount",
+                "docs": [
+                  "The amount of tokens that can be spent in a period.",
+                  "This amount is in decimals of the mint,",
+                  "so 1 SOL would be `1_000_000_000` and 1 USDC would be `1_000_000`."
+                ],
+                "type": "u64"
+              },
+              {
+                "name": "period",
+                "docs": [
+                  "The reset period of the spending limit.",
+                  "When it passes, the remaining amount is reset, unless it's `Period::OneTime`."
+                ],
+                "type": {
+                  "defined": "Period"
+                }
+              },
+              {
+                "name": "members",
+                "docs": [
+                  "Members of the multisig that can use the spending limit.",
+                  "In case a member is removed from the multisig, the spending limit will remain existent",
+                  "(until explicitly deleted), but the removed member will not be able to use it anymore."
+                ],
+                "type": {
+                  "vec": "publicKey"
+                }
+              },
+              {
+                "name": "destinations",
+                "docs": [
+                  "The destination addresses the spending limit is allowed to sent funds to.",
+                  "If empty, funds can be sent to any address."
+                ],
+                "type": {
+                  "vec": "publicKey"
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveSpendingLimit",
+            "fields": [
+              {
+                "name": "spendingLimit",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "SetRentCollector",
+            "fields": [
+              {
+                "name": "newRentCollector",
+                "type": {
+                  "option": "publicKey"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Permission",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Initiate"
+          },
+          {
+            "name": "Vote"
+          },
+          {
+            "name": "Execute"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalStatus",
+      "docs": [
+        "The status of a proposal.",
+        "Each variant wraps a timestamp of when the status was set."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Draft",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Active",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Rejected",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Approved",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Executing"
+          },
+          {
+            "name": "Executed",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          },
+          {
+            "name": "Cancelled",
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Period",
+      "docs": [
+        "The reset period of the spending limit."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "OneTime"
+          },
+          {
+            "name": "Day"
+          },
+          {
+            "name": "Week"
+          },
+          {
+            "name": "Month"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "DuplicateMember",
+      "msg": "Found multiple members with the same pubkey"
+    },
+    {
+      "code": 6001,
+      "name": "EmptyMembers",
+      "msg": "Members array is empty"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyMembers",
+      "msg": "Too many members, can be up to 65535"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold, must be between 1 and number of members with Vote permission"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Attempted to perform an unauthorized action"
+    },
+    {
+      "code": 6005,
+      "name": "NotAMember",
+      "msg": "Provided pubkey is not a member of multisig"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidTransactionMessage",
+      "msg": "TransactionMessage is malformed."
+    },
+    {
+      "code": 6007,
+      "name": "StaleProposal",
+      "msg": "Proposal is stale"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidProposalStatus",
+      "msg": "Invalid proposal status"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTransactionIndex",
+      "msg": "Invalid transaction index"
+    },
+    {
+      "code": 6010,
+      "name": "AlreadyApproved",
+      "msg": "Member already approved the transaction"
+    },
+    {
+      "code": 6011,
+      "name": "AlreadyRejected",
+      "msg": "Member already rejected the transaction"
+    },
+    {
+      "code": 6012,
+      "name": "AlreadyCancelled",
+      "msg": "Member already cancelled the transaction"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidNumberOfAccounts",
+      "msg": "Wrong number of accounts provided"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidAccount",
+      "msg": "Invalid account provided"
+    },
+    {
+      "code": 6015,
+      "name": "RemoveLastMember",
+      "msg": "Cannot remove last member"
+    },
+    {
+      "code": 6016,
+      "name": "NoVoters",
+      "msg": "Members don't include any voters"
+    },
+    {
+      "code": 6017,
+      "name": "NoProposers",
+      "msg": "Members don't include any proposers"
+    },
+    {
+      "code": 6018,
+      "name": "NoExecutors",
+      "msg": "Members don't include any executors"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidStaleTransactionIndex",
+      "msg": "`stale_transaction_index` must be <= `transaction_index`"
+    },
+    {
+      "code": 6020,
+      "name": "NotSupportedForControlled",
+      "msg": "Instruction not supported for controlled multisig"
+    },
+    {
+      "code": 6021,
+      "name": "TimeLockNotReleased",
+      "msg": "Proposal time lock has not been released"
+    },
+    {
+      "code": 6022,
+      "name": "NoActions",
+      "msg": "Config transaction must have at least one action"
+    },
+    {
+      "code": 6023,
+      "name": "MissingAccount",
+      "msg": "Missing account"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidMint",
+      "msg": "Invalid mint"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidDestination",
+      "msg": "Invalid destination"
+    },
+    {
+      "code": 6026,
+      "name": "SpendingLimitExceeded",
+      "msg": "Spending limit exceeded"
+    },
+    {
+      "code": 6027,
+      "name": "DecimalsMismatch",
+      "msg": "Decimals don't match the mint"
+    },
+    {
+      "code": 6028,
+      "name": "UnknownPermission",
+      "msg": "Member has unknown permission"
+    },
+    {
+      "code": 6029,
+      "name": "ProtectedAccount",
+      "msg": "Account is protected, it cannot be passed into a CPI as writable"
+    },
+    {
+      "code": 6030,
+      "name": "TimeLockExceedsMaxAllowed",
+      "msg": "Time lock exceeds the maximum allowed (90 days)"
+    },
+    {
+      "code": 6031,
+      "name": "IllegalAccountOwner",
+      "msg": "Account is not owned by Multisig program"
+    },
+    {
+      "code": 6032,
+      "name": "RentReclamationDisabled",
+      "msg": "Rent reclamation is disabled for this multisig"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidRentCollector",
+      "msg": "Invalid rent collector address"
+    },
+    {
+      "code": 6034,
+      "name": "ProposalForAnotherMultisig",
+      "msg": "Proposal is for another multisig"
+    },
+    {
+      "code": 6035,
+      "name": "TransactionForAnotherMultisig",
+      "msg": "Transaction is for another multisig"
+    },
+    {
+      "code": 6036,
+      "name": "TransactionNotMatchingProposal",
+      "msg": "Transaction doesn't match proposal"
+    },
+    {
+      "code": 6037,
+      "name": "TransactionNotLastInBatch",
+      "msg": "Transaction is not last in batch"
+    },
+    {
+      "code": 6038,
+      "name": "BatchNotEmpty",
+      "msg": "Batch is not empty"
+    },
+    {
+      "code": 6039,
+      "name": "SpendingLimitInvalidAmount",
+      "msg": "Invalid SpendingLimit amount"
+    }
+  ]
+}
