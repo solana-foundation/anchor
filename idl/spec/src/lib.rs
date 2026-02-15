@@ -489,6 +489,11 @@ mod tests {
     }
 
     #[test]
+    fn malformed_multidimensional_array_missing_closing_bracket_returns_err() {
+        assert!(IdlType::from_str("[[u8; 16]; 32").is_err());
+    }
+
+    #[test]
     fn generic_array() {
         assert_eq!(
             IdlType::from_str("[u64; T]").unwrap(),
@@ -552,5 +557,11 @@ mod tests {
     #[test]
     fn malformed_defined_trailing_comma_returns_err() {
         assert!(IdlType::from_str("MyStruct<Pubkey,>").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_nested_missing_closing_angles_returns_err() {
+        // Ensure recursive parsing of generic arguments propagates syntax errors from nested generics.
+        assert!(IdlType::from_str("MyStruct<Option<Pubkey>").is_err());
     }
 }
