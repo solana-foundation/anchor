@@ -1,4 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+// Enable `rustc_attrs` when linting so we can create diagnostic items
+#![cfg_attr(dylint, allow(internal_features))]
+#![cfg_attr(dylint, feature(rustc_attrs))]
 
 //! Anchor CPI wrappers for popular programs in the Solana ecosystem.
 

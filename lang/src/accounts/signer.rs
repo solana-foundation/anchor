@@ -35,6 +35,7 @@ use std::ops::Deref;
 ///
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorSigner")]
 pub struct Signer<'info> {
     info: &'info AccountInfo<'info>,
 }

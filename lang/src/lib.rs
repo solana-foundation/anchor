@@ -1,4 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+// Enable `rustc_attrs` when linting so we can create diagnostic items
+#![cfg_attr(dylint, allow(internal_features))]
+#![cfg_attr(dylint, feature(rustc_attrs))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -98,8 +101,41 @@ pub mod solana_program {
         pub use solana_sysvar::rent::*;
     }
     pub mod program {
+        use solana_account_info::AccountInfo;
         pub use solana_cpi::*;
-        pub use solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked};
+        use solana_instruction::Instruction;
+        use solana_program_entrypoint::ProgramResult;
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvoke")]
+        pub fn invoke(instruction: &Instruction, account_infos: &[AccountInfo]) -> ProgramResult {
+            solana_invoke::invoke(instruction, account_infos)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeUnchecked")]
+        pub fn invoke_unchecked(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+        ) -> ProgramResult {
+            solana_invoke::invoke_unchecked(instruction, account_infos)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeSigned")]
+        pub fn invoke_signed(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            solana_invoke::invoke_signed(instruction, account_infos, signers_seeds)
+        }
+
+        #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorCpiInvokeSignedUnchecked")]
+        pub fn invoke_signed_unchecked(
+            instruction: &Instruction,
+            account_infos: &[AccountInfo],
+            signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            solana_invoke::invoke_signed_unchecked(instruction, account_infos, signers_seeds)
+        }
     }
 
     pub mod bpf_loader_upgradeable {
@@ -258,6 +294,7 @@ pub trait ToAccountInfos<'info> {
 
 /// Transformation to an `AccountInfo` struct.
 pub trait ToAccountInfo<'info> {
+    #[cfg_attr(dylint, rustc_diagnostic_item = "AnchorToAccountInfo")]
     fn to_account_info(&self) -> AccountInfo<'info>;
 }
 
@@ -508,7 +545,8 @@ pub mod prelude {
     };
     // Re-export the crate as anchor_lang for declare_program! macro
     pub use crate as anchor_lang;
-    pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
+    pub use crate::solana_program::account_info::next_account_info;
+    pub use crate::solana_program::account_info::AccountInfo;
     pub use crate::solana_program::instruction::AccountMeta;
     pub use crate::solana_program::program_error::ProgramError;
     pub use crate::solana_program::pubkey::Pubkey;

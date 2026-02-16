@@ -158,6 +158,7 @@ use std::ops::{Deref, DerefMut};
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]
+#[cfg_attr(dylint, rustc_diagnostic_item = "AnchorInterfaceAccount")]
 pub struct InterfaceAccount<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     account: Account<'info, T>,
     // The owner here is used to make sure that changes aren't incorrectly propagated
