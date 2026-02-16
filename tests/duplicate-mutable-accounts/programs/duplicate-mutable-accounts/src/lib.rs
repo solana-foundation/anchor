@@ -73,6 +73,16 @@ pub mod duplicate_mutable_accounts {
         ctx.accounts.data_account2.count = initial2;
         Ok(())
     }
+
+    // Should FAIL if an already-initialized init_if_needed account duplicates
+    // another mutable account (double-write on exit).
+    pub fn init_if_needed_duplicate_mutable(
+        ctx: Context<InitIfNeededDuplicateMutable>,
+    ) -> Result<()> {
+        ctx.accounts.account_init.count += 1;
+        ctx.accounts.account_mut.count += 1;
+        Ok(())
+    }
 }
 
 #[account]
@@ -151,5 +161,18 @@ pub struct InitMultipleWithSamePayer<'info> {
     pub data_account2: Account<'info, Counter>,
     #[account(mut)]
     pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+// init_if_needed + a separate mut field pointing at the same account should FAIL
+// when the account is already initialized (double-write on exit).
+#[derive(Accounts)]
+pub struct InitIfNeededDuplicateMutable<'info> {
+    #[account(init_if_needed, payer = payer, space = 8 + 8)]
+    pub account_init: Account<'info, Counter>,
+    #[account(mut)]
+    pub account_mut: Account<'info, Counter>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

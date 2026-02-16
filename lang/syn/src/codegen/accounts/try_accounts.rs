@@ -333,7 +333,7 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
             AccountField::Field(f)
                 if f.constraints.is_mutable()
                     && !f.constraints.is_dup()
-                    && f.constraints.init.is_none() =>
+                    && !f.constraints.is_pure_init() =>
             {
                 match &f.ty {
                     // Only include types that serialize on exit
