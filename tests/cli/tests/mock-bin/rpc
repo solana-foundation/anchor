@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const { Transaction } = require("@solana/web3.js");
+const bs58 = require("bs58")
+
+const OUTPUT_PATH = process.env.MOCK_RPC_OUTPUT_PATH;
+const PORT = 8899;
+
+// Load methods fixture
+const methodsPath = path.resolve(__dirname, "../../templates/rpc/methods.json");
+const methods = JSON.parse(fs.readFileSync(methodsPath, "utf-8"));
+
+// Initialize log file
+if (OUTPUT_PATH) {
+  fs.writeFileSync(OUTPUT_PATH, "");
+}
+
+function logRpcCall(method, request, response) {
+  if (!OUTPUT_PATH) return;
+
+  const logEntry = [
+    `---- rpc method: ${method} ----`,
+    "--- RPC begin request ---",
+    JSON.stringify(request, null, 2),
+    "--- RPC end request ---",
+    "--- RPC begin response ---",
+    JSON.stringify(response, null, 2),
+    "--- RPC end response ---",
+    "",
+  ].join("\n");
+
+  fs.appendFileSync(OUTPUT_PATH, logEntry);
+}
+
+function getBase58SignatureFromSerializedTransactionUsingWeb3JsTransaction(
+  serializedTransactionBase64String,
+) {
+  try {
+    const serializedTransactionBuffer = Buffer.from(serializedTransactionBase64String, "base64");
+    const transaction = Transaction.from(serializedTransactionBuffer);
+    if (!transaction.signatures || transaction.signatures.length === 0) return "";
+    
+    const sigString = bs58.default.encode(transaction.signature);
+    return sigString
+  } catch (error) {
+    return "";
+  }
+}
+
+const server = http.createServer((req, res) => {
+  if (req.method !== "POST") {
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Method not allowed" }));
+    return;
+  }
+
+  let body = "";
+  req.on("data", (chunk) => {
+    body += chunk.toString();
+  });
+
+  req.on("end", () => {
+    let request;
+    try {
+      request = JSON.parse(body);
+    } catch (e) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
+    const method = request.method;
+    let response;
+
+    if (method === "getAccountInfo") {
+      const requestedAccountPublicKeyFromRpcParams = Array.isArray(request.params)
+        ? request.params[0]
+        : null;
+      const getAccountInfoResponseByPublicKey = methods.getAccountInfo;
+      if (getAccountInfoResponseByPublicKey && typeof getAccountInfoResponseByPublicKey === "object") {
+        const responseForRequestedAccountPublicKey = requestedAccountPublicKeyFromRpcParams
+          ? getAccountInfoResponseByPublicKey[requestedAccountPublicKeyFromRpcParams]
+          : null;
+        const fallbackResponseForAccountPublicKey =
+          getAccountInfoResponseByPublicKey["SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"];
+        response = responseForRequestedAccountPublicKey || fallbackResponseForAccountPublicKey;
+      }
+    }
+
+    if (method === "sendTransaction") {
+      const serializedTransactionBase64String = Array.isArray(request.params)
+        ? request.params[0]
+        : null;
+
+      const computedSignatureBase58StringFromSerializedTransaction =
+        typeof serializedTransactionBase64String === "string"
+          ? getBase58SignatureFromSerializedTransactionUsingWeb3JsTransaction(
+              serializedTransactionBase64String,
+            )
+          : null;
+
+      if (computedSignatureBase58StringFromSerializedTransaction) {
+        response = {
+          jsonrpc: "2.0",
+          result: computedSignatureBase58StringFromSerializedTransaction,
+          id: 1,
+        };
+      }
+    }
+
+    if (!response && methods[method]) {
+      // Return the stored response
+      response = methods[method];
+    }
+    if (!response) {
+      response = {
+        jsonrpc: "2.0",
+        result: null,
+        id: 1,
+      };
+    }
+
+    // Log the call
+    logRpcCall(method, request, response);
+
+    // Send response
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(response));
+  });
+});
+
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`RPC mock server listening on port ${PORT}`);
+});
+
+// Keep process alive
+process.on("SIGTERM", () => {
+  server.close(() => {
+    process.exit(0);
+  });
+});

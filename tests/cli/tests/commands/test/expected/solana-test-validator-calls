@@ -1,0 +1,13 @@
+{
+  "command": "solana-test-validator",
+  "args": [
+    "--ledger",
+    ".anchor/test-ledger",
+    "--mint",
+    "aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x"
+  ]
+}
+{
+  "rpcMethod": "getLatestBlockhash",
+  "id": 1
+}

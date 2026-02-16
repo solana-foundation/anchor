@@ -1,0 +1,6 @@
+{
+  "command": "npx",
+  "args": [
+    "--version"
+  ]
+}

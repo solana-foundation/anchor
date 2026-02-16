@@ -1,0 +1,148 @@
+---- rpc method: getRecentPrioritizationFees ----
+--- RPC begin request ---
+{
+  "id": 0,
+  "jsonrpc": "2.0",
+  "method": "getRecentPrioritizationFees",
+  "params": [
+    []
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "prioritizationFee": 0,
+      "slot": 348125
+    }
+  ],
+  "id": 1
+}
+--- RPC end response ---
+---- rpc method: getLatestBlockhash ----
+--- RPC begin request ---
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "getLatestBlockhash",
+  "params": [
+    {
+      "commitment": "confirmed"
+    }
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 1
+    },
+    "value": {
+      "blockhash": "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N",
+      "lastValidBlockHeight": 3090
+    }
+  },
+  "id": 1
+}
+--- RPC end response ---
+---- rpc method: sendTransaction ----
+--- RPC begin request ---
+{
+  "id": 2,
+  "jsonrpc": "2.0",
+  "method": "sendTransaction",
+  "params": [
+    "AYthWL+O6eIWWDcmxEiiORZp7NSPHMpPeUFwNlvl13zVIbBTS1paSzRcxGq2Akbci8nKcQNSuufU642vSSlXewwBAAACCJncQzWYsXBbgpOvN1VwnpvaGv+ccczD9DV1jVDXeS/7cT6MGpjuZRXxOBawrdQX2k0dlOPg5HNR/PCPYsJrqsxJDpKM0uOHO7ND/JXaMxecpg9Nv0bCw26RKZ1V1Oa5AQACAQApQPS8eKfpaQoEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    {
+      "encoding": "base64",
+      "maxRetries": null,
+      "minContextSlot": null,
+      "preflightCommitment": "confirmed",
+      "skipPreflight": false
+    }
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": "3ndKPFGA7FRZBCi1dAkaf7fKJTqgxTCksyoNcHh7j1BauxHodPPgGLfW62Azt5x3aJicPvyMG8t5Dn88nL5N1cTm",
+  "id": 1
+}
+--- RPC end response ---
+---- rpc method: getSignatureStatuses ----
+--- RPC begin request ---
+{
+  "id": 3,
+  "jsonrpc": "2.0",
+  "method": "getSignatureStatuses",
+  "params": [
+    [
+      "3ndKPFGA7FRZBCi1dAkaf7fKJTqgxTCksyoNcHh7j1BauxHodPPgGLfW62Azt5x3aJicPvyMG8t5Dn88nL5N1cTm"
+    ]
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 82
+    },
+    "value": [
+      {
+        "slot": 48,
+        "confirmations": null,
+        "err": null,
+        "status": {
+          "Ok": null
+        },
+        "confirmationStatus": "finalized"
+      },
+      null
+    ]
+  },
+  "id": 1
+}
+--- RPC end response ---
+---- rpc method: getSignatureStatuses ----
+--- RPC begin request ---
+{
+  "id": 4,
+  "jsonrpc": "2.0",
+  "method": "getSignatureStatuses",
+  "params": [
+    [
+      "3ndKPFGA7FRZBCi1dAkaf7fKJTqgxTCksyoNcHh7j1BauxHodPPgGLfW62Azt5x3aJicPvyMG8t5Dn88nL5N1cTm"
+    ]
+  ]
+}
+--- RPC end request ---
+--- RPC begin response ---
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "slot": 82
+    },
+    "value": [
+      {
+        "slot": 48,
+        "confirmations": null,
+        "err": null,
+        "status": {
+          "Ok": null
+        },
+        "confirmationStatus": "finalized"
+      },
+      null
+    ]
+  },
+  "id": 1
+}
+--- RPC end response ---

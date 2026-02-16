@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+function handleExpand(args) {
+  // Check for error conditions
+  const errorMessage = process.env.MOCK_CARGO_EXPAND_ERROR;
+  if (errorMessage) {
+    const exitCode = Number.parseInt(
+      process.env.MOCK_CARGO_EXPAND_EXIT_CODE ?? "1",
+      10,
+    );
+    process.stderr.write(errorMessage + "\n");
+    process.exit(Number.isNaN(exitCode) ? 1 : exitCode);
+  }
+
+  // Parse expand arguments
+  let packageName = null;
+  let targetDir = null;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith("--package=")) {
+      packageName = arg.split("=")[1];
+    } else if (arg.startsWith("--target-dir=")) {
+      targetDir = arg.split("=")[1];
+    }
+  }
+
+  // Validate expected package name if set
+  const expectedPackage = process.env.MOCK_CARGO_EXPAND_PACKAGE_NAME;
+  if (expectedPackage && packageName !== expectedPackage) {
+    process.stderr.write(
+      `Error: Expected package ${expectedPackage}, got ${packageName}\n`,
+    );
+    process.exit(1);
+  }
+
+  // Generate expansion output
+  const customOutput = process.env.MOCK_CARGO_EXPAND_OUTPUT;
+  if (customOutput) {
+    process.stdout.write(customOutput);
+  } else {
+    // Default mock expanded code output
+    const expandedCode = `// Expanded code for ${packageName || "program"}
+#![feature(prelude_import)]
+#[prelude_import]
+use std::prelude::rust_2021::*;
+#[macro_use]
+extern crate std;
+
+pub mod lib {
+    use anchor_lang::prelude::*;
+    
+    pub struct Program;
+    
+    impl anchor_lang::Id for Program {
+        fn id() -> Pubkey {
+            Pubkey::new_from_array([0u8; 32])
+        }
+    }
+}
+`;
+    process.stdout.write(expandedCode);
+  }
+}
+
+function findWorkspaceRoot(startDir) {
+  let currentDir = startDir;
+  const root = path.parse(currentDir).root;
+
+  while (currentDir !== root) {
+    const anchorTomlPath = path.join(currentDir, "Anchor.toml");
+    if (fs.existsSync(anchorTomlPath)) {
+      return currentDir;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+
+  return null;
+}
+
+function writePlaceholderIdl() {
+  // Read template IDL from template directory
+  const templatePath = path.resolve(__dirname, "../../templates/idl/test-program.json");
+  const templateContent = fs.readFileSync(templatePath, "utf8");
+  const placeholderIdl = JSON.parse(templateContent);
+
+  const idlContent = JSON.stringify(placeholderIdl, null, 2) + "\n";
+  const idlFilename = "test_program.json";
+
+  // Write to current directory (program crate location)
+  const currentIdlDir = path.join(process.cwd(), "target", "idl");
+  fs.mkdirSync(currentIdlDir, { recursive: true });
+  const currentIdlFile = path.join(currentIdlDir, idlFilename);
+  fs.writeFileSync(currentIdlFile, idlContent);
+
+  // Find workspace root and write there too
+  const workspaceRoot = findWorkspaceRoot(process.cwd());
+  if (workspaceRoot && workspaceRoot !== process.cwd()) {
+    const workspaceIdlDir = path.join(workspaceRoot, "target", "idl");
+    fs.mkdirSync(workspaceIdlDir, { recursive: true });
+    const workspaceIdlFile = path.join(workspaceIdlDir, idlFilename);
+    fs.writeFileSync(workspaceIdlFile, idlContent);
+  }
+}
+
+function main() {
+  const args = process.argv.slice(2);
+
+  // Handle expand subcommand
+  if (args.length > 0 && args[0] === "expand") {
+    handleExpand(args.slice(1));
+    return;
+  }
+
+  // Original cargo mock behavior
+  const filename = process.env.MOCK_CARGO_OUTPUT_PATH;
+  if (!filename) return;
+
+  const output = {
+    command: "cargo",
+    args,
+  };
+
+  fs.appendFileSync(filename, JSON.stringify(output, null, 2) + "\n");
+
+  const idlBuildStdoutFile = process.env.IDL_BUILD_STDOUT_FILE;
+  if (idlBuildStdoutFile && args.includes("idl-build")) {
+    console.log(fs.readFileSync(idlBuildStdoutFile).toString());
+  }
+
+  // Write placeholder IDL when building
+  if (args.includes("build") || args.includes("build-bpf") || args.includes("build-sbf") || args.includes("idl-build") || args.includes("__anchor_private_print_idl")) {
+    writePlaceholderIdl();
+  }
+}
+
+main();

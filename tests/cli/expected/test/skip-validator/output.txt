@@ -1,0 +1,7 @@
+Building programs...
+Deploying programs...
+
+  test-program
+    ✔ Is initialized!
+
+  1 passing

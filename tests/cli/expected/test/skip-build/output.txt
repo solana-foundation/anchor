@@ -1,0 +1,7 @@
+Deploying programs...
+Starting local test validator...
+
+  test-program
+    ✔ Is initialized!
+
+  1 passing

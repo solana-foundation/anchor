@@ -1,0 +1,58 @@
+
+
+---- __anchor_private_print_idl_address stdout ----
+--- IDL begin address ---
+"\"aaLWzFHRPNhQwft1971qmPg2Q5eHwsHEWivqSkCDo9x\"
+--- IDL end address ---
+
+---- __anchor_private_print_idl_program stdout ----
+--- IDL begin program ---
+{
+  "address": "",
+  "metadata": {
+    "name": "test_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    }
+  ]
+}
+--- IDL end program ---
+
+---- constants::__anchor_private_print_idl_const_seed stdout ----
+--- IDL begin const ---
+{
+  "name": "SEED",
+  "type": "string",
+  "value": "\"anchor\""
+}
+--- IDL end const ---
+
+---- error::__anchor_private_print_idl_error_error_code stdout ----
+--- IDL begin errors ---
+[
+  {
+    "code": 6000,
+    "name": "CustomError",
+    "msg": "Custom error message"
+  }
+]
+--- IDL end errors ---
+
+test result: ok
