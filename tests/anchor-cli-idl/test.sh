@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Write a keypair for program deploy
 mkdir -p target/deploy
 cp keypairs/idl_commands_one-keypair.json target/deploy
