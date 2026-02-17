@@ -38,7 +38,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command as ProcessCommand, Stdio};
+use std::process::{Child, Stdio};
 use std::string::ToString;
 use std::sync::LazyLock;
 
@@ -46,6 +46,7 @@ mod account;
 mod checks;
 pub mod config;
 mod keygen;
+mod metadata;
 mod program;
 pub mod rust_template;
 
@@ -2472,42 +2473,24 @@ fn idl_init(
         return Ok(());
     }
 
-    let program_id_str = {
+    let program_id = {
         let idl = fs::read(&idl_filepath)?;
         let idl = convert_idl(&idl)?;
         idl.address
     };
 
-    // Build args with global options first, then command and command args
-    let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Write {
+            program_id,
+            idl_filepath,
+            non_canonical,
+        },
+    );
 
-    // Global option: priority fees
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    // Command: write
-    args.push("write");
-    args.push("idl");
-    args.push(&program_id_str);
-    args.push(&idl_filepath);
-
-    // Command option: non-canonical
-    if non_canonical {
-        args.push("--non-canonical");
-    }
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to initialize IDL"));
     }
 
@@ -2515,6 +2498,7 @@ fn idl_init(
     Ok(())
 }
 
+// Currently identical to `idl_init`, other than not accepting `non_canonical`
 fn idl_upgrade(
     cfg_override: &ConfigOverride,
     idl_filepath: String,
@@ -2530,38 +2514,24 @@ fn idl_upgrade(
         return Ok(());
     }
 
-    let program_id_str = {
+    let program_id = {
         let idl = fs::read(&idl_filepath)?;
         let idl = convert_idl(&idl)?;
         idl.address
     };
 
-    // Build args with global options first, then command and command args
-    let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
-
-    // Global option: priority fees
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    // Command: write
-    args.push("write");
-    args.push("idl");
-    args.push(&program_id_str);
-    args.push(&idl_filepath);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
-        return Err(anyhow!("Failed to upgrade IDL"));
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Write {
+            program_id,
+            idl_filepath,
+            non_canonical: false,
+        },
+    );
+    if !command.status()?.success() {
+        return Err(anyhow!("Failed to initialize IDL"));
     }
 
     println!("IDL upgraded.");
@@ -2635,30 +2605,17 @@ fn idl_fetch(
     out: Option<String>,
     non_canonical: bool,
 ) -> Result<()> {
-    // The address parameter is the program ID
-    // Program Metadata CLI expects: fetch <seed> <program>
-    // For IDL, the seed is "idl"
-    let program_id_str = address.to_string();
-    let mut args = vec!["fetch", "idl", &program_id_str];
+    let rpc_url = rpc_url(cfg_override)?;
+    let command = metadata::IdlCommand::unfunded(
+        rpc_url,
+        metadata::UnfundedIdlSubcommand::Fetch {
+            program_id: address.to_string(),
+            out,
+            non_canonical,
+        },
+    );
 
-    if non_canonical {
-        args.push("--non-canonical");
-    }
-
-    if let Some(out) = &out {
-        args.push("-o");
-        args.push(out);
-    }
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to fetch IDL"));
     }
     Ok(())
@@ -2707,28 +2664,18 @@ fn idl_close_metadata(
     seed: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let program_id_str = program_id.to_string();
-    let mut args = vec!["close", &seed, &program_id_str];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Close {
+            program_id: program_id.to_string(),
+            seed,
+        },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to close metadata account"));
     }
 
@@ -2741,27 +2688,15 @@ fn idl_create_buffer(
     filepath: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let mut args = vec!["create-buffer", &filepath];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::CreateBuffer { filepath },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to create buffer"));
     }
 
@@ -2775,34 +2710,18 @@ fn idl_set_buffer_authority(
     new_authority: Pubkey,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let buffer_str = buffer.to_string();
-    let new_authority_str = new_authority.to_string();
-    let mut args = vec![
-        "set-buffer-authority",
-        &buffer_str,
-        "--new-authority",
-        &new_authority_str,
-    ];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::SetBufferAuthority {
+            buffer: buffer.to_string(),
+            new_authority: new_authority.to_string(),
+        },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to set buffer authority"));
     }
 
@@ -2818,33 +2737,20 @@ fn idl_write_buffer_metadata(
     close_buffer: bool,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let program_id_str = program_id.to_string();
-    let buffer_str = buffer.to_string();
-    let mut args = vec!["write", &seed, &program_id_str, "--buffer", &buffer_str];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::WriteBuffer {
+            program_id: program_id.to_string(),
+            buffer: buffer.to_string(),
+            seed,
+            close_buffer,
+        },
+    );
 
-    if close_buffer {
-        args.push("--close-buffer");
-    }
-
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to write metadata using buffer"));
     }
 
