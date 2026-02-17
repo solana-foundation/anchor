@@ -34,7 +34,7 @@ echo '{
 
 echo "Building programs"
 
-anchor build
+anchor build --ignore-keys
 
 echo "Starting local validator for test"
 

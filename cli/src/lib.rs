@@ -2452,11 +2452,6 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     }
 }
 
-fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
-    Ok(cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config))
-}
-
 fn idl_init(
     cfg_override: &ConfigOverride,
     idl_filepath: String,
@@ -2605,9 +2600,9 @@ fn idl_fetch(
     out: Option<String>,
     non_canonical: bool,
 ) -> Result<()> {
-    let rpc_url = rpc_url(cfg_override)?;
+    let (cluster_url, _) = get_cluster_and_wallet(cfg_override)?;
     let command = metadata::IdlCommand::unfunded(
-        rpc_url,
+        cluster_url,
         metadata::UnfundedIdlSubcommand::Fetch {
             program_id: address.to_string(),
             out,
