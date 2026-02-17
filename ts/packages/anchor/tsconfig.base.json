@@ -3,6 +3,7 @@
     "./src/**/*"
   ],
   "compilerOptions": {
+    "skipLibCheck": true,
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,

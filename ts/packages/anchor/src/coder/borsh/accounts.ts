@@ -5,6 +5,14 @@ import { Idl, IdlDiscriminator } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { AccountsCoder } from "../index.js";
 
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 /**
  * Encodes and decodes account objects.
  */
@@ -56,13 +64,14 @@ export class BorshAccountsCoder<A extends string = string>
     const len = layout.layout.encode(account, buffer);
     const accountData = buffer.slice(0, len);
     const discriminator = this.accountDiscriminator(accountName);
-    return Buffer.concat([discriminator, accountData]);
+    return Buffer.from([...discriminator, ...accountData]);
   }
 
   public decode<T = any>(accountName: A, data: Buffer): T {
     // Assert the account discriminator is correct.
     const discriminator = this.accountDiscriminator(accountName);
-    if (discriminator.compare(data.slice(0, discriminator.length))) {
+    const givenDisc = Uint8Array.from(data.subarray(0, discriminator.length));
+    if (!bytesEqual(Uint8Array.from(discriminator), givenDisc)) {
       throw new Error("Invalid account discriminator");
     }
     return this.decodeUnchecked(accountName, data);
@@ -70,8 +79,13 @@ export class BorshAccountsCoder<A extends string = string>
 
   public decodeAny<T = any>(data: Buffer): T {
     for (const [name, layout] of this.accountLayouts) {
-      const givenDisc = data.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      const givenDisc = Uint8Array.from(
+        data.subarray(0, layout.discriminator.length)
+      );
+      const matches = bytesEqual(
+        Uint8Array.from(layout.discriminator),
+        givenDisc
+      );
       if (matches) return this.decodeUnchecked(name, data);
     }
 
@@ -91,11 +105,12 @@ export class BorshAccountsCoder<A extends string = string>
 
   public memcmp(accountName: A, appendData?: Buffer): any {
     const discriminator = this.accountDiscriminator(accountName);
+    const bytes = appendData
+      ? Uint8Array.from([...discriminator, ...appendData])
+      : Uint8Array.from(discriminator);
     return {
       offset: 0,
-      bytes: bs58.encode(
-        appendData ? Buffer.concat([discriminator, appendData]) : discriminator
-      ),
+      bytes: bs58.encode(Buffer.from(bytes)),
     };
   }
 
