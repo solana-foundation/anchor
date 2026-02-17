@@ -299,13 +299,16 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     async fn init_sub_client_if_needed(&self) -> Result<(), ClientError> {
         let lock = &self.sub_client;
-        let mut client = lock.write().await;
+        // Check if the program is already subscribed to the logs with a read lock first to avoid deadlock
+        let client_read = lock.read().await;
 
-        if client.is_none() {
+        if client_read.is_none() {
+            drop(client_read);
+            let mut client_write = lock.write().await;
             let sub_client = PubsubClient::new(self.cfg.cluster.ws_url())
                 .await
                 .map_err(Box::new)?;
-            *client = Some(sub_client);
+            *client_write = Some(sub_client);
         }
 
         Ok(())
