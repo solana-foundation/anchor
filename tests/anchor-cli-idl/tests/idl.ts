@@ -17,7 +17,7 @@ describe("Test CLI IDL commands", () => {
 
   it("Can initialize IDL account", async () => {
     execSync(
-      `anchor idl init --filepath target/idl/idl_commands_one.json`,
+      `anchor idl init --filepath target/idl/idl_commands_one.json --allow-localnet`,
       { stdio: "inherit" }
     );
   });
@@ -35,7 +35,7 @@ describe("Test CLI IDL commands", () => {
   it("Can write a new IDL using the upgrade command", async () => {
     // Upgrade the IDL of program one to the IDL of program two to test upgrade
     execSync(
-      `anchor idl upgrade --filepath target/idl/idl_commands_two.json`,
+      `anchor idl upgrade --filepath target/idl/idl_commands_two.json --allow-localnet`,
       { stdio: "inherit" }
     );
     const idl = await anchor.Program.fetchIdl(programOne.programId, provider);
@@ -64,10 +64,9 @@ describe("Test CLI IDL commands", () => {
   });
 
   it("Can initialize super massive IDL account", async () => {
-    execSync(
-      `anchor idl init --filepath testLargeIdl.json`,
-      { stdio: "inherit" }
-    );
+    execSync(`anchor idl init --filepath testLargeIdl.json --allow-localnet`, {
+      stdio: "inherit",
+    });
     const idlActual = await anchor.Program.fetchIdl(
       programOne.programId,
       provider

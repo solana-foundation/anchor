@@ -696,9 +696,11 @@ pub fn program_deploy(
                 cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1");
 
             if is_localnet {
+                // IDL deployment is skipped on localnet by default.
+                // Use `anchor idl init --allow-localnet` to deploy on localnet.
                 println!("Skipping IDL deployment on localnet");
             } else {
-                crate::idl_init(cfg_override, idl_filepath, None, false)?;
+                crate::idl_init(cfg_override, idl_filepath, None, false, false)?;
                 println!("✓ Idl metadata created/updated");
             }
         } else {
