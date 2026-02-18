@@ -79,9 +79,11 @@ pub type ExtensionsVec = Vec<ExtensionType>;
 
 pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang::Result<usize> {
     if let Some(extensions) = extensions {
-        Ok(todo!())
+        Ok(ExtensionType::try_calculate_account_len::<
+            spl_token_2022_interface::state::Mint,
+        >(extensions)?)
     } else {
-        Ok(todo!())
+        Ok(pinocchio_token_2022::state::Mint::BASE_LEN)
     }
 }
 
