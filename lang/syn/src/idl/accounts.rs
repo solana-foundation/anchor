@@ -192,10 +192,45 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
     let parse_default = |expr: &syn::Expr| parse_seed(expr, accounts);
 
     // Seeds
-    let seed_constraints = acc.constraints.seeds.as_ref();
+    // check for seeds in two places:
+    // 1. The standard `seeds = [...]` constraint.
+    // 2. The `init` constraint, which may contain `seeds` (e.g. `init, seeds = [...]`).
+    // This ensures we find the seeds regardless of how the user defined them.
+    let seed_constraints = acc.constraints.seeds.as_ref().or_else(|| {
+        acc.constraints
+            .init
+            .as_ref()
+            .and_then(|init| init.seeds.as_ref())
+    });
+
+    // Parse Seeds
     let pda = seed_constraints
-        .map(|seed| seed.seeds.iter().map(parse_default))
-        .and_then(|seeds| seeds.collect::<Result<Vec<_>>>().ok())
+        .and_then(|seed| {
+            // Try to parse every seed in the list.
+            // Collect into a Vec<Result> so we can inspect individual failures.
+            let results: Vec<Result<TokenStream, _>> =
+                seed.seeds.iter().map(parse_default).collect();
+
+            // CHECK FOR ERRORS:
+            // If `any` seed failed to parse (returns Err), it means the user used syntax that IDL doesn't support
+            if results.iter().any(|r| r.is_err()) {
+                // Instead of failing silently, we print a warning to stderr.
+                // usage of `eprintln!` ensures the user sees it in their terminal during build.
+                let name = acc.ident.to_string();
+                eprintln!(
+                    "WARNING: Anchor IDL generation skipped for PDA seeds in account '{}'. \
+                     Reason: Seeds contain unsupported complex expressions (e.g., function calls). \
+                     Workaround: Derive this PDA manually in your client.",
+                    name
+                );
+
+                // Return None. This is safe; it simply omits the `pda` field from the JSON,
+                None
+            } else {
+                // If all seeds parsed correctly, unwrap them and return the vector.
+                Some(results.into_iter().map(|r| r.unwrap()).collect::<Vec<_>>())
+            }
+        })
         .and_then(|seeds| {
             let program = match seed_constraints {
                 Some(ConstraintSeedsGroup {
