@@ -30,7 +30,7 @@ pub fn transfer_hook_update(
     transfer_hook_program_id: Option<&Pubkey>,
 ) -> Result<()> {
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
-    
+
     let ix = pinocchio_token_2022::instructions::transfer_hook::UpdateTransferHook {
         token_program: &ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,

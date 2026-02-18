@@ -147,7 +147,9 @@ pub fn initialize_account3(ctx: CpiContext<'_, '_, InitializeAccount3>) -> Resul
     ix.invoke().map_err(Into::into)
 }
 
-pub fn initialize_non_transferable_mint(ctx: CpiContext<'_, '_, InitializeNonTransferableMint>) -> Result<()> {
+pub fn initialize_non_transferable_mint(
+    ctx: CpiContext<'_, '_, InitializeNonTransferableMint>,
+) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::InitializeNonTransferableMint {
         mint: &ctx.accounts.mint,
         token_program: &ctx.program_id,
