@@ -3,7 +3,9 @@ use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use std::ops::Deref;
 
-use spl_token_2022_interface::extension::{Extension, ExtensionType};
+use spl_token_2022_interface::extension::{
+    BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensions,
+};
 
 pub use crate::token_2022::*;
 #[cfg(feature = "token_2022_extensions")]
@@ -91,7 +93,8 @@ pub fn get_mint_extension_data<T: Extension + Pod>(
     account: &AccountInfo,
 ) -> anchor_lang::Result<T> {
     let mint_data = unsafe { account.borrow_unchecked() };
-    let mint_with_extension = todo!();
+    let mint_with_extension =
+        StateWithExtensions::<spl_token_2022_interface::state::Mint>::unpack(&mint_data)?;
     let extension_data = *mint_with_extension.get_extension::<T>()?;
     Ok(extension_data)
 }
