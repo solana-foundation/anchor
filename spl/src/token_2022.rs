@@ -147,6 +147,14 @@ pub fn initialize_account3(ctx: CpiContext<'_, '_, InitializeAccount3>) -> Resul
     ix.invoke().map_err(Into::into)
 }
 
+pub fn initialize_non_transferable_mint(ctx: CpiContext<'_, '_, InitializeNonTransferableMint>) -> Result<()> {
+    let ix = pinocchio_token_2022::instructions::InitializeNonTransferableMint {
+        mint: &ctx.accounts.mint,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke().map_err(Into::into)
+}
+
 pub fn close_account(ctx: CpiContext<'_, '_, CloseAccount>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::CloseAccount {
         account: &ctx.accounts.account,
@@ -231,6 +239,18 @@ pub fn sync_native(ctx: CpiContext<'_, '_, SyncNative>) -> Result<()> {
         token_program: &ctx.program_id,
     };
     ix.invoke().map_err(Into::into)
+}
+
+pub fn unwrap_lamports(ctx: CpiContext<'_, '_, UnwrapLamports>, amount: Option<u64>) -> Result<()> {
+    let ix = pinocchio_token_2022::instructions::UnwrapLamports {
+        source: &ctx.accounts.account,
+        destination: &ctx.accounts.destination,
+        authority: &ctx.accounts.authority,
+        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>(),
+        amount: amount,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 #[derive(Accounts)]
@@ -345,6 +365,11 @@ pub struct InitializeMint2 {
 }
 
 #[derive(Accounts)]
+pub struct InitializeNonTransferableMint {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
 pub struct SetAuthority {
     pub current_authority: AccountInfo,
     pub account_or_mint: AccountInfo,
@@ -353,6 +378,13 @@ pub struct SetAuthority {
 #[derive(Accounts)]
 pub struct SyncNative {
     pub account: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct UnwrapLamports {
+    pub account: AccountInfo,
+    pub destination: AccountInfo,
+    pub authority: AccountInfo,
 }
 
 #[derive(Clone)]
