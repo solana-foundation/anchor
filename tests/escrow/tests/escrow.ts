@@ -116,6 +116,16 @@ describe("escrow", () => {
       });
 
       it("Initialize escrow", async () => {
+        const [escrowPda, _nonce] = await PublicKey.findProgramAddress(
+          [
+            Buffer.from(anchor.utils.bytes.utf8.encode("escrow")),
+            tokenProgramIdA.toBuffer(),
+          ],
+          program.programId
+        );
+
+        pda = escrowPda;
+
         await program.rpc.initializeEscrow(
           new BN(initializerAmount),
           new BN(takerAmount),
@@ -131,14 +141,6 @@ describe("escrow", () => {
             signers: [escrowAccount],
           }
         );
-
-        // Get the PDA that is assigned authority to token account.
-        const [_pda, _nonce] = await PublicKey.findProgramAddress(
-          [Buffer.from(anchor.utils.bytes.utf8.encode("escrow"))],
-          program.programId
-        );
-
-        pda = _pda;
 
         let _initializerTokenAccountA = await mintA.getAccountInfo(
           initializerTokenAccountA
@@ -229,6 +231,16 @@ describe("escrow", () => {
           [mintAuthority],
           initializerAmount
         );
+
+        const [escrowPda, _nonce] = await PublicKey.findProgramAddress(
+          [
+            Buffer.from(anchor.utils.bytes.utf8.encode("escrow")),
+            tokenProgramIdA.toBuffer(),
+          ],
+          program.programId
+        );
+
+        pda = escrowPda;
 
         await program.rpc.initializeEscrow(
           new BN(initializerAmount),
