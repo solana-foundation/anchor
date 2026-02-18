@@ -193,7 +193,14 @@ export class AnchorProvider implements Provider {
           throw err;
         } else {
           const logs = failedTx.meta?.logMessages;
-          throw !logs ? err : new SendTransactionError(err.message, logs);
+          throw !logs
+            ? err
+            : new SendTransactionError({
+                action: "send",
+                signature: txSig,
+                transactionMessage: err.message,
+                logs,
+              });
         }
       } else {
         throw err;
@@ -277,7 +284,14 @@ export class AnchorProvider implements Provider {
             throw err;
           } else {
             const logs = failedTx.meta?.logMessages;
-            throw !logs ? err : new SendTransactionError(err.message, logs);
+            throw !logs
+              ? err
+              : new SendTransactionError({
+                  action: "send",
+                  signature: txSig,
+                  transactionMessage: err.message,
+                  logs,
+                });
           }
         } else {
           throw err;
