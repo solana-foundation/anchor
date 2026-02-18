@@ -36,6 +36,7 @@
     "relations-derivation",
     "pyth",
     "realloc",
+    "realloc-cpi-bug",
     "spl/metadata",
     "spl/token-extensions",
     "spl/token-proxy",
