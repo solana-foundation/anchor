@@ -1,11 +1,14 @@
 use std::collections::VecDeque;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree};
+use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
-    DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type, TypeArray,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    token::Comma,
+    Attribute, DeriveInput, Expr, Field, Fields, GenericArgument, PathArguments, Type, TypeArray,
 };
 
 /// Implements a [`Space`](./trait.Space.html) trait on the given
@@ -175,17 +178,13 @@ fn get_first_ty_arg(args: &PathArguments) -> Option<Type> {
 }
 
 fn parse_len_arg(item: ParseStream) -> Result<VecDeque<TokenStream2>, syn::Error> {
+    // Parse comma-separated expressions
+    let exprs = item.parse_terminated::<Expr, syn::token::Comma>(Expr::parse)?;
     let mut result = VecDeque::new();
-    while let Some(token_tree) = item.parse()? {
-        match token_tree {
-            TokenTree::Ident(ident) => result.push_front(quote!((#ident as usize))),
-            TokenTree::Literal(lit) => {
-                if let Ok(lit_int) = parse2::<LitInt>(lit.into_token_stream()) {
-                    result.push_front(quote!(#lit_int))
-                }
-            }
-            _ => (),
-        }
+
+    // Push them in reverse because get_next_arg() pops from the back
+    for expr in exprs.into_iter().rev() {
+        result.push_back(quote!((#expr as usize)));
     }
 
     Ok(result)
