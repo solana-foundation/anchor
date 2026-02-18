@@ -1,4 +1,3 @@
-
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
 use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
