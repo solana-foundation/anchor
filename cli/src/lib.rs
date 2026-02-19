@@ -844,25 +844,28 @@ fn get_cluster_and_wallet(cfg_override: &ConfigOverride) -> Result<(String, Stri
     Ok((final_cluster, wallet_path))
 }
 
-/// Get the recommended priority fee from the RPC client
-pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
-    let mut fees = client.get_recent_prioritization_fees(&[])?;
-    if fees.is_empty() {
-        // Fees may be empty, e.g. on localnet
-        return Ok(0);
-    }
+/// Get the recommended priority fee from the RPC client, falling back to 0 if unavailable
+pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> u64 {
+    let mut fees = match client.get_recent_prioritization_fees(&[]) {
+        // Fees may be empty or query may fail, e.g. on localnet
+        Err(_) => {
+            return 0;
+        }
+        Ok(f) if f.is_empty() => {
+            return 0;
+        }
+        Ok(f) => f,
+    };
 
     // Get the median fee from the most recent 150 slots' prioritization fee
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
-    let median_priority_fee = if fees.len() % 2 == 0 {
+    if fees.len() % 2 == 0 {
         (fees[median_index - 1].prioritization_fee + fees[median_index].prioritization_fee) / 2
     } else {
         fees[median_index].prioritization_fee
-    };
-
-    Ok(median_priority_fee)
+    }
 }
 
 /// Prepend a compute unit ix, if the priority fee is greater than 0.
@@ -870,11 +873,8 @@ pub fn prepend_compute_unit_ix(
     instructions: Vec<Instruction>,
     client: &RpcClient,
     priority_fee: Option<u64>,
-) -> Result<Vec<Instruction>> {
-    let priority_fee = match priority_fee {
-        Some(fee) => fee,
-        None => get_recommended_micro_lamport_fee(client)?,
-    };
+) -> Vec<Instruction> {
+    let priority_fee = priority_fee.unwrap_or_else(|| get_recommended_micro_lamport_fee(client));
 
     if priority_fee > 0 {
         let mut instructions_appended = instructions.clone();
@@ -882,9 +882,9 @@ pub fn prepend_compute_unit_ix(
             0,
             ComputeBudgetInstruction::set_compute_unit_price(priority_fee),
         );
-        Ok(instructions_appended)
+        instructions_appended
     } else {
-        Ok(instructions)
+        instructions
     }
 }
 
@@ -4902,7 +4902,7 @@ fn add_recommended_deployment_solana_args(
 
     // If no priority fee is provided, calculate a recommended fee based on recent txs.
     if !args.contains(&"--with-compute-unit-price".to_string()) {
-        let priority_fee = get_recommended_micro_lamport_fee(client)?;
+        let priority_fee = get_recommended_micro_lamport_fee(client);
         augmented_args.push("--with-compute-unit-price".to_string());
         augmented_args.push(priority_fee.to_string());
     }

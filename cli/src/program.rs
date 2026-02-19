@@ -901,7 +901,7 @@ fn deploy_program(
     .map_err(|e| anyhow!("Failed to create deploy instruction: {}", e))?;
 
     // Add priority fee if specified
-    deploy_ixs = crate::prepend_compute_unit_ix(deploy_ixs, rpc_client, priority_fee)?;
+    deploy_ixs = crate::prepend_compute_unit_ix(deploy_ixs, rpc_client, priority_fee);
 
     let recent_blockhash = rpc_client.get_latest_blockhash()?;
     let deploy_tx = Transaction::new_signed_with_payer(
@@ -945,7 +945,7 @@ fn upgrade_program(
     );
 
     // Add priority fee if specified
-    let upgrade_ixs = crate::prepend_compute_unit_ix(vec![upgrade_ix], rpc_client, priority_fee)?;
+    let upgrade_ixs = crate::prepend_compute_unit_ix(vec![upgrade_ix], rpc_client, priority_fee);
 
     let recent_blockhash = rpc_client.get_latest_blockhash()?;
     let upgrade_tx = Transaction::new_signed_with_payer(
