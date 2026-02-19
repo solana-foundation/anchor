@@ -635,6 +635,9 @@ pub enum ProgramCommand {
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
+        /// Program id to initialize IDL for.
+        /// If not provided, discovers program ID from IDL.
+        program_id: Option<Pubkey>,
         #[clap(short, long)]
         filepath: String,
         #[clap(long)]
@@ -650,6 +653,9 @@ pub enum IdlCommand {
     /// Upgrades the IDL to the new file. An alias for first writing and then
     /// then setting the idl buffer account.
     Upgrade {
+        /// Program id to upgrade IDL for.
+        /// If not provided, discovers program ID from IDL.
+        program_id: Option<Pubkey>,
         #[clap(short, long)]
         filepath: String,
         #[clap(long)]
@@ -681,10 +687,9 @@ pub enum IdlCommand {
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
     },
-    /// Fetches an IDL for the given address from a cluster.
-    /// The address can be a program, IDL account, or IDL buffer.
+    /// Fetches an IDL for the given program from a cluster.
     Fetch {
-        address: Pubkey,
+        program_id: Pubkey,
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
@@ -699,7 +704,8 @@ pub enum IdlCommand {
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
         out: Option<String>,
-        /// Address to use (defaults to `metadata.address` value)
+        /// Program id to initialize IDL for.
+        /// If not provided, discovers program ID from IDL.
         #[clap(short, long)]
         program_id: Option<Pubkey>,
     },
@@ -2394,6 +2400,7 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     match subcmd {
         IdlCommand::Init {
+            program_id,
             filepath,
             priority_fee,
             non_canonical,
@@ -2405,6 +2412,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             #[cfg(not(feature = "idl-localnet-testing"))]
             let allow_localnet = false;
             idl_init(
+                program_id,
                 cfg_override,
                 filepath,
                 priority_fee,
@@ -2413,6 +2421,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             )
         }
         IdlCommand::Upgrade {
+            program_id,
             filepath,
             priority_fee,
             #[cfg(feature = "idl-localnet-testing")]
@@ -2422,7 +2431,13 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             let allow_localnet = allow_localnet;
             #[cfg(not(feature = "idl-localnet-testing"))]
             let allow_localnet = false;
-            idl_upgrade(cfg_override, filepath, priority_fee, allow_localnet)
+            idl_upgrade(
+                program_id,
+                cfg_override,
+                filepath,
+                priority_fee,
+                allow_localnet,
+            )
         }
         IdlCommand::Build {
             program_name,
@@ -2441,7 +2456,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             cargo_args,
         ),
         IdlCommand::Fetch {
-            address,
+            program_id: address,
             out,
             non_canonical,
         } => idl_fetch(cfg_override, address, out, non_canonical),
@@ -2483,6 +2498,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
 }
 
 fn idl_init(
+    program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
     idl_filepath: String,
     priority_fee: Option<u64>,
@@ -2503,10 +2519,13 @@ fn idl_init(
         return Ok(());
     }
 
-    let program_id = {
-        let idl = fs::read(&idl_filepath)?;
-        let idl = convert_idl(&idl)?;
-        idl.address
+    let program_id = match program_id {
+        Some(id) => id.to_string(),
+        _ => {
+            let idl = fs::read(&idl_filepath)?;
+            let idl = convert_idl(&idl)?;
+            idl.address
+        }
     };
 
     let command = metadata::IdlCommand::funded(
@@ -2530,6 +2549,7 @@ fn idl_init(
 
 // Currently identical to `idl_init`, other than not accepting `non_canonical`
 fn idl_upgrade(
+    program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
     idl_filepath: String,
     priority_fee: Option<u64>,
@@ -2547,10 +2567,13 @@ fn idl_upgrade(
         return Ok(());
     }
 
-    let program_id = {
-        let idl = fs::read(&idl_filepath)?;
-        let idl = convert_idl(&idl)?;
-        idl.address
+    let program_id = match program_id {
+        Some(id) => id.to_string(),
+        _ => {
+            let idl = fs::read(&idl_filepath)?;
+            let idl = convert_idl(&idl)?;
+            idl.address
+        }
     };
 
     let command = metadata::IdlCommand::funded(

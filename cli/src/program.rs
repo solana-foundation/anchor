@@ -700,7 +700,14 @@ pub fn program_deploy(
                 // Use `anchor idl init --allow-localnet` to deploy on localnet.
                 println!("Skipping IDL deployment on localnet");
             } else {
-                crate::idl_init(cfg_override, idl_filepath, None, false, false)?;
+                crate::idl_init(
+                    Some(program_id),
+                    cfg_override,
+                    idl_filepath,
+                    None,
+                    false,
+                    false,
+                )?;
                 println!("✓ Idl metadata created/updated");
             }
         } else {
