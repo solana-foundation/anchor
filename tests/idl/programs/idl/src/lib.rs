@@ -541,6 +541,8 @@ pub struct TestCompilation<'info> {
 
     composite: Composite<'info>,
 
+    external: Account<'info, external::MyAccount>,
+
     token_account: Account<'info, token::TokenAccount>,
     mint_account: Account<'info, token::Mint>,
     token_interface_account: InterfaceAccount<'info, token_interface::TokenAccount>,
