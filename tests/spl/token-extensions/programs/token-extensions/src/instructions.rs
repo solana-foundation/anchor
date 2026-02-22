@@ -8,8 +8,11 @@ use anchor_spl::{
         transfer_hook::TransferHook,
     },
     token_interface::{
-        get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
-        token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
+        get_mint_extension_data,
+        spl_token_metadata_interface::state::{Field, TokenMetadata},
+        token_metadata_initialize, token_metadata_remove_key, token_metadata_update_field, Mint,
+        Token2022, TokenAccount, TokenMetadataInitialize, TokenMetadataRemoveKey,
+        TokenMetadataUpdateField,
     },
 };
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
@@ -97,7 +100,10 @@ impl<'info> CreateMintAccount<'info> {
     }
 }
 
-pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> Result<()> {
+pub fn create_mint_handler(
+    ctx: Context<CreateMintAccount>,
+    args: CreateMintAccountArgs,
+) -> Result<()> {
     ctx.accounts.initialize_token_metadata(
         args.name.clone(),
         args.symbol.clone(),
@@ -177,4 +183,64 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::permanent_delegate::delegate = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateAndRemoveTokenMetadata<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_program: Program<'info, Token2022>,
+}
+
+impl<'info> UpdateAndRemoveTokenMetadata<'info> {
+    fn update_token_metadata(&self, field: String, value: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataUpdateField {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token_metadata_update_field(cpi_ctx, Field::Key(field), value)?;
+        Ok(())
+    }
+
+    fn remove_token_metadata(&self, key: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataRemoveKey {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token_metadata_remove_key(cpi_ctx, key, true)?;
+        Ok(())
+    }
+}
+
+pub fn update_and_remove_token_metadata_handler(
+    ctx: Context<UpdateAndRemoveTokenMetadata>,
+) -> Result<()> {
+    let key = "dummy_key".to_string();
+    let value = "dummy_value".to_string();
+    ctx.accounts
+        .update_token_metadata(key.clone(), value.clone())?;
+
+    ctx.accounts.mint.reload()?;
+
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+    assert_eq!(metadata.additional_metadata.len(), 1);
+    assert_eq!(metadata.additional_metadata[0].0, key);
+    assert_eq!(metadata.additional_metadata[0].1, value);
+
+    ctx.accounts.remove_token_metadata(key.clone())?;
+    ctx.accounts.mint.reload()?;
+
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+    assert_eq!(metadata.additional_metadata.len(), 0);
+
+    Ok(())
 }
