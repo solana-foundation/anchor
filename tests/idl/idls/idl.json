@@ -597,6 +597,9 @@
           ]
         },
         {
+          "name": "external"
+        },
+        {
           "name": "token_account"
         },
         {
@@ -1354,6 +1357,13 @@
             }
           }
         ]
+      }
+    },
+    {
+      "name": "MyAccount",
+      "type": {
+        "kind": "struct",
+        "fields": []
       }
     },
     {
