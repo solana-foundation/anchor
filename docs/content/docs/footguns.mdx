@@ -1,0 +1,16 @@
+---
+title: Footguns
+description:
+  Common footguns in Anchor that can lead to issues.
+---
+
+## Zeroed Discriminators
+
+Anchor supports overriding discriminators with custom values (for accounts, events and instructions).
+All-zero discriminators are only supported in events and instructions. In the case of accounts, e.g:
+```rust
+#[account(discriminator = [0, 0, 0])]
+#[account(discriminator = 0)]
+#[account(discriminator = ZERO_CONSTANT)]
+```
+are illegal. The [`zero` constraint](/docs/references/account-constraints#accountzero) may be used instead.
