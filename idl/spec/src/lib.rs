@@ -370,12 +370,14 @@ impl FromStr for IdlType {
                                 array_from_str(&nested_inner[1..])
                             }
                             None => {
-                                let (raw_type, raw_length) = inner
-                                    .rsplit_once(';')
-                                    .ok_or_else(|| anyhow!(
-                                        "Invalid array syntax: expected '[type; length]', found '[{}]'",
-                                        inner
-                                    ))?;
+                                let (raw_type, raw_length) =
+                                    inner.rsplit_once(';').ok_or_else(|| {
+                                        anyhow!(
+                                            "Invalid array syntax: expected '[type; length]', \
+                                             found '[{}]'",
+                                            inner
+                                        )
+                                    })?;
 
                                 let raw_type = raw_type.trim();
                                 if raw_type.is_empty() {

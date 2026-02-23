@@ -1,7 +1,7 @@
 use {
     crate::{codegen::program::common::*, parser, Program},
     heck::CamelCase,
-    quote::{quote, quote_spanned},
+    quote::{quote, quote_spanned, ToTokens},
 };
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -34,13 +34,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
                     Some(overrides) if overrides.discriminator.is_some() => {
-                        #[allow(
-                            clippy::unwrap_used,
-                            reason = "discriminator is Some, guarded by the if-let \
-                                      Some(overrides) and discriminator.is_some() check"
-                        )]
-                        let d = overrides.discriminator.as_ref().unwrap().to_owned();
-                        d
+                        overrides.discriminator.to_token_stream()
                     }
                     _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                 };

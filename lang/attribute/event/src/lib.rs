@@ -4,7 +4,7 @@ extern crate proc_macro;
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
 use {
     anchor_syn::{codegen::program::common::gen_discriminator, Overrides},
-    quote::quote,
+    quote::{quote, ToTokens},
     syn::parse_macro_input,
 };
 
@@ -41,6 +41,7 @@ pub fn event(
 
     let discriminator = args
         .discriminator
+        .map(|d| d.to_token_stream())
         .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
