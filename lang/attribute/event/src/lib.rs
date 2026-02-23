@@ -3,7 +3,7 @@ extern crate proc_macro;
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
 use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::parse_macro_input;
 
 /// The event attribute allows a struct to be used with
@@ -39,6 +39,7 @@ pub fn event(
 
     let discriminator = args
         .discriminator
+        .map(|d| d.to_token_stream())
         .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
