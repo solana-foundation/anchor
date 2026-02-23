@@ -9,6 +9,9 @@ members = [
     "lang/derive/*",
     "lang/syn",
     "spl",
+    # LiteSVM based tests
+    "tests/test-utils",
+    "tests/auction-house",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
