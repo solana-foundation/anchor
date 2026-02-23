@@ -14,7 +14,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
 use clap::{CommandFactory, Parser};
 use dirs::home_dir;
-use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
+use heck::{ToKebabCase, ToSnakeCase};
 use regex::{Regex, RegexBuilder};
 use rust_template::{ProgramTemplate, TestTemplate};
 use semver::{Version, VersionReq};
@@ -67,6 +67,73 @@ pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
         user_home
     }
 });
+
+/// Converts snake_case, SCREAMING_SNAKE_CASE, or PascalCase to camelCase/PascalCase
+/// with consistent digit-letter handling.
+///
+/// - First letter case is determined by `pascal` parameter
+/// - Letters following underscores are capitalized (snake_case handling)
+/// - Letters following digits are capitalized (e.g., a1b_receive → a1BReceive)
+/// - For inputs with underscores (snake_case/SCREAMING_SNAKE_CASE), letters are lowercased
+///   except at word boundaries (MY_CONST → myConst)
+/// - For inputs without underscores (PascalCase), internal capitalization is preserved
+///   (DummyA → dummyA)
+///
+/// This ensures consistent naming between Rust IDL generation and TypeScript clients.
+fn convert_case(input: &str, pascal: bool) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut capitalize_next = pascal;
+    let mut prev_was_digit = false;
+    let mut is_first = true;
+    // If input has underscores, treat as snake_case/SCREAMING_SNAKE_CASE and lowercase letters
+    let has_underscore = input.contains('_');
+
+    for c in input.chars() {
+        if c == '_' {
+            capitalize_next = true;
+            prev_was_digit = false;
+        } else if c.is_ascii_digit() {
+            result.push(c);
+            prev_was_digit = true;
+            is_first = false;
+        } else if c.is_ascii_alphabetic() {
+            if is_first {
+                // First letter: uppercase for PascalCase, lowercase for camelCase
+                if pascal {
+                    result.push(c.to_ascii_uppercase());
+                } else {
+                    result.push(c.to_ascii_lowercase());
+                }
+            } else if capitalize_next || prev_was_digit {
+                // After underscore or digit, always capitalize
+                result.push(c.to_ascii_uppercase());
+            } else if has_underscore {
+                // For snake_case/SCREAMING_SNAKE_CASE, lowercase within words
+                result.push(c.to_ascii_lowercase());
+            } else {
+                // For PascalCase (no underscores), preserve original case
+                result.push(c);
+            }
+            capitalize_next = false;
+            prev_was_digit = false;
+            is_first = false;
+        } else {
+            result.push(c);
+            capitalize_next = false;
+            prev_was_digit = false;
+            is_first = false;
+        }
+    }
+    result
+}
+
+fn harmonized_camel_case(input: &str) -> String {
+    convert_case(input, false)
+}
+
+fn harmonized_pascal_case(input: &str) -> String {
+    convert_case(input, true)
+}
 
 #[derive(Debug, Parser)]
 #[clap(version = VERSION)]
@@ -2854,7 +2921,7 @@ fn idl_write_buffer_metadata(
 
 fn idl_ts(idl: &Idl) -> Result<String> {
     let idl_name = &idl.metadata.name;
-    let type_name = idl_name.to_pascal_case();
+    let type_name = harmonized_pascal_case(idl_name);
     let idl = serde_json::to_string(idl)?;
 
     // Convert every field of the IDL to camelCase
@@ -2868,7 +2935,7 @@ fn idl_ts(idl: &Idl) -> Result<String> {
                 return acc;
             }
 
-            let camel_name = name.to_lower_camel_case();
+            let camel_name = harmonized_camel_case(name);
             acc.replace(&format!(r#""{name}""#), &format!(r#""{camel_name}""#))
         });
 
