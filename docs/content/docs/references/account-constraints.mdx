@@ -233,7 +233,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 ### `#[account(realloc)]`
 
 Description: Used to realloc program account space at the beginning of an
-instruction.  
+instruction.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
@@ -244,6 +244,20 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
     realloc::payer = <target>,
     realloc::zero = <bool>
 )]
+```
+
+### `#[account(discriminator = discrim)]`
+
+Description: Used to override the discriminator for an account. All constant expressions are supported,
+but [all-zero](/docs/footguns#zeroed-discriminators) discriminators are not.
+
+In versions of Anchor before 1.0, program-owned accounts with zeroed discriminators (for example, by manually
+initializing an `AccountInfo`, or as preparation for `#[zero]` initialization) can be taken over via IDL instructions.
+
+```rust title="attribute"
+#[account(discriminator = 12)]
+#[account(discriminator = [1, 2, 3, 4])]
+#[account(discriminator = MY_CONST_DISCRIMINATOR)]
 ```
 
 ## SPL Constraints
@@ -271,7 +285,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 
 ### `#[account(mint::*)]`
 
-Description: Create or validate mint accounts with specified parameters.  
+Description: Create or validate mint accounts with specified parameters.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)
