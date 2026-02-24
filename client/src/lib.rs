@@ -37,7 +37,7 @@
 //!             system_program: system_program::ID,
 //!         })
 //!         .args(instruction::Initialize { field: 42 })
-//!         .signer(&my_account_kp)
+//!         .signers(&[my_account_kp])
 //!         .send()?;
 //!
 //!     // Fetch account

@@ -102,8 +102,8 @@ pub fn composite<C: Deref<Target = impl Signer> + Clone>(
     let program = client.program(pid)?;
 
     // `Initialize` parameters.
-    let dummy_a = Keypair::new();
-    let dummy_b = Keypair::new();
+    let dummy_a = Arc::new(Keypair::new());
+    let dummy_b = Arc::new(Keypair::new());
 
     // Build and send a transaction.
     program
@@ -122,8 +122,7 @@ pub fn composite<C: Deref<Target = impl Signer> + Clone>(
             500,
             &program.id(),
         ))
-        .signer(&dummy_a)
-        .signer(&dummy_b)
+        .signers(&[dummy_a.clone(), dummy_b.clone()])
         .accounts(Initialize {
             dummy_a: dummy_a.pubkey(),
             dummy_b: dummy_b.pubkey(),
@@ -175,13 +174,13 @@ pub fn basic_2<C: Deref<Target = impl Signer> + Clone>(
     let program = client.program(pid)?;
 
     // `Create` parameters.
-    let counter = Keypair::new();
+    let counter = Arc::new(Keypair::new());
     let authority = program.payer();
 
     // Build and send a transaction.
     program
         .request()
-        .signer(&counter)
+        .signers(&[counter.clone()])
         .accounts(basic_2_accounts::Create {
             counter: counter.pubkey(),
             user: authority,
@@ -278,13 +277,13 @@ pub fn optional<C: Deref<Target = impl Signer> + Clone>(
     let program = client.program(pid)?;
 
     // `Initialize` parameters.
-    let data_account_keypair = Keypair::new();
+    let data_account_keypair = Arc::new(Keypair::new());
 
     let data_account_key = data_account_keypair.pubkey();
 
     let data_pda_seeds = &[DataPda::PREFIX.as_ref(), data_account_key.as_ref()];
     let data_pda_key = Pubkey::find_program_address(data_pda_seeds, &pid).0;
-    let required_keypair = Keypair::new();
+    let required_keypair = Arc::new(Keypair::new());
     let value: u64 = 10;
 
     // Build and send a transaction.
@@ -300,8 +299,7 @@ pub fn optional<C: Deref<Target = impl Signer> + Clone>(
             DataAccount::LEN as u64,
             &program.id(),
         ))
-        .signer(&data_account_keypair)
-        .signer(&required_keypair)
+        .signers(&[data_account_keypair.clone(), required_keypair.clone()])
         .accounts(OptionalInitialize {
             payer: Some(program.payer()),
             required: required_keypair.pubkey(),
