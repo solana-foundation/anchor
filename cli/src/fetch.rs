@@ -1,15 +1,14 @@
 use crate::cluster_url;
 use crate::config::{get_solana_cfg_url, Config, ConfigOverride};
-use anchor_lang::idl::IdlAccount;
 use anyhow::{anyhow, Result};
 use flate2::read::ZlibDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
+use solana_commitment_config::CommitmentConfig;
 use solana_pubkey::Pubkey;
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_rpc_client_api::config::RpcTransactionConfig;
 use solana_rpc_client_api::response::RpcConfirmedTransactionStatusWithSignature;
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::signature::Signature;
+use solana_signature::Signature;
 use solana_transaction_status_client_types::*;
 use std::io::Read;
 use std::str::FromStr;
@@ -489,7 +488,7 @@ pub fn idl_fetch_historical(
 
 fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
     let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator),
+        Some(cfg) => cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config),
         None => {
             if let Some(cluster) = cfg_override.cluster.as_ref() {
                 cluster.url().to_string()
@@ -505,7 +504,9 @@ fn fetch_idl_signatures(
     client: &RpcClient,
     address: &Pubkey,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
-    let idl_account_address = IdlAccount::address(address);
+    let program_signer = Pubkey::find_program_address(&[], address).0;
+    let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
+        .map_err(|e| anyhow!("Failed to derive IDL account address: {e}"))?;
     Ok(client.get_signatures_for_address(&idl_account_address)?)
 }
 
