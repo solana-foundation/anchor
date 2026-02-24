@@ -452,15 +452,19 @@ fn generate_constraint_realloc(
                 }
 
                 if __new_rent_minimum > __field_info.lamports() {
-                    anchor_lang::system_program::transfer(
-                        anchor_lang::context::CpiContext::new(
-                            system_program.key(),
-                            anchor_lang::system_program::Transfer {
-                                from: #payer.to_account_info(),
-                                to: __field_info.clone(),
-                            },
-                        ),
-                        __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
+                    let __transfer_lamports = __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap();
+                    let __transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+                        #payer.to_account_info().key,
+                        __field_info.key,
+                        __transfer_lamports,
+                    );
+                    anchor_lang::solana_program::program::invoke(
+                        &__transfer_ix,
+                        &[
+                            #payer.to_account_info(),
+                            __field_info.clone(),
+                            system_program.to_account_info(),
+                        ],
                     )?;
                 }
             } else {
@@ -1690,12 +1694,22 @@ fn generate_create_account(
             // Create the token account with right amount of lamports and space, and the correct owner.
             let space = #space;
             let lamports = __anchor_rent.minimum_balance(space);
-            let cpi_accounts = anchor_lang::system_program::CreateAccount {
-                from: #payer.to_account_info(),
-                to: #field.to_account_info()
-            };
-            let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
+            let __create_ix = anchor_lang::solana_program::system_instruction::create_account(
+                #payer.to_account_info().key,
+                #field.to_account_info().key,
+                lamports,
+                space as u64,
+                #owner,
+            );
+            anchor_lang::solana_program::program::invoke_signed(
+                &__create_ix,
+                &[
+                    #payer.to_account_info(),
+                    #field.to_account_info(),
+                    system_program.to_account_info(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1704,25 +1718,46 @@ fn generate_create_account(
                 .max(1)
                 .saturating_sub(__current_lamports);
             if required_lamports > 0 {
-                let cpi_accounts = anchor_lang::system_program::Transfer {
-                    from: #payer.to_account_info(),
-                    to: #field.to_account_info(),
-                };
-                let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-                anchor_lang::system_program::transfer(cpi_context, required_lamports)?;
+                let __transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+                    #payer.to_account_info().key,
+                    #field.to_account_info().key,
+                    required_lamports,
+                );
+                anchor_lang::solana_program::program::invoke(
+                    &__transfer_ix,
+                    &[
+                        #payer.to_account_info(),
+                        #field.to_account_info(),
+                        system_program.to_account_info(),
+                    ],
+                )?;
             }
             // Allocate space.
-            let cpi_accounts = anchor_lang::system_program::Allocate {
-                account_to_allocate: #field.to_account_info()
-            };
-            let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
+            let __allocate_ix = anchor_lang::solana_program::system_instruction::allocate(
+                #field.to_account_info().key,
+                #space as u64,
+            );
+            anchor_lang::solana_program::program::invoke_signed(
+                &__allocate_ix,
+                &[
+                    #field.to_account_info(),
+                    system_program.to_account_info(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
             // Assign to the spl token program.
-            let cpi_accounts = anchor_lang::system_program::Assign {
-                account_to_assign: #field.to_account_info()
-            };
-            let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
+            let __assign_ix = anchor_lang::solana_program::system_instruction::assign(
+                #field.to_account_info().key,
+                #owner,
+            );
+            anchor_lang::solana_program::program::invoke_signed(
+                &__assign_ix,
+                &[
+                    #field.to_account_info(),
+                    system_program.to_account_info(),
+                ],
+                &[#seeds_with_nonce],
+            )?;
         }
     }
 }
