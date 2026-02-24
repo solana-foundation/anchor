@@ -21,7 +21,7 @@ else
     exit 1
 fi
 
-if anchor test --skip-build --ignore-keys 2>&1 | grep -q "passing"; then
+if anchor test --skip-build 2>&1 | grep -q "passing"; then
     echo "PASS: All tests pass"
 else
     echo "FAIL: Some tests failed"
