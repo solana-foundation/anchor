@@ -455,17 +455,16 @@ pub fn install_version(
         let res = reqwest::blocking::get(format!(
             "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
         ))?;
-        if res.status() == StatusCode::NOT_FOUND {
-            return Err(anyhow!(
+        match res.status() {
+            StatusCode::NOT_FOUND => bail!(
                 "No prebuilt binary found for version `{version}` (HTTP 404). \
 Try `avm install {version} --from-source`."
-            ));
-        }
-        if !res.status().is_success() {
-            return Err(anyhow!(
+            ),
+            status if !status.is_success() => bail!(
                 "Failed to download the binary for version `{version}` (status code: {})",
                 res.status()
-            ));
+            ),
+            _ => (),
         }
 
         let bin_path = version_binary_path(&version);
