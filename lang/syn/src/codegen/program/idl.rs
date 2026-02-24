@@ -1,6 +1,15 @@
 use quote::quote;
 
-pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
+pub fn idl_accounts_and_functions(has_idl_authorities: bool) -> proc_macro2::TokenStream {
+    // If a specific list of IDL authorities was specified, check that `from` is within it
+    let idl_authority_check = has_idl_authorities.then(|| {
+        quote! {
+            if !crate::__IDL_AUTHORITIES.contains(from) {
+                return Err(anchor_lang::error::ErrorCode::ConstraintSigner.into());
+            }
+        }
+    });
+
     quote! {
         use anchor_lang::idl::ERASED_AUTHORITY;
 
@@ -37,6 +46,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
         #[derive(Accounts)]
         pub struct IdlCreateAccounts<'info> {
             // Payer of the transaction.
+            // Must be listed in `idl_authorities`
             #[account(signer)]
             pub from: AccountInfo<'info>,
             // The deterministically defined "state" account being created via
@@ -142,6 +152,9 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             }
             // Create the IDL's account.
             let from = accounts.from.key;
+
+            #idl_authority_check
+
             let (base, nonce) = Pubkey::find_program_address(&[], program_id);
             let seed = IdlAccount::seed();
             let owner = accounts.program.key;
@@ -261,6 +274,9 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
         ) -> anchor_lang::Result<()> {
             #[cfg(not(feature = "no-log-ix-name"))]
             anchor_lang::prelude::msg!("Instruction: IdlCreateBuffer");
+
+            let from = accounts.authority.unsigned_key();
+            #idl_authority_check
 
             let mut buffer = &mut accounts.buffer;
             buffer.authority = *accounts.authority.key;

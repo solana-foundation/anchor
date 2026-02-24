@@ -21,6 +21,15 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let cpi = cpi::generate(program);
     let accounts = accounts::generate(program);
 
+    // Authorities authorized to call IdlCreate/IdlCreateBuffer
+    let idl_authorities = &program.idl_authorities;
+    let idl_authorities = quote! {
+        #[cfg(not(feature = "no-idl"))]
+        const  __IDL_AUTHORITIES: &[anchor_lang::prelude::Pubkey] = &[
+            #(anchor_lang::prelude::Pubkey::from_str_const(#idl_authorities)),*
+        ];
+    };
+
     #[allow(clippy::let_and_return)]
     let ret = {
         quote! {
@@ -34,6 +43,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             #instruction
             #cpi
             #accounts
+            #idl_authorities
         }
     };
 

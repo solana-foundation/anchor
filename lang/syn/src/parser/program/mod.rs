@@ -1,11 +1,11 @@
 use crate::parser::docs;
-use crate::Program;
+use crate::{Program, ProgramArgs};
 use syn::parse::{Error as ParseError, Result as ParseResult};
 use syn::spanned::Spanned;
 
 mod instructions;
 
-pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
+pub fn parse(program_mod: syn::ItemMod, args: ProgramArgs) -> ParseResult<Program> {
     let docs = docs::parse(&program_mod.attrs);
     let (ixs, fallback_fn) = instructions::parse(&program_mod)?;
     Ok(Program {
@@ -14,6 +14,7 @@ pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
         docs,
         program_mod,
         fallback_fn,
+        idl_authorities: args.idl_authorities,
     })
 }
 
