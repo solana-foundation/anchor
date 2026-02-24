@@ -1,13 +1,14 @@
 use crate::prelude::{Id, System};
 use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::system_program;
-use crate::Result;
+use crate::{error::ErrorCode, Result};
 
 pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info>) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.
     let dest_starting_lamports = sol_destination.lamports();
-    **sol_destination.lamports.borrow_mut() =
-        dest_starting_lamports.checked_add(info.lamports()).unwrap();
+    **sol_destination.lamports.borrow_mut() = dest_starting_lamports
+        .checked_add(info.lamports())
+        .ok_or(ErrorCode::InvalidNumericConversion)?;
     **info.lamports.borrow_mut() = 0;
 
     info.assign(&system_program::ID);
