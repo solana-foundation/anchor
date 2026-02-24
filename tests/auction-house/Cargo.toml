@@ -8,12 +8,15 @@ crate-type = ["cdylib", "lib"]
 name = "auction_house"
 
 [features]
+default = []
+cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
-cpi = ["no-entrypoint"]
-custom-heap = []
-default = []
+no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
 
 [dependencies]
 anchor-lang = { path = "../../lang" }

@@ -1,5 +1,5 @@
-use anyhow::{Result, bail};
 use anchor_lang::{InstructionData, ToAccountMetas};
+use anyhow::{Result, bail};
 use litesvm::{LiteSVM, types::TransactionResult};
 use solana_account::{Account, state_traits::StateMut};
 use solana_keypair::{Keypair, Signer};
@@ -117,6 +117,7 @@ impl TestContext {
 
     /// Send a transaction, signing with `signers` (and additionally `payer` if `sign_with_payer` is set), and using
     /// [`Self::payer`] as a payer.
+    #[allow(clippy::result_large_err)]
     pub fn send_signed_transaction_with_payer(
         &mut self,
         instructions: &[Instruction],
@@ -135,6 +136,12 @@ impl TestContext {
             self.svm.latest_blockhash(),
         );
         self.svm.send_transaction(tx)
+    }
+}
+
+impl Default for TestContext {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
