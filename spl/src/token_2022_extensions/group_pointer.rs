@@ -11,10 +11,10 @@ pub fn group_pointer_initialize(
     group_address: Option<&Pubkey>,
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::group_pointer::Initialize {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
-        authority: authority,
-        group_address: group_address,
+        authority,
+        group_address,
     };
     ix.invoke().map_err(Into::into)
 }
@@ -32,11 +32,11 @@ pub fn group_pointer_update(
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::group_pointer::Update {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
-        group_address: group_address,
-        signers: &signers,
+        group_address,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

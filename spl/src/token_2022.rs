@@ -249,7 +249,7 @@ pub fn unwrap_lamports(ctx: CpiContext<'_, '_, UnwrapLamports>, amount: Option<u
         destination: &ctx.accounts.destination,
         authority: &ctx.accounts.authority,
         multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>(),
-        amount: amount,
+        amount,
         token_program: &ctx.program_id,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)

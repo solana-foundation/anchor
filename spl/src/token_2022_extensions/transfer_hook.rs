@@ -11,7 +11,7 @@ pub fn transfer_hook_initialize(
     transfer_hook_program_id: Option<&Pubkey>,
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::transfer_hook::InitializeTransferHook {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
         authority: authority,
         program_id: transfer_hook_program_id,
@@ -32,11 +32,11 @@ pub fn transfer_hook_update(
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::transfer_hook::UpdateTransferHook {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
         transfer_hook_program: transfer_hook_program_id,
-        signers: &signers,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

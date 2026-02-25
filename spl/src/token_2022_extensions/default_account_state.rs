@@ -8,12 +8,12 @@ use pinocchio_token_2022::state::AccountState;
 
 pub fn default_account_state_initialize(
     ctx: CpiContext<'_, '_, DefaultAccountStateInitialize>,
-    state: &AccountState,
+    state: AccountState,
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::default_account_state::initialize::Initialize {
         mint: &ctx.accounts.mint,
-        state: state.clone() as u8,
-        token_program: &ctx.accounts.token_program_id.address(),
+        state,
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke().map_err(Into::into)
 }
@@ -26,16 +26,16 @@ pub struct DefaultAccountStateInitialize {
 
 pub fn default_account_state_update(
     ctx: CpiContext<'_, '_, DefaultAccountStateUpdate>,
-    state: &AccountState,
+    state: AccountState,
 ) -> Result<()> {
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::default_account_state::update::Update {
         mint: &ctx.accounts.mint,
         freeze_authority: &ctx.accounts.freeze_authority,
-        signers: &signers,
-        state: state.clone() as u8,
-        token_program: &ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        state,
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
