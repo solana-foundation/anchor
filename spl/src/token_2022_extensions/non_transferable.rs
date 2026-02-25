@@ -9,7 +9,8 @@ pub fn non_transferable_mint_initialize(
     ctx: CpiContext<'_, '_, NonTransferableMintInitialize>,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]

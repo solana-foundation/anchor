@@ -6,17 +6,24 @@ use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
 
 pub fn cpi_guard_enable(ctx: CpiContext<'_, '_, CpiGuard>) -> Result<()> {
-    let ix = CpiGuardEnable {
-        token_program_id: &ctx.accounts.token_program_id,
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::cpi_guard::Enable {
         account: &ctx.accounts.account,
-        owner: &ctx.accounts.owner,
+        token_program: ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        authority: &ctx.accounts.authority,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn cpi_guard_disable(ctx: CpiContext<'_, '_, CpiGuard>) -> Result<()> {
-    let ix = todo!();
-
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::cpi_guard::Disable {
+        account: &ctx.accounts.account,
+        token_program: ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        authority: &ctx.accounts.authority,
+    };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
@@ -24,5 +31,5 @@ pub fn cpi_guard_disable(ctx: CpiContext<'_, '_, CpiGuard>) -> Result<()> {
 pub struct CpiGuard {
     pub token_program_id: AccountInfo,
     pub account: AccountInfo,
-    pub owner: AccountInfo,
+    pub authority: AccountInfo,
 }

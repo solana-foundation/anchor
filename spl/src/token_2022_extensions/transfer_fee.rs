@@ -12,8 +12,15 @@ pub fn transfer_fee_initialize(
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
-    let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    let ix = pinocchio_token_2022::instructions::transfer_fee::InitializeTransferFeeConfig {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_basis_points,
+        maximum_fee,
+    };
+    ix.invoke().map_err(Into::into)
 }
 
 #[derive(Accounts)]
@@ -27,7 +34,15 @@ pub fn transfer_fee_set(
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
-    let ix = todo!();
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::transfer_fee::SetTransferFee {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        authority: &ctx.accounts.authority,
+        transfer_fee_basis_points,
+        maximum_fee,
+        multisig_signers: &signers,
+    };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
@@ -44,7 +59,18 @@ pub fn transfer_checked_with_fee(
     decimals: u8,
     fee: u64,
 ) -> Result<()> {
-    let ix = todo!();
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::transfer_fee::TransferCheckedWithFee {
+        token_program: ctx.accounts.token_program_id.address(),
+        source: &ctx.accounts.source,
+        mint: &ctx.accounts.mint,
+        destination: &ctx.accounts.destination,
+        authority: &ctx.accounts.authority,
+        amount,
+        decimals,
+        fee,
+        multisig_signers: &signers,
+    };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
@@ -59,10 +85,14 @@ pub struct TransferCheckedWithFee {
 
 pub fn harvest_withheld_tokens_to_mint(
     ctx: CpiContext<'_, '_, HarvestWithheldTokensToMint>,
-    sources: Vec<AccountInfo>,
+    sources: Vec<&AccountInfo>,
 ) -> Result<()> {
-    let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    let ix = pinocchio_token_2022::instructions::transfer_fee::HarvestWithheldTokensToMint {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        sources: &sources,
+    };
+    ix.invoke().map_err(Into::into)
 }
 
 #[derive(Accounts)]
@@ -74,7 +104,14 @@ pub struct HarvestWithheldTokensToMint {
 pub fn withdraw_withheld_tokens_from_mint(
     ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromMint>,
 ) -> Result<()> {
-    let ix = todo!();
+    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>();
+    let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromMint {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        destination: &ctx.accounts.destination,
+        authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
+    };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
@@ -88,9 +125,17 @@ pub struct WithdrawWithheldTokensFromMint {
 
 pub fn withdraw_withheld_tokens_from_accounts(
     ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromAccounts>,
-    sources: Vec<AccountInfo>,
+    sources: Vec<&AccountInfo>,
 ) -> Result<()> {
-    let ix = todo!();
+    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>();
+    let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromAccounts {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        sources: &sources,
+        destination: &ctx.accounts.destination,
+        authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
+    };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 

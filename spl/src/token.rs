@@ -9,11 +9,13 @@ use std::ops::Deref;
 use pinocchio_token::ID;
 
 pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, amount: u64) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Transfer {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
         authority: &ctx.accounts.authority,
         amount,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
@@ -23,6 +25,7 @@ pub fn transfer_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::TransferChecked {
         from: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
@@ -30,47 +33,56 @@ pub fn transfer_checked(
         authority: &ctx.accounts.authority,
         amount,
         decimals,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn mint_to(ctx: CpiContext<'_, '_, MintTo>, amount: u64) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::MintTo {
         mint: &ctx.accounts.mint,
         account: &ctx.accounts.to,
         mint_authority: &ctx.accounts.authority,
         amount,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn burn(ctx: CpiContext<'_, '_, Burn>, amount: u64) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Burn {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
         amount,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn burn_checked(ctx: CpiContext<'_, '_, BurnChecked>, amount: u64, decimals: u8) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::BurnChecked {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
         amount,
         decimals,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn approve(ctx: CpiContext<'_, '_, Approve>, amount: u64) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Approve {
         source: &ctx.accounts.to,
         delegate: &ctx.accounts.delegate,
         authority: &ctx.accounts.authority,
         amount,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
@@ -80,6 +92,7 @@ pub fn approve_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::ApproveChecked {
         source: &ctx.accounts.to,
         mint: &ctx.accounts.mint,
@@ -87,14 +100,17 @@ pub fn approve_checked(
         authority: &ctx.accounts.authority,
         amount,
         decimals,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn revoke(ctx: CpiContext<'_, '_, Revoke>) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Revoke {
         source: &ctx.accounts.source,
         authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
@@ -119,28 +135,34 @@ pub fn initialize_account3(ctx: CpiContext<'_, '_, InitializeAccount3>) -> Resul
 }
 
 pub fn close_account(ctx: CpiContext<'_, '_, CloseAccount>) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::CloseAccount {
         account: &ctx.accounts.account,
         destination: &ctx.accounts.destination,
         authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn freeze_account(ctx: CpiContext<'_, '_, FreezeAccount>) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::FreezeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
         freeze_authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 pub fn thaw_account(ctx: CpiContext<'_, '_, ThawAccount>) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::ThawAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
         freeze_authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
@@ -181,11 +203,13 @@ pub fn set_authority(
     authority_type: pinocchio_token::instructions::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::SetAuthority {
         account: &ctx.accounts.account_or_mint,
         authority: &ctx.accounts.current_authority,
         authority_type,
         new_authority: new_authority.as_ref(),
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

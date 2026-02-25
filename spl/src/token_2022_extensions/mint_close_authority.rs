@@ -9,8 +9,13 @@ pub fn mint_close_authority_initialize(
     ctx: CpiContext<'_, '_, MintCloseAuthorityInitialize>,
     authority: Option<&Pubkey>,
 ) -> Result<()> {
-    let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    let ix =
+        pinocchio_token_2022::instructions::mint_close_authority::InitializeMintCloseAuthority {
+            token_program: ctx.accounts.token_program_id.address(),
+            mint: &ctx.accounts.mint,
+            close_authority: authority,
+        };
+    ix.invoke().map_err(Into::into)
 }
 
 #[derive(Accounts)]

@@ -3018,7 +3018,7 @@ dependencies = [
 [[package]]
 name = "pinocchio"
 version = "0.10.2"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "solana-account-view",
  "solana-address 2.0.0",
@@ -3030,7 +3030,7 @@ dependencies = [
 [[package]]
 name = "pinocchio-associated-token-account"
 version = "0.3.0"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "solana-account-view",
  "solana-address 2.0.0",
@@ -3041,7 +3041,7 @@ dependencies = [
 [[package]]
 name = "pinocchio-memo"
 version = "0.3.0"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "solana-account-view",
  "solana-address 2.0.0",
@@ -3052,7 +3052,7 @@ dependencies = [
 [[package]]
 name = "pinocchio-system"
 version = "0.5.0"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "pinocchio 0.10.2",
  "solana-address 2.0.0",
@@ -3061,7 +3061,7 @@ dependencies = [
 [[package]]
 name = "pinocchio-token"
 version = "0.5.0"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "solana-account-view",
  "solana-address 2.0.0",
@@ -3072,7 +3072,7 @@ dependencies = [
 [[package]]
 name = "pinocchio-token-2022"
 version = "0.2.0"
-source = "git+https://github.com/anza-xyz/pinocchio?branch=main#8e850a0eefc1ae5fbce79bc5f24de78d4c6648c4"
+source = "git+https://github.com/anza-xyz/pinocchio?branch=main#ac0d8a2eda86d98f6aca6cac240765811860b00c"
 dependencies = [
  "solana-account-view",
  "solana-address 2.0.0",
