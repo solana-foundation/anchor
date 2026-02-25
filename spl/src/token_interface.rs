@@ -94,7 +94,7 @@ pub fn get_mint_extension_data<T: Extension + Pod>(
 ) -> anchor_lang::Result<T> {
     let mint_data = unsafe { account.borrow_unchecked() };
     let mint_with_extension =
-        StateWithExtensions::<spl_token_2022_interface::state::Mint>::unpack(&mint_data)?;
+        StateWithExtensions::<spl_token_2022_interface::state::Mint>::unpack(mint_data)?;
     let extension_data = *mint_with_extension.get_extension::<T>()?;
     Ok(extension_data)
 }

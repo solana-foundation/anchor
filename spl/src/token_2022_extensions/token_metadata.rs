@@ -15,7 +15,8 @@ pub fn token_metadata_initialize(
     uri: String,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
@@ -32,7 +33,8 @@ pub fn token_metadata_update_authority(
     new_authority: OptionalNonZeroPubkey,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
@@ -49,7 +51,8 @@ pub fn token_metadata_update_field(
     value: String,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]

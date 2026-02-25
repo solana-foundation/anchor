@@ -7,7 +7,8 @@ use anchor_lang::{Key, Result};
 
 pub fn immutable_owner_initialize(ctx: CpiContext<'_, '_, ImmutableOwnerInitialize>) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]

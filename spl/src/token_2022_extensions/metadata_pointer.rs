@@ -11,7 +11,7 @@ pub fn metadata_pointer_initialize(
     metadata_address: Option<&Pubkey>,
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::metadata_pointer::Initialize {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
         authority: authority,
         metadata_address: metadata_address,
@@ -31,11 +31,11 @@ pub fn metadata_pointer_update(
 ) -> Result<()> {
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::metadata_pointer::Update {
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
         authority: &ctx.accounts.authority,
         metadata_address: metadata_address,
-        signers: &signers,
+        multisig_signers: &signers,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
