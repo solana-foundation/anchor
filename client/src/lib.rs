@@ -522,13 +522,13 @@ impl<'a, 'b, 'c, 'd> From<InstructionView<'a, 'b, 'c, 'd>>
     for InstructionViewWrapper<'a, 'b, 'c, 'd>
 {
     fn from(view: InstructionView<'a, 'b, 'c, 'd>) -> Self {
-        InstructionViewWrapper(view)
+        InstructionViewWrapper(view) 
     }
 }
 
-impl<'a, 'b, 'c, 'd> Into<Instruction> for InstructionViewWrapper<'a, 'b, 'c, 'd> {
-    fn into(self) -> Instruction {
-        let InstructionViewWrapper(view) = self;
+impl<'a, 'b, 'c, 'd> From<InstructionViewWrapper<'a, 'b, 'c, 'd>> for Instruction {
+    fn from(view: InstructionViewWrapper<'a, 'b, 'c, 'd>) -> Self {
+        let InstructionViewWrapper(view) = view;
         // InstructionAccount fields: address, is_signer, is_writable
         let accounts: Vec<SolanaAccountMeta> = view
             .accounts
