@@ -14,7 +14,7 @@ pub fn scaled_ui_amount_initialize(
         mint_account: &ctx.accounts.mint_account,
         authority: authority,
         multiplier: multiplier,
-        token_program: &ctx.accounts.token_program_id.address(),
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke().map_err(Into::into)
 }
@@ -33,12 +33,12 @@ pub fn scaled_ui_amount_update(
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::scaled_ui_amount::UpdateMultiplier {
-        mint_account: &ctx.accounts.mint_account,
+        mint: &ctx.accounts.mint_account,
         authority: &ctx.accounts.authority,
         multiplier: multiplier,
         effective_timestamp: effective_timestamp,
-        signers: &signers,
-        token_program: &ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

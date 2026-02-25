@@ -8,10 +8,10 @@ use anchor_lang::{Key, Result};
 pub fn memo_transfer_enable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()> {
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::memo_transfer::Enable {
-        token_account: &ctx.accounts.account,
+        account: &ctx.accounts.account,
         authority: &ctx.accounts.authority,
-        signers: &signers,
-        token_program: &ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
@@ -19,10 +19,10 @@ pub fn memo_transfer_enable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()>
 pub fn memo_transfer_disable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()> {
     let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::memo_transfer::Disable {
-        token_account: &ctx.accounts.account,
+        account: &ctx.accounts.account,
         authority: &ctx.accounts.authority,
-        signers: &signers,
-        token_program: &ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }

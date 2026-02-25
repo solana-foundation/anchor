@@ -11,7 +11,8 @@ pub fn token_group_initialize(
     max_size: u64,
 ) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
@@ -24,7 +25,8 @@ pub struct TokenGroupInitialize {
 
 pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -> Result<()> {
     let ix = todo!();
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
