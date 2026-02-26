@@ -69,9 +69,7 @@ describe("Test CLI IDL commands", () => {
       { stdio: "inherit" }
     );
 
-    const authority = execSync(
-      `anchor idl authority ${programTwo.programId}`
-    )
+    const authority = execSync(`anchor idl authority ${programTwo.programId}`)
       .toString()
       .trim();
     assert.equal(authority, provider.wallet.publicKey.toString());
@@ -91,11 +89,15 @@ describe("Test CLI IDL commands", () => {
 
   it("Can write a new IDL using write-buffer and set-buffer", async () => {
     // "Upgrade" back to program one via write-buffer set-buffer
-    let buffer = execSync(
+    const writeBufferOutput = execSync(
       `anchor idl write-buffer --filepath target/idl/idl_commands_one.json ${programOne.programId}`
     ).toString();
-    console.log(`Buffer:\n---\n${buffer}\n---`);
-    buffer = buffer.replace("Idl buffer created: ", "").trim();
+    const bufferMatch = writeBufferOutput.match(/Idl buffer created:\s*(.*)/);
+    assert(
+      bufferMatch,
+      `Failed to parse buffer id from write-buffer output:\n${writeBufferOutput}`
+    );
+    const buffer = bufferMatch[1];
     execSync(
       `anchor idl set-buffer --buffer ${buffer} ${programOne.programId}`,
       { stdio: "inherit" }
