@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - master
+      - "v*.*"
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
+      - "v*.*"
     paths-ignore:
       - 'docs/**'
 
