@@ -515,8 +515,7 @@ fn generate_constraint_init_group(
                 //
                 // Note that for `#[account(init, seeds)]`, find_program_address has already
                 // been run in the init constraint find_pda variable.
-                if c.bump.is_some() {
-                    let b = c.bump.as_ref().unwrap();
+                if let Some(b) = &c.bump {
                     quote! {
                         if #field.key() != __pda_address {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSeeds).with_account_name(#name_str).with_pubkeys((#field.key(), __pda_address)));

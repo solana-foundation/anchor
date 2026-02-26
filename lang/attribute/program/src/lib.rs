@@ -10,12 +10,15 @@ use syn::parse_macro_input;
 /// handlers defining all entries into a Solana program.
 #[proc_macro_attribute]
 pub fn program(
-    _args: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    parse_macro_input!(input as anchor_syn::Program)
-        .to_token_stream()
-        .into()
+    let args = parse_macro_input!(args as anchor_syn::ProgramArgs);
+    let program_mod = parse_macro_input!(input as syn::ItemMod);
+    match anchor_syn::parser::program::parse(program_mod, args) {
+        Ok(program) => program.to_token_stream().into(),
+        Err(err) => err.to_compile_error().into(),
+    }
 }
 
 /// Declare an external program based on its IDL.

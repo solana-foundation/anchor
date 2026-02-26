@@ -14,7 +14,6 @@ pub(crate) mod hash;
 use codegen::accounts as accounts_codegen;
 use codegen::program as program_codegen;
 use parser::accounts as accounts_parser;
-use parser::program as program_parser;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use quote::ToTokens;
@@ -26,11 +25,11 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Attribute;
-use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
     TypePath,
 };
+use syn::{Lit, LitStr};
 
 #[derive(Debug)]
 pub struct Program {
@@ -39,12 +38,49 @@ pub struct Program {
     pub docs: Option<Vec<String>>,
     pub program_mod: ItemMod,
     pub fallback_fn: Option<FallbackFn>,
+    pub idl_authorities: Vec<LitStr>,
 }
 
-impl Parse for Program {
+#[derive(Debug, Default)]
+pub struct ProgramArgs {
+    pub idl_authorities: Vec<LitStr>,
+}
+
+impl Parse for ProgramArgs {
     fn parse(input: ParseStream) -> ParseResult<Self> {
-        let program_mod = <ItemMod as Parse>::parse(input)?;
-        program_parser::parse(program_mod)
+        if input.is_empty() {
+            return Ok(Self::default());
+        }
+
+        let ident: Ident = input.parse()?;
+        if ident != "idl_authorities" {
+            return Err(ParseError::new(
+                ident.span(),
+                "Invalid argument. Expected `idl_authorities(...)`",
+            ));
+        }
+
+        let content;
+        syn::parenthesized!(content in input);
+        let authorities: Punctuated<LitStr, Token![,]> =
+            content.parse_terminated(<LitStr as Parse>::parse)?;
+        if authorities.is_empty() {
+            return Err(ParseError::new(
+                content.span(),
+                "idl_authorities must include at least one pubkey string",
+            ));
+        }
+
+        if !input.is_empty() {
+            return Err(ParseError::new(
+                input.span(),
+                "Unexpected tokens after `idl_authorities(...)`",
+            ));
+        }
+
+        Ok(Self {
+            idl_authorities: authorities.into_iter().collect(),
+        })
     }
 }
 

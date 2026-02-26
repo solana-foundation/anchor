@@ -32,6 +32,8 @@ token_2022_extensions = [
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
+# blake3 1.8.3, used transitively, uses edition 2024 which is not supported
+blake3 = { version = "1.8,<1.8.3"}
 borsh = { version = "0.10.3", optional = true }
 mpl-token-metadata = { version = "5", optional = true }
 spl-associated-token-account = { version = "7", features = ["no-entrypoint"], optional = true }
