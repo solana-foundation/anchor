@@ -913,42 +913,48 @@ mod tests {
 
         // Test Array with value length
         assert_eq!(
-            convert_idl_type_to_str(&IdlType::Array(
-                Box::new(IdlType::U8),
-                IdlArrayLen::Value(10)
-            ), false),
+            convert_idl_type_to_str(
+                &IdlType::Array(Box::new(IdlType::U8), IdlArrayLen::Value(10)),
+                false
+            ),
             "[u8; 10]"
         );
 
         // Test Array with generic length
         assert_eq!(
-            convert_idl_type_to_str(&IdlType::Array(
-                Box::new(IdlType::U8),
-                IdlArrayLen::Generic("N".to_string())
-            ), false),
+            convert_idl_type_to_str(
+                &IdlType::Array(Box::new(IdlType::U8), IdlArrayLen::Generic("N".to_string())),
+                false
+            ),
             "[u8; N]"
         );
 
         // Test defined type without generics
         assert_eq!(
-            convert_idl_type_to_str(&IdlType::Defined {
-                name: "MyStruct".to_string(),
-                generics: vec![],
-            }, false),
+            convert_idl_type_to_str(
+                &IdlType::Defined {
+                    name: "MyStruct".to_string(),
+                    generics: vec![],
+                },
+                false
+            ),
             "MyStruct"
         );
 
         // Test defined type with generics
         assert_eq!(
-            convert_idl_type_to_str(&IdlType::Defined {
-                name: "MyStruct".to_string(),
-                generics: vec![
-                    IdlGenericArg::Type { ty: IdlType::U64 },
-                    IdlGenericArg::Const {
-                        value: "10".to_string()
-                    },
-                ],
-            }, false),
+            convert_idl_type_to_str(
+                &IdlType::Defined {
+                    name: "MyStruct".to_string(),
+                    generics: vec![
+                        IdlGenericArg::Type { ty: IdlType::U64 },
+                        IdlGenericArg::Const {
+                            value: "10".to_string()
+                        },
+                    ],
+                },
+                false
+            ),
             "MyStruct<u64,10>"
         );
 
