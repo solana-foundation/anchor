@@ -350,6 +350,7 @@ name = "anchor-spl"
 version = "0.32.1"
 dependencies = [
  "anchor-lang",
+ "blake3",
  "borsh 0.10.3",
  "mpl-token-metadata",
  "spl-associated-token-account",
