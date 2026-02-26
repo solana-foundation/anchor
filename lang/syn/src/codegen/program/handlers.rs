@@ -1,6 +1,7 @@
 use crate::codegen::program::common::*;
 use crate::Program;
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::spanned::Spanned;
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -17,25 +18,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_arg_names: Vec<&syn::Ident> = ix.args.iter().map(|arg| &arg.name).collect();
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
-            let ix_name = match generate_ix_variant_name(&ix_method_name_str) {
-                Ok(name) => quote! { #name },
-                Err(e) => {
-                    let err = e.to_string();
-                    return quote! { compile_error!(concat!("error generating ix variant name: `", #err, "`")) };
-                }
-            };
-            let variant_arm = match generate_ix_variant(&ix_method_name_str, &ix.args) {
-                Ok(v) => v,
-                Err(e) => {
-                    let err = e.to_string();
-                    return quote! { compile_error!(concat!("error generating ix variant arm: `", #err, "`")) };
-                }
-            };
-
+            let ix_span = ix.raw_method.span();
+            let ix_name = generate_ix_variant_name(&ix_method_name_str);
+            let variant_arm = generate_ix_variant_spanned(&ix_method_name_str, &ix.args, ix_span);
             let ix_name_log = format!("Instruction: {ix_name}");
             let anchor = &ix.anchor_ident;
             let ret_type = &ix.returns.ty.to_token_stream();
             let cfgs = &ix.cfgs;
+            let ix_span = ix.raw_method.span();
             let maybe_set_return_data = match ret_type.to_string().as_str() {
                 "()" => quote! {},
                 _ => quote! {
@@ -44,62 +34,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
-
-            let actual_param_count = ix.args.len();
-            let ix_name_str = ix_method_name.to_string();
-            let accounts_type_str = anchor.to_string();
-
-            // Build clear error messages
-            let count_error_msg = format!(
-                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
-                accounts_type_str,
-                ix_name_str,
-                actual_param_count,
-            );
-
-            // Generate type validation calls for each argument
-            let type_validations: Vec<proc_macro2::TokenStream> = ix.args
-                .iter()
-                .enumerate()
-                .map(|(idx, arg)| {
-                    let arg_ty = &arg.raw_arg.ty;
-                    let method_name = syn::Ident::new(
-                        &format!("__anchor_validate_ix_arg_type_{}", idx),
-                        proc_macro2::Span::call_site(),
-                    );
-                    quote! {
-                        // Type validation for argument #idx
-                        if #anchor::__ANCHOR_IX_PARAM_COUNT > #idx {
-                            #[allow(unreachable_code)]
-                            if false {
-                                // This code is never executed but is type-checked at compile time
-                                let __type_check_arg: #arg_ty = panic!();
-                                #anchor::#method_name(&__type_check_arg);
-                            }
-                        }
-                    }
-                })
-                .collect();
-
-            let param_validation = quote! {
-                const _: () = {
-                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
-                    const HANDLER_PARAM_COUNT: usize = #actual_param_count;
-
-                    // Count validation
-                    if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
-                        panic!(#count_error_msg);
-                    }
-                };
-
-                // Type validations
-                #(#type_validations)*
-            };
-
+            let spanned_fn_name = quote_spanned! { ix_span => #ix_method_name };
             quote! {
                 #(#cfgs)*
                 #[inline(never)]
-                pub fn #ix_method_name<'info>(
+                pub fn #spanned_fn_name<'info>(
                     __program_id: &Pubkey,
                     __accounts: &'info[AccountInfo<'info>],
                     __ix_data: &[u8],
@@ -107,7 +46,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
 
-                    #param_validation
                     // Deserialize data.
                     let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
