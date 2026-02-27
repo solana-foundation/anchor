@@ -180,6 +180,13 @@ pub enum ErrorCode {
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
 
+    /// 2048 - A pausable extension constraint was violated
+    #[msg("A pausable extension constraint was violated")]
+    ConstraintMintPausableExtension,
+    /// 2049 - A pausable extension authority constraint was violated
+    #[msg("A pausable extension authority constraint was violated")]
+    ConstraintMintPausableAuthority,
+
     // Require
     /// 2500 - A require expression was violated
     #[msg("A require expression was violated")]
