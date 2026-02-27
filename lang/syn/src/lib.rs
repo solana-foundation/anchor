@@ -313,6 +313,7 @@ impl Field {
                 SystemAccount
             },
             Ty::Account(AccountTy { boxed, .. })
+            | Ty::ReadOnlyAccount(ReadOnlyAccountTy { boxed, .. })
             | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => {
                 if *boxed {
                     quote! {
@@ -402,6 +403,7 @@ impl Field {
                 quote! { UncheckedAccount::try_from(&#field) }
             }
             Ty::Account(AccountTy { boxed, .. })
+            | Ty::ReadOnlyAccount(ReadOnlyAccountTy { boxed, .. })
             | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => {
                 let stream = if checked {
                     quote! {
@@ -488,6 +490,9 @@ impl Field {
             Ty::LazyAccount(_) => quote! {
                 anchor_lang::accounts::lazy_account::LazyAccount
             },
+            Ty::ReadOnlyAccount(_) => quote! {
+                anchor_lang::accounts::read_only_account::ReadOnlyAccount
+            },
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
@@ -527,6 +532,12 @@ impl Field {
                 ProgramData
             },
             Ty::Account(ty) => {
+                let ident = &ty.account_type_path;
+                quote! {
+                    #ident
+                }
+            }
+            Ty::ReadOnlyAccount(ty) => {
                 let ident = &ty.account_type_path;
                 quote! {
                     #ident
@@ -609,6 +620,7 @@ pub enum Ty {
     AccountLoader(AccountLoaderTy),
     Sysvar(SysvarTy),
     Account(AccountTy),
+    ReadOnlyAccount(ReadOnlyAccountTy),
     LazyAccount(LazyAccountTy),
     Migration(MigrationTy),
     Program(ProgramTy),
@@ -641,6 +653,14 @@ pub struct AccountLoaderTy {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AccountTy {
+    // The struct type of the account.
+    pub account_type_path: TypePath,
+    // True if the account has been boxed via `Box<T>`.
+    pub boxed: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ReadOnlyAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
     // True if the account has been boxed via `Box<T>`.
