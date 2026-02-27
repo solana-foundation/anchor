@@ -52,7 +52,6 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
-    "signature-verification",
     "pda-payer"
   ],
   "dependencies": {
