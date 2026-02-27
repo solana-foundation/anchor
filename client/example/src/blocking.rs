@@ -1,7 +1,6 @@
-use anchor_client::{Client, Cluster};
+use anchor_client::{Client, Cluster, CommitmentConfig};
 use anyhow::Result;
 use clap::Parser;
-use solana_commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::read_keypair_file;
 use solana_sdk::signature::{Keypair, Signer};

@@ -9,15 +9,10 @@
 //! ```ignore
 //! use std::rc::Rc;
 //!
-//! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
-//!     Client, Cluster,
-//! };
+//! use anchor_client::{Client, Cluster, Signer};
 //! use my_program::{accounts, instruction, MyAccount};
+//! use solana_keypair::{read_keypair_file, Keypair};
+//! use solana_system_interface::program as system_program;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create client
@@ -75,23 +70,18 @@ use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountM
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
-use solana_commitment_config::CommitmentConfig;
-use solana_instruction::{AccountMeta, Instruction};
-use solana_program::hash::Hash;
-use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
+use solana_instruction::AccountMeta;
+use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
-    client_error::Error as SolanaClientError,
     config::{
-        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
+        RpcTransactionLogsFilter,
     },
-    filter::{Memcmp, RpcFilterType},
+    filter::Memcmp,
     response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_signature::Signature;
-use solana_signer::{Signer, SignerError};
-use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -113,6 +103,16 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
+pub use solana_commitment_config::CommitmentConfig;
+pub use solana_instruction::Instruction;
+pub use solana_program::hash::Hash;
+pub use solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError;
+pub use solana_rpc_client_api::{
+    client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
+    filter::RpcFilterType,
+};
+pub use solana_signer::{Signer, SignerError};
+pub use solana_transaction::Transaction;
 
 mod cluster;
 
