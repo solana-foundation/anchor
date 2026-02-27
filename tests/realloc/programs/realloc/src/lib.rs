@@ -93,6 +93,7 @@ pub struct Realloc2<'info> {
         realloc = Sample::space((len + 10) as usize),
         realloc::payer = authority,
         realloc::zero = false,
+        dup, // Allow duplicate accounts
     )]
     pub sample2: Account<'info, Sample>,
 

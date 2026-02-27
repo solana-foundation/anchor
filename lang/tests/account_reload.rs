@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::clock::Epoch;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -35,16 +34,8 @@ fn reload_owner_unchanged_updates_data() {
     let owner: Pubkey = crate::ID;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> = AccountInfo::new(
-        &key,
-        false,
-        true,
-        &mut lamports,
-        &mut data,
-        &owner,
-        false,
-        Epoch::default(),
-    );
+    let acc_info: AccountInfo<'_> =
+        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
 
     // Wrap in Account<Dummy>.
     let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
@@ -73,16 +64,8 @@ fn reload_owner_changed_fails() {
     let owner_ptr: *mut Pubkey = &mut owner;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> = AccountInfo::new(
-        &key,
-        false,
-        true,
-        &mut lamports,
-        &mut data,
-        &owner,
-        false,
-        Epoch::default(),
-    );
+    let acc_info: AccountInfo<'_> =
+        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
 
     let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
 
@@ -108,16 +91,8 @@ fn interface_reload_owner_unchanged_updates_data() {
     let owner: Pubkey = crate::ID;
     let key: Pubkey = Pubkey::new_unique();
 
-    let acc_info: AccountInfo<'_> = AccountInfo::new(
-        &key,
-        false,
-        true,
-        &mut lamports,
-        &mut data,
-        &owner,
-        false,
-        Epoch::default(),
-    );
+    let acc_info: AccountInfo<'_> =
+        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
 
     let mut i_face: InterfaceAccount<'_, Dummy> =
         InterfaceAccount::<Dummy>::try_from(&acc_info).unwrap();
@@ -143,16 +118,8 @@ fn reload_error_does_not_mutate_cached_state() {
     let owner_ptr: *mut Pubkey = &mut owner;
 
     let key: Pubkey = Pubkey::new_unique();
-    let acc_info: AccountInfo<'_> = AccountInfo::new(
-        &key,
-        false,
-        true,
-        &mut lamports,
-        &mut data,
-        &owner,
-        false,
-        Epoch::default(),
-    );
+    let acc_info: AccountInfo<'_> =
+        AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
 
     let mut acc: Account<'_, Dummy> = Account::<Dummy>::try_from(&acc_info).unwrap();
     assert_eq!(acc.val, 7);

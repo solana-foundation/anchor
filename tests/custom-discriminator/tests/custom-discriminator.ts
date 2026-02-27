@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import assert from "assert";
 
 import type { CustomDiscriminator } from "../target/types/custom_discriminator";
@@ -48,7 +48,7 @@ describe("custom-discriminator", () => {
         "confirmed"
       );
       const myAccount = await program.account.myAccount.fetch(
-        pubkeys.myAccount
+        pubkeys.myAccount as anchor.web3.PublicKey
       );
       assert.strictEqual(myAccount.field, field);
     });

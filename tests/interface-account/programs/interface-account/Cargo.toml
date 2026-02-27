@@ -1,0 +1,21 @@
+[package]
+name = "interface-account"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "interface_account"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+new = { path = "../new", features = ["cpi"] }
+old = { path = "../old", features = ["cpi"] }

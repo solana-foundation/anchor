@@ -4,6 +4,7 @@ use anchor_lang::solana_program::account_info::AccountInfo;
 use anchor_lang::solana_program::pubkey::Pubkey;
 use anchor_lang::Result;
 use anchor_lang::{context::CpiContext, Accounts};
+use spl_token_2022_interface as spl_token_2022;
 
 pub fn cpi_guard_enable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'info>>) -> Result<()> {
     let ix = spl_token_2022::extension::cpi_guard::instruction::enable_cpi_guard(

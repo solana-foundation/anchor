@@ -25,7 +25,7 @@
     "floats",
     "idl",
     "ido-pool",
-    "interface",
+    "interface-account",
     "lazy-account",
     "lockup",
     "misc",
@@ -52,7 +52,8 @@
     "multiple-suites",
     "multiple-suites-run-single",
     "bpf-upgradeable-state",
-    "pda-payer"
+    "pda-payer",
+    "duplicate-mutable-accounts"
   ],
   "dependencies": {
     "@project-serum/common": "^0.0.1-beta.3",

@@ -24,7 +24,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     let ty = &s.raw_field.ty;
                     quote! {
                         #[cfg(feature = "anchor-debug")]
-                        ::solana_program::log::sol_log(stringify!(#name));
+                        ::anchor_lang::solana_program::log::sol_log(stringify!(#name));
                         let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
@@ -79,7 +79,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         };
                         quote! {
                             #[cfg(feature = "anchor-debug")]
-                            ::solana_program::log::sol_log(stringify!(#typed_name));
+                            ::anchor_lang::solana_program::log::sol_log(stringify!(#typed_name));
                             let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                             #warning
@@ -270,6 +270,9 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .map(|f| constraints::generate(f, accs))
         .collect();
 
+    // Generate duplicate mutable account validation
+    let duplicate_checks = generate_duplicate_mutable_checks(accs);
+
     // Constraint checks for each account fields.
     let access_checks: Vec<proc_macro2::TokenStream> = non_init_fields
         .iter()
@@ -281,6 +284,7 @@ pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     quote! {
         #(#init_fields)*
+        #duplicate_checks
         #(#access_checks)*
     }
 }
@@ -313,5 +317,102 @@ fn is_init(af: &AccountField) -> bool {
     match af {
         AccountField::CompositeField(_s) => false,
         AccountField::Field(f) => f.constraints.init.is_some(),
+    }
+}
+
+// Generates duplicate mutable account validation logic
+fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+    // Collect all mutable account fields without `dup` constraint that serialize on exit.
+    // Only types that serialize on exit are included, as duplicate mutable accounts
+    // are problematic due to double serialization (the second write overwrites the first).
+    // Types like UncheckedAccount, Signer, SystemAccount, AccountLoader, etc. don't serialize on exit
+    let candidates: Vec<_> = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::Field(f)
+                if f.constraints.is_mutable()
+                    && !f.constraints.is_dup()
+                    && !f.constraints.is_pure_init() =>
+            {
+                match &f.ty {
+                    // Only include types that serialize on exit
+                    crate::Ty::Account(_)
+                    | crate::Ty::LazyAccount(_)
+                    | crate::Ty::InterfaceAccount(_)
+                    | crate::Ty::Migration(_) => Some(f),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .collect();
+
+    // Collect composite field idents (nested account structs)
+    let composite_fields: Vec<_> = accs
+        .fields
+        .iter()
+        .filter_map(|af| match af {
+            AccountField::CompositeField(s) => Some(&s.ident),
+            _ => None,
+        })
+        .collect();
+
+    if candidates.is_empty() && composite_fields.is_empty() {
+        return quote! {};
+    }
+
+    let mut field_keys = Vec::with_capacity(candidates.len());
+    let mut field_name_strs = Vec::with_capacity(candidates.len());
+
+    for f in candidates.iter() {
+        let name = &f.ident;
+
+        if f.is_optional {
+            field_keys.push(quote! { #name.as_ref().map(|f| f.key()) });
+        } else {
+            field_keys.push(quote! { Some(#name.key()) });
+        }
+
+        // Use stringify! to avoid runtime allocation
+        field_name_strs.push(quote! { stringify!(#name) });
+    }
+
+    // Generate code to check composite field keys
+    let composite_checks: Vec<proc_macro2::TokenStream> = composite_fields
+        .iter()
+        .map(|composite_name| {
+            quote! {
+                for key in #composite_name.duplicate_mutable_account_keys() {
+                    if !__mutable_accounts.insert(key) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        ).with_account_name(format!("{}", key)));
+                    }
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        // Duplicate mutable account validation - using HashSet
+        {
+            let mut __mutable_accounts = std::collections::HashSet::new();
+
+            // Check declared mutable accounts for duplicates among themselves
+            #(
+                if let Some(key) = #field_keys {
+                    // Check for duplicates and insert the key and account name
+                    if !__mutable_accounts.insert(key) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        ).with_account_name(#field_name_strs));
+                    }
+                }
+            )*
+
+            // Check composite (nested) account struct keys for duplicates
+            #(#composite_checks)*
+        }
     }
 }

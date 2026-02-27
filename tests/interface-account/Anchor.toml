@@ -1,0 +1,11 @@
+[programs.localnet]
+interface_account = "interfaceAccount111111111111111111111111111"
+new = "New1111111111111111111111111111111111111111"
+old = "oLd1111111111111111111111111111111111111111"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
