@@ -153,12 +153,15 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             let declared_count = ix_api.len();
 
             // Generate strict validation methods for declared parameters
+            // idx is the INSTRUCTION arg index (0, 1, 2... based on #[instruction] order)
+            // NOT the handler arg index
             let type_check_methods: Vec<proc_macro2::TokenStream> = ix_api
                 .iter()
                 .enumerate()
                 .map(|(idx, expr)| {
                     if let Expr::Type(expr_type) = expr {
                         let ty = &expr_type.ty;
+                        // idx = instruction arg index (position in #[instruction] attribute)
                         let method_name = syn::Ident::new(
                             &format!("__anchor_validate_ix_arg_type_{}", idx),
                             proc_macro2::Span::call_site(),
@@ -201,6 +204,33 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
+    // Generate helper to get instruction arg names for matching with handler args
+    let arg_names = accs
+        .instruction_api
+        .as_ref()
+        .map(|ix_api| {
+            ix_api
+                .iter()
+                .map(|expr| {
+                    if let Expr::Type(expr_type) = expr {
+                        let name = &expr_type.expr;
+                        quote! {
+                            stringify!(#name)
+                        }
+                    } else {
+                        panic!("Invalid instruction declaration");
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let instruction_arg_names_helper = quote! {
+        #[doc(hidden)]
+        pub fn __anchor_ix_arg_names() -> &'static [&'static str] {
+            &[#(#arg_names),*]
+        }
+    };
+
     let param_count_const = match &accs.instruction_api {
         None => quote! {
             #[automatically_derived]
@@ -208,6 +238,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 #[doc(hidden)]
                 pub const __ANCHOR_IX_PARAM_COUNT: usize = 0;
 
+                #instruction_arg_names_helper
                 #type_validation_methods
             }
         },
@@ -220,6 +251,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     #[doc(hidden)]
                     pub const __ANCHOR_IX_PARAM_COUNT: usize = #count;
 
+                    #instruction_arg_names_helper
                     #type_validation_methods
                 }
             }
