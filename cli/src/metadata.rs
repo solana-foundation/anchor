@@ -41,9 +41,14 @@ impl IdlCommand {
 
     pub fn status(self) -> io::Result<ExitStatus> {
         let mut command = Command::new("npx");
+        // Force on first-time install
+        command.arg("--yes");
+        // Use pinned version
         command.arg(format!(
-            "@solana-program/program-metadata@{PMP_CLIENT_VERSION}"
+            "--package=@solana-program/program-metadata@{PMP_CLIENT_VERSION}"
         ));
+        command.arg("--");
+        command.arg("program-metadata");
         command.args(["--rpc", &self.rpc_url]);
         command.args(self.subcommand.args());
         command.status()
