@@ -32,7 +32,7 @@ pub enum ProgramTemplate {
 pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+        ("Cargo.toml".into(), workspace_manifest()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
@@ -171,12 +171,17 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     ]
 }
 
-const fn workspace_manifest() -> &'static str {
-    r#"[workspace]
+fn workspace_manifest() -> String {
+    format!(
+        r#"[workspace]
 members = [
     "programs/*"
 ]
 resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [profile.release]
 overflow-checks = true
@@ -187,6 +192,7 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+    )
 }
 
 fn cargo_toml(name: &str, with_mollusk: bool) -> String {
@@ -205,7 +211,8 @@ mollusk-svm = "~0.4"
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -660,7 +667,7 @@ impl TestTemplate {
                 }
             }
             Self::Rust => "cargo test".to_owned(),
-            Self::Mollusk => "cargo test-sbf".to_owned(),
+            Self::Mollusk => "cargo test-sbf --tools-version v1.52".to_owned(),
         }
     }
 
