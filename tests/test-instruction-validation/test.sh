@@ -5,7 +5,7 @@ set -e
 echo "Test 1: Running FAIL-ARGS-COUNT case (expects compilation error)..."
 cd fail-args-count
 output=$(anchor build --ignore-keys 2>&1) || true
-if echo "$output" | grep -q "expects MORE args"; then
+if echo "$output" | grep -q "expects more args"; then
     echo "PASS: FAIL-ARGS-COUNT case correctly caught parameter mismatch at compile time"
 else
     echo "FAIL: Expected compilation error but build succeeded or wrong error"
@@ -52,7 +52,7 @@ cd ..
 
 echo "Test 5: Running PASS-PARTIAL-ARGS case (in-order partial args with runtime tests)..."
 cd pass-partial-args
-output=$(anchor test --ignore-keys 2>&1) || true
+output=$(anchor test 2>&1) || true
 if echo "$output" | grep -q "passing"; then
     echo "PASS: PASS-PARTIAL-ARGS compiled and all runtime tests passed"
 else
