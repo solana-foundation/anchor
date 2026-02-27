@@ -8,10 +8,11 @@ use crate::solana_program::pubkey::Pubkey;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
 };
-use std::collections::BTreeSet;
-use std::fmt;
-use std::marker::PhantomData;
-use std::ops::Deref;
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
+use core::fmt;
+use core::marker::PhantomData;
+use core::ops::Deref;
 
 /// Type validating that the account is the given Program
 ///

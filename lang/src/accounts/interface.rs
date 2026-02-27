@@ -9,8 +9,9 @@ use crate::{
     AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
     ToAccountMetas,
 };
-use std::collections::BTreeSet;
-use std::ops::Deref;
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
+use core::ops::Deref;
 
 /// Type validating that the account is one of a set of given Programs
 ///
