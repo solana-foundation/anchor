@@ -38,13 +38,6 @@ fn parse_priority_fee_from_args(args: &[String]) -> Option<u64> {
         .and_then(|pair| pair[1].parse().ok())
 }
 
-/// Calculate the IDL account address for a program
-fn idl_account_address(program_id: &Pubkey) -> Pubkey {
-    let program_signer = Pubkey::find_program_address(&[], program_id).0;
-    Pubkey::create_with_seed(&program_signer, "anchor:idl", program_id)
-        .expect("Seed is always valid")
-}
-
 /// Discover Solana programs from a non-Anchor Cargo workspace
 pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
     let current_dir = std::env::current_dir()?;
@@ -703,21 +696,19 @@ pub fn program_deploy(
                 cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1");
 
             if is_localnet {
+                // IDL deployment is skipped on localnet by default.
+                // Use `anchor idl init --allow-localnet` to deploy on localnet.
                 println!("Skipping IDL deployment on localnet");
             } else {
-                // Check if IDL account already exists
-                let idl_address = idl_account_address(&program_id);
-                let idl_account_exists = rpc_client.get_account(&idl_address).is_ok();
-
-                if idl_account_exists {
-                    // IDL account exists, upgrade it
-                    crate::idl_upgrade(cfg_override, idl_filepath, None)?;
-                } else {
-                    // IDL account doesn't exist, create it
-                    crate::idl_init(cfg_override, idl_filepath, None, false)?;
-                }
-
-                println!("✓ Idl account created: {}", idl_address);
+                crate::idl_init(
+                    Some(program_id),
+                    cfg_override,
+                    idl_filepath,
+                    None,
+                    false,
+                    false,
+                )?;
+                println!("✓ Idl metadata created/updated");
             }
         } else {
             println!(

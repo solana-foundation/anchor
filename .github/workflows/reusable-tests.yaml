@@ -86,9 +86,9 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: cargo install --path cli anchor-cli --locked --force --debug
+      - run: cargo install --path cli anchor-cli --locked --force --debug --features idl-localnet-testing
         if: env.CARGO_PROFILE == 'debug'
-      - run: cargo install --path cli anchor-cli --locked --force
+      - run: cargo install --path cli anchor-cli --locked --force --features idl-localnet-testing
         if: env.CARGO_PROFILE != 'debug'
 
       - run: chmod +x ~/.cargo/bin/anchor
