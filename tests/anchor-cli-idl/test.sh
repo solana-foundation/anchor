@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# FIXME: For some reason, in CI, executing with NPX results in `sh: program-metadata: not found`
+# Installing this globally fixes this in CI, but this should be investigated and fixed properly
+# Implementing IDL fetching via Rust client will make this redundant
+npm install --global @solana-program/program-metadata@0.5.1
 DEPLOYER_KEYPAIR="keypairs/deployer-keypair.json"
 PROGRAM_ONE="2uA3amp95zsEHUpo8qnLMhcFAUsiKVEcKHXS1JetFjU5"
 
