@@ -15,16 +15,8 @@ describe("Test CLI IDL commands", () => {
   const programOne = anchor.workspace.IdlCommandsOne as Program<IdlCommandsOne>;
   const programTwo = anchor.workspace.IdlCommandsTwo as Program<IdlCommandsTwo>;
 
-  // FIXME: Once the TS client is updated to use PMP, this should use the TS API and not CLI
   const fetchIdl = async (programId) => {
-    let idl;
-    try {
-      idl = execSync(`anchor idl fetch ${programId}`).toString();
-    } catch {
-      // CLI errors on failure, TS API returns null
-      return null;
-    }
-    return JSON.parse(idl);
+    return await anchor.Program.fetchIdl(programId, provider);
   };
 
   it("Can initialize IDL account", async () => {
