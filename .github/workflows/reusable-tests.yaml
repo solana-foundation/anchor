@@ -478,6 +478,8 @@ jobs:
             path: tests/lazy-account
           - cmd: cd tests/test-instruction-validation && ./test.sh
             path: tests/test-instruction-validation
+          - cmd: cd tests/pda-payer && anchor test
+            path: tests/pda-payer
 
     steps:
       - uses: actions/checkout@v3

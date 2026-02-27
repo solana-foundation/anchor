@@ -1,0 +1,16 @@
+[features]
+seeds = true
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+pda_payer = "55cqWEVF1WMMBxzW6BPHTV2KGZ5NT9454sjfU58j2a4j"
+
+[workspace]
+members = ["programs/pda-payer"]
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
