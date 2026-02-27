@@ -1,4 +1,4 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
+use crate::{get_keypair, is_hidden, keys_sync, target_dir, DEFAULT_RPC_PORT};
 use anchor_client::Cluster;
 use anchor_lang_idl::types::Idl;
 use anyhow::{anyhow, bail, Context, Error, Result};
@@ -219,7 +219,7 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = Path::new("target")
+            let idl_filepath = target_dir()?
                 .join("idl")
                 .join(&lib_name)
                 .with_extension("json");
@@ -561,7 +561,7 @@ impl Config {
                     if filename.to_str() == Some("Anchor.toml") {
                         // Make sure the program id is correct (only on the initial build)
                         let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                        let deploy_dir = target_dir()?.join("deploy");
                         if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
                             println!("Updating program ids...");
                             fs::create_dir_all(deploy_dir)?;
@@ -1463,7 +1463,7 @@ impl Program {
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        let deploy_dir_path = Path::new("target").join("deploy");
+        let deploy_dir_path = target_dir()?.join("deploy");
         fs::create_dir_all(&deploy_dir_path)
             .with_context(|| format!("Error creating directory with path: {deploy_dir_path:?}"))?;
         let path = std::env::current_dir()
@@ -1484,7 +1484,8 @@ impl Program {
     }
 
     pub fn binary_path(&self, verifiable: bool) -> PathBuf {
-        let path = Path::new("target")
+        let path = target_dir()
+            .expect("Unable to determine `target` dir")
             .join(if verifiable { "verifiable" } else { "deploy" })
             .join(&self.lib_name)
             .with_extension("so");
