@@ -2875,14 +2875,33 @@ fn account(
 
     let idl = idl_filepath.map_or_else(
         || {
-            Config::discover(cfg_override)?
-                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?
+            let config = Config::discover(cfg_override)?
+                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?;
+            let programs = config
                 .read_all_programs()
-                .expect("Workspace must contain atleast one program.")
-                .into_iter()
-                .find(|p| p.lib_name == *program_name)
-                .ok_or_else(|| anyhow!("Program {program_name} not found in workspace."))
-                .map(|p| p.idl)?
+                .expect("Workspace must contain atleast one program.");
+
+            let program = programs
+                .iter()
+                .find(|p| p.lib_name.eq_ignore_ascii_case(program_name))
+                .ok_or_else(|| {
+                    let mut available_programs: Vec<String> = programs
+                        .iter()
+                        .map(|p| p.lib_name.clone())
+                        .collect();
+                    available_programs.sort();
+
+                    if available_programs.is_empty() {
+                        anyhow!("Program '{program_name}' not found in workspace. No programs available.")
+                    } else {
+                        anyhow!(
+                            "Program '{program_name}' not found in workspace.\n\nAvailable programs:\n  {}",
+                            available_programs.join("\n  ")
+                        )
+                    }
+                })?;
+
+            program.idl.clone()
                 .ok_or_else(|| {
                     anyhow!(
                         "IDL not found. Please build the program atleast once to generate the IDL."
@@ -2892,7 +2911,7 @@ fn account(
         |idl_path| {
             let idl = fs::read(idl_path)?;
             let idl = convert_idl(&idl)?;
-            if idl.metadata.name != program_name {
+            if !idl.metadata.name.eq_ignore_ascii_case(program_name) {
                 return Err(anyhow!("IDL does not match program {program_name}."));
             }
 
@@ -2911,9 +2930,25 @@ fn account(
     let disc_len = idl
         .accounts
         .iter()
-        .find(|acc| acc.name == account_type_name)
+        .find(|acc| acc.name.eq_ignore_ascii_case(account_type_name))
         .map(|acc| acc.discriminator.len())
-        .ok_or_else(|| anyhow!("Account `{account_type_name}` not found in IDL"))?;
+        .ok_or_else(|| {
+            let mut available_accounts: Vec<String> = idl
+                .accounts
+                .iter()
+                .map(|acc| acc.name.clone())
+                .collect();
+            available_accounts.sort();
+
+            if available_accounts.is_empty() {
+                anyhow!("Account '{account_type_name}' not found in IDL. No accounts available in program '{program_name}'.")
+            } else {
+                anyhow!(
+                    "Account '{account_type_name}' not found in IDL.\n\nAvailable accounts in program '{program_name}':\n  {}",
+                    available_accounts.join("\n  ")
+                )
+            }
+        })?;
     let mut data_view = &data[disc_len..];
 
     let deserialized_json =
@@ -2936,9 +2971,17 @@ fn deserialize_idl_defined_type_to_json(
     let defined_type = &idl
         .accounts
         .iter()
-        .find(|acc| acc.name == defined_type_name)
-        .and_then(|acc| idl.types.iter().find(|ty| ty.name == acc.name))
-        .or_else(|| idl.types.iter().find(|ty| ty.name == defined_type_name))
+        .find(|acc| acc.name.eq_ignore_ascii_case(defined_type_name))
+        .and_then(|acc| {
+            idl.types
+                .iter()
+                .find(|ty| ty.name.eq_ignore_ascii_case(&acc.name))
+        })
+        .or_else(|| {
+            idl.types
+                .iter()
+                .find(|ty| ty.name.eq_ignore_ascii_case(defined_type_name))
+        })
         .ok_or_else(|| anyhow!("Type `{}` not found in IDL.", defined_type_name))?
         .ty;
 
@@ -4346,8 +4389,8 @@ fn airdrop(cfg_override: &ConfigOverride, amount: f64, pubkey: Option<Pubkey>) -
     // Get cluster URL and wallet path
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
-    // Create RPC client
-    let client = RpcClient::new(cluster_url);
+    // Create RPC client with confirmed commitment
+    let client = RpcClient::new_with_commitment(cluster_url, CommitmentConfig::confirmed());
 
     // Determine recipient
     let recipient_pubkey = if let Some(pubkey) = pubkey {
@@ -4362,23 +4405,29 @@ fn airdrop(cfg_override: &ConfigOverride, amount: f64, pubkey: Option<Pubkey>) -
     // Convert SOL to lamports
     let lamports = (amount * 1_000_000_000.0) as u64;
 
-    // Request airdrop
+    // Get recent blockhash for airdrop
+    let recent_blockhash = client
+        .get_latest_blockhash()
+        .map_err(|e| anyhow!("Failed to get recent blockhash: {}", e))?;
+
+    // Request airdrop with blockhash
     println!("Requesting airdrop of {} SOL...", amount);
     let signature = client
-        .request_airdrop(&recipient_pubkey, lamports)
+        .request_airdrop_with_blockhash(&recipient_pubkey, lamports, &recent_blockhash)
         .map_err(|e| anyhow!("Airdrop request failed: {}", e))?;
 
     println!("Signature: {}", signature);
-    println!("Waiting for confirmation...");
 
-    // Wait for confirmation
+    // Wait for confirmation with the same blockhash used for the airdrop
     client
-        .confirm_transaction(&signature)
+        .confirm_transaction_with_spinner(&signature, &recent_blockhash, client.commitment())
         .map_err(|e| anyhow!("Transaction confirmation failed: {}", e))?;
+
+    println!("Airdrop confirmed!");
 
     // Get and display the new balance
     let balance = client.get_balance(&recipient_pubkey)?;
-    println!("{}", format_sol(balance));
+    println!("Balance: {}", format_sol(balance));
 
     Ok(())
 }
@@ -4549,8 +4598,22 @@ fn run(cfg_override: &ConfigOverride, script: String, script_args: Vec<String>) 
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let script = cfg
             .scripts
-            .get(&script)
-            .ok_or_else(|| anyhow!("Unable to find script"))?;
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(&script))
+            .map(|(_, cmd)| cmd)
+            .ok_or_else(|| {
+                let mut available_scripts: Vec<String> = cfg.scripts.keys().cloned().collect();
+                available_scripts.sort();
+
+                if available_scripts.is_empty() {
+                    anyhow!("Script '{script}' not found. No scripts defined in Anchor.toml.")
+                } else {
+                    anyhow!(
+                        "Script '{script}' not found.\n\nAvailable scripts:\n  {}",
+                        available_scripts.join("\n  ")
+                    )
+                }
+            })?;
         let script_with_args = format!("{script} {}", script_args.join(" "));
         let exit = std::process::Command::new("bash")
             .arg("-c")

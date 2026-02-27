@@ -239,17 +239,36 @@ impl WithPath<Config> {
 
     /// Read and get all the programs from the workspace.
     ///
-    /// This method will only return the given program if `name` exists.
+    /// This method will only return the given program if `name` exists and is case insensitive.
     pub fn get_programs(&self, name: Option<String>) -> Result<Vec<Program>> {
         let programs = self.read_all_programs()?;
         let programs = match name {
             Some(name) => vec![programs
-                .into_iter()
+                .iter()
                 .find(|program| {
-                    name == program.lib_name
-                        || name == program.path.file_name().unwrap().to_str().unwrap()
+                    program.lib_name.eq_ignore_ascii_case(&name)
+                        || program
+                            .path
+                            .file_name()
+                            .and_then(|f| f.to_str())
+                            .map(|f| f.eq_ignore_ascii_case(&name))
+                            .unwrap_or(false)
                 })
-                .ok_or_else(|| anyhow!("Program {name} not found"))?],
+                .cloned()
+                .ok_or_else(|| {
+                    let mut available_programs: Vec<String> =
+                        programs.iter().map(|p| p.lib_name.clone()).collect();
+                    available_programs.sort();
+
+                    if available_programs.is_empty() {
+                        anyhow!("Program '{name}' not found. No programs available in workspace.")
+                    } else {
+                        anyhow!(
+                            "Program '{name}' not found.\n\nAvailable programs:\n  {}",
+                            available_programs.join("\n  ")
+                        )
+                    }
+                })?],
             None => programs,
         };
 
