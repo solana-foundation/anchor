@@ -221,6 +221,65 @@ pub fn sync_native(ctx: CpiContext<'_, '_, SyncNative>) -> Result<()> {
     ix.invoke().map_err(Into::into)
 }
 
+pub fn ui_amount_to_amount(
+    ctx: CpiContext<'_, '_, UiAmountToAmount>,
+    ui_amount: &str,
+) -> Result<u64> {
+    let ix = pinocchio_token::instructions::UiAmountToAmount::<128> {
+        mint: &ctx.accounts.mint,
+        amount: ui_amount,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    let amount_bytes: [u8; 8] = data
+        .as_slice()
+        .get(..8)
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?
+        .try_into()
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    Ok(u64::from_le_bytes(amount_bytes))
+}
+
+pub fn get_account_data_size(ctx: CpiContext<'_, '_, GetAccountDataSize>) -> Result<u64> {
+    let ix = pinocchio_token::instructions::GetAccountDataSize {
+        mint: &ctx.accounts.mint,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    let amount_bytes: [u8; 8] = data
+        .as_slice()
+        .get(..8)
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?
+        .try_into()
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    Ok(u64::from_le_bytes(amount_bytes))
+}
+
+pub fn amount_to_ui_amount(
+    ctx: CpiContext<'_, '_, AmountToUiAmount>,
+    amount: u64,
+) -> Result<String> {
+    let ix = pinocchio_token::instructions::AmountToUiAmount {
+        mint: &ctx.accounts.mint,
+        amount,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    String::from_utf8(data.as_slice().to_vec())
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize.into())
+}
+
+pub fn initialize_immutable_owner(ctx: CpiContext<'_, '_, InitializeImmutableOwner>) -> Result<()> {
+    let ix = pinocchio_token::instructions::InitializeImmutableOwner {
+        account: &ctx.accounts.account,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct Transfer {
     pub from: AccountInfo,
@@ -333,6 +392,26 @@ pub struct SetAuthority {
 
 #[derive(Accounts)]
 pub struct SyncNative {
+    pub account: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct UiAmountToAmount {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct GetAccountDataSize {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct AmountToUiAmount {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct InitializeImmutableOwner {
     pub account: AccountInfo,
 }
 
