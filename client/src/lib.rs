@@ -522,7 +522,7 @@ impl<'a, 'b, 'c, 'd> From<InstructionView<'a, 'b, 'c, 'd>>
     for InstructionViewWrapper<'a, 'b, 'c, 'd>
 {
     fn from(view: InstructionView<'a, 'b, 'c, 'd>) -> Self {
-        InstructionViewWrapper(view) 
+        InstructionViewWrapper(view)
     }
 }
 

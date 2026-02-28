@@ -4,7 +4,7 @@ use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
-use pinocchio_token_2022::ID;
+use pinocchio_token_2022::{instructions::ExtensionDiscriminator, ID};
 
 #[deprecated(
     since = "0.28.0",
@@ -243,6 +243,33 @@ pub fn sync_native(ctx: CpiContext<'_, '_, SyncNative>) -> Result<()> {
     ix.invoke().map_err(Into::into)
 }
 
+pub fn create_native_mint(ctx: CpiContext<'_, '_, CreateNativeMint>) -> Result<()> {
+    let ix = pinocchio_token_2022::instructions::CreateNativeMint {
+        payer: &ctx.accounts.payer,
+        native_mint: &ctx.accounts.native_mint,
+        system_program: &ctx.accounts.system_program,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+}
+
+pub fn reallocate(
+    ctx: CpiContext<'_, '_, Reallocate>,
+    extensions: &[ExtensionDiscriminator],
+) -> Result<()> {
+    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::Reallocate {
+        payer: &ctx.accounts.payer,
+        account: &ctx.accounts.account,
+        owner: &ctx.accounts.owner,
+        multisig_signers: &signers,
+        extensions,
+        token_program: &ctx.program_id,
+        system_program: &ctx.accounts.system_program,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+}
+
 pub fn unwrap_lamports(ctx: CpiContext<'_, '_, UnwrapLamports>, amount: Option<u64>) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::UnwrapLamports {
         source: &ctx.accounts.account,
@@ -253,6 +280,84 @@ pub fn unwrap_lamports(ctx: CpiContext<'_, '_, UnwrapLamports>, amount: Option<u
         token_program: &ctx.program_id,
     };
     ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+}
+
+pub fn withdraw_excess_lamports(ctx: CpiContext<'_, '_, WidthdrawExcessLamports>) -> Result<()> {
+    let ix = pinocchio_token_2022::instructions::WidthdrawExcessLamports {
+        source: &ctx.accounts.source,
+        destination: &ctx.accounts.destination,
+        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>(),
+        authority: &ctx.accounts.authority,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+}
+
+pub fn ui_amount_to_amount(
+    ctx: CpiContext<'_, '_, UiAmountToAmount>,
+    ui_amount: &str,
+) -> Result<u64> {
+    let ix = pinocchio_token_2022::instructions::UiAmountToAmount::<128> {
+        mint: &ctx.accounts.mint,
+        amount: ui_amount,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    let amount_bytes: [u8; 8] = data
+        .as_slice()
+        .get(..8)
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?
+        .try_into()
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    Ok(u64::from_le_bytes(amount_bytes))
+}
+
+pub fn get_account_data_size(
+    ctx: CpiContext<'_, '_, GetAccountDataSize>,
+    extensions: &[ExtensionDiscriminator],
+) -> Result<u64> {
+    let ix = pinocchio_token_2022::instructions::GetAccountDataSize {
+        mint: &ctx.accounts.mint,
+        token_program: &ctx.program_id,
+        extensions,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    let amount_bytes: [u8; 8] = data
+        .as_slice()
+        .get(..8)
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?
+        .try_into()
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    Ok(u64::from_le_bytes(amount_bytes))
+}
+
+pub fn amount_to_ui_amount(
+    ctx: CpiContext<'_, '_, AmountToUiAmount>,
+    amount: u64,
+) -> Result<String> {
+    let ix = pinocchio_token_2022::instructions::AmountToUiAmount {
+        mint: &ctx.accounts.mint,
+        amount,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    let data = anchor_lang::pinocchio_runtime::program::get_return_data()
+        .ok_or(anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+    String::from_utf8(data.as_slice().to_vec())
+        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize.into())
+}
+
+pub fn initialize_immutable_owner(ctx: CpiContext<'_, '_, InitializeImmutableOwner>) -> Result<()> {
+    let ix = pinocchio_token_2022::instructions::InitializeImmutableOwner {
+        account: &ctx.accounts.account,
+        token_program: &ctx.program_id,
+    };
+    ix.invoke().map_err(anchor_lang::error::Error::from)?;
+    Ok(())
 }
 
 #[derive(Accounts)]
@@ -383,10 +488,52 @@ pub struct SyncNative {
 }
 
 #[derive(Accounts)]
+pub struct CreateNativeMint {
+    pub payer: AccountInfo,
+    pub native_mint: AccountInfo,
+    pub system_program: AccountInfo,
+}
+
+#[derive(Accounts)]
 pub struct UnwrapLamports {
     pub account: AccountInfo,
     pub destination: AccountInfo,
     pub authority: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct WidthdrawExcessLamports {
+    pub source: AccountInfo,
+    pub destination: AccountInfo,
+    pub authority: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct Reallocate {
+    pub payer: AccountInfo,
+    pub account: AccountInfo,
+    pub owner: AccountInfo,
+    pub system_program: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct UiAmountToAmount {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct GetAccountDataSize {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct AmountToUiAmount {
+    pub mint: AccountInfo,
+}
+
+#[derive(Accounts)]
+pub struct InitializeImmutableOwner {
+    pub account: AccountInfo,
 }
 
 #[derive(Clone)]
