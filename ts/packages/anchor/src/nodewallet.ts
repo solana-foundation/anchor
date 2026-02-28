@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import {
   Keypair,
   PublicKey,
@@ -24,7 +23,7 @@ export default class NodeWallet implements Wallet {
     }
 
     const payer = Keypair.fromSecretKey(
-      Buffer.from(
+      Uint8Array.from(
         JSON.parse(
           require("fs").readFileSync(process.env.ANCHOR_WALLET, {
             encoding: "utf-8",

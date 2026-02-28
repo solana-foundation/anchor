@@ -5,6 +5,14 @@ import { Idl, IdlDiscriminator } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
 import { EventCoder } from "../index.js";
 
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 export class BorshEventCoder implements EventCoder {
   /**
    * Maps account type identifier to a layout.
@@ -54,8 +62,13 @@ export class BorshEventCoder implements EventCoder {
     }
 
     for (const [name, layout] of this.layouts) {
-      const givenDisc = logArr.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      const givenDisc = Uint8Array.from(
+        logArr.subarray(0, layout.discriminator.length)
+      );
+      const matches = bytesEqual(
+        Uint8Array.from(layout.discriminator),
+        givenDisc
+      );
       if (matches) {
         return {
           name,

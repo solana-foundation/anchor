@@ -1,15 +1,16 @@
 import { Commitment, PublicKey } from "@solana/web3.js";
-import { inflate } from "pako";
-import { BorshCoder, Coder } from "../coder/index.js";
 import {
-  Idl,
-  IdlInstruction,
-  convertIdlToCamelCase,
-  decodeIdlAccount,
-  idlAddress,
-} from "../idl.js";
+  DataSource,
+  fetchMaybeMetadataFromSeeds,
+  Format,
+  unpackAndFetchData,
+  unpackDirectData,
+} from "@solana-program/program-metadata";
+import { address } from "@solana/addresses";
+import { createSolanaRpc } from "@solana/kit";
+import { BorshCoder, Coder } from "../coder/index.js";
+import { Idl, IdlInstruction, convertIdlToCamelCase } from "../idl.js";
 import Provider, { getProvider } from "../provider.js";
-import { utf8 } from "../utils/bytes/index.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
 import { Address, translateAddress } from "./common.js";
 import { EventManager } from "./event.js";
@@ -345,21 +346,32 @@ export class Program<IDL extends Idl = Idl> {
    * @param provider  The network and wallet context.
    */
   public static async fetchIdl<IDL extends Idl = Idl>(
-    address: Address,
+    programAddress: Address,
     provider?: Provider
   ): Promise<IDL | null> {
     provider = provider ?? getProvider();
-    const programId = translateAddress(address);
-
-    const idlAddr = await idlAddress(programId);
-    const accountInfo = await provider.connection.getAccountInfo(idlAddr);
-    if (!accountInfo) {
+    const rpc = createSolanaRpc(provider.connection.rpcEndpoint);
+    const program = address(programAddress.toString());
+    const metadataAccount = await fetchMaybeMetadataFromSeeds(rpc, {
+      program,
+      authority: null,
+      seed: "idl",
+    });
+    if (!metadataAccount.exists) {
       return null;
     }
-    // Chop off account discriminator.
-    let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
-    const inflatedIdl = inflate(idlAccount.data);
-    return JSON.parse(utf8.decode(inflatedIdl));
+    if (metadataAccount.data.dataSource !== DataSource.Direct) {
+      throw new Error(
+        `IDL has source '${metadataAccount.data.dataSource.toString()}', only directly embedded data is supported`
+      );
+    }
+    const content = unpackDirectData(metadataAccount.data);
+    if (metadataAccount.data.format !== Format.Json) {
+      throw new Error(
+        `IDL has data format '${metadataAccount.data.format.toString()}', only JSON IDLs are supported`
+      );
+    }
+    return JSON.parse(content);
   }
 
   /**
