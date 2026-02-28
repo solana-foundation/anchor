@@ -1,0 +1,24 @@
+[package]
+name = "anchor-test-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+anchor-lang = { path = "../../lang" }
+borsh = "1.5.7"
+litesvm = "0.9.1"
+mpl-token-metadata = "5.1.2-alpha.1"
+spl-associated-token-account-interface = "2.0.0"
+spl-token-interface = "2.0.0"
+
+solana-account.workspace = true
+solana-keypair.workspace = true
+solana-loader-v3-interface.workspace = true
+solana-program-option.workspace = true
+solana-program-pack.workspace = true
+solana-pubkey.workspace = true
+solana-rpc-client.workspace = true
+solana-sdk-ids.workspace = true
+solana-sysvar.workspace = true
+solana-transaction.workspace = true

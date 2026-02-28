@@ -88,7 +88,7 @@ pub mod auction_house {
         create_program_token_account_if_not_present(
             auction_house_treasury,
             system_program,
-            &payer,
+            payer,
             token_program,
             treasury_mint,
             &auction_house.to_account_info(),
@@ -288,7 +288,7 @@ pub mod auction_house {
                     associated_token_program.to_account_info(),
                     token_program.to_account_info(),
                     system_program.to_account_info(),
-                    &fee_seeds,
+                    fee_seeds,
                 )?;
             }
 
@@ -362,15 +362,12 @@ pub mod auction_house {
         if !wallet.to_account_info().is_signer {
             if buyer_price == 0 {
                 return err!(ErrorCode::SaleRequiresSigner);
-            } else {
-                if free_seller_trade_state.data_is_empty() {
-                    return err!(ErrorCode::SaleRequiresSigner);
-                } else if !free_seller_trade_state.data_is_empty()
-                    && (!authority.to_account_info().is_signer
-                        || !auction_house.can_change_sale_price)
-                {
-                    return err!(ErrorCode::SaleRequiresSigner);
-                }
+            } else if free_seller_trade_state.data_is_empty() {
+                return err!(ErrorCode::SaleRequiresSigner);
+            } else if !free_seller_trade_state.data_is_empty()
+                && (!authority.to_account_info().is_signer || !auction_house.can_change_sale_price)
+            {
+                return err!(ErrorCode::SaleRequiresSigner);
             }
         }
 
@@ -445,7 +442,7 @@ pub mod auction_house {
                 *ctx.program_id,
                 &ts_info,
                 &rent.to_account_info(),
-                &system_program,
+                system_program,
                 &fee_payer,
                 TRADE_STATE_SIZE,
                 fee_seeds,
@@ -653,7 +650,7 @@ pub mod auction_house {
                 *ctx.program_id,
                 &ts_info,
                 &rent.to_account_info(),
-                &system_program,
+                system_program,
                 &fee_payer,
                 TRADE_STATE_SIZE,
                 fee_seeds,
@@ -705,10 +702,10 @@ pub mod auction_house {
             return err!(ErrorCode::CannotMatchFreeSalesWithoutAuctionHouseOrSellerSignoff);
         }
 
-        let token_account_mint = get_mint_from_token_account(&token_account)?;
+        let token_account_mint = get_mint_from_token_account(token_account)?;
 
         assert_keys_equal(token_mint.key(), token_account_mint)?;
-        let delegate = get_delegate_from_token_account(&token_account)?;
+        let delegate = get_delegate_from_token_account(token_account)?;
         if let Some(d) = delegate {
             assert_keys_equal(program_as_signer.key(), d)?;
         } else {
@@ -784,8 +781,8 @@ pub mod auction_house {
 
         let buyer_leftover_after_royalties = pay_creator_fees(
             &mut ctx.remaining_accounts.iter(),
-            &metadata,
-            &escrow_payment_account,
+            metadata,
+            escrow_payment_account,
             &auction_house_clone,
             &fee_payer_clone,
             treasury_mint,
@@ -793,15 +790,15 @@ pub mod auction_house {
             &token_clone,
             system_program.as_ref(),
             &signer_seeds_for_royalties,
-            &fee_payer_seeds,
+            fee_payer_seeds,
             buyer_price,
             is_native,
         )?;
 
         let auction_house_fee_paid = pay_auction_house_fees(
-            &auction_house,
-            &auction_house_treasury,
-            &escrow_payment_account,
+            auction_house,
+            auction_house_treasury,
+            escrow_payment_account,
             &token_clone,
             system_program.as_ref(),
             &signer_seeds_for_royalties,
@@ -823,7 +820,7 @@ pub mod auction_house {
                     associated_token_program.to_account_info(),
                     token_program.to_account_info(),
                     system_program.to_account_info(),
-                    &fee_payer_seeds,
+                    fee_payer_seeds,
                 )?;
             }
 
@@ -859,7 +856,7 @@ pub mod auction_house {
             assert_keys_equal(seller_payment_receipt_account.key(), seller.key())?;
             invoke_signed(
                 &system_instruction::transfer(
-                    &escrow_payment_account.key,
+                    escrow_payment_account.key,
                     seller_payment_receipt_account.key,
                     buyer_leftover_after_royalties_and_house_fee,
                 ),
@@ -881,15 +878,12 @@ pub mod auction_house {
                 associated_token_program.to_account_info(),
                 token_program.to_account_info(),
                 system_program.to_account_info(),
-                &fee_payer_seeds,
+                fee_payer_seeds,
             )?;
         }
 
-        let buyer_rec_acct = assert_is_ata(
-            &buyer_receipt_token_account,
-            &buyer.key(),
-            &token_mint.key(),
-        )?;
+        let buyer_rec_acct =
+            assert_is_ata(buyer_receipt_token_account, &buyer.key(), &token_mint.key())?;
 
         // make sure you cant get rugged
         if buyer_rec_acct.delegate.is_some() {
@@ -1119,7 +1113,7 @@ pub struct CreateAuctionHouse<'info> {
     treasury_mint: Account<'info, Mint>,
     #[account(mut)]
     payer: Signer<'info>,
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(mut)]
     fee_withdrawal_destination: UncheckedAccount<'info>,
     treasury_withdrawal_destination_owner: UncheckedAccount<'info>,
@@ -1193,7 +1187,7 @@ pub struct Deposit<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds=[
@@ -1248,7 +1242,7 @@ pub struct Withdraw<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
     associated_token_program: Program<'info, AssociatedToken>,
@@ -1262,7 +1256,7 @@ pub struct Sell<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1336,7 +1330,7 @@ pub struct Cancel<'info> {
     #[account(mut)]
     token_account: Account<'info, TokenAccount>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     treasury_mint: UncheckedAccount<'info>,
     #[account(
         seeds=[
@@ -1389,7 +1383,7 @@ pub struct Buy<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1461,7 +1455,7 @@ pub struct ExecuteSale<'info> {
     #[account(mut)]
     buyer_receipt_token_account: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
