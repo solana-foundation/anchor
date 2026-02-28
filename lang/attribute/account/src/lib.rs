@@ -1,13 +1,14 @@
 extern crate proc_macro;
 
 use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
     parse_macro_input,
+    spanned::Spanned,
     token::{Comma, Paren},
-    Ident, LitStr,
+    Expr, Ident, LitStr,
 };
 
 mod id;
@@ -52,6 +53,8 @@ mod lazy;
 ///     - `discriminator = b"hi"`
 ///     - `discriminator = MY_DISC`
 ///     - `discriminator = get_disc(...)`
+///
+/// All-zeroed discriminators are not supported.
 ///
 /// # Zero Copy Deserialization
 ///
@@ -108,10 +111,43 @@ pub fn account(
     let account_name_str = account_name.to_string();
     let (impl_gen, type_gen, where_clause) = account_strct.generics.split_for_impl();
 
-    let discriminator = args
-        .overrides
-        .and_then(|ov| ov.discriminator)
-        .unwrap_or_else(|| {
+    fn is_zeroed_discriminator(mut discr: &Expr) -> bool {
+        // Peel references
+        while let Expr::Reference(syn::ExprReference { expr, .. }) = discr {
+            discr = expr;
+        }
+        match discr {
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(val),
+                ..
+            }) => val.base10_parse::<u128>().is_ok_and(|v| v == 0),
+            Expr::Array(arr) => arr.elems.iter().all(|expr| {
+                let Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(val),
+                    ..
+                }) = expr
+                else {
+                    return false;
+                };
+                val.base10_parse::<u128>().is_ok_and(|v| v == 0)
+            }),
+            _ => false,
+        }
+    }
+
+    let discriminator = match args.overrides.and_then(|ov| ov.discriminator) {
+        Some(discrim) => {
+            let zero_err = is_zeroed_discriminator(&discrim).then(||
+                quote_spanned! {discrim.span() => compile_error!("all-zero discriminators are not supported");}
+            );
+            quote! {
+                {
+                    #zero_err
+                    #discrim
+                }
+            }
+        }
+        None => {
             // Namespace the discriminator to prevent collisions.
             let namespace = if namespace.is_empty() {
                 "account"
@@ -120,7 +156,9 @@ pub fn account(
             };
 
             gen_discriminator(namespace, account_name)
-        });
+        }
+    };
+
     let disc = if account_strct.generics.lt_token.is_some() {
         quote! { #account_name::#type_gen::DISCRIMINATOR }
     } else {
