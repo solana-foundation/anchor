@@ -12,10 +12,10 @@ use solana_signature::Signature;
 use solana_signer::Signer;
 use solana_transaction::Transaction;
 
-use std::{marker::PhantomData, ops::Deref, sync::Arc};
+use std::{marker::PhantomData, ops::Deref};
 use tokio::{
     runtime::{Builder, Handle},
-    sync::RwLock,
+    sync::OnceCell,
 };
 
 impl EventUnsubscriber<'_> {
@@ -43,7 +43,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         Ok(Self {
             program_id,
             cfg,
-            sub_client: Arc::new(RwLock::new(None)),
+            sub_client: OnceCell::new(),
             internal_rpc_client: rpc_client,
             rt,
         })
