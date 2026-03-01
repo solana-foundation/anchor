@@ -147,8 +147,10 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
         self
     }
 
-    /// Sign and return a legacy transaction.
-    #[deprecated(note = "Use `signed_transaction_versioned(TxVersion::Legacy)` instead")]
+    /// Build and sign a transaction.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use `signed_transaction_versioned`.
     pub async fn signed_transaction(&self) -> Result<Transaction, ClientError> {
         self.signed_transaction_internal(TxVersion::Legacy)
             .await
@@ -166,12 +168,22 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
     /// // Legacy transaction
-    /// let tx = request.signed_transaction_versioned(TxVersion::Legacy).await?;
+    /// let tx = request.signed_transaction_versioned(TxVersion::Legacy).unwrap();
     ///
     /// // V0 transaction
-    /// let tx = request.signed_transaction_versioned(TxVersion::V0(&[])).await?;
+    /// let tx = request.signed_transaction_versioned(TxVersion::V0(&[lookup_table])).unwrap();
     /// ```
     pub async fn signed_transaction_versioned(
         &self,
@@ -180,8 +192,10 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
         self.signed_transaction_internal(version).await
     }
 
-    /// Send a legacy transaction.
-    #[deprecated(note = "Use `send_versioned(TxVersion::Legacy)` instead")]
+    /// Send a transaction.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use `send_versioned`.
     pub async fn send(&self) -> Result<Signature, ClientError> {
         self.send_internal(TxVersion::Legacy).await
     }
@@ -194,21 +208,33 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    ///
+    /// let request = program.request();
     /// // Legacy transaction
-    /// let sig = request.send_versioned(TxVersion::Legacy).await?;
+    /// let sig = request.send_versioned(TxVersion::Legacy).unwrap();
     ///
     /// // V0 transaction with lookup tables
-    /// let sig = request.send_versioned(TxVersion::V0(&[lookup_table])).await?;
+    /// let sig = request.send_versioned(TxVersion::V0(&[lookup_table])).unwrap();
     /// ```
     pub async fn send_versioned(&self, version: TxVersion<'_>) -> Result<Signature, ClientError> {
         self.send_internal(version).await
     }
 
-    /// Send a legacy transaction with spinner and config.
-    #[deprecated(
-        note = "Use `send_with_spinner_and_config_versioned(TxVersion::Legacy, config)` instead"
-    )]
+    /// Send a transaction with spinner and config.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use `send_with_spinner_and_config_versioned`.
     pub async fn send_with_spinner_and_config(
         &self,
         config: RpcSendTransactionConfig,

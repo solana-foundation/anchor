@@ -635,7 +635,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         instructions
     }
 
-    #[deprecated(note = "Use `transaction_versioned(TxVersion::Legacy, blockhash)` instead")]
+    /// Build the request into a transaction.
+    ///
+    /// Note: This will build a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use `transaction_versioned`.
     pub fn transaction(&self) -> Transaction {
         let instructions = &self.instructions();
         Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
@@ -650,16 +653,31 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    /// use solana_message::Hash;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// // Dummy blockhash
+    /// let blockhash = Hash::from([0; 32]);
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    ///
+    /// let request = program.request();
     /// // Legacy transaction
-    /// let tx = request.transaction_versioned(TxVersion::Legacy, blockhash)?;
+    /// let tx = request.transaction_versioned(TxVersion::Legacy, blockhash).unwrap();
     ///
     /// // V0 transaction with address lookup tables
-    /// let tx = request.transaction_versioned(TxVersion::V0(&[lookup_table]), blockhash)?;
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[lookup_table]), blockhash).unwrap();
     ///
     /// // V0 transaction without lookup tables
-    /// let tx = request.transaction_versioned(TxVersion::V0(&[]), blockhash)?;
-    /// ```
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[]), blockhash).unwrap();
+    //// ```
     pub fn transaction_versioned(
         &self,
         version: TxVersion<'_>,
