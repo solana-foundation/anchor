@@ -29,6 +29,9 @@ importers:
       lucide-react:
         specifier: ^0.454.0
         version: 0.454.0(react@18.3.1)
+      markdown-to-jsx:
+        specifier: ^9.4.1
+        version: 9.5.1(react@18.3.1)
       next:
         specifier: 15.1.10
         version: 15.1.10(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -42,6 +45,21 @@ importers:
         specifier: ^3.23.8
         version: 3.24.2
     devDependencies:
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
+      '@types/estree':
+        specifier: ^1.0.6
+        version: 1.0.6
+      '@types/estree-jsx':
+        specifier: ^1.0.3
+        version: 1.0.5
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.4
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       '@types/mdx':
         specifier: ^2.0.13
         version: 2.0.13
@@ -54,6 +72,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.5(@types/react@18.3.18)
+      '@types/unist':
+        specifier: ^3.0.3
+        version: 3.0.3
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.21(postcss@8.5.3)
@@ -2539,6 +2560,24 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  markdown-to-jsx@9.5.1:
+    resolution: {integrity: sha512-VAlQIdZYrxRvLQnmPDG3OTpuaF2nhV0qyk95klhmPD8HfEzSHiV+VRWx5KHksfiZThAk8nByDj3ZDgSzU70nMQ==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      react: '>= 16.0.0'
+      react-native: '*'
+      solid-js: '>=1.0.0'
+      vue: '>=3.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-native:
+        optional: true
+      solid-js:
+        optional: true
+      vue:
+        optional: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -6227,6 +6266,10 @@ snapshots:
   markdown-extensions@2.0.0: {}
 
   markdown-table@3.0.4: {}
+
+  markdown-to-jsx@9.5.1(react@18.3.1):
+    optionalDependencies:
+      react: 18.3.1
 
   math-intrinsics@1.1.0: {}
 
