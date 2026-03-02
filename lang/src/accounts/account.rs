@@ -8,7 +8,7 @@ use crate::solana_program::pubkey::Pubkey;
 use crate::solana_program::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
-    Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    Result, ToAccountInfos, ToAccountMetas,
 };
 use std::collections::BTreeSet;
 use std::fmt;
@@ -371,7 +371,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
     for Account<'info, T>
 {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.as_ref(), sol_destination.as_ref())
     }
 }
 

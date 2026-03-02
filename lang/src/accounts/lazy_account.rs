@@ -292,7 +292,7 @@ where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.as_ref(), sol_destination.as_ref())
     }
 }
 
