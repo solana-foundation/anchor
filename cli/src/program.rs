@@ -21,6 +21,7 @@ use std::{
     fs::{self, File},
     io::Write,
     path::Path,
+    process::{Command as ProcessCommand, Stdio},
     sync::Arc,
     thread,
     time::Duration,
@@ -28,7 +29,7 @@ use std::{
 
 use crate::{
     config::{Config, Manifest, Program, WithPath},
-    ConfigOverride, ProgramCommand,
+    get_cluster_and_wallet, ConfigOverride, ProgramCommand,
 };
 
 /// Parse priority fee from solana args
@@ -187,6 +188,7 @@ pub fn process_deploy(
     verifiable: bool,
     no_idl: bool,
     make_final: bool,
+    security_metadata: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // If explicit filepath provided, deploy single program
@@ -202,6 +204,7 @@ pub fn process_deploy(
             max_len,
             no_idl,
             make_final,
+            security_metadata,
             solana_args,
         );
     }
@@ -241,6 +244,7 @@ pub fn process_deploy(
             verifiable,
             no_idl,
             make_final,
+            security_metadata,
             solana_args,
         );
     }
@@ -257,6 +261,7 @@ pub fn process_deploy(
         max_len,
         no_idl,
         make_final,
+        security_metadata,
         solana_args,
     )
 }
@@ -269,6 +274,7 @@ fn deploy_workspace(
     verifiable: bool,
     no_idl: bool,
     make_final: bool,
+    security_metadata: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     // Get programs from workspace (Anchor or non-Anchor)
@@ -315,6 +321,7 @@ fn deploy_workspace(
             None, // max_len
             no_idl,
             make_final,
+            security_metadata, // deploy `security_json` file on-chain with program-metadata
             solana_args.clone(),
         )?;
     }
@@ -336,6 +343,7 @@ pub fn program(cfg_override: &ConfigOverride, cmd: ProgramCommand) -> Result<()>
             max_len,
             no_idl,
             make_final,
+            security_metadata: security,
             solana_args,
         } => process_deploy(
             cfg_override,
@@ -349,6 +357,7 @@ pub fn program(cfg_override: &ConfigOverride, cmd: ProgramCommand) -> Result<()>
             false, // verifiable
             no_idl,
             make_final,
+            security,
             solana_args,
         ),
         ProgramCommand::WriteBuffer {
@@ -475,6 +484,7 @@ pub fn program_deploy(
     max_len: Option<usize>,
     no_idl: bool,
     make_final: bool,
+    security_metadata: bool,
     solana_args: Vec<String>,
 ) -> Result<()> {
     let (rpc_client, config) = get_rpc_client_and_config(cfg_override)?;
@@ -741,6 +751,50 @@ pub fn program_deploy(
             .map_err(|e| anyhow!("Failed to make program immutable: {}", e))?;
 
         println!("✓ Program is now immutable (cannot be upgraded)");
+    }
+
+    if security_metadata {
+        let security_file_exists = Path::new("security.json").try_exists();
+        match security_file_exists {
+            Ok(true) => {
+                let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+
+                let program_id_str = program_id.to_string();
+
+                let args = vec![
+                    "--keypair",
+                    &wallet_path,
+                    "--rpc",
+                    &cluster_url,
+                    "write",
+                    "security",
+                    &program_id_str,
+                    "./security.json",
+                ];
+
+                let status = ProcessCommand::new("npx")
+                    .arg("@solana-program/program-metadata@latest")
+                    .args(&args)
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .status()?;
+
+                if !status.success() {
+                    return Err(anyhow!(
+                        "Failed to upload security.json metadata, {}",
+                        status
+                    ));
+                }
+
+                println!("Security metadata uploaded.");
+            }
+            Ok(false) => {
+                println!("security.json not found");
+            }
+            Err(e) => {
+                return Err(anyhow!("Failed to check security.json existence: {}", e));
+            }
+        }
     }
 
     Ok(())
