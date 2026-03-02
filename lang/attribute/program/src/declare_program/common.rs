@@ -146,10 +146,13 @@ pub fn convert_idl_type_def_to_ts(
             .flatten()
             .unwrap_or_default();
 
+        // `ser_attr` must be expanded first, as it may produce `repr(packed)`
+        // This affects builtin derives so must be visible to them
+        // https://github.com/solana-foundation/anchor/issues/4072
         quote! {
+            #ser_attr
             #debug_attr
             #default_attr
-            #ser_attr
             #clone_attr
             #copy_attr
         }
