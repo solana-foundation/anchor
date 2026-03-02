@@ -402,12 +402,6 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'_, T> {
-    fn as_ref(&self) -> &T {
-        &self.account
-    }
-}
-
 impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> {
     type Target = T;
 
