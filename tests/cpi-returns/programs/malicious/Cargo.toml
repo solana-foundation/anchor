@@ -1,12 +1,12 @@
 [package]
-name = "caller"
+name = "malicious"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "PoC: Malicious program that spoofs CPI return data"
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "caller"
+name = "malicious"
 
 [features]
 no-entrypoint = []
@@ -18,5 +18,3 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }
-callee = { path = "../callee", features = ["cpi"] }
-malicious = { path = "../malicious", features = ["cpi"] }
