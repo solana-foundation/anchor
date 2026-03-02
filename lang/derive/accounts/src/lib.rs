@@ -65,9 +65,9 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(signer)]
-/// pub authority: AccountInfo<'info>,
+/// pub authority: AccountInfo&lt;'info&gt;,
 /// #[account(signer @ MyError::MyErrorCode)]
-/// pub payer: AccountInfo<'info>
+/// pub payer: AccountInfo&lt;'info&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -82,9 +82,9 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(mut)]
-/// pub data_account: Account<'info, MyData>,
+/// pub data_account: Account&lt;'info, MyData&gt;,
 /// #[account(mut @ MyError::MyErrorCode)]
-/// pub data_account_two: Account<'info, MyData>
+/// pub data_account_two: Account&lt;'info, MyData&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -102,7 +102,7 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(mut)]
-/// pub account1: Account<'info, Counter>,
+/// pub account1: Account&lt;'info, Counter&gt;,
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -149,12 +149,12 @@ use syn::parse_macro_input;
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub data: u64
 /// }&#10;
 /// #[derive(Accounts)]
-/// pub struct Initialize<'info> {
+/// pub struct Initialize&lt;'info&gt; {
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(init, payer = payer, space = 8 + 8)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account<'info, MyData>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account&lt;'info, MyData&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer<'info>,
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program<'info, System>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer&lt;'info&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program&lt;'info, System&gt;,
 /// }
 ///                 </pre>
 ///                 </ul>
@@ -182,27 +182,27 @@ use syn::parse_macro_input;
 ///                 <pre>
 /// #[derive(Accounts)]
 /// #[instruction(bump: u8)]
-/// pub struct Initialize<'info> {
+/// pub struct Initialize&lt;'info&gt; {
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"example_seed"], bump = bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_data_account: Account<'info, MyData>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_data_account: Account&lt;'info, MyData&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;space = 8 + 8, owner = other_program.key()
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountInfo<'info>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountInfo&lt;'info&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;owner = other_program.key(),
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed"], bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountInfo<'info>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountInfo&lt;'info&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer<'info>,
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program<'info, System>,
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub other_program: Program<'info, OtherProgram>
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer&lt;'info&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program&lt;'info, System&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub other_program: Program&lt;'info, OtherProgram&gt;
 /// }
 ///                 </pre>
 ///             </td>
@@ -239,14 +239,14 @@ use syn::parse_macro_input;
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub data: u64
 /// }&#10;
 /// #[derive(Accounts)]
-/// pub struct Initialize<'info> {
+/// pub struct Initialize&lt;'info&gt; {
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(init_if_needed, payer = payer)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account: Account<'info, MyData>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account: Account&lt;'info, MyData&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(init_if_needed, payer = payer, space = 8 + 8)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account<'info, OtherData>,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub data_account_two: Account&lt;'info, OtherData&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer<'info>,
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program<'info, System>
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer&lt;'info&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program&lt;'info, System&gt;
 /// }
 ///                 </pre>
 ///             </td>
@@ -254,7 +254,7 @@ use syn::parse_macro_input;
 ///         <tr>
 ///             <td>
 ///                 <code>#[account(seeds = &lt;seeds&gt;, bump)]</code><br><br>
-///                 <code>#[account(seeds = &lt;seeds&gt;, bump, seeds::program = &lt;expr&gt;)]<br><br>
+///                 <code>#[account(seeds = &lt;seeds&gt;, bump, seeds::program = &lt;expr&gt;)]</code><br><br>
 ///                 <code>#[account(seeds = &lt;seeds&gt;, bump = &lt;expr&gt;)]</code><br><br>
 ///                 <code>#[account(seeds = &lt;seeds&gt;, bump = &lt;expr&gt;, seeds::program = &lt;expr&gt;)]</code><br><br>
 ///             </td>
@@ -273,22 +273,22 @@ use syn::parse_macro_input;
 /// #[instruction(first_bump: u8, second_bump: u8)]
 /// pub struct Example {
 ///     #[account(seeds = [b"example_seed"], bump)]
-///     pub canonical_pda: AccountInfo<'info>,
+///     pub canonical_pda: AccountInfo&lt;'info&gt;,
 ///     #[account(
 ///         seeds = [b"example_seed"],
 ///         bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub canonical_pda_two: AccountInfo<'info>,
+///     pub canonical_pda_two: AccountInfo&lt;'info&gt;,
 ///     #[account(seeds = [b"other_seed"], bump = first_bump)]
-///     pub arbitrary_pda: AccountInfo<'info>
+///     pub arbitrary_pda: AccountInfo&lt;'info&gt;
 ///     #[account(
 ///         seeds = [b"other_seed"],
 ///         bump = second_bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub arbitrary_pda_two: AccountInfo<'info>,
-///     pub other_program: Program<'info, OtherProgram>
+///     pub arbitrary_pda_two: AccountInfo&lt;'info&gt;,
+///     pub other_program: Program&lt;'info, OtherProgram&gt;
 /// }
 ///                 </code></pre>
 ///             </td>
@@ -305,8 +305,8 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(mut, has_one = authority)]
-/// pub data: Account<'info, MyData>,
-/// pub authority: Signer<'info>
+/// pub data: Account&lt;'info, MyData&gt;,
+/// pub authority: Signer&lt;'info&gt;
 ///                 </code></pre>
 ///                 In this example <code>has_one</code> checks that <code>data.authority = authority.key()</code>
 ///             </td>
@@ -322,9 +322,9 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(address = crate::ID)]
-/// pub data: Account<'info, MyData>,
+/// pub data: Account&lt;'info, MyData&gt;,
 /// #[account(address = crate::ID @ MyError::MyErrorCode)]
-/// pub data_two: Account<'info, MyData>
+/// pub data_two: Account&lt;'info, MyData&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -339,10 +339,10 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(owner = Token::ID @ MyError::MyErrorCode)]
-/// pub data: Account<'info, MyData>,
+/// pub data: Account&lt;'info, MyData&gt;,
 /// #[account(owner = token_program.key())]
-/// pub data_two: Account<'info, MyData>,
-/// pub token_program: Program<'info, Token>
+/// pub data_two: Account&lt;'info, MyData&gt;,
+/// pub token_program: Program&lt;'info, Token&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -356,7 +356,7 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(executable)]
-/// pub my_program: AccountInfo<'info>
+/// pub my_program: AccountInfo&lt;'info&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -373,9 +373,9 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(zero, rent_exempt = skip)]
-/// pub skipped_account: Account<'info, MyData>,
+/// pub skipped_account: Account&lt;'info, MyData&gt;,
 /// #[account(rent_exempt = enforce)]
-/// pub enforced_account: AccountInfo<'info>
+/// pub enforced_account: AccountInfo&lt;'info&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -396,7 +396,7 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(zero)]
-/// pub my_account: Account<'info, MyData>
+/// pub my_account: Account&lt;'info, MyData&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -414,9 +414,9 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(mut, close = receiver)]
-/// pub data_account: Account<'info, MyData>,
+/// pub data_account: Account&lt;'info, MyData&gt;,
 /// #[account(mut)]
-/// pub receiver: SystemAccount<'info>
+/// pub receiver: SystemAccount&lt;'info&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -431,8 +431,8 @@ use syn::parse_macro_input;
 ///                 Example:
 ///                 <pre><code>
 /// #[account(constraint = one.keys[0].age == two.apple.age)]
-/// pub one: Account<'info, MyData>,
-/// pub two: Account<'info, OtherData>
+/// pub one: Account&lt;'info, MyData&gt;,
+/// pub two: Account&lt;'info, OtherData&gt;
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -452,7 +452,7 @@ use syn::parse_macro_input;
 ///                 <br><br>
 ///                 The <code>realloc::zero</code> constraint is required in order to determine whether the new memory should be zero initialized after
 ///                 reallocation. Please read the documentation on the <code>AccountInfo::realloc</code> function linked above to understand the
-///                 caveats regarding compute units when providing <code>true</code or <code>false</code> to this flag.
+///                 caveats regarding compute units when providing <code>true</code> or <code>false</code> to this flag.
 ///                 <br><br>
 ///                 The manual use of `AccountInfo::realloc` is discouraged in favor of the `realloc` constraint group due to the lack of native runtime checks
 ///                 to prevent reallocation over the `MAX_PERMITTED_DATA_INCREASE` limit (which can unintentionally cause account data overwrite other accounts).
@@ -463,17 +463,17 @@ use syn::parse_macro_input;
 /// #[derive(Accounts)]
 /// pub struct Example {
 ///     #[account(mut)]
-///     pub payer: Signer<'info>,
+///     pub payer: Signer&lt;'info&gt;,
 ///     #[account(
 ///         mut,
 ///         seeds = [b"example"],
 ///         bump,
-///         realloc = 8 + std::mem::size_of::<MyType>() + 100,
+///         realloc = 8 + std::mem::size_of::&lt;MyType&gt;() + 100,
 ///         realloc::payer = payer,
 ///         realloc::zero = false,
 ///     )]
-///     pub acc: Account<'info, MyType>,
-///     pub system_program: Program<'info, System>,
+///     pub acc: Account&lt;'info, MyType&gt;,
+///     pub system_program: Program&lt;'info, System&gt;,
 /// }
 ///                 </pre>
 ///             </td>
@@ -514,13 +514,13 @@ use syn::parse_macro_input;
 ///     token::mint = mint,
 ///     token::authority = payer,
 /// )]
-/// pub token: Account<'info, TokenAccount>,
+/// pub token: Account&lt;'info, TokenAccount&gt;,
 /// #[account(address = mint::USDC)]
-/// pub mint: Account<'info, Mint>,
+/// pub mint: Account&lt;'info, Mint&gt;,
 /// #[account(mut)]
-/// pub payer: Signer<'info>,
-/// pub token_program: Program<'info, Token>,
-/// pub system_program: Program<'info, System>
+/// pub payer: Signer&lt;'info&gt;,
+/// pub token_program: Program&lt;'info, Token&gt;,
+/// pub system_program: Program&lt;'info, System&gt;
 ///                 </pre>
 ///             </td>
 ///         </tr>
@@ -546,7 +546,7 @@ use syn::parse_macro_input;
 ///     mint::decimals = 9,
 ///     mint::authority = payer,
 /// )]
-/// pub mint_one: Account<'info, Mint>,
+/// pub mint_one: Account&lt;'info, Mint&gt;,
 /// #[account(
 ///     init,
 ///     payer = payer,
@@ -554,11 +554,11 @@ use syn::parse_macro_input;
 ///     mint::authority = payer,
 ///     mint::freeze_authority = payer
 /// )]
-/// pub mint_two: Account<'info, Mint>,
+/// pub mint_two: Account&lt;'info, Mint&gt;,
 /// #[account(mut)]
-/// pub payer: Signer<'info>,
-/// pub token_program: Program<'info, Token>,
-/// pub system_program: Program<'info, System>
+/// pub payer: Signer&lt;'info&gt;,
+/// pub token_program: Program&lt;'info, Token&gt;,
+/// pub system_program: Program&lt;'info, System&gt;
 ///                 </pre>
 ///             </td>
 ///         </tr>
@@ -586,19 +586,19 @@ use syn::parse_macro_input;
 ///     associated_token::mint = mint,
 ///     associated_token::authority = payer,
 /// )]
-/// pub token: Account<'info, TokenAccount>,
+/// pub token: Account&lt;'info, TokenAccount&gt;,
 /// #[account(
 ///     associated_token::mint = mint,
 ///     associated_token::authority = payer,
 /// )]
-/// pub second_token: Account<'info, TokenAccount>,
+/// pub second_token: Account&lt;'info, TokenAccount&gt;,
 /// #[account(address = mint::USDC)]
-/// pub mint: Account<'info, Mint>,
+/// pub mint: Account&lt;'info, Mint&gt;,
 /// #[account(mut)]
-/// pub payer: Signer<'info>,
-/// pub token_program: Program<'info, Token>,
-/// pub associated_token_program: Program<'info, AssociatedToken>,
-/// pub system_program: Program<'info, System>
+/// pub payer: Signer&lt;'info&gt;,
+/// pub token_program: Program&lt;'info, Token&gt;,
+/// pub associated_token_program: Program&lt;'info, AssociatedToken&gt;,
+/// pub system_program: Program&lt;'info, System&gt;
 ///                 </pre>
 ///             </td>
 ///         </tr><tr>
@@ -615,11 +615,11 @@ use syn::parse_macro_input;
 /// #[account(
 ///     mint::token_program = token_a_token_program,
 /// )]
-/// pub token_a_mint: InterfaceAccount<'info, Mint>,
+/// pub token_a_mint: InterfaceAccount&lt;'info, Mint&gt;,
 /// #[account(
 ///     mint::token_program = token_b_token_program,
 /// )]
-/// pub token_b_mint: InterfaceAccount<'info, Mint>,
+/// pub token_b_mint: InterfaceAccount&lt;'info, Mint&gt;,
 /// #[account(
 ///     init,
 ///     payer = payer,
@@ -627,7 +627,7 @@ use syn::parse_macro_input;
 ///     token::authority = payer,
 ///     token::token_program = token_a_token_program,
 /// )]
-/// pub token_a_account: InterfaceAccount<'info, TokenAccount>,
+/// pub token_a_account: InterfaceAccount&lt;'info, TokenAccount&gt;,
 /// #[account(
 ///     init,
 ///     payer = payer,
@@ -635,16 +635,16 @@ use syn::parse_macro_input;
 ///     token::authority = payer,
 ///     token::token_program = token_b_token_program,
 /// )]
-/// pub token_b_account: InterfaceAccount<'info, TokenAccount>,
-/// pub token_a_token_program: Interface<'info, TokenInterface>,
-/// pub token_b_token_program: Interface<'info, TokenInterface>,
+/// pub token_b_account: InterfaceAccount&lt;'info, TokenAccount&gt;,
+/// pub token_a_token_program: Interface&lt;'info, TokenInterface&gt;,
+/// pub token_b_token_program: Interface&lt;'info, TokenInterface&gt;,
 /// #[account(mut)]
-/// pub payer: Signer<'info>,
-/// pub system_program: Program<'info, System>
+/// pub payer: Signer&lt;'info&gt;,
+/// pub system_program: Program&lt;'info, System&gt;
 ///                 </pre>
 ///             </td>
 ///         </tr>
-///     <tbody>
+///     </tbody>
 /// </table>
 #[proc_macro_derive(Accounts, attributes(account, instruction))]
 pub fn derive_accounts(item: TokenStream) -> TokenStream {

@@ -1,4 +1,4 @@
-//! Box<T> type to save stack space.
+//! `Box<T>` type to save stack space.
 //!
 //! Sometimes accounts are too large for the stack,
 //! leading to stack violations.
