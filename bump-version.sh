@@ -55,6 +55,8 @@ sed "${sedi[@]}" -e \
     CHANGELOG.md
 
 # Update lock files
+# NOTE: Cannot use --frozen-lockfile here because package.json versions were just
+# bumped above, so the lockfile legitimately needs to be regenerated.
 pushd ts && yarn && popd
 pushd tests && yarn && popd
 pushd examples && yarn && pushd tutorial && yarn && popd && popd
