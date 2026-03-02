@@ -1,13 +1,29 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote, ToTokens};
+use syn::{parse_quote, GenericParam};
 
 pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
     let ident = &strct.ident;
+    let (_, type_generics, type_where_clause) = strct.generics.split_for_impl();
+    let mut impl_generics_with_bounds = strct.generics.clone();
+    let lazy_where_clause = impl_generics_with_bounds.make_where_clause();
+
+    // Field loaders call `<FieldTy as Lazy>::size_of`, so each field type must be `Lazy`.
+    for param in &strct.generics.params {
+        if let GenericParam::Type(ty) = param {
+            let ty = &ty.ident;
+            lazy_where_clause
+                .predicates
+                .push(parse_quote!(#ty: anchor_lang::__private::Lazy));
+        }
+    }
+    let (impl_generics, _, where_clause) = impl_generics_with_bounds.split_for_impl();
     let lazy_ident = format_ident!("Lazy{}", ident);
     let load_common_ident = to_private_ident("load_common");
     let initialize_fields = to_private_ident("initialize_fields");
     let lazy_acc_ty = quote! { anchor_lang::accounts::lazy_account::LazyAccount };
-    let disc_len = quote! { <#ident as anchor_lang::Discriminator>::DISCRIMINATOR.len() };
+    let disc_len =
+        quote! { <#ident #type_generics as anchor_lang::Discriminator>::DISCRIMINATOR.len() };
 
     let load_common_docs = quote! {
         /// The deserialized value is cached for future uses i.e. all subsequent calls to this
@@ -167,20 +183,20 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
     let total_fields = strct.fields.len();
 
     Ok(quote! {
-        pub trait #lazy_ident {
+        pub trait #lazy_ident #type_generics #type_where_clause {
             /// Load a reference to the entire account.
             ///
             #load_common_docs
             ///
             #load_panic_docs
-            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident>>;
+            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident #type_generics>>;
 
             /// Load a mutable reference to the entire account.
             ///
             #load_common_docs
             ///
             #load_mut_panic_docs
-            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident>>;
+            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident #type_generics>>;
 
             #[doc(hidden)]
             fn #load_common_ident<R>(&self, f: impl FnOnce() -> R) -> anchor_lang::Result<R>;
@@ -195,8 +211,8 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             fn exit(&self, program_id: &anchor_lang::prelude::Pubkey) -> anchor_lang::Result<()>;
         }
 
-        impl<'info> #lazy_ident for #lazy_acc_ty<'info, #ident> {
-            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident>> {
+        impl #impl_generics #lazy_ident #type_generics for #lazy_acc_ty<'_, #ident #type_generics> #where_clause {
+            fn load(&self) -> anchor_lang::Result<::core::cell::Ref<'_, #ident #type_generics>> {
                 self.#load_common_ident(|| {
                     // SAFETY: The common load method makes sure all fields are initialized.
                     ::core::cell::Ref::map(self.__account.borrow(), |acc| unsafe {
@@ -205,7 +221,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
 
-            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident>> {
+            fn load_mut(&self) -> anchor_lang::Result<::core::cell::RefMut<'_, #ident #type_generics>> {
                 self.#load_common_ident(|| {
                     // SAFETY: The common load method makes sure all fields are initialized.
                     ::core::cell::RefMut::map(self.__account.borrow_mut(), |acc| unsafe {
@@ -271,7 +287,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             // back, which consumes a lot more CUs than it should for most accounts.
             fn exit(&self, program_id: &anchor_lang::prelude::Pubkey) -> anchor_lang::Result<()> {
                 // Only persist if the owner is the current program and the account is not closed
-                if &<#ident as anchor_lang::Owner>::owner() == program_id
+                if &<#ident #type_generics as anchor_lang::Owner>::owner() == program_id
                     && !anchor_lang::__private::is_closed(self.__info)
                 {
                     // Make sure all fields are initialized
