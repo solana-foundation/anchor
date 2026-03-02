@@ -374,9 +374,191 @@ describe("{}", () => {{
     )
 }
 
-pub fn package_json(jest: bool, license: String) -> String {
-    if jest {
-        format!(
+pub fn js_bun(name: &str) -> String {
+    format!(
+        r#"import {{ beforeAll, describe, it }} from "bun:test";
+import * as anchor from "@anchor-lang/core";
+import {{ sleep }} from "bun";
+
+// Configure the client to use the local cluster.
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+const program = anchor.workspace.{};
+
+beforeAll(async () => {{
+  // We need this, otherwise Bun starts running tests before the program is ready.
+  await waitForProgram(provider, program.programId);
+}});
+
+describe("{}", () => {{
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+
+/**
+ * @param {{anchor.AnchorProvider}} provider
+ * @param {{anchor.web3.PublicKey}} programId
+ * @param {{number}} timeoutMs
+ */
+ async function waitForProgram(provider, programId, timeoutMs = 3000) {{
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {{
+    try {{
+      // 1. Check if the account exists and is executable
+      const accountInfo = await provider.connection.getAccountInfo(programId);
+      if (accountInfo?.executable) {{
+        // 2. Verify the runtime can actually load and execute the program.
+        // We simulate a dummy instruction. If the program is not fully deployed/cached,
+        // this will fail with "Program is not deployed" or "Unsupported program id".
+        // If it fails with ANY OTHER error (or succeeds), the program is ready.
+        const tx = new anchor.web3.Transaction().add({{
+          keys: [],
+          programId,
+          data: Buffer.from([]), // Empty instruction
+        }});
+
+        // simulation requires a blockhash and fee payer
+        tx.recentBlockhash = (
+          await provider.connection.getLatestBlockhash()
+        ).blockhash;
+        tx.feePayer = provider.wallet.publicKey;
+
+        const simulation = await provider.connection.simulateTransaction(tx);
+
+        if (simulation.value.err) {{
+          const errStr = JSON.stringify(simulation.value.err);
+          // If the error indicates the program is missing, keep waiting
+          if (
+            errStr.includes("ProgramAccountNotFound") ||
+            errStr.includes("UnsupportedProgramId") ||
+            simulation.value.logs?.some((log) =>
+              log.includes("Program is not deployed")
+            )
+          ) {{
+            // Expected error,  keep waiting
+          }} else {{
+            // Any other error means the program TRIED to execute (e.g., "Instruction fallback not found")
+            return;
+          }}
+        }} else {{
+          // Success? (unlikely with empty data)
+          return;
+        }}
+      }}
+    }} catch {{
+      // Ignore network errors and retry
+    }}
+    await sleep(100);
+  }}
+  throw new Error(
+    `Failed to wait for program to be deployed after ${{timeoutMs}}ms`
+  );
+}}
+"#,
+        name.to_lower_camel_case(),
+        name,
+    )
+}
+
+pub fn ts_bun(name: &str) -> String {
+    format!(
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ beforeAll, describe, it }} from "bun:test";
+import {{ Program }} from "@anchor-lang/core";
+import {{ {} }} from "../target/types/{}";
+import {{ sleep }} from "bun";
+
+// Configure the client to use the local cluster.
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+const program = anchor.workspace.{} as Program<{}>;
+
+beforeAll(async () => {{
+  // We need this, otherwise Bun starts running tests before the program is ready.
+  await waitForProgram(provider, program.programId);
+}});
+
+describe("{}", () => {{
+  it("Is initialized!", async () => {{
+    // Add your test here.
+    const tx = await program.methods.initialize().rpc();
+    console.log("Your transaction signature", tx);
+  }});
+}});
+
+async function waitForProgram(
+  provider: anchor.AnchorProvider,
+  programId: anchor.web3.PublicKey,
+  timeoutMs = 3000
+) {{
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {{
+    try {{
+      // 1. Check if the account exists and is executable
+      const accountInfo = await provider.connection.getAccountInfo(programId);
+      if (accountInfo?.executable) {{
+        // 2. Verify the runtime can actually load and execute the program.
+        // We simulate a dummy instruction. If the program is not fully deployed/cached,
+        // this will fail with "Program is not deployed" or "Unsupported program id".
+        // If it fails with ANY OTHER error (or succeeds), the program is ready.
+        const tx = new anchor.web3.Transaction().add({{
+          keys: [],
+          programId,
+          data: Buffer.from([]), // Empty instruction
+        }});
+
+        // simulation requires a blockhash and fee payer
+        tx.recentBlockhash = (
+          await provider.connection.getLatestBlockhash()
+        ).blockhash;
+        tx.feePayer = provider.wallet.publicKey;
+
+        const simulation = await provider.connection.simulateTransaction(tx);
+
+        if (simulation.value.err) {{
+          const errStr = JSON.stringify(simulation.value.err);
+          // If the error indicates the program is missing, keep waiting
+          if (
+            errStr.includes("ProgramAccountNotFound") ||
+            errStr.includes("UnsupportedProgramId") ||
+            simulation.value.logs?.some((log) =>
+              log.includes("Program is not deployed")
+            )
+          ) {{
+            // Expected error,  keep waiting
+          }} else {{
+            // Any other error means the program TRIED to execute (e.g., "Instruction fallback not found")
+            return;
+          }}
+        }} else {{
+          // Success? (unlikely with empty data)
+          return;
+        }}
+      }}
+    }} catch {{
+      // Ignore network errors and retry
+    }}
+    await sleep(100);
+  }}
+  throw new Error(
+    `Failed to wait for program to be deployed after ${{timeoutMs}}ms`
+  );
+}}
+"#,
+        name.to_pascal_case(),
+        name.to_snake_case(),
+        name.to_lower_camel_case(),
+        name.to_pascal_case(),
+        name,
+    )
+}
+
+pub fn js_package_json(test_template: &TestTemplate, license: String) -> String {
+    match test_template {
+        TestTemplate::Jest => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -392,9 +574,24 @@ pub fn package_json(jest: bool, license: String) -> String {
   }}
 }}
     "#
-        )
-    } else {
-        format!(
+        ),
+        TestTemplate::Bun => format!(
+            r#"{{
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@anchor-lang/core": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "prettier": "^2.6.2"
+  }}
+}}
+"#
+        ),
+        _ => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -411,13 +608,13 @@ pub fn package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
+        ),
     }
 }
 
-pub fn ts_package_json(jest: bool, license: String) -> String {
-    if jest {
-        format!(
+pub fn ts_package_json(test_template: &TestTemplate, license: String) -> String {
+    match test_template {
+        &TestTemplate::Jest => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -437,9 +634,28 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
-    } else {
-        format!(
+        ),
+        &TestTemplate::Bun => format!(
+            r#"{{
+  "license": "{license}",
+  "scripts": {{
+    "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+  }},
+  "dependencies": {{
+    "@anchor-lang/core": "^{VERSION}"
+  }},
+  "devDependencies": {{
+    "@types/bn.js": "^5.1.0",
+    "@types/bun": "^1.3.5",
+    "prettier": "^2.6.2",
+    "typescript": "^5.7.3"
+  }}
+}}
+"#
+        ),
+        // default to Mocha
+        _ => format!(
             r#"{{
   "license": "{license}",
   "scripts": {{
@@ -461,7 +677,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   }}
 }}
 "#
-        )
+        ),
     }
 }
 
@@ -519,9 +735,10 @@ describe("{}", () => {{
     )
 }
 
-pub fn ts_config(jest: bool) -> &'static str {
-    if jest {
-        r#"{
+pub fn ts_config(test_template: &TestTemplate) -> &'static str {
+    match test_template {
+        TestTemplate::Jest => {
+            r#"{
   "compilerOptions": {
     "types": ["jest"],
     "typeRoots": ["./node_modules/@types"],
@@ -532,8 +749,23 @@ pub fn ts_config(jest: bool) -> &'static str {
   }
 }
 "#
-    } else {
-        r#"{
+        }
+        TestTemplate::Bun => {
+            r#"{
+  "compilerOptions": {
+    "types": ["bun"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es2015"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true
+  }
+}
+"#
+        }
+        // default to Mocha
+        _ => {
+            r#"{
   "compilerOptions": {
     "types": ["mocha", "chai"],
     "typeRoots": ["./node_modules/@types"],
@@ -544,6 +776,7 @@ pub fn ts_config(jest: bool) -> &'static str {
   }
 }
 "#
+        }
     }
 }
 
@@ -627,6 +860,8 @@ pub enum TestTemplate {
     Mocha,
     /// Generate template for Jest unit-test
     Jest,
+    /// Generate template for Bun unit-test
+    Bun,
     /// Generate template for Rust unit-test
     Rust,
     /// Generate template for Mollusk Rust unit-test
@@ -659,6 +894,7 @@ impl TestTemplate {
                     format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
+            Self::Bun => "bun test".to_owned(),
             Self::Rust => "cargo test".to_owned(),
             Self::Mollusk => "cargo test-sbf".to_owned(),
         }
@@ -684,6 +920,18 @@ impl TestTemplate {
 
                 let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
                 test.write_all(jest(project_name).as_bytes())?;
+            }
+            Self::Bun => {
+                // Build the test suite.
+                fs::create_dir_all("tests")?;
+
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    test.write_all(js_bun(project_name).as_bytes())?;
+                } else {
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    test.write_all(ts_bun(project_name).as_bytes())?;
+                }
             }
             Self::Rust => {
                 // Do not initialize git repo
