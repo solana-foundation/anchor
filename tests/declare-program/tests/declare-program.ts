@@ -47,6 +47,19 @@ describe("declare-program", () => {
     assert.strictEqual(myAccount.field, value);
   });
 
+  it("Can CPI with unchecked variant", async () => {
+    const value = 7;
+    await program.methods
+      .cpiUnchecked(value)
+      .accounts({ cpiMyAccount: pubkeys.myAccount })
+      .rpc();
+
+    const myAccount = await externalProgram.account.myAccount.fetch(
+      pubkeys.myAccount
+    );
+    assert.strictEqual(myAccount.field, value);
+  });
+
   it("Produces correct IDL", () => {
     // The program itself doesn't have an error definition, therefore its IDL
     // also shouldn't have the `errors` field.

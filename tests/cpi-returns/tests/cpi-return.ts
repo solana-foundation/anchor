@@ -73,6 +73,32 @@ describe("CPI return", () => {
     assert.equal(reader.readU64().toNumber(), 10);
   });
 
+  it("can return u64 from a cpi using unchecked variant", async () => {
+    const tx = await callerProgram.methods
+      .cpiCallReturnU64Unchecked()
+      .accounts({
+        cpiReturn: cpiReturn.publicKey,
+        cpiReturnProgram: calleeProgram.programId,
+      })
+      .rpc(confirmOptions);
+    let t = await provider.connection.getTransaction(tx, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    const [key, data, buffer] = getReturnLog(t);
+    assert.equal(key, calleeProgram.programId);
+
+    // Check for matching log on receive side
+    let receiveLog = t.meta.logMessages.find(
+      (log) => log == `Program data: ${data}`
+    );
+    assert(receiveLog !== undefined);
+
+    const reader = new borsh.BinaryReader(buffer);
+    assert.equal(reader.readU64().toNumber(), 10);
+  });
+
   it("can make a non-cpi call to a function that returns a u64", async () => {
     const tx = await calleeProgram.methods
       .returnU64()
