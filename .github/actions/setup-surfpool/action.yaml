@@ -29,5 +29,8 @@ runs:
           chmod +x "$HOME/.local/bin/surfpool"
           rm /tmp/surfpool.tar.gz
 
+    - shell: bash
+      run: surfpool -V
+
     
 
