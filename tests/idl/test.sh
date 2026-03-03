@@ -38,7 +38,7 @@ compare() {
     echo ""
 }
 
-compare "new"
+compare "idl"
 compare "generics"
 compare "relations"
 

@@ -13,6 +13,8 @@ path = "src/bin/main.rs"
 
 [features]
 dev = []
+# For development/CI testing purposes only - allows IDL commands to run against localnet
+idl-localnet-testing = []
 
 [dependencies]
 anchor-client = { path = "../client", version = "0.32.1" }

@@ -749,6 +749,12 @@ impl ConstraintGroup {
         self.dup.is_some()
     }
 
+    /// Returns `true` when the field has `#[account(init, ...)]` but **not**
+    /// `#[account(init_if_needed, ...)]`.
+    pub fn is_pure_init(&self) -> bool {
+        matches!(&self.init, Some(c) if !c.if_needed)
+    }
+
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
     }
