@@ -638,7 +638,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     /// Build the request into a transaction.
     ///
     /// Note: This will build a transaction with the legacy transaction format. If you'd like to use
-    /// a different transaction format, use `transaction_versioned`.
+    /// a different transaction format, use [`transaction_versioned`].
     pub fn transaction(&self) -> Transaction {
         let instructions = &self.instructions();
         Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
