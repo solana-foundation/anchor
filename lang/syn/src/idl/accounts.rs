@@ -43,7 +43,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     (quote! { None }, quote! { None }, quote! { vec![] })
                 };
 
-                let acc_type_path = match &acc.ty {
+                let defined = match &acc.ty {
                     Ty::Account(ty)
                     // Skip `UpgradeableLoaderState` type for now until `bincode` serialization
                     // is supported.
@@ -57,11 +57,21 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                             .to_string()
                             .contains("UpgradeableLoaderState") =>
                     {
-                        Some(&ty.account_type_path)
+                        let defined = &ty.account_type_path;
+                        Some((defined, quote! { <#defined>::owner() == crate::ID }))
                     }
-                    Ty::LazyAccount(ty) => Some(&ty.account_type_path),
-                    Ty::AccountLoader(ty) => Some(&ty.account_type_path),
-                    Ty::InterfaceAccount(ty) => Some(&ty.account_type_path),
+                    Ty::LazyAccount(ty) => {
+                        let defined = &ty.account_type_path;
+                        Some((defined, quote! { <#defined>::owner() == crate::ID }))
+                    },
+                    Ty::AccountLoader(ty) => {
+                        let defined = &ty.account_type_path;
+                        Some((defined, quote! { <#defined>::owner() == crate::ID }))
+                    },
+                    Ty::InterfaceAccount(ty) => {
+                        let defined = &ty.account_type_path;
+                        Some((defined, quote! { <#defined>::owners().contains(&crate::ID) }))
+                    },
                     _ => None,
                 };
 
@@ -78,7 +88,7 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                             relations: #relations,
                         })
                     },
-                    acc_type_path,
+                    defined,
                 )
             }
             AccountField::CompositeField(comp_f) => {
@@ -116,7 +126,10 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
             }
         })
         .unzip::<_, _, Vec<_>, Vec<_>>();
-    let defined = defined.into_iter().flatten().collect::<Vec<_>>();
+    let (defined, is_owner) = defined
+        .into_iter()
+        .flatten()
+        .unzip::<_, _, Vec<_>, Vec<_>>();
 
     quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
@@ -126,11 +139,14 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
             ) -> Vec<#idl::IdlInstructionAccountItem> {
                 #(
                     if let Some(ty) = <#defined>::create_type() {
-                        let account = #idl::IdlAccount {
-                            name: ty.name.clone(),
-                            discriminator: <#defined>::DISCRIMINATOR.into(),
-                        };
-                        accounts.insert(account.name.clone(), account);
+                        if #is_owner {
+                            let account = #idl::IdlAccount {
+                                name: ty.name.clone(),
+                                discriminator: <#defined>::DISCRIMINATOR.into(),
+                            };
+                            accounts.insert(account.name.clone(), account);
+                        }
+
                         types.insert(ty.name.clone(), ty);
                         <#defined>::insert_types(types);
                     }
