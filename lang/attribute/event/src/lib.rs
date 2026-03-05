@@ -97,6 +97,8 @@ pub fn event(
 ///     pub data: u64,
 ///     pub label: [u8; 5],
 /// }
+/// 
+/// # fn main() {}
 /// ```
 #[proc_macro]
 pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -147,6 +149,8 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// pub struct MyEvent {
 ///     pub data: u64,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// **NOTE:** This macro requires `ctx` to be in scope.
@@ -205,6 +209,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// pub struct MyInstruction<'info> {
 ///    pub signer: Signer<'info>,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// The code above will be expanded to:
@@ -219,6 +225,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    /// CHECK: Self-CPI will fail if the program is not the current program
 ///    pub program: AccountInfo<'info>,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// See [`emit_cpi!`](emit_cpi!) for a full example.

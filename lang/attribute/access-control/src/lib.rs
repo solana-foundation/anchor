@@ -20,16 +20,17 @@ use syn::parse_macro_input;
 ///     pub fn create(ctx: Context<Create>, bump_seed: u8) -> Result<()> {
 ///       let my_account = &mut ctx.accounts.my_account;
 ///       my_account.bump_seed = bump_seed;
+// /       Ok(()) // This was missing.
 ///     }
 /// }
 ///
 /// #[derive(Accounts)]
-/// pub struct Create {
+/// pub struct Create <'info> { // <'info> added
 ///   #[account(init)]
 ///   my_account: Account<'info, MyAccount>,
 /// }
 ///
-/// impl Create {
+/// impl Create <'_> {
 ///   pub fn accounts(ctx: &Context<Create>, bump_seed: u8) -> Result<()> {
 ///     let seeds = &[ctx.accounts.my_account.to_account_info().key.as_ref(), &[bump_seed]];
 ///     Pubkey::create_program_address(seeds, ctx.program_id)
@@ -37,6 +38,8 @@ use syn::parse_macro_input;
 ///     Ok(())
 ///   }
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// This example demonstrates a useful pattern. Not only can you use

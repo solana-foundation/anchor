@@ -6,6 +6,8 @@
 //! pub struct Example {
 //!     pub my_acc: Option<Account<'info, MyData>>
 //! }
+//! 
+//! # fn main() {}
 //! ```
 
 use std::collections::BTreeSet;

@@ -17,6 +17,8 @@ use crate::{AnchorDeserialize, Pubkey};
 /// pub struct MyStruct {
 ///     field: u8,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 pub trait Lazy: AnchorDeserialize {
     /// Whether the type is a fixed-size type.

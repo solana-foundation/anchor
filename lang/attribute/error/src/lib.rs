@@ -36,6 +36,8 @@ use syn::{parse_macro_input, Expr};
 ///     #[msg("This is an error message clients will automatically display")]
 ///     Hello,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// Note that we generate a new `Error` type so that we can return either the

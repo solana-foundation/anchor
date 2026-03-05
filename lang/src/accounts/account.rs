@@ -78,6 +78,8 @@ use std::ops::{Deref, DerefMut};
 ///     pub authorized: bool
 /// }
 /// ...
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// # Using Account with non-anchor programs
@@ -132,6 +134,8 @@ use std::ops::{Deref, DerefMut};
 ///         &self.0
 ///     }
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// ## Out of the box wrapper types
@@ -193,6 +197,8 @@ use std::ops::{Deref, DerefMut};
 ///     pub program_data: Account<'info, ProgramData>,
 ///     pub system_program: Program<'info, System>,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 ///
 /// This example solves a problem you may face if your program has admin settings: How do you set the
@@ -212,6 +218,8 @@ use std::ops::{Deref, DerefMut};
 /// pub struct Example {
 ///     pub my_acc: Account<'info, TokenAccount>
 /// }
+/// 
+/// # fn main() {}
 /// ```
 /// to access token accounts and
 /// ```ignore
@@ -221,6 +229,8 @@ use std::ops::{Deref, DerefMut};
 /// pub struct Example {
 ///     pub my_acc: Account<'info, Mint>
 /// }
+/// 
+/// # fn main() {}
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]

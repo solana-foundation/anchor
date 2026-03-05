@@ -11,6 +11,8 @@
 //! pub struct Example {
 //!     pub my_acc: Box<Account<'info, MyData>>
 //! }
+//! 
+//! # fn main() {}
 //! ```
 
 use crate::solana_program::account_info::AccountInfo;

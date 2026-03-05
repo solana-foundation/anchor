@@ -34,6 +34,8 @@ use syn::{
 ///    #[account(init, payer = payer, space = 8 + ExampleAccount::INIT_SPACE)]
 ///    pub data: Account<'info, ExampleAccount>,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 #[proc_macro_derive(InitSpace, attributes(max_len))]
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
