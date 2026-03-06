@@ -54,15 +54,17 @@ export class BorshAccountsCoder<A extends string = string>
       throw new Error(`Unknown account: ${accountName}`);
     }
     const len = layout.layout.encode(account, buffer);
-    const accountData = buffer.slice(0, len);
-    const discriminator = this.accountDiscriminator(accountName);
+    const accountData = buffer.slice(0, len) as Uint8Array;
+    const discriminator = this.accountDiscriminator(accountName) as Uint8Array;
     return Buffer.concat([discriminator, accountData]);
   }
 
   public decode<T = any>(accountName: A, data: Buffer): T {
     // Assert the account discriminator is correct.
     const discriminator = this.accountDiscriminator(accountName);
-    if (discriminator.compare(data.slice(0, discriminator.length))) {
+    if (
+      discriminator.compare(data.slice(0, discriminator.length) as Uint8Array)
+    ) {
       throw new Error("Invalid account discriminator");
     }
     return this.decodeUnchecked(accountName, data);
@@ -71,7 +73,7 @@ export class BorshAccountsCoder<A extends string = string>
   public decodeAny<T = any>(data: Buffer): T {
     for (const [name, layout] of this.accountLayouts) {
       const givenDisc = data.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      const matches = givenDisc.equals(Uint8Array.from(layout.discriminator));
       if (matches) return this.decodeUnchecked(name, data);
     }
 
@@ -94,7 +96,9 @@ export class BorshAccountsCoder<A extends string = string>
     return {
       offset: 0,
       bytes: bs58.encode(
-        appendData ? Buffer.concat([discriminator, appendData]) : discriminator
+        appendData
+          ? Buffer.from([...discriminator, ...appendData])
+          : discriminator
       ),
     };
   }

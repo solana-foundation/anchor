@@ -103,7 +103,7 @@ class u64 extends BN {
     }
 
     const zeroPad = Buffer.alloc(8);
-    b.copy(zeroPad);
+    zeroPad.set(Uint8Array.from(b));
     return zeroPad;
   }
 
