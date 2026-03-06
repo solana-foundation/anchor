@@ -39,7 +39,7 @@ use syn::{
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let name = input.ident;
+    let name = input.ident.clone();
 
     let process_struct_fields = |fields: Punctuated<Field, Comma>| {
         let recurse = fields.into_iter().map(|f| {
@@ -87,7 +87,14 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => unimplemented!(),
+        _ => {
+            return syn::Error::new(
+                input.ident.span(),
+                "#[derive(InitSpace)] is only supported on structs and enums",
+            )
+            .into_compile_error()
+            .into()
+        }
     };
 
     TokenStream::from(expanded)
