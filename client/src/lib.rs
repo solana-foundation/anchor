@@ -71,7 +71,7 @@ use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_instruction::AccountMeta;
-use solana_message::{v0, VersionedMessage};
+use solana_message::v0;
 use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
