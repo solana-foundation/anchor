@@ -22,8 +22,9 @@ runs:
         retry_on: error
         shell: bash
         command: |
+          set -euxo pipefail
           echo "Installing Surfpool version ${{ env.SURFPOOL_CLI_VERSION }}"
-          curl -sL https://run.surfpool.run/ | bash
+          curl -sL https://run.surfpool.run/ | VERSION=v${{ env.SURFPOOL_CLI_VERSION }} bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$PATH"
           ls -al $HOME/.local/bin
