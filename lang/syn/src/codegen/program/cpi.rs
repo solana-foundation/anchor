@@ -35,7 +35,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
                     _ => (
                         quote! { anchor_lang::Result<crate::cpi::Return::<#ret_type>> },
-                        quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData }) }
+                        quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData, program_id: ctx.program_id }) }
                     )
                 };
 
@@ -86,11 +86,24 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
 
             pub struct Return<T> {
-                phantom: std::marker::PhantomData<T>
+                phantom: std::marker::PhantomData<T>,
+                program_id: Pubkey,
             }
 
             impl<T: AnchorDeserialize> Return<T> {
                 pub fn get(&self) -> T {
+                    let (key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                    if key != self.program_id {
+                        anchor_lang::solana_program::log::sol_log("CPI return data program_id mismatch");
+                        panic!("CPI return data from unexpected program: expected {}, got {}", self.program_id, key);
+                    }
+                    T::try_from_slice(&data).unwrap()
+                }
+
+                /// Read return data without validating the program_id.
+                /// Use this only when you intentionally need to read return data
+                /// from a different program than the one that was CPI'd into.
+                pub fn get_unchecked(&self) -> T {
                     let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
                     T::try_from_slice(&data).unwrap()
                 }
