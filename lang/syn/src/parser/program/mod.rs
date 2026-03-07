@@ -26,7 +26,9 @@ fn parse_program_id(program_mod: &syn::ItemMod) -> Option<proc_macro2::TokenStre
     let items = &program_mod.content.as_ref()?.1;
     for item in items {
         if let syn::Item::Const(c) = item {
-            if c.ident == "ID" {
+            if c.ident == "ID"
+                && matches!(*c.ty, syn::Type::Path(ref p) if p.path.segments.last().map_or(false, |s| s.ident == "Pubkey"))
+            {
                 let expr = &c.expr;
                 return Some(quote::quote! { #expr });
             }
