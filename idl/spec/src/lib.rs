@@ -356,21 +356,32 @@ impl FromStr for IdlType {
                 }
 
                 if s.starts_with('[') {
-                    fn array_from_str(inner: &str) -> IdlType {
+                    fn array_from_str(inner: &str) -> Result<IdlType, anyhow::Error> {
                         match inner.strip_suffix(']') {
                             Some(nested_inner) => array_from_str(&nested_inner[1..]),
                             None => {
-                                let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
-                                let ty = IdlType::from_str(raw_type).unwrap();
+                                // Try multiple delimiters for compatibility
+                                let delimiter = if inner.contains(';') {
+                                    ';'
+                                } else if inner.contains(' ') {
+                                    ' '
+                                } else {
+                                    return Err(anyhow!("Invalid array format: missing delimiter in '{}'", inner));
+                                };
+                                
+                                let (raw_type, raw_length) = inner.rsplit_once(delimiter)
+                                    .ok_or_else(|| anyhow!("Failed to parse array type: '{}'", inner))?;
+                                
+                                let ty = IdlType::from_str(raw_type)?;
                                 let len = match raw_length.replace('_', "").parse::<usize>() {
                                     Ok(len) => IdlArrayLen::Value(len),
                                     Err(_) => IdlArrayLen::Generic(raw_length.to_owned()),
                                 };
-                                IdlType::Array(Box::new(ty), len)
+                                Ok(IdlType::Array(Box::new(ty), len))
                             }
                         }
                     }
-                    return Ok(array_from_str(&s));
+                    return Ok(array_from_str(&s)?);
                 }
 
                 // Defined
@@ -406,7 +417,6 @@ impl FromStr for IdlType {
         Ok(r)
     }
 }
-
 pub type IdlDiscriminator = Vec<u8>;
 
 /// Get whether the given data is the default of its type.
