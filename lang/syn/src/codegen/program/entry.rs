@@ -3,6 +3,11 @@ use heck::CamelCase;
 use quote::quote;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    let program_id = match &program.program_id {
+        Some(id) => quote! { #id },
+        None => quote! { ID },
+    };
+
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
 
     quote! {
@@ -18,7 +23,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
 
         impl anchor_lang::AnchorProgram for program::#name {
-            const ID: Pubkey = ID;
+            const ID: Pubkey = #program_id;
 
             #[cfg(feature = "anchor-debug")]
             fn entrypoint<'info>(
