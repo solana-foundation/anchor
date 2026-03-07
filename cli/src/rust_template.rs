@@ -17,6 +17,7 @@ use std::{
 };
 
 const ANCHOR_MSRV: &str = "1.89.0";
+const TEST_SLEEP: &str = "0.3";
 
 /// Program initialization template
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
@@ -645,18 +646,18 @@ impl TestTemplate {
         match &self {
             Self::Mocha => {
                 if js {
-                    format!("{pkg_manager_exec_cmd} mocha -t 1000000 tests/")
+                    format!("sleep {TEST_SLEEP} && {pkg_manager_exec_cmd} mocha -t 1000000 tests/")
                 } else {
                     format!(
-                        r#"{pkg_manager_exec_cmd} ts-mocha -p ./tsconfig.json -t 1000000 "tests/**/*.ts""#
+                        r#"sleep {TEST_SLEEP} && {pkg_manager_exec_cmd} ts-mocha -p ./tsconfig.json -t 1000000 "tests/**/*.ts""#
                     )
                 }
             }
             Self::Jest => {
                 if js {
-                    format!("{pkg_manager_exec_cmd} jest")
+                    format!("sleep {TEST_SLEEP} && {pkg_manager_exec_cmd} jest")
                 } else {
-                    format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
+                    format!("sleep {TEST_SLEEP} && {pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
             Self::Rust => "cargo test".to_owned(),
