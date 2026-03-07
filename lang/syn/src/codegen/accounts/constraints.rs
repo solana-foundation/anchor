@@ -427,7 +427,51 @@ fn generate_constraint_realloc(
     let system_program_optional_check =
         optional_check_scope.generate_check(quote! {system_program});
 
+    // Check if payer is a PDA and generate seeds if needed
+    // Only do this after optional check if payer is optional
+    let (payer_pda_find, payer_seeds_with_bump, payer_is_pda) = find_payer_pda_seeds(payer, accs);
+
+    // Check if payer field is optional
+    let payer_is_optional = accs.fields.iter().any(|af| match af {
+        AccountField::Field(f) => {
+            if let Expr::Path(expr_path) = payer {
+                if let Some(segment) = expr_path.path.segments.last() {
+                    f.ident == segment.ident && f.is_optional
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+        _ => false,
+    });
+
+    // Only generate PDA finding code if payer is not optional, or after optional check
+    let (payer_pda_find_code, payer_optional_check_in_delta) = if payer_is_optional {
+        // If payer is optional, generate PDA code only after the optional check
+        (
+            quote! {
+                #payer_optional_check
+                #payer_pda_find
+            },
+            quote! {}, // Already checked above
+        )
+    } else {
+        // If payer is not optional, generate PDA code before optional check
+        (
+            quote! {
+                #payer_pda_find
+            },
+            quote! {
+                #payer_optional_check
+            },
+        )
+    };
+
     quote! {
+        // Define payer PDA if it's a PDA (only after optional check if payer is optional)
+        #payer_pda_find_code
         // Blocks duplicate account reallocs in a single instruction to prevent accidental account overwrites
         // and to ensure the calculation of the change in bytes is based on account size at program entry
         // which inheritantly guarantee idempotency.
@@ -444,7 +488,7 @@ fn generate_constraint_realloc(
             .unwrap();
 
         if __delta_space != 0 {
-            #payer_optional_check
+            #payer_optional_check_in_delta
             if __delta_space > 0 {
                 #system_program_optional_check
                 if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
@@ -452,14 +496,18 @@ fn generate_constraint_realloc(
                 }
 
                 if __new_rent_minimum > __field_info.lamports() {
+                    let mut cpi_ctx = anchor_lang::context::CpiContext::new(
+                        system_program.key(),
+                        anchor_lang::system_program::Transfer {
+                            from: #payer.to_account_info(),
+                            to: __field_info.clone(),
+                        },
+                    );
+                    if #payer_is_pda {
+                        cpi_ctx = cpi_ctx.with_signer(&[#payer_seeds_with_bump]);
+                    }
                     anchor_lang::system_program::transfer(
-                        anchor_lang::context::CpiContext::new(
-                            system_program.key(),
-                            anchor_lang::system_program::Transfer {
-                                from: #payer.to_account_info(),
-                                to: __field_info.clone(),
-                            },
-                        ),
+                        cpi_ctx,
                         __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
                     )?;
                 }
@@ -492,6 +540,25 @@ fn generate_constraint_init_group(
 
     let payer = &c.payer;
 
+    // Check if payer field is optional
+    let payer_is_optional = accs.fields.iter().any(|af| match af {
+        AccountField::Field(field) => {
+            if let Expr::Path(expr_path) = payer {
+                if let Some(segment) = expr_path.path.segments.last() {
+                    field.ident == segment.ident && field.is_optional
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+        _ => false,
+    });
+
+    // Check if payer is a PDA and generate seeds if needed
+    let (payer_pda_find, payer_seeds_with_bump, payer_is_pda) = find_payer_pda_seeds(payer, accs);
+
     // Convert from account info to account context wrapper type.
     let from_account_info = f.from_account_info(Some(&c.kind), true);
     let from_account_info_unchecked = f.from_account_info(Some(&c.kind), false);
@@ -499,8 +566,8 @@ fn generate_constraint_init_group(
     let account_ref = generate_account_ref(f);
 
     // PDA bump seeds.
-    let (find_pda, seeds_with_bump) = match &c.seeds {
-        None => (quote! {}, quote! {}),
+    let (find_pda, seeds_with_bump, field_is_pda) = match &c.seeds {
+        None => (quote! {}, quote! {}, false),
         Some(c) => match &c.seeds {
             // If the bump is provided with init *and target*, then force it to be the
             // canonical bump.
@@ -558,6 +625,7 @@ fn generate_constraint_init_group(
                             &[__bump][..]
                         ][..]
                     },
+                    true,
                 )
             }
             SeedsExpr::Expr(expr) => {
@@ -587,6 +655,7 @@ fn generate_constraint_init_group(
                         }
                     },
                     quote! { &__signer_seeds[..] },
+                    true,
                 )
             }
         },
@@ -628,39 +697,75 @@ fn generate_constraint_init_group(
 
             let token_account_space = generate_get_token_account_space(mint);
 
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
+                quote! {
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { &[#payer_seeds_with_bump] }
+            } else if field_is_pda {
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             let create_account = generate_create_account(
                 field,
                 quote! {#token_account_space},
                 quote! {&#token_program.key()},
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
-            quote! {
-                // Define the bump and pda variable.
-                #find_pda
+            {
+                let payer_pda_find_before = if payer_is_optional {
+                    quote! {}
+                } else {
+                    quote! { #payer_pda_find }
+                };
+                let payer_pda_find_after = if payer_is_optional {
+                    quote! { #payer_pda_find }
+                } else {
+                    quote! {}
+                };
 
-                let #field: #ty_decl = ({ #[inline(never)] || {
-                    // Checks that all the required accounts for this operation are present.
-                    #optional_checks
+                quote! {
+                    // Define the bump and pda variable.
+                    #find_pda
+                    // Define payer PDA if it's a PDA (only after optional check if payer is optional)
+                    #payer_pda_find_before
 
-                    let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
-                        #payer_optional_check
+                    let #field: #ty_decl = ({ #[inline(never)] || {
+                        // Checks that all the required accounts for this operation are present.
+                        #optional_checks
 
-                        // Create the account with the system program.
-                        #create_account
+                        let owner_program = #account_ref.owner;
+                        if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                            #payer_optional_check
+                            #payer_pda_find_after
 
-                        // Initialize the token account.
-                        let cpi_program_id = #token_program.key();
-                        let accounts = ::anchor_spl::token_interface::InitializeAccount3 {
-                            account: #field.to_account_info(),
-                            mint: #mint.to_account_info(),
-                            authority: #owner.to_account_info(),
-                        };
-                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
-                        ::anchor_spl::token_interface::initialize_account3(cpi_ctx)?;
-                    }
+                            // Create the account with the system program.
+                            #create_account
+
+                            // Initialize the token account.
+                            let cpi_program_id = #token_program.key();
+                            let accounts = ::anchor_spl::token_interface::InitializeAccount3 {
+                                account: #field.to_account_info(),
+                                mint: #mint.to_account_info(),
+                                authority: #owner.to_account_info(),
+                            };
+                            let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
+                            ::anchor_spl::token_interface::initialize_account3(cpi_ctx)?;
+                        }
 
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
@@ -676,6 +781,7 @@ fn generate_constraint_init_group(
                     }
                     Ok(pa)
                 }})()?;
+                }
             }
         }
         InitKind::AssociatedToken {
@@ -707,31 +813,48 @@ fn generate_constraint_init_group(
 
             let payer_optional_check = check_scope.generate_check(payer);
 
-            quote! {
-                // Define the bump and pda variable.
-                #find_pda
+            {
+                let payer_pda_find_before = if payer_is_optional {
+                    quote! {}
+                } else {
+                    quote! { #payer_pda_find }
+                };
+                let payer_pda_find_after = if payer_is_optional {
+                    quote! { #payer_pda_find }
+                } else {
+                    quote! {}
+                };
 
-                let #field: #ty_decl = ({ #[inline(never)] || {
-                    // Checks that all the required accounts for this operation are present.
-                    #optional_checks
+                quote! {
+                    // Define the bump and pda variable.
+                    #find_pda
+                    // Define payer PDA if it's a PDA (only after optional check if payer is optional)
+                    #payer_pda_find_before
 
-                    let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
-                        #payer_optional_check
+                    let #field: #ty_decl = ({ #[inline(never)] || {
+                        // Checks that all the required accounts for this operation are present.
+                        #optional_checks
 
-                        ::anchor_spl::associated_token::create(
-                            anchor_lang::context::CpiContext::new(
-                                associated_token_program.key(),
-                                ::anchor_spl::associated_token::Create {
-                                    payer: #payer.to_account_info(),
-                                    associated_token: #field.to_account_info(),
-                                    authority: #owner.to_account_info(),
-                                    mint: #mint.to_account_info(),
-                                    system_program: system_program.to_account_info(),
-                                    token_program: #token_program.to_account_info(),
-                                }
-                            )
-                        )?;
+                        let owner_program = #account_ref.owner;
+                        if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                            #payer_optional_check
+                            #payer_pda_find_after
+
+                            let mut cpi_ctx = anchor_lang::context::CpiContext::new(
+                            associated_token_program.key(),
+                            ::anchor_spl::associated_token::Create {
+                                payer: #payer.to_account_info(),
+                                associated_token: #field.to_account_info(),
+                                authority: #owner.to_account_info(),
+                                mint: #mint.to_account_info(),
+                                system_program: system_program.to_account_info(),
+                                token_program: #token_program.to_account_info(),
+                            }
+                        );
+                        if #payer_is_pda {
+                            cpi_ctx = cpi_ctx.with_signer(&[#payer_seeds_with_bump]);
+                        }
+                        ::anchor_spl::associated_token::create(cpi_ctx)?;
                     }
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
@@ -751,6 +874,7 @@ fn generate_constraint_init_group(
                     }
                     Ok(pa)
                 }})()?;
+                }
             }
         }
         InitKind::Mint {
@@ -954,114 +1078,150 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
             };
 
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
+                quote! {
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { &[#payer_seeds_with_bump] }
+            } else if field_is_pda {
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             let create_account = generate_create_account(
                 field,
                 mint_space,
                 quote! {&#token_program.key()},
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
-            quote! {
-                // Define the bump and pda variable.
-                #find_pda
+            {
+                let payer_pda_find_before = if payer_is_optional {
+                    quote! {}
+                } else {
+                    quote! { #payer_pda_find }
+                };
+                let payer_pda_find_after = if payer_is_optional {
+                    quote! { #payer_pda_find }
+                } else {
+                    quote! {}
+                };
 
-                let #field: #ty_decl = ({ #[inline(never)] || {
-                    // Checks that all the required accounts for this operation are present.
-                    #optional_checks
+                quote! {
+                    // Define the bump and pda variable.
+                    #find_pda
+                    // Define payer PDA if it's a PDA (only after optional check if payer is optional)
+                    #payer_pda_find_before
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
-                        // Define payer variable.
-                        #payer_optional_check
+                    let #field: #ty_decl = ({ #[inline(never)] || {
+                        // Checks that all the required accounts for this operation are present.
+                        #optional_checks
 
-                        // Create the account with the system program.
-                        #create_account
+                        let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
+                        if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                            // Define payer variable.
+                            #payer_optional_check
+                            #payer_pda_find_after
 
-                        let cpi_program_id = #token_program.key();
+                            // Create the account with the system program.
+                            #create_account
 
-                        // Initialize extensions.
-                        if let Some(extensions) = #extensions {
+                            let cpi_program_id = #token_program.key();
 
-                            for e in extensions {
-                                match e {
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupPointer => {
-                                        ::anchor_spl::token_interface::group_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #group_pointer_authority, #group_pointer_group_address)?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupMemberPointer => {
-                                        ::anchor_spl::token_interface::group_member_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupMemberPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #group_member_pointer_authority, #group_member_pointer_member_address)?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MetadataPointer => {
-                                        ::anchor_spl::token_interface::metadata_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MetadataPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #metadata_pointer_authority, #metadata_pointer_metadata_address)?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MintCloseAuthority => {
-                                        ::anchor_spl::token_interface::mint_close_authority_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MintCloseAuthorityInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #close_authority)?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferHook => {
-                                        ::anchor_spl::token_interface::transfer_hook_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::TransferHookInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #transfer_hook_authority, #transfer_hook_program_id)?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable => {
-                                        ::anchor_spl::token_interface::non_transferable_mint_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::NonTransferableMintInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }))?;
-                                    },
-                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate => {
-                                        ::anchor_spl::token_interface::permanent_delegate_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PermanentDelegateInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
-                                        }), #permanent_delegate.unwrap())?;
-                                    },
-                                    // All extensions specified by the user should be implemented.
-                                    // If this line runs, it means there is a bug in the codegen.
-                                    _ => unimplemented!("{e:?}"),
+                            // Initialize extensions.
+                            if let Some(extensions) = #extensions {
+                                for e in extensions {
+                                    match e {
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupPointer => {
+                                            ::anchor_spl::token_interface::group_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupPointerInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #group_pointer_authority, #group_pointer_group_address)?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupMemberPointer => {
+                                            ::anchor_spl::token_interface::group_member_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupMemberPointerInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #group_member_pointer_authority, #group_member_pointer_member_address)?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MetadataPointer => {
+                                            ::anchor_spl::token_interface::metadata_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MetadataPointerInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #metadata_pointer_authority, #metadata_pointer_metadata_address)?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MintCloseAuthority => {
+                                            ::anchor_spl::token_interface::mint_close_authority_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MintCloseAuthorityInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #close_authority)?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferHook => {
+                                            ::anchor_spl::token_interface::transfer_hook_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::TransferHookInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #transfer_hook_authority, #transfer_hook_program_id)?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable => {
+                                            ::anchor_spl::token_interface::non_transferable_mint_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::NonTransferableMintInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }))?;
+                                        },
+                                        ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate => {
+                                            ::anchor_spl::token_interface::permanent_delegate_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PermanentDelegateInitialize {
+                                                token_program_id: #token_program.to_account_info(),
+                                                mint: #field.to_account_info(),
+                                            }), #permanent_delegate.unwrap())?;
+                                        },
+                                        // All extensions specified by the user should be implemented.
+                                        // If this line runs, it means there is a bug in the codegen.
+                                        _ => unimplemented!("{e:?}"),
+                                    }
                                 }
+                            }
+
+                            // Initialize the mint account.
+                            let accounts = ::anchor_spl::token_interface::InitializeMint2 {
+                                mint: #field.to_account_info(),
                             };
+                            let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
+                            ::anchor_spl::token_interface::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
                         }
 
-                        // Initialize the mint account.
-                        let accounts = ::anchor_spl::token_interface::InitializeMint2 {
-                            mint: #field.to_account_info(),
-                        };
-                        let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
-                        ::anchor_spl::token_interface::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
-                    }
-
-                    let pa: #ty_decl = #from_account_info_unchecked;
-                    if #if_needed {
-                        if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
+                        let pa: #ty_decl = #from_account_info_unchecked;
+                        if #if_needed {
+                            if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
+                            }
+                            if pa.freeze_authority
+                                .as_ref()
+                                .map(|fa| #freeze_authority.as_ref().map(|expected_fa| fa != *expected_fa).unwrap_or(true))
+                                .unwrap_or(#freeze_authority.is_some()) {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority).with_account_name(#name_str));
+                            }
+                            if pa.decimals != #decimals {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintDecimals).with_account_name(#name_str).with_values((pa.decimals, #decimals)));
+                            }
+                            if owner_program != &#token_program.key() {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
+                            }
                         }
-                        if pa.freeze_authority
-                            .as_ref()
-                            .map(|fa| #freeze_authority.as_ref().map(|expected_fa| fa != *expected_fa).unwrap_or(true))
-                            .unwrap_or(#freeze_authority.is_some()) {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority).with_account_name(#name_str));
-                        }
-                        if pa.decimals != #decimals {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintDecimals).with_account_name(#name_str).with_values((pa.decimals, #decimals)));
-                        }
-                        if owner_program != &#token_program.key() {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
-                        }
-                    }
-                    Ok(pa)
-                }})()?;
+                        Ok(pa)
+                    }})()?;
+                }
             }
         }
         InitKind::Program { owner } | InitKind::Interface { owner } => {
@@ -1099,67 +1259,104 @@ fn generate_constraint_init_group(
                 #system_program_optional_check
             };
 
+            // Construct payer_signing:
+            // - If payer is PDA: use payer's seeds (payer is signing to pay)
+            // - If field is PDA: use field's seeds (field is signing as the account being created)
+            // - If both are PDAs: we need both as separate signers
+            let payer_signing = if payer_is_pda && field_is_pda {
+                // Both are PDAs - need both as separate signers: [payer_seeds, field_seeds]
+                quote! {
+                    &[#payer_seeds_with_bump, #seeds_with_bump]
+                }
+            } else if payer_is_pda {
+                // Only payer is PDA
+                quote! { &[#payer_seeds_with_bump] }
+            } else if field_is_pda {
+                // Only field is PDA (being created)
+                quote! { &[#seeds_with_bump] }
+            } else {
+                // Neither is PDA
+                quote! { &[] }
+            };
+
             // CPI to the system program to create the account.
             let create_account = generate_create_account(
                 field,
                 quote! {space},
                 owner.clone(),
                 quote! {#payer},
-                seeds_with_bump,
+                None,
+                payer_signing,
             );
 
             // Put it all together.
-            quote! {
-                // Define the bump variable.
-                #find_pda
+            {
+                let payer_pda_find_before = if payer_is_optional {
+                    quote! {}
+                } else {
+                    quote! { #payer_pda_find }
+                };
+                let payer_pda_find_after = if payer_is_optional {
+                    quote! { #payer_pda_find }
+                } else {
+                    quote! {}
+                };
 
-                let #field = ({ #[inline(never)] || {
-                    // Checks that all the required accounts for this operation are present.
-                    #optional_checks
+                quote! {
+                    // Define the bump variable.
+                    #find_pda
+                    // Define payer PDA if it's a PDA (only after optional check if payer is optional)
+                    #payer_pda_find_before
 
-                    let actual_field = #account_ref;
-                    let actual_owner = actual_field.owner;
+                    let #field = ({ #[inline(never)] || {
+                        // Checks that all the required accounts for this operation are present.
+                        #optional_checks
 
-                    // Define the account space variable.
-                    #space
+                        let actual_field = #account_ref;
+                        let actual_owner = actual_field.owner;
 
-                    // Create the account. Always do this in the event
-                    // if needed is not specified or the system program is the owner.
-                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
-                        #payer_optional_check
+                        // Define the account space variable.
+                        #space
 
-                        // CPI to the system program to create.
-                        #create_account
+                        // Create the account. Always do this in the event
+                        // if needed is not specified or the system program is the owner.
+                        let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
+                            #payer_optional_check
+                            #payer_pda_find_after
 
-                        // Convert from account info to account context wrapper type.
-                        #from_account_info_unchecked
-                    } else {
-                        // Convert from account info to account context wrapper type.
-                        #from_account_info
-                    };
+                            // CPI to the system program to create.
+                            #create_account
 
-                    // Assert the account was created correctly.
-                    if #if_needed {
-                        #owner_optional_check
-                        if space != actual_field.data_len() {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSpace).with_account_name(#name_str).with_values((space, actual_field.data_len())));
-                        }
+                            // Convert from account info to account context wrapper type.
+                            #from_account_info_unchecked
+                        } else {
+                            // Convert from account info to account context wrapper type.
+                            #from_account_info
+                        };
 
-                        if actual_owner != #owner {
-                            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintOwner).with_account_name(#name_str).with_pubkeys((*actual_owner, *#owner)));
-                        }
+                        // Assert the account was created correctly.
+                        if #if_needed {
+                            #owner_optional_check
+                            if space != actual_field.data_len() {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintSpace).with_account_name(#name_str).with_values((space, actual_field.data_len())));
+                            }
 
-                        {
-                            let required_lamports = __anchor_rent.minimum_balance(space);
-                            if pa.to_account_info().lamports() < required_lamports {
-                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
+                            if actual_owner != #owner {
+                                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintOwner).with_account_name(#name_str).with_pubkeys((*actual_owner, *#owner)));
+                            }
+
+                            {
+                                let required_lamports = __anchor_rent.minimum_balance(space);
+                                if pa.to_account_info().lamports() < required_lamports {
+                                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
+                                }
                             }
                         }
-                    }
 
-                    // Done.
-                    Ok(pa)
-                }})()?;
+                        // Done.
+                        Ok(pa)
+                    }})()?;
+                }
             }
         }
     }
@@ -1665,11 +1862,11 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with system program with the
+// Generated code to create an account with with system program with the
 // given `space` amount of data, owned by `owner`.
 //
-// `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
-// empty stream.
+// `payer_signing` should be given for PDA signing. Otherwise it's the
+// seeds_with_nonce for the account being created.
 //
 // This should only be run within scopes where `system_program` is not Optional
 fn generate_create_account(
@@ -1677,7 +1874,8 @@ fn generate_create_account(
     space: proc_macro2::TokenStream,
     owner: proc_macro2::TokenStream,
     payer: proc_macro2::TokenStream,
-    seeds_with_nonce: proc_macro2::TokenStream,
+    _payer_field: Option<&Field>,
+    payer_signing: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     // Field, payer, and system program are already validated to not be an Option at this point
     quote! {
@@ -1695,7 +1893,7 @@ fn generate_create_account(
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
+            anchor_lang::system_program::create_account(cpi_context.with_signer(#payer_signing), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1709,20 +1907,20 @@ fn generate_create_account(
                     to: #field.to_account_info(),
                 };
                 let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-                anchor_lang::system_program::transfer(cpi_context, required_lamports)?;
+                anchor_lang::system_program::transfer(cpi_context.with_signer(#payer_signing), required_lamports)?;
             }
             // Allocate space.
             let cpi_accounts = anchor_lang::system_program::Allocate {
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
+            anchor_lang::system_program::allocate(cpi_context.with_signer(#payer_signing), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
+            anchor_lang::system_program::assign(cpi_context.with_signer(#payer_signing), #owner)?;
         }
     }
 }
@@ -1781,5 +1979,137 @@ fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
             quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref()))
         }
         _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
+    }
+}
+
+// Helper function to check if payer is a PDA and generate seeds if needed
+fn find_payer_pda_seeds(
+    payer: &Expr,
+    accs: &AccountsStruct,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream, bool) {
+    // Extract payer field name from expression
+    let payer_name = match payer {
+        Expr::Path(expr_path) => {
+            if let Some(segment) = expr_path.path.segments.last() {
+                segment.ident.to_string()
+            } else {
+                return (quote! {}, quote! {}, false);
+            }
+        }
+        _ => return (quote! {}, quote! {}, false),
+    };
+
+    // Find the payer field in accounts struct
+    let payer_field = accs.fields.iter().find_map(|af| match af {
+        AccountField::Field(f) if f.ident == payer_name => Some(f),
+        _ => None,
+    });
+
+    match payer_field {
+        Some(field) => {
+            // Check if payer has seeds constraints (is a PDA)
+            if let Some(seeds_group) = &field.constraints.seeds {
+                let payer_ident = &field.ident;
+                let payer_name_str = payer_ident.to_string();
+
+                // Generate PDA seeds similar to how it's done for init fields
+                match &seeds_group.seeds {
+                    SeedsExpr::List(list) => {
+                        // Optional prefix (either empty or "<list>,")
+                        let maybe_seeds_plus_comma = if list.is_empty() {
+                            quote! {}
+                        } else {
+                            quote! { #list, }
+                        };
+
+                        let deriving_program_id = seeds_group
+                            .program_seed
+                            .clone()
+                            .map(|program_id| quote! { #program_id.key() })
+                            .unwrap_or(quote! { __program_id });
+
+                        let bump_tok = if field.is_optional {
+                            quote!(Some(__payer_bump))
+                        } else {
+                            quote!(__payer_bump)
+                        };
+
+                        let seeds_for_find = if list.is_empty() {
+                            quote! { &[] }
+                        } else {
+                            quote! { &[ #maybe_seeds_plus_comma ] }
+                        };
+
+                        let seeds_for_signing = if list.is_empty() {
+                            quote! { &[&[__payer_bump][..]][..] }
+                        } else {
+                            quote! {
+                                &[
+                                    #maybe_seeds_plus_comma
+                                    &[__payer_bump][..]
+                                ][..]
+                            }
+                        };
+
+                        (
+                            quote! {
+                                let (__payer_pda_address, __payer_bump) = Pubkey::find_program_address(
+                                    #seeds_for_find,
+                                    &#deriving_program_id,
+                                );
+                                __bumps.#payer_ident = #bump_tok;
+                                if #payer_ident.key() != __payer_pda_address {
+                                    return Err(anchor_lang::error::Error::from(
+                                        anchor_lang::error::ErrorCode::ConstraintSeeds
+                                    ).with_account_name(#payer_name_str)
+                                     .with_pubkeys((#payer_ident.key(), __payer_pda_address)));
+                                }
+                            },
+                            seeds_for_signing,
+                            true,
+                        )
+                    }
+                    SeedsExpr::Expr(expr) => {
+                        let deriving_program_id = seeds_group
+                            .program_seed
+                            .clone()
+                            .map(|program_id| quote! { #program_id.key() })
+                            .unwrap_or(quote! { __program_id });
+
+                        let bump_tok = if field.is_optional {
+                            quote!(Some(__payer_bump))
+                        } else {
+                            quote!(__payer_bump)
+                        };
+
+                        (
+                            quote! {
+                                let __payer_seeds_slice: &[&[u8]] = #expr;
+                                let (__payer_pda_address, __payer_bump) =
+                                    Pubkey::find_program_address(__payer_seeds_slice, &#deriving_program_id);
+                                __bumps.#payer_ident = #bump_tok;
+
+                                let mut __payer_signer_seeds_vec: ::std::vec::Vec<&[u8]> = __payer_seeds_slice.to_vec();
+                                let __payer_bump_array = [__payer_bump];
+                                __payer_signer_seeds_vec.push(&__payer_bump_array[..]);
+                                let __payer_signer_seeds = __payer_signer_seeds_vec;
+
+                                if #payer_ident.key() != __payer_pda_address {
+                                    return Err(anchor_lang::error::Error::from(
+                                        anchor_lang::error::ErrorCode::ConstraintSeeds
+                                    ).with_account_name(#payer_name_str)
+                                     .with_pubkeys((#payer_ident.key(), __payer_pda_address)));
+                                }
+                            },
+                            quote! { &__payer_signer_seeds[..] },
+                            true,
+                        )
+                    }
+                }
+            } else {
+                (quote! {}, quote! {}, false)
+            }
+        }
+        None => (quote! {}, quote! {}, false),
     }
 }
