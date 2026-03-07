@@ -55,6 +55,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
 /// Default RPC port
 pub const DEFAULT_RPC_PORT: u16 = 8899;
+/// Default faucet port
+pub const DEFAULT_FAUCET_PORT: u16 = 9900;
 
 /// WebSocket port offset for solana-test-validator (RPC port + 1)
 pub const WEBSOCKET_PORT_OFFSET: u16 = 1;
@@ -3980,7 +3982,7 @@ fn start_solana_test_validator(
         .test_validator
         .as_ref()
         .and_then(|test| test.validator.as_ref().and_then(|v| v.faucet_port))
-        .unwrap_or(solana_faucet::faucet::FAUCET_PORT);
+        .unwrap_or(DEFAULT_FAUCET_PORT);
     if !portpicker::is_free(faucet_port) {
         return Err(anyhow!(
             "Your configured faucet port: {faucet_port} is already in use"

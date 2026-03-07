@@ -31,6 +31,7 @@ pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Resul
     Ok(ata_account)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn make_ata<'a>(
     ata: AccountInfo<'a>,
     wallet: AccountInfo<'a>,
@@ -41,17 +42,14 @@ pub fn make_ata<'a>(
     system_program: AccountInfo<'a>,
     fee_payer_seeds: &[&[u8]],
 ) -> Result<()> {
-    let seeds: &[&[&[u8]]];
-    let as_arr = [fee_payer_seeds];
-
-    if fee_payer_seeds.len() > 0 {
-        seeds = &as_arr;
+    let seeds: &[&[&[u8]]] = if !fee_payer_seeds.is_empty() {
+        &[fee_payer_seeds]
     } else {
-        seeds = &[];
-    }
+        &[]
+    };
 
     invoke_signed(
-        &create_associated_token_account(&fee_payer.key, &wallet.key, &mint.key, &spl_token::ID),
+        &create_associated_token_account(fee_payer.key, wallet.key, mint.key, &spl_token::ID),
         &[
             ata,
             wallet,
@@ -108,7 +106,7 @@ pub fn get_fee_payer<'a, 'b>(
         return err!(ErrorCode::NoPayerPresent);
     };
 
-    Ok((fee_payer, &seeds))
+    Ok((fee_payer, seeds))
 }
 
 pub fn assert_valid_delegation(
@@ -205,8 +203,8 @@ pub fn pay_auction_house_fees<'a>(
         invoke_signed(
             &spl_token::instruction::transfer(
                 token_program.key,
-                &escrow_payment_account.key,
-                &auction_house_treasury.key,
+                escrow_payment_account.key,
+                auction_house_treasury.key,
                 &auction_house.key(),
                 &[],
                 total_fee,
@@ -222,7 +220,7 @@ pub fn pay_auction_house_fees<'a>(
     } else {
         invoke_signed(
             &system_instruction::transfer(
-                &escrow_payment_account.key,
+                escrow_payment_account.key,
                 auction_house_treasury.key,
                 total_fee,
             ),
@@ -237,6 +235,7 @@ pub fn pay_auction_house_fees<'a>(
     Ok(total_fee)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_program_token_account_if_not_present<'a>(
     payment_account: &UncheckedAccount<'a>,
     system_program: &Program<'a, System>,
@@ -254,15 +253,15 @@ pub fn create_program_token_account_if_not_present<'a>(
             *token_program.key,
             &payment_account.to_account_info(),
             &rent.to_account_info(),
-            &system_program,
-            &fee_payer,
+            system_program,
+            fee_payer,
             spl_token::state::Account::LEN,
             fee_seeds,
             signer_seeds,
         )?;
         invoke_signed(
             &initialize_account2(
-                &token_program.key,
+                token_program.key,
                 &payment_account.key(),
                 &treasury_mint.key(),
                 &owner.key(),
@@ -275,7 +274,7 @@ pub fn create_program_token_account_if_not_present<'a>(
                 rent.to_account_info(),
                 owner.clone(),
             ],
-            &[&signer_seeds],
+            &[signer_seeds],
         )?;
         msg!("Passes");
     }
@@ -348,7 +347,7 @@ pub fn pay_creator_fees<'a>(
                         invoke_signed(
                             &spl_token::instruction::transfer(
                                 token_program.key,
-                                &escrow_payment_account.key,
+                                escrow_payment_account.key,
                                 current_creator_token_account_info.key,
                                 payment_account_owner.key,
                                 &[],
@@ -366,7 +365,7 @@ pub fn pay_creator_fees<'a>(
                 } else if creator_fee > 0 {
                     invoke_signed(
                         &system_instruction::transfer(
-                            &escrow_payment_account.key,
+                            escrow_payment_account.key,
                             current_creator_info.key,
                             creator_fee,
                         ),
@@ -385,9 +384,9 @@ pub fn pay_creator_fees<'a>(
         }
     }
     // Any dust is returned to the party posting the NFT
-    Ok(remaining_size
+    remaining_size
         .checked_add(remaining_fee)
-        .ok_or(error!(ErrorCode::NumericalOverflow))?)
+        .ok_or(error!(ErrorCode::NumericalOverflow))
 }
 
 /// Cheap method to just grab mint Pubkey from token account, instead of deserializing entire thing
@@ -414,6 +413,7 @@ pub fn get_delegate_from_token_account(token_account_info: &AccountInfo) -> Resu
 /// Create account almost from scratch, lifted from
 /// https://github.com/solana-labs/solana-program-library/blob/7d4873c61721aca25464d42cc5ef651a7923ca79/associated-token-account/program/src/processor.rs#L51-L98
 #[inline(always)]
+#[allow(clippy::too_many_arguments)]
 pub fn create_or_allocate_account_raw<'a>(
     program_id: Pubkey,
     new_account_info: &AccountInfo<'a>,
@@ -432,16 +432,16 @@ pub fn create_or_allocate_account_raw<'a>(
 
     if required_lamports > 0 {
         msg!("Transfer {} lamports to the new account", required_lamports);
-        let seeds: &[&[&[u8]]];
+
         let as_arr = [signer_seeds];
 
-        if signer_seeds.len() > 0 {
-            seeds = &as_arr;
+        let seeds: &[&[&[u8]]] = if !signer_seeds.is_empty() {
+            &as_arr
         } else {
-            seeds = &[];
-        }
+            &[]
+        };
         invoke_signed(
-            &system_instruction::transfer(&payer_info.key, new_account_info.key, required_lamports),
+            &system_instruction::transfer(payer_info.key, new_account_info.key, required_lamports),
             &[
                 payer_info.clone(),
                 new_account_info.clone(),
@@ -457,14 +457,14 @@ pub fn create_or_allocate_account_raw<'a>(
     invoke_signed(
         &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
         accounts,
-        &[&new_acct_seeds],
+        &[new_acct_seeds],
     )?;
 
     msg!("Assign the account to the owning program");
     invoke_signed(
         &system_instruction::assign(new_account_info.key, &program_id),
         accounts,
-        &[&new_acct_seeds],
+        &[new_acct_seeds],
     )?;
     msg!("Completed assignation!");
 
@@ -472,7 +472,7 @@ pub fn create_or_allocate_account_raw<'a>(
 }
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
-    let (key, bump) = Pubkey::find_program_address(&path, program_id);
+    let (key, bump) = Pubkey::find_program_address(path, program_id);
     if key != *account.key {
         return err!(ErrorCode::DerivedKeyInvalid);
     }

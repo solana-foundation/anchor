@@ -41,11 +41,10 @@ serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 solana-cli-config.workspace = true
-solana-client = "3.0.0"
+solana-client.workspace = true
 solana-clock.workspace = true
 solana-commitment-config.workspace = true
 solana-compute-budget-interface.workspace = true
-solana-faucet = { workspace = true, features = ["agave-unstable-api"] }
 solana-instruction.workspace = true
 solana-keypair.workspace = true
 solana-loader-v3-interface.workspace = true
