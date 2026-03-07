@@ -8,9 +8,17 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         None => quote! { ID },
     };
 
+    let maybe_id_const = match &program.program_id {
+        Some(id) => quote! {
+            pub const ID: anchor_lang::solana_program::pubkey::Pubkey = #id;
+        },
+        None => quote! {},
+    };
+
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
 
     quote! {
+        #maybe_id_const
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
         pub fn entry<'info>(
