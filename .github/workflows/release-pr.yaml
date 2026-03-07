@@ -1,0 +1,226 @@
+name: Release Dry-run
+
+# To avoid finding out mid-tag that certain parts of the release do not build, we have `release.yaml` and
+# `release-pr.yaml` workflows. Both of these files should be kept up to date (with `release-pr.yaml` excluding
+# any publishing/attestation steps), especially if the build steps etc. are updated.
+
+on:
+  pull_request:
+    branches:
+      - master
+
+    paths:
+      - VERSION
+      - ./github/workflows/release-pr.yaml
+
+  workflow_dispatch:
+
+env:
+  DIST: dist-dry-run
+
+jobs:
+  publish-crates-dryrun:
+    name: Publish crates (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - name: Publish crates (dry-run)
+        run: |
+          set -xeuo pipefail
+
+          publish() {
+            local dir="$1"
+            pushd "$dir" >/dev/null
+
+            local name version
+            name="$(
+              cargo metadata --no-deps --format-version 1 --manifest-path Cargo.toml \
+                | jq -r --arg mp "$PWD/Cargo.toml" '.packages[] | select(.manifest_path == $mp) | .name'
+            )"
+            version="$(
+              cargo metadata --no-deps --format-version 1 --manifest-path Cargo.toml \
+                | jq -r --arg mp "$PWD/Cargo.toml" '.packages[] | select(.manifest_path == $mp) | .version'
+            )"
+
+            if cargo search "$name" --limit 1 | grep -q "$version"; then
+              echo "The crate $1 is already up to date, skipping"
+              popd >/dev/null
+              return 0
+            fi
+
+            echo "Publishing $1 (${name}@${version}) as a dry-run"
+            # We cannot directly dry-run the publish process as all of the dependencies must be published
+            # to crates.io for the dry-run (even with --no-verify) to succeed. Therefore, we'll just see if
+            # packaging works.
+            cargo build --locked --release
+
+            popd >/dev/null
+          }
+
+          publish idl/spec
+          publish idl
+          publish lang/syn
+          publish lang/derive/accounts
+          publish lang/derive/serde
+          publish lang/derive/space
+          publish lang/attribute/access-control
+          publish lang/attribute/account
+          publish lang/attribute/constant
+          publish lang/attribute/error
+          publish lang/attribute/program
+          publish lang/attribute/event
+          publish lang
+          publish spl
+          publish client
+          publish cli
+
+  publish-npmjs-dryrun:
+    name: Publish npmjs packages (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Enable corepack (yarn)
+        run: corepack enable
+
+      - run: |
+          set -xeuo pipefail
+
+          publish() {
+            local dir="$1"
+            pushd "$dir" >/dev/null
+
+            local name version
+            name="$(node -p "require('./package.json').name")"
+            version="$(node -p "require('./package.json').version")"
+
+            # We still build the package even if we don't publish it, as yarn workspace will
+            # use the local version of each package, and if it's unbuilt then any subsequent
+            # build will error out due to missing files.
+            yarn --frozen-lockfile
+            local dirname="$(basename $dir)"
+            if [[ "$dirname" == spl-* ]]; then
+              yarn build:npm
+            else
+              yarn build
+            fi
+
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then
+              echo "The package $1 is already up to date, skipping"
+              popd >/dev/null
+              return 0
+            fi
+
+            local publish_args=()
+            # If version looks like X.Y.Z-<something> (e.g. 1.0.0-rc.2), publish under dist-tag "next"
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
+              publish_args+=(--tag next)
+            fi
+
+            echo "Publishing $dir (${name}@${version}) as a dry-run"
+            npm publish "${publish_args[@]}" --dry-run
+
+            popd >/dev/null
+          }
+
+          base="ts/packages"
+
+          publish "$base/borsh"
+          publish "$base/anchor-errors"
+          publish "$base/anchor"
+          publish "$base/spl-associated-token-account"
+          publish "$base/spl-binary-option"
+          publish "$base/spl-binary-oracle-pair"
+          publish "$base/spl-feature-proposal"
+          publish "$base/spl-governance"
+          publish "$base/spl-memo"
+          publish "$base/spl-name-service"
+          publish "$base/spl-record"
+          publish "$base/spl-stake-pool"
+          publish "$base/spl-stateless-asks"
+          publish "$base/spl-token"
+          publish "$base/spl-token-lending"
+          publish "$base/spl-token-swap"
+
+  # We skip checking if the Docker image builds for now as it depends on the version tag already existing,
+  # though as we already have the `build-cli-dryrun` step below there should be rarely any reason for the
+  # image build to ever fail anyway.
+
+  build-cli-dryrun:
+    name: Build binaries (dry-run)
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-msvc
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
+      - name: Build release binary
+        run: cargo build --package trixter-osec-anchor-cli --release --locked --target ${{ matrix.target }}
+
+      - name: Prepare
+        id: prepare
+        shell: bash
+        run: |
+          version="dry-run"
+          ext=""
+          [[ "${{ matrix.os }}" == windows-latest ]] && ext=".exe"
+
+          mkdir $DIST
+          mv "target/${{ matrix.target }}/release/anchor$ext" $DIST/anchor-$version-${{ matrix.target }}$ext
+
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      # As we upload the artifacts, we should generate the build attestation just in case
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: ${{ env.DIST }}/anchor-${{ steps.prepare.outputs.version }}-${{ matrix.target }}*
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: anchor-${{ steps.prepare.outputs.version }}-${{ matrix.target }}
+          path: ${{ env.DIST }}
+          overwrite: true
+          retention-days: 1
