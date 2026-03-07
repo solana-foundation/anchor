@@ -37,9 +37,6 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///   actually wrote, deserializing the accounts, constructing the
         ///   context, invoking the user's code, and finally running the exit
         ///   routine, which typically persists account changes.
-        ///
-        /// The `entry` function here delegates to `AnchorProgram::entrypoint`,
-        /// which performs the program ID check and dispatches the instruction.
         pub fn entry<'info>(
             program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
