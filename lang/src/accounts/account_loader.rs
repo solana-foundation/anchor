@@ -91,6 +91,8 @@ use std::ops::DerefMut;
 ///     pub bar: AccountLoader<'info, Bar>,
 ///     pub authority: Signer<'info>,
 /// }
+/// 
+/// # fn main() {}
 /// ```
 #[derive(Clone)]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {

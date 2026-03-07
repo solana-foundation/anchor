@@ -78,6 +78,8 @@ use std::ops::{Deref, DerefMut};
 ///     pub authorized: bool
 /// }
 /// ...
+/// 
+/// fn main() {}
 /// ```
 ///
 /// # Using InterfaceAccount with non-anchor programs
@@ -146,6 +148,8 @@ use std::ops::{Deref, DerefMut};
 /// pub struct Example {
 ///     pub my_acc: InterfaceAccount<'info, TokenAccount>
 /// }
+/// 
+/// # fn main() {} 
 /// ```
 /// to access token accounts and
 /// ```ignore
@@ -155,6 +159,8 @@ use std::ops::{Deref, DerefMut};
 /// pub struct Example {
 ///     pub my_acc: InterfaceAccount<'info, Mint>
 /// }
+/// 
+/// # fn main() {}
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]

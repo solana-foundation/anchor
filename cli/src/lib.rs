@@ -1555,9 +1555,12 @@ pub type Files = Vec<(PathBuf, String)>;
 /// Create files from the given (path, content) tuple array.
 ///
 /// # Example
-///
-/// ```ignore
-/// crate_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// # fn main() -> anyhow::Result<()> {
+/// # use std::path::PathBuf;
+/// # let files = vec![(PathBuf::from("programs/my_program/src/lib.rs"), "// Content".to_string())];
+/// # crate::create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn create_files(files: &Files) -> Result<()> {
     for (path, content) in files {
@@ -1586,8 +1589,14 @@ pub fn create_files(files: &Files) -> Result<()> {
 ///
 /// # Example
 ///
-/// ```ignore
-/// override_or_create_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```rust
+/// # fn main() -> anyhow::Result<()> {
+/// # let temp_dir = tempfile::tempdir()?;
+/// # let file_path = temp_dir.path().join("lib.rs");
+/// # let files = vec![(file_path, "// Content".to_string())];
+/// // override_or_create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn override_or_create_files(files: &Files) -> Result<()> {
     for (path, content) in files {

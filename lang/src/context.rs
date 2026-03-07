@@ -167,6 +167,7 @@ where
 ///     pub callee_authority: UncheckedAccount<'info>,
 ///     pub callee: Program<'info, Callee>,
 /// }
+/// # fn main() {}
 /// ```
 pub struct CpiContext<'a, 'b, 'c, 'info, T>
 where
