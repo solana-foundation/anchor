@@ -18,6 +18,7 @@
     "custom-discriminator",
     "custom-program",
     "declare-id",
+    "no-declare-id",
     "declare-program",
     "errors",
     "escrow",
