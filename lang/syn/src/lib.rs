@@ -39,6 +39,7 @@ pub struct Program {
     pub docs: Option<Vec<String>>,
     pub program_mod: ItemMod,
     pub fallback_fn: Option<FallbackFn>,
+    pub program_id: Option<proc_macro2::TokenStream>,
 }
 
 impl Parse for Program {
