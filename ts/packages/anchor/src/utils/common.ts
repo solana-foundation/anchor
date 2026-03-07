@@ -32,3 +32,61 @@ export const isVersionedTransaction = (
 ): tx is VersionedTransaction => {
   return "version" in tx;
 };
+
+/**
+ * Converts snake_case, SCREAMING_SNAKE_CASE, or PascalCase to camelCase with
+ * consistent digit-letter handling.
+ *
+ * - First letter is lowercased
+ * - Letters following underscores are capitalized (snake_case handling)
+ * - Letters following digits are capitalized (e.g., a1b_receive → a1BReceive)
+ * - For inputs with underscores (snake_case/SCREAMING_SNAKE_CASE), letters are
+ *   lowercased except at word boundaries (MY_CONST → myConst)
+ * - For inputs without underscores (PascalCase), internal capitalization is
+ *   preserved (DummyA → dummyA)
+ *
+ * This ensures TypeScript method names match the Rust-generated IDL exactly,
+ * preventing runtime "method not found" errors.
+ */
+export function harmonizedCamelCase(input: string): string {
+  let result = "";
+  let capitalizeNext = false;
+  let prevWasDigit = false;
+  let isFirst = true;
+  // If input has underscores, treat as snake_case/SCREAMING_SNAKE_CASE and lowercase letters
+  const hasUnderscore = input.includes("_");
+
+  for (const c of input) {
+    if (c === "_") {
+      capitalizeNext = true;
+      prevWasDigit = false;
+    } else if (c >= "0" && c <= "9") {
+      result += c;
+      prevWasDigit = true;
+      isFirst = false;
+    } else if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) {
+      if (isFirst) {
+        // First letter is always lowercase for camelCase
+        result += c.toLowerCase();
+      } else if (capitalizeNext || prevWasDigit) {
+        // After underscore or digit, capitalize
+        result += c.toUpperCase();
+      } else if (hasUnderscore) {
+        // For snake_case/SCREAMING_SNAKE_CASE, lowercase within words
+        result += c.toLowerCase();
+      } else {
+        // For PascalCase (no underscores), preserve original case
+        result += c;
+      }
+      capitalizeNext = false;
+      prevWasDigit = false;
+      isFirst = false;
+    } else {
+      result += c;
+      capitalizeNext = false;
+      prevWasDigit = false;
+      isFirst = false;
+    }
+  }
+  return result;
+}
