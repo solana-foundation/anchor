@@ -45,6 +45,7 @@ use std::sync::LazyLock;
 mod account;
 mod checks;
 pub mod config;
+pub mod fetch;
 mod keygen;
 mod metadata;
 mod program;
@@ -693,6 +694,21 @@ pub enum IdlCommand {
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
+        /// Fetch all historical versions (historical mode)
+        #[clap(long)]
+        all: bool,
+        /// Fetch IDL at specific slot (historical mode)
+        #[clap(long)]
+        slot: Option<u64>,
+        /// Fetch IDL before this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        before: Option<String>,
+        /// Fetch IDL after this date (YYYY-MM-DD) (historical mode)
+        #[clap(long)]
+        after: Option<String>,
+        /// Output directory for multiple versions (historical mode)
+        #[clap(long)]
+        out_dir: Option<String>,
         /// Fetch non-canonical metadata account (third-party metadata)
         #[clap(long)]
         non_canonical: bool,
@@ -2458,8 +2474,29 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         IdlCommand::Fetch {
             program_id: address,
             out,
+            all,
+            slot,
+            before,
+            after,
+            out_dir,
             non_canonical,
-        } => idl_fetch(cfg_override, address, out, non_canonical),
+        } => {
+            // If any historical flag is provided, route to historical fetch
+            if slot.is_some() || before.is_some() || after.is_some() || all {
+                fetch::idl_fetch_historical(
+                    cfg_override,
+                    address,
+                    all,
+                    slot,
+                    before,
+                    after,
+                    out_dir,
+                    out,
+                )
+            } else {
+                idl_fetch(cfg_override, address, out, non_canonical)
+            }
+        }
         IdlCommand::Convert {
             path,
             out,
