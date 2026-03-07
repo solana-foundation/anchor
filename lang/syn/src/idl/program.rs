@@ -40,32 +40,49 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                 _ => quote! { vec![] },
             };
 
-            let (args, mut defined) = ix
-                .args
-                .iter()
-                .map(|arg| {
-                    let name = arg.name.to_string();
-                    let docs = match docs::parse(&arg.raw_arg.attrs) {
-                        Some(docs) if !no_docs => quote! { vec![#(#docs.into()),*] },
-                        _ => quote! { vec![] },
-                    };
-                    let (ty, defined) = gen_idl_type(&arg.raw_arg.ty, &[])
-                        .map_err(|_| syn::Error::new(arg.raw_arg.ty.span(), "Unsupported type"))?;
+            let (args, mut defined) = if ix.is_raw {
+                // For raw instructions, add a single "data" argument of type bytes
+                let name = "data";
+                let docs = quote! { vec![] };
+                let ty = quote! { #idl::IdlType::Bytes };
+                (
+                    vec![quote! {
+                        #idl::IdlField {
+                            name: #name.into(),
+                            docs: #docs,
+                            ty: #ty,
+                        }
+                    }],
+                    vec![],
+                )
+            } else {
+                ix.args
+                    .iter()
+                    .map(|arg| {
+                        let name = arg.name.to_string();
+                        let docs = match docs::parse(&arg.raw_arg.attrs) {
+                            Some(docs) if !no_docs => quote! { vec![#(#docs.into()),*] },
+                            _ => quote! { vec![] },
+                        };
+                        let (ty, defined) = gen_idl_type(&arg.raw_arg.ty, &[]).map_err(|_| {
+                            syn::Error::new(arg.raw_arg.ty.span(), "Unsupported type")
+                        })?;
 
-                    Ok((
-                        quote! {
-                            #idl::IdlField {
-                                name: #name.into(),
-                                docs: #docs,
-                                ty: #ty,
-                            }
-                        },
-                        defined,
-                    ))
-                })
-                .collect::<syn::Result<Vec<_>>>()?
-                .into_iter()
-                .unzip::<_, Vec<_>, Vec<_>, Vec<_>>();
+                        Ok((
+                            quote! {
+                                #idl::IdlField {
+                                    name: #name.into(),
+                                    docs: #docs,
+                                    ty: #ty,
+                                }
+                            },
+                            defined,
+                        ))
+                    })
+                    .collect::<syn::Result<Vec<_>>>()?
+                    .into_iter()
+                    .unzip::<_, Vec<_>, Vec<_>, Vec<_>>()
+            };
 
             let returns = match gen_idl_type(&ix.returns.ty, &[]) {
                 Ok((ty, def)) => {

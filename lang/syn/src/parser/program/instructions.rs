@@ -30,8 +30,55 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
             let cfgs = parse_cfg(method);
             let returns = parse_return(method)?;
             let anchor_ident = ctx_accounts_ident(&ctx.raw_arg)?;
+
+            // Check if this is a raw instruction (must be explicitly marked with #[raw] attribute)
+            let has_raw_attr = has_raw_attribute(&method.attrs);
+            let has_raw_arg = args.iter().any(|arg| is_raw_byte_slice(&arg.raw_arg.ty));
+            let is_raw = has_raw_attr;
+            // Remove #[raw] attribute from method before cloning (it's just a marker)
+            let mut cleaned_method = method.clone();
+            if has_raw_attr {
+                cleaned_method.attrs.retain(|attr| {
+                    attr.path.segments.last().is_some_and(|seg| seg.ident != "raw")
+                });
+            }
+
+            // Validate: if #[raw] is present, must have exactly one &[u8] argument
+            if is_raw {
+                if !has_raw_arg {
+                    return Err(ParseError::new(
+                        method.sig.span(),
+                        "Functions marked with #[raw] must have exactly one &[u8] or &mut [u8] argument",
+                    ));
+                }
+                // Validate &[u8] argument
+                let raw_args_count = args
+                    .iter()
+                    .filter(|arg| is_raw_byte_slice(&arg.raw_arg.ty))
+                    .count();
+                if raw_args_count != 1 {
+                    return Err(ParseError::new(
+                        method.sig.span(),
+                        "Raw instructions must have exactly one &[u8] or &mut [u8] argument",
+                    ));
+                }
+                // Check that there are no other non-raw arguments
+                if args.len() != 1 {
+                    return Err(ParseError::new(
+                        method.sig.span(),
+                        "Raw instructions cannot have other arguments besides the &[u8] parameter",
+                    ));
+                }
+            } else if has_raw_arg {
+                // If function has &[u8] argument but no #[raw] attribute, error
+                return Err(ParseError::new(
+                    method.sig.span(),
+                    "Functions with &[u8] or &mut [u8] arguments must be marked with #[raw] attribute to skip instruction deserialization",
+                ));
+            }
+
             Ok(Ix {
-                raw_method: method.clone(),
+                raw_method: cleaned_method,
                 ident: method.sig.ident.clone(),
                 docs,
                 cfgs,
@@ -39,6 +86,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
                 anchor_ident,
                 returns,
                 overrides,
+                is_raw,
             })
         })
         .collect::<ParseResult<Vec<Ix>>>()?;
@@ -83,6 +131,33 @@ fn parse_overrides(attrs: &[syn::Attribute]) -> ParseResult<Option<Overrides>> {
         })
         .map(|attr| attr.parse_args())
         .transpose()
+}
+
+/// Check if function has `#[raw]` attribute
+fn has_raw_attribute(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        attr.path
+            .segments
+            .last()
+            .is_some_and(|seg| seg.ident == "raw")
+    })
+}
+
+/// Check if a type is `&[u8]` or `&mut [u8]`
+fn is_raw_byte_slice(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Reference(ty_ref) => {
+            // Check if it's &[u8] or &mut [u8]
+            match &*ty_ref.elem {
+                syn::Type::Slice(slice) => {
+                    // Check if the slice element type is u8
+                    matches!(&*slice.elem, syn::Type::Path(path) if path.path.is_ident("u8"))
+                }
+                _ => false,
+            }
+        }
+        _ => false,
+    }
 }
 
 pub fn parse_args(method: &syn::ItemFn) -> ParseResult<(IxArg, Vec<IxArg>)> {

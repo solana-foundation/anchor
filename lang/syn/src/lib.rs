@@ -72,6 +72,9 @@ pub struct Ix {
     pub anchor_ident: Ident,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
+    /// Whether this instruction accepts raw byte slice instead of deserialized args.
+    /// Must be explicitly marked with `#[raw]` attribute on the function.
+    pub is_raw: bool,
 }
 
 /// Common overrides for the `#[instruction]`, `#[account]` and `#[event]` attributes

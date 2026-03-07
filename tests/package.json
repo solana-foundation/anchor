@@ -35,6 +35,7 @@
     "pda-derivation",
     "relations-derivation",
     "pyth",
+    "raw-instruction",
     "realloc",
     "spl/metadata",
     "spl/token-extensions",
