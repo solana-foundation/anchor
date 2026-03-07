@@ -19,6 +19,9 @@ pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
     })
 }
 
+/// Scans the `#[program]` module items for an inline `const ID: Pubkey = ...`
+/// declaration. Returns `Some(expr)` if found, or `None` if the program relies
+/// on `declare_id!` at the crate level.
 fn parse_program_id(program_mod: &syn::ItemMod) -> Option<proc_macro2::TokenStream> {
     let items = &program_mod.content.as_ref()?.1;
     for item in items {

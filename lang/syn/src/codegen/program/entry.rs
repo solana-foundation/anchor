@@ -21,6 +21,25 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         #maybe_id_const
         #[cfg(not(feature = "no-entrypoint"))]
         anchor_lang::solana_program::entrypoint!(entry);
+        /// The Anchor codegen exposes a programming model where a user defines
+        /// a set of methods inside of a `#[program]` module in a way similar
+        /// to writing RPC request handlers. The macro then generates a bunch of
+        /// code wrapping these user defined methods into something that can be
+        /// executed on Solana.
+        ///
+        /// The execution flow of the generated code can be roughly outlined:
+        ///
+        /// * Start program via the entrypoint.
+        /// * Check whether the program id matches `AnchorProgram::ID`. If not, return an error.
+        /// * Find and invoke the method based on whether the instruction data
+        ///   starts with the method's discriminator.
+        /// * Run the method handler wrapper. This wraps the code the user
+        ///   actually wrote, deserializing the accounts, constructing the
+        ///   context, invoking the user's code, and finally running the exit
+        ///   routine, which typically persists account changes.
+        ///
+        /// The `entry` function here delegates to `AnchorProgram::entrypoint`,
+        /// which performs the program ID check and dispatches the instruction.
         pub fn entry<'info>(
             program_id: &Pubkey,
             accounts: &'info [AccountInfo<'info>],
@@ -55,9 +74,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             }
         }
 
+        /// Module representing the program.
         pub mod program {
             use super::*;
 
+            /// Type representing the program.
             #[derive(Clone)]
             pub struct #name;
         }
