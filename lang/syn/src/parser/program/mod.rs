@@ -8,13 +8,28 @@ mod instructions;
 pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
     let docs = docs::parse(&program_mod.attrs);
     let (ixs, fallback_fn) = instructions::parse(&program_mod)?;
+    let program_id = parse_program_id(&program_mod);
     Ok(Program {
         ixs,
         name: program_mod.ident.clone(),
         docs,
         program_mod,
         fallback_fn,
+        program_id,
     })
+}
+
+fn parse_program_id(program_mod: &syn::ItemMod) -> Option<proc_macro2::TokenStream> {
+    let items = &program_mod.content.as_ref()?.1;
+    for item in items {
+        if let syn::Item::Const(c) = item {
+            if c.ident == "ID" {
+                let expr = &c.expr;
+                return Some(quote::quote! { #expr });
+            }
+        }
+    }
+    None
 }
 
 fn ctx_accounts_ident(path_ty: &syn::PatType) -> ParseResult<proc_macro2::Ident> {
