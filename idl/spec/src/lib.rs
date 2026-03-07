@@ -356,21 +356,36 @@ impl FromStr for IdlType {
                 }
 
                 if s.starts_with('[') {
-                    fn array_from_str(inner: &str) -> IdlType {
-                        match inner.strip_suffix(']') {
-                            Some(nested_inner) => array_from_str(&nested_inner[1..]),
-                            None => {
-                                let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
-                                let ty = IdlType::from_str(raw_type).unwrap();
-                                let len = match raw_length.replace('_', "").parse::<usize>() {
-                                    Ok(len) => IdlArrayLen::Value(len),
-                                    Err(_) => IdlArrayLen::Generic(raw_length.to_owned()),
-                                };
-                                IdlType::Array(Box::new(ty), len)
+                    fn array_from_str(inner: &str) -> anyhow::Result<IdlType> {
+                        // We accept nested array syntax like: [[u8; 16]; 32]
+                        if let Some(nested_inner) = inner.strip_suffix(']') {
+                            // Must have a matching leading '[' to strip.
+                            if !nested_inner.starts_with('[') {
+                                return Err(anyhow!("Invalid array type: missing leading '['"));
                             }
+                            return array_from_str(&nested_inner[1..]);
                         }
+
+                        // Base case: <type>;<len>
+                        let (raw_type, raw_length) = inner
+                            .rsplit_once(';')
+                            .ok_or_else(|| anyhow!("Invalid array type: missing ';' length separator"))?;
+                        let ty = IdlType::from_str(raw_type.trim())
+                            .map_err(|e| anyhow!("Invalid array element type '{raw_type}': {e}"))?;
+
+                        let raw_length = raw_length.trim();
+                        let len = match raw_length.replace('_', "").parse::<usize>() {
+                            Ok(len) => IdlArrayLen::Value(len),
+                            Err(_) => {
+                                if raw_length.is_empty() {
+                                    return Err(anyhow!("Invalid array length: empty"));
+                                }
+                                IdlArrayLen::Generic(raw_length.to_owned())
+                            }
+                        };
+                        Ok(IdlType::Array(Box::new(ty), len))
                     }
-                    return Ok(array_from_str(&s));
+                    return array_from_str(&s);
                 }
 
                 // Defined
@@ -470,6 +485,17 @@ mod tests {
             IdlType::from_str("[u64; T]").unwrap(),
             IdlType::Array(Box::new(IdlType::U64), IdlArrayLen::Generic("T".into()))
         );
+    }
+
+    #[test]
+    fn invalid_array_missing_length_separator_returns_error() {
+        // Regression for a panic: strings like "[u832]" used to trigger rsplit_once(';').unwrap().
+        assert!(IdlType::from_str("[u832]").is_err());
+    }
+
+    #[test]
+    fn invalid_array_empty_length_returns_error() {
+        assert!(IdlType::from_str("[u8;]").is_err());
     }
 
     #[test]
