@@ -1,0 +1,14 @@
+{
+  "name": "basic_program",
+  "version": "0.1.0",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    }
+  ],
+  "metadata": {
+    "address": "BasicAddress1111111111111111111111111111111"
+  }
+}

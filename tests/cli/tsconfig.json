@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+
+    "module": "none",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "target": "esnext",
+    "lib": ["esnext"],
+    "types": ["node", "mocha", "chai"],
+
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "paths": {
+      "@/*": ["./tests/*"]
+    },
+
+    "strict": true,
+    "jsx": "react-jsx",
+    "isolatedModules": true,
+    "skipLibCheck": true
+  },
+  "include": ["./tests/**/*.ts"],
+  "exclude": [
+    "./tests/commands/**/expected",
+    "./tests/commands/**/initialize",
+    "./tests/commands/**/output"
+  ]
+}

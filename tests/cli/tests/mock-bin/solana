@@ -1,0 +1,85 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+
+function main() {
+  const args = process.argv.slice(2);
+
+  // Log to file if output path is provided
+  const outputPath = process.env.MOCK_SOLANA_OUTPUT_PATH;
+  if (outputPath) {
+    const entry = {
+      command: "solana",
+      args,
+    };
+    fs.appendFileSync(outputPath, JSON.stringify(entry, null, 2) + "\n");
+  }
+
+  // Handle program deploy command
+  if (args[0] === "program" && args[1] === "deploy") {
+    const stdoutPath = process.env.MOCK_SOLANA_STDOUT_PATH;
+    const output = "Program deployed successfully\n";
+    
+    if (stdoutPath) {
+      fs.appendFileSync(stdoutPath, output);
+    }
+    
+    process.stdout.write(output);
+    process.exit(0);
+  }
+
+  // Handle logs command
+  if (args[0] === "logs") {
+    const logsOutput = `Streaming transaction logs mentioning ping6gwBZx1ccMMFyLgkVSupUmujYrFidEXuNRPq989. Confirmed commitment
+Transaction executed in slot 395756290:
+  Signature: 5Qx3nGLT53ifEe4hDBWDZUBZCtxmXUHYjeDdJ9Dfze88P1ZNMbcch46PifMGUMyjDh2GzPXY93ruBMWkxJbQaBgr
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+Transaction executed in slot 395756292:
+  Signature: 2YL9c1Rx5cHuKjmBTXsjE4PYwoSrccWjrzZHZ6VwRbRCKJhz3D7ZV36EXb8G4BtSEjbXW75LzHB1BMzjauvTd4fU
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+Transaction executed in slot 395756297:
+  Signature: qnZ1q9MjMaFyFH1PrePVYZKyeRyzYDx8miDYeeUCJkazJCr7q3kM9Aa6tgjY3jkgUjNNFeeQncLveWXC1Wqw1ur
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+`;
+
+    const stdoutPath = process.env.MOCK_SOLANA_STDOUT_PATH;
+    
+    // Write to stdout
+    process.stdout.write(logsOutput);
+    
+    // Also write to file if path is provided
+    if (stdoutPath) {
+      fs.appendFileSync(stdoutPath, logsOutput);
+    }
+    
+    process.exit(0);
+  }
+
+  // Unknown command
+  process.stderr.write(`Error: Unknown or unimplemented solana command: ${args[0]}\n`);
+  process.exit(1);
+}
+
+main();

@@ -1,0 +1,20 @@
+{
+  "command": "solana",
+  "args": [
+    "program",
+    "deploy",
+    "--url",
+    "http://127.0.0.1:8899",
+    "--keypair",
+    "<WALLET>",
+    "--program-id",
+    "target/deploy/test_program-keypair.json",
+    "target/deploy/test_program.so",
+    "--with-compute-unit-price",
+    "0",
+    "--max-sign-attempts",
+    "30",
+    "--buffer",
+    "/tmp/anchor-upgrade-buffer.json"
+  ]
+}

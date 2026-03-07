@@ -1,0 +1,10 @@
+{
+  "spec": ["tests/commands/**/*.test.ts"],
+  "watchFiles": ["tests/**/*.ts"],
+  "watch-ignore": [
+    "tests/commands/**/expected",
+    "tests/commands/**/initialize",
+    "tests/commands/**/output",
+    "templates/**"
+  ]
+}
