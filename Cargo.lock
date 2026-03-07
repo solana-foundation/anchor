@@ -258,6 +258,7 @@ dependencies = [
  "solana-account-decoder",
  "solana-commitment-config",
  "solana-instruction",
+ "solana-message",
  "solana-program",
  "solana-pubsub-client",
  "solana-rpc-client",
