@@ -117,7 +117,13 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             quote!((#array_len * #type_len))
         }
         Type::Path(ty_path) => {
-            let path_segment = ty_path.path.segments.last().unwrap();
+            let path_segment = match ty_path.path.segments.last() {
+                Some(seg) => seg,
+                None => {
+                    return syn::Error::new_spanned(ty_path, "expected a valid type path")
+                        .into_compile_error()
+                }
+            };
             let ident = &path_segment.ident;
             let type_name = ident.to_string();
             let first_ty = get_first_ty_arg(&path_segment.arguments);
@@ -167,7 +173,14 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                 (0 #(+ #recurse)*)
             }
         }
-        _ => panic!("Type {ty:?} is not supported"),
+        _ => {
+            let ty_type = ty.to_token_stream();
+            syn::Error::new_spanned(
+                ty_type,
+                format!("Type is not supported by `#[derive(InitSpace)]`"),
+            )
+            .into_compile_error()
+        }
     }
 }
 
