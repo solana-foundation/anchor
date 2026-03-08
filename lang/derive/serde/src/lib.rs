@@ -35,6 +35,7 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
         use quote::quote;
         use syn::Item;
 
+        // safe-unwrap: derive macro input is always a valid syn::Item  
         let idl_build_impl = match syn::parse(input) {
             Err(e) => return e.to_compile_error().into(),
             Ok(item) => match item {

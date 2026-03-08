@@ -151,7 +151,7 @@ fn gen_internal_accounts_common(
                         .iter()
                         .find(|a| a.accounts == accs.accounts)
                         .map(|a| format_ident!("{}", a.name.to_camel_case()))
-                        .expect("Accounts must exist");
+                        .expect("Accounts must exist"); // safe-unwrap: accounts are guaranteed to exist by prior deduplication pass
 
                     quote! {
                         pub #name: #ty_name #generics
@@ -167,9 +167,9 @@ fn gen_internal_accounts_common(
             }
         })
         .map(|accs_struct| {
-            let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
+            let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct"); // safe-unwrap: quote-generated tokens always parse
             let accs_struct =
-                accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
+                accounts::parse(&accs_struct).expect("Failed to parse accounts struct"); // safe-unwrap: quote-generated struct is always valid accounts syntax
             gen_accounts(&accs_struct, get_canonical_program_id())
         });
 

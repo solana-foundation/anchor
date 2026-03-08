@@ -25,3 +25,11 @@ jobs:
 
           # Do not error out on failures, only complain
           strict: false
+
+          proc-macro-panic-lint:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+              - name: Check for panic paths in proc-macro crates
+                # Manually run locally via: bash scripts/check-proc-macro-panics.sh
+                run: bash scripts/check-proc-macro-panics.sh
