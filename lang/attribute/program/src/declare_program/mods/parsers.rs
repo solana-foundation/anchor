@@ -176,7 +176,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                         .iter()
                         .find(|a| a.accounts == accs.accounts)
                         .map(|a| gen_accounts(&a.name, &a.accounts, all_ix_accs))
-                        .expect("Accounts must exist");
+                        .expect("Accounts must exist"); // safe-unwrap: accounts are guaranteed to exist by prior deduplication pass
                     quote! { #name: #accounts }
                 }
             });
