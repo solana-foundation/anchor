@@ -14,7 +14,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
             .types
             .iter()
             .find(|ty| ty.name == acc.name)
-            .expect("Type must exist");
+            .expect("Type must exist"); // safe-unwrap: IDL account types are guaranteed to exist in types array
 
         let impls = {
             let try_deserialize = quote! {

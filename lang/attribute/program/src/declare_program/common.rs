@@ -47,7 +47,7 @@ pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
             syn::parse_str(&s)
                 .map_err(|e| syn::Error::new(proc_macro2::Span::call_site(), e.to_string()))
         })
-        .unwrap_or_else(|e| syn::parse2(e.into_compile_error()).unwrap())
+        .unwrap_or_else(|e| syn::parse2(e.into_compile_error()).unwrap()) // safe-unwrap: compile_error! is always valid syn::Type syntax
 }
 
 pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> Result<String, syn::Error> {
@@ -341,7 +341,7 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_copy(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .expect("Type def must exist"), // safe-unwrap: IDL cross-references are guaranteed consistent by Anchor tooling
         IdlType::Bytes | IdlType::String | IdlType::Vec(_) | IdlType::Generic(_) => false,
         _ => true,
     }
@@ -365,7 +365,7 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_default(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .expect("Type def must exist"), // safe-unwrap: IDL cross-references are guaranteed consistent by Anchor tooling
         IdlType::Generic(_) => false,
         _ => true,
     }
@@ -453,7 +453,7 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
                             let name = format!("{}{i}", accs.name);
                             all.iter().all(|a| a.name != name).then_some(name)
                         })
-                        .expect("Should always find a valid name")
+                        .expect("Should always find a valid name") // safe-unwrap: unbounded integer search always finds a free slot
                 };
 
                 all.push(IdlInstructionAccounts {

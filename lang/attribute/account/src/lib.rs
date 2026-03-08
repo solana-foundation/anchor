@@ -376,12 +376,15 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
                     // if user writes #[accessor] with no arguments on a field, tts.next() returns None
+                    // safe-unwrap: named fields always have idents   
                     let g_stream = match tts.next() {
                         Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
                         Some(_) => {
+                            // safe-unwrap: valid field name always tokenizes
                             return syn::Error::new_spanned(&attr.tokens,  "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`").into_compile_error()
                         }
                         None => {
+                            // safe-unwrap: valid field name always tokenizes
                             return syn::Error::new_spanned(&attr.tokens, "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`").into_compile_error()
                         }
                     };
@@ -392,12 +395,12 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                         }
                     };
 
-                    let field_name = field.ident.as_ref().unwrap();
+                    let field_name = field.ident.as_ref().unwrap(); // safe-unwrap: named fields always have idents
 
                     let get_field: proc_macro2::TokenStream =
-                        format!("get_{field_name}").parse().unwrap();
+                        format!("get_{field_name}").parse().unwrap(); // safe-unwrap: valid field name always tokenizes
                     let set_field: proc_macro2::TokenStream =
-                        format!("set_{field_name}").parse().unwrap();
+                        format!("set_{field_name}").parse().unwrap(); // safe-unwrap: valid field name always tokenizes
 
                     quote! {
                         pub fn #get_field(&self) -> #accessor_ty {
@@ -536,7 +539,7 @@ pub fn zero_copy(
             #derive_unsafe
             #ret
         })
-        .unwrap();
+        .unwrap(); // safe-unwrap: quote-generated tokens always parse as syn::ItemStruct
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
