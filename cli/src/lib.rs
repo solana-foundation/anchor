@@ -1,6 +1,6 @@
 use crate::config::{
     get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
-    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+    Manifest, PackageManager, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
     SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
     STARTUP_WAIT, SURFPOOL_HOST,
 };
@@ -149,9 +149,6 @@ pub enum Command {
         /// Suppress doc strings in IDL output
         #[clap(long)]
         no_docs: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -214,9 +211,6 @@ pub enum Command {
         /// Do not build the IDL
         #[clap(long)]
         no_idl: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
         /// Flag to keep the local validator running after tests
         /// to be able to check the transactions.
         #[clap(long)]
@@ -343,9 +337,6 @@ pub enum Command {
         /// Skip checking for program ID mismatch between keypair and declare_id
         #[clap(long)]
         ignore_keys: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
         /// Validator type to use for local testing
         #[clap(value_enum, long, default_value = "surfpool")]
         validator: ValidatorType,
@@ -1158,7 +1149,6 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_lint,
             ignore_keys,
             no_docs,
-            arch,
         } => build(
             &opts.cfg_override,
             no_idl,
@@ -1176,7 +1166,6 @@ fn process_command(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             no_docs,
-            arch,
         ),
         Command::Verify {
             program_id,
@@ -1251,7 +1240,6 @@ fn process_command(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_lint,
-            arch,
         } => test(
             &opts.cfg_override,
             program_name,
@@ -1266,7 +1254,6 @@ fn process_command(opts: Opts) -> Result<()> {
             args,
             env,
             cargo_args,
-            arch,
         ),
         Command::Airdrop { amount, pubkey } => airdrop(&opts.cfg_override, amount, pubkey),
         Command::Cluster { subcmd } => cluster(subcmd),
@@ -1285,7 +1272,6 @@ fn process_command(opts: Opts) -> Result<()> {
             validator,
             env,
             cargo_args,
-            arch,
         } => localnet(
             &opts.cfg_override,
             skip_build,
@@ -1295,7 +1281,6 @@ fn process_command(opts: Opts) -> Result<()> {
             validator,
             env,
             cargo_args,
-            arch,
         ),
         Command::Account {
             account_type,
@@ -1707,7 +1692,6 @@ pub fn build(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
-    arch: ProgramArch,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1772,7 +1756,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            arch,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -1788,7 +1771,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            arch,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_rust_cwd(
@@ -1804,7 +1786,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            &arch,
         )?,
     }
     cfg.run_hooks(HookType::PostBuild)?;
@@ -1828,7 +1809,6 @@ fn build_all(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
-    arch: ProgramArch,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -1848,7 +1828,6 @@ fn build_all(
                     cargo_args.clone(),
                     skip_lint,
                     no_docs,
-                    &arch,
                 )?;
             }
             Ok(())
@@ -1873,7 +1852,6 @@ fn build_rust_cwd(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
-    arch: &ProgramArch,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
@@ -1881,7 +1859,7 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1893,7 +1871,6 @@ fn build_rust_cwd(
             env_vars,
             cargo_args,
             no_docs,
-            arch,
         ),
     }
 }
@@ -1911,7 +1888,6 @@ fn build_cwd_verifiable(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
-    arch: &ProgramArch,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -1935,7 +1911,6 @@ fn build_cwd_verifiable(
         stderr,
         env_vars,
         cargo_args.clone(),
-        arch,
     );
 
     match &result {
@@ -1992,7 +1967,6 @@ fn docker_build(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: &ProgramArch,
 ) -> Result<()> {
     let binary_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
 
@@ -2047,7 +2021,6 @@ fn docker_build(
             stderr,
             env_vars,
             cargo_args,
-            arch,
         )
     });
 
@@ -2112,7 +2085,6 @@ fn docker_build_bpf(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: &ProgramArch,
 ) -> Result<()> {
     let manifest_path =
         pathdiff::diff_paths(cargo_toml.canonicalize()?, cfg_parent.canonicalize()?)
@@ -2139,7 +2111,7 @@ fn docker_build_bpf(
             container_name,
             "cargo",
         ])
-        .args(arch.build_subcommand())
+        .args(BUILD_SUBCOMMAND)
         .args([
             "--manifest-path",
             &manifest_path.display().to_string(),
@@ -2238,11 +2210,10 @@ fn _build_rust_cwd(
     idl_ts_out: Option<PathBuf>,
     skip_lint: bool,
     no_docs: bool,
-    arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
-        .args(arch.build_subcommand())
+        .args(BUILD_SUBCOMMAND)
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -2291,6 +2262,9 @@ fn _build_rust_cwd(
 
     Ok(())
 }
+
+/// Subcommand and any arguments to be passed to cargo
+const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
 
 pub fn verify(
     program_id: Pubkey,
@@ -3170,7 +3144,6 @@ fn test(
     extra_args: Vec<String>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: ProgramArch,
 ) -> Result<()> {
     let test_paths = tests_to_run
         .iter()
@@ -3204,7 +3177,6 @@ fn test(
                 env_vars,
                 cargo_args,
                 false,
-                arch,
             )?;
         }
 
@@ -4757,7 +4729,6 @@ fn localnet(
     validator_type: ValidatorType,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: ProgramArch,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| -> Result<()> {
         // Build if needed.
@@ -4779,7 +4750,6 @@ fn localnet(
                 env_vars,
                 cargo_args,
                 false,
-                arch,
             )?;
         }
 
