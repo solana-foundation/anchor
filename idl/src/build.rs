@@ -339,19 +339,6 @@ fn sort(mut idl: Idl) -> Idl {
 
 /// Verify IDL is valid.
 fn verify(idl: &Idl) -> Result<()> {
-    // Check full path accounts
-    if let Some(account) = idl
-        .accounts
-        .iter()
-        .find(|account| account.name.contains("::"))
-    {
-        return Err(anyhow!(
-            "Conflicting accounts names are not allowed.\nProgram: `{}`\nAccount: `{}`",
-            idl.metadata.name,
-            account.name
-        ));
-    }
-
     // Check empty discriminators
     macro_rules! check_empty_discriminators {
         ($field:ident) => {
