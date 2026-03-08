@@ -40,12 +40,16 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
-    syn::parse_str(&convert_idl_type_to_str(ty, false)).unwrap()
+    convert_idl_type_to_str(ty, false)
+        .and_then(|s| {
+            syn::parse_str(&s)
+                .map_err(|e| syn::Error::new(proc_macro2::Span::call_site(), e.to_string()))
+        })
+        .unwrap_or_else(|e| syn::parse2(e.into_compile_error()).unwrap())
 }
 
-// TODO: Impl `ToString` for `IdlType`
-pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
-    match ty {
+pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> Result<String, syn::Error> {
+    Ok(match ty {
         IdlType::Bool => "bool".into(),
         IdlType::U8 => "u8".into(),
         IdlType::I8 => "i8".into(),
@@ -64,34 +68,45 @@ pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
         IdlType::Bytes => if is_const { "&[u8]" } else { "Vec<u8>" }.into(),
         IdlType::String => if is_const { "&str" } else { "String" }.into(),
         IdlType::Pubkey => "Pubkey".into(),
-        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)),
-        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty, is_const)),
+        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)?),
+        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty, is_const)?),
         IdlType::Array(ty, len) => format!(
             "[{}; {}]",
-            convert_idl_type_to_str(ty, is_const),
+            convert_idl_type_to_str(ty, is_const)?,
             match len {
                 IdlArrayLen::Generic(len) => len.into(),
                 IdlArrayLen::Value(len) => len.to_string(),
             }
         ),
-        IdlType::Defined { name, generics } => generics
-            .iter()
-            .map(|generic| match generic {
-                IdlGenericArg::Type { ty } => convert_idl_type_to_str(ty, is_const),
-                IdlGenericArg::Const { value } => value.into(),
-            })
-            .reduce(|mut acc, cur| {
-                if !acc.is_empty() {
-                    acc.push(',');
-                }
-                acc.push_str(&cur);
-                acc
-            })
-            .map(|generics| format!("{name}<{generics}>"))
-            .unwrap_or(name.into()),
+        IdlType::Defined { name, generics } => {
+            let generic_strs = generics
+                .iter()
+                .map(|generic| match generic {
+                    IdlGenericArg::Type { ty } => convert_idl_type_to_str(ty, is_const),
+                    IdlGenericArg::Const { value } => Ok(value.clone()),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            generic_strs
+                .into_iter()
+                .reduce(|mut acc, cur| {
+                    if !acc.is_empty() {
+                        acc.push(',');
+                    }
+                    acc.push_str(&cur);
+                    acc
+                })
+                .map(|generics| format!("{name}<{generics}>"))
+                .unwrap_or_else(|| name.clone())
+        }
         IdlType::Generic(ty) => ty.into(),
-        _ => unimplemented!("{ty:?}"),
-    }
+        _ => {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                format!("IDL type `{ty:?}` is not yet supported by `declare_program!`"),
+            ))
+        }
+    })
 }
 
 pub fn convert_idl_type_def_to_ts(
@@ -134,7 +149,14 @@ pub fn convert_idl_type_def_to_ts(
             IdlSerialization::Borsh => quote!(#[derive(AnchorSerialize, AnchorDeserialize)]),
             IdlSerialization::Bytemuck => quote!(#[zero_copy]),
             IdlSerialization::BytemuckUnsafe => quote!(#[zero_copy(unsafe)]),
-            _ => unimplemented!("{:?}", ty_def.serialization),
+            _ => syn::Error::new(
+                proc_macro2::Span::call_site(),
+                format!(
+                    "IDL serialization `{:?}` is not supported by `declare_program`",
+                    ty_def.serialization
+                ),
+            )
+            .into_compile_error(),
         };
 
         let clone_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
@@ -160,7 +182,13 @@ pub fn convert_idl_type_def_to_ts(
             IdlRepr::Rust(_) => "Rust",
             IdlRepr::C(_) => "C",
             IdlRepr::Transparent => "transparent",
-            _ => unimplemented!("{repr:?}"),
+            _ => {
+                return syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    format!("IDL repr `{repr:?}` is not supported by declare_program!"),
+                )
+                .into_compile_error()
+            }
         };
         let kind = format_ident!("{kind}");
 
