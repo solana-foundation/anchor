@@ -403,19 +403,6 @@ impl Default for FeaturesConfig {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RegistryConfig {
-    pub url: String,
-}
-
-impl Default for RegistryConfig {
-    fn default() -> Self {
-        Self {
-            url: "https://api.apr.dev".to_string(),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct ProviderConfig {
     pub cluster: Cluster,
