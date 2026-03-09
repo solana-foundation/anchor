@@ -1,3 +1,5 @@
+import { bs58, utf8 } from "./utils/bytes/index.js";
+import { inflate, ungzip } from "pako";
 import camelCase from "camelcase";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
@@ -270,10 +272,158 @@ export function isCompositeAccounts(
   return "accounts" in accountItem;
 }
 
-// The on-chain account of the IDL.
-export interface IdlProgramAccount {
-  authority: PublicKey;
+// Account format defined at
+// https://github.com/solana-program/program-metadata/blob/734e947d/clients/js/src/generated/accounts/metadata.ts#L123-L138
+const PROGRAM_METADATA_PROGRAM_ID = new PublicKey(
+  "ProgM6JCCvbYkfKqJYHePx4xxSUSqJp7rh8Lyv7nk7S"
+);
+const IDL_METADATA_SEED = "idl";
+const ACCOUNT_DISCRIMINATOR_METADATA = 2;
+export const DATA_SOURCE_DIRECT = 0;
+// Only JSON formatted data is currently supported
+export const FORMAT_JSON = 1;
+const SEED_SIZE = 16;
+const DATA_LENGTH_SIZE = 4;
+const DATA_LENGTH_PADDING = 5;
+const ZEROABLE_OPTION_PUBKEY_SIZE = 32;
+const METADATA_HEADER_SIZE =
+  1 + 32 + ZEROABLE_OPTION_PUBKEY_SIZE + 1 + 1 + SEED_SIZE + 1 + 1 + 1 + 1;
+
+export enum MetadataCompression {
+  None = 0,
+  Gzip = 1,
+  Zlib = 2,
+}
+
+export enum MetadataEncoding {
+  None = 0,
+  Utf8 = 1,
+  Base58 = 2,
+  Base64 = 3,
+}
+
+export type MetadataAccount = {
+  format: number;
+  dataSource: number;
+  compression: MetadataCompression;
+  encoding: MetadataEncoding;
   data: Buffer;
+};
+
+function encodeMetadataSeed(seed: string): Buffer {
+  const encodedSeed = Buffer.from(utf8.encode(seed));
+  if (encodedSeed.length > SEED_SIZE) {
+    throw new Error(`Metadata seed '${seed}' exceeds ${SEED_SIZE} bytes`);
+  }
+
+  const paddedSeed = Buffer.alloc(SEED_SIZE);
+  encodedSeed.copy(paddedSeed as Uint8Array);
+  return paddedSeed;
+}
+
+export function idlAddress(programId: PublicKey): PublicKey {
+  // Canonical metadata uses a null authority seed, which is serialized as `[]`.
+  return PublicKey.findProgramAddressSync(
+    [
+      programId.toBuffer(),
+      Buffer.alloc(0),
+      encodeMetadataSeed(IDL_METADATA_SEED),
+    ],
+    PROGRAM_METADATA_PROGRAM_ID
+  )[0];
+}
+
+export function seed(): string {
+  return "idl";
+}
+
+export function decodeIdlAccount(data: Buffer): MetadataAccount {
+  const minimumSize =
+    METADATA_HEADER_SIZE + DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
+  if (data.length < minimumSize) {
+    throw new Error("Metadata account is too small");
+  }
+
+  let offset = 0;
+  const discriminator = data.readUInt8(offset);
+  offset += 1;
+  if (discriminator !== ACCOUNT_DISCRIMINATOR_METADATA) {
+    throw new Error(
+      `Invalid metadata account discriminator: ${discriminator.toString()}`
+    );
+  }
+
+  offset += 32; // program
+  offset += ZEROABLE_OPTION_PUBKEY_SIZE; // authority
+  offset += 1; // mutable
+  offset += 1; // canonical
+  offset += SEED_SIZE; // seed
+
+  const encoding = data.readUInt8(offset) as MetadataEncoding;
+  offset += 1;
+
+  const compression = data.readUInt8(offset) as MetadataCompression;
+  offset += 1;
+
+  const format = data.readUInt8(offset);
+  offset += 1;
+
+  const dataSource = data.readUInt8(offset);
+  offset += 1;
+
+  const dataLength = data.readUInt32LE(offset);
+  offset += DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
+
+  if (data.length < offset + dataLength) {
+    throw new Error("Metadata account data is truncated");
+  }
+
+  return {
+    format,
+    dataSource,
+    compression,
+    encoding,
+    data: data.subarray(offset, offset + dataLength),
+  };
+}
+
+export function uncompressMetadataData(
+  data: Buffer,
+  compression: MetadataCompression
+): Buffer {
+  switch (compression) {
+    case MetadataCompression.None:
+      return data;
+    case MetadataCompression.Gzip:
+      return Buffer.from(ungzip(data as Uint8Array));
+    case MetadataCompression.Zlib:
+      return Buffer.from(inflate(data as Uint8Array));
+    default:
+      throw new Error(
+        `Unsupported metadata compression: ${String(compression as number)}`
+      );
+  }
+}
+
+export function decodeMetadataData(
+  data: Buffer,
+  encoding: MetadataEncoding
+): string {
+  switch (encoding) {
+    // 'None' is actually hex-encoded
+    case MetadataEncoding.None:
+      return data.toString("hex");
+    case MetadataEncoding.Utf8:
+      return utf8.decode(data as Uint8Array);
+    case MetadataEncoding.Base58:
+      return bs58.encode(data);
+    case MetadataEncoding.Base64:
+      return data.toString("base64");
+    default:
+      throw new Error(
+        `Unsupported metadata encoding: ${String(encoding as number)}`
+      );
+  }
 }
 
 /**
