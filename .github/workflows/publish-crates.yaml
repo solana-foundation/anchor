@@ -1,0 +1,122 @@
+name: Publish Crates
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        description: "If true, build crates instead of publishing them (packaging validation only)"
+        required: true
+        type: boolean
+
+jobs:
+  publish-crates:
+    name: Publish crates${{ inputs.dry_run && ' (dry-run)' || '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - name: Authenticate with crates.io
+        id: auth
+        if: ${{ !inputs.dry_run }}
+        uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1.0.3
+
+      - name: Publish crates
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ !inputs.dry_run && steps.auth.outputs.token || '' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -xeuo pipefail
+
+          publish() {
+            local dir="$1"
+            pushd "$dir" >/dev/null
+
+            local name version
+            name="$(
+              cargo metadata --no-deps --format-version 1 --manifest-path Cargo.toml \
+                | jq -r --arg mp "$PWD/Cargo.toml" '.packages[] | select(.manifest_path == $mp) | .name'
+            )"
+            version="$(
+              cargo metadata --no-deps --format-version 1 --manifest-path Cargo.toml \
+                | jq -r --arg mp "$PWD/Cargo.toml" '.packages[] | select(.manifest_path == $mp) | .version'
+            )"
+
+            if cargo search "$name" --limit 1 | grep -q "$version"; then
+              echo "The crate $1 is already up to date, skipping"
+              popd >/dev/null
+              return 0
+            fi
+
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "Publishing $1 (${name}@${version}) as a dry-run"
+              # We cannot directly dry-run the publish process as all of the dependencies must be published
+              # to crates.io for the dry-run (even with --no-verify) to succeed. Therefore, we'll just see if
+              # packaging works.
+              cargo build --locked --release
+            else
+              echo "Publishing $1 (${name}@${version})"
+              cargo publish --locked
+
+              echo "Waiting for crates.io index to update"
+              sleep 25
+            fi
+
+            popd >/dev/null
+          }
+
+          publish idl/spec
+          publish idl
+          publish lang/syn
+          publish lang/derive/accounts
+          publish lang/derive/serde
+          publish lang/derive/space
+          publish lang/attribute/access-control
+          publish lang/attribute/account
+          publish lang/attribute/constant
+          publish lang/attribute/error
+          publish lang/attribute/program
+          publish lang/attribute/event
+          publish lang
+          publish spl
+          publish client
+          publish cli
+
+      - name: Check for crate artifacts
+        id: crate-artifacts
+        if: ${{ !inputs.dry_run }}
+        run: |
+          shopt -s nullglob
+          files=(target/package/*.crate)
+          if [ ${#files[@]} -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            cd target/package
+            sha256sum *.crate > SHA256SUMS
+            echo "--- Crate checksums ---"
+            cat SHA256SUMS
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attest crate checksum manifest
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        if: ${{ !inputs.dry_run && steps.crate-artifacts.outputs.found == 'true' }}
+        with:
+          subject-path: target/package/SHA256SUMS
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: ${{ !inputs.dry_run && steps.crate-artifacts.outputs.found == 'true' }}
+        with:
+          if-no-files-found: ignore
+          name: published-crates
+          path: |
+            target/package/*.crate
+            target/package/SHA256SUMS

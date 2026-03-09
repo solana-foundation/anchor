@@ -1,0 +1,95 @@
+name: Publish npmjs
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        description: "If true, use --dry-run instead of actually publishing"
+        required: true
+        type: boolean
+
+jobs:
+  publish-npmjs:
+    name: Publish npmjs packages${{ inputs.dry_run && ' (dry-run)' || '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Enable corepack (yarn)
+        run: corepack enable
+
+      - name: Publish npmjs packages
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -xeuo pipefail
+
+          publish() {
+            local dir="$1"
+            pushd "$dir" >/dev/null
+
+            local name version
+            name="$(node -p "require('./package.json').name")"
+            version="$(node -p "require('./package.json').version")"
+
+            # We still build the package even if we don't publish it, as yarn workspace will
+            # use the local version of each package, and if it's unbuilt then any subsequent
+            # build will error out due to missing files.
+            yarn --frozen-lockfile
+            local dirname="$(basename $dir)"
+            if [[ "$dirname" == spl-* ]]; then
+              yarn build:npm
+            else
+              yarn build
+            fi
+
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then
+              echo "The package $1 is already up to date, skipping"
+              popd >/dev/null
+              return 0
+            fi
+
+            local publish_args=()
+            # If version looks like X.Y.Z-<something> (e.g. 1.0.0-rc.2), publish under dist-tag "next"
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
+              publish_args+=(--tag next)
+            fi
+
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "Publishing $dir (${name}@${version}) as a dry-run"
+              npm publish "${publish_args[@]}" --dry-run
+            else
+              echo "Publishing $dir (${name}@${version})"
+              npm publish "${publish_args[@]}" --provenance --access public
+            fi
+
+            popd >/dev/null
+          }
+
+          base="ts/packages"
+
+          publish "$base/borsh"
+          publish "$base/anchor-errors"
+          publish "$base/anchor"
+          publish "$base/spl-associated-token-account"
+          publish "$base/spl-binary-option"
+          publish "$base/spl-binary-oracle-pair"
+          publish "$base/spl-feature-proposal"
+          publish "$base/spl-governance"
+          publish "$base/spl-memo"
+          publish "$base/spl-name-service"
+          publish "$base/spl-record"
+          publish "$base/spl-stake-pool"
+          publish "$base/spl-stateless-asks"
+          publish "$base/spl-token"
+          publish "$base/spl-token-lending"
+          publish "$base/spl-token-swap"
