@@ -1,14 +1,14 @@
+import { Buffer } from "buffer";
 import { Commitment, PublicKey } from "@solana/web3.js";
-import {
-  DataSource,
-  fetchMaybeMetadataFromSeeds,
-  Format,
-  unpackDirectData,
-} from "@solana-program/program-metadata";
-import { address } from "@solana/kit";
 import { BorshCoder, Coder } from "../coder/index.js";
-import { Idl, IdlInstruction, convertIdlToCamelCase } from "../idl.js";
-import Provider, { getConnectionRpc, getProvider } from "../provider.js";
+import {
+  Idl,
+  IdlInstruction,
+  convertIdlToCamelCase,
+  decodeIdlAccount,
+  idlAddress,
+} from "../idl.js";
+import Provider, { getProvider } from "../provider.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
 import { Address, translateAddress } from "./common.js";
 import { EventManager } from "./event.js";
@@ -348,30 +348,12 @@ export class Program<IDL extends Idl = Idl> {
     provider?: Provider
   ): Promise<IDL | null> {
     provider = provider ?? getProvider();
-    const rpc = getConnectionRpc(provider) as Parameters<
-      typeof fetchMaybeMetadataFromSeeds
-    >[0];
-    const program = address(programAddress.toString());
-    const metadataAccount = await fetchMaybeMetadataFromSeeds(rpc, {
-      program,
-      authority: null,
-      seed: "idl",
-    });
-    if (!metadataAccount.exists) {
-      return null;
-    }
-    if (metadataAccount.data.dataSource !== DataSource.Direct) {
-      throw new Error(
-        `IDL has source '${metadataAccount.data.dataSource.toString()}', only directly embedded data is supported`
-      );
-    }
-    const content = unpackDirectData(metadataAccount.data);
-    if (metadataAccount.data.format !== Format.Json) {
-      throw new Error(
-        `IDL has data format '${metadataAccount.data.format.toString()}', only JSON IDLs are supported`
-      );
-    }
-    return JSON.parse(content);
+    const programId = translateAddress(programAddress);
+    const idlAddr = idlAddress(programId);
+    const accountInfo = await provider.connection.getAccountInfo(idlAddr);
+    if (!accountInfo) return null;
+
+    return decodeIdlAccount<IDL>(accountInfo.data);
   }
 
   /**
