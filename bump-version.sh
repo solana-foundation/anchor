@@ -30,8 +30,8 @@ git grep -l $old_version -- $allow_globs |
     xargs sed "${sedi[@]}" \
     -e "s/$old_version/$version/g"
 
-# Regenerate lock file so that the release process running in CI matches the expected versions
-cargo generate-lockfile
+# Update lock file to use the new versions
+cargo update $(cargo metadata --format-version 1 --no-deps | jq '.packages.[].name' -r)
 
 # Separately handle docs because blindly replacing the old version with the new
 # might break certain examples/links
