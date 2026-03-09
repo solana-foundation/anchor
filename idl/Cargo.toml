@@ -12,8 +12,8 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-build = ["regex", "serde_json"]
-convert = ["heck", "serde_json", "sha2"]
+build = ["dep:regex", "dep:serde_json"]
+convert = ["dep:heck", "dep:serde_json", "dep:sha2"]
 
 [dependencies]
 anchor-lang-idl-spec = { path = "./spec", version = "0.1.0" }
