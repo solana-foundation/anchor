@@ -57,7 +57,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
-- cli: Remove program `arch` options ([#4195](https://github.com/solana-foundation/anchor/pull/4195)).
+- cli: Remove program `arch` options ([#4295](https://github.com/solana-foundation/anchor/pull/4295)).
 - lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
 - cli: Remove program id arguments of `idl init` and `idl upgrade` commands ([#4130](https://github.com/solana-foundation/anchor/pull/4130)).
 - lang: Rename `utils` module of `declare_program!` to `parsers` ([#4151](https://github.com/solana-foundation/anchor/pull/4151)).
@@ -73,6 +73,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Disallow multiple `#[error_code]` definitions in a single program ([#4300](https://github.com/solana-foundation/anchor/pull/4300)).
 - cli: Remove the `[registry]` section from `Anchor.toml` ([#4299](https://github.com/solana-foundation/anchor/pull/4299)).
 - client: Make sending a tx not panic and instead return an Error when signing fails ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
+- idl: Disallow multiple error definitions ([#4300](https://github.com/solana-foundation/anchor/pull/4300)).
 
 ## [0.32.1] - 2025-10-09
 
