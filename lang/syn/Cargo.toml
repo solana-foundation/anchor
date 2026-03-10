@@ -11,6 +11,10 @@ edition = "2021"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[lints.clippy]
+disallowed-methods = "deny"
+disallowed-macros = "deny"
+
 [features]
 allow-missing-optionals = []
 anchor-debug = []
