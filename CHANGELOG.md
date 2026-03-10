@@ -29,6 +29,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Fix constant nested string generation in `declare_program!` ([#4158](https://github.com/solana-foundation/anchor/pull/4158)).
 - idl: Fix `local_file` method not found for `proc_macro2::Span` error ([#4187](https://github.com/solana-foundation/anchor/pull/4187)).
 - lang: Relax duplicate mutable account constraint to only check types that serialize on exit (`Account`, `LazyAccount`, `InterfaceAccount`, `Migration`) ([#4202](https://github.com/solana-foundation/anchor/pull/4202)).
+- idl: Make `serde_json` optional ([#4296](https://github.com/solana-foundation/anchor/pull/4296)).
 
 ### Breaking
 
