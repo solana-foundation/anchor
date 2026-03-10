@@ -44,6 +44,12 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
         _ => unreachable!(),
     };
 
+    // If the generics aren't `Lazy` bounded, then the struct can't be `Lazy`
+    let mut generics = generics.clone();
+    for tp in generics.type_params_mut() {
+        tp.bounds
+            .push(syn::parse_quote!(anchor_lang::__private::Lazy));
+    }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     Ok(quote! {
