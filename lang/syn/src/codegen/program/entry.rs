@@ -1,6 +1,8 @@
 use {crate::Program, heck::CamelCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
+    #[allow(clippy::disallowed_methods)]
+    // safe: camelCase of a valid Rust identifier is always a valid identifier
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]

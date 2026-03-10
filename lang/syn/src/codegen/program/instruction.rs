@@ -20,15 +20,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 .args
                 .iter()
                 .map(|arg| {
-                    format!("pub {}", parser::tts_to_string(&arg.raw_arg))
+                    #[allow(clippy::disallowed_methods)]
+                    // safe: "pub " prepended to a valid field token string is valid Rust
+                    let ts = format!("pub {}", parser::tts_to_string(&arg.raw_arg))
                         .parse()
-                        .unwrap()
+                        .unwrap();
+                    ts
                 })
                 .collect();
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
                     Some(overrides) if overrides.discriminator.is_some() => {
-                        overrides.discriminator.as_ref().unwrap().to_owned()
+                        #[allow(clippy::disallowed_methods)]
+                        // safe: discriminator override is a validated token stream
+                        let d = overrides.discriminator.as_ref().unwrap().to_owned();
+                        d
                     }
                     _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                 };

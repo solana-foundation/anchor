@@ -122,6 +122,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             ));
         }
 
+        #[allow(clippy::disallowed_methods)]
+        // safe: init_fields only contains fields with init constraint set
         let kind = &init_fields[0].constraints.init.as_ref().unwrap().kind;
         // init token/a_token/mint needs token program.
         match kind {
@@ -162,6 +164,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for (pos, field) in init_fields.iter().enumerate() {
             // Get payer for init-ed account
+            #[allow(clippy::disallowed_methods)]
+            // safe: init_fields only contains fields with init constraint set
             let associated_payer_name = match field.constraints.init.clone().unwrap().payer {
                 // composite payer, check not supported
                 Expr::Field(_) => continue,
@@ -196,6 +200,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     ));
                 }
             }
+            #[allow(clippy::disallowed_methods)]
+            // safe: init_fields only contains fields with init constraint set
             match &field.constraints.init.as_ref().unwrap().kind {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
@@ -217,6 +223,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 // Make sure initialized token accounts are always declared after their corresponding mint.
                 InitKind::Mint { .. } => {
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
+                        #[allow(clippy::disallowed_methods)]
+                        // safe: init_fields only contains fields with init constraint set
                         match &f.constraints.init.as_ref().unwrap().kind {
                             InitKind::Token { mint, .. }
                             | InitKind::AssociatedToken { mint, .. } => {
@@ -266,6 +274,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for field in realloc_fields {
             // Get allocator for realloc-ed account
+            #[allow(clippy::disallowed_methods)]
+            // safe: realloc_fields only contains fields with realloc constraint set
             let associated_payer_name = match field.constraints.realloc.clone().unwrap().payer {
                 // composite allocator, check not supported
                 Expr::Field(_) => continue,
@@ -310,6 +320,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 }
 
 pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
+    #[allow(clippy::disallowed_methods)]
+    // safe: #[derive(Accounts)] always has named fields with idents
     let ident = f.ident.clone().unwrap();
     let docs = docs::parse(&f.attrs);
     let account_field = match is_field_primitive(f)? {

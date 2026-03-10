@@ -55,6 +55,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
+    #[allow(clippy::disallowed_methods)] // safe: "'info" is a hardcoded valid lifetime string
     let trait_lifetime = accs
         .generics
         .lifetimes()
