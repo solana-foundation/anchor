@@ -486,22 +486,6 @@ pub enum BootstrapMode {
     Debian,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
-pub enum ProgramArch {
-    Bpf,
-    Sbf,
-}
-
-impl ProgramArch {
-    /// Subcommand and any arguments to be passed to cargo
-    pub fn build_subcommand(&self) -> &[&'static str] {
-        match self {
-            Self::Bpf => &["build-bpf"],
-            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct BuildConfig {
     pub verifiable: bool,

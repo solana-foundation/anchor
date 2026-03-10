@@ -32,6 +32,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- cli: Remove program `arch` options ([#4195](https://github.com/solana-foundation/anchor/pull/4195)).
 - lang: Disallow duplicate mutable accounts by default. But allows duplicate mutable accounts in instruction contexts using `dup` constraint ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
 - cli: Remove program id arguments of `idl init` and `idl upgrade` commands ([#4130](https://github.com/solana-foundation/anchor/pull/4130)).
 - lang: Rename `utils` module of `declare_program!` to `parsers` ([#4151](https://github.com/solana-foundation/anchor/pull/4151)).
