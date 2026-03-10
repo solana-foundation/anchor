@@ -544,6 +544,7 @@ pub trait AnchorProgram {
     const ID: Pubkey;
 
     /// Converts an Anchor error into a [`ProgramError`].
+    #[inline]
     fn handle_error(err: error::Error) -> ProgramError {
         err.log();
         err.into()
@@ -556,8 +557,9 @@ pub trait AnchorProgram {
         data: &[u8],
     ) -> std::result::Result<(), ProgramError> {
         if *program_id != Self::ID {
-            return Err(error::ErrorCode::DeclaredProgramIdMismatch.into())
-                .map_err(Self::handle_error);
+            return Err(Self::handle_error(
+                error::ErrorCode::DeclaredProgramIdMismatch.into(),
+            ));
         }
         Self::dispatch(program_id, accounts, data).map_err(Self::handle_error)
     }
