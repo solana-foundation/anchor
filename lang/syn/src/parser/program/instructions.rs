@@ -124,7 +124,10 @@ pub fn parse_return(method: &syn::ItemFn) -> ParseResult<IxReturn> {
                 _ => return Err(ParseError::new(ty.span(), "expected a return type")),
             };
             // Assume unit return by default
+            #[allow(clippy::disallowed_methods)] // safe: "()" is always valid syn::Type syntax
             let default_generic_arg = syn::GenericArgument::Type(syn::parse_str("()").unwrap());
+            #[allow(clippy::disallowed_methods)]
+            // safe: type path always has segments; angle-bracketed args always have at least one arg
             let generic_args = match &ty.path.segments.last().unwrap().arguments {
                 syn::PathArguments::AngleBracketed(params) => {
                     params.args.iter().next_back().unwrap()

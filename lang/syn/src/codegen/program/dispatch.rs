@@ -6,6 +6,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
     let global_ixs = program.ixs.iter().map(|ix| {
         let ix_method_name = &ix.raw_method.sig.ident;
+        #[allow(clippy::disallowed_methods)]
+        // safe: camelCase of a valid Rust identifier is always a valid identifier
         let ix_name_camel: proc_macro2::TokenStream = ix_method_name
             .to_string()
             .to_camel_case()

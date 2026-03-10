@@ -11,6 +11,7 @@ pub fn generate(
     program_id: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let name = &accs.ident;
+    #[allow(clippy::disallowed_methods)] // safe: computed from valid Rust identifier via snake_case
     let account_mod_name: proc_macro2::TokenStream = format!(
         "__client_accounts_{}",
         accs.ident.to_string().to_snake_case()
@@ -27,15 +28,20 @@ pub fn generate(
                 let docs = if let Some(ref docs) = s.docs {
                     docs.iter()
                         .map(|docs_line| {
-                            proc_macro2::TokenStream::from_str(&format!(
+                            #[allow(clippy::disallowed_methods)]
+                            // safe: hardcoded valid doc comment syntax
+                            let ts = proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .unwrap();
+                            ts
                         })
                         .collect()
                 } else {
                     quote!()
                 };
+                #[allow(clippy::disallowed_methods)]
+                // safe: computed from valid Rust identifiers via snake_case
                 let symbol: proc_macro2::TokenStream = format!(
                     "__client_accounts_{0}::{1}",
                     s.symbol.to_snake_case(),
@@ -53,10 +59,13 @@ pub fn generate(
                 let docs = if let Some(ref docs) = f.docs {
                     docs.iter()
                         .map(|docs_line| {
-                            proc_macro2::TokenStream::from_str(&format!(
+                            #[allow(clippy::disallowed_methods)]
+                            // safe: hardcoded valid doc comment syntax
+                            let ts = proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .unwrap();
+                            ts
                         })
                         .collect()
                 } else {
@@ -139,6 +148,8 @@ pub fn generate(
         re_exports
             .iter()
             .map(|symbol: &String| {
+                #[allow(clippy::disallowed_methods)]
+                // safe: symbol is a known-valid module path string
                 let symbol: proc_macro2::TokenStream = symbol.parse().unwrap();
                 quote! {
                     pub use #symbol;
@@ -147,6 +158,7 @@ pub fn generate(
             .collect()
     };
 
+    #[allow(clippy::disallowed_methods)] // safe: hardcoded valid doc comment syntax
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated client accounts for [`{name}`].\"]"
     ))
