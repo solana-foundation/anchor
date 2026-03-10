@@ -59,7 +59,11 @@ pub fn access_control(
         .map(|ac| format!("{ac}?;")) // Add `?;` syntax.
         .map(|ac| {
             ac.parse::<proc_macro2::TokenStream>().map_err(|_| {
-                syn::Error::new(proc_macro2::Span::call_site(), format!("`#[access_control]` argument `{ac} is not valid Rust syntax")).into_compile_error()
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    format!("`#[access_control]` argument `{ac} is not valid Rust syntax"),
+                )
+                .into_compile_error()
             })
         })
         .collect::<Result<Vec<_>, _>>()
