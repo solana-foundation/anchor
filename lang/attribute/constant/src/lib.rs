@@ -11,6 +11,8 @@ pub fn constant(
     {
         use quote::quote;
 
+        #[allow(clippy::disallowed_methods)]
+        // safe: attribute macro input is always a valid syn::Item
         let ts = match syn::parse(input).unwrap() {
             // safe-unwrap: attribute macro input is always a valid syn::Item
             syn::Item::Const(item) => {

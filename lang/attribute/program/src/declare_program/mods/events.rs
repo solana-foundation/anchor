@@ -9,12 +9,14 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let name = format_ident!("{}", ev.name);
         let discriminator = gen_discriminator(&ev.discriminator);
 
+        #[allow(clippy::disallowed_methods)]
+        // safe: IDL event types are guaranteed to exist in types array
         let ty_def = idl
             .types
             .iter()
             .find(|ty| ty.name == ev.name)
             .map(|ty| convert_idl_type_def_to_ts(ty, &idl.types))
-            .expect("Type must exist"); // safe-unwrap: IDL event types are guaranteed to exist in types array
+            .expect("Type must exist");
 
         quote! {
             #ty_def

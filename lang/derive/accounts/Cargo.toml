@@ -11,6 +11,10 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+[lints.clippy]
+disallowed-methods = "deny"
+disallowed-macros = "deny"
+
 [features]
 allow-missing-optionals = ["anchor-syn/allow-missing-optionals"]
 anchor-debug = ["anchor-syn/anchor-debug"]

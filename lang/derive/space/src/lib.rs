@@ -178,11 +178,8 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
         }
         _ => {
             let ty_type = ty.to_token_stream();
-            syn::Error::new_spanned(
-                ty_type,
-                format!("Type is not supported by `#[derive(InitSpace)]`"),
-            )
-            .into_compile_error()
+            syn::Error::new_spanned(ty_type, "Type is not supported by `#[derive(InitSpace)]`")
+                .into_compile_error()
         }
     }
 }
