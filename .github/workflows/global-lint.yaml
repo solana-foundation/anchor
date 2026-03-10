@@ -25,24 +25,3 @@ jobs:
 
           # Do not error out on failures, only complain
           strict: false
-
-          proc-macro-panic-lint:
-            runs-on: ubuntu-latest
-            steps:
-              - uses: actions/checkout@v4
-              - uses: dtolnay/rust-toolchain@stable
-                with:
-                  components: clippy
-              - name: Check for panic paths in proc-macro crates
-                run: |
-                  cargo clippy \
-                    -p anchor-derive-space \
-                    -p anchor-derive-accounts \
-                    -p anchor-derive-serde \
-                    -p anchor-attribute-account \
-                    -p anchor-attribute-access-control \
-                    -p anchor-attribute-constant \
-                    -p anchor-attribute-error \
-                    -p anchor-attribute-event \
-                    -p anchor-attribute-program \
-                    -- -D clippy::disallowed_methods -D clippy::disallowed_macros
