@@ -186,7 +186,6 @@ dependencies = [
  "heck 0.3.3",
  "proc-macro2",
  "quote",
- "serde_json",
  "syn 1.0.109",
 ]
 
@@ -393,7 +392,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde",
- "serde_json",
  "sha2",
  "syn 1.0.109",
  "thiserror 1.0.66",
