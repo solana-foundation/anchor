@@ -1,0 +1,11 @@
+disallowed-methods = [
+    { path = "core::option::Option::unwrap", reason = "use `syn::Error` in proc-macro crates" },
+    { path = "core::result::Result::unwrap", reason = "use `syn::Error` in proc-macro crates" },
+    { path = "core::option::Option::expect", reason = "use `syn::Error` in proc-macro crates" },
+    { path = "core::result::Result::expect", reason = "use `syn::Error` in proc-macro crates" },
+]
+
+disallowed-macros = [
+    { path = "core::panic", reason = "use `syn::Error` in proc-macro crates" },
+    { path = "std::unimplemented", reason = "use `syn::Error` in proc-macro crates" },
+]
