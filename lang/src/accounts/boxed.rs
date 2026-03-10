@@ -8,11 +8,9 @@
 //! # Example
 //! ```ignore
 //! #[derive(Accounts)]
-//! pub struct Example {
+//! pub struct Example<'info> {
 //!     pub my_acc: Box<Account<'info, MyData>>
 //! }
-//! 
-//! # fn main() {}
 //! ```
 
 use crate::solana_program::account_info::AccountInfo;

@@ -65,8 +65,6 @@ pub fn program(
 ///
 /// ```ignore
 /// use anchor_client::anchor_lang;
-/// 
-/// # fn main() {}
 /// ```
 ///
 /// # Example
@@ -120,8 +118,6 @@ pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// pub struct MyIx<'info> {
 ///     pub signer: Signer<'info>,
 /// }
-/// 
-/// # fn main() {}
 /// ```
 #[proc_macro_attribute]
 pub fn instruction(

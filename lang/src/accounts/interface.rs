@@ -53,8 +53,6 @@ use std::ops::Deref;
 ///     pub program_data: Account<'info, ProgramData>,
 ///     pub authority: Signer<'info>,
 /// }
-/// 
-/// # fn main() {}
 /// ```
 /// The given program has a function with which the upgrade authority can set admin settings.
 ///

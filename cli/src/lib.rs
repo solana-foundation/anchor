@@ -1555,10 +1555,13 @@ pub type Files = Vec<(PathBuf, String)>;
 /// Create files from the given (path, content) tuple array.
 ///
 /// # Example
-/// # fn main() -> anyhow::Result<()> {
+///
+/// ```rust,no_run
+/// # use anchor_cli::create_files;
 /// # use std::path::PathBuf;
+/// # fn main() -> anyhow::Result<()> {
 /// # let files = vec![(PathBuf::from("programs/my_program/src/lib.rs"), "// Content".to_string())];
-/// # crate::create_files(&files)?;
+/// # create_files(&files)?;
 /// # Ok(())
 /// # }
 /// ```
@@ -1589,12 +1592,12 @@ pub fn create_files(files: &Files) -> Result<()> {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
+/// # use anchor_cli::override_or_create_files;
+/// # use std::path::PathBuf;
 /// # fn main() -> anyhow::Result<()> {
-/// # let temp_dir = tempfile::tempdir()?;
-/// # let file_path = temp_dir.path().join("lib.rs");
-/// # let files = vec![(file_path, "// Content".to_string())];
-/// // override_or_create_files(&files)?;
+/// # let files = vec![(PathBuf::from("test.rs"), "// Content".to_string())];
+/// # override_or_create_files(&files)?;
 /// # Ok(())
 /// # }
 /// ```

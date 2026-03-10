@@ -146,8 +146,6 @@ pub enum MigrationInner<From, To> {
 ///     pub my_account: Migration<'info, AccountV1, AccountV2>,
 ///     pub system_program: Program<'info, System>,
 /// }
-/// 
-/// # fn main() {}
 /// ```
 #[derive(Debug)]
 pub struct Migration<'info, From, To>

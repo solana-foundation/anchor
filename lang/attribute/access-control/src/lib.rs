@@ -20,26 +20,32 @@ use syn::parse_macro_input;
 ///     pub fn create(ctx: Context<Create>, bump_seed: u8) -> Result<()> {
 ///       let my_account = &mut ctx.accounts.my_account;
 ///       my_account.bump_seed = bump_seed;
-// /       Ok(()) // This was missing.
+///       Ok(())
 ///     }
 /// }
 ///
 /// #[derive(Accounts)]
-/// pub struct Create <'info> { // <'info> added
-///   #[account(init)]
+/// pub struct Create<'info> {
+///   #[account(init, payer = payer, space = 8 + 1)]
 ///   my_account: Account<'info, MyAccount>,
+///   #[account(mut)]
+///   payer: Signer<'info>,
+///   system_program: Program<'info, System>,
 /// }
 ///
-/// impl Create <'_> {
+/// #[account]
+/// pub struct MyAccount {
+///     bump_seed: u8,
+/// }
+///
+/// impl Create<'_> {
 ///   pub fn accounts(ctx: &Context<Create>, bump_seed: u8) -> Result<()> {
 ///     let seeds = &[ctx.accounts.my_account.to_account_info().key.as_ref(), &[bump_seed]];
 ///     Pubkey::create_program_address(seeds, ctx.program_id)
-///       .map_err(|_| ErrorCode::InvalidNonce)?;
+///       .map_err(|_| error!(ErrorCode::InvalidNonce))?;
 ///     Ok(())
 ///   }
 /// }
-/// 
-/// # fn main() {}
 /// ```
 ///
 /// This example demonstrates a useful pattern. Not only can you use

@@ -32,8 +32,6 @@ use syn::parse_macro_input;
 /// pub struct Initialize<'info> {
 ///     ...
 /// }
-/// 
-/// # fn main() {}
 /// ```
 ///
 /// # Constraints

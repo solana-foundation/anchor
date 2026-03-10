@@ -832,8 +832,9 @@ macro_rules! require_gte {
 /// pub enum MyError {
 ///     SomeError
 /// }
-/// 
-/// # fn main() {}
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 /// ```
 #[macro_export]
 macro_rules! err {
