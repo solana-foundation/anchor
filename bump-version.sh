@@ -25,7 +25,7 @@ case "$(uname)" in
 esac
 
 # Only replace version with the following globs
-allow_globs=":**/Cargo.toml **/Makefile client/src/lib.rs lang/attribute/program/src/lib.rs"
+allow_globs="Cargo.toml **/Makefile client/src/lib.rs lang/attribute/program/src/lib.rs"
 git grep -l $old_version -- $allow_globs |
     xargs sed "${sedi[@]}" \
     -e "s/$old_version/$version/g"
