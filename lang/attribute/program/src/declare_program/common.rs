@@ -40,12 +40,14 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
-    convert_idl_type_to_str(ty, false)
+    #[allow(clippy::disallowed_methods)] // safe: compile_error! is always valid syn::Type syntax
+    let result = convert_idl_type_to_str(ty, false)
         .and_then(|s| {
             syn::parse_str(&s)
                 .map_err(|e| syn::Error::new(proc_macro2::Span::call_site(), e.to_string()))
         })
-        .unwrap_or_else(|e| syn::parse2(e.into_compile_error()).unwrap()) // safe-unwrap: compile_error! is always valid syn::Type syntax
+        .unwrap_or_else(|e| syn::parse2(e.into_compile_error()).unwrap());
+    result
 }
 
 pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> Result<String, syn::Error> {
@@ -335,11 +337,13 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
                 IdlArrayLen::Generic(_) => false,
             }
         }
+        #[allow(clippy::disallowed_methods)]
+        // safe: IDL cross-references are guaranteed consistent by Anchor tooling
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_copy(ty_def, ty_defs))
-            .expect("Type def must exist"), // safe-unwrap: IDL cross-references are guaranteed consistent by Anchor tooling
+            .expect("Type def must exist"),
         IdlType::Bytes | IdlType::String | IdlType::Vec(_) | IdlType::Generic(_) => false,
         _ => true,
     }
@@ -359,11 +363,13 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
                 IdlArrayLen::Generic(_) => false,
             }
         }
+        #[allow(clippy::disallowed_methods)]
+        // safe: IDL cross-references are guaranteed consistent by Anchor tooling
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_default(ty_def, ty_defs))
-            .expect("Type def must exist"), // safe-unwrap: IDL cross-references are guaranteed consistent by Anchor tooling
+            .expect("Type def must exist"),
         IdlType::Generic(_) => false,
         _ => true,
     }
@@ -446,12 +452,15 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
                     accs.name.to_owned()
                 } else {
                     // Append numbers to the field name until we find a unique name
-                    (2..)
+                    #[allow(clippy::disallowed_methods)]
+                    // safe: unbounded integer search always finds a free slot
+                    let unique = (2..)
                         .find_map(|i| {
                             let name = format!("{}{i}", accs.name);
                             all.iter().all(|a| a.name != name).then_some(name)
                         })
-                        .expect("Should always find a valid name") // safe-unwrap: unbounded integer search always finds a free slot
+                        .expect("Should always find a valid name");
+                    unique
                 };
 
                 all.push(IdlInstructionAccounts {

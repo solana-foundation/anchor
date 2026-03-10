@@ -10,6 +10,10 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+[lints.clippy]
+disallowed-methods = "deny"
+disallowed-macros = "deny"
+
 [features]
 idl-build = ["anchor-syn/idl-build"]
 lazy-account = []

@@ -231,6 +231,7 @@ pub fn event_cpi(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let accounts_struct = parse_macro_input!(input as syn::ItemStruct);
-    let accounts_struct = add_event_cpi_accounts(&accounts_struct).unwrap(); // safe-unwrap: quote-generated struct tokens always parse
+    #[allow(clippy::disallowed_methods)] // safe: quote-generated struct tokens always parse
+    let accounts_struct = add_event_cpi_accounts(&accounts_struct).unwrap();
     proc_macro::TokenStream::from(quote! {#accounts_struct})
 }

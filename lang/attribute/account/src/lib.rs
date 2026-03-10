@@ -393,12 +393,14 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                         }
                     };
 
-                    let field_name = field.ident.as_ref().unwrap(); // safe-unwrap: named fields always have idents
-
+                    #[allow(clippy::disallowed_methods)]
+                    let field_name = field.ident.as_ref().unwrap();
+                    #[allow(clippy::disallowed_methods)]
                     let get_field: proc_macro2::TokenStream =
-                        format!("get_{field_name}").parse().unwrap(); // safe-unwrap: valid field name always tokenizes
+                        format!("get_{field_name}").parse().unwrap();
+                    #[allow(clippy::disallowed_methods)]
                     let set_field: proc_macro2::TokenStream =
-                        format!("set_{field_name}").parse().unwrap(); // safe-unwrap: valid field name always tokenizes
+                        format!("set_{field_name}").parse().unwrap();
 
                     quote! {
                         pub fn #get_field(&self) -> #accessor_ty {
@@ -533,11 +535,13 @@ pub fn zero_copy(
         } else {
             quote! {}
         };
+        #[allow(clippy::disallowed_methods)]
+        // safe: quote-generated tokens always parse as syn::ItemStruct
         let zc_struct = syn::parse2(quote! {
             #derive_unsafe
             #ret
         })
-        .unwrap(); // safe-unwrap: quote-generated tokens always parse as syn::ItemStruct
+        .unwrap();
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
