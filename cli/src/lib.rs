@@ -105,6 +105,9 @@ pub enum Command {
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
+        /// Don't install Solana dev skill for Claude Code
+        #[clap(long)]
+        no_skill: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -1134,6 +1137,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            no_skill,
         } => init(
             &opts.cfg_override,
             name,
@@ -1144,6 +1148,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            no_skill,
         ),
         Command::New {
             name,
@@ -1336,6 +1341,7 @@ fn init(
     template: ProgramTemplate,
     test_template: TestTemplate,
     force: bool,
+    no_skill: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -1464,9 +1470,52 @@ fn init(
         }
     }
 
+    if !no_skill {
+        install_solana_skill();
+    }
+
     println!("{project_name} initialized");
 
     Ok(())
+}
+
+fn install_solana_skill() {
+    const SKILL_REPO: &str = "https://github.com/solana-foundation/solana-dev-skill";
+    const SKILL_NAME: &str = "solana-dev-skill";
+
+    // Skip if globally installed (active across all projects already)
+    let global_path = home_dir()
+        .unwrap_or_default()
+        .join(".claude")
+        .join("skills")
+        .join(SKILL_NAME);
+    if global_path.exists() {
+        return;
+    }
+
+    // Skip if already project-scoped
+    let project_path = Path::new(".claude").join("skills").join(SKILL_NAME);
+    if project_path.exists() {
+        return;
+    }
+
+    println!("Installing Solana dev skill for Claude Code...");
+
+    let status = std::process::Command::new("npx")
+        .args(["skills", "add", "--path", ".claude/skills", SKILL_REPO])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {}
+        _ => {
+            eprintln!(
+                "Warning: Failed to install Solana dev skill. \
+                 Install manually with:\n  npx skills add {SKILL_REPO}"
+            );
+        }
+    }
 }
 
 fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
