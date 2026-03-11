@@ -5223,6 +5223,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5244,6 +5245,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5265,6 +5267,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
