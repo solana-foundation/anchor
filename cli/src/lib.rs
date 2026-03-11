@@ -105,9 +105,9 @@ pub enum Command {
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
-        /// Don't install Solana agent skills
+        /// Install Solana agent skills
         #[clap(long)]
-        skip_skill_installation: bool,
+        install_agent_skills: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -1137,7 +1137,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
-            skip_skill_installation,
+            install_agent_skills,
         } => init(
             &opts.cfg_override,
             name,
@@ -1148,7 +1148,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
-            skip_skill_installation,
+            install_agent_skills,
         ),
         Command::New {
             name,
@@ -1341,7 +1341,7 @@ fn init(
     template: ProgramTemplate,
     test_template: TestTemplate,
     force: bool,
-    skip_skill_installation: bool,
+    install_agent_skills: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -1470,7 +1470,7 @@ fn init(
         }
     }
 
-    if !skip_skill_installation {
+    if install_agent_skills {
         install_solana_skill();
     }
 
@@ -1499,7 +1499,7 @@ fn install_solana_skill() {
         return;
     }
 
-    println!("Installing Solana dev skill for Agents...");
+    println!("Installing Solana dev skill for Agents from {SKILL_REPO}");
 
     let status = std::process::Command::new("npx")
         .args([
@@ -1511,12 +1511,14 @@ fn install_solana_skill() {
             "*",
             "-y",
         ])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status();
 
     match status {
-        Ok(s) if s.success() => {}
+        Ok(s) if s.success() => {
+            println!("Solana dev skill installed successfully");
+        }
         _ => {
             eprintln!(
                 "Warning: Failed to install Solana dev skill. \
