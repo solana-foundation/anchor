@@ -105,9 +105,9 @@ pub enum Command {
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
-        /// Don't install Solana dev skill for Claude Code
+        /// Don't install Solana agent skills
         #[clap(long)]
-        no_skill: bool,
+        skip_skill_installation: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -1137,7 +1137,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
-            no_skill,
+            skip_skill_installation,
         } => init(
             &opts.cfg_override,
             name,
@@ -1148,7 +1148,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
-            no_skill,
+            skip_skill_installation,
         ),
         Command::New {
             name,
@@ -1341,7 +1341,7 @@ fn init(
     template: ProgramTemplate,
     test_template: TestTemplate,
     force: bool,
-    no_skill: bool,
+    skip_skill_installation: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -1470,7 +1470,7 @@ fn init(
         }
     }
 
-    if !no_skill {
+    if !skip_skill_installation {
         install_solana_skill();
     }
 
@@ -1481,28 +1481,36 @@ fn init(
 
 fn install_solana_skill() {
     const SKILL_REPO: &str = "https://github.com/solana-foundation/solana-dev-skill";
-    const SKILL_NAME: &str = "solana-dev-skill";
+    const SKILL_NAME: &str = "solana-dev";
 
     // Skip if globally installed (active across all projects already)
     let global_path = home_dir()
         .unwrap_or_default()
-        .join(".claude")
+        .join(".agents")
         .join("skills")
         .join(SKILL_NAME);
     if global_path.exists() {
         return;
     }
 
-    // Skip if already project-scoped
-    let project_path = Path::new(".claude").join("skills").join(SKILL_NAME);
+    // Skip if already project-scoped (coul be anchor init --force on existing folder)
+    let project_path = Path::new(".agents").join("skills").join(SKILL_NAME);
     if project_path.exists() {
         return;
     }
 
-    println!("Installing Solana dev skill for Claude Code...");
+    println!("Installing Solana dev skill for Agents...");
 
     let status = std::process::Command::new("npx")
-        .args(["skills", "add", "--path", ".claude/skills", SKILL_REPO])
+        .args([
+            "--yes",
+            "skills@1.4.4",
+            "add",
+            SKILL_REPO,
+            "--skill",
+            "*",
+            "-y",
+        ])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status();
