@@ -320,7 +320,6 @@ impl<T> std::ops::DerefMut for WithPath<T> {
 pub struct Config {
     pub toolchain: ToolchainConfig,
     pub features: FeaturesConfig,
-    pub registry: RegistryConfig,
     pub provider: ProviderConfig,
     pub programs: ProgramsConfig,
     pub scripts: ScriptsConfig,
@@ -400,19 +399,6 @@ impl Default for FeaturesConfig {
         Self {
             resolution: Self::get_default_resolution(),
             skip_lint: false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RegistryConfig {
-    pub url: String,
-}
-
-impl Default for RegistryConfig {
-    fn default() -> Self {
-        Self {
-            url: "https://api.apr.dev".to_string(),
         }
     }
 }
@@ -606,7 +592,6 @@ struct _Config {
     toolchain: Option<ToolchainConfig>,
     features: Option<FeaturesConfig>,
     programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
-    registry: Option<RegistryConfig>,
     provider: Provider,
     workspace: Option<WorkspaceConfig>,
     scripts: Option<ScriptsConfig>,
@@ -700,7 +685,6 @@ impl fmt::Display for Config {
         let cfg = _Config {
             toolchain: Some(self.toolchain.clone()),
             features: Some(self.features.clone()),
-            registry: Some(self.registry.clone()),
             provider: Provider {
                 cluster: self.provider.cluster.clone(),
                 wallet: self.provider.wallet.stringify_with_tilde(),
@@ -731,7 +715,6 @@ impl FromStr for Config {
         Ok(Config {
             toolchain: cfg.toolchain.unwrap_or_default(),
             features: cfg.features.unwrap_or_default(),
-            registry: cfg.registry.unwrap_or_default(),
             provider: ProviderConfig {
                 cluster: cfg.provider.cluster,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,

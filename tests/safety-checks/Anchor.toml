@@ -8,9 +8,6 @@ skip-lint = false
 account_info = "99YPYSHjNekPHmMB7yrTxZCV2k2pRMKEqwwcqE62NqdA"
 unchecked_account = "4es8ojkX4URUyar2pbuLXQ4WoFtUizb5EupfaEgHjYQF"
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
