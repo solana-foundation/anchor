@@ -569,7 +569,6 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     /// # Example
     ///
     /// ```ignore
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// program
     ///     .request()
     ///     // Regular accounts
@@ -586,8 +585,6 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///     }])
     ///     .args(instruction::Initialize { field: 42 })
     ///     .send()?;
-    /// # Ok(())
-    /// # }
     /// ```
     #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
