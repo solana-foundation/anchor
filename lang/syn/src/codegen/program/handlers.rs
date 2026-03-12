@@ -19,7 +19,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let ix_method_name = &ix.raw_method.sig.ident;
             let ix_method_name_str = ix_method_name.to_string();
             let ix_span = ix.raw_method.span();
-            let ix_name = generate_ix_variant_name(&ix_method_name_str);
+            let ix_name = generate_ix_variant_name(&ix_method_name_str)
+                .expect("Failed to parse ix method name as camelCase identifier");
             let variant_arm = generate_ix_variant_spanned(&ix_method_name_str, &ix.args, ix_span);
             let ix_name_log = format!("Instruction: {ix_name}");
             let accounts_struct_name = &ix.anchor_ident;
