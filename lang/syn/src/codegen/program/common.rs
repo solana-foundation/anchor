@@ -1,7 +1,7 @@
 use crate::IxArg;
 use anyhow::Result;
 use heck::CamelCase;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 
 // Namespace for calculating instruction sighash signatures for any instruction
 // not affecting program state.
@@ -55,5 +55,5 @@ pub fn generate_ix_variant_name_spanned(
 ) -> proc_macro2::TokenStream {
     let n = name.to_camel_case();
     let ident = proc_macro2::Ident::new(&n, span);
-    quote_spanned! { span => #ident }
+    quote! { #ident }
 }
