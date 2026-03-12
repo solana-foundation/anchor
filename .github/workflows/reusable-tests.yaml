@@ -385,7 +385,7 @@ jobs:
             path: tests/sysvars
           - cmd: cd tests/composite && anchor test --skip-lint
             path: tests/composite
-          - cmd: cd tests/errors && anchor test --skip-lint && npx tsc --noEmit
+          - cmd: cd tests/errors && ./test.sh && npx tsc --noEmit
             path: tests/errors
           - cmd: cd tests/spl/metadata && anchor test --skip-lint
             path: spl/metadata
