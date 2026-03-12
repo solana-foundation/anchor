@@ -60,5 +60,5 @@ pub fn generate_ix_variant_name_spanned(
 ) -> proc_macro2::TokenStream {
     let n = name.to_camel_case();
     let ident = proc_macro2::Ident::new(&n, span);
-    quote_spanned! { span => #ident }
+    quote! { #ident }
 }
