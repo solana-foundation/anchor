@@ -327,16 +327,71 @@ mod legacy {
 
     impl From<IdlInstruction> for t::IdlInstruction {
         fn from(value: IdlInstruction) -> Self {
-            let name = value.name.to_snake_case();
+            let snake_name = value.name.to_snake_case();
+            let harmonized_name = harmonized_camel_case(&value.name);
             Self {
-                discriminator: get_disc("global", &name),
-                name,
+                discriminator: get_disc("global", &snake_name),
+                name: harmonized_name,
                 docs: value.docs.unwrap_or_default(),
                 accounts: value.accounts.into_iter().map(Into::into).collect(),
                 args: value.args.into_iter().map(Into::into).collect(),
                 returns: value.returns.map(|r| r.into()),
             }
         }
+    }
+
+    /// Converts snake_case, SCREAMING_SNAKE_CASE, or PascalCase to camelCase.
+    ///
+    /// - First letter is lowercased
+    /// - Letters following underscores are capitalized (snake_case handling)
+    /// - Letters following digits are capitalized (e.g., a1b_receive → a1BReceive)
+    /// - For inputs with underscores (snake_case/SCREAMING_SNAKE_CASE), letters are lowercased
+    ///   except at word boundaries (MY_CONST → myConst)
+    /// - For inputs without underscores (PascalCase), internal capitalization is preserved
+    ///   (DummyA → dummyA)
+    ///
+    /// This ensures consistent naming between Rust IDL generation and TypeScript clients.
+    fn harmonized_camel_case(input: &str) -> String {
+        let mut result = String::with_capacity(input.len());
+        let mut capitalize_next = false;
+        let mut prev_was_digit = false;
+        let mut is_first = true;
+        // If input has underscores, treat as snake_case/SCREAMING_SNAKE_CASE and lowercase letters
+        let has_underscore = input.contains('_');
+
+        for c in input.chars() {
+            if c == '_' {
+                capitalize_next = true;
+                prev_was_digit = false;
+            } else if c.is_ascii_digit() {
+                result.push(c);
+                prev_was_digit = true;
+                is_first = false;
+            } else if c.is_ascii_alphabetic() {
+                if is_first {
+                    // First letter is always lowercase for camelCase
+                    result.push(c.to_ascii_lowercase());
+                } else if capitalize_next || prev_was_digit {
+                    // After underscore or digit, always capitalize
+                    result.push(c.to_ascii_uppercase());
+                } else if has_underscore {
+                    // For snake_case/SCREAMING_SNAKE_CASE, lowercase within words
+                    result.push(c.to_ascii_lowercase());
+                } else {
+                    // For PascalCase (no underscores), preserve original case
+                    result.push(c);
+                }
+                capitalize_next = false;
+                prev_was_digit = false;
+                is_first = false;
+            } else {
+                result.push(c);
+                capitalize_next = false;
+                prev_was_digit = false;
+                is_first = false;
+            }
+        }
+        result
     }
 
     impl From<IdlTypeDefinition> for t::IdlAccount {
@@ -556,6 +611,26 @@ mod legacy {
                 }),
             };
             Ok(seed)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_harmonized_camel_case() {
+            assert_eq!(harmonized_camel_case("a1b_receive"), "a1BReceive");
+            assert_eq!(harmonized_camel_case("test2var"), "test2Var");
+
+            // PascalCase inputs (preserve internal capitalization)
+            assert_eq!(harmonized_camel_case("DummyA"), "dummyA");
+            assert_eq!(harmonized_camel_case("Initialize"), "initialize");
+
+            // SCREAMING_SNAKE_CASE inputs (constants)
+            assert_eq!(harmonized_camel_case("MY_CONST"), "myConst");
+            assert_eq!(harmonized_camel_case("BYTE_STR"), "byteStr");
+            assert_eq!(harmonized_camel_case("U8"), "u8");
         }
     }
 }

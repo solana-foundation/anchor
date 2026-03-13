@@ -3,6 +3,7 @@ use anchor_lang_idl::types::{
     IdlInstructionAccounts, IdlRepr, IdlSerialization, IdlType, IdlTypeDef, IdlTypeDefGeneric,
     IdlTypeDefTy,
 };
+use heck::SnakeCase;
 use proc_macro2::Literal;
 use quote::{format_ident, quote};
 
@@ -29,7 +30,8 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
     let re_exports = idl
         .instructions
         .iter()
-        .map(|ix| format_ident!("__{}_accounts_{}", prefix, ix.name))
+        // Use snake_case for module name to match __cpi_client_accounts and __client_accounts
+        .map(|ix| format_ident!("__{}_accounts_{}", prefix, ix.name.to_snake_case()))
         .map(|ident| quote! { pub use super::internal::#ident::*; });
 
     quote! {
