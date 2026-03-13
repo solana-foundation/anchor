@@ -141,9 +141,13 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Arc<dyn T
         }
     }
 
-    #[must_use]
-    pub fn signer<T: ThreadSafeSigner>(mut self, signer: T) -> Self {
-        self.signers.push(Arc::new(signer));
+    #[must_use = "The signers must be provided to ensure the transaction is valid and authorized."]
+    pub fn signers<'b, T: ThreadSafeSigner + Clone + 'static>(mut self, signers: &'b [T]) -> Self {
+        self.signers.extend(
+            signers
+                .iter()
+                .map(|signer| Arc::new(signer.clone()) as Arc<dyn ThreadSafeSigner>),
+        );
         self
     }
 
