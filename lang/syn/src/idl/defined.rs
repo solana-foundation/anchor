@@ -202,17 +202,28 @@ where
         _ => quote! { vec![] },
     };
 
-    let serialization = get_attr_str("derive", attrs)
-        .and_then(|derive| {
-            if derive.contains("bytemuck") {
-                if derive.to_lowercase().contains("unsafe") {
-                    Some(quote! { #idl::IdlSerialization::BytemuckUnsafe })
-                } else {
-                    Some(quote! { #idl::IdlSerialization::Bytemuck })
-                }
-            } else {
-                None
+    let serialization = attrs
+        .iter()
+        .find_map(|attr| {
+            if !attr.path.is_ident("derive") {
+                return None;
             }
+            let meta = attr.parse_meta().ok()?;
+            if let syn::Meta::List(list) = meta {
+                for nested in list.nested {
+                    if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested {
+                        // Check for `bytemuck::unsafe_impl_pod` or `unsafe_impl_pod`
+                        if path.segments.iter().any(|s| s.ident == "unsafe_impl_pod") {
+                            return Some(quote! { #idl::IdlSerialization::BytemuckUnsafe });
+                        }
+                        // Check for `bytemuck::pod` or `pod`
+                        if path.segments.iter().any(|s| s.ident == "pod") {
+                            return Some(quote! { #idl::IdlSerialization::Bytemuck });
+                        }
+                    }
+                }
+            }
+            None
         })
         .unwrap_or_else(|| quote! { #idl::IdlSerialization::default() });
 
