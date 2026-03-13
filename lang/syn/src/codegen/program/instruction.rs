@@ -2,6 +2,7 @@ use crate::codegen::program::common::*;
 use crate::parser;
 use crate::Program;
 use heck::CamelCase;
+use quote::ToTokens;
 use quote::{quote, quote_spanned};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -28,7 +29,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
                     Some(overrides) if overrides.discriminator.is_some() => {
-                        overrides.discriminator.as_ref().unwrap().to_owned()
+                        overrides.discriminator.to_token_stream()
                     }
                     _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                 };

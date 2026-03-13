@@ -22,10 +22,12 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use syn::ext::IdentExt;
 use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
+use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Attribute;
+use syn::ExprLit;
 use syn::Lit;
 use syn::{
     Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
@@ -78,7 +80,8 @@ pub struct Ix {
 #[derive(Debug, Default)]
 pub struct Overrides {
     /// Override the default 8-byte discriminator
-    pub discriminator: Option<TokenStream>,
+    // `Box` is used to avoid large memory use in the common case as `Expr` is a large type
+    pub discriminator: Option<Box<Expr>>,
 }
 
 impl Parse for Overrides {
@@ -88,14 +91,21 @@ impl Parse for Overrides {
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
-                    let value = match &arg.value {
+                    let value = match arg.value {
                         // Allow `discriminator = 42`
-                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        Expr::Lit(ExprLit {
+                            lit: lit @ Lit::Int(_),
+                            ..
+                        }) => {
+                            parse_quote!(&[#lit])
+                        }
                         // Allow `discriminator = [0, 1, 2, 3]`
-                        Expr::Array(arr) => quote! { &#arr },
-                        expr => expr.to_token_stream(),
+                        Expr::Array(arr) => {
+                            parse_quote!(&#arr)
+                        }
+                        expr => expr,
                     };
-                    attr.discriminator.replace(value)
+                    attr.discriminator.replace(Box::new(value))
                 }
                 _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
             };
