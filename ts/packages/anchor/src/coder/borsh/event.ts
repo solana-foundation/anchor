@@ -55,7 +55,7 @@ export class BorshEventCoder implements EventCoder {
 
     for (const [name, layout] of this.layouts) {
       const givenDisc = logArr.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      const matches = givenDisc.equals(Uint8Array.from(layout.discriminator));
       if (matches) {
         return {
           name,

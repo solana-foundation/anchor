@@ -378,6 +378,57 @@ export interface Wallet {
   payer?: Keypair;
 }
 
+type KitGetAccountInfoRpc = {
+  getAccountInfo: (
+    accountAddress: string,
+    config?: { commitment?: Commitment; minContextSlot?: number }
+  ) => {
+    send: (options?: { abortSignal?: AbortSignal }) => Promise<{
+      value: {
+        data: readonly [string, "base64"];
+        executable: boolean;
+        lamports: bigint;
+        owner: string;
+        space: bigint;
+      } | null;
+    }>;
+  };
+};
+
+// Internal adapter for libraries expecting a Kit-style RPC client.
+export function getConnectionRpc(provider: Provider): KitGetAccountInfoRpc {
+  return {
+    getAccountInfo: (
+      accountAddress: string,
+      config?: { commitment?: Commitment; minContextSlot?: number }
+    ) => ({
+      send: async (_options?: { abortSignal?: AbortSignal }) => {
+        const response = await provider.connection.getAccountInfoAndContext(
+          new PublicKey(accountAddress),
+          {
+            commitment: config?.commitment,
+            minContextSlot: config?.minContextSlot,
+          }
+        );
+
+        if (!response.value) {
+          return { value: null };
+        }
+
+        return {
+          value: {
+            data: [response.value.data.toString("base64"), "base64"] as const,
+            executable: response.value.executable,
+            lamports: BigInt(response.value.lamports),
+            owner: response.value.owner.toBase58(),
+            space: BigInt(response.value.data.length),
+          },
+        };
+      },
+    }),
+  };
+}
+
 // Copy of Connection.sendAndConfirmRawTransaction that throws
 // a better error if 'confirmTransaction` returns an error status
 async function sendAndConfirmRawTransaction(

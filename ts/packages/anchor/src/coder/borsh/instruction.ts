@@ -53,7 +53,7 @@ export class BorshInstructionCoder implements InstructionCoder {
     const len = encoder.layout.encode(ix, buffer);
     const data = buffer.slice(0, len);
 
-    return Buffer.concat([Buffer.from(encoder.discriminator), data]);
+    return Buffer.from([...Buffer.from(encoder.discriminator), ...data]);
   }
 
   /**
@@ -64,12 +64,15 @@ export class BorshInstructionCoder implements InstructionCoder {
     encoding: "hex" | "base58" = "hex"
   ): Instruction | null {
     if (typeof ix === "string") {
-      ix = encoding === "hex" ? Buffer.from(ix, "hex") : bs58.decode(ix);
+      ix =
+        encoding === "hex"
+          ? Buffer.from(ix, "hex")
+          : Buffer.from(bs58.decode(ix) as Uint8Array);
     }
 
     for (const [name, layout] of this.ixLayouts) {
       const givenDisc = ix.subarray(0, layout.discriminator.length);
-      const matches = givenDisc.equals(Buffer.from(layout.discriminator));
+      const matches = givenDisc.equals(Uint8Array.from(layout.discriminator));
       if (matches) {
         return {
           name,
