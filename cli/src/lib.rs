@@ -2493,6 +2493,11 @@ fn idl_init(
         return Ok(());
     }
 
+    // Convert relative path to absolute path to support relative paths
+    let idl_filepath = std::fs::canonicalize(&idl_filepath)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| idl_filepath.clone());
+
     let program_id = match program_id {
         Some(id) => id.to_string(),
         _ => {
@@ -2540,6 +2545,11 @@ fn idl_upgrade(
         println!("Skipping IDL upgrade on localnet");
         return Ok(());
     }
+
+    // Convert relative path to absolute path to support relative paths
+    let idl_filepath = std::fs::canonicalize(&idl_filepath)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| idl_filepath.clone());
 
     let program_id = match program_id {
         Some(id) => id.to_string(),
