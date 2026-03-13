@@ -10,9 +10,6 @@ edition = "2021"
 [lib]
 proc-macro = true
 
-[features]
-anchor-debug = []
-
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
