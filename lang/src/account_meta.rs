@@ -1,4 +1,6 @@
 use crate::ToAccountMetas;
+use alloc::vec;
+use alloc::vec::Vec;
 use solana_instruction::AccountMeta;
 
 impl ToAccountMetas for AccountMeta {

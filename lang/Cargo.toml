@@ -59,7 +59,7 @@ anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }
 
 base64 = "0.21"
 bincode = "1"
-borsh = "1.5.7"
+borsh = { version = "1.5.7", default-features = false }
 bytemuck = { version = "1", features = ["derive"] }
 const-crypto = "0.3.0"
 
