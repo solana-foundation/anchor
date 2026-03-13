@@ -1,0 +1,6 @@
+{
+  "command": "cargo",
+  "args": [
+    "build-sbf"
+  ]
+}

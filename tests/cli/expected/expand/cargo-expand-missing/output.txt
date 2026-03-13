@@ -1,0 +1,1 @@
+error: no such subcommand: `expand`

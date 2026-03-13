@@ -1,0 +1,6 @@
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS from repository: https://github.com/coral-xyz/anchor
+Using commit: abc123def456
+
+Verification successful!
+On-chain bytecode matches the local source code.
