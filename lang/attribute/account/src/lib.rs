@@ -320,7 +320,11 @@ impl Parse for AccountArg {
         }
 
         // Zero copy
-        if input.fork().parse::<Ident>()? == "zero_copy" {
+        if input
+            .fork()
+            .parse::<Ident>()
+            .is_ok_and(|ident| ident == "zero_copy")
+        {
             input.parse::<Ident>()?;
             let is_unsafe = if input.peek(Paren) {
                 let content;
@@ -332,16 +336,17 @@ impl Parse for AccountArg {
                         "Expected `unsafe`",
                     ));
                 }
-
                 true
             } else {
                 false
             };
 
             return Ok(Self::ZeroCopy { is_unsafe });
-        };
+        }
 
-        // Overrides
+        // Overrides (handles discriminator = ...)
+        // This will catch invalid arguments like `size = 1234` and provide
+        // an informative error message via Overrides::parse
         input.parse::<Overrides>().map(Self::Overrides)
     }
 }
