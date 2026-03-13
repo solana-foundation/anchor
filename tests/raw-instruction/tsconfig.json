@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "types": ["chai", "mocha", "node"],
+    "typeRoots": ["./node_modules/@types"],
+    "lib": ["es6"],
+    "module": "commonjs",
+    "target": "es6",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true
+  },
+  "include": ["tests/**/*"]
+}
