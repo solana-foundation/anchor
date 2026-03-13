@@ -775,19 +775,27 @@ use anchor_client::{{
 #[test]
 fn test_initialize() {{
     let program_id = "{0}";
-    let anchor_wallet = std::env::var("ANCHOR_WALLET").unwrap();
-    let payer = read_keypair_file(&anchor_wallet).unwrap();
+    let anchor_wallet = std::env::var("ANCHOR_WALLET").expect(
+        "ANCHOR_WALLET must be set to a keypair path (e.g. ~/.config/solana/id.json)",
+    );
+    let payer = read_keypair_file(&anchor_wallet).unwrap_or_else(|e| {
+        panic!("Failed to read keypair at $ANCHOR_WALLET ({anchor_wallet}): {e}")
+    });
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::try_from(program_id).unwrap();
-    let program = client.program(program_id).unwrap();
+    let program_id = Pubkey::from_str(program_id).unwrap_or_else(|e| {
+        panic!("Invalid program id in generated test template: {program_id}: {e}")
+    });
+    let program = client.program(program_id).unwrap_or_else(|e| {
+        panic!("Failed to load program client for {program_id}: {e}")
+    });
 
     let tx = program
         .request()
         .accounts({1}::accounts::Initialize {{}})
         .args({1}::instruction::Initialize {{}})
         .send()
-        .expect("");
+        .expect("Failed to send initialize transaction");
 
     println!("Your transaction signature {{}}", tx);
 }}
