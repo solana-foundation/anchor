@@ -1493,7 +1493,7 @@ fn install_solana_skill() {
         return;
     }
 
-    // Skip if already project-scoped (coul be anchor init --force on existing folder)
+    // Skip if already project-scoped (could be anchor init --force on existing folder)
     let project_path = Path::new(".agents").join("skills").join(SKILL_NAME);
     if project_path.exists() {
         return;
