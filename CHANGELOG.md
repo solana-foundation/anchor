@@ -18,6 +18,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Export all IDL types from the root. Users can now update `dist/cjs/idl` imports to import directly from `@anchor-lang/core` ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
 - lang: Add `declare_program!` support with just `anchor_client` and not `anchor_lang` ([#4157](https://github.com/solana-foundation/anchor/pull/4157)).
 - lang: Export `Owners` from `prelude` ([#4189](https://github.com/solana-foundation/anchor/pull/4189)).
+- cli: Added `--install-agent-skills` to automatically install Solana agent skills during `anchor init` ([#4307](https://github.com/solana-foundation/anchor/pull/4307))
 
 ### Fixes
 
