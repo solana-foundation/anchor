@@ -200,6 +200,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// # Example
 ///
 /// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[event_cpi]
 /// #[derive(Accounts)]
 /// pub struct MyInstruction<'info> {
@@ -210,6 +212,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// The code above will be expanded to:
 ///
 /// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[derive(Accounts)]
 /// pub struct MyInstruction<'info> {
 ///    pub signer: Signer<'info>,

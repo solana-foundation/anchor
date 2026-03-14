@@ -66,7 +66,9 @@ pub fn error_code(
 /// Generates an [`Error::AnchorError`](../../anchor_lang/error/enum.Error.html) that includes file and line information.
 ///
 /// # Example
-/// ```rust,ignore
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[program]
 /// mod errors {
 ///     use super::*;
@@ -74,6 +76,9 @@ pub fn error_code(
 ///         Err(error!(MyError::Hello))
 ///     }
 /// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 ///
 /// #[error_code]
 /// pub enum MyError {

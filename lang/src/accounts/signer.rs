@@ -25,7 +25,7 @@ use std::ops::Deref;
 ///
 /// #[derive(Accounts)]
 /// pub struct Example<'info> {
-///     #[account(init, payer = payer)]
+///     #[account(init, payer = payer, space = 8 + 8)]
 ///     pub my_acc: Account<'info, MyData>,
 ///     #[account(mut)]
 ///     pub payer: Signer<'info>,

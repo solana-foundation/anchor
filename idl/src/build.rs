@@ -47,8 +47,14 @@ pub trait IdlBuild {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust,no_run
+/// # use std::path::PathBuf;
+/// # use anchor_lang_idl::build::IdlBuilder;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let path = PathBuf::from("programs/my_program");
 /// let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Default)]
 pub struct IdlBuilder {
