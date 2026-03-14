@@ -421,7 +421,10 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
             crate::solana_program::msg!("The given Account is not mutable");
-            panic!();
+            panic!(
+                "anchor-debug: attempted to mutably deref a non-writable Account (key={})",
+                self.info.key
+            );
         }
         &mut self.account
     }
