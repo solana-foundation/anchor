@@ -73,6 +73,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             #[allow(unreachable_code)]
                             if false {
                                 // This code is never executed but is type-checked at compile time
+                                #[allow(clippy::diverging_sub_expression)]
                                 let __type_check_arg: #arg_ty = panic!();
                                 #anchor::#method_name(&__type_check_arg);
                             }
