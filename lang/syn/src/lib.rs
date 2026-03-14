@@ -39,6 +39,9 @@ pub struct Program {
     pub docs: Option<Vec<String>>,
     pub program_mod: ItemMod,
     pub fallback_fn: Option<FallbackFn>,
+    /// The program ID expression parsed from an inline `const ID: Pubkey` inside
+    /// the `#[program]` module. `None` if the program uses `declare_id!` instead.
+    pub program_id: Option<proc_macro2::TokenStream>,
 }
 
 impl Parse for Program {
