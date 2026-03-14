@@ -132,7 +132,6 @@ dependencies = [
 name = "anchor-attribute-access-control"
 version = "0.32.1"
 dependencies = [
- "anchor-syn",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -186,7 +185,6 @@ dependencies = [
  "heck 0.3.3",
  "proc-macro2",
  "quote",
- "serde_json",
  "syn 1.0.109",
 ]
 
@@ -238,7 +236,6 @@ dependencies = [
  "solana-system-interface",
  "solana-transaction",
  "syn 1.0.109",
- "tar",
  "tempfile",
  "tiny-bip39",
  "toml 0.7.8",
@@ -368,7 +365,6 @@ name = "anchor-spl"
 version = "0.32.1"
 dependencies = [
  "anchor-lang",
- "base64ct",
  "borsh 1.5.7",
  "mpl-token-metadata",
  "solana-stake-interface",
@@ -393,7 +389,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde",
- "serde_json",
  "sha2",
  "syn 1.0.109",
  "thiserror 1.0.66",
@@ -1675,18 +1670,6 @@ name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
-
-[[package]]
-name = "filetime"
-version = "0.2.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4029edd3e734da6fe05b6cd7bd2960760a616bd2ddd0d59a0124746d6272af0"
-dependencies = [
- "cfg-if",
- "libc",
- "redox_syscall 0.3.5",
- "windows-sys 0.48.0",
-]
 
 [[package]]
 name = "five8"
@@ -6420,17 +6403,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
-name = "tar"
-version = "0.4.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b16afcea1f22891c49a00c751c7b63b2233284064f11a200fc624137c51e2ddb"
-dependencies = [
- "filetime",
- "libc",
- "xattr",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7574,15 +7546,6 @@ dependencies = [
  "rusticata-macros",
  "thiserror 1.0.66",
  "time",
-]
-
-[[package]]
-name = "xattr"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4686009f71ff3e5c4dbcf1a282d0a44db3f021ba69350cd42086b3e5f1c6985"
-dependencies = [
- "libc",
 ]
 
 [[package]]

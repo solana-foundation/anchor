@@ -10,11 +10,7 @@ edition = "2021"
 [lib]
 proc-macro = true
 
-[features]
-anchor-debug = ["anchor-syn/anchor-debug"]
-
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1" }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
