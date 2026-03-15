@@ -4,9 +4,48 @@ use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
-/// Master seed slice
 #[constant]
-pub const MASTER_SEED: &[u8] = b"master";
+pub const BOOL: bool = false;
+#[constant]
+pub const U8: u8 = 1;
+#[constant]
+pub const U16: u16 = 2;
+#[constant]
+pub const U32: u32 = 4;
+#[constant]
+pub const U64: u64 = 8;
+#[constant]
+pub const U128: u128 = 16;
+#[constant]
+pub const I8: i8 = 1;
+#[constant]
+pub const I16: i16 = 2;
+#[constant]
+pub const I32: i32 = 4;
+#[constant]
+pub const I64: i64 = 8;
+#[constant]
+pub const I128: i128 = 16;
+#[constant]
+pub const BYTES: &[u8] = b"abc";
+#[constant]
+pub const STRING: &str = "abc";
+#[constant]
+pub const PUBKEY: Pubkey = Pubkey::from_str_const("SomeAdress111111111111111111111111111111111");
+#[constant]
+pub const ARRAY: [u8; 4] = [1, 2, 3, 4];
+#[constant]
+pub const OPTION_BOOL: Option<bool> = Some(BOOL);
+#[constant]
+pub const NESTED_OPTION_BOOL: Option<Option<bool>> = Some(OPTION_BOOL);
+#[constant]
+pub const OPTION_STRING: Option<&str> = Some(STRING);
+#[constant]
+pub const NESTED_OPTION_STRING: Option<Option<&str>> = Some(OPTION_STRING);
+#[constant]
+pub const OPTION_ARRAY: Option<[u8; 4]> = Some(ARRAY);
+#[constant]
+pub const NESTED_OPTION_ARRAY: Option<Option<[u8; 4]>> = Some(OPTION_ARRAY);
 
 #[program]
 pub mod external {
@@ -68,15 +107,41 @@ pub mod external {
         Ok(())
     }
 
+    // Compilation test for unsafe zero-copy accounts generated via `declare_program!`
+    pub fn test_compilation_packed_account(
+        _ctx: Context<TestCompilationPackedAccount>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     // Compilation test for an instruction with no accounts
     pub fn test_compilation_no_accounts(_ctx: Context<TestCompilationNoAccounts>) -> Result<()> {
         Ok(())
     }
+
+    // Test optional accounts parsing
+    pub fn update_with_optional(ctx: Context<UpdateWithOptional>, value: u32) -> Result<()> {
+        ctx.accounts.my_account.field = value;
+        Ok(())
+    }
+}
+
+#[error_code]
+pub enum ExternalProgramError {
+    // Should have offset 6000
+    MyNormalError,
+    // Should have offset 6500
+    MyErrorWithSpecialOffset = 500,
 }
 
 #[derive(Accounts)]
 pub struct TestCompilation<'info> {
     pub signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestCompilationPackedAccount<'info> {
+    pub packed_account: AccountLoader<'info, PackedAccount>,
 }
 
 #[derive(Accounts)]
@@ -135,9 +200,27 @@ pub struct NonInstructionUpdate2<'info> {
     pub program: Program<'info, program::External>,
 }
 
+#[derive(Accounts)]
+pub struct UpdateWithOptional<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    pub my_account: Account<'info, MyAccount>,
+    /// CHECK: Optional account for testing
+    #[account(mut)]
+    pub optional_account: Option<AccountInfo<'info>>,
+}
+
 #[account]
 pub struct MyAccount {
     pub field: u32,
+}
+
+// Regression test for `declare_program!` codegen on `#[account(zero_copy(unsafe))]`
+// https://github.com/solana-foundation/anchor/issues/4072
+#[account(zero_copy(unsafe))]
+pub struct PackedAccount {
+    pub a: [u8; 8],
+    pub b: [u16; 8],
 }
 
 #[event]

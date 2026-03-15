@@ -6,8 +6,8 @@ use crate::solana_program::account_info::AccountInfo;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{
-    Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas, ZeroCopy,
+    Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfos, ToAccountMetas,
+    ZeroCopy,
 };
 use std::cell::{Ref, RefMut};
 use std::collections::BTreeSet;
@@ -256,7 +256,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
 
 impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.as_ref(), sol_destination.as_ref())
     }
 }
 

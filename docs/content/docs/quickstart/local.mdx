@@ -144,8 +144,8 @@ This file demonstrates how to invoke the default program's `initialize`
 instruction in Typescript.
 
 ```ts filename="my-project.ts"
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import { MyProject } from "../target/types/my_project";
 
 describe("my-project", () => {
@@ -284,9 +284,6 @@ skip-lint = false
 
 [programs.localnet]
 my_program = "3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg"
-
-[registry]
-url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"

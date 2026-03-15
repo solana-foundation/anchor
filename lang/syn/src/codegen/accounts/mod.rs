@@ -9,6 +9,7 @@ pub mod __client_accounts;
 pub mod __cpi_client_accounts;
 mod bumps;
 mod constraints;
+mod duplicate_mutable_account_keys;
 mod exit;
 mod to_account_infos;
 mod to_account_metas;
@@ -19,6 +20,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_to_account_infos = to_account_infos::generate(accs);
     let impl_to_account_metas = to_account_metas::generate(accs);
     let impl_exit = exit::generate(accs);
+    let impl_dup_mutable_keys = duplicate_mutable_account_keys::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
     let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
@@ -29,6 +31,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         #impl_to_account_infos
         #impl_to_account_metas
         #impl_exit
+        #impl_dup_mutable_keys
         #bumps_struct
 
         #__client_accounts_mod

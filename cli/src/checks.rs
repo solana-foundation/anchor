@@ -28,7 +28,7 @@ pub fn check_overflow(cargo_toml_path: impl AsRef<Path>) -> Result<bool> {
 /// Check whether there is a mismatch between the current CLI version and:
 ///
 /// - `anchor-lang` crate version
-/// - `@coral-xyz/anchor` package version
+/// - `@anchor-lang/core` package version
 ///
 /// This function logs warnings in the case of a mismatch.
 pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
@@ -64,7 +64,7 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     };
     let mismatched_ts_version = package_json
         .get("dependencies")
-        .and_then(|deps| deps.get("@coral-xyz/anchor"))
+        .and_then(|deps| deps.get("@anchor-lang/core"))
         .and_then(|ver| ver.as_str())
         .and_then(|ver| VersionReq::parse(ver).ok())
         .filter(|ver| !ver.matches(&cli_version));
@@ -78,10 +78,10 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         };
 
         eprintln!(
-            "WARNING: `@coral-xyz/anchor` version({ver}) and the current CLI version\
+            "WARNING: `@anchor-lang/core` version({ver}) and the current CLI version\
                 ({cli_version}) don't match.\n\n\t\
                 This can lead to unwanted behavior. To fix, upgrade the package by running:\n\n\t\
-                {update_cmd} @coral-xyz/anchor@{cli_version}\n"
+                {update_cmd} @anchor-lang/core@{cli_version}\n"
         );
     }
 
@@ -90,12 +90,32 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 
 /// Check for potential dependency improvements.
 ///
-/// The main problem people will run into with Solana v2 is that the `solana-program` version
+/// The main problem people will run into with Solana version bumps is that the `solana-program` version
 /// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
 /// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
 /// `anchor-spl` when possible.
 pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
     // Check `solana-program`
+    /// Check if this version requirement matches the one listed in our workspace
+    fn compatible_solana_program(version_req: &str) -> bool {
+        let Ok(req) = VersionReq::parse(version_req) else {
+            // Assume incompatible if parsing fails
+            return false;
+        };
+        let workspace_toml =
+            cargo_toml::Manifest::from_str(include_str!("../../Cargo.toml")).unwrap();
+        let version = workspace_toml
+            .workspace
+            .as_ref()
+            .unwrap()
+            .dependencies
+            .get("solana-program")
+            .expect("this check should be removed if solana-program is no longer present")
+            .req();
+        let workspace_solana_prog_version = semver::Version::parse(version).unwrap();
+        req.matches(&workspace_solana_prog_version)
+    }
+
     cfg.get_rust_program_list()?
         .into_iter()
         .map(|path| path.join("Cargo.toml"))
@@ -103,7 +123,23 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .filter(|man| man.dependencies.contains_key("solana-program"))
+        .filter(|man| {
+            man.dependencies
+                .get("solana-program")
+                .is_some_and(|dep| match dep {
+                    cargo_toml::Dependency::Simple(version) => !compatible_solana_program(version),
+                    cargo_toml::Dependency::Detailed(detail) => {
+                        if let Some(version) = &detail.version {
+                            !compatible_solana_program(version)
+                        } else {
+                            // Conservatively warn on non-version dependencies
+                            true
+                        }
+                    }
+                    // Conservatively warn on inherited dependencies
+                    _ => true,
+                })
+        })
         .for_each(|man| {
             eprintln!(
                 "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\

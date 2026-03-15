@@ -96,7 +96,9 @@ use syn::parse_macro_input;
 ///                 Allows the same mutable account to be passed multiple times within the same instruction context.<br>
 ///                 By default, Anchor will prevents duplicate mutable accounts to avoid potential security issues and unintended behavior.<br>
 ///                 The <code>dup</code> constraint explicitly allows this for cases where it's intentional and safe.<br>
-///                 This constraint only applies to mutable accounts (<code>mut</code>). Readonly accounts naturally allow duplicates without requiring the <code>dup</code> constraint.<br>
+///                 This constraint only applies to mutable account (`mut`) types that serialize on exit. Other types like <br>
+///                `UncheckedAccount`, `Signer`, `SystemAccount`, `AccountLoader`, `Program`, `Interface` and Readonly accounts <br>
+///                 naturally allow duplicates as they don't serialize data on exit.<br>
 ///                 Example:
 ///                 <pre><code>
 /// #[account(mut)]
