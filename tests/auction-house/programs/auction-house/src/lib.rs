@@ -506,7 +506,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn bu(ctx: Context<Buy>, buyer_price: u64, token_size: u64) -> Result<()> {
+    pub fn buy(ctx: Context<Buy>, buyer_price: u64, token_size: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let payment_account = &ctx.accounts.payment_account;
         let transfer_authority = &ctx.accounts.transfer_authority;
