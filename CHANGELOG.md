@@ -18,6 +18,20 @@ The minor version will be incremented upon a breaking change and the patch versi
 - ts: Export all IDL types from the root. Users can now update `dist/cjs/idl` imports to import directly from `@anchor-lang/core` ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
 - lang: Add `declare_program!` support with just `anchor_client` and not `anchor_lang` ([#4157](https://github.com/solana-foundation/anchor/pull/4157)).
 - lang: Export `Owners` from `prelude` ([#4189](https://github.com/solana-foundation/anchor/pull/4189)).
+- cli: Use surfpool by default for `anchor test` and `anchor localnet` commands ([#4106](https://github.com/solana-foundation/anchor/pull/4106)).
+- lang: Optimize enums with all unit variants and empty arrays with `Lazy` ([#4237](https://github.com/solana-foundation/anchor/pull/4237)).
+- lang: Include `init_if_needed` accounts in duplicate mutable account checks ([#4239](https://github.com/solana-foundation/anchor/pull/4239)).
+- client: Accept `FnMut` for events closure ([#4024](https://github.com/solana-foundation/anchor/pull/4024)).
+- client: Export all types used by the public API ([#4211](https://github.com/solana-foundation/anchor/pull/4211)).
+- lang: Make `common::close` accept references ([#4178](https://github.com/solana-foundation/anchor/pull/4178)).
+- cli/idl: Add `--allow-localnet` option for IDL commands; fix panic when run outside a workspace ([#4252](https://github.com/solana-foundation/anchor/pull/4252)).
+- lang: Check owner on account reload ([#3837](https://github.com/solana-foundation/anchor/pull/3837)).
+- lang/ts: Upgrade borsh to 1.5.7 ([#4012](https://github.com/solana-foundation/anchor/pull/4012)).
+- syn: Relax seeds syntax to allow more flexible PDA seed expressions ([#3813](https://github.com/solana-foundation/anchor/pull/3813)).
+- lang: Deprecate `AccountInfo` usage in `Accounts` macro with a compile-time warning ([#3854](https://github.com/solana-foundation/anchor/pull/3854)).
+- cli: Update `anchor init` to use the `multiple` program template by default ([#3958](https://github.com/solana-foundation/anchor/pull/3958)).
+- cli: Add `hooks` section to `Anchor.toml` for `{pre,post}-{build,test,deploy}` lifecycle hooks ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
+- lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
 
 ### Fixes
 
@@ -30,6 +44,16 @@ The minor version will be incremented upon a breaking change and the patch versi
 - idl: Fix `local_file` method not found for `proc_macro2::Span` error ([#4187](https://github.com/solana-foundation/anchor/pull/4187)).
 - lang: Relax duplicate mutable account constraint to only check types that serialize on exit (`Account`, `LazyAccount`, `InterfaceAccount`, `Migration`) ([#4202](https://github.com/solana-foundation/anchor/pull/4202)).
 - idl: Make `serde_json` optional ([#4296](https://github.com/solana-foundation/anchor/pull/4296)).
+- lang: Fix `declare_program!` instruction parser with optional accounts ([#4180](https://github.com/solana-foundation/anchor/pull/4180)).
+- lang: Use original `borsh` derives ([#4205](https://github.com/solana-foundation/anchor/pull/4205)).
+- lang: Fix unexpected account substitution in `InterfaceAccount` ([#4139](https://github.com/solana-foundation/anchor/pull/4139)).
+- idl: Respect `offset = ...` in IDL generation for custom errors ([#4040](https://github.com/solana-foundation/anchor/pull/4040)).
+- cli: Relax separate dependency check for `solana-program` ([#4166](https://github.com/solana-foundation/anchor/pull/4166)).
+- lang: Enforce type and count matching between instruction handler and `#[instruction(..)]` args ([#4000](https://github.com/solana-foundation/anchor/pull/4000)).
+- lang: Handle invalid camelCase identifiers more gracefully ([#4021](https://github.com/solana-foundation/anchor/pull/4021)).
+- cli: Fix `i128`/`u128` deserialization ([#3938](https://github.com/solana-foundation/anchor/pull/3938)).
+- ts: Fix incorrect Anchor dependency version requirements ([#4138](https://github.com/solana-foundation/anchor/pull/4138)).
+- lang: Omit `parsers` module of `declare_program!` during on-chain (Solana) builds ([#4109](https://github.com/solana-foundation/anchor/pull/4109)).
 
 ### Breaking
 
@@ -41,6 +65,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Remove the `login` command ([#4182](https://github.com/solana-foundation/anchor/pull/4182)).
 - idl: Exclude external accounts ([#4197](https://github.com/solana-foundation/anchor/pull/4197)).
 - idl: Remove the conflicting account names check ([#4294](https://github.com/solana-foundation/anchor/pull/4294)).
+- deps: Update to Solana 3.0 ([#4031](https://github.com/solana-foundation/anchor/pull/4031)).
+- idl: Remove legacy IDL instructions and integrate Program Metadata for IDL management ([#3798](https://github.com/solana-foundation/anchor/pull/3798)).
+- ts: Rename TypeScript packages from `@coral-xyz/anchor` to `@anchor-lang/anchor` ([#4141](https://github.com/solana-foundation/anchor/pull/4141)).
+- lang: Remove program account info from CPI context ([#2762](https://github.com/solana-foundation/anchor/pull/2762)).
+- cli: Remove dependency on the external `solana` CLI; native implementations provided for balance, airdrop, address, deploy, and other commands ([#4099](https://github.com/solana-foundation/anchor/pull/4099)).
+- idl: Disallow multiple `#[error_code]` definitions in a single program ([#4300](https://github.com/solana-foundation/anchor/pull/4300)).
+- cli: Remove the `[registry]` section from `Anchor.toml` ([#4299](https://github.com/solana-foundation/anchor/pull/4299)).
+- client: Make sending a tx not panic and instead return an Error when signing fails ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
 
 ## [0.32.1] - 2025-10-09
 
@@ -63,17 +95,15 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - lang: Replace `solana-program` crate with smaller crates ([#3819](https://github.com/solana-foundation/anchor/pull/3819)).
 - cli: Make `anchor deploy` to upload the IDL to the cluster by default unless `--no-idl` is passed ([#3863](https://github.com/solana-foundation/anchor/pull/3863)).
-- lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
 - lang: Use `solana-invoke` instead of `solana_cpi::invoke` ([#3900](https://github.com/solana-foundation/anchor/pull/3900)).
 - client: remove `solana-client` from `anchor-client` and `cli` ([#3877](https://github.com/solana-foundation/anchor/pull/3877)).
 - idl: Build IDL on stable Rustc ([#3842](https://github.com/solana-foundation/anchor/pull/3842)).
 - lang: Add custom error when using init on SystemAccount ([#3828](https://github.com/solana-foundation/anchor/pull/3828)).
-- lang: Add `errors` to `declare_program` ([#3757](https://github.com/solana-foundation/anchor/pull/3757)).
 - ts: Add support for Bun as a package manager ([#3586](https://github.com/solana-foundation/anchor/pull/3586)).
 - lang: Add support for tuple types in space calculation ([#3744](https://github.com/solana-foundation/anchor/pull/3744)).
 - lang: Add missing pubkey const generation ([#3677](https://github.com/solana-foundation/anchor/pull/3677)).
 - cli: Add the Minimum Supported Rust Version (MSRV) to the Rust template, since an arbitrary compiler version isn't supported ([#3873](https://github.com/solana-foundation/anchor/pull/3873)).
-- cli: Add `hooks` section to `Anchor.toml` ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
+- lang: Update mollusk test template dependencies to `~0.4` and remove redundant `solana-program` dev-dependency from generated template ([#3790](https://github.com/solana-foundation/anchor/pull/3790)).
 
 ### Fixes
 
@@ -86,10 +116,10 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: update bytemuck ([#3858](https://github.com/solana-foundation/anchor/pull/3858)).
 - idl: disable Locale in camelCase ([#3845](https://github.com/solana-foundation/anchor/pull/3845)).
 - ts: Remove event parsing panic ([#3657](https://github.com/solana-foundation/anchor/pull/3657)).
+- avm: Expose `anchor` on `PATH` via `$CARGO_HOME/bin` symlink ([#3835](https://github.com/solana-foundation/anchor/pull/3835)).
 
 ### Breaking
 
-- client: Make sending a tx not panic and instead return an Error when signing fails ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
 - spl: Update SPL dependencies to latest compatible versions ([#3860](https://github.com/solana-foundation/anchor/pull/3860)).
 - cli: Replace `anchor verify` to use `solana-verify` under the hood, adding automatic installation via AVM, local path support, and future-proof argument passing ([#3768](https://github.com/solana-foundation/anchor/pull/3768)).
 - cli: Upload IDL by default with an option to skip ((#3863)[https://github.com/solana-foundation/anchor/pull/3863]).
@@ -172,6 +202,7 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - avm: Make installation download binaries by default ([#3445](https://github.com/coral-xyz/anchor/pull/3445)).
 - idl: Support PDA resolution of call expressions that don't have any arguments ([#3485](https://github.com/coral-xyz/anchor/pull/3485)).
 - spl: Add `anchor-debug` feature ([#3511](https://github.com/coral-xyz/anchor/pull/3511)).
+- avm: Always install commit hash inputs from source ([#3461](https://github.com/coral-xyz/anchor/pull/3461)).
 
 ### Fixes
 
@@ -184,6 +215,7 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - lang: Fix using `owner` constraint with `Box`ed accounts ([#3087](https://github.com/coral-xyz/anchor/pull/3087)).
 - lang: Add a sanity check for unimplemented token extensions ([#3090](https://github.com/coral-xyz/anchor/pull/3090)).
 - cli: Skip IDL checks if `--no-idl` option is passed ([#3093](https://github.com/coral-xyz/anchor/pull/3093)).
+- lang: Fix compilation error when an `#[account]` struct has generics ([#3148](https://github.com/coral-xyz/anchor/pull/3148)).
 - lang: Remove unnecessary clone in account exit routine ([#3139](https://github.com/coral-xyz/anchor/pull/3139)).
 - cli: Fix installation with `--locked` argument using Rust v1.80 due to `time` crate issue ([#3143](https://github.com/coral-xyz/anchor/pull/3143)).
 - lang: Fix compilation warnings due to unused deprecated program id macros ([#3170](https://github.com/coral-xyz/anchor/pull/3170)).
@@ -226,6 +258,9 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - idl: Fix using account or arg values for `seeds::program` ([#3570](https://github.com/coral-xyz/anchor/pull/3570)).
 - lang: Fix using `data` as an instruction parameter name in `declare_program!` ([#3574](https://github.com/coral-xyz/anchor/pull/3574)).
 - cli: Use camelCase for program name in `anchor.workspace` templates ([#3581](https://github.com/coral-xyz/anchor/pull/3581)).
+- cli: Fix the default JS update command being incorrect ([#3337](https://github.com/coral-xyz/anchor/pull/3337)).
+- cli: Remove stripping workspace prefix from program id of the `upgrade` command ([#3345](https://github.com/coral-xyz/anchor/pull/3345)).
+- cli: Convert package managers to lowercase during serialization ([#3531](https://github.com/coral-xyz/anchor/pull/3531)).
 
 ### Breaking
 
@@ -253,6 +288,8 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - spl: Upgrade SPL deps to latest ([#3346](https://github.com/coral-xyz/anchor/pull/3346)).
 - cli: Upgrade `typescript` version of templates to v5 ([#3480](https://github.com/coral-xyz/anchor/pull/3480)).
 - ts: Remove `snake-case` dependency ([#3507](https://github.com/coral-xyz/anchor/pull/3507)).
+- deps: Upgrade Solana to 2.1.0 ([#3339](https://github.com/solana-foundation/anchor/pull/3339)).
+- spl: Update `mpl-token-metadata` version requirement to `5` ([#3356](https://github.com/solana-foundation/anchor/pull/3356)).
 
 ## [0.30.1] - 2024-06-20
 
@@ -276,6 +313,8 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - idl: Remove `anchor-syn` dependency ([#3030](https://github.com/coral-xyz/anchor/pull/3030)).
 - lang: Add `const` of program ID to `declare_id!` and `declare_program!` ([#3019](https://github.com/coral-xyz/anchor/pull/3019)).
 - idl: Add separate spec crate ([#3036](https://github.com/coral-xyz/anchor/pull/3036)).
+- lang: Include `pubkey!` macro in `prelude` ([#3026](https://github.com/coral-xyz/anchor/pull/3026)).
+- cli: Print total steps in IDL buffer writes ([#2944](https://github.com/coral-xyz/anchor/pull/2944)).
 
 ### Fixes
 
@@ -300,8 +339,11 @@ Releases for anchor will also be published under the `solanafoundation` Github o
 - idl: Fix generation with unsupported expressions ([#3033](https://github.com/coral-xyz/anchor/pull/3033)).
 - idl: Fix using `address` constraint with field expressions ([#3034](https://github.com/coral-xyz/anchor/pull/3034)).
 - lang: Fix using `bytemuckunsafe` account serialization with `declare_program!` ([#3037](https://github.com/coral-xyz/anchor/pull/3037)).
+- ts: Upgrade `@babel/traverse` to 7.24.1 ([#2919](https://github.com/coral-xyz/anchor/pull/2919)).
 
 ### Breaking
+
+- deps: Upgrade Solana to 1.18.17 ([#3039](https://github.com/coral-xyz/anchor/pull/3039)).
 
 ## [0.30.0] - 2024-04-15
 
@@ -342,6 +384,8 @@ See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.
 - lang: Add `Event` utility type to get events from bytes ([#2897](https://github.com/coral-xyz/anchor/pull/2897)).
 - lang, spl: Add support for [token extensions](https://solana.com/solutions/token-extensions) ([#2789](https://github.com/coral-xyz/anchor/pull/2789)).
 - lang: Return overflow error from `Lamports` trait operations ([#2907](https://github.com/coral-xyz/anchor/pull/2907)).
+- lang: Add composite accounts support for `declare_program!` ([#2894](https://github.com/coral-xyz/anchor/pull/2894)).
+- client: Expose more parts from logs parsing ([#2707](https://github.com/coral-xyz/anchor/pull/2707)).
 
 ### Fixes
 
@@ -368,6 +412,7 @@ See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.
 - client: Fix `parse_logs_response` to prevent panics when more than 1 outer instruction exists in logs ([#2856](https://github.com/coral-xyz/anchor/pull/2856)).
 - avm, cli: Fix `stdsimd` feature compilation error from `ahash` when installing the CLI using newer Rust versions ([#2867](https://github.com/coral-xyz/anchor/pull/2867)).
 - spl: Fix not being able to deserialize newer token 2022 extensions ([#2876](https://github.com/coral-xyz/anchor/pull/2876)).
+- client: Fix erroneous Cluster websocket ports ([#2690](https://github.com/coral-xyz/anchor/pull/2690)).
 - spl: Remove `solana-program` dependency ([#2900](https://github.com/coral-xyz/anchor/pull/2900)).
 - spl: Make `TokenAccount` and ` Mint` `Copy` ([#2904](https://github.com/coral-xyz/anchor/pull/2904)).
 - ts: Add missing errors ([#2906](https://github.com/coral-xyz/anchor/pull/2906)).
@@ -394,6 +439,8 @@ See the [Anchor 0.30 release notes](https://www.anchor-lang.com/release-notes/0.
 - ts: Remove `programId` parameter of the `Program` constructor ([#2864](https://github.com/coral-xyz/anchor/pull/2864)).
 - idl, syn: Move IDL types from the `anchor-syn` crate to the new IDL crate ([#2882](https://github.com/coral-xyz/anchor/pull/2882)).
 - idl: Add `#[non_exhaustive]` to IDL enums ([#2890](https://github.com/coral-xyz/anchor/pull/2890)).
+- idl: Rename IDL crate from `anchor-idl` to `anchor-lang-idl` ([#2908](https://github.com/coral-xyz/anchor/pull/2908)).
+- deps: Upgrade Solana to 1.18.8 ([#2867](https://github.com/coral-xyz/anchor/pull/2867)).
 
 ## [0.29.0] - 2023-10-16
 
