@@ -147,10 +147,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             // struct’s single-lifetime parameterization, which uses a single
                             // lifetime to keep the API simple and ergonomic.
                             unsafe {
-                                ::core::mem::transmute::<
-                                    &mut #accounts_struct_name<'info>,
-                                    &mut #accounts_struct_name<'_>
-                                >(&mut __accounts)
+                                ::core::mem::transmute(&mut __accounts)
                             },
                             __remaining_accounts,
                             __bumps,
