@@ -1,0 +1,5 @@
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
+Verifying program Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS from current directory
+
+Verification successful!
+On-chain bytecode matches the local source code.

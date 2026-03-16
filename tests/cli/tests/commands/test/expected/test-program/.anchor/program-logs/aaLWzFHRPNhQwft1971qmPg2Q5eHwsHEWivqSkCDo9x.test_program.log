@@ -1,0 +1,31 @@
+Streaming transaction logs mentioning ping6gwBZx1ccMMFyLgkVSupUmujYrFidEXuNRPq989. Confirmed commitment
+Transaction executed in slot 395756290:
+  Signature: 5Qx3nGLT53ifEe4hDBWDZUBZCtxmXUHYjeDdJ9Dfze88P1ZNMbcch46PifMGUMyjDh2GzPXY93ruBMWkxJbQaBgr
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+Transaction executed in slot 395756292:
+  Signature: 2YL9c1Rx5cHuKjmBTXsjE4PYwoSrccWjrzZHZ6VwRbRCKJhz3D7ZV36EXb8G4BtSEjbXW75LzHB1BMzjauvTd4fU
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+Transaction executed in slot 395756297:
+  Signature: qnZ1q9MjMaFyFH1PrePVYZKyeRyzYDx8miDYeeUCJkazJCr7q3kM9Aa6tgjY3jkgUjNNFeeQncLveWXC1Wqw1ur
+  Status: Ok
+  Log Messages:
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program ComputeBudget111111111111111111111111111111 invoke [1]
+    Program ComputeBudget111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
