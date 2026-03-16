@@ -18,7 +18,7 @@ devnet = []
 governance = []
 idl-build = ["anchor-lang/idl-build"]
 memo = ["spl-memo-interface"]
-metadata = ["mpl-token-metadata", "dep:solana-sysvar", "dep:base64ct"]
+metadata = ["mpl-token-metadata", "dep:solana-sysvar"]
 mint = []
 stake = ["dep:borsh", "dep:solana-stake-interface"]
 token = ["spl-token-interface"]
@@ -32,9 +32,6 @@ token_2022_extensions = [
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "0.32.1", features = ["derive"] }
-# FIXME(edition2024): Not used directly, but upstream crates resolve to this version,
-# which uses Edition 2024
-base64ct = { version = "<1.8.0", optional = true }
 borsh = { version = "1.5.7", optional = true }
 mpl-token-metadata = { version = "=5.1.2-alpha.1", optional = true }
 solana-stake-interface = { workspace = true, features = ["borsh"], optional = true }

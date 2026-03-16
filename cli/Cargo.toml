@@ -61,7 +61,6 @@ solana-rpc-client.workspace = true
 solana-rpc-client-api.workspace = true
 solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
-tar = "0.4.35"
 tempfile = "3"
 tiny-bip39 = "2.0"
 toml = "0.7.6"
