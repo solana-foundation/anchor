@@ -1519,7 +1519,7 @@ fn new(
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: rust_template::get_or_create_program_id(&name, target_dir()?),
+                        address: rust_template::get_or_create_program_id(&name, target_dir()),
                         path: None,
                         idl: None,
                     },
@@ -1734,13 +1734,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(target_dir()?.join("idl")),
+        None => Some(target_dir().join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(target_dir()?.join("types")),
+        None => Some(target_dir().join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -1907,7 +1907,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    let target_dir = target_dir()?;
+    let target_dir = target_dir();
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
@@ -3402,7 +3402,7 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = target_dir()?
+            let idl_out = target_dir()
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3762,7 +3762,7 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
 
     // Subscribe to logs for all workspace programs
     for program in config.read_all_programs()? {
-        let idl_path = target_dir()?
+        let idl_path = target_dir()
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
@@ -4081,7 +4081,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     };
 
     let dot_anchor_dir = workspace_root.join(".anchor");
-    let target_dir = crate::target_dir()?;
+    let target_dir = crate::target_dir();
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -4781,18 +4781,21 @@ fn localnet(
     })?
 }
 
-/// Return the directory where cargo is storing build artifacts. Caches the
-/// result assuming that a single run will only work with a single rust
-/// workspace.
-pub fn target_dir() -> Result<PathBuf> {
+/// Return the cargo build artifacts directory. Caches the result assuming that
+/// a single run will only work with a single rust workspace. Exits the process
+/// if the directory cannot be determined.
+pub fn target_dir() -> PathBuf {
     static TARGET_DIR: LazyLock<Result<PathBuf>> = LazyLock::new(target_dir_no_cache);
-    match &*TARGET_DIR {
-        Ok(path) => Ok(path.clone()),
-        Err(e) => Err(anyhow::anyhow!(e.to_string())),
+    match TARGET_DIR.as_ref() {
+        Ok(path) => path.clone(),
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            std::process::exit(1);
+        }
     }
 }
 
-/// Return the directory where cargo is storing build artifacts.
+/// Return the cargo build artifacts directory.
 fn target_dir_no_cache() -> Result<PathBuf> {
     // `cargo metadata` produces a JSON blob from which we extract the
     // `target_directory` field.
@@ -4803,8 +4806,7 @@ fn target_dir_no_cache() -> Result<PathBuf> {
 
     if !output.status.success() {
         let stderr_msg = String::from_utf8_lossy(&output.stderr);
-        eprintln!("'cargo metadata' failed with: {stderr_msg}");
-        std::process::exit(output.status.code().unwrap_or(1));
+        bail!("'cargo metadata' failed with: {stderr_msg}");
     }
 
     #[derive(Deserialize)]
@@ -4812,7 +4814,8 @@ fn target_dir_no_cache() -> Result<PathBuf> {
         target_directory: PathBuf,
     }
 
-    let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)?;
+    let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)
+        .context("Failed to parse 'cargo metadata' output")?;
 
     Ok(metadata.target_directory)
 }
