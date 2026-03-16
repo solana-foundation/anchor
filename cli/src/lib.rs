@@ -1379,7 +1379,7 @@ fn init(
     cfg.toolchain.package_manager = Some(package_manager);
 
     let mut localnet = BTreeMap::new();
-    let program_id = rust_template::get_or_create_program_id(&rust_name);
+    let program_id = rust_template::get_or_create_program_id(&rust_name, "target");
     localnet.insert(
         rust_name,
         ProgramDeployment {
@@ -1519,7 +1519,7 @@ fn new(
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: rust_template::get_or_create_program_id(&name),
+                        address: rust_template::get_or_create_program_id(&name, target_dir()?),
                         path: None,
                         idl: None,
                     },
@@ -4803,12 +4803,6 @@ fn target_dir_no_cache() -> Result<PathBuf> {
 
     if !output.status.success() {
         let stderr_msg = String::from_utf8_lossy(&output.stderr);
-        if stderr_msg.contains("Cargo.toml") {
-            // `anchor init` starts populating the cargo artifacts dir
-            // before creating `Cargo.toml`, in which case "target" in
-            // the current dir is the desired behavior.
-            return Ok(PathBuf::from("target"));
-        }
         eprintln!("'cargo metadata' failed with: {stderr_msg}");
         std::process::exit(output.status.code().unwrap_or(1));
     }

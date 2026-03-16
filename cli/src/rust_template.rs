@@ -1,6 +1,6 @@
 use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, target_dir, Files,
-    PackageManager, VERSION,
+    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
+    VERSION,
 };
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -31,6 +31,7 @@ pub enum ProgramTemplate {
 /// Create a program from the given name and template.
 pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
     let program_path = Path::new("programs").join(name);
+    let target_path = Path::new("target");
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
@@ -44,9 +45,11 @@ pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool)
     let template_files = match template {
         ProgramTemplate::Single => {
             println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
-            create_program_template_single(name, &program_path)
+            create_program_template_single(name, &program_path, target_path)
         }
-        ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
+        ProgramTemplate::Multiple => {
+            create_program_template_multiple(name, &program_path, target_path)
+        }
     };
 
     create_files(&[common_files, template_files].concat())
@@ -64,7 +67,7 @@ profile = "minimal"
 }
 
 /// Create a program with a single `lib.rs` file.
-fn create_program_template_single(name: &str, program_path: &Path) -> Files {
+fn create_program_template_single(name: &str, program_path: &Path, target_path: &Path) -> Files {
     vec![(
         program_path.join("src").join("lib.rs"),
         format!(
@@ -85,14 +88,14 @@ pub mod {} {{
 #[derive(Accounts)]
 pub struct Initialize {{}}
 "#,
-            get_or_create_program_id(name),
+            get_or_create_program_id(name, target_path),
             name.to_snake_case(),
         ),
     )]
 }
 
 /// Create a program with multiple files for instructions, state...
-fn create_program_template_multiple(name: &str, program_path: &Path) -> Files {
+fn create_program_template_multiple(name: &str, program_path: &Path, target_path: &Path) -> Files {
     let src_path = program_path.join("src");
     vec![
         (
@@ -120,7 +123,7 @@ pub mod {} {{
     }}
 }}
 "#,
-                get_or_create_program_id(name),
+                get_or_create_program_id(name, target_path),
                 name.to_snake_case(),
             ),
         ),
@@ -239,9 +242,9 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
 }
 
 /// Read the program keypair file or create a new one if it doesn't exist.
-pub fn get_or_create_program_id(name: &str) -> Pubkey {
-    let keypair_path = target_dir()
-        .expect("Unable to determine `target` dir")
+pub fn get_or_create_program_id(name: &str, target_path: impl AsRef<Path>) -> Pubkey {
+    let keypair_path = target_path
+        .as_ref()
         .join("deploy")
         .join(format!("{}-keypair.json", name.to_snake_case()));
 
