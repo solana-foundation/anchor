@@ -226,4 +226,23 @@ mod tests {
         );
         assert!(!GenericStruct::<Vec<u8>>::SIZED);
     }
+
+    #[test]
+    fn enum_variable() {
+        // Test that the size of variably-sized types in an enum is calculated correctly
+        #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+        enum State {
+            User(Vec<u8>),
+            Other(u8),
+        }
+        const VEC_LEN: usize = 32;
+        let state = State::User(vec![1; VEC_LEN]);
+
+        let state_bytes = borsh::to_vec(&state).unwrap();
+        let actual_state_size = state_bytes.len();
+        let lazy_state_size = <State as Lazy>::size_of(&state_bytes);
+        assert_eq!(actual_state_size, lazy_state_size);
+        // enum tag + vec length field + vec contents
+        assert_eq!(lazy_state_size, 1 + LEN + VEC_LEN);
+    }
 }
