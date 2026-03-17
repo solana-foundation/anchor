@@ -74,6 +74,8 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Attest build provenance
+        # `id-token: write` is not granted for PRs from forks
+        if: ${{ github.event.pull_request.head.repo.fork != true }}
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: ${{ inputs.dist }}/anchor-${{ steps.prepare.outputs.version }}-${{ matrix.target }}*
