@@ -54,7 +54,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Build release binary
-        run: cargo build --package trixter-osec-anchor-cli --release --locked --target ${{ matrix.target }}
+        run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
 
       - name: Prepare
         id: prepare
