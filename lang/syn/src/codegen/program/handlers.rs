@@ -126,14 +126,19 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         &mut __reallocs,
                     )?;
 
+                    unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
+                        unsafe { ::core::mem::transmute(value) }
+                    }
+
                     // Invoke user defined handler.
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
                             __program_id,
-                            // SAFETY: `core::mem::transmute` is used to *shrink* the lifetime of
+                            // SAFETY: `__shrink_lifetime` is used to *shrink* the lifetime of
                             // the inner `AccountInfo` from `'info` to the local function lifetime.
                             // No lifetime is extended by this operation.
-                            //
+                            // The lifetime is not shrunk automatically as `RefCell` causes `AccountInfo`
+                            // to be invariant.
                             // This is sound provided the following invariants hold:
                             // (1) The `'info` lifetime strictly outlives the local function
                             //     lifetime; therefore, the transmuted references cannot outlive
@@ -147,7 +152,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             // struct’s single-lifetime parameterization, which uses a single
                             // lifetime to keep the API simple and ergonomic.
                             unsafe {
-                                ::core::mem::transmute(&mut __accounts)
+                                __shrink_lifetime(&mut __accounts)
                             },
                             __remaining_accounts,
                             __bumps,
