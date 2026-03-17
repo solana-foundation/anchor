@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-cli:
-    name: Build binaries${{ inputs.dry_run && ' (dry-run)' || '' }}
+    name: Build binaries${{ inputs.dry_run && ' (dry-run)' || '' }} (${{matrix.os}})
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
