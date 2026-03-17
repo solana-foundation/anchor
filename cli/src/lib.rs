@@ -100,7 +100,7 @@ pub enum Command {
         #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Test template to use
-        #[clap(value_enum, long, default_value = "mocha")]
+        #[clap(value_enum, long, default_value = "litesvm")]
         test_template: TestTemplate,
         /// Initialize even if there are files
         #[clap(long, action)]
@@ -1407,11 +1407,7 @@ fn init(
     }
 
     // Build the program.
-    rust_template::create_program(
-        &project_name,
-        template,
-        TestTemplate::Mollusk == test_template,
-    )?;
+    rust_template::create_program(&project_name, template, Some(&test_template))?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1513,7 +1509,7 @@ fn new(
                     fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                rust_template::create_program(&name, template, false)?;
+                rust_template::create_program(&name, template, None)?;
 
                 programs.insert(
                     name.clone(),

@@ -347,7 +347,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        template: [mocha, jest, rust, mollusk]
+        template: [mocha, jest, rust, mollusk, litesvm]
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
@@ -369,7 +369,23 @@ jobs:
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - run: cd "$(mktemp -d)" && anchor init --test-template ${{ matrix.template }} hello-anchor-${{ matrix.template }} && cd hello-anchor-${{ matrix.template }} && yarn link @anchor-lang/core && yarn && anchor test && yarn lint:fix
+      - name: Init project
+        working-directory: /tmp
+        run: anchor init --test-template ${{ matrix.template }} hello-anchor-${{ matrix.template }}
+
+      - name: Point anchor-lang to workspace
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        run: cargo add anchor-lang --manifest-path programs/hello-anchor-${{ matrix.template }}/Cargo.toml --path "$GITHUB_WORKSPACE/lang"
+
+      - name: Point anchor-client to workspace
+        if: ${{ matrix.template == 'rust' }}
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        run: cargo add anchor-client --manifest-path tests/Cargo.toml --path "$GITHUB_WORKSPACE/client"
+
+      - name: Run generated project tests
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        run: yarn link @anchor-lang/core && yarn && anchor test && yarn lint:fix
+
       - uses: ./.github/actions/git-diff/
 
   test-programs:

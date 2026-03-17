@@ -29,14 +29,18 @@ pub enum ProgramTemplate {
 }
 
 /// Create a program from the given name and template.
-pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
+pub fn create_program(
+    name: &str,
+    template: ProgramTemplate,
+    test_template: Option<&TestTemplate>,
+) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
         ("Cargo.toml".into(), workspace_manifest().into()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
-            cargo_toml(name, with_mollusk),
+            cargo_toml(name, test_template),
         ),
         // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
     ];
@@ -189,15 +193,29 @@ codegen-units = 1
 "#
 }
 
-fn cargo_toml(name: &str, with_mollusk: bool) -> String {
-    let test_sbf_feature = if with_mollusk { r#"test-sbf = []"# } else { "" };
-    let dev_dependencies = if with_mollusk {
-        r#"
+fn cargo_toml(name: &str, test_template: Option<&TestTemplate>) -> String {
+    let test_sbf_feature = match test_template {
+        Some(TestTemplate::Mollusk) => r#"test-sbf = []"#,
+        _ => "",
+    };
+    let dev_dependencies = match test_template {
+        Some(TestTemplate::Mollusk) => {
+            r#"
 [dev-dependencies]
-mollusk-svm = "~0.4"
+mollusk-svm = "~0.10"
 "#
-    } else {
-        ""
+        }
+        Some(TestTemplate::Litesvm) => {
+            r#"
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.0"
+solana-transaction = "3.0.0"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.0"
+"#
+        }
+        _ => "",
     };
 
     format!(
@@ -623,7 +641,6 @@ anchor.workspace.{} = new anchor.Program({}, provider);
 #[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
 pub enum TestTemplate {
     /// Generate template for Mocha unit-test
-    #[default]
     Mocha,
     /// Generate template for Jest unit-test
     Jest,
@@ -631,6 +648,9 @@ pub enum TestTemplate {
     Rust,
     /// Generate template for Mollusk Rust unit-test
     Mollusk,
+    /// Generate template for LiteSVM rust unit-test
+    #[default]
+    Litesvm,
 }
 
 impl TestTemplate {
@@ -659,7 +679,7 @@ impl TestTemplate {
                     format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
-            Self::Rust => "cargo test".to_owned(),
+            Self::Rust | Self::Litesvm => "cargo test".to_owned(),
             Self::Mollusk => "cargo test-sbf".to_owned(),
         }
     }
@@ -727,6 +747,18 @@ impl TestTemplate {
                 ));
                 override_or_create_files(&files)?;
             }
+
+            Self::Litesvm => {
+                let tests_path_str = format!("programs/{}/tests", &project_name);
+                let tests_path = Path::new(&tests_path_str);
+                fs::create_dir_all(tests_path)?;
+                let mut files = Vec::new();
+                files.extend(create_program_template_litesvm_test(
+                    project_name,
+                    tests_path,
+                ));
+                override_or_create_files(&files)?;
+            }
         }
 
         Ok(())
@@ -745,6 +777,8 @@ rust-version = "{ANCHOR_MSRV}"
 [dependencies]
 anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
+solana-keypair = "3.0.0"
+solana-pubkey = "3.0.0"
 "#
     )
 }
@@ -763,14 +797,12 @@ mod test_initialize;
         (
             src_path.join("test_initialize.rs"),
             format!(
-                r#"use std::str::FromStr;
-
-use anchor_client::{{
-    solana_sdk::{{
-        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
-    }},
+                r#"use anchor_client::{{
+    CommitmentConfig,
     Client, Cluster,
 }};
+use solana_keypair::{{read_keypair_file}};
+use solana_pubkey::Pubkey;
 
 #[test]
 fn test_initialize() {{
@@ -824,6 +856,49 @@ fn test_initialize() {{
     );
 
     mollusk.process_and_validate_instruction(&instruction, &[], &[Check::success()]);
+}}
+"#,
+            name.to_snake_case(),
+        ),
+    )]
+}
+
+/// Generate template for LiteSVM Rust unit-test
+fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files {
+    vec![(
+        tests_path.join("test_initialize.rs"),
+        format!(
+            r#"
+use {{
+    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    litesvm::LiteSVM,
+    solana_message::{{Message, VersionedMessage}},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = {0}::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/{0}.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Initialize {{}}.data(),
+        {0}::accounts::Initialize {{}}.to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok());
 }}
 "#,
             name.to_snake_case(),

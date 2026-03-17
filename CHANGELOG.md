@@ -32,6 +32,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Update `anchor init` to use the `multiple` program template by default ([#3958](https://github.com/solana-foundation/anchor/pull/3958)).
 - cli: Add `hooks` section to `Anchor.toml` for `{pre,post}-{build,test,deploy}` lifecycle hooks ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 - lang: Add generic program validation support to `Program` type allowing `Program<'info>` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
+- cli: Added `litesvm` test template and made it the default option on `anchor init` ([#4316](https://github.com/solana-foundation/anchor/pull/4316))
 
 ### Fixes
 
