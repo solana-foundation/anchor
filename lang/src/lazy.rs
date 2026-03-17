@@ -68,7 +68,11 @@ impl<T: Lazy, const N: usize> Lazy for [T; N] {
 
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
-        N * T::size_of(buf)
+        if Self::SIZED {
+            N * T::size_of(buf)
+        } else {
+            (0..N).fold(0, |acc, _| acc + T::size_of(&buf[acc..]))
+        }
     }
 }
 
@@ -244,5 +248,15 @@ mod tests {
         assert_eq!(actual_state_size, lazy_state_size);
         // enum tag + vec length field + vec contents
         assert_eq!(lazy_state_size, 1 + LEN + VEC_LEN);
+    }
+
+    #[test]
+    fn array_variable() {
+        // Test that the size of an array of variably sized types is calculated correctly
+        let messages: [Vec<u8>; 8] = std::array::from_fn(|i| vec![i as u8; i]);
+        let serialized = borsh::to_vec(&messages).unwrap();
+        let actual_size = serialized.len();
+        let lazy_size = <[Vec<u8>; 8] as Lazy>::size_of(&serialized);
+        assert_eq!(actual_size, lazy_size);
     }
 }
