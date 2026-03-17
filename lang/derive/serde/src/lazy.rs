@@ -1,6 +1,6 @@
 use proc_macro2::Literal;
 use quote::{format_ident, quote, ToTokens};
-use syn::{spanned::Spanned, Fields, Item};
+use syn::{parse_quote, spanned::Spanned, Fields, Item};
 
 pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let item = syn::parse::<Item>(input)?;
@@ -44,6 +44,10 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
         _ => unreachable!(),
     };
 
+    let mut generics = generics.clone();
+    for ty in generics.type_params_mut() {
+        ty.bounds.push(parse_quote!(anchor_lang::__private::Lazy));
+    }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     Ok(quote! {
