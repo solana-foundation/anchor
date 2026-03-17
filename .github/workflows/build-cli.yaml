@@ -53,7 +53,16 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+      # FIXME: The global system LLVM on GitHub is very outdated, and LTO causes link errors
+      - name: Build release binary (macOS)
+        if: runner.os == 'macOS'
+        env:
+          CARGO_PROFILE_RELEASE_LTO: "off"
+          RUSTFLAGS: -C embed-bitcode=no
+        run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
+
       - name: Build release binary
+        if: runner.os != 'macOS'
         run: cargo build --package anchor-cli --release --locked --target ${{ matrix.target }}
 
       - name: Prepare
