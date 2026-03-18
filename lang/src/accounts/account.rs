@@ -297,7 +297,7 @@ impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<T> {
     /// This method also re-validates that the program owner has not
     /// changed since the initial validation
     pub fn reload(&mut self) -> Result<()> {
-        let owner_pubkey = *unsafe { self.info.owner() };
+        let owner_pubkey = *self.info.owner();
         if owner_pubkey != T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((owner_pubkey, T::owner())));
@@ -315,9 +315,9 @@ impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<T> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *info.owner() }, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
         let data = info.try_borrow()?;
         let mut data: &[u8] = &data;
@@ -332,9 +332,9 @@ impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<T> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *info.owner() }, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
         let data = info.try_borrow()?;
         let mut data: &[u8] = &data;

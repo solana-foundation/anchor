@@ -82,7 +82,7 @@ pub enum MigrationInner<From, To> {
 /// let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
 ///     data: ctx.accounts.my_account.data,
 ///     new_field: ctx.accounts.my_account.data * 2,
-/// })?;
+/// });
 ///
 /// // Use migrated data (safe to call multiple times!)
 /// msg!("New field: {}", migrated.new_field);
@@ -95,7 +95,7 @@ pub enum MigrationInner<From, To> {
 /// let migrated = ctx.accounts.my_account.into_inner_mut(AccountV2 {
 ///     data: ctx.accounts.my_account.data,
 ///     new_field: 0,
-/// })?;
+/// });
 ///
 /// // Mutate the new data
 /// migrated.new_field = 42;
@@ -234,7 +234,7 @@ where
     ///     let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
     ///         data: ctx.accounts.my_account.data,
     ///         new_field: 42,
-    ///     })?;
+    ///     });
     ///
     ///     // Use migrated...
     ///     msg!("Migrated data: {}", migrated.data);
@@ -270,7 +270,7 @@ where
     ///     let migrated = ctx.accounts.my_account.into_inner_mut(AccountV2 {
     ///         data: ctx.accounts.my_account.data,
     ///         new_field: 0,
-    ///     })?;
+    ///     });
     ///
     ///     // Mutate the migrated value
     ///     migrated.new_field = 42;
