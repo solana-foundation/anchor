@@ -200,7 +200,16 @@ jobs:
 
       - name: Upload
         shell: bash
-        run: GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release create $GITHUB_REF_NAME $DIST/*/* --title "$GITHUB_REF_NAME"
+        run: |
+          set -euo pipefail
+
+          publish_args=()
+          # If version looks like vX.Y.Z-<something> (e.g. v1.0.0-rc.2), publish as a pre-release
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
+            publish_args+=(--prerelease)
+          fi
+
+          GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release create $GITHUB_REF_NAME $DIST/*/* --title "$GITHUB_REF_NAME" "${publish_args[@]}"
 
   publish-cli:
     name: Publish CLI onto npmjs
