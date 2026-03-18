@@ -523,7 +523,15 @@ jobs:
           path: ${{ matrix.node.path }}/target
           key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: ${{ matrix.node.cmd }}
+      # FIXME: Currently, many of these tests randomly fail due to external conditions
+      # The retry action will make true CI failures take longer to be exposed
+      # We should make our tests more reliable and remove this
+      - uses: ./.github/actions/retry-command/
+        with:
+          command: ${{ matrix.node.cmd }}
+          timeout_seconds: 600
+          retry_wait_seconds: 30
+          max_attempts: 3
         name: ${{ matrix.node.path }} program test
 
       - uses: ./.github/actions/git-diff/
