@@ -13,12 +13,15 @@ runs:
         # Issue: https://github.com/solana-foundation/anchor/issues/4160
         key: surfpool-${{ runner.os }}-v${{ env.SURFPOOL_CLI_VERSION }}
 
-    - run: |
+    - uses: ./.github/actions/retry-command/
+      with:
+        command: |
           set -euxo pipefail
           echo "Installing Surfpool version ${{ env.SURFPOOL_CLI_VERSION }}"
           curl -sL https://run.surfpool.run/ | VERSION=v${{ env.SURFPOOL_CLI_VERSION }} bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "$PATH"
-          ls -al $HOME/.local/bin
-      shell: bash
-
+          ls -al "$HOME/.local/bin"
+        timeout_seconds: 60
+        retry_wait_seconds: 10
+        max_attempts: 5
