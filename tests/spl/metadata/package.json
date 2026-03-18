@@ -1,6 +1,6 @@
 {
   "name": "metadata",
-  "version": "0.32.1",
+  "version": "1.0.0-rc.3",
   "license": "(MIT OR Apache-2.0)",
   "homepage": "https://github.com/solana-foundation/anchor#readme",
   "bugs": {
