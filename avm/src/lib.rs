@@ -236,7 +236,10 @@ pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
         .get(format!(
             "https://api.github.com/repos/solana-foundation/anchor/commits/{commit}"
         ))
-        .header(USER_AGENT, "avm https://github.com/solana-foundation/anchor")
+        .header(
+            USER_AGENT,
+            "avm https://github.com/solana-foundation/anchor",
+        )
         .send()?;
 
     if response.status() != StatusCode::OK {
@@ -264,7 +267,10 @@ fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
         .get(format!(
             "https://raw.githubusercontent.com/solana-foundation/anchor/{commit}/cli/Cargo.toml"
         ))
-        .header(USER_AGENT, "avm https://github.com/solana-foundation/anchor")
+        .header(
+            USER_AGENT,
+            "avm https://github.com/solana-foundation/anchor",
+        )
         .send()?;
 
     if response.status() != StatusCode::OK {
