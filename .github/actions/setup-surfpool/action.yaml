@@ -3,7 +3,7 @@ description: "Installs and caches the Surfpool CLI"
 runs:
   using: "composite"
   steps:
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       name: Cache Surfpool Binary
       id: cache-surfpool
       with:
