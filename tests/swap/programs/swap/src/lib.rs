@@ -35,8 +35,8 @@ pub mod swap {
     ///    client expects to receive from the swap. The instruction fails if
     ///    execution would result in less.
     #[access_control(is_valid_swap(&ctx))]
-    pub fn swap<'info>(
-        ctx: Context<'_, '_, '_, 'info, Swap<'info>>,
+    pub fn swap(
+        ctx: Context<Swap>,
         side: Side,
         amount: u64,
         min_expected_swap_amount: u64,
@@ -106,8 +106,8 @@ pub mod swap {
     ///    client expects to receive from the swap. The instruction fails if
     ///    execution would result in less.
     #[access_control(is_valid_swap_transitive(&ctx))]
-    pub fn swap_transitive<'info>(
-        ctx: Context<'_, '_, '_, 'info, SwapTransitive<'info>>,
+    pub fn swap_transitive(
+        ctx: Context<SwapTransitive>,
         amount: u64,
         min_expected_swap_amount: u64,
     ) -> Result<()> {

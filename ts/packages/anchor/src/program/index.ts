@@ -1,5 +1,5 @@
+import { Buffer } from "buffer";
 import { Commitment, PublicKey } from "@solana/web3.js";
-import { inflate } from "pako";
 import { BorshCoder, Coder } from "../coder/index.js";
 import {
   Idl,
@@ -9,7 +9,6 @@ import {
   idlAddress,
 } from "../idl.js";
 import Provider, { getProvider } from "../provider.js";
-import { utf8 } from "../utils/bytes/index.js";
 import { CustomAccountResolver } from "./accounts-resolver.js";
 import { Address, translateAddress } from "./common.js";
 import { EventManager } from "./event.js";
@@ -345,21 +344,16 @@ export class Program<IDL extends Idl = Idl> {
    * @param provider  The network and wallet context.
    */
   public static async fetchIdl<IDL extends Idl = Idl>(
-    address: Address,
+    programAddress: Address,
     provider?: Provider
   ): Promise<IDL | null> {
     provider = provider ?? getProvider();
-    const programId = translateAddress(address);
-
-    const idlAddr = await idlAddress(programId);
+    const programId = translateAddress(programAddress);
+    const idlAddr = idlAddress(programId);
     const accountInfo = await provider.connection.getAccountInfo(idlAddr);
-    if (!accountInfo) {
-      return null;
-    }
-    // Chop off account discriminator.
-    let idlAccount = decodeIdlAccount(accountInfo.data.slice(8));
-    const inflatedIdl = inflate(idlAccount.data);
-    return JSON.parse(utf8.decode(inflatedIdl));
+    if (!accountInfo) return null;
+
+    return decodeIdlAccount<IDL>(accountInfo.data);
   }
 
   /**

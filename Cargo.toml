@@ -13,6 +13,9 @@ members = [
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
 
+[workspace.package]
+version = "0.32.1"
+
 [workspace.dependencies]
 solana-account = "3.0.0"
 solana-account-decoder = "3.0.0"

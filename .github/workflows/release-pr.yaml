@@ -1,0 +1,42 @@
+name: Release Dry-run
+
+on:
+  pull_request:
+    branches:
+      - master
+
+    paths:
+      - VERSION
+      - github/workflows/release-pr.yaml
+      - github/workflows/build-cli.yaml
+      - github/workflows/publish-crates.yaml
+      - github/workflows/publish-npmjs.yaml
+
+  workflow_dispatch:
+
+env:
+  DIST: dist-dry-run
+
+jobs:
+  publish-crates-dryrun:
+    name: Publish crates (dry-run)
+    uses: ./.github/workflows/publish-crates.yaml
+    with:
+      dry_run: true
+
+  publish-npmjs-dryrun:
+    name: Publish npmjs packages (dry-run)
+    uses: ./.github/workflows/publish-npmjs.yaml
+    with:
+      dry_run: true
+
+  # We skip checking if the Docker image builds for now as it depends on the version tag already existing,
+  # though as we already have the `build-cli-dryrun` step below there should be rarely any reason for the
+  # image build to ever fail anyway.
+
+  build-cli-dryrun:
+    name: Build binaries (dry-run)
+    uses: ./.github/workflows/build-cli.yaml
+    with:
+      dry_run: true
+      dist: dist-dry-run
