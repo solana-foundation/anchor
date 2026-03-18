@@ -10,6 +10,7 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -42,6 +43,38 @@ pub fn get_bin_dir_path() -> PathBuf {
 /// Path to the binary for the given version
 pub fn version_binary_path(version: &Version) -> PathBuf {
     get_bin_dir_path().join(format!("anchor-{version}"))
+}
+
+fn create_temp_install_root(version: &Version) -> Result<PathBuf> {
+    let pid = std::process::id();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp_root = AVM_HOME.join("tmp");
+    fs::create_dir_all(&tmp_root)?;
+    let dir = tmp_root.join(format!("install-{version}-{pid}-{nanos}"));
+    fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+fn move_binary(src: &PathBuf, dest: &PathBuf) -> Result<()> {
+    if let Err(rename_err) = fs::rename(src, dest) {
+        if let Err(copy_err) = fs::copy(src, dest) {
+            return Err(anyhow!(
+                "Failed to move {} to {} (rename error: {rename_err}; copy error: {copy_err})",
+                src.display(),
+                dest.display()
+            ));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dest, fs::Permissions::from_mode(0o775))?;
+        }
+        fs::remove_file(src)?;
+    }
+    Ok(())
 }
 
 /// Path to the cargo binary directory, defaults to `~/.cargo/bin` if `CARGO_HOME`
@@ -314,12 +347,13 @@ pub fn install_version(
     let is_older_than_v0_31_0 = version < Version::new(0, 31, 0);
     if from_source || is_commit || is_older_than_v0_31_0 {
         // Build from source using `cargo install`
+        let temp_root = create_temp_install_root(&version)?;
         let mut args: Vec<String> = vec![
             "install".into(),
             "anchor-cli".into(),
             "--locked".into(),
             "--root".into(),
-            AVM_HOME.to_str().unwrap().into(),
+            temp_root.to_str().unwrap().into(),
         ];
         match install_target {
             InstallTarget::Version(version) => {
@@ -387,18 +421,24 @@ pub fn install_version(
             .output()
             .map_err(|e| anyhow!("`cargo install` for version `{version}` failed: {e}"))?;
         if !output.status.success() {
+            let _ = fs::remove_dir_all(&temp_root);
             return Err(anyhow!(
                 "Failed to install {version}, is it a valid version?"
             ));
         }
 
-        let bin_dir = get_bin_dir_path();
         let bin_name = if cfg!(target_os = "windows") {
             "anchor.exe"
         } else {
             "anchor"
         };
-        fs::rename(bin_dir.join(bin_name), version_binary_path(&version))?;
+        let src_path = temp_root.join("bin").join(bin_name);
+        let dest_path = version_binary_path(&version);
+        if force && dest_path.exists() {
+            fs::remove_file(&dest_path)?;
+        }
+        move_binary(&src_path, &dest_path)?;
+        let _ = fs::remove_dir_all(&temp_root);
     } else {
         let output = Command::new("rustc").arg("-vV").output()?;
         let target = core::str::from_utf8(&output.stdout)?
@@ -415,11 +455,16 @@ pub fn install_version(
         let res = reqwest::blocking::get(format!(
             "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
         ))?;
-        if !res.status().is_success() {
-            return Err(anyhow!(
+        match res.status() {
+            StatusCode::NOT_FOUND => bail!(
+                "No prebuilt binary found for version `{version}` (HTTP 404). \
+Try `avm install {version} --from-source`."
+            ),
+            status if !status.is_success() => bail!(
                 "Failed to download the binary for version `{version}` (status code: {})",
                 res.status()
-            ));
+            ),
+            _ => (),
         }
 
         let bin_path = version_binary_path(&version);
