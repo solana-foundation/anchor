@@ -19,7 +19,7 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/coral-xyz/anchor).
+//! [repository](https://github.com/solana-foundation/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 

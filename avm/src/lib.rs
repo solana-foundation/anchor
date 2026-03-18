@@ -234,9 +234,9 @@ pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(format!(
-            "https://api.github.com/repos/coral-xyz/anchor/commits/{commit}"
+            "https://api.github.com/repos/solana-foundation/anchor/commits/{commit}"
         ))
-        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .header(USER_AGENT, "avm https://github.com/solana-foundation/anchor")
         .send()?;
 
     if response.status() != StatusCode::OK {
@@ -262,9 +262,9 @@ fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(format!(
-            "https://raw.githubusercontent.com/coral-xyz/anchor/{commit}/cli/Cargo.toml"
+            "https://raw.githubusercontent.com/solana-foundation/anchor/{commit}/cli/Cargo.toml"
         ))
-        .header(USER_AGENT, "avm https://github.com/coral-xyz/anchor")
+        .header(USER_AGENT, "avm https://github.com/solana-foundation/anchor")
         .send()?;
 
     if response.status() != StatusCode::OK {
@@ -325,7 +325,7 @@ pub fn install_version(
             InstallTarget::Version(version) => {
                 args.extend_from_slice(&[
                     "--git".into(),
-                    "https://github.com/coral-xyz/anchor".into(),
+                    "https://github.com/solana-foundation/anchor".into(),
                     "--tag".into(),
                     format!("v{version}"),
                 ]);
@@ -333,7 +333,7 @@ pub fn install_version(
             InstallTarget::Commit(commit) => {
                 args.extend_from_slice(&[
                     "--git".into(),
-                    "https://github.com/coral-xyz/anchor".into(),
+                    "https://github.com/solana-foundation/anchor".into(),
                     "--rev".into(),
                     commit,
                 ]);
@@ -353,7 +353,7 @@ pub fn install_version(
         }
 
         // If the version is older than v0.31, install using `rustc 1.79.0` to get around the problem
-        // explained in https://github.com/coral-xyz/anchor/pull/3143
+        // explained in https://github.com/solana-foundation/anchor/pull/3143
         if is_older_than_v0_31_0 {
             const REQUIRED_VERSION: &str = "1.79.0";
             let is_installed = Command::new("rustup")
@@ -371,7 +371,7 @@ pub fn install_version(
                     return Err(anyhow!(
                         "Installation of `rustc {REQUIRED_VERSION}` failed. \
                     `rustc <1.80` is required to install Anchor v{version} from source. \
-                    See https://github.com/coral-xyz/anchor/pull/3143 for more information."
+                    See https://github.com/solana-foundation/anchor/pull/3143 for more information."
                     ));
                 }
             }
@@ -413,7 +413,7 @@ pub fn install_version(
             ""
         };
         let res = reqwest::blocking::get(format!(
-            "https://github.com/coral-xyz/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
+            "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
         ))?;
         if !res.status().is_success() {
             return Err(anyhow!(

@@ -45,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v0.32.1/client/example/src
 //!
 //! # Features
 //!

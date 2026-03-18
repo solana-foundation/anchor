@@ -2,13 +2,13 @@
   "name": "@anchor-lang/cli",
   "version": "0.32.1",
   "description": "Anchor CLI tool",
-  "homepage": "https://github.com/coral-xyz/anchor#readme",
+  "homepage": "https://github.com/solana-foundation/anchor#readme",
   "bugs": {
-    "url": "https://github.com/coral-xyz/anchor/issues"
+    "url": "https://github.com/solana-foundation/anchor/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/coral-xyz/anchor.git"
+    "url": "https://github.com/solana-foundation/anchor.git"
   },
   "license": "(MIT OR Apache-2.0)",
   "bin": {

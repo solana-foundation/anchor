@@ -65,7 +65,7 @@ pub mod external {
         Ok(())
     }
 
-    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3274
+    // Test the issue described in https://github.com/solana-foundation/anchor/issues/3274
     pub fn update_non_instruction_composite(
         ctx: Context<UpdateNonInstructionComposite>,
         value: u32,
@@ -74,7 +74,7 @@ pub mod external {
         Ok(())
     }
 
-    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3349
+    // Test the issue described in https://github.com/solana-foundation/anchor/issues/3349
     pub fn update_non_instruction_composite2(
         ctx: Context<UpdateNonInstructionComposite2>,
         value: u32,
