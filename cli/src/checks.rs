@@ -104,7 +104,7 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         };
         let workspace_toml = cargo_toml::Manifest::from_str(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/Cargo.toml"
+            "/../Cargo.toml"
         )))
         .unwrap();
         let version = workspace_toml
