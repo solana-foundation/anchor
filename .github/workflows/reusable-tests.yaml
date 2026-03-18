@@ -457,6 +457,8 @@ jobs:
             path: tests/auction-house
           - cmd: cd tests/floats && anchor test --skip-lint && npx tsc --noEmit
             path: tests/floats
+          - cmd: cd tests/solana-program-deps && ./test.sh
+            path: tests/solana-program-deps
           - cmd: cd tests/safety-checks && anchor run test
             path: tests/safety-checks
           - cmd: cd tests/custom-coder && anchor test --skip-lint && npx tsc --noEmit
