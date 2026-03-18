@@ -494,7 +494,11 @@ pub fn gen_idl_type(
                 use super::{common::find_path, external::get_external_type};
                 use crate::parser::context::CrateContext;
                 use quote::ToTokens;
-                use std::{cell::RefCell, collections::{HashMap, HashSet}, path::PathBuf};
+                use std::{
+                    cell::RefCell,
+                    collections::{HashMap, HashSet},
+                    path::PathBuf,
+                };
 
                 struct CachedCrateData {
                     lib_path: PathBuf,
