@@ -494,15 +494,68 @@ pub fn gen_idl_type(
                 use super::{common::find_path, external::get_external_type};
                 use crate::parser::context::CrateContext;
                 use quote::ToTokens;
+                use std::{cell::RefCell, collections::{HashMap, HashSet}, path::PathBuf};
+
+                struct CachedCrateData {
+                    lib_path: PathBuf,
+                    /// Names of all structs and enums defined in the crate
+                    defined_names: HashSet<String>,
+                    /// Type aliases stored as (name, source_text) for re-parsing
+                    type_aliases: HashMap<String, String>,
+                }
+
+                thread_local! {
+                    static CRATE_DATA_CACHE: RefCell<Option<CachedCrateData>> =
+                        RefCell::new(None);
+                }
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
                     .local_file()
                     .unwrap_or_default();
 
-                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
+                if let Ok(lib_path) = find_path("lib.rs", &source_path) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
-                    let alias = ctx.type_aliases().find(|ty| ty.ident == name);
+
+                    let cache_valid = CRATE_DATA_CACHE.with(|cache| {
+                        let cache = cache.borrow();
+                        cache.as_ref().map_or(false, |c| c.lib_path == lib_path)
+                    });
+                    if !cache_valid {
+                        if let Ok(ctx) = CrateContext::parse(&lib_path) {
+                            let defined_names: HashSet<String> = ctx
+                                .structs()
+                                .map(|s| s.ident.to_string())
+                                .chain(ctx.enums().map(|e| e.ident.to_string()))
+                                .collect();
+                            let type_aliases: HashMap<String, String> = ctx
+                                .type_aliases()
+                                .map(|ty| (ty.ident.to_string(), ty.to_token_stream().to_string()))
+                                .collect();
+                            CRATE_DATA_CACHE.with(|cache| {
+                                *cache.borrow_mut() = Some(CachedCrateData {
+                                    lib_path: lib_path.clone(),
+                                    defined_names,
+                                    type_aliases,
+                                });
+                            });
+                        }
+                    }
+
+                    let (alias_src, is_external) = CRATE_DATA_CACHE.with(|cache| {
+                        let cache = cache.borrow();
+                        if let Some(data) = cache.as_ref() {
+                            let alias_src = data.type_aliases.get(&name).cloned();
+                            let is_external = !data.defined_names.contains(&name);
+                            (alias_src, is_external)
+                        } else {
+                            (None, false)
+                        }
+                    });
+
+                    let alias: Option<syn::ItemType> =
+                        alias_src.and_then(|src| syn::parse_str(&src).ok());
+
                     if let Some(alias) = alias {
                         if let Some(segment) = path.path.segments.last() {
                             if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
@@ -563,12 +616,6 @@ pub fn gen_idl_type(
                     }
 
                     // Handle external types
-                    let is_external = ctx
-                        .structs()
-                        .map(|s| s.ident.to_string())
-                        .chain(ctx.enums().map(|e| e.ident.to_string()))
-                        .find(|defined| defined == &name)
-                        .is_none();
                     if is_external {
                         if let Ok(Some(ty)) = get_external_type(&name, source_path) {
                             return gen_idl_type(&ty, generic_params);
