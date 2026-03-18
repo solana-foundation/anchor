@@ -236,7 +236,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                         .checked_sub(idl_ref.lamports())
                         .unwrap(),
                 )?;
-                idl_ref.resize(new_account_space)?;
+                anchor_lang::pinocchio_runtime::Resize::resize(&mut idl_ref, new_account_space)?;
             }
 
             Ok(())

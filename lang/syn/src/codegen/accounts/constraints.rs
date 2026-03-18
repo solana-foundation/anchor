@@ -469,7 +469,7 @@ fn generate_constraint_realloc(
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
             }
 
-            __field_info.resize(#new_space)?;
+            anchor_lang::pinocchio_runtime::Resize::resize(&mut __field_info, #new_space)?;
             __reallocs.insert(#field.key());
         }
     }
