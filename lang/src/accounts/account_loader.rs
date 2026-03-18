@@ -118,9 +118,9 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
     pub fn try_from(acc_info: AccountInfo) -> Result<AccountLoader<T>> {
-        if acc_info.owned_by(&T::owner()) {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
 
         let data = &acc_info.try_borrow()?;
@@ -143,9 +143,9 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
         _program_id: &Pubkey,
         acc_info: AccountInfo,
     ) -> Result<AccountLoader<T>> {
-        if acc_info.owned_by(&T::owner()) {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
         Ok(AccountLoader::new(acc_info))
     }
@@ -168,7 +168,7 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
         }))
     }
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_mut(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
@@ -193,7 +193,7 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_init(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
@@ -240,7 +240,8 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<T> {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
         if &T::owner() == program_id && !crate::common::is_closed(&self.acc_info) {
-            let mut data = self.acc_info.try_borrow_mut()?;
+            let mut acc_info = self.acc_info;
+            let mut data = acc_info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             writer.write_all(T::DISCRIMINATOR).unwrap();
