@@ -102,19 +102,9 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
             // Assume incompatible if parsing fails
             return false;
         };
-        let workspace_toml = cargo_toml::Manifest::from_str(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../Cargo.toml"
-        )))
-        .unwrap();
-        let version = workspace_toml
-            .workspace
-            .as_ref()
-            .unwrap()
-            .dependencies
-            .get("solana-program")
-            .expect("this check should be removed if solana-program is no longer present")
-            .req();
+        // Ideally, this should be sourced from the actual version of `solana-program` in use
+        // However, this is not available to `anchor-cli` at publish time so we have to hardcode.
+        let version = "3.0.0";
         let workspace_solana_prog_version = semver::Version::parse(version).unwrap();
         req.matches(&workspace_solana_prog_version)
     }
