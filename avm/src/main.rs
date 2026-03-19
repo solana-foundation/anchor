@@ -15,20 +15,20 @@ pub struct Cli {
 pub enum Commands {
     #[clap(about = "Use a specific version of Anchor")]
     Use {
-        #[clap(value_parser = parse_version, required = false)]
-        version: Option<Version>,
+        /// Version to use: `latest`, `latest-pre-release`, or a specific version e.g. `1.0.0`, `1.0.0-rc.3`
+        #[clap(required = false)]
+        version: Option<String>,
     },
     #[clap(about = "Install a version of Anchor", alias = "i")]
     Install {
-        /// Anchor version or commit, conflicts with `--path`
+        /// Anchor version, commit, `latest`, or `latest-pre-release`; conflicts with `--path`
         #[clap(required_unless_present = "path")]
         version_or_commit: Option<String>,
         /// Path to local anchor repo, conflicts with `version_or_commit`
         #[clap(long, conflicts_with = "version_or_commit")]
         path: Option<String>,
         #[clap(long)]
-        /// Flag to force installation even if the version
-        /// is already installed
+        /// Flag to force installation even if the version is already installed
         force: bool,
         #[clap(long)]
         /// Build from source code rather than downloading prebuilt binaries
@@ -39,13 +39,21 @@ pub enum Commands {
     },
     #[clap(about = "Uninstall a version of Anchor")]
     Uninstall {
-        #[clap(value_parser = parse_version)]
-        version: Version,
+        /// Version to uninstall, e.g. `1.0.0` or `1.0.0-rc.3`
+        version: String,
     },
     #[clap(about = "List available versions of Anchor", alias = "ls")]
-    List {},
+    List {
+        #[clap(long)]
+        /// Include pre-release versions in the list
+        pre_release: bool,
+    },
     #[clap(about = "Update to the latest Anchor version")]
-    Update {},
+    Update {
+        #[clap(long)]
+        /// Include pre-release versions when selecting the latest
+        pre_release: bool,
+    },
     #[clap(about = "Generate shell completions for AVM")]
     Completions {
         #[clap(value_enum)]
@@ -53,31 +61,56 @@ pub enum Commands {
     },
 }
 
-// If `latest` is passed use the latest available version.
-fn parse_version(version: &str) -> Result<Version, Error> {
-    if version == "latest" {
-        avm::get_latest_version()
-    } else {
-        Ok(Version::parse(version)?)
-    }
+/// Returns true if `pre` is a semver pre-release tag (`rc.`, `beta.`, `alpha.`),
+/// false if it looks like a git commit hash.
+fn is_pre_release(pre: &str) -> bool {
+    pre.starts_with("rc.") || pre.starts_with("beta.") || pre.starts_with("alpha.")
 }
 
 fn parse_install_target(version_or_commit: &str) -> Result<InstallTarget, Error> {
-    if let Ok(version) = parse_version(version_or_commit) {
+    match version_or_commit {
+        "latest" => return Ok(InstallTarget::Version(avm::get_latest_version(false)?)),
+        "latest-pre-release" => return Ok(InstallTarget::Version(avm::get_latest_version(true)?)),
+        _ => {}
+    }
+
+    if let Ok(version) = Version::parse(version_or_commit) {
         if version.pre.is_empty() {
             return Ok(InstallTarget::Version(version));
         }
-        // Allow for e.g. `avm install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23`
+        // If the prerelease segment is a bare hex string it was written as a commit, e.g.
+        // `avm install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23`.
+        // Otherwise it is a proper semver pre-release tag such as `rc.3` or `alpha.1`.
+        if is_pre_release(version.pre.as_str()) {
+            return Ok(InstallTarget::Version(version));
+        }
+        // Prerelease segment looks like a commit hash, e.g.
+        // `avm install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23`
         return Ok(InstallTarget::Commit(version.pre.to_string()));
     }
+
     avm::check_and_get_full_commit(version_or_commit)
         .map(InstallTarget::Commit)
         .map_err(|e| anyhow!("Not a valid version or commit: {e}"))
 }
 
+fn resolve_use_version(version: Option<String>) -> Result<Option<Version>> {
+    match version.as_deref() {
+        Some("latest") => Ok(Some(avm::get_latest_version(false)?)),
+        Some("latest-pre-release") => Ok(Some(avm::get_latest_version(true)?)),
+        Some(v) => Ok(Some(
+            Version::parse(v).map_err(|e| anyhow!("Invalid version `{v}`: {e}"))?,
+        )),
+        None => Ok(None),
+    }
+}
+
 pub fn entry(opts: Cli) -> Result<()> {
     match opts.command {
-        Commands::Use { version } => avm::use_version(version),
+        Commands::Use { version } => {
+            let resolved = resolve_use_version(version)?;
+            avm::use_version(resolved)
+        }
         Commands::Install {
             version_or_commit,
             path,
@@ -92,9 +125,13 @@ pub fn entry(opts: Cli) -> Result<()> {
             };
             avm::install_version(install_target, force, from_source, verify)
         }
-        Commands::Uninstall { version } => avm::uninstall_version(&version),
-        Commands::List {} => avm::list_versions(),
-        Commands::Update {} => avm::update(),
+        Commands::Uninstall { version } => {
+            let v = Version::parse(&version)
+                .map_err(|e| anyhow!("Invalid version `{version}`: {e}"))?;
+            avm::uninstall_version(&v)
+        }
+        Commands::List { pre_release } => avm::list_versions(pre_release),
+        Commands::Update { pre_release } => avm::update(pre_release),
         Commands::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
             Ok(())
@@ -155,4 +192,124 @@ fn main() -> Result<()> {
 
     let opt = Cli::parse();
     entry(opt)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use avm::InstallTarget;
+
+    // --- is_pre_release ---
+
+    #[test]
+    fn test_is_pre_release_rc() {
+        assert!(is_pre_release("rc.3"));
+    }
+
+    #[test]
+    fn test_is_pre_release_beta() {
+        assert!(is_pre_release("beta.1"));
+    }
+
+    #[test]
+    fn test_is_pre_release_alpha() {
+        assert!(is_pre_release("alpha.2"));
+    }
+
+    #[test]
+    fn test_is_pre_release_commit_hash() {
+        assert!(!is_pre_release("e1afcbf71e0f2e10fae14525934a6a68479167b9"));
+    }
+
+    #[test]
+    fn test_is_pre_release_short_commit() {
+        assert!(!is_pre_release("e1afcbf"));
+    }
+
+    // --- parse_install_target (no-network cases) ---
+
+    #[test]
+    fn test_parse_install_target_stable_version() {
+        let result = parse_install_target("1.0.0").unwrap();
+        assert!(
+            matches!(result, InstallTarget::Version(v) if v == Version::parse("1.0.0").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_parse_install_target_pre_release_version() {
+        let result = parse_install_target("1.0.0-rc.3").unwrap();
+        assert!(
+            matches!(result, InstallTarget::Version(v) if v == Version::parse("1.0.0-rc.3").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_parse_install_target_alpha_version() {
+        let result = parse_install_target("1.0.0-alpha.1").unwrap();
+        assert!(
+            matches!(result, InstallTarget::Version(v) if v == Version::parse("1.0.0-alpha.1").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_parse_install_target_commit_as_prerelease() {
+        // `avm install 0.28.0-<sha>` syntax — pre segment is a commit hash
+        let commit = "6cf200493a307c01487c7b492b4893e0d6f6cb23";
+        let result = parse_install_target(&format!("0.28.0-{commit}")).unwrap();
+        assert!(matches!(result, InstallTarget::Commit(c) if c == commit));
+    }
+
+    #[test]
+    fn test_parse_install_target_bare_commit_hash() {
+        // bare full commit SHA — resolved via GitHub API to the same hash
+        let commit = "e1afcbf71e0f2e10fae14525934a6a68479167b9";
+        let result = parse_install_target(commit).unwrap();
+        assert!(matches!(result, InstallTarget::Commit(c) if c == commit));
+    }
+
+    // --- resolve_use_version (no-network cases) ---
+
+    #[test]
+    fn test_resolve_use_version_none() {
+        assert!(resolve_use_version(None).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_resolve_use_version_specific_stable() {
+        let version = resolve_use_version(Some("1.0.0".to_string()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(version.major, 1);
+        assert_eq!(version.minor, 0);
+        assert_eq!(version.patch, 0);
+        assert!(version.pre.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_use_version_specific_pre_release() {
+        let version = resolve_use_version(Some("1.0.0-rc.3".to_string()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(version.major, 1);
+        assert_eq!(version.minor, 0);
+        assert_eq!(version.patch, 0);
+        assert_eq!(version.pre.as_str(), "rc.3");
+    }
+
+    #[test]
+    fn test_resolve_use_version_latest_is_stable() {
+        let version = resolve_use_version(Some("latest".to_string()))
+            .unwrap()
+            .unwrap();
+        assert!(
+            version.pre.is_empty(),
+            "latest should resolve to a stable version, got {version}"
+        );
+    }
+
+    #[test]
+    fn test_resolve_use_version_invalid() {
+        assert!(resolve_use_version(Some("not-a-version".to_string())).is_err());
+    }
 }
