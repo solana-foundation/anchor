@@ -18,8 +18,8 @@ dev = []
 idl-localnet-testing = []
 
 [dependencies]
-anchor-client = { path = "../client", version = "1.0.0-rc.3" }
-anchor-lang = { path = "../lang", version = "1.0.0-rc.3" }
+anchor-client = { path = "../client", version = "1.0.0-rc.4" }
+anchor-lang = { path = "../lang", version = "1.0.0-rc.4" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }
 anyhow = "1.0.32"
 base64 = "0.21"
