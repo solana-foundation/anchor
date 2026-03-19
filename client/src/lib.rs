@@ -462,9 +462,8 @@ impl Execution {
         })
     }
 
-    pub fn program(&self) -> String {
-        assert!(!self.stack.is_empty());
-        self.stack[self.stack.len() - 1].clone()
+    pub fn program(&self) -> Option<String> {
+        self.stack.last().cloned()
     }
 
     pub fn push(&mut self, new_program: String) {
@@ -472,8 +471,7 @@ impl Execution {
     }
 
     pub fn pop(&mut self) {
-        assert!(!self.stack.is_empty());
-        self.stack.pop().unwrap();
+        self.stack.pop();
     }
 }
 
@@ -699,7 +697,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
             while let Some(l) = logs_iter.next() {
                 // Parse the log.
                 let (event, new_program, did_pop) = {
-                    if program_id_str == execution.program() {
+                    if execution.program().as_deref() == Some(program_id_str) {
                         handle_program_log(program_id_str, l)?
                     } else {
                         let (program, did_pop) = handle_system_log(program_id_str, l);
@@ -915,5 +913,58 @@ mod tests {
         .unwrap();
 
         Ok(())
+    }
+
+    #[test]
+    fn test_parse_logs_response_multiple_instructions() -> Result<()> {
+        // Regression test for https://github.com/coral-xyz/anchor/issues/1941
+        // Multiple top-level instructions in the same transaction should not
+        // cause a panic when the stack is emptied between instructions.
+        let logs = vec![
+            "Program MyProgram111111111111111111111111111111111 invoke [1]",
+            "Program log: Instruction: DoSomething",
+            "Program MyProgram111111111111111111111111111111111 consumed 5000 of 200000 compute units",
+            "Program MyProgram111111111111111111111111111111111 success",
+            "Program OtherProgram11111111111111111111111111111111 invoke [1]",
+            "Program log: Instruction: DoSomethingElse",
+            "Program OtherProgram11111111111111111111111111111111 consumed 3000 of 200000 compute units",
+            "Program OtherProgram11111111111111111111111111111111 success",
+            "Program MyProgram111111111111111111111111111111111 invoke [1]",
+            "Program log: Instruction: DoAnother",
+            "Program MyProgram111111111111111111111111111111111 consumed 4000 of 200000 compute units",
+            "Program MyProgram111111111111111111111111111111111 success",
+        ];
+
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+        let program_id_str = "MyProgram111111111111111111111111111111111";
+
+        // Previously this would panic with 'assertion failed: !self.stack.is_empty()'
+        // when the stack was emptied after the first instruction completed and
+        // a non-monitored program started the second instruction.
+        parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_execution_pop_empty_stack_no_panic() {
+        // Ensure pop() on an empty stack does not panic
+        let mut logs: &[String] =
+            &["Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string()];
+        let mut exe = Execution::new(&mut logs).unwrap();
+        exe.pop(); // Stack now empty
+        exe.pop(); // Should not panic
+        assert_eq!(exe.program(), None);
     }
 }
