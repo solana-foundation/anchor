@@ -207,6 +207,12 @@ jobs:
           # If version looks like vX.Y.Z-<something> (e.g. v1.0.0-rc.2), publish as a pre-release
           if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
             publish_args+=(--prerelease)
+
+            # avm's older versions do not filter out pre-releases, meaning that
+            # if we were to create a pre-release, this would change the default
+            # version installed for new users
+            echo "Skipping creating GitHub release for a pre-release."
+            exit 0
           fi
 
           GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release create $GITHUB_REF_NAME $DIST/*/* --title "$GITHUB_REF_NAME" "${publish_args[@]}"

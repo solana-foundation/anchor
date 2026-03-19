@@ -22,12 +22,15 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install cargo-release
+        run: cargo install cargo-release --version 1.1.1 --locked
+
       - name: Publish crates
         run: |
           set -xeuo pipefail
 
-          echo "Publishing all workspace packages as a dry-run"
-          cargo publish --workspace --locked --dry-run
+          echo "Publishing crates as a dry-run"
+          cargo release publish --workspace --allow-branch "*" --no-confirm
 
   publish-crates:
     name: Publish crates
@@ -47,6 +50,9 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install cargo-release
+        run: cargo install cargo-release --version 1.1.1 --locked
+
       - name: Authenticate with crates.io
         id: auth
         uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1.0.3
@@ -57,8 +63,8 @@ jobs:
         run: |
           set -xeuo pipefail
 
-          echo "Publishing all workspace packages"
-          cargo publish --workspace --locked
+          echo "Publishing crates"
+          cargo release publish --workspace --allow-branch "*" --no-confirm --execute
 
       - name: Check for crate artifacts
         id: crate-artifacts
