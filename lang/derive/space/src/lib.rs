@@ -4,8 +4,9 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
-    DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type, TypeArray,
+    parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, spanned::Spanned,
+    token::Comma, Attribute, DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments,
+    Type, TypeArray,
 };
 
 /// Implements a [`Space`](./trait.Space.html) trait on the given
@@ -87,7 +88,14 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => unimplemented!(),
+        syn::Data::Union(u) => {
+            return syn::Error::new_spanned(
+                u.union_token,
+                "InitSpace is not supported for unions",
+            )
+            .to_compile_error()
+            .into();
+        }
     };
 
     TokenStream::from(expanded)
@@ -110,7 +118,9 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             quote!((#array_len * #type_len))
         }
         Type::Path(ty_path) => {
-            let path_segment = ty_path.path.segments.last().unwrap();
+            let Some(path_segment) = ty_path.path.segments.last() else {
+                return quote_spanned!(ty_path.path.segments.span() => compile_error!("Expected at least one path segment"));
+            };
             let ident = &path_segment.ident;
             let type_name = ident.to_string();
             let first_ty = get_first_ty_arg(&path_segment.arguments);
@@ -160,7 +170,9 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                 (0 #(+ #recurse)*)
             }
         }
-        _ => panic!("Type {ty:?} is not supported"),
+        _ => {
+            quote_spanned!(ty.span() => compile_error!("Unsupported type for InitSpace"))
+        }
     }
 }
 
