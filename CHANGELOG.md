@@ -13,6 +13,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - avm: Added flags and version labels to explicitly handle pre-releases (`avm list --pre-release`, `avm update --pre-release` and `avm install latest-pre-release`). ([#4335](https://github.com/solana-foundation/anchor/pull/4335))
+- avm: Added `avm self-update` command and passive version check warning for out of date avm ([#4338](https://github.com/solana-foundation/anchor/pull/4338))
 
 ### Fixes
 
