@@ -7,10 +7,10 @@ on:
 
     paths:
       - VERSION
-      - github/workflows/release-pr.yaml
-      - github/workflows/build-cli.yaml
-      - github/workflows/publish-crates.yaml
-      - github/workflows/publish-npmjs.yaml
+      - .github/workflows/release-pr.yaml
+      - .github/workflows/build-cli.yaml
+      - .github/workflows/publish-crates.yaml
+      - .github/workflows/publish-npmjs.yaml
 
   workflow_dispatch:
 
