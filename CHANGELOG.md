@@ -14,6 +14,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- lang: Fix incorrect deserialization for dynamically sized types when using `lazy-account` ([#4319](https://github.com/solana-foundation/anchor/pull/4319))
+
 ### Breaking
 
 ## [1.0.0-rc.4] - 2026-03-19
