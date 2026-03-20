@@ -12,6 +12,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+### Fixes
+
+### Breaking
+
+## [1.0.0-rc.5] - 2026-03-20
+
+### Features
+
 - lang, cli, client: Updated solana dependencies to the latest compatible versions. Bumping CI and docker builds to use Solana CLI version 3.1.10 ([#4317](https://github.com/solana-foundation/anchor/pull/4317/))
 
 ### Fixes
