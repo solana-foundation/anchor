@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Fixes
 
 - lang: Fix incorrect deserialization for dynamically sized types when using `lazy-account` ([#4319](https://github.com/solana-foundation/anchor/pull/4319))
+- avm: Using a temporary installation dir on cargo install calls to prevent cargo erroring out due to existing `anchor` symlink in `.avm/bin` ([4343](https://github.com/solana-foundation/anchor/pull/4343))
 
 ### Breaking
 

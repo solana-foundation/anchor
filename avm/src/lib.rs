@@ -52,6 +52,16 @@ pub fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
 }
 
+/// Path to the temporary folder for cargo install
+pub fn get_tmp_install_dir_path() -> PathBuf {
+    AVM_HOME.join("tmp")
+}
+
+/// Path to the temporary bin folder of cargo install
+pub fn get_tmp_bin_dir_path() -> PathBuf {
+    AVM_HOME.join("tmp").join("bin")
+}
+
 /// Path to the binary for the given version
 pub fn version_binary_path(version: &Version) -> PathBuf {
     get_bin_dir_path().join(format!("anchor-{version}"))
@@ -367,7 +377,11 @@ pub fn install_version(
             "anchor-cli".into(),
             "--locked".into(),
             "--root".into(),
-            AVM_HOME.to_str().unwrap().into(),
+            // can't install directly to `.avm/` because additional symlinks were
+            // added to the .avm/bin folder that can cause cargo to error out during installs
+            // simply removing the creation of those links would not remove them from user machines
+            // and we don't want to remove them because they may have been created by the user
+            get_tmp_install_dir_path().to_str().unwrap().into(),
         ];
         match install_target {
             InstallTarget::Version(version) => {
@@ -440,7 +454,7 @@ pub fn install_version(
             ));
         }
 
-        let bin_dir = get_bin_dir_path();
+        let bin_dir = get_tmp_bin_dir_path();
         let bin_name = if cfg!(target_os = "windows") {
             "anchor.exe"
         } else {
