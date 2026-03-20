@@ -374,6 +374,11 @@ jobs:
         working-directory: /tmp
         run: anchor init --test-template ${{ matrix.template }} hello-anchor-${{ matrix.template }}
 
+      - name: Remove anchor-client dependency first to avoid conflicts
+        if: ${{ matrix.template == 'rust' }}
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        run: cargo remove anchor-client --manifest-path tests/Cargo.toml
+
       - name: Point anchor-lang to workspace
         working-directory: /tmp/hello-anchor-${{ matrix.template }}
         run: cargo add anchor-lang --manifest-path programs/hello-anchor-${{ matrix.template }}/Cargo.toml --path "$GITHUB_WORKSPACE/lang"

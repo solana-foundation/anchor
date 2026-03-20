@@ -1,7 +1,7 @@
 # Anchor version.
 ANCHOR_CLI=v1.0.0-rc.4
 # Solana toolchain.
-SOLANA_CLI=v2.3.0
+SOLANA_CLI=v3.1.10
 # Build version should match the Anchor cli version.
 VERSIONED_IMG_NAME=solanafoundation/anchor:$(ANCHOR_CLI)
 

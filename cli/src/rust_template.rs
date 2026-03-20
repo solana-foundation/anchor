@@ -209,10 +209,10 @@ mollusk-svm = "~0.10"
             r#"
 [dev-dependencies]
 litesvm = "0.10.0"
-solana-message = "3.0.0"
-solana-transaction = "3.0.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
 solana-signer = "3.0.0"
-solana-keypair = "3.0.0"
+solana-keypair = "3.0.1"
 "#
         }
         _ => "",
