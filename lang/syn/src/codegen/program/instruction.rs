@@ -22,14 +22,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 .map(|arg| {
                     format!("pub {}", parser::tts_to_string(&arg.raw_arg))
                         .parse()
-                        .unwrap()
+                        .expect("Invariant violation")
                 })
                 .collect();
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
-                    Some(overrides) if overrides.discriminator.is_some() => {
-                        overrides.discriminator.as_ref().unwrap().to_owned()
-                    }
+                    Some(overrides) if overrides.discriminator.is_some() => overrides
+                        .discriminator
+                        .as_ref()
+                        .expect("Invariant violation")
+                        .to_owned(),
                     _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                 };
 

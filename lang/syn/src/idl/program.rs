@@ -15,7 +15,10 @@ use crate::{
 
 /// Generate the IDL build print function for the program module.
 pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
-    check_safety_comments().unwrap_or_else(|e| panic!("Safety checks failed: {e}"));
+    if let Err(e) = check_safety_comments() {
+        let err = e.to_string();
+        return quote! { compile_error!(#err); };
+    }
 
     let idl = get_idl_module_path();
     let no_docs = get_no_docs();

@@ -19,7 +19,8 @@ impl EventAuthority {
 
     /// Returns the name without surrounding quotes.
     pub fn name_token_stream(&self) -> proc_macro2::TokenStream {
-        let name_token_stream = syn::parse_str::<syn::Expr>(self.name).unwrap();
+        let name_token_stream =
+            syn::parse_str::<syn::Expr>(self.name).expect("Invariant violation");
         quote! {#name_token_stream}
     }
 }

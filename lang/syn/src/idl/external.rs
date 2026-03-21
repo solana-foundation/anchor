@@ -13,7 +13,7 @@ use crate::parser::context::CrateContext;
 pub fn get_external_type(name: &str, path: impl AsRef<Path>) -> Result<Option<syn::Type>> {
     let use_path = get_uses(path.as_ref())?
         .into_iter()
-        .find(|u| u.split("::").last().unwrap() == name)
+        .find(|u| u.split("::").last().expect("Invariant violation") == name)
         .ok_or_else(|| anyhow!("`{name}` not found in use statements"))?;
 
     // Get crate name and version from lock file
@@ -31,7 +31,7 @@ fn recursively_find_type(
     registry_path: &Path,
     lock_file: &[(String, String)],
 ) -> Result<Option<syn::Type>> {
-    let crate_name = use_path.split("::").next().unwrap();
+    let crate_name = use_path.split("::").next().expect("Invariant violation");
     let (crate_name, version) = lock_file
         .iter()
         .find(|(name, _)| name == crate_name || name == &crate_name.replace('_', "-"))
@@ -73,7 +73,7 @@ fn recursively_find_type(
 fn get_registry_path() -> Result<PathBuf> {
     #[allow(deprecated)]
     let path = env::home_dir()
-        .unwrap()
+        .expect("Invariant violation")
         .join(".cargo")
         .join("registry")
         .join("src");
@@ -102,7 +102,7 @@ fn parse_lock_file(path: impl AsRef<Path>) -> Result<Vec<(String, String)>> {
                     .expect(&format!("`{key}` line not found"))
                     .split('"')
                     .nth(1)
-                    .unwrap()
+                    .expect("Invariant violation")
                     .to_owned()
             };
             let name = get_value("name");

@@ -74,9 +74,11 @@ pub fn program(
 /// [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0-rc.4/tests/declare-program
 #[proc_macro]
 pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    parse_macro_input!(input as DeclareProgram)
-        .to_token_stream()
-        .into()
+    let program = parse_macro_input!(input as DeclareProgram);
+    match program.generate() {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
 }
 
 /// This attribute is used to override the Anchor defaults of program instructions.

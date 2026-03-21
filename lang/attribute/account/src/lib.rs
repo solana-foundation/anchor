@@ -349,14 +349,28 @@ impl Parse for AccountArg {
 #[proc_macro_derive(ZeroCopyAccessor, attributes(accessor))]
 pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let account_strct = parse_macro_input!(item as syn::ItemStruct);
+    match derive_zero_copy_accessor_impl(account_strct) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+fn derive_zero_copy_accessor_impl(
+    account_strct: syn::ItemStruct,
+) -> syn::Result<proc_macro::TokenStream> {
     let account_name = &account_strct.ident;
     let (impl_gen, ty_gen, where_clause) = account_strct.generics.split_for_impl();
 
     let fields = match &account_strct.fields {
         syn::Fields::Named(n) => n,
-        _ => panic!("Fields must be named"),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                &account_strct.fields,
+                "Fields must be named",
+            ))
+        }
     };
-    let methods: Vec<proc_macro2::TokenStream> = fields
+    let methods = fields
         .named
         .iter()
         .filter_map(|field: &syn::Field| {
@@ -366,39 +380,51 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "accessor")
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
-                    let g_stream = match tts.next().expect("Must have a token group") {
-                        proc_macro2::TokenTree::Group(g) => g.stream(),
-                        _ => panic!("Invalid syntax"),
+                    let g_stream = match tts.next() {
+                        Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
+                        Some(token) => {
+                            return Err(syn::Error::new_spanned(token, "Invalid accessor syntax"))
+                        }
+                        None => {
+                            return Err(syn::Error::new_spanned(attr, "Missing accessor arguments"))
+                        }
                     };
                     let accessor_ty = match g_stream.into_iter().next() {
                         Some(token) => token,
-                        _ => panic!("Missing accessor type"),
+                        None => return Err(syn::Error::new_spanned(attr, "Missing accessor type")),
                     };
 
-                    let field_name = field.ident.as_ref().unwrap();
+                    let field_name = field
+                        .ident
+                        .as_ref()
+                        .ok_or_else(|| syn::Error::new_spanned(field, "Fields must be named"))?;
 
                     let get_field: proc_macro2::TokenStream =
-                        format!("get_{field_name}").parse().unwrap();
+                        format!("get_{field_name}").parse().map_err(|_| {
+                            syn::Error::new_spanned(field_name, "Invalid getter name")
+                        })?;
                     let set_field: proc_macro2::TokenStream =
-                        format!("set_{field_name}").parse().unwrap();
+                        format!("set_{field_name}").parse().map_err(|_| {
+                            syn::Error::new_spanned(field_name, "Invalid setter name")
+                        })?;
 
-                    quote! {
+                    Ok(quote! {
                         pub fn #get_field(&self) -> #accessor_ty {
                             anchor_lang::__private::ZeroCopyAccessor::get(&self.#field_name)
                         }
                         pub fn #set_field(&mut self, input: &#accessor_ty) {
                             self.#field_name = anchor_lang::__private::ZeroCopyAccessor::set(input);
                         }
-                    }
+                    })
                 })
         })
-        .collect();
-    proc_macro::TokenStream::from(quote! {
+        .collect::<syn::Result<Vec<_>>>()?;
+    Ok(proc_macro::TokenStream::from(quote! {
         #[automatically_derived]
         impl #impl_gen #account_name #ty_gen #where_clause {
             #(#methods)*
         }
-    })
+    }))
 }
 
 /// A data structure that can be used as an internal field for a zero copy
@@ -418,6 +444,16 @@ pub fn zero_copy(
     args: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
+    match zero_copy_impl(args, item) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+fn zero_copy_impl(
+    args: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> syn::Result<proc_macro::TokenStream> {
     let mut is_unsafe = false;
     for arg in args.into_iter() {
         match arg {
@@ -432,17 +468,22 @@ pub fn zero_copy(
                     // ```
                     is_unsafe = true;
                 } else {
-                    // TODO: how to return a compile error with a span (can't return prase error because expected type TokenStream)
-                    panic!("expected single ident `unsafe`");
+                    return Err(syn::Error::new_spanned(
+                        proc_macro2::Ident::new(&ident.to_string(), ident.span().into()),
+                        "expected single ident `unsafe`",
+                    ));
                 }
             }
             _ => {
-                panic!("expected single ident `unsafe`");
+                return Err(syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "expected single ident `unsafe`",
+                ));
             }
         }
     }
 
-    let account_strct = parse_macro_input!(item as syn::ItemStruct);
+    let account_strct: syn::ItemStruct = syn::parse(item)?;
 
     // Takes the first repr. It's assumed that more than one are not on the
     // struct.
@@ -510,16 +551,16 @@ pub fn zero_copy(
             #derive_unsafe
             #ret
         })
-        .unwrap();
+        .map_err(|err| syn::Error::new(proc_macro2::Span::call_site(), err))?;
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
-        return proc_macro::TokenStream::from(quote! {
+        return Ok(proc_macro::TokenStream::from(quote! {
             #ret
             #idl_build_impl
-        });
+        }));
     }
 
     #[allow(unreachable_code)]
-    proc_macro::TokenStream::from(ret)
+    Ok(proc_macro::TokenStream::from(ret))
 }
 
 /// Convenience macro to define a static public key.
@@ -552,4 +593,31 @@ pub fn declare_id(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     #[allow(unreachable_code)]
     proc_macro::TokenStream::from(ret)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quote::quote;
+
+    #[test]
+    fn zero_copy_accessor_rejects_unnamed_fields() {
+        let input: syn::ItemStruct = syn::parse2(quote! {
+            struct TupleAccessor(u64);
+        })
+        .expect("test input should parse");
+
+        let err = derive_zero_copy_accessor_impl(input).expect_err("tuple struct should fail");
+        assert!(err.to_string().contains("Fields must be named"));
+    }
+
+    #[test]
+    fn zero_copy_rejects_non_unsafe_arguments() {
+        let result = syn::parse2::<AccountArg>(quote!(safe));
+        assert!(result.is_err(), "invalid zero_copy argument should fail");
+        let err = result
+            .err()
+            .expect("invalid zero_copy argument should fail");
+        assert!(!err.to_string().is_empty());
+    }
 }

@@ -39,13 +39,19 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
     }
 }
 
-pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
-    syn::parse_str(&convert_idl_type_to_str(ty, false)).unwrap()
+pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Result<syn::Type> {
+    let ty_str = convert_idl_type_to_str(ty, false)?;
+    syn::parse_str(&ty_str).map_err(|err| {
+        syn::Error::new(
+            proc_macro2::Span::call_site(),
+            format!("Failed to parse generated type `{ty_str}`: {err}"),
+        )
+    })
 }
 
 // TODO: Impl `ToString` for `IdlType`
-pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
-    match ty {
+pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> syn::Result<String> {
+    Ok(match ty {
         IdlType::Bool => "bool".into(),
         IdlType::U8 => "u8".into(),
         IdlType::I8 => "i8".into(),
@@ -64,11 +70,11 @@ pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
         IdlType::Bytes => if is_const { "&[u8]" } else { "Vec<u8>" }.into(),
         IdlType::String => if is_const { "&str" } else { "String" }.into(),
         IdlType::Pubkey => "Pubkey".into(),
-        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)),
-        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty, is_const)),
+        IdlType::Option(ty) => format!("Option<{}>", convert_idl_type_to_str(ty, is_const)?),
+        IdlType::Vec(ty) => format!("Vec<{}>", convert_idl_type_to_str(ty, is_const)?),
         IdlType::Array(ty, len) => format!(
             "[{}; {}]",
-            convert_idl_type_to_str(ty, is_const),
+            convert_idl_type_to_str(ty, is_const)?,
             match len {
                 IdlArrayLen::Generic(len) => len.into(),
                 IdlArrayLen::Value(len) => len.to_string(),
@@ -78,8 +84,10 @@ pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
             .iter()
             .map(|generic| match generic {
                 IdlGenericArg::Type { ty } => convert_idl_type_to_str(ty, is_const),
-                IdlGenericArg::Const { value } => value.into(),
+                IdlGenericArg::Const { value } => Ok(value.into()),
             })
+            .collect::<syn::Result<Vec<_>>>()?
+            .into_iter()
             .reduce(|mut acc, cur| {
                 if !acc.is_empty() {
                     acc.push(',');
@@ -90,14 +98,19 @@ pub fn convert_idl_type_to_str(ty: &IdlType, is_const: bool) -> String {
             .map(|generics| format!("{name}<{generics}>"))
             .unwrap_or(name.into()),
         IdlType::Generic(ty) => ty.into(),
-        _ => unimplemented!("{ty:?}"),
-    }
+        _ => {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                format!("Unsupported IDL type: {ty:?}"),
+            ))
+        }
+    })
 }
 
 pub fn convert_idl_type_def_to_ts(
     ty_def: &IdlTypeDef,
     ty_defs: &[IdlTypeDef],
-) -> proc_macro2::TokenStream {
+) -> syn::Result<proc_macro2::TokenStream> {
     let name = format_ident!("{}", ty_def.name);
     let docs = gen_docs(&ty_def.docs);
 
@@ -134,7 +147,12 @@ pub fn convert_idl_type_def_to_ts(
             IdlSerialization::Borsh => quote!(#[derive(AnchorSerialize, AnchorDeserialize)]),
             IdlSerialization::Bytemuck => quote!(#[zero_copy]),
             IdlSerialization::BytemuckUnsafe => quote!(#[zero_copy(unsafe)]),
-            _ => unimplemented!("{:?}", ty_def.serialization),
+            _ => {
+                return Err(syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    format!("Unsupported IDL serialization: {:?}", ty_def.serialization),
+                ))
+            }
         };
 
         let clone_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
@@ -158,115 +176,140 @@ pub fn convert_idl_type_def_to_ts(
         }
     };
 
-    let repr = ty_def.repr.as_ref().map(|repr| {
-        let kind = match repr {
-            IdlRepr::Rust(_) => "Rust",
-            IdlRepr::C(_) => "C",
-            IdlRepr::Transparent => "transparent",
-            _ => unimplemented!("{repr:?}"),
-        };
-        let kind = format_ident!("{kind}");
-
-        let modifier = match repr {
-            IdlRepr::Rust(modifier) | IdlRepr::C(modifier) => {
-                let packed = modifier.packed.then_some(quote!(packed));
-                let align = modifier
-                    .align
-                    .map(Literal::usize_unsuffixed)
-                    .map(|align| quote!(align(#align)));
-
-                match (packed, align) {
-                    (None, None) => None,
-                    (Some(p), None) => Some(quote!(#p)),
-                    (None, Some(a)) => Some(quote!(#a)),
-                    (Some(p), Some(a)) => Some(quote!(#p, #a)),
+    let repr = match ty_def.repr.as_ref() {
+        Some(repr) => {
+            let kind = match repr {
+                IdlRepr::Rust(_) => "Rust",
+                IdlRepr::C(_) => "C",
+                IdlRepr::Transparent => "transparent",
+                _ => {
+                    return Err(syn::Error::new(
+                        proc_macro2::Span::call_site(),
+                        format!("Unsupported repr: {repr:?}"),
+                    ))
                 }
+            };
+            let kind = format_ident!("{kind}");
+
+            let modifier = match repr {
+                IdlRepr::Rust(modifier) | IdlRepr::C(modifier) => {
+                    let packed = modifier.packed.then_some(quote!(packed));
+                    let align = modifier
+                        .align
+                        .map(Literal::usize_unsuffixed)
+                        .map(|align| quote!(align(#align)));
+
+                    match (packed, align) {
+                        (None, None) => None,
+                        (Some(p), None) => Some(quote!(#p)),
+                        (None, Some(a)) => Some(quote!(#a)),
+                        (Some(p), Some(a)) => Some(quote!(#p, #a)),
+                    }
+                }
+                _ => None,
             }
-            _ => None,
+            .map(|m| quote!(, #m));
+
+            Some(quote! { #[repr(#kind #modifier)] })
         }
-        .map(|m| quote!(, #m));
-        quote! { #[repr(#kind #modifier)] }
-    });
+        None => None,
+    };
 
     match &ty_def.ty {
         IdlTypeDefTy::Struct { fields } => {
             let declare_struct = quote! { pub struct #name #generics };
             let ty = handle_defined_fields(
                 fields.as_ref(),
-                || quote! { #declare_struct; },
+                || -> syn::Result<proc_macro2::TokenStream> { Ok(quote! { #declare_struct; }) },
                 |fields| {
-                    let fields = fields.iter().map(|field| {
-                        let name = format_ident!("{}", field.name);
-                        let ty = convert_idl_type_to_syn_type(&field.ty);
-                        quote! { pub #name : #ty }
-                    });
-                    quote! {
+                    let fields = fields
+                        .iter()
+                        .map(|field| {
+                            let name = format_ident!("{}", field.name);
+                            let ty = convert_idl_type_to_syn_type(&field.ty)?;
+                            Ok(quote! { pub #name : #ty })
+                        })
+                        .collect::<syn::Result<Vec<_>>>()?;
+                    Ok(quote! {
                         #declare_struct {
                             #(#fields,)*
                         }
-                    }
+                    })
                 },
                 |tys| {
                     let tys = tys
                         .iter()
                         .map(convert_idl_type_to_syn_type)
+                        .collect::<syn::Result<Vec<_>>>()?
+                        .into_iter()
                         .map(|ty| quote! { pub #ty });
 
-                    quote! {
+                    Ok(quote! {
                         #declare_struct (#(#tys,)*);
-                    }
+                    })
                 },
-            );
+            )?;
 
-            quote! {
+            Ok(quote! {
                 #docs
                 #attrs
                 #repr
                 #ty
-            }
+            })
         }
         IdlTypeDefTy::Enum { variants } => {
-            let variants = variants.iter().map(|variant| {
-                let variant_name = format_ident!("{}", variant.name);
-                handle_defined_fields(
-                    variant.fields.as_ref(),
-                    || quote! { #variant_name },
-                    |fields| {
-                        let fields = fields.iter().map(|field| {
-                            let name = format_ident!("{}", field.name);
-                            let ty = convert_idl_type_to_syn_type(&field.ty);
-                            quote! { #name : #ty }
-                        });
-                        quote! {
-                            #variant_name {
-                                #(#fields,)*
-                            }
-                        }
-                    },
-                    |tys| {
-                        let tys = tys.iter().map(convert_idl_type_to_syn_type);
-                        quote! {
-                            #variant_name (#(#tys,)*)
-                        }
-                    },
-                )
-            });
+            let variants = variants
+                .iter()
+                .map(|variant| {
+                    let variant_name = format_ident!("{}", variant.name);
+                    handle_defined_fields(
+                        variant.fields.as_ref(),
+                        || -> syn::Result<proc_macro2::TokenStream> {
+                            Ok(quote! { #variant_name })
+                        },
+                        |fields| {
+                            let fields = fields
+                                .iter()
+                                .map(|field| {
+                                    let name = format_ident!("{}", field.name);
+                                    let ty = convert_idl_type_to_syn_type(&field.ty)?;
+                                    Ok(quote! { #name : #ty })
+                                })
+                                .collect::<syn::Result<Vec<_>>>()?;
+                            Ok(quote! {
+                                #variant_name {
+                                    #(#fields,)*
+                                }
+                            })
+                        },
+                        |tys| {
+                            let tys = tys
+                                .iter()
+                                .map(convert_idl_type_to_syn_type)
+                                .collect::<syn::Result<Vec<_>>>()?;
+                            Ok(quote! {
+                                #variant_name (#(#tys,)*)
+                            })
+                        },
+                    )
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-            quote! {
+            Ok(quote! {
                 #docs
                 #attrs
                 #repr
                 pub enum #name #generics {
                     #(#variants,)*
                 }
-            }
+            })
         }
         IdlTypeDefTy::Type { alias } => {
-            let alias = convert_idl_type_to_syn_type(alias);
-            quote! {
+            let alias = convert_idl_type_to_syn_type(alias)?;
+            Ok(quote! {
                 #docs
                 pub type #name = #alias;
-            }
+            })
         }
     }
 }
@@ -311,7 +354,7 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_copy(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .unwrap_or(false),
         IdlType::Bytes | IdlType::String | IdlType::Vec(_) | IdlType::Generic(_) => false,
         _ => true,
     }
@@ -335,7 +378,7 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
             .iter()
             .find(|ty_def| &ty_def.name == name)
             .map(|ty_def| can_derive_default(ty_def, ty_defs))
-            .expect("Type def must exist"),
+            .unwrap_or(false),
         IdlType::Generic(_) => false,
         _ => true,
     }
@@ -375,7 +418,7 @@ fn handle_defined_fields<R>(
 }
 
 /// Combine regular instruction accounts with non-instruction composite accounts.
-pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
+pub fn get_all_instruction_accounts(idl: &Idl) -> syn::Result<Vec<IdlInstructionAccounts>> {
     // It's possible to declare an accounts struct and not use it as an instruction, see
     // https://github.com/solana-foundation/anchor/issues/3274
     //
@@ -407,7 +450,7 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
         .iter()
         .flat_map(|ix| ix.accounts.to_owned())
         .collect::<Vec<_>>();
-    get_non_instruction_composite_accounts(&ix_accs, idl)
+    Ok(get_non_instruction_composite_accounts(&ix_accs, idl)
         .into_iter()
         .fold(Vec::<IdlInstructionAccounts>::default(), |mut all, accs| {
             // Make sure they are unique
@@ -423,7 +466,7 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
                             let name = format!("{}{i}", accs.name);
                             all.iter().all(|a| a.name != name).then_some(name)
                         })
-                        .expect("Should always find a valid name")
+                        .unwrap_or_else(|| accs.name.to_owned())
                 };
 
                 all.push(IdlInstructionAccounts {
@@ -439,5 +482,5 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
             name: ix.name.to_owned(),
             accounts: ix.accounts.to_owned(),
         }))
-        .collect()
+        .collect())
 }

@@ -3,7 +3,7 @@ use quote::quote;
 
 use super::common::convert_idl_type_def_to_ts;
 
-pub fn gen_types_mod(idl: &Idl) -> proc_macro2::TokenStream {
+pub fn gen_types_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
     let types = idl
         .types
         .iter()
@@ -12,9 +12,10 @@ pub fn gen_types_mod(idl: &Idl) -> proc_macro2::TokenStream {
             !(idl.accounts.iter().any(|acc| acc.name == ty.name)
                 || idl.events.iter().any(|ev| ev.name == ty.name))
         })
-        .map(|ty| convert_idl_type_def_to_ts(ty, &idl.types));
+        .map(|ty| convert_idl_type_def_to_ts(ty, &idl.types))
+        .collect::<syn::Result<Vec<_>>>()?;
 
-    quote! {
+    Ok(quote! {
         /// Program type definitions.
         ///
         /// Note that account and event type definitions are not included in this module, as they
@@ -24,5 +25,5 @@ pub fn gen_types_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
             #(#types)*
         }
-    }
+    })
 }

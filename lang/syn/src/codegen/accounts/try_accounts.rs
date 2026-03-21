@@ -5,6 +5,13 @@ use syn::Expr;
 
 // Generates the `Accounts` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
+    match generate_result(accs) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+}
+
+fn generate_result(accs: &AccountsStruct) -> syn::Result<proc_macro2::TokenStream> {
     let name = &accs.ident;
     let ParsedGenerics {
         combined_generics,
@@ -103,13 +110,16 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 .map(|expr: &Expr| match expr {
                     Expr::Type(expr_type) => {
                         let field = &expr_type.expr;
-                        quote! {
+                        Ok(quote! {
                             #field
-                        }
+                        })
                     }
-                    _ => panic!("Invalid instruction declaration"),
+                    _ => Err(syn::Error::new_spanned(
+                        expr,
+                        "Invalid instruction declaration",
+                    )),
                 })
-                .collect();
+                .collect::<syn::Result<Vec<_>>>()?;
             quote! {
                 let mut __ix_data = __ix_data;
                 #[derive(anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
@@ -163,19 +173,22 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             &format!("__anchor_validate_ix_arg_type_{}", idx),
                             proc_macro2::Span::call_site(),
                         );
-                        quote! {
+                        Ok(quote! {
                             #[doc(hidden)]
                             #[inline(always)]
                             pub fn #method_name<__T>(_arg: &__T)
                             where
                                 __T: anchor_lang::__private::IsSameType<#ty>,
                             {}
-                        }
+                        })
                     } else {
-                        panic!("Invalid instruction declaration");
+                        Err(syn::Error::new_spanned(
+                            expr,
+                            "Invalid instruction declaration",
+                        ))
                     }
                 })
-                .collect();
+                .collect::<syn::Result<Vec<_>>>()?;
 
             // stub methods for remaining argument positions (up to 32 total)
             let stub_methods: Vec<proc_macro2::TokenStream> = (declared_count..32)
@@ -226,7 +239,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     };
 
-    quote! {
+    Ok(quote! {
         #param_count_const
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
@@ -248,7 +261,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 Ok(#accounts_instance)
             }
         }
-    }
+    })
 }
 
 pub fn generate_constraints(accs: &AccountsStruct) -> proc_macro2::TokenStream {

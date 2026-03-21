@@ -49,7 +49,8 @@ pub fn event(
             fn data(&self) -> Vec<u8> {
                 let mut data = Vec::with_capacity(256);
                 data.extend_from_slice(#event_name::DISCRIMINATOR);
-                self.serialize(&mut data).unwrap();
+                self.serialize(&mut data)
+                    .expect("event serialization should not fail");
                 data
             }
         }
@@ -231,6 +232,8 @@ pub fn event_cpi(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let accounts_struct = parse_macro_input!(input as syn::ItemStruct);
-    let accounts_struct = add_event_cpi_accounts(&accounts_struct).unwrap();
-    proc_macro::TokenStream::from(quote! {#accounts_struct})
+    match add_event_cpi_accounts(&accounts_struct) {
+        Ok(accounts_struct) => proc_macro::TokenStream::from(quote! {#accounts_struct}),
+        Err(err) => err.to_compile_error().into(),
+    }
 }

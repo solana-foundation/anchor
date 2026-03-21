@@ -40,7 +40,7 @@ pub fn gen_print_section(name: &str, value: impl ToTokens) -> TokenStream {
     let serde_json = get_serde_json_module_path();
     quote! {
         println!("--- IDL begin {} ---", #name);
-        println!("{}", #serde_json::to_string_pretty(&{ #value }).unwrap());
+        println!("{}", #serde_json::to_string_pretty(&{ #value }).expect("Invariant violation"));
         println!("--- IDL end {} ---", #name);
     }
 }

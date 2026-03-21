@@ -40,7 +40,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 "()" => quote! {},
                 _ => quote! {
                     let mut return_data = Vec::with_capacity(256);
-                    result.serialize(&mut return_data).unwrap();
+                    result.serialize(&mut return_data).expect("Invariant violation");
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
             };
@@ -71,7 +71,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             #[allow(unreachable_code)]
                             if false {
                                 // This code is never executed but is type-checked at compile time
-                                let __type_check_arg: #arg_ty = panic!();
+                                let __type_check_arg: #arg_ty = unreachable!();
                                 #accounts_struct_name::#method_name(&__type_check_arg);
                             }
                         }
@@ -86,7 +86,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                     // Count validation
                     if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
-                        panic!(#count_error_msg);
+                        unreachable!(#count_error_msg);
                     }
                 };
 

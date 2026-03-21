@@ -107,10 +107,17 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
                     }
                     res
                 } else {
-                    panic!(
-                        "Compose field type must be a path but received: {:?}",
-                        comp_f.raw_field.ty
-                    )
+                    return (
+                        syn::Error::new_spanned(
+                            &comp_f.raw_field.ty,
+                            format!(
+                                "Compose field type must be a path but received: {:?}",
+                                comp_f.raw_field.ty.to_token_stream().to_string()
+                            ),
+                        )
+                        .to_compile_error(),
+                        None,
+                    );
                 };
                 let name = comp_f.ident.to_string();
 
@@ -187,7 +194,7 @@ fn get_address(acc: &Field) -> TokenStream {
                         .path
                         .segments
                         .last()
-                        .unwrap()
+                        .expect("path must have at least one segment")
                         .ident
                         .to_string()
                         .chars()
@@ -257,7 +264,11 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
         })
         .and_then(|(wallet, mint, token_program)| {
             // ATA constraints have implicit `.key()` call
-            let parse_expr = |ts| parse_default(&syn::parse2(ts).unwrap()).ok();
+            let parse_expr = |ts| {
+                syn::parse2(ts)
+                    .ok()
+                    .and_then(|expr| parse_default(&expr).ok())
+            };
             let parse_ata = |expr| parse_expr(quote! { #expr.key().as_ref() });
 
             let wallet = parse_ata(wallet);
@@ -274,7 +285,7 @@ fn get_pda(acc: &Field, accounts: &AccountsStruct) -> TokenStream {
 
             let program = parse_expr(quote!(anchor_spl::associated_token::ID))
                 .map(|program| quote! { Some(#program) })
-                .unwrap();
+                .expect("Failed to parse associated token ID");
 
             Some(quote! {
                 Some(

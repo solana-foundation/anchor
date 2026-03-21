@@ -9,7 +9,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
-            let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
+            let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().expect("Invariant violation");
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
                 let name_str = name.to_string();
@@ -91,8 +91,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             impl<T: AnchorDeserialize> Return<T> {
                 pub fn get(&self) -> T {
-                    let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
-                    T::try_from_slice(&data).unwrap()
+                    let (_key, data) = anchor_lang::solana_program::program::get_return_data().expect("Invariant violation");
+                    T::try_from_slice(&data).expect("Invariant violation")
                 }
             }
 
@@ -122,7 +122,8 @@ pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
     let account_structs: Vec<proc_macro2::TokenStream> = accounts
         .iter()
         .map(|(macro_name, cfgs)| {
-            let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
+            let macro_name: proc_macro2::TokenStream =
+                macro_name.parse().expect("Invariant violation");
             quote! {
                 #(#cfgs)*
                 pub use crate::#macro_name::*;

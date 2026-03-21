@@ -12,11 +12,11 @@ use super::common::{
     get_canonical_program_id,
 };
 
-pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
-    let internal_args_mod = gen_internal_args_mod(idl);
-    let internal_accounts_mod = gen_internal_accounts(idl);
+pub fn gen_internal_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let internal_args_mod = gen_internal_args_mod(idl)?;
+    let internal_accounts_mod = gen_internal_accounts(idl)?;
 
-    quote! {
+    Ok(quote! {
         #[doc(hidden)]
         mod internal {
             use super::*;
@@ -24,63 +24,71 @@ pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
             #internal_args_mod
             #internal_accounts_mod
         }
-    }
+    })
 }
 
-fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
-    let ixs = idl.instructions.iter().map(|ix| {
-        let ix_struct_name = format_ident!("{}", ix.name.to_camel_case());
+fn gen_internal_args_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let ixs = idl
+        .instructions
+        .iter()
+        .map(|ix| {
+            let ix_struct_name = format_ident!("{}", ix.name.to_camel_case());
 
-        let fields = ix.args.iter().map(|arg| {
-            let name = format_ident!("{}", arg.name);
-            let ty = convert_idl_type_to_syn_type(&arg.ty);
-            quote! { pub #name: #ty }
-        });
+            let fields = ix
+                .args
+                .iter()
+                .map(|arg| {
+                    let name = format_ident!("{}", arg.name);
+                    let ty = convert_idl_type_to_syn_type(&arg.ty)?;
+                    Ok(quote! { pub #name: #ty })
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-        let ix_struct = if ix.args.is_empty() {
-            quote! {
-                pub struct #ix_struct_name;
-            }
-        } else {
-            quote! {
-                pub struct #ix_struct_name {
-                    #(#fields),*
+            let ix_struct = if ix.args.is_empty() {
+                quote! {
+                    pub struct #ix_struct_name;
                 }
-            }
-        };
-
-        let discriminator = gen_discriminator(&ix.discriminator);
-        let impl_discriminator = quote! {
-            impl anchor_lang::Discriminator for #ix_struct_name {
-                const DISCRIMINATOR: &'static [u8] = &#discriminator;
-            }
-        };
-
-        let impl_ix_data = quote! {
-            impl anchor_lang::InstructionData for #ix_struct_name {}
-        };
-
-        let program_id = get_canonical_program_id();
-        let impl_owner = quote! {
-            impl anchor_lang::Owner for #ix_struct_name {
-                fn owner() -> Pubkey {
-                    #program_id
+            } else {
+                quote! {
+                    pub struct #ix_struct_name {
+                        #(#fields),*
+                    }
                 }
-            }
-        };
+            };
 
-        quote! {
-            /// Instruction argument
-            #[derive(AnchorSerialize, AnchorDeserialize)]
-            #ix_struct
+            let discriminator = gen_discriminator(&ix.discriminator);
+            let impl_discriminator = quote! {
+                impl anchor_lang::Discriminator for #ix_struct_name {
+                    const DISCRIMINATOR: &'static [u8] = &#discriminator;
+                }
+            };
 
-            #impl_discriminator
-            #impl_ix_data
-            #impl_owner
-        }
-    });
+            let impl_ix_data = quote! {
+                impl anchor_lang::InstructionData for #ix_struct_name {}
+            };
 
-    quote! {
+            let program_id = get_canonical_program_id();
+            let impl_owner = quote! {
+                impl anchor_lang::Owner for #ix_struct_name {
+                    fn owner() -> Pubkey {
+                        #program_id
+                    }
+                }
+            };
+
+            Ok(quote! {
+                /// Instruction argument
+                #[derive(AnchorSerialize, AnchorDeserialize)]
+                #ix_struct
+
+                #impl_discriminator
+                #impl_ix_data
+                #impl_owner
+            })
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
+
+    Ok(quote! {
         /// An Anchor generated module containing the program's set of instructions, where each
         /// method handler in the `#[program]` mod is associated with a struct defining the input
         /// arguments to the method. These should be used directly, when one wants to serialize
@@ -91,24 +99,24 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
             #(#ixs)*
         }
-    }
+    })
 }
 
-fn gen_internal_accounts(idl: &Idl) -> proc_macro2::TokenStream {
-    let cpi_accounts = gen_internal_accounts_common(idl, __cpi_client_accounts::generate);
-    let client_accounts = gen_internal_accounts_common(idl, __client_accounts::generate);
+fn gen_internal_accounts(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let cpi_accounts = gen_internal_accounts_common(idl, __cpi_client_accounts::generate)?;
+    let client_accounts = gen_internal_accounts_common(idl, __client_accounts::generate)?;
 
-    quote! {
+    Ok(quote! {
         #cpi_accounts
         #client_accounts
-    }
+    })
 }
 
 fn gen_internal_accounts_common(
     idl: &Idl,
     gen_accounts: impl Fn(&AccountsStruct, proc_macro2::TokenStream) -> proc_macro2::TokenStream,
-) -> proc_macro2::TokenStream {
-    let all_ix_accs = get_all_instruction_accounts(idl);
+) -> syn::Result<proc_macro2::TokenStream> {
+    let all_ix_accs = get_all_instruction_accounts(idl)?;
     let accounts = all_ix_accs
         .iter()
         .map(|accs| {
@@ -118,60 +126,75 @@ fn gen_internal_accounts_common(
             } else {
                 quote!(<'info>)
             };
-            let accounts = accs.accounts.iter().map(|acc| match acc {
-                IdlInstructionAccountItem::Single(acc) => {
-                    let name = format_ident!("{}", acc.name);
+            let accounts = accs
+                .accounts
+                .iter()
+                .map(|acc| match acc {
+                    IdlInstructionAccountItem::Single(acc) => {
+                        let name = format_ident!("{}", acc.name);
 
-                    let attrs = {
-                        let signer = acc.signer.then_some(quote!(signer));
-                        let mt = acc.writable.then_some(quote!(mut));
+                        let attrs = {
+                            let signer = acc.signer.then_some(quote!(signer));
+                            let mt = acc.writable.then_some(quote!(mut));
 
-                        match (signer, mt) {
-                            (None, None) => None,
-                            (Some(s), None) => Some(quote!(#s)),
-                            (None, Some(m)) => Some(quote!(#m)),
-                            (Some(s), Some(m)) => Some(quote!(#s, #m)),
-                        }
-                    };
+                            match (signer, mt) {
+                                (None, None) => None,
+                                (Some(s), None) => Some(quote!(#s)),
+                                (None, Some(m)) => Some(quote!(#m)),
+                                (Some(s), Some(m)) => Some(quote!(#s, #m)),
+                            }
+                        };
 
-                    let acc_expr = if acc.optional {
-                        quote! { Option<AccountInfo #generics> }
-                    } else {
-                        quote! { AccountInfo #generics }
-                    };
+                        let acc_expr = if acc.optional {
+                            quote! { Option<AccountInfo #generics> }
+                        } else {
+                            quote! { AccountInfo #generics }
+                        };
 
-                    quote! {
-                        #[account(#attrs)]
-                        pub #name: #acc_expr
+                        Ok(quote! {
+                            #[account(#attrs)]
+                            pub #name: #acc_expr
+                        })
                     }
-                }
-                IdlInstructionAccountItem::Composite(accs) => {
-                    let name = format_ident!("{}", accs.name);
-                    let ty_name = all_ix_accs
-                        .iter()
-                        .find(|a| a.accounts == accs.accounts)
-                        .map(|a| format_ident!("{}", a.name.to_camel_case()))
-                        .expect("Accounts must exist");
+                    IdlInstructionAccountItem::Composite(accs) => {
+                        let name = format_ident!("{}", accs.name);
+                        let ty_name = all_ix_accs
+                            .iter()
+                            .find(|a| a.accounts == accs.accounts)
+                            .map(|a| format_ident!("{}", a.name.to_camel_case()))
+                            .ok_or_else(|| {
+                                syn::Error::new(
+                                    proc_macro2::Span::call_site(),
+                                    format!("Composite account `{}` must exist", accs.name),
+                                )
+                            })?;
 
-                    quote! {
-                        pub #name: #ty_name #generics
+                        Ok(quote! {
+                            pub #name: #ty_name #generics
+                        })
                     }
-                }
-            });
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-            quote! {
+            Ok(quote! {
                 #[derive(Accounts)]
                 pub struct #ident #generics {
                     #(#accounts,)*
                 }
-            }
+            })
         })
-        .map(|accs_struct| {
-            let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
-            let accs_struct =
-                accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
-            gen_accounts(&accs_struct, get_canonical_program_id())
-        });
+        .map(|accs_struct: syn::Result<proc_macro2::TokenStream>| {
+            let accs_struct = accs_struct?;
+            let accs_struct = syn::parse2(accs_struct).map_err(|err| {
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    format!("Failed to parse generated accounts struct: {err}"),
+                )
+            })?;
+            let accs_struct = accounts::parse(&accs_struct)?;
+            Ok(gen_accounts(&accs_struct, get_canonical_program_id()))
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
 
-    quote! { #(#accounts)* }
+    Ok(quote! { #(#accounts)* })
 }

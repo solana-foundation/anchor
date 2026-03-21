@@ -317,8 +317,8 @@ fn get_attr_str(name: impl AsRef<str>, attrs: &[syn::Attribute]) -> Option<Strin
         .reduce(|acc, cur| {
             format!(
                 "{} , {}",
-                acc.get(..acc.len() - 1).unwrap(),
-                cur.get(1..).unwrap()
+                acc.get(..acc.len() - 1).expect("Invariant violation"),
+                cur.get(1..).expect("Invariant violation")
             )
         })
 }
@@ -330,7 +330,11 @@ fn gen_idl_field(
 ) -> Result<(TokenStream, Vec<syn::TypePath>)> {
     let idl = get_idl_module_path();
 
-    let name = field.ident.as_ref().unwrap().to_string();
+    let name = field
+        .ident
+        .as_ref()
+        .expect("Invariant violation")
+        .to_string();
     let docs = match docs::parse(&field.attrs) {
         Some(docs) if !no_docs => quote! { vec![#(#docs.into()),*] },
         _ => quote! { vec![] },
@@ -372,7 +376,7 @@ pub fn gen_idl_type(
                     _ => None,
                 })
                 .collect(),
-            _ => panic!("No angle bracket for {seg:#?}"),
+            _ => unreachable!("No angle bracket for {seg:#?}"),
         }
     }
 
@@ -429,7 +433,7 @@ pub fn gen_idl_type(
             let arg = get_angle_bracketed_type_args(segment)
                 .into_iter()
                 .next()
-                .unwrap();
+                .expect("Invariant violation");
             let (inner, defined) = gen_idl_type(arg, generic_params)?;
             Ok((quote! { #idl::IdlType::Option(Box::new(#inner)) }, defined))
         }
@@ -438,7 +442,7 @@ pub fn gen_idl_type(
             let arg = get_angle_bracketed_type_args(segment)
                 .into_iter()
                 .next()
-                .unwrap();
+                .expect("Invariant violation");
             match arg {
                 syn::Type::Path(path) if the_only_segment_is(path, "u8") => {
                     return Ok((quote! {#idl::IdlType::Bytes}, vec![]));
@@ -453,7 +457,7 @@ pub fn gen_idl_type(
             let arg = get_angle_bracketed_type_args(segment)
                 .into_iter()
                 .next()
-                .unwrap();
+                .expect("Invariant violation");
             gen_idl_type(arg, generic_params)
         }
         syn::Type::Array(arr) => {
@@ -466,7 +470,11 @@ pub fn gen_idl_type(
             let len = if is_generic {
                 match len {
                     syn::Expr::Path(len) => {
-                        let len = len.path.get_ident().unwrap().to_string();
+                        let len = len
+                            .path
+                            .get_ident()
+                            .expect("Invariant violation")
+                            .to_string();
                         quote! { #idl::IdlArrayLen::Generic(#len.into()) }
                     }
                     _ => unreachable!("Array length can only be a generic parameter"),
@@ -501,7 +509,13 @@ pub fn gen_idl_type(
                     .unwrap_or_default();
 
                 if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
-                    let name = path.path.segments.last().unwrap().ident.to_string();
+                    let name = path
+                        .path
+                        .segments
+                        .last()
+                        .expect("Invariant violation")
+                        .ident
+                        .to_string();
                     let alias = ctx.type_aliases().find(|ty| ty.ident == name);
                     if let Some(alias) = alias {
                         if let Some(segment) = path.path.segments.last() {
@@ -515,20 +529,20 @@ pub fn gen_idl_type(
                                                 inner_ty.path.to_token_stream().to_string()
                                             }
                                             _ => {
-                                                unimplemented!("Inner type not implemented: {ty:?}")
+                                                unreachable!("Inner type not implemented: {ty:?}")
                                             }
                                         },
                                         syn::GenericArgument::Const(c) => {
                                             c.to_token_stream().to_string()
                                         }
-                                        _ => unimplemented!("Arg not implemented: {arg:?}"),
+                                        _ => unreachable!("Arg not implemented: {arg:?}"),
                                     })
                                     .collect::<Vec<_>>();
 
                                 let outer = match &*alias.ty {
                                     syn::Type::Path(outer_ty) => outer_ty.path.to_token_stream(),
                                     syn::Type::Array(outer_ty) => outer_ty.to_token_stream(),
-                                    _ => unimplemented!("Type not implemented: {:?}", alias.ty),
+                                    _ => unreachable!("Type not implemented: {:?}", alias.ty),
                                 }
                                 .to_string();
 
@@ -539,7 +553,7 @@ pub fn gen_idl_type(
                                     .map(|param| match param {
                                         syn::GenericParam::Const(param) => param.ident.to_string(),
                                         syn::GenericParam::Type(param) => param.ident.to_string(),
-                                        _ => panic!("Lifetime parameters are not allowed"),
+                                        _ => unreachable!("Lifetime parameters are not allowed"),
                                     })
                                     .enumerate()
                                     .fold(outer, |acc, (i, cur)| {
@@ -644,5 +658,9 @@ pub fn gen_idl_type(
 }
 
 fn get_first_segment(type_path: &syn::TypePath) -> &syn::PathSegment {
-    type_path.path.segments.first().unwrap()
+    type_path
+        .path
+        .segments
+        .first()
+        .expect("Invariant violation")
 }

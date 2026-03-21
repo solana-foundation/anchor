@@ -44,7 +44,7 @@ impl CrateContext {
 
     pub fn root_module(&self) -> ModuleContext<'_> {
         ModuleContext {
-            detail: self.modules.get("crate").unwrap(),
+            detail: self.modules.get("crate").expect("Invariant violation"),
         }
     }
 
@@ -62,7 +62,7 @@ impl CrateContext {
                     })
                 });
                 if !is_documented {
-                    let ident = unsafe_field.ident.as_ref().unwrap();
+                    let ident = unsafe_field.ident.as_ref().expect("Invariant violation");
                     let span = ident.span();
                     // Error if undocumented.
                     return Err(anyhow!(
@@ -74,7 +74,10 @@ impl CrateContext {
         by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/basics/program-structure#account-validation for more information.
                     "#,
-                        ctx.file.canonicalize().unwrap().display(),
+                        ctx.file
+                            .canonicalize()
+                            .expect("Invariant violation")
+                            .display(),
                         span.start().line,
                         span.start().column,
                         ident
@@ -158,8 +161,12 @@ impl ParsedModule {
             None => {
                 // The module is referencing some other file, so we need to load that
                 // to parse the items it has.
-                let parent_dir = parent_file.parent().unwrap();
-                let parent_filename = parent_file.file_stem().unwrap().to_str().unwrap();
+                let parent_dir = parent_file.parent().expect("Invariant violation");
+                let parent_filename = parent_file
+                    .file_stem()
+                    .expect("Invariant violation")
+                    .to_str()
+                    .expect("Invariant violation");
                 let parent_mod_dir = parent_dir.join(parent_filename);
 
                 let possible_file_paths = vec![

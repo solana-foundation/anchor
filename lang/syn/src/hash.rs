@@ -30,7 +30,10 @@ impl Hasher {
         //
         // TODO: Remove once `sha2` (transitively) depends on `generic-array` v1.
         #[allow(deprecated)]
-        Hash(<[u8; HASH_BYTES]>::try_from(self.hasher.finalize().as_slice()).unwrap())
+        Hash(
+            <[u8; HASH_BYTES]>::try_from(self.hasher.finalize().as_slice())
+                .expect("Sha256 finalize must be 32 bytes"),
+        )
     }
 }
 
@@ -77,7 +80,7 @@ impl FromStr for Hash {
 
 impl Hash {
     pub fn new(hash_slice: &[u8]) -> Self {
-        Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap())
+        Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).expect("Hash slice must be 32 bytes"))
     }
 
     pub fn to_bytes(self) -> [u8; HASH_BYTES] {

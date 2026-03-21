@@ -38,59 +38,78 @@ use syn::{
 #[proc_macro_derive(InitSpace, attributes(max_len))]
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
+    match derive_init_space_impl(input) {
+        Ok(expanded) => TokenStream::from(expanded),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+fn derive_init_space_impl(input: DeriveInput) -> syn::Result<TokenStream2> {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let name = input.ident;
+    let name = input.ident.clone();
 
     let process_struct_fields = |fields: Punctuated<Field, Comma>| {
-        let recurse = fields.into_iter().map(|f| {
-            let mut max_len_args = get_max_len_args(&f.attrs);
-            len_from_type(f.ty, &mut max_len_args)
-        });
+        let recurse = fields
+            .into_iter()
+            .map(|f| {
+                let mut max_len_args = get_max_len_args(&f.attrs);
+                len_from_type(f.ty, &mut max_len_args)
+            })
+            .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Ok(quote! {
             #[automatically_derived]
             impl #impl_generics anchor_lang::Space for #name #ty_generics #where_clause {
                 const INIT_SPACE: usize = 0 #(+ #recurse)*;
             }
-        }
+        })
     };
 
-    let expanded: TokenStream2 = match input.data {
+    match input.data {
         syn::Data::Struct(strct) => match strct.fields {
             Fields::Named(named) => process_struct_fields(named.named),
             Fields::Unnamed(unnamed) => process_struct_fields(unnamed.unnamed),
-            Fields::Unit => quote! {
+            Fields::Unit => Ok(quote! {
                 #[automatically_derived]
                 impl #impl_generics anchor_lang::Space for #name #ty_generics #where_clause {
                     const INIT_SPACE: usize = 0;
                 }
-            },
+            }),
         },
         syn::Data::Enum(enm) => {
-            let variants = enm.variants.into_iter().map(|v| {
-                let len = v.fields.into_iter().map(|f| {
-                    let mut max_len_args = get_max_len_args(&f.attrs);
-                    len_from_type(f.ty, &mut max_len_args)
-                });
+            let variants = enm
+                .variants
+                .into_iter()
+                .map(|v| {
+                    let len = v
+                        .fields
+                        .into_iter()
+                        .map(|f| {
+                            let mut max_len_args = get_max_len_args(&f.attrs);
+                            len_from_type(f.ty, &mut max_len_args)
+                        })
+                        .collect::<syn::Result<Vec<_>>>()?;
 
-                quote! {
+                    Ok(quote! {
                     0 #(+ #len)*
-                }
-            });
+                    })
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-            let max = gen_max(variants);
+            let max = gen_max(variants.into_iter());
 
-            quote! {
+            Ok(quote! {
                 #[automatically_derived]
                 impl anchor_lang::Space for #name {
                     const INIT_SPACE: usize = 1 + #max;
                 }
-            }
+            })
         }
-        _ => unimplemented!(),
-    };
-
-    TokenStream::from(expanded)
+        _ => Err(syn::Error::new_spanned(
+            input,
+            "InitSpace can only be derived for structs and enums",
+        )),
+    }
 }
 
 fn gen_max<T: Iterator<Item = TokenStream2>>(mut iter: T) -> TokenStream2 {
@@ -102,52 +121,58 @@ fn gen_max<T: Iterator<Item = TokenStream2>>(mut iter: T) -> TokenStream2 {
     }
 }
 
-fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenStream2 {
+fn len_from_type(
+    ty: Type,
+    attrs: &mut Option<VecDeque<TokenStream2>>,
+) -> syn::Result<TokenStream2> {
     match ty {
         Type::Array(TypeArray { elem, len, .. }) => {
             let array_len = len.to_token_stream();
-            let type_len = len_from_type(*elem, attrs);
-            quote!((#array_len * #type_len))
+            let type_len = len_from_type(*elem, attrs)?;
+            Ok(quote!((#array_len * #type_len)))
         }
         Type::Path(ty_path) => {
-            let path_segment = ty_path.path.segments.last().unwrap();
+            let path_segment =
+                ty_path.path.segments.last().ok_or_else(|| {
+                    syn::Error::new_spanned(&ty_path.path, "Expected a path segment")
+                })?;
             let ident = &path_segment.ident;
             let type_name = ident.to_string();
             let first_ty = get_first_ty_arg(&path_segment.arguments);
 
             match type_name.as_str() {
-                "i8" | "u8" | "bool" => quote!(1),
-                "i16" | "u16" => quote!(2),
-                "i32" | "u32" | "f32" => quote!(4),
-                "i64" | "u64" | "f64" => quote!(8),
-                "i128" | "u128" => quote!(16),
+                "i8" | "u8" | "bool" => Ok(quote!(1)),
+                "i16" | "u16" => Ok(quote!(2)),
+                "i32" | "u32" | "f32" => Ok(quote!(4)),
+                "i64" | "u64" | "f64" => Ok(quote!(8)),
+                "i128" | "u128" => Ok(quote!(16)),
                 "String" => {
                     let max_len = get_next_arg(ident, attrs);
-                    quote!((4 + #max_len))
+                    Ok(quote!((4 + #max_len)))
                 }
-                "Pubkey" => quote!(32),
+                "Pubkey" => Ok(quote!(32)),
                 "Option" => {
                     if let Some(ty) = first_ty {
-                        let type_len = len_from_type(ty, attrs);
+                        let type_len = len_from_type(ty, attrs)?;
 
-                        quote!((1 + #type_len))
+                        Ok(quote!((1 + #type_len)))
                     } else {
-                        quote_spanned!(ident.span() => compile_error!("Invalid argument in Option"))
+                        Err(syn::Error::new(ident.span(), "Invalid argument in Option"))
                     }
                 }
                 "Vec" => {
                     if let Some(ty) = first_ty {
                         let max_len = get_next_arg(ident, attrs);
-                        let type_len = len_from_type(ty, attrs);
+                        let type_len = len_from_type(ty, attrs)?;
 
-                        quote!((4 + #type_len * #max_len))
+                        Ok(quote!((4 + #type_len * #max_len)))
                     } else {
-                        quote_spanned!(ident.span() => compile_error!("Invalid argument in Vec"))
+                        Err(syn::Error::new(ident.span(), "Invalid argument in Vec"))
                     }
                 }
                 _ => {
                     let ty = &ty_path.path;
-                    quote!(<#ty as anchor_lang::Space>::INIT_SPACE)
+                    Ok(quote!(<#ty as anchor_lang::Space>::INIT_SPACE))
                 }
             }
         }
@@ -155,12 +180,13 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             let recurse = ty_tuple
                 .elems
                 .iter()
-                .map(|t| len_from_type(t.clone(), attrs));
-            quote! {
+                .map(|t| len_from_type(t.clone(), attrs))
+                .collect::<syn::Result<Vec<_>>>()?;
+            Ok(quote! {
                 (0 #(+ #recurse)*)
-            }
+            })
         }
-        _ => panic!("Type {ty:?} is not supported"),
+        _ => Err(syn::Error::new_spanned(ty, "Type is not supported")),
     }
 }
 
@@ -207,5 +233,32 @@ fn get_next_arg(ident: &Ident, args: &mut Option<VecDeque<TokenStream2>>) -> Tok
         }
     } else {
         quote_spanned!(ident.span() => compile_error!("Expected max_len attribute."))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quote::quote;
+
+    #[test]
+    fn init_space_rejects_unions() {
+        let input: DeriveInput = syn::parse2(quote! {
+            union Unsupported {
+                value: u64,
+            }
+        })
+        .expect("test input should parse");
+
+        let err = derive_init_space_impl(input).expect_err("union should be rejected");
+        assert!(err.to_string().contains("InitSpace can only be derived"));
+    }
+
+    #[test]
+    fn init_space_rejects_unsupported_field_types() {
+        let ty: Type = syn::parse2(quote! { &[u8] }).expect("test input should parse");
+
+        let err = len_from_type(ty, &mut None).expect_err("slice type should be rejected");
+        assert!(err.to_string().contains("Type is not supported"));
     }
 }

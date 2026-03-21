@@ -56,14 +56,20 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 pub fn generate_composite(f: &CompositeField) -> proc_macro2::TokenStream {
-    let checks: Vec<proc_macro2::TokenStream> = linearize(&f.constraints)
+    let checks = match linearize(&f.constraints)
         .iter()
         .map(|c| match c {
-            Constraint::Raw(_) => c,
-            _ => panic!("Invariant violation: composite constraints can only be raw or literals"),
+            Constraint::Raw(_) => Ok(generate_constraint_composite(f, c)),
+            _ => Err(syn::Error::new_spanned(
+                &f.ident,
+                "Invariant violation: composite constraints can only be raw or literals",
+            )),
         })
-        .map(|c| generate_constraint_composite(f, c))
-        .collect();
+        .collect::<syn::Result<Vec<_>>>()
+    {
+        Ok(checks) => checks,
+        Err(err) => return err.to_compile_error(),
+    };
     quote! {
         #(#checks)*
     }
@@ -173,7 +179,7 @@ fn generate_constraint(
 fn generate_constraint_composite(f: &CompositeField, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
-        _ => panic!("Invariant violation"),
+        _ => unreachable!("Invariant violation"),
     }
 }
 
@@ -244,7 +250,7 @@ pub fn generate_constraint_zeroed(
             };
             if other_field.is_optional {
                 quote! {
-                    if #other.is_some() && #field.key == &#other.as_ref().unwrap().key() {
+                    if #other.is_some() && #field.key == &#other.as_ref().expect("Invariant violation").key() {
                         return #err;
                     }
                 }
@@ -439,15 +445,15 @@ fn generate_constraint_realloc(
         let __field_info = #field.to_account_info();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 
-        let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
-            .checked_sub(::std::convert::TryInto::try_into(__field_info.data_len()).unwrap())
-            .unwrap();
+        let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).expect("Invariant violation"))
+            .checked_sub(::std::convert::TryInto::try_into(__field_info.data_len()).expect("Invariant violation"))
+            .expect("Invariant violation");
 
         if __delta_space != 0 {
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).expect("Invariant violation") > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -460,13 +466,13 @@ fn generate_constraint_realloc(
                                 to: __field_info.clone(),
                             },
                         ),
-                        __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
+                        __new_rent_minimum.checked_sub(__field_info.lamports()).expect("Invariant violation"),
                     )?;
                 }
             } else {
-                let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
-                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
-                **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
+                let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).expect("Invariant violation");
+                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).expect("Invariant violation");
+                **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).expect("Invariant violation");
             }
 
             __field_info.resize(#new_space)?;
@@ -1025,11 +1031,11 @@ fn generate_constraint_init_group(
                                         ::anchor_spl::token_interface::permanent_delegate_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PermanentDelegateInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        }), #permanent_delegate.unwrap())?;
+                                        }), #permanent_delegate.expect("Invariant violation"))?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
-                                    _ => unimplemented!("{e:?}"),
+                                    _ => unreachable!("{e:?}"),
                                 }
                             };
                         }
@@ -1417,7 +1423,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupPointerExtension.into());
                 }
                 #group_pointer_authority_optional_check
-                if group_pointer.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_pointer_authority.key()))? {
+                if group_pointer.expect("Invariant violation").authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_pointer_authority.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupPointerExtensionAuthority.into());
                 }
             }
@@ -1435,7 +1441,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupPointerExtension.into());
                 }
                 #group_pointer_group_address_optional_check
-                if group_pointer.unwrap().group_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_pointer_group_address.key()))? {
+                if group_pointer.expect("Invariant violation").group_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_pointer_group_address.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupPointerExtensionGroupAddress.into());
                 }
             }
@@ -1453,7 +1459,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupMemberPointerExtension.into());
                 }
                 #group_member_pointer_authority_optional_check
-                if group_member_pointer.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_member_pointer_authority.key()))? {
+                if group_member_pointer.expect("Invariant violation").authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_member_pointer_authority.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupMemberPointerExtensionAuthority.into());
                 }
             }
@@ -1471,7 +1477,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupMemberPointerExtension.into());
                 }
                 #group_member_pointer_member_address_optional_check
-                if group_member_pointer.unwrap().member_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_member_pointer_member_address.key()))? {
+                if group_member_pointer.expect("Invariant violation").member_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#group_member_pointer_member_address.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintGroupMemberPointerExtensionMemberAddress.into());
                 }
             }
@@ -1489,7 +1495,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMetadataPointerExtension.into());
                 }
                 #metadata_pointer_authority_optional_check
-                if metadata_pointer.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#metadata_pointer_authority.key()))? {
+                if metadata_pointer.expect("Invariant violation").authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#metadata_pointer_authority.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMetadataPointerExtensionAuthority.into());
                 }
             }
@@ -1507,7 +1513,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMetadataPointerExtension.into());
                 }
                 #metadata_pointer_metadata_address_optional_check
-                if metadata_pointer.unwrap().metadata_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#metadata_pointer_metadata_address.key()))? {
+                if metadata_pointer.expect("Invariant violation").metadata_address != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#metadata_pointer_metadata_address.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMetadataPointerExtensionMetadataAddress.into());
                 }
             }
@@ -1525,7 +1531,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintCloseAuthorityExtension.into());
                 }
                 #close_authority_optional_check
-                if close_authority.unwrap().close_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#close_authority.key()))? {
+                if close_authority.expect("Invariant violation").close_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#close_authority.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintCloseAuthorityExtensionAuthority.into());
                 }
             }
@@ -1543,7 +1549,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintPermanentDelegateExtension.into());
                 }
                 #permanent_delegate_optional_check
-                if permanent_delegate.unwrap().delegate != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#permanent_delegate.key()))? {
+                if permanent_delegate.expect("Invariant violation").delegate != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#permanent_delegate.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintPermanentDelegateExtensionDelegate.into());
                 }
             }
@@ -1561,7 +1567,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferHookExtension.into());
                 }
                 #transfer_hook_authority_optional_check
-                if transfer_hook.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_hook_authority.key()))? {
+                if transfer_hook.expect("Invariant violation").authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_hook_authority.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferHookExtensionAuthority.into());
                 }
             }
@@ -1579,7 +1585,7 @@ fn generate_constraint_mint(
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferHookExtension.into());
                 }
                 #transfer_hook_program_id_optional_check
-                if transfer_hook.unwrap().program_id != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_hook_program_id.key()))? {
+                if transfer_hook.expect("Invariant violation").program_id != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#transfer_hook_program_id.key()))? {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintTransferHookExtensionProgramId.into());
                 }
             }

@@ -124,10 +124,17 @@ pub fn parse_return(method: &syn::ItemFn) -> ParseResult<IxReturn> {
                 _ => return Err(ParseError::new(ty.span(), "expected a return type")),
             };
             // Assume unit return by default
-            let default_generic_arg = syn::GenericArgument::Type(syn::parse_str("()").unwrap());
-            let generic_args = match &ty.path.segments.last().unwrap().arguments {
+            let default_generic_arg =
+                syn::GenericArgument::Type(syn::parse_str("()").expect("Invariant violation"));
+            let generic_args = match &ty
+                .path
+                .segments
+                .last()
+                .expect("Invariant violation")
+                .arguments
+            {
                 syn::PathArguments::AngleBracketed(params) => {
-                    params.args.iter().next_back().unwrap()
+                    params.args.iter().next_back().expect("Invariant violation")
                 }
                 _ => &default_generic_arg,
             };

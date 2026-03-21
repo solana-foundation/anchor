@@ -743,7 +743,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             match (self.space.is_some(), initializing_token_program_acc) {
                 (true, true) => {
                     return Err(ParseError::new(
-                        self.space.as_ref().unwrap().span(),
+                        self.space.as_ref().expect("self.space is some").span(),
                         "space is not required for initializing an spl account",
                     ));
                 }
@@ -961,7 +961,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             init: init.as_ref().map(|i| Ok(ConstraintInitGroup {
                 if_needed: i.if_needed,
                 seeds: seeds.clone(),
-                payer: into_inner!(payer.clone()).unwrap().target,
+                payer: into_inner!(payer.clone()).expect("payer is some").target,
                 space: space.clone().map(|s| s.space.clone()),
                 kind: if let Some(tm) = &token_mint {
                     InitKind::Token {
@@ -1012,9 +1012,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 },
             })).transpose()?,
             realloc: realloc.as_ref().map(|r| ConstraintReallocGroup {
-                payer: into_inner!(realloc_payer).unwrap().target,
+                payer: into_inner!(realloc_payer).expect("realloc_payer is some").target,
                 space: r.space.clone(),
-                zero: into_inner!(realloc_zero).unwrap().zero,
+                zero: into_inner!(realloc_zero).expect("realloc_zero is some").zero,
             }),
             zeroed: into_inner!(zeroed),
             mutable: into_inner!(mutable),

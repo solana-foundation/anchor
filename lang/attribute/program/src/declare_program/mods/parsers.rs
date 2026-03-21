@@ -4,12 +4,12 @@ use quote::{format_ident, quote};
 
 use super::common::{get_all_instruction_accounts, get_canonical_program_id};
 
-pub fn gen_parsers_mod(idl: &Idl) -> proc_macro2::TokenStream {
+pub fn gen_parsers_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
     let account = gen_account(idl);
     let event = gen_event(idl);
-    let instruction = gen_instruction(idl);
+    let instruction = gen_instruction(idl)?;
 
-    quote! {
+    Ok(quote! {
         /// Program parsers.
         #[cfg(not(target_os = "solana"))]
         pub mod parsers {
@@ -19,7 +19,7 @@ pub fn gen_parsers_mod(idl: &Idl) -> proc_macro2::TokenStream {
             #event
             #instruction
         }
-    }
+    })
 }
 
 fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
@@ -114,7 +114,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
     }
 }
 
-fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
+fn gen_instruction(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
     let variants = idl
         .instructions
         .iter()
@@ -126,10 +126,12 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
             name: &str,
             ix_accs: &[IdlInstructionAccountItem],
             all_ix_accs: &[IdlInstructionAccounts],
-        ) -> proc_macro2::TokenStream {
+        ) -> syn::Result<proc_macro2::TokenStream> {
             let name = format_ident!("{}", name.to_camel_case());
-            let fields = ix_accs.iter().map(|acc| match acc {
-                IdlInstructionAccountItem::Single(acc) => {
+            let fields = ix_accs
+                .iter()
+                .map(|acc| match acc {
+                    IdlInstructionAccountItem::Single(acc) => {
                     let name = format_ident!("{}", acc.name);
                     let signer = acc.signer;
                     let writable = acc.writable;
@@ -137,7 +139,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                     if optional {
                         // For optional accounts, the program ID is used as a placeholder when missing
                         let program_id = get_canonical_program_id();
-                        quote! {
+                        Ok(quote! {
                             #name: {
                                 let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
                                 // Check if this is a placeholder (program_id used for missing optional accounts)
@@ -153,9 +155,9 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                                     Some(acc.pubkey)
                                 }
                             }
-                        }
+                        })
                     } else {
-                        quote! {
+                        Ok(quote! {
                             #name: {
                                 let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
                                 if acc.is_signer != #signer {
@@ -167,30 +169,36 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
 
                                 acc.pubkey
                             }
-                        }
+                        })
                     }
                 }
-                IdlInstructionAccountItem::Composite(accs) => {
-                    let name = format_ident!("{}", accs.name);
-                    let accounts = all_ix_accs
-                        .iter()
-                        .find(|a| a.accounts == accs.accounts)
-                        .map(|a| gen_accounts(&a.name, &a.accounts, all_ix_accs))
-                        .expect("Accounts must exist");
-                    quote! { #name: #accounts }
-                }
-            });
+                    IdlInstructionAccountItem::Composite(accs) => {
+                        let name = format_ident!("{}", accs.name);
+                        let accounts = all_ix_accs
+                            .iter()
+                            .find(|a| a.accounts == accs.accounts)
+                            .ok_or_else(|| {
+                                syn::Error::new(
+                                    proc_macro2::Span::call_site(),
+                                    format!("Composite account `{}` must exist", accs.name),
+                                )
+                            })?;
+                        let accounts = gen_accounts(&accounts.name, &accounts.accounts, all_ix_accs)?;
+                        Ok(quote! { #name: #accounts })
+                    }
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-            quote! { client::accounts::#name { #(#fields,)* } }
+            Ok(quote! { client::accounts::#name { #(#fields,)* } })
         }
 
-        let all_ix_accs = get_all_instruction_accounts(idl);
+        let all_ix_accs = get_all_instruction_accounts(idl)?;
         idl.instructions
             .iter()
             .map(|ix| {
                 let name = format_ident!("{}", ix.name.to_camel_case());
-                let accounts = gen_accounts(&ix.name, &ix.accounts, &all_ix_accs);
-                quote! {
+                let accounts = gen_accounts(&ix.name, &ix.accounts, &all_ix_accs)?;
+                Ok(quote! {
                     if ix.data.starts_with(client::args::#name::DISCRIMINATOR) {
                         let mut accs = ix.accounts.to_owned().into_iter();
                         return Ok(Self::#name {
@@ -200,15 +208,15 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                             )?
                         })
                     }
-                }
+                })
             })
-            .collect::<Vec<_>>()
+            .collect::<syn::Result<Vec<_>>>()?
     };
 
     let solana_instruction = quote!(anchor_lang::solana_program::instruction::Instruction);
     let program_id = get_canonical_program_id();
 
-    quote! {
+    Ok(quote! {
         /// An enum that includes all instructions of the declared program.
         ///
         /// See [`Self::parse`] to create an instance from
@@ -250,5 +258,5 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                 Err(ProgramError::InvalidInstructionData.into())
             }
         }
-    }
+    })
 }

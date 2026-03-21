@@ -41,7 +41,9 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             let offset_of_ident = to_private_ident(format!("offset_of_{field_ident}"));
             let size_of_ident = to_private_ident(format!("size_of_{field_ident}"));
 
-            let offset = i.eq(&0).then(|| quote!(#disc_len)).unwrap_or_else(|| {
+            let offset = if i == 0 {
+                quote!(#disc_len)
+            } else {
                 // Current offset is the previous field's offset + size
                 strct
                     .fields
@@ -53,8 +55,13 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                         let size_of_ident = to_private_ident(format!("size_of_{field_ident}"));
                         quote! { self.#offset_of_ident() + self.#size_of_ident() }
                     })
-                    .expect("Previous field should always exist when i > 0")
-            });
+                    .ok_or_else(|| {
+                        syn::Error::new(
+                            proc_macro2::Span::call_site(),
+                            "Previous field should always exist when i > 0",
+                        )
+                    })?
+            };
 
             let ty = &field.ty;
             let ty_as_lazy = quote! { <#ty as anchor_lang::__private::Lazy> };
@@ -116,7 +123,9 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     self.#initialize_fields();
 
                     // Return early if initialized
-                    if self.__fields.borrow().as_ref().unwrap()[#i] {
+                    if self.__fields.borrow().as_ref().expect(
+                        "lazy account fields should be initialized"
+                    )[#i] {
                         return Ok(f());
                     }
 
@@ -134,7 +143,9 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                      };
 
                     // Set initialized
-                    self.__fields.borrow_mut().as_mut().unwrap()[#i] = true;
+                    self.__fields.borrow_mut().as_mut().expect(
+                        "lazy account fields should be initialized"
+                    )[#i] = true;
 
                     Ok(f())
                 }
@@ -222,7 +233,9 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 let all_uninit = {
                     // Return early if all fields are initialized
                     let fields = self.__fields.borrow();
-                    let fields = fields.as_ref().unwrap();
+                    let fields = fields
+                        .as_ref()
+                        .expect("lazy account fields should be initialized");
                     if !fields.contains(&false) {
                         return Ok(f());
                     }
@@ -239,7 +252,9 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
 
                     // Set fields to initialized
                     let mut fields = self.__fields.borrow_mut();
-                    let fields = fields.as_mut().unwrap();
+                    let fields = fields
+                        .as_mut()
+                        .expect("lazy account fields should be initialized");
                     for field in fields {
                         *field = true;
                     }

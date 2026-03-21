@@ -5,7 +5,7 @@ use std::{env, fs, path::PathBuf};
 
 use anchor_lang_idl::{convert::convert_idl, types::Idl};
 use anyhow::anyhow;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::parse::{Parse, ParseStream};
 
 use common::gen_docs;
@@ -28,10 +28,9 @@ impl Parse for DeclareProgram {
     }
 }
 
-impl ToTokens for DeclareProgram {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let program = gen_program(&self.idl, &self.name);
-        tokens.extend(program)
+impl DeclareProgram {
+    pub fn generate(&self) -> syn::Result<proc_macro2::TokenStream> {
+        gen_program(&self.idl, &self.name)
     }
 }
 
@@ -51,27 +50,27 @@ fn get_idl(name: &syn::Ident) -> anyhow::Result<Idl> {
         .map(|buf| convert_idl(&buf))?
 }
 
-fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
+fn gen_program(idl: &Idl, name: &syn::Ident) -> syn::Result<proc_macro2::TokenStream> {
     let docs = gen_program_docs(idl);
     let id = gen_id(idl);
     let program_mod = gen_program_mod(&idl.metadata.name);
 
     // Defined
-    let constants_mod = gen_constants_mod(idl);
-    let accounts_mod = gen_accounts_mod(idl);
-    let events_mod = gen_events_mod(idl);
-    let types_mod = gen_types_mod(idl);
+    let constants_mod = gen_constants_mod(idl)?;
+    let accounts_mod = gen_accounts_mod(idl)?;
+    let events_mod = gen_events_mod(idl)?;
+    let types_mod = gen_types_mod(idl)?;
     let errors_mod = gen_errors_mod(idl);
 
     // Clients
-    let cpi_mod = gen_cpi_mod(idl);
+    let cpi_mod = gen_cpi_mod(idl)?;
     let client_mod = gen_client_mod(idl);
-    let internal_mod = gen_internal_mod(idl);
+    let internal_mod = gen_internal_mod(idl)?;
 
     // Utils
-    let parsers_mod = gen_parsers_mod(idl);
+    let parsers_mod = gen_parsers_mod(idl)?;
 
-    quote! {
+    Ok(quote! {
         #docs
         pub mod #name {
             #[cfg(any(target_os = "solana", feature = "idl-build"))]
@@ -99,7 +98,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
 
             #parsers_mod
         }
-    }
+    })
 }
 
 fn gen_program_docs(idl: &Idl) -> proc_macro2::TokenStream {

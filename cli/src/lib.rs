@@ -341,6 +341,9 @@ pub enum Command {
         /// Skip checking for program ID mismatch between keypair and declare_id
         #[clap(long)]
         ignore_keys: bool,
+        /// Do not build the IDL
+        #[clap(long)]
+        no_idl: bool,
         /// Validator type to use for local testing
         #[clap(value_enum, long, default_value = "surfpool")]
         validator: ValidatorType,
@@ -1289,6 +1292,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_deploy,
             skip_lint,
             ignore_keys,
+            no_idl,
             validator,
             env,
             cargo_args,
@@ -1298,6 +1302,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_deploy,
             skip_lint,
             ignore_keys,
+            no_idl,
             validator,
             env,
             cargo_args,
@@ -1951,6 +1956,7 @@ fn build_rust_cwd(
 fn build_cwd_verifiable(
     cfg: &WithPath<Config>,
     cargo_toml: PathBuf,
+    no_idl: bool,
     build_config: &BuildConfig,
     stdout: Option<File>,
     stderr: Option<File>,
@@ -1988,39 +1994,41 @@ fn build_cwd_verifiable(
             eprintln!("Error during Docker build: {e:?}");
         }
         Ok(_) => {
-            // Build the idl.
-            println!("Extracting the IDL");
-            let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
-            // Write out the JSON file.
-            println!("Writing the IDL file");
-            let out_file = workspace_dir
-                .join("target")
-                .join("idl")
-                .join(&idl.metadata.name)
-                .with_extension("json");
-            write_idl(&idl, OutFile::File(out_file))?;
+            if !no_idl {
+                // Build the idl.
+                println!("Extracting the IDL");
+                let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
+                // Write out the JSON file.
+                println!("Writing the IDL file");
+                let out_file = workspace_dir
+                    .join("target")
+                    .join("idl")
+                    .join(&idl.metadata.name)
+                    .with_extension("json");
+                write_idl(&idl, OutFile::File(out_file))?;
 
-            // Write out the TypeScript type.
-            println!("Writing the .ts file");
-            let ts_file = workspace_dir
-                .join("target")
-                .join("types")
-                .join(&idl.metadata.name)
-                .with_extension("ts");
-            fs::write(&ts_file, idl_ts(&idl)?)?;
+                // Write out the TypeScript type.
+                println!("Writing the .ts file");
+                let ts_file = workspace_dir
+                    .join("target")
+                    .join("types")
+                    .join(&idl.metadata.name)
+                    .with_extension("ts");
+                fs::write(&ts_file, idl_ts(&idl)?)?;
 
-            // Copy out the TypeScript type.
-            if !&cfg.workspace.types.is_empty() {
-                fs::copy(
-                    ts_file,
-                    workspace_dir
-                        .join(&cfg.workspace.types)
-                        .join(idl.metadata.name)
-                        .with_extension("ts"),
-                )?;
+                // Copy out the TypeScript type.
+                if !&cfg.workspace.types.is_empty() {
+                    fs::copy(
+                        ts_file,
+                        workspace_dir
+                            .join(&cfg.workspace.types)
+                            .join(idl.metadata.name)
+                            .with_extension("ts"),
+                    )?;
+                }
+
+                println!("Build success");
             }
-
-            println!("Build success");
         }
     }
 
@@ -4743,6 +4751,7 @@ fn localnet(
     skip_deploy: bool,
     skip_lint: bool,
     ignore_keys: bool,
+    no_idl: bool,
     validator_type: ValidatorType,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
@@ -4752,7 +4761,7 @@ fn localnet(
         if !skip_build {
             build(
                 cfg_override,
-                false,
+                no_idl,
                 None,
                 None,
                 false,

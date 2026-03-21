@@ -11,7 +11,8 @@ pub fn constant(
     {
         use quote::quote;
 
-        let ts = match syn::parse(input).unwrap() {
+        let input_clone = input.clone();
+        let ts = match syn::parse(input_clone) {
             syn::Item::Const(item) => {
                 let idl_print = anchor_syn::idl::gen_idl_print_fn_constant(&item);
                 quote! {
@@ -20,6 +21,7 @@ pub fn constant(
                 }
             }
             item => quote! {#item},
+            Err(err) => return err.to_compile_error().into(),
         };
 
         return proc_macro::TokenStream::from(quote! {

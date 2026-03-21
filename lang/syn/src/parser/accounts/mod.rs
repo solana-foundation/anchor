@@ -120,7 +120,12 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             ));
         }
 
-        let kind = &init_fields[0].constraints.init.as_ref().unwrap().kind;
+        let kind = &init_fields[0]
+            .constraints
+            .init
+            .as_ref()
+            .expect("Invariant violation")
+            .kind;
         // init token/a_token/mint needs token program.
         match kind {
             InitKind::Program { .. } | InitKind::Interface { .. } => (),
@@ -160,7 +165,13 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for (pos, field) in init_fields.iter().enumerate() {
             // Get payer for init-ed account
-            let associated_payer_name = match field.constraints.init.clone().unwrap().payer {
+            let associated_payer_name = match field
+                .constraints
+                .init
+                .clone()
+                .expect("Invariant violation")
+                .payer
+            {
                 // composite payer, check not supported
                 Expr::Field(_) => continue,
                 // method call, check not supported
@@ -194,7 +205,13 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     ));
                 }
             }
-            match &field.constraints.init.as_ref().unwrap().kind {
+            match &field
+                .constraints
+                .init
+                .as_ref()
+                .expect("Invariant violation")
+                .kind
+            {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
                 // this if I'm wrong.
@@ -214,7 +231,13 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 // Make sure initialized token accounts are always declared after their corresponding mint.
                 InitKind::Mint { .. } => {
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
-                        match &f.constraints.init.as_ref().unwrap().kind {
+                        match &f
+                            .constraints
+                            .init
+                            .as_ref()
+                            .expect("Invariant violation")
+                            .kind
+                        {
                             InitKind::Token { mint, .. }
                             | InitKind::AssociatedToken { mint, .. } => {
                                 field.ident == mint.to_token_stream().to_string() && pos > f_pos
@@ -262,7 +285,13 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for field in realloc_fields {
             // Get allocator for realloc-ed account
-            let associated_payer_name = match field.constraints.realloc.clone().unwrap().payer {
+            let associated_payer_name = match field
+                .constraints
+                .realloc
+                .clone()
+                .expect("Invariant violation")
+                .payer
+            {
                 // composite allocator, check not supported
                 Expr::Field(_) => continue,
                 // method call, check not supported
@@ -304,7 +333,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 }
 
 pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
-    let ident = f.ident.clone().unwrap();
+    let ident = f.ident.clone().expect("Invariant violation");
     let docs = docs::parse(&f.attrs);
     let account_field = match is_field_primitive(f)? {
         true => {

@@ -52,13 +52,24 @@ pub fn access_control(
 ) -> proc_macro::TokenStream {
     let mut args = args.to_string();
     args.retain(|c| !c.is_whitespace());
-    let access_control: Vec<proc_macro2::TokenStream> = args
+    let access_control = args
         .split(')')
         .filter(|ac| !ac.is_empty())
         .map(|ac| format!("{ac})")) // Put back on the split char.
         .map(|ac| format!("{ac}?;")) // Add `?;` syntax.
-        .map(|ac| ac.parse().unwrap())
-        .collect();
+        .map(|ac| {
+            ac.parse::<proc_macro2::TokenStream>().map_err(|_| {
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "Invalid access control syntax",
+                )
+            })
+        })
+        .collect::<syn::Result<Vec<_>>>();
+    let access_control = match access_control {
+        Ok(access_control) => access_control,
+        Err(err) => return err.to_compile_error().into(),
+    };
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
 

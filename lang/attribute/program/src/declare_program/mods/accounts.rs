@@ -3,17 +3,25 @@ use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_def_to_ts, gen_discriminator, get_canonical_program_id};
 
-pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
-    let accounts = idl.accounts.iter().map(|acc| {
-        let name = format_ident!("{}", acc.name);
-        let discriminator = gen_discriminator(&acc.discriminator);
-        let disc = quote! { #name::DISCRIMINATOR };
+pub fn gen_accounts_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let accounts = idl
+        .accounts
+        .iter()
+        .map(|acc| {
+            let name = format_ident!("{}", acc.name);
+            let discriminator = gen_discriminator(&acc.discriminator);
+            let disc = quote! { #name::DISCRIMINATOR };
 
-        let ty_def = idl
-            .types
-            .iter()
-            .find(|ty| ty.name == acc.name)
-            .expect("Type must exist");
+            let ty_def = idl
+                .types
+                .iter()
+                .find(|ty| ty.name == acc.name)
+                .ok_or_else(|| {
+                    syn::Error::new(
+                        proc_macro2::Span::call_site(),
+                        format!("Account type `{}` must exist in the IDL", acc.name),
+                    )
+                })?;
 
         let impls = {
             let try_deserialize = quote! {
@@ -88,32 +96,33 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
             }
         };
 
-        let type_def_ts = convert_idl_type_def_to_ts(ty_def, &idl.types);
-        let program_id = get_canonical_program_id();
+            let type_def_ts = convert_idl_type_def_to_ts(ty_def, &idl.types)?;
+            let program_id = get_canonical_program_id();
 
-        quote! {
-            #type_def_ts
+            Ok(quote! {
+                #type_def_ts
 
-            #impls
+                #impls
 
-            impl anchor_lang::Discriminator for #name {
-                const DISCRIMINATOR: &'static [u8] = &#discriminator;
-            }
-
-            impl anchor_lang::Owner for #name {
-                fn owner() -> Pubkey {
-                    #program_id
+                impl anchor_lang::Discriminator for #name {
+                    const DISCRIMINATOR: &'static [u8] = &#discriminator;
                 }
-            }
-        }
-    });
 
-    quote! {
+                impl anchor_lang::Owner for #name {
+                    fn owner() -> Pubkey {
+                        #program_id
+                    }
+                }
+            })
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
+
+    Ok(quote! {
         /// Program account type definitions.
         pub mod accounts {
             use super::*;
 
             #(#accounts)*
         }
-    }
+    })
 }

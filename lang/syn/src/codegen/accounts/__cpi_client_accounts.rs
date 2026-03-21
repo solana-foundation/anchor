@@ -17,7 +17,7 @@ pub fn generate(
         accs.ident.to_string().to_snake_case()
     )
     .parse()
-    .unwrap();
+    .expect("Invariant violation");
 
     let account_struct_fields: Vec<proc_macro2::TokenStream> = accs
         .fields
@@ -31,7 +31,7 @@ pub fn generate(
                             proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .expect("Invariant violation")
                         })
                         .collect()
                 } else {
@@ -43,7 +43,7 @@ pub fn generate(
                     s.symbol,
                 )
                 .parse()
-                .unwrap();
+                .expect("Invariant violation");
                 quote! {
                     #docs
                     pub #name: #symbol<'info>
@@ -57,7 +57,7 @@ pub fn generate(
                             proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .expect("Invariant violation")
                         })
                         .collect()
                 } else {
@@ -152,7 +152,7 @@ pub fn generate(
         re_exports
             .iter()
             .map(|symbol: &String| {
-                let symbol: proc_macro2::TokenStream = symbol.parse().unwrap();
+                let symbol: proc_macro2::TokenStream = symbol.parse().expect("Invariant violation");
                 quote! {
                     pub use #symbol;
                 }
@@ -167,7 +167,7 @@ pub fn generate(
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))
-    .unwrap();
+    .expect("Invariant violation");
     quote! {
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a CPI struct for a given

@@ -29,7 +29,12 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 let ident = &f.ident;
                 let name_str = ident.to_string();
                 if f.constraints.is_close() {
-                    let close_target = &f.constraints.close.as_ref().unwrap().sol_dest;
+                    let close_target = &f
+                        .constraints
+                        .close
+                        .as_ref()
+                        .expect("Invariant violation")
+                        .sol_dest;
                     let close_target_optional_check =
                         OptionalCheckScope::new(accs).generate_check(close_target);
 

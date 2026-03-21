@@ -4,12 +4,12 @@ use quote::{format_ident, quote};
 
 use super::common::{convert_idl_type_to_syn_type, gen_accounts_common};
 
-pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
-    let cpi_instructions = gen_cpi_instructions(idl);
+pub fn gen_cpi_mod(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let cpi_instructions = gen_cpi_instructions(idl)?;
     let cpi_return_type = gen_cpi_return_type();
     let cpi_accounts_mod = gen_cpi_accounts_mod(idl);
 
-    quote! {
+    Ok(quote! {
         /// Cross program invocation (CPI) helpers.
         pub mod cpi {
             use super::*;
@@ -18,11 +18,14 @@ pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
             #cpi_return_type
             #cpi_accounts_mod
         }
-    }
+    })
 }
 
-fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
-    let ixs = idl.instructions.iter().map(|ix| {
+fn gen_cpi_instructions(idl: &Idl) -> syn::Result<proc_macro2::TokenStream> {
+    let ixs = idl
+        .instructions
+        .iter()
+        .map(|ix| {
         let method_name = format_ident!("{}", ix.name);
         let accounts_ident = format_ident!("{}", ix.name.to_camel_case());
 
@@ -32,11 +35,15 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             quote!(<'info>)
         };
 
-        let args = ix.args.iter().map(|arg| {
-            let name = format_ident!("{}", arg.name);
-            let ty = convert_idl_type_to_syn_type(&arg.ty);
-            quote! { #name: #ty }
-        });
+        let args = ix
+            .args
+            .iter()
+            .map(|arg| {
+                let name = format_ident!("{}", arg.name);
+                let ty = convert_idl_type_to_syn_type(&arg.ty)?;
+                Ok(quote! { #name: #ty })
+            })
+            .collect::<syn::Result<Vec<_>>>()?;
 
         let arg_value = if ix.args.is_empty() {
             quote! { #accounts_ident }
@@ -51,7 +58,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
 
         let (ret_type, ret_value) = match ix.returns.as_ref() {
             Some(ty) => {
-                let ty = convert_idl_type_to_syn_type(ty);
+                let ty = convert_idl_type_to_syn_type(ty)?;
                 (
                     quote! { anchor_lang::Result<Return::<#ty>> },
                     quote! { Ok(Return::<#ty> { phantom: std::marker::PhantomData }) },
@@ -63,7 +70,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             )
         };
 
-        quote! {
+        Ok(quote! {
             pub fn #method_name<'a, 'b, 'c, 'info>(
                 ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
                 #(#args),*
@@ -93,12 +100,13 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                     |_| { #ret_value }
                 )
             }
-        }
-    });
+        })
+    })
+        .collect::<syn::Result<Vec<_>>>()?;
 
-    quote! {
+    Ok(quote! {
         #(#ixs)*
-    }
+    })
 }
 
 fn gen_cpi_return_type() -> proc_macro2::TokenStream {
@@ -109,8 +117,9 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
 
         impl<T: AnchorDeserialize> Return<T> {
             pub fn get(&self) -> T {
-                let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
-                T::try_from_slice(&data).unwrap()
+                let (_key, data) = anchor_lang::solana_program::program::get_return_data()
+                    .expect("CPI return data should be present");
+                T::try_from_slice(&data).expect("CPI return data should deserialize")
             }
         }
     }
