@@ -345,6 +345,8 @@ jobs:
     needs: setup-anchor-cli
     name: Test Anchor Init
     runs-on: ubuntu-latest
+    # Release PRs bump the version, but the version is obviously not available yet making this test always fail in those scenarios
+    if: "!startsWith(github.head_ref, 'release/')"
     timeout-minutes: 30
     strategy:
       matrix:
