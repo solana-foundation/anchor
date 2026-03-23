@@ -11,7 +11,7 @@ use syn::parse::{Parse, ParseStream};
 use common::gen_docs;
 use mods::{
     accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
-    cpi::gen_cpi_mod, errors::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
+    cpi::gen_cpi_mod, error::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
     parsers::gen_parsers_mod, program::gen_program_mod, types::gen_types_mod,
 };
 
