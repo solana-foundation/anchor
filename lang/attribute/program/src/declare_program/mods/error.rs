@@ -1,4 +1,5 @@
 use anchor_lang_idl::types::Idl;
+use heck::CamelCase;
 use quote::{format_ident, quote};
 
 pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
@@ -20,6 +21,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
         };
     }
 
+    let name = format_ident!("{}Error", idl.metadata.name.to_camel_case());
     quote! {
         /// Program error type definitions.
         #[cfg(not(feature = "idl-build"))]
@@ -27,7 +29,7 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
             use super::*;
 
             #[anchor_lang::error_code(offset = 0)]
-            pub enum ProgramError {
+            pub enum #name {
                 #(#errors)*
             }
         }
