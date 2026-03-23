@@ -318,7 +318,7 @@ dependencies = [
  "bs58",
  "bytemuck",
  "const-crypto",
- "pinocchio 0.10.2",
+ "pinocchio",
  "pinocchio-system",
  "serde",
  "solana-account-info",
@@ -371,8 +371,13 @@ name = "anchor-spl"
 version = "1.0.0"
 dependencies = [
  "anchor-lang",
+ "base64ct",
  "borsh 1.6.1",
  "mpl-token-metadata",
+ "pinocchio-associated-token-account",
+ "pinocchio-memo",
+ "pinocchio-token",
+ "pinocchio-token-2022",
  "solana-stake-interface",
  "solana-sysvar",
  "spl-associated-token-account-interface",
@@ -683,9 +688,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
-version = "1.8.3"
+version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
+checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 
 [[package]]
 name = "bincode"
@@ -3203,37 +3208,66 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 [[package]]
 name = "pinocchio"
 version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c06810dac15a4ef83d3dabdb4f2f22fb39c9adff669cd2781da4f716510a647c"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
 dependencies = [
- "solana-account-view 1.0.0",
+ "solana-account-view",
  "solana-address 2.6.0",
- "solana-define-syscall 4.0.1",
- "solana-instruction-view 1.0.0",
+ "solana-define-syscall 5.0.0",
+ "solana-instruction-view",
  "solana-program-error",
 ]
 
 [[package]]
-name = "pinocchio"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "929a06c3417427ae957330805916db548a027ab2afda4226b20ba671a4d317fd"
+name = "pinocchio-associated-token-account"
+version = "0.3.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
 dependencies = [
- "solana-account-view 2.0.0",
+ "solana-account-view",
  "solana-address 2.6.0",
- "solana-define-syscall 5.0.0",
- "solana-instruction-view 2.1.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-memo"
+version = "0.3.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.6.0",
+ "solana-instruction-view",
  "solana-program-error",
 ]
 
 [[package]]
 name = "pinocchio-system"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b47216785b5877051afa074920e88b5990c4ce74f0da94c7cb5a139684c48ffe"
+version = "0.5.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
 dependencies = [
- "pinocchio 0.11.0",
+ "pinocchio",
  "solana-address 2.6.0",
+]
+
+[[package]]
+name = "pinocchio-token"
+version = "0.5.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.6.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-token-2022"
+version = "0.2.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.6.0",
+ "solana-instruction-view",
+ "solana-program-error",
 ]
 
 [[package]]
@@ -4333,16 +4367,6 @@ dependencies = [
 
 [[package]]
 name = "solana-account-view"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f37ca34c37f92ee341b73d5ce7c8ef5bb38e9a87955b4bd343c63fa18b149215"
-dependencies = [
- "solana-address 2.6.0",
- "solana-program-error",
-]
-
-[[package]]
-name = "solana-account-view"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc141b940560430425ebaadb7645496c45f6a10fad9911d719bd03eab7f4d422"
@@ -4959,23 +4983,11 @@ dependencies = [
 
 [[package]]
 name = "solana-instruction-view"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60147e4d0a4620013df40bf30a86dd299203ff12fcb8b593cd51014fce0875d8"
-dependencies = [
- "solana-account-view 1.0.0",
- "solana-address 2.6.0",
- "solana-define-syscall 4.0.1",
- "solana-program-error",
-]
-
-[[package]]
-name = "solana-instruction-view"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ab7a27d0c4214b9f7389c3dd00b68c93093a67f1dcc5b7893aebe299bbcbb47"
 dependencies = [
- "solana-account-view 2.0.0",
+ "solana-account-view",
  "solana-address 2.6.0",
  "solana-define-syscall 5.0.0",
  "solana-program-error",

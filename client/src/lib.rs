@@ -9,15 +9,10 @@
 //! ```ignore
 //! use std::rc::Rc;
 //!
-//! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
-//!     Client, Cluster,
-//! };
+//! use anchor_client::{Client, Cluster, Signer};
 //! use my_program::{accounts, instruction, MyAccount};
+//! use solana_keypair::{read_keypair_file, Keypair};
+//! use solana_system_interface::program as system_program;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create client
