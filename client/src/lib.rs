@@ -9,15 +9,10 @@
 //! ```ignore
 //! use std::rc::Rc;
 //!
-//! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
-//!     Client, Cluster,
-//! };
+//! use anchor_client::{Client, Cluster, Signer};
 //! use my_program::{accounts, instruction, MyAccount};
+//! use solana_keypair::{read_keypair_file, Keypair};
+//! use solana_system_interface::program as system_program;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create client
@@ -50,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0-rc.5/client/example/src
 //!
 //! # Features
 //!
@@ -59,7 +54,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.32.1 ", features = ["async"] }
+//! anchor-client = { version = "1.0.0-rc.5 ", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
