@@ -16,6 +16,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Breaking
 
+- lang: Rename `errors` and `ProgramError` of `declare_program!` ([#4347](https://github.com/solana-foundation/anchor/pull/4347)).
+
 ## [1.0.0-rc.5] - 2026-03-20
 
 ### Features
