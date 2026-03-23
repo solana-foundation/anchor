@@ -52,7 +52,13 @@ solana-system-interface = "2.0.0"
 solana-sysvar = "~3.0.0"
 solana-sysvar-id = "3.0.0"
 solana-transaction = "3.0.0"
-pinocchio = { version = "0.10.0-rc.1", features = ["cpi", "copy"] }
+
+pinocchio = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2", features = ["cpi", "copy", "account-resize"] }
+pinocchio-system = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2" }
+pinocchio-token-2022 = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2" }
+pinocchio-token = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2" }
+pinocchio-associated-token-account = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2" }
+pinocchio-memo = { git = "https://github.com/anza-xyz/pinocchio", rev = "d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2" }
 
 [profile.release]
 lto = true
