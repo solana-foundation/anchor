@@ -2,7 +2,7 @@ use anchor_lang_idl::types::Idl;
 use heck::CamelCase;
 use quote::{format_ident, quote};
 
-pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
+pub fn gen_error_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let errors = idl.errors.iter().map(|e| {
         let name = format_ident!("{}", e.name);
         let code = e.code;
