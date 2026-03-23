@@ -11,27 +11,25 @@ pub fn gen_errors_mod(idl: &Idl) -> proc_macro2::TokenStream {
         }
     });
 
-    if errors.len() == 0 {
-        return quote! {
-            /// Program error type definitions.
-            #[cfg(not(feature = "idl-build"))]
-            pub mod error {
-                use super::*;
+    let error = if errors.len() == 0 {
+        quote!()
+    } else {
+        let name = format_ident!("{}Error", idl.metadata.name.to_camel_case());
+        quote! {
+            #[anchor_lang::error_code(offset = 0)]
+            pub enum #name {
+                #(#errors)*
             }
-        };
-    }
+        }
+    };
 
-    let name = format_ident!("{}Error", idl.metadata.name.to_camel_case());
     quote! {
         /// Program error type definitions.
         #[cfg(not(feature = "idl-build"))]
         pub mod error {
             use super::*;
 
-            #[anchor_lang::error_code(offset = 0)]
-            pub enum #name {
-                #(#errors)*
-            }
+            #error
         }
     }
 }
