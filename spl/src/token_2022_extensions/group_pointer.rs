@@ -60,3 +60,57 @@ pub struct GroupPointerUpdate<'info> {
     pub mint: AccountInfo<'info>,
     pub authority: AccountInfo<'info>,
 }
+
+#[cfg(test)]
+mod tests {
+    use anchor_lang::solana_program::pubkey::Pubkey;
+    use spl_token_2022_interface as spl_token_2022;
+
+    /// Verifies group_pointer_initialize instruction construction succeeds.
+    #[test]
+    fn test_group_pointer_initialize_instruction() {
+        let token_program_id = Pubkey::new_unique();
+        let mint_pubkey = Pubkey::new_unique();
+        let authority = Pubkey::new_unique();
+        let group_address = Pubkey::new_unique();
+
+        let ix = spl_token_2022::extension::group_pointer::instruction::initialize(
+            &token_program_id,
+            &mint_pubkey,
+            Some(authority),
+            Some(group_address),
+        )
+        .expect("group_pointer initialize should build correctly");
+
+        // initialize takes 2 accounts: token_program and mint
+        assert_eq!(ix.accounts.len(), 2, "initialize needs token_program and mint accounts");
+        assert_eq!(ix.accounts[1].pubkey, mint_pubkey);
+    }
+
+    /// Verifies group_pointer_update instruction includes the authority account.
+    ///
+    /// The bug: the original code only passed [token_program_id, mint] to invoke_signed,
+    /// missing the authority account. The authority is needed as a signer to authorize
+    /// the update. Without it, the CPI would fail at runtime.
+    #[test]
+    fn test_group_pointer_update_includes_authority() {
+        let token_program_id = Pubkey::new_unique();
+        let mint_pubkey = Pubkey::new_unique();
+        let authority_pubkey = Pubkey::new_unique();
+        let group_address = Pubkey::new_unique();
+
+        let ix = spl_token_2022::extension::group_pointer::instruction::update(
+            &token_program_id,
+            &mint_pubkey,
+            &authority_pubkey,
+            &[&authority_pubkey],
+            Some(group_address),
+        )
+        .expect("group_pointer update should build correctly");
+
+        // update takes 3 accounts: token_program, mint, authority
+        assert_eq!(ix.accounts.len(), 3, "update needs token_program, mint, and authority accounts");
+        assert_eq!(ix.accounts[1].pubkey, mint_pubkey);
+        assert_eq!(ix.accounts[2].pubkey, authority_pubkey, "authority must be included in accounts for signer validation");
+    }
+}
