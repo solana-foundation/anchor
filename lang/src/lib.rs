@@ -61,6 +61,7 @@ pub use anchor_derive_accounts::Accounts;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
+pub use anchor_derive_serde::__erase;
 
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
@@ -190,6 +191,12 @@ pub mod pinocchio_runtime {
     }
 }
 
+// Compatibility shim for derive macros and legacy paths that still resolve through
+// `anchor_lang::solana_program::*`.
+pub mod solana_program {
+    pub use crate::pinocchio_runtime::*;
+}
+
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
 
@@ -268,6 +275,12 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
         // no-op
         Ok(())
     }
+}
+
+/// Returns the pubkeys of mutable accounts that serialize on exit.
+/// Used by duplicate mutable account validation across nested account structs.
+pub trait DuplicateMutableAccountKeys {
+    fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
 }
 
 /// The close procedure to initiate garabage collection of an account, allowing
