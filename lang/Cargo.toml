@@ -86,7 +86,7 @@ solana-pubkey = { workspace = true, features = ["borsh", "bytemuck", "serde"] }
 solana-sdk-ids.workspace = true
 solana-stake-interface = { workspace = true, features = ["sysvar", "bincode"] }
 solana-system-interface.workspace = true
-solana-sysvar = { workspace = true, features = ["bincode"] }
+solana-sysvar = { workspace = true, default-features = false, features = ["bincode"] }
 solana-sysvar-id.workspace = true
 
 thiserror = "1"
