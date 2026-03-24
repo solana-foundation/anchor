@@ -98,7 +98,7 @@ pub fn generate(
                     false => quote! {false},
                     true => quote! {true},
                 };
-                
+
                 let name = &f.ident;
                 let is_mutable = f.constraints.is_mutable();
                 if f.is_optional {

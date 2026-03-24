@@ -157,7 +157,7 @@ where
     To: AccountSerialize,
 {
     /// Account info reference
-    info: &'info AccountInfo<'info>,
+    info: &'info AccountInfo,
     /// Internal migration state
     inner: MigrationInner<From, To>,
 }
@@ -168,7 +168,7 @@ where
     To: AccountSerialize + Owner,
 {
     /// Creates a new Migration in the From (unmigrated) state.
-    fn new(info: &'info AccountInfo<'info>, account: From) -> Self {
+    fn new(info: &'info AccountInfo, account: From) -> Self {
         Self {
             info,
             inner: MigrationInner::From(account),
@@ -296,17 +296,17 @@ where
     /// Only accepts accounts in the `From` format. Accounts already in the `To`
     /// format will be rejected.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from(info: &'info AccountInfo) -> Result<Self> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        if info.owner != &From::owner() {
+        if !info.owned_by(&From::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, From::owner())));
+                .with_pubkeys((*info.owner(), From::owner())));
         }
 
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, From::try_deserialize(&mut data)?))
     }
 
@@ -315,17 +315,17 @@ where
     ///
     /// **Warning:** Use with caution. This skips discriminator validation.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'info AccountInfo<'info>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from_unchecked(info: &'info AccountInfo) -> Result<Self> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        if info.owner != &From::owner() {
+        if !info.owned_by(&From::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, From::owner())));
+                .with_pubkeys((*info.owner(), From::owner())));
         }
 
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, From::try_deserialize_unchecked(&mut data)?))
     }
 }
@@ -338,7 +338,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -377,7 +377,8 @@ where
                 }
 
                 // Serialize the migrated data
-                let mut data = self.info.try_borrow_mut_data()?;
+                let mut account = *self.info;
+                let mut data = account.try_borrow_mut()?;
                 let dst: &mut [u8] = &mut data;
                 let mut writer = BpfWriter::new(dst);
                 to.try_serialize(&mut writer)?;
@@ -394,10 +395,12 @@ where
     To: AccountSerialize,
 {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
@@ -408,17 +411,17 @@ where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
         vec![self.info.clone()]
     }
 }
 
-impl<'info, From, To> AsRef<AccountInfo<'info>> for Migration<'info, From, To>
+impl<'info, From, To> AsRef<AccountInfo> for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+    fn as_ref(&self) -> &AccountInfo {
         self.info
     }
 }
@@ -429,7 +432,7 @@ where
     To: AccountSerialize,
 {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.address()
     }
 }
 

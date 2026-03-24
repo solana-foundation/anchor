@@ -40,7 +40,6 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
-pub mod signature_verification;
 pub mod system_program;
 mod vec;
 
@@ -58,10 +57,10 @@ pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
+pub use anchor_derive_serde::__erase;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
-pub use anchor_derive_serde::__erase;
 
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
@@ -346,7 +345,8 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
             .get_lamports()
             .checked_add(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
-        self.as_ref().set_lamports(new_lamports);
+        let mut account_info = *self.as_ref();
+        account_info.set_lamports(new_lamports);
         Ok(self)
     }
 
@@ -368,7 +368,8 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
             .get_lamports()
             .checked_sub(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
-        self.as_ref().set_lamports(new_lamports);
+        let mut account_info = *self.as_ref();
+        account_info.set_lamports(new_lamports);
         Ok(self)
     }
 }

@@ -255,9 +255,7 @@ pub fn initialize_nonce_account(
         rent_sysvar: &ctx.accounts.rent,
         authority: authority,
     };
-    instruction
-        .invoke()
-        .map_err(error::Error::from)
+    instruction.invoke().map_err(error::Error::from)
 }
 
 #[derive(Accounts)]
@@ -325,7 +323,7 @@ pub fn withdraw_nonce_account(
         authority: &ctx.accounts.authorized,
         lamports: lamports,
     };
-    
+
     instruction
         .invoke_signed(&ctx.signer_seeds)
         .map_err(error::Error::from)
