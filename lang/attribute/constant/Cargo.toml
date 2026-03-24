@@ -1,8 +1,9 @@
 [package]
 name = "anchor-attribute-constant"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 license = "Apache-2.0"
 description = "Anchor attribute macro for creating constant types"
 edition = "2021"
@@ -15,6 +16,6 @@ anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1" }
+anchor-syn = { path = "../../syn", version = "1.0.0-rc.5" }
 quote = "1"
 syn = { version = "1", features = ["full"] }

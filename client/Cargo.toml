@@ -1,7 +1,9 @@
 [package]
 name = "anchor-client"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
+repository = "https://github.com/solana-foundation/anchor"
 edition = "2021"
 license = "Apache-2.0"
 description = "An RPC client to interact with Anchor programs"
@@ -16,7 +18,7 @@ debug = []
 mock = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.32.1" }
+anchor-lang = { path = "../lang", version = "1.0.0-rc.5" }
 anyhow = "1"
 futures = "0.3"
 regex = "1"

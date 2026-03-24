@@ -22,7 +22,7 @@ pub enum MigrationInner<From, To> {
     To(To),
 }
 
-/// Wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
+/// Wrapper around [`AccountInfo`]
 /// that handles account schema migrations from one type to another.
 ///
 /// # Table of Contents
