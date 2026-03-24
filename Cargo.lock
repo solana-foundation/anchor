@@ -255,6 +255,7 @@ dependencies = [
  "solana-account-decoder",
  "solana-commitment-config",
  "solana-instruction",
+ "solana-keypair",
  "solana-program",
  "solana-pubsub-client",
  "solana-rpc-client",
@@ -264,6 +265,7 @@ dependencies = [
  "solana-transaction",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-tungstenite",
  "url",
 ]
 

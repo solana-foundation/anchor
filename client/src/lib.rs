@@ -732,7 +732,10 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
+    use futures::{SinkExt, StreamExt};
     use solana_rpc_client_api::response::RpcResponseContext;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use tokio_tungstenite::tungstenite::Message;
 
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
@@ -903,5 +906,93 @@ mod tests {
         .unwrap();
 
         Ok(())
+    }
+
+    /// Regression test that registering multiple event listeners does not deadlock.
+    #[test]
+    fn multiple_listeners_no_deadlock() {
+        // Spin up a tiny mock websocket server that responds to `logsSubscribe`
+        // JSON-RPC requests with a valid subscription id.
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let (addr_tx, addr_rx) = std::sync::mpsc::channel();
+
+        rt.spawn(async move {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            addr_tx.send(addr).unwrap();
+
+            static SUB_ID: AtomicU64 = AtomicU64::new(0);
+
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                tokio::spawn(async move {
+                    let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                    while let Some(Ok(Message::Text(_))) = ws.next().await {
+                        let sub_id = SUB_ID.fetch_add(1, Ordering::Relaxed);
+                        // The PubsubClient sends sequential integer ids starting at 0.
+                        let resp =
+                            format!(r#"{{"jsonrpc":"2.0","result":{sub_id},"id":{sub_id}}}"#);
+                        ws.send(Message::Text(resp.into())).await.unwrap();
+                    }
+                });
+            }
+        });
+
+        let addr = addr_rx.recv().unwrap();
+        let ws_url = format!("ws://{}", addr);
+
+        let client = super::Client::new(
+            super::Cluster::Custom(ws_url.clone(), ws_url),
+            std::sync::Arc::new(solana_keypair::Keypair::new()),
+        );
+        let program = client.program(Pubkey::new_unique()).unwrap();
+
+        // With the old RwLock-based code, the second call would deadlock.
+        // Use a timeout to ensure the test fails instead of hanging forever.
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            #[cfg(not(feature = "async"))]
+            {
+                let _listener1 = program
+                    .on::<MockEvent>(|_ctx, _event| {})
+                    .expect("first listener");
+
+                let _listener2 = program
+                    .on::<MockEvent>(|_ctx, _event| {})
+                    .expect("second listener");
+            }
+
+            #[cfg(feature = "async")]
+            {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(async {
+                    let _listener1 = program
+                        .on::<MockEvent>(|_ctx, _event| {})
+                        .await
+                        .expect("first listener");
+
+                    let _listener2 = program
+                        .on::<MockEvent>(|_ctx, _event| {})
+                        .await
+                        .expect("second listener");
+                });
+            }
+
+            let _ = done_tx.send(());
+        });
+
+        // If this times out, the deadlock is still present.
+        done_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("registering two listeners should not deadlock");
+
+        handle.join().unwrap();
     }
 }
