@@ -49,7 +49,7 @@ pub fn event(
             fn data(&self) -> Vec<u8> {
                 let mut data = Vec::with_capacity(256);
                 data.extend_from_slice(#event_name::DISCRIMINATOR);
-                self.serialize(&mut data).unwrap();
+                self.serialize(&mut data).unwrap(); // safe-unwrap: generated runtime code, not proc-macro expansion
                 data
             }
         }
@@ -231,6 +231,7 @@ pub fn event_cpi(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let accounts_struct = parse_macro_input!(input as syn::ItemStruct);
+    #[allow(clippy::disallowed_methods)] // safe: quote-generated struct tokens always parse
     let accounts_struct = add_event_cpi_accounts(&accounts_struct).unwrap();
     proc_macro::TokenStream::from(quote! {#accounts_struct})
 }

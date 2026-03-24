@@ -8,6 +8,8 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let name = format_ident!("{}", ev.name);
         let discriminator = gen_discriminator(&ev.discriminator);
 
+        #[allow(clippy::disallowed_methods)]
+        // safe: IDL event types are guaranteed to exist in types array
         let ty_def = idl
             .types
             .iter()
@@ -22,7 +24,7 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
                 fn data(&self) -> Vec<u8> {
                     let mut data = Vec::with_capacity(256);
                     data.extend_from_slice(#name::DISCRIMINATOR);
-                    self.serialize(&mut data).unwrap();
+                    self.serialize(&mut data).unwrap(); // safe-unwrap: generated runtime code, not proc-macro expansion
                     data
                 }
             }

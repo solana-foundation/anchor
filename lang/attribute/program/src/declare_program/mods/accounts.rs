@@ -9,6 +9,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let discriminator = gen_discriminator(&acc.discriminator);
         let disc = quote! { #name::DISCRIMINATOR };
 
+        #[allow(clippy::disallowed_methods)] // safe: IDL account types are guaranteed to exist in types array
         let ty_def = idl
             .types
             .iter()

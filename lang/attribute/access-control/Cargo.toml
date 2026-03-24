@@ -11,6 +11,13 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+[lints.clippy]
+disallowed-methods = "deny"
+disallowed-macros = "deny"
+
+[features]
+anchor-debug = ["anchor-syn/anchor-debug"]
+
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
