@@ -1,8 +1,9 @@
 [package]
 name = "anchor-attribute-event"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 license = "Apache-2.0"
 description = "Anchor attribute macro for defining an event"
 rust-version = "1.60"
@@ -17,7 +18,7 @@ event-cpi = ["anchor-syn/event-cpi"]
 idl-build = ["anchor-syn/idl-build"]
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1", features = ["hash"] }
+anchor-syn = { path = "../../syn", version = "1.0.0-rc.5", features = ["hash"] }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

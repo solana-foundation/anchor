@@ -1,9 +1,10 @@
 [package]
 name = "anchor-cli"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 edition = "2021"
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 description = "Anchor CLI"
 license = "Apache-2.0"
 
@@ -13,10 +14,12 @@ path = "src/bin/main.rs"
 
 [features]
 dev = []
+# For development/CI testing purposes only - allows IDL commands to run against localnet
+idl-localnet-testing = []
 
 [dependencies]
-anchor-client = { path = "../client", version = "0.32.1" }
-anchor-lang = { path = "../lang", version = "0.32.1" }
+anchor-client = { path = "../client", version = "1.0.0-rc.5" }
+anchor-lang = { path = "../lang", version = "1.0.0-rc.5" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }
 anyhow = "1.0.32"
 base64 = "0.21"
@@ -39,7 +42,7 @@ serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 solana-cli-config.workspace = true
-solana-client = "3.0.0"
+solana-client.workspace = true
 solana-clock.workspace = true
 solana-commitment-config.workspace = true
 solana-compute-budget-interface.workspace = true
@@ -59,7 +62,6 @@ solana-rpc-client.workspace = true
 solana-rpc-client-api.workspace = true
 solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
-tar = "0.4.35"
 tempfile = "3"
 tiny-bip39 = "2.0"
 toml = "0.7.6"

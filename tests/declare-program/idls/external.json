@@ -114,6 +114,25 @@
       "args": []
     },
     {
+      "name": "test_compilation_packed_account",
+      "discriminator": [
+        56,
+        168,
+        153,
+        46,
+        46,
+        240,
+        131,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "packed_account"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "test_compilation_return_type",
       "discriminator": [
         174,
@@ -370,6 +389,19 @@
         50,
         42
       ]
+    },
+    {
+      "name": "PackedAccount",
+      "discriminator": [
+        87,
+        129,
+        238,
+        130,
+        11,
+        67,
+        95,
+        44
+      ]
     }
   ],
   "events": [
@@ -418,6 +450,37 @@
           {
             "name": "value",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedAccount",
+      "serialization": "bytemuckunsafe",
+      "repr": {
+        "kind": "rust",
+        "packed": true
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "a",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "b",
+            "type": {
+              "array": [
+                "u16",
+                8
+              ]
+            }
           }
         ]
       }

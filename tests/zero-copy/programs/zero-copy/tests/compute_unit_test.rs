@@ -1,19 +1,12 @@
 #![cfg(feature = "test-sbf")]
 
 use {
-    anchor_client::{
-        anchor_lang::Discriminator,
-        solana_account::Account,
-        solana_sdk::{
-            commitment_config::CommitmentConfig,
-            pubkey::Pubkey,
-            signature::Keypair,
-            transaction::Transaction,
-        },
-        solana_signer::Signer,
-        Client, Cluster,
-    },
+    anchor_client::{anchor_lang::Discriminator, Client, Cluster},
     solana_program_test::{tokio, ProgramTest},
+    solana_sdk::{
+        account::Account, pubkey::Pubkey, signature::Keypair, signer::Signer,
+        transaction::Transaction,
+    },
     std::rc::Rc,
 };
 
@@ -40,13 +33,9 @@ async fn update_foo() {
     let mut pt = ProgramTest::new("zero_copy", zero_copy::id(), None);
     pt.add_account(foo_pubkey, foo_account);
     pt.set_compute_max_units(4157);
-    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+    let (banks_client, payer, recent_blockhash) = pt.start().await;
 
-    let client = Client::new_with_options(
-        Cluster::Debug,
-        Rc::new(Keypair::new()),
-        CommitmentConfig::processed(),
-    );
+    let client = Client::new(Cluster::Debug, Rc::new(Keypair::new()));
     let program = client.program(zero_copy::id()).unwrap();
     let update_ix = program
         .request()
@@ -56,7 +45,6 @@ async fn update_foo() {
         })
         .args(zero_copy::instruction::UpdateFoo { data: 1u64 })
         .instructions()
-        .unwrap()
         .pop()
         .unwrap();
 

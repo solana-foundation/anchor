@@ -19,7 +19,7 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/coral-xyz/anchor).
+//! [repository](https://github.com/solana-foundation/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
@@ -43,7 +43,6 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
-pub mod signature_verification;
 pub mod system_program;
 mod vec;
 
@@ -62,9 +61,11 @@ pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
 
+pub use anchor_derive_serde::__erase;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
+
 pub mod solana_program {
     pub use solana_feature_gate_interface as feature;
 
@@ -223,6 +224,13 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
     }
 }
 
+/// Returns the pubkeys of mutable accounts that serialize on exit.
+/// Used by the duplicate mutable account validation to check across
+/// composite (nested) account struct boundaries.
+pub trait DuplicateMutableAccountKeys {
+    fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
+}
+
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
 pub trait AccountsClose<'info>: ToAccountInfos<'info> {
@@ -369,7 +377,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
 
     /// Clears `data` and writes instruction data to it.
     ///
-    /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
+    /// We use a `Vec<u8>` here because of the additional flexibility of re-allocation (only if
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
         data.clear();
@@ -494,9 +502,9 @@ pub mod prelude {
         require_keys_neq, require_neq,
         solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
         system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
-        ToAccountInfos, ToAccountMetas,
+        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator,
+        DuplicateMutableAccountKeys, Id, InitSpace, Key, Lamports, Owner, Owners, ProgramData,
+        Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     // Re-export the crate as anchor_lang for declare_program! macro
     pub use crate as anchor_lang;
