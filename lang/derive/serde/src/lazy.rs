@@ -17,13 +17,15 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 .fold(quote!(true), |acc, sized| quote! { #acc && #sized }),
         ),
         Item::Enum(enm) => {
+            // Each match arm checks the tag byte then shadows the `buf` variable with
+            // the remaining buffer. This allows `sum_fields` to operate on the correct buffer
             let arms = enm
                 .variants
                 .iter()
                 .map(|variant| sum_fields(&variant.fields))
                 .enumerate()
                 .map(|(i, size)| (Literal::usize_unsuffixed(i), size))
-                .map(|(i, size)| quote! { Some(#i) => { #size } });
+                .map(|(i, size)| quote! { Some((#i, buf)) => { #size } });
             let sized = enm
                 .variants
                 .iter()
@@ -32,7 +34,7 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 &enm.ident,
                 &enm.generics,
                 quote! {
-                    1 + match buf.first() {
+                    1 + match buf.split_first() {
                         #(#arms,)*
                         _ => unreachable!(),
                     }
