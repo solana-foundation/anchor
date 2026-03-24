@@ -516,31 +516,33 @@ pub fn gen_idl_type(
                 if let Ok(lib_path) = find_path("lib.rs", &source_path) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
 
-                    let cache = CRATE_DATA_CACHE.get_or_try_init(|| {
-                        let ctx = CrateContext::parse(&lib_path)?;
-                        let defined_names: HashSet<String> = ctx
-                            .structs()
-                            .map(|s| s.ident.to_string())
-                            .chain(ctx.enums().map(|e| e.ident.to_string()))
-                            .collect();
-                        let type_aliases: HashMap<String, String> = ctx
-                            .type_aliases()
-                            .map(|ty| (ty.ident.to_string(), ty.to_token_stream().to_string()))
-                            .collect();
-                        Ok::<_, anyhow::Error>(CachedCrateData {
-                            defined_names,
-                            type_aliases,
-                        })
-                    });
+                    let cache =
+                        CRATE_DATA_CACHE.get_or_init(|| match CrateContext::parse(&lib_path) {
+                            Ok(ctx) => {
+                                let defined_names: HashSet<String> = ctx
+                                    .structs()
+                                    .map(|s| s.ident.to_string())
+                                    .chain(ctx.enums().map(|e| e.ident.to_string()))
+                                    .collect();
+                                let type_aliases: HashMap<String, String> = ctx
+                                    .type_aliases()
+                                    .map(|ty| {
+                                        (ty.ident.to_string(), ty.to_token_stream().to_string())
+                                    })
+                                    .collect();
+                                CachedCrateData {
+                                    defined_names,
+                                    type_aliases,
+                                }
+                            }
+                            Err(_) => CachedCrateData {
+                                defined_names: HashSet::new(),
+                                type_aliases: HashMap::new(),
+                            },
+                        });
 
-                    let (alias_src, is_external) = match cache {
-                        Ok(data) => {
-                            let alias_src = data.type_aliases.get(&name).cloned();
-                            let is_external = !data.defined_names.contains(&name);
-                            (alias_src, is_external)
-                        }
-                        Err(_) => (None, false),
-                    };
+                    let alias_src = cache.type_aliases.get(&name).cloned();
+                    let is_external = !cache.defined_names.contains(&name);
 
                     let alias: Option<syn::ItemType> =
                         alias_src.and_then(|src| syn::parse_str(&src).ok());
