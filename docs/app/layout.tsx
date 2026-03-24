@@ -14,8 +14,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <body className="flex flex-col min-h-screen">
         <Provider>{children}</Provider>
         <InkeepChatButton />
+        <GoogleAnalytics gaId="G-ZJYNM2WNM0" />
       </body>
-      <GoogleAnalytics gaId="G-ZJYNM2WNM0" />
     </html>
   );
 }

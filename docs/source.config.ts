@@ -3,15 +3,20 @@ import {
   defineConfig,
   frontmatterSchema,
 } from "fumadocs-mdx/config";
+import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 
-// default dir content/docs
 export const { docs, meta } = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       index: z.boolean().default(false),
     }),
+    postprocess: {
+      includeProcessedMarkdown: true,
+    },
   },
 });
 
-export default defineConfig();
+export default defineConfig({
+  plugins: [lastModified()],
+});
