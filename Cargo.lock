@@ -256,6 +256,7 @@ dependencies = [
  "solana-commitment-config",
  "solana-instruction",
  "solana-keypair",
+ "solana-message",
  "solana-program",
  "solana-pubsub-client",
  "solana-rpc-client",
