@@ -256,7 +256,8 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
     ) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
         if expected_owner == program_id && !crate::common::is_closed(self.info) {
-            let mut data = self.info.try_borrow_mut()?;
+            let mut info = *self.info;
+            let mut data = info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             self.account.try_serialize(&mut writer)?;

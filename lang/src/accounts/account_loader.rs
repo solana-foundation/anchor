@@ -94,7 +94,7 @@ use std::mem;
 /// ```
 #[derive(Clone)]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
-    acc_info: &'info AccountInfo,
+    acc_info: AccountInfo,
     phantom: PhantomData<&'info T>,
 }
 
@@ -110,7 +110,7 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     fn new(acc_info: &'info AccountInfo) -> AccountLoader<'info, T> {
         Self {
-            acc_info,
+            acc_info: *acc_info,
             phantom: PhantomData,
         }
     }
@@ -168,7 +168,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }))
     }
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_mut(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
@@ -193,7 +193,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_init(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
@@ -239,8 +239,9 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
     // The account *cannot* be loaded when this is called.
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
-        if &T::owner() == program_id && !crate::common::is_closed(self.acc_info) {
-            let mut data = self.acc_info.try_borrow_mut()?;
+        if &T::owner() == program_id && !crate::common::is_closed(&self.acc_info) {
+            let mut acc_info = self.acc_info;
+            let mut data = acc_info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             writer.write_all(T::DISCRIMINATOR).unwrap();
@@ -270,13 +271,13 @@ impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
 
 impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<'info, T> {
     fn as_ref(&self) -> &AccountInfo {
-        self.acc_info
+        &self.acc_info
     }
 }
 
 impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.acc_info]
+        vec![self.acc_info]
     }
 }
 
