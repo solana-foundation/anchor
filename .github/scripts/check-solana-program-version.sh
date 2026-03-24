@@ -16,7 +16,7 @@ if [[ ! -f "$VERSION_FILE" ]]; then
     exit 1
 fi
 
-cargo_version=$(grep '^solana-program = ' "$CARGO_TOML" | sed 's/.*= "\(.*\)"/\1/')
+cargo_version=$(grep '^solana-program = ' "$CARGO_TOML" | sed 's/^solana-program = "\([^"]*\)".*/\1/')
 file_version=$(cat "$VERSION_FILE")
 
 if [[ "$cargo_version" != "$file_version" ]]; then
