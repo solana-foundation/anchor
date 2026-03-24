@@ -462,16 +462,22 @@ impl Execution {
         })
     }
 
-    pub fn program(&self) -> Option<String> {
-        self.stack.last().cloned()
+    pub fn program(&self) -> String {
+        self.stack.last().expect("execution stack must not be empty").clone()
     }
 
     pub fn push(&mut self, new_program: String) {
         self.stack.push(new_program);
     }
 
-    pub fn pop(&mut self) {
+    /// Replaces the top of the stack with `next_program` when transitioning to
+    /// the next top-level instruction, or simply pops when returning from a CPI.
+    /// This ensures the stack is never left empty between instructions.
+    pub fn pop_or_replace(&mut self, next_program: Option<String>) {
         self.stack.pop();
+        if let Some(program) = next_program {
+            self.stack.push(program);
+        }
     }
 }
 
@@ -697,7 +703,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
             while let Some(l) = logs_iter.next() {
                 // Parse the log.
                 let (event, new_program, did_pop) = {
-                    if execution.program().as_deref() == Some(program_id_str) {
+                    if execution.program() == program_id_str {
                         handle_program_log(program_id_str, l)?
                     } else {
                         let (program, did_pop) = handle_system_log(program_id_str, l);
@@ -714,25 +720,21 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                 }
                 // Program returned.
                 if did_pop {
-                    execution.pop();
-
-                    // If the current iteration popped then it means there was a
-                    //`Program x success` log. If the next log in the iteration is
-                    // of depth [1] then we're not within a CPI and this is a new instruction.
-                    //
-                    // We need to ensure that the `Execution` instance is updated with
-                    // the next program ID, or else `execution.program()` will cause
-                    // a panic during the next iteration.
-                    if let Some(&next_log) = logs_iter.peek() {
+                    // If the next log is a new top-level [1] invocation, replace the
+                    // current top-of-stack with that program ID so the stack is never
+                    // left empty between sequential top-level instructions. Otherwise
+                    // just pop (CPI return or last instruction).
+                    let next_program = logs_iter.peek().and_then(|&next_log| {
                         if next_log.ends_with("invoke [1]") {
-                            let next_instruction =
-                                regex.captures(next_log).unwrap().get(1).unwrap().as_str();
-                            // Within this if block, there will always be a regex match.
-                            // Therefore it's safe to unwrap and the captured program ID
-                            // at index 1 can also be safely unwrapped.
-                            execution.push(next_instruction.to_string());
+                            regex
+                                .captures(next_log)
+                                .and_then(|c| c.get(1))
+                                .map(|m| m.as_str().to_string())
+                        } else {
+                            None
                         }
-                    };
+                    });
+                    execution.pop_or_replace(next_program);
                 }
             }
         }
@@ -958,13 +960,25 @@ mod tests {
     }
 
     #[test]
-    fn test_execution_pop_empty_stack_no_panic() {
-        // Ensure pop() on an empty stack does not panic
+    fn test_execution_pop_or_replace_no_next() {
+        // pop_or_replace with None just pops
         let mut logs: &[String] =
             &["Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string()];
         let mut exe = Execution::new(&mut logs).unwrap();
-        exe.pop(); // Stack now empty
-        exe.pop(); // Should not panic
-        assert_eq!(exe.program(), None);
+        assert_eq!(exe.stack.len(), 1);
+        exe.pop_or_replace(None);
+        assert_eq!(exe.stack.len(), 0);
+    }
+
+    #[test]
+    fn test_execution_pop_or_replace_with_next() {
+        // pop_or_replace with Some replaces top instead of leaving stack empty
+        let mut logs: &[String] =
+            &["Program 7Y8VDzehoewALqJfyxZYMgYCnMTCDhWuGfJKUvjYWATw invoke [1]".to_string()];
+        let mut exe = Execution::new(&mut logs).unwrap();
+        let next = "NextProgram1111111111111111111111111111111111".to_string();
+        exe.pop_or_replace(Some(next.clone()));
+        assert_eq!(exe.stack.len(), 1);
+        assert_eq!(exe.program(), next);
     }
 }
