@@ -8,7 +8,7 @@ use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
-    Owners, Result, ToAccountInfos, ToAccountMetas,
+    Owners, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 use std::collections::BTreeSet;
 use std::fmt;
