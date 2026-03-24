@@ -506,7 +506,8 @@ pub fn gen_idl_type(
                     type_aliases: HashMap<String, String>,
                 }
 
-                static CRATE_DATA_CACHE: OnceLock<CachedCrateData> = OnceLock::new();
+                static CRATE_DATA_CACHE: OnceLock<Result<CachedCrateData, anyhow::Error>> =
+                    OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
@@ -516,30 +517,33 @@ pub fn gen_idl_type(
                 if let Ok(lib_path) = find_path("lib.rs", &source_path) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
 
-                    let cache =
-                        CRATE_DATA_CACHE.get_or_init(|| match CrateContext::parse(&lib_path) {
-                            Ok(ctx) => {
-                                let defined_names: HashSet<String> = ctx
-                                    .structs()
-                                    .map(|s| s.ident.to_string())
-                                    .chain(ctx.enums().map(|e| e.ident.to_string()))
-                                    .collect();
-                                let type_aliases: HashMap<String, String> = ctx
-                                    .type_aliases()
-                                    .map(|ty| {
-                                        (ty.ident.to_string(), ty.to_token_stream().to_string())
-                                    })
-                                    .collect();
-                                CachedCrateData {
-                                    defined_names,
-                                    type_aliases,
-                                }
+                    let cache = CRATE_DATA_CACHE.get_or_init(|| {
+                        CrateContext::parse(&lib_path).map(|ctx| {
+                            let defined_names: HashSet<String> = ctx
+                                .structs()
+                                .map(|s| s.ident.to_string())
+                                .chain(ctx.enums().map(|e| e.ident.to_string()))
+                                .collect();
+                            let type_aliases: HashMap<String, String> = ctx
+                                .type_aliases()
+                                .map(|ty| (ty.ident.to_string(), ty.to_token_stream().to_string()))
+                                .collect();
+                            CachedCrateData {
+                                defined_names,
+                                type_aliases,
                             }
-                            Err(_) => CachedCrateData {
-                                defined_names: HashSet::new(),
-                                type_aliases: HashMap::new(),
-                            },
-                        });
+                        })
+                    });
+
+                    let cache = match cache {
+                        Ok(data) => data,
+                        Err(e) => {
+                            return Err(syn::Error::new(
+                                path.span(),
+                                format!("Failed to parse crate: {e}"),
+                            ));
+                        }
+                    };
 
                     let alias_src = cache.type_aliases.get(&name).cloned();
                     let is_external = !cache.defined_names.contains(&name);
