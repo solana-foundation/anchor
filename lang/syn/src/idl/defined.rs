@@ -506,8 +506,9 @@ pub fn gen_idl_type(
                     type_aliases: HashMap<String, String>,
                 }
 
-                static CRATE_DATA_CACHE: OnceLock<Result<CachedCrateData, anyhow::Error>> =
-                    OnceLock::new();
+                static CRATE_DATA_CACHE: OnceLock<
+                    std::result::Result<CachedCrateData, anyhow::Error>,
+                > = OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
