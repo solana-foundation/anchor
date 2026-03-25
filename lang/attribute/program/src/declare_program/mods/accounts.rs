@@ -36,11 +36,12 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
             match ty_def.serialization {
                 IdlSerialization::Borsh => quote! {
                     impl anchor_lang::AccountSerialize for #name {
-                        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
+                        fn try_serialize<W: anchor_lang::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
                             if writer.write_all(#disc).is_err() {
                                 return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                             }
-                            if AnchorSerialize::serialize(self, writer).is_err() {
+                            let mut adapter = anchor_lang::WriteAdapter::new(&mut *writer);
+                            if AnchorSerialize::serialize(self, &mut adapter).is_err() {
                                 return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
                             }
 

@@ -38,7 +38,7 @@ impl AccountDeserialize for ProgramData {
 }
 
 impl AccountSerialize for ProgramData {
-    fn try_serialize<W: std::io::Write>(&self, _writer: &mut W) -> Result<()> {
+    fn try_serialize<W: crate::Write>(&self, _writer: &mut W) -> Result<()> {
         // no-op
         Ok(())
     }
@@ -57,7 +57,7 @@ impl Owner for UpgradeableLoaderState {
 }
 
 impl AccountSerialize for UpgradeableLoaderState {
-    fn try_serialize<W: std::io::Write>(&self, _writer: &mut W) -> Result<()> {
+    fn try_serialize<W: crate::Write>(&self, _writer: &mut W) -> Result<()> {
         // no-op
         Ok(())
     }

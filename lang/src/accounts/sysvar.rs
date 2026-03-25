@@ -6,9 +6,10 @@ use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize};
-use std::collections::BTreeSet;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
+use core::fmt;
+use core::ops::{Deref, DerefMut};
 
 /// Type validating that the account is a sysvar and deserializing it.
 ///
