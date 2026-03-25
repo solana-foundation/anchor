@@ -18,7 +18,7 @@ pub struct AdvanceNonceAccount {
     pub authorized: AccountView,
     pub recent_blockhashes: AccountView,
 }
-pub fn advance_nonce_account(ctx: CpiContext<'_, '_, AdvanceNonceAccount>) -> Result<()> {
+pub fn advance_nonce_account(ctx: CpiContext<'_, '_, 'static, AdvanceNonceAccount>) -> Result<()> {
     let instruction = system_instruction::AdvanceNonceAccount {
         account: &ctx.accounts.nonce,
         recent_blockhashes_sysvar: &ctx.accounts.recent_blockhashes,
@@ -35,7 +35,7 @@ pub struct Allocate {
     pub account_to_allocate: AccountView,
 }
 
-pub fn allocate(ctx: CpiContext<'_, '_, Allocate>, space: u64) -> Result<()> {
+pub fn allocate(ctx: CpiContext<'_, '_, 'static, Allocate>, space: u64) -> Result<()> {
     let instruction = system_instruction::Allocate {
         account: &ctx.accounts.account_to_allocate,
         space,
@@ -52,7 +52,7 @@ pub struct AllocateWithSeed {
 }
 
 pub fn allocate_with_seed(
-    ctx: CpiContext<'_, '_, AllocateWithSeed>,
+    ctx: CpiContext<'_, '_, 'static, AllocateWithSeed>,
     seed: &str,
     space: u64,
     owner: &Pubkey,
@@ -74,7 +74,7 @@ pub struct Assign {
     pub account_to_assign: AccountView,
 }
 
-pub fn assign(ctx: CpiContext<'_, '_, Assign>, owner: &Pubkey) -> Result<()> {
+pub fn assign(ctx: CpiContext<'_, '_, 'static, Assign>, owner: &Pubkey) -> Result<()> {
     // Build instruction accounts
     let instruction = system_instruction::Assign {
         account: &ctx.accounts.account_to_assign,
@@ -93,7 +93,7 @@ pub struct AssignWithSeed {
 }
 
 pub fn assign_with_seed(
-    ctx: CpiContext<'_, '_, AssignWithSeed>,
+    ctx: CpiContext<'_, '_, 'static, AssignWithSeed>,
     seed: &str,
     owner: &Pubkey,
 ) -> Result<()> {
@@ -115,7 +115,7 @@ pub struct AuthorizeNonceAccount {
 }
 
 pub fn authorize_nonce_account(
-    ctx: CpiContext<'_, '_, AuthorizeNonceAccount>,
+    ctx: CpiContext<'_, '_, 'static, AuthorizeNonceAccount>,
     new_authority: &Pubkey,
 ) -> Result<()> {
     let instruction = system_instruction::AuthorizeNonceAccount {
@@ -136,7 +136,7 @@ pub struct CreateAccount {
 }
 
 pub fn create_account(
-    ctx: CpiContext<'_, '_, CreateAccount>,
+    ctx: CpiContext<'_, '_, 'static, CreateAccount>,
     lamports: u64,
     space: u64,
     owner: &Pubkey,
@@ -161,7 +161,7 @@ pub struct CreateAccountWithSeed {
 }
 
 pub fn create_account_with_seed(
-    ctx: CpiContext<'_, '_, CreateAccountWithSeed>,
+    ctx: CpiContext<'_, '_, 'static, CreateAccountWithSeed>,
     seed: &str,
     lamports: u64,
     space: u64,
@@ -244,7 +244,7 @@ pub struct InitializeNonceAccount {
 }
 
 pub fn initialize_nonce_account(
-    ctx: CpiContext<'_, '_, InitializeNonceAccount>,
+    ctx: CpiContext<'_, '_, 'static, InitializeNonceAccount>,
     authority: &Pubkey,
 ) -> Result<()> {
     let instruction = system_instruction::InitializeNonceAccount {
@@ -262,7 +262,7 @@ pub struct Transfer {
     pub to: AccountView,
 }
 
-pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, lamports: u64) -> Result<()> {
+pub fn transfer(ctx: CpiContext<'_, '_, 'static, Transfer>, lamports: u64) -> Result<()> {
     let instruction = system_instruction::Transfer {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
@@ -281,7 +281,7 @@ pub struct TransferWithSeed {
 }
 
 pub fn transfer_with_seed(
-    ctx: CpiContext<'_, '_, TransferWithSeed>,
+    ctx: CpiContext<'_, '_, 'static, TransferWithSeed>,
     seed: &str,
     owner: &Pubkey,
     lamports: u64,
@@ -310,7 +310,7 @@ pub struct WithdrawNonceAccount {
 }
 
 pub fn withdraw_nonce_account(
-    ctx: CpiContext<'_, '_, WithdrawNonceAccount>,
+    ctx: CpiContext<'_, '_, 'static, WithdrawNonceAccount>,
     lamports: u64,
 ) -> Result<()> {
     let instruction = system_instruction::WithdrawNonceAccount {
