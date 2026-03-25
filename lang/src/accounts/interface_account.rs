@@ -8,9 +8,10 @@ use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
-    Owners, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    Owner, Owners, Result, ToAccountInfos, ToAccountMetas,
 };
 use std::collections::BTreeSet;
+use std::convert::AsRef;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
@@ -257,6 +258,17 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         T::check_owner(info.owner())?;
         let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
+    }
+}
+
+impl<T: AccountSerialize + AccountDeserialize + CheckOwner + Owner + Clone> InterfaceAccount<T> {
+    /// Reloads deserialized state from the underlying account (for example after CPI side effects).
+    ///
+    /// This mirrors [`Account::reload`]: it re-reads account data and ensures ownership has not changed incompatibly.
+    pub fn reload(&mut self) -> Result<()> {
+        self.account.reload()?;
+        self.owner = *AsRef::<AccountInfo>::as_ref(&self.account).owner();
+        Ok(())
     }
 }
 
