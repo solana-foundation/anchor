@@ -2,7 +2,6 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::msg;
 use crate::pinocchio_runtime::account_info::AccountInfo;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -446,7 +445,6 @@ where
         match &self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                msg!("Cannot deref to From: account is already migrated.");
                 panic!();
             }
         }
@@ -463,7 +461,6 @@ where
         match &mut self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                msg!("Cannot deref_mut to From: account is already migrated.");
                 panic!();
             }
         }
