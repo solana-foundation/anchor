@@ -1,7 +1,4 @@
-use anchor_lang_idl::types::Idl;
-use quote::quote;
-
-use super::common::gen_accounts_common;
+use {super::common::gen_accounts_common, anchor_lang_idl::types::Idl, quote::quote};
 
 pub fn gen_client_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let client_args_mod = gen_client_args_mod();

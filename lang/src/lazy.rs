@@ -119,8 +119,7 @@ fn get_len(buf: &[u8]) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::AnchorSerialize;
+    use {super::*, crate::AnchorSerialize};
 
     macro_rules! len {
         ($val: expr) => {

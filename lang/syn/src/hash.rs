@@ -1,10 +1,12 @@
 // Utility hashing module copied from `solana_program::program::hash`, since we
 // can't import solana_program for compile time hashing for some reason.
 
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::{fmt, mem, str::FromStr};
-use thiserror::Error;
+use {
+    serde::{Deserialize, Serialize},
+    sha2::{Digest, Sha256},
+    std::{fmt, mem, str::FromStr},
+    thiserror::Error,
+};
 
 pub const HASH_BYTES: usize = 32;
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]

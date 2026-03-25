@@ -2,9 +2,11 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
-use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
-use quote::quote;
-use syn::parse_macro_input;
+use {
+    anchor_syn::{codegen::program::common::gen_discriminator, Overrides},
+    quote::quote,
+    syn::parse_macro_input,
+};
 
 /// The event attribute allows a struct to be used with
 /// [emit!](./macro.emit.html) so that programs can log significant events in

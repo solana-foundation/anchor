@@ -1,15 +1,18 @@
-use anyhow::{anyhow, bail, Context, Error, Result};
-use cargo_toml::Manifest;
-use chrono::{TimeZone, Utc};
-use reqwest::header::USER_AGENT;
-use reqwest::StatusCode;
-use semver::{Prerelease, Version};
-use serde::{de, Deserialize};
-use std::fs;
-use std::io::{BufRead, Write};
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::sync::LazyLock;
+use {
+    anyhow::{anyhow, bail, Context, Error, Result},
+    cargo_toml::Manifest,
+    chrono::{TimeZone, Utc},
+    reqwest::{header::USER_AGENT, StatusCode},
+    semver::{Prerelease, Version},
+    serde::{de, Deserialize},
+    std::{
+        fs,
+        io::{BufRead, Write},
+        path::PathBuf,
+        process::{Command, Stdio},
+        sync::LazyLock,
+    },
+};
 
 /// Checked at most once per hour.
 const UPDATE_CHECK_INTERVAL_SECS: i64 = 60 * 60;
@@ -165,7 +168,8 @@ pub fn ensure_paths() {
                     if !linked {
                         if let Err(e) = fs::copy(&target, &anchor_in_cargo) {
                             eprintln!(
-                                "Failed to place `anchor` in {}: {}.\nAdd {} to your PATH or create a symlink manually.",
+                                "Failed to place `anchor` in {}: {}.\nAdd {} to your PATH or \
+                                 create a symlink manually.",
                                 cargo_bin.display(),
                                 e,
                                 bin_dir.display()
@@ -800,8 +804,8 @@ pub fn check_avm_version_and_warn() {
         UpdateCacheState::Success(ts, latest) if now - ts < UPDATE_CHECK_INTERVAL_SECS => {
             if latest > current {
                 eprintln!(
-                    "A new version of avm is available: {latest} (you have {current}). \
-                     Run `avm self-update` to upgrade."
+                    "A new version of avm is available: {latest} (you have {current}). Run `avm \
+                     self-update` to upgrade."
                 );
             }
         }
@@ -816,8 +820,8 @@ pub fn check_avm_version_and_warn() {
                 write_update_cache_success(&latest);
                 if latest > current {
                     eprintln!(
-                        "A new version of avm is available: {latest} (you have {current}). \
-                             Run `avm self-update` to upgrade."
+                        "A new version of avm is available: {latest} (you have {current}). Run \
+                         `avm self-update` to upgrade."
                     );
                 }
             }
@@ -879,11 +883,11 @@ pub fn self_update(include_pre_release: bool, bleeding_edge: bool) -> Result<()>
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use semver::Version;
-    use std::fs;
-    use std::io::Write;
-    use std::path::Path;
+    use {
+        crate::*,
+        semver::Version,
+        std::{fs, io::Write, path::Path},
+    };
 
     #[test]
     fn test_ensure_paths() {

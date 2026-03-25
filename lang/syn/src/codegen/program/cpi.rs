@@ -1,7 +1,11 @@
-use crate::codegen::program::common::{generate_ix_variant, generate_ix_variant_name};
-use crate::Program;
-use heck::SnakeCase;
-use quote::{quote, ToTokens};
+use {
+    crate::{
+        codegen::program::common::{generate_ix_variant, generate_ix_variant_name},
+        Program,
+    },
+    heck::SnakeCase,
+    quote::{quote, ToTokens},
+};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Generate cpi methods for global methods.

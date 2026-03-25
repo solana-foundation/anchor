@@ -1,7 +1,10 @@
-use crate::parser::docs;
-use crate::Program;
-use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::spanned::Spanned;
+use {
+    crate::{parser::docs, Program},
+    syn::{
+        parse::{Error as ParseError, Result as ParseResult},
+        spanned::Spanned,
+    },
+};
 
 mod instructions;
 

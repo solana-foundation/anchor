@@ -1,20 +1,20 @@
-use std::{
-    fs,
-    io::{self, Write},
-    path::Path,
+use {
+    crate::{config::ConfigOverride, get_keypair, KeygenCommand},
+    anyhow::{anyhow, bail, Result},
+    bip39::{Language, Mnemonic, MnemonicType, Seed},
+    console::{Key, Term},
+    dirs::home_dir,
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::{EncodableKey, Signer},
+    solana_transaction::Message,
+    std::{
+        fs,
+        io::{self, Write},
+        path::Path,
+    },
 };
-
-use anyhow::{anyhow, bail, Result};
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use console::{Key, Term};
-use dirs::home_dir;
-use solana_instruction::{AccountMeta, Instruction};
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_signer::{EncodableKey, Signer};
-use solana_transaction::Message;
-
-use crate::{config::ConfigOverride, get_keypair, KeygenCommand};
 
 /// Secure password input with asterisk visual feedback
 /// - show_spaces: if true, spaces are visible (for seed phrases); if false, all characters are asterisks (for passphrases)
@@ -351,8 +351,10 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use tempfile::{tempdir, TempDir};
+    use {
+        super::*,
+        tempfile::{tempdir, TempDir},
+    };
 
     fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> String {
         let path = out_dir.path().join(name);
@@ -433,7 +435,8 @@ mod tests {
     #[test]
     fn test_keypair_from_seed_consistency() {
         // Test that the same seed phrase produces the same keypair
-        let test_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        let test_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon \
+                           abandon abandon abandon about";
 
         let mnemonic = Mnemonic::from_phrase(test_phrase, Language::English).unwrap();
         let seed1 = Seed::new(&mnemonic, "");

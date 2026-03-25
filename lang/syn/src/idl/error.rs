@@ -1,9 +1,10 @@
-use heck::SnakeCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-
-use super::common::{gen_print_section, get_idl_module_path};
-use crate::Error;
+use {
+    super::common::{gen_print_section, get_idl_module_path},
+    crate::Error,
+    heck::SnakeCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
     let idl = get_idl_module_path();

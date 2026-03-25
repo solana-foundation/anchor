@@ -1,6 +1,7 @@
-use crate::codegen::program::common::*;
-use crate::Program;
-use quote::{quote, ToTokens};
+use {
+    crate::{codegen::program::common::*, Program},
+    quote::{quote, ToTokens},
+};
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing

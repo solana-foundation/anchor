@@ -1,11 +1,11 @@
-use std::{fs, path::Path};
-
-use anyhow::{anyhow, Result};
-use semver::{Version, VersionReq};
-
-use crate::{
-    config::{Config, Manifest, PackageManager, WithPath},
-    VERSION,
+use {
+    crate::{
+        config::{Config, Manifest, PackageManager, WithPath},
+        VERSION,
+    },
+    anyhow::{anyhow, Result},
+    semver::{Version, VersionReq},
+    std::{fs, path::Path},
 };
 
 /// Check whether `overflow-checks` codegen option is enabled.
@@ -18,10 +18,8 @@ pub fn check_overflow(cargo_toml_path: impl AsRef<Path>) -> Result<bool> {
         .as_ref()
         .and_then(|profile| profile.overflow_checks)
         .ok_or(anyhow!(
-            "`overflow-checks` is not enabled. To enable, add:\n\n\
-    [profile.release]\n\
-    overflow-checks = true\n\n\
-    in workspace root Cargo.toml",
+            "`overflow-checks` is not enabled. To enable, \
+             add:\n\n[profile.release]\noverflow-checks = true\n\nin workspace root Cargo.toml",
         ))
 }
 
@@ -48,11 +46,8 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     if let Some(ver) = mismatched_lang_version {
         eprintln!(
             "WARNING: `anchor-lang` version({ver}) and the current CLI version({cli_version}) \
-                 don't match.\n\n\t\
-                 This can lead to unwanted behavior. To use the same CLI version, add:\n\n\t\
-                 [toolchain]\n\t\
-                 anchor_version = \"{ver}\"\n\n\t\
-                 to Anchor.toml\n"
+             don't match.\n\n\tThis can lead to unwanted behavior. To use the same CLI version, \
+             add:\n\n\t[toolchain]\n\tanchor_version = \"{ver}\"\n\n\tto Anchor.toml\n"
         );
     }
 
@@ -78,10 +73,9 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         };
 
         eprintln!(
-            "WARNING: `@anchor-lang/core` version({ver}) and the current CLI version\
-                ({cli_version}) don't match.\n\n\t\
-                This can lead to unwanted behavior. To fix, upgrade the package by running:\n\n\t\
-                {update_cmd} @anchor-lang/core@{cli_version}\n"
+            "WARNING: `@anchor-lang/core` version({ver}) and the current CLI \
+             version({cli_version}) don't match.\n\n\tThis can lead to unwanted behavior. To fix, \
+             upgrade the package by running:\n\n\t{update_cmd} @anchor-lang/core@{cli_version}\n"
         );
     }
 
@@ -135,11 +129,10 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         })
         .for_each(|man| {
             eprintln!(
-                "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
-                To solve, remove the `solana-program` dependency and use the exported crate from \
-                `anchor-lang`.\n\
-                `use solana_program` becomes `use anchor_lang::solana_program`.\n\
-                Program name: `{}`\n",
+                "WARNING: Adding `solana-program` as a separate dependency might cause \
+                 conflicts.\nTo solve, remove the `solana-program` dependency and use the \
+                 exported crate from `anchor-lang`.\n`use solana_program` becomes `use \
+                 anchor_lang::solana_program`.\nProgram name: `{}`\n",
                 man.package().name()
             )
         });
@@ -187,12 +180,10 @@ in `{manifest_path:?}`."#
         .filter(|(_, dep)| dep.req_features().contains(&"idl-build".into()))
         .for_each(|(name, _)| {
             eprintln!(
-                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. \
-                    This is not the intended usage.\n\n\t\
-                    To solve, do not enable the `idl-build` feature and include crates that have \
-                    `idl-build` feature in the `idl-build` feature list:\n\n\t\
-                    [features]\n\t\
-                    idl-build = [\"{name}/idl-build\", ...]\n"
+                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. This is \
+                 not the intended usage.\n\n\tTo solve, do not enable the `idl-build` feature and \
+                 include crates that have `idl-build` feature in the `idl-build` feature \
+                 list:\n\n\t[features]\n\tidl-build = [\"{name}/idl-build\", ...]\n"
             )
         });
 
@@ -205,11 +196,10 @@ in `{manifest_path:?}`."#
         .unwrap_or_default()
         .then(|| {
             eprintln!(
-                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. \
-                This is likely to result in cryptic compile errors.\n\n\t\
-                To solve, add `anchor-spl/idl-build` to the `idl-build` feature list:\n\n\t\
-                [features]\n\t\
-                idl-build = [\"anchor-spl/idl-build\", ...]\n"
+                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. This is likely to \
+                 result in cryptic compile errors.\n\n\tTo solve, add `anchor-spl/idl-build` to \
+                 the `idl-build` feature list:\n\n\t[features]\n\tidl-build = \
+                 [\"anchor-spl/idl-build\", ...]\n"
             )
         });
 

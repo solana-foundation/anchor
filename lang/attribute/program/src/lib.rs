@@ -2,9 +2,7 @@ extern crate proc_macro;
 
 mod declare_program;
 
-use declare_program::DeclareProgram;
-use quote::ToTokens;
-use syn::parse_macro_input;
+use {declare_program::DeclareProgram, quote::ToTokens, syn::parse_macro_input};
 
 /// The `#[program]` attribute defines the module containing all instruction
 /// handlers defining all entries into a Solana program.

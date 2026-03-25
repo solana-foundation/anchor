@@ -1,21 +1,22 @@
-use crate::{
-    ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
-    RequestBuilder,
-};
-use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
-use solana_commitment_config::CommitmentConfig;
-use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 #[cfg(not(feature = "mock"))]
 use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
-use solana_signature::Signature;
-use solana_signer::Signer;
-use solana_transaction::Transaction;
-
-use std::{marker::PhantomData, ops::Deref};
-use tokio::{
-    runtime::{Builder, Handle},
-    sync::OnceCell,
+use {
+    crate::{
+        ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
+        RequestBuilder,
+    },
+    anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator},
+    solana_commitment_config::CommitmentConfig,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
+    solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType},
+    solana_signature::Signature,
+    solana_signer::Signer,
+    solana_transaction::Transaction,
+    std::{marker::PhantomData, ops::Deref},
+    tokio::{
+        runtime::{Builder, Handle},
+        sync::OnceCell,
+    },
 };
 
 impl EventUnsubscriber<'_> {

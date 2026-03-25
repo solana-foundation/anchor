@@ -7,11 +7,13 @@ extern crate proc_macro;
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
-use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use proc_macro_crate::FoundCrate;
-use quote::quote;
-use syn::Ident;
+use {
+    proc_macro::TokenStream,
+    proc_macro2::{Span, TokenStream as TokenStream2},
+    proc_macro_crate::FoundCrate,
+    quote::quote,
+    syn::Ident,
+};
 
 fn gen_borsh_serialize(input: TokenStream) -> TokenStream2 {
     let input = TokenStream2::from(input);
@@ -31,9 +33,7 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        use anchor_syn::idl::*;
-        use quote::quote;
-        use syn::Item;
+        use {anchor_syn::idl::*, quote::quote, syn::Item};
 
         let idl_build_impl = match syn::parse(input).unwrap() {
             Item::Struct(item) => impl_idl_build_struct(&item),

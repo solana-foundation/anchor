@@ -1,34 +1,35 @@
-use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Result};
-use solana_client::send_and_confirm_transactions_in_parallel::{
-    send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
-};
-use solana_commitment_config::CommitmentConfig;
-use solana_keypair::Keypair;
-use solana_loader_v3_interface::{
-    instruction as loader_v3_instruction, state::UpgradeableLoaderState,
-};
-use solana_message::{Hash, Message};
-use solana_packet::PACKET_DATA_SIZE;
-use solana_pubkey::Pubkey;
-use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::config::RpcSendTransactionConfig;
-use solana_sdk_ids::bpf_loader_upgradeable as bpf_loader_upgradeable_id;
-use solana_signature::Signature;
-use solana_signer::{EncodableKey, Signer};
-use solana_transaction::Transaction;
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::Path,
-    sync::Arc,
-    thread,
-    time::Duration,
-};
-
-use crate::{
-    config::{Config, Manifest, Program, WithPath},
-    ConfigOverride, ProgramCommand,
+use {
+    crate::{
+        config::{Config, Manifest, Program, WithPath},
+        ConfigOverride, ProgramCommand,
+    },
+    anchor_lang_idl::types::Idl,
+    anyhow::{anyhow, bail, Result},
+    solana_client::send_and_confirm_transactions_in_parallel::{
+        send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
+    },
+    solana_commitment_config::CommitmentConfig,
+    solana_keypair::Keypair,
+    solana_loader_v3_interface::{
+        instruction as loader_v3_instruction, state::UpgradeableLoaderState,
+    },
+    solana_message::{Hash, Message},
+    solana_packet::PACKET_DATA_SIZE,
+    solana_pubkey::Pubkey,
+    solana_rpc_client::rpc_client::RpcClient,
+    solana_rpc_client_api::config::RpcSendTransactionConfig,
+    solana_sdk_ids::bpf_loader_upgradeable as bpf_loader_upgradeable_id,
+    solana_signature::Signature,
+    solana_signer::{EncodableKey, Signer},
+    solana_transaction::Transaction,
+    std::{
+        fs::{self, File},
+        io::Write,
+        path::Path,
+        sync::Arc,
+        thread,
+        time::Duration,
+    },
 };
 
 /// Parse priority fee from solana args
@@ -160,12 +161,16 @@ pub fn get_programs_from_workspace(
     if programs.is_empty() {
         if let Some(name) = program_name {
             return Err(anyhow!(
-                "Program '{}' not found. Make sure you're in a Solana workspace (Anchor or non-Anchor) with programs in the programs/ directory, or provide a program filepath.",
+                "Program '{}' not found. Make sure you're in a Solana workspace (Anchor or \
+                 non-Anchor) with programs in the programs/ directory, or provide a program \
+                 filepath.",
                 name
             ));
         } else {
             return Err(anyhow!(
-                "No Solana programs found. Make sure you're in a Solana workspace (Anchor or non-Anchor) with programs in the programs/ directory, or provide a program filepath."
+                "No Solana programs found. Make sure you're in a Solana workspace (Anchor or \
+                 non-Anchor) with programs in the programs/ directory, or provide a program \
+                 filepath."
             ));
         }
     }
@@ -214,22 +219,26 @@ pub fn process_deploy(
         // Validate that single-program options aren't used
         if program_id.is_some() {
             return Err(anyhow!(
-                "Cannot specify --program-id when deploying multiple programs. Use --program-name to deploy a specific program."
+                "Cannot specify --program-id when deploying multiple programs. Use --program-name \
+                 to deploy a specific program."
             ));
         }
         if buffer.is_some() {
             return Err(anyhow!(
-                "Cannot specify --buffer when deploying multiple programs. Use --program-name to deploy a specific program."
+                "Cannot specify --buffer when deploying multiple programs. Use --program-name to \
+                 deploy a specific program."
             ));
         }
         if upgrade_authority.is_some() {
             return Err(anyhow!(
-                "Cannot specify --upgrade-authority when deploying multiple programs. Use --program-name to deploy a specific program."
+                "Cannot specify --upgrade-authority when deploying multiple programs. Use \
+                 --program-name to deploy a specific program."
             ));
         }
         if max_len.is_some() {
             return Err(anyhow!(
-                "Cannot specify --max-len when deploying multiple programs. Use --program-name to deploy a specific program."
+                "Cannot specify --max-len when deploying multiple programs. Use --program-name to \
+                 deploy a specific program."
             ));
         }
 
@@ -530,8 +539,8 @@ pub fn program_deploy(
         let keypair_path = format!("target/deploy/{}-keypair.json", program_name);
         Keypair::read_from_file(&keypair_path).map_err(|e| {
             anyhow!(
-                "Failed to read program keypair from {}: {}. \
-                Use --program-keypair to specify a custom location.",
+                "Failed to read program keypair from {}: {}. Use --program-keypair to specify a \
+                 custom location.",
                 keypair_path,
                 e
             )
@@ -1086,16 +1095,17 @@ fn program_set_upgrade_authority(
         }
         Ok(UpgradeableLoaderState::ProgramData { .. }) => {
             return Err(anyhow!(
-                "Error: {} is a ProgramData account, not a Program account.\n\n\
-                To set the upgrade authority, you must provide the Program ID, not the ProgramData address.\n\
-                Use 'anchor program show {}' to find the associated Program ID.",
+                "Error: {} is a ProgramData account, not a Program account.\n\nTo set the upgrade \
+                 authority, you must provide the Program ID, not the ProgramData address.\nUse \
+                 'anchor program show {}' to find the associated Program ID.",
                 program_id,
                 program_id
             ));
         }
         Ok(UpgradeableLoaderState::Buffer { .. }) => {
             return Err(anyhow!(
-                "{} is a Buffer account, not a Program account. Use set-buffer-authority for buffers.",
+                "{} is a Buffer account, not a Program account. Use set-buffer-authority for \
+                 buffers.",
                 program_id
             ));
         }
@@ -1135,8 +1145,8 @@ fn program_set_upgrade_authority(
         if let Some(pubkey) = new_upgrade_authority {
             if pubkey != keypair.pubkey() {
                 return Err(anyhow!(
-                    "New upgrade authority pubkey mismatch: --new-upgrade-authority ({}) \
-                    doesn't match --new-upgrade-authority-signer keypair ({})",
+                    "New upgrade authority pubkey mismatch: --new-upgrade-authority ({}) doesn't \
+                     match --new-upgrade-authority-signer keypair ({})",
                     pubkey,
                     keypair.pubkey()
                 ));
@@ -1155,9 +1165,10 @@ fn program_set_upgrade_authority(
         } else {
             // By default, require the signer for safety
             return Err(anyhow!(
-                "New upgrade authority signer is required for safety.\n\
-                Please provide --new-upgrade-authority-signer <KEYPAIR_FILE> (recommended),\n\
-                or use --skip-new-upgrade-authority-signer-check if you're confident the pubkey is correct."
+                "New upgrade authority signer is required for safety.\nPlease provide \
+                 --new-upgrade-authority-signer <KEYPAIR_FILE> (recommended),\nor use \
+                 --skip-new-upgrade-authority-signer-check if you're confident the pubkey is \
+                 correct."
             ));
         }
     } else {

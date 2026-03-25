@@ -1,46 +1,52 @@
-use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
-    Manifest, PackageManager, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
-    SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
-    STARTUP_WAIT, SURFPOOL_HOST,
+use {
+    crate::config::{
+        get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
+        Manifest, PackageManager, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+        SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
+        STARTUP_WAIT, SURFPOOL_HOST,
+    },
+    anchor_client::Cluster,
+    anchor_lang::{
+        prelude::UpgradeableLoaderState, solana_program::bpf_loader_upgradeable, AnchorDeserialize,
+    },
+    anchor_lang_idl::{
+        convert::convert_idl,
+        types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy},
+    },
+    anyhow::{anyhow, bail, Context, Result},
+    checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow},
+    clap::{CommandFactory, Parser},
+    dirs::home_dir,
+    heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase},
+    regex::{Regex, RegexBuilder},
+    rust_template::{ProgramTemplate, TestTemplate},
+    semver::{Version, VersionReq},
+    serde_json::{json, Map, Value as JsonValue},
+    solana_cli_config::Config as SolanaCliConfig,
+    solana_commitment_config::CommitmentConfig,
+    solana_compute_budget_interface::ComputeBudgetInstruction,
+    solana_instruction::Instruction,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription},
+    solana_rpc_client::rpc_client::RpcClient,
+    solana_rpc_client_api::{
+        config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter},
+        request::RpcRequest,
+        response::{Response as RpcResponse, RpcLogsResponse},
+    },
+    solana_signer::{EncodableKey, Signer},
+    std::{
+        collections::{BTreeMap, HashMap, HashSet},
+        ffi::OsString,
+        fs::{self, File},
+        io::prelude::*,
+        path::{Path, PathBuf},
+        process::{Child, Stdio},
+        string::ToString,
+        sync::LazyLock,
+    },
 };
-use anchor_client::Cluster;
-use anchor_lang::prelude::UpgradeableLoaderState;
-use anchor_lang::solana_program::bpf_loader_upgradeable;
-use anchor_lang::AnchorDeserialize;
-use anchor_lang_idl::convert::convert_idl;
-use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, bail, Context, Result};
-use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
-use clap::{CommandFactory, Parser};
-use dirs::home_dir;
-use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use regex::{Regex, RegexBuilder};
-use rust_template::{ProgramTemplate, TestTemplate};
-use semver::{Version, VersionReq};
-use serde_json::{json, Map, Value as JsonValue};
-use solana_cli_config::Config as SolanaCliConfig;
-use solana_commitment_config::CommitmentConfig;
-use solana_compute_budget_interface::ComputeBudgetInstruction;
-use solana_instruction::Instruction;
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription};
-use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter};
-use solana_rpc_client_api::request::RpcRequest;
-use solana_rpc_client_api::response::{Response as RpcResponse, RpcLogsResponse};
-use solana_signer::{EncodableKey, Signer};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::ffi::OsString;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Stdio};
-use std::string::ToString;
-use std::sync::LazyLock;
 
 mod account;
 mod checks;
@@ -1022,8 +1028,8 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         }
                     })),
                     false => eprintln!(
-                        "Failed to override `solana` version to {solana_version}, \
-                        using {current_version} instead"
+                        "Failed to override `solana` version to {solana_version}, using \
+                         {current_version} instead"
                     ),
                 }
             }
@@ -1517,8 +1523,8 @@ fn install_solana_skill() {
         }
         _ => {
             eprintln!(
-                "Warning: Failed to install Solana dev skill. \
-                 Install manually with:\n  npx skills add {SKILL_REPO}"
+                "Warning: Failed to install Solana dev skill. Install manually with:\n  npx \
+                 skills add {SKILL_REPO}"
             );
         }
     }
@@ -2170,22 +2176,19 @@ fn docker_build_bpf(
         .args([
             "exec",
             "--env",
-            "PATH=/root/.local/share/solana/install/active_release/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "PATH=/root/.local/share/solana/install/active_release/bin:/root/.cargo/bin:/usr/\
+             local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         ])
-        .args(env_vars
-            .iter()
-            .map(|x| ["--env", x.as_str()])
-            .collect::<Vec<[&str; 2]>>()
-            .concat())
-        .args([
-            container_name,
-            "cargo",
-        ])
+        .args(
+            env_vars
+                .iter()
+                .map(|x| ["--env", x.as_str()])
+                .collect::<Vec<[&str; 2]>>()
+                .concat(),
+        )
+        .args([container_name, "cargo"])
         .args(BUILD_SUBCOMMAND)
-        .args([
-            "--manifest-path",
-            &manifest_path.display().to_string(),
-        ])
+        .args(["--manifest-path", &manifest_path.display().to_string()])
         .args(cargo_args)
         .stdout(match stdout {
             None => Stdio::inherit(),
@@ -2905,7 +2908,12 @@ fn account(
     let idl = idl_filepath.map_or_else(
         || {
             Config::discover(cfg_override)?
-                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?
+                .ok_or_else(|| {
+                    anyhow!(
+                        "The 'anchor account' command requires an Anchor workspace with \
+                         Anchor.toml for IDL type generation."
+                    )
+                })?
                 .read_all_programs()
                 .expect("Workspace must contain atleast one program.")
                 .into_iter()
@@ -3514,7 +3522,8 @@ fn validator_flags(
                         create_client(url)
                     } else {
                         return Err(anyhow!(
-                            "Validator url for Solana's JSON RPC should be provided in order to clone accounts from it"
+                            "Validator url for Solana's JSON RPC should be provided in order to \
+                             clone accounts from it"
                         ));
                     };
 
@@ -3933,8 +3942,9 @@ fn start_surfpool_validator(
 
     if count >= ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Surfpool validator does not look started. \
-            Check .surfpool/logs/ directory for errors. Consider increasing [surfpool.startup_wait] in Anchor.toml."
+            "Unable to get latest blockhash. Surfpool validator does not look started. Check \
+             .surfpool/logs/ directory for errors. Consider increasing [surfpool.startup_wait] in \
+             Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -4042,8 +4052,9 @@ fn start_solana_test_validator(
     }
     if count >= ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Test validator does not look started. \
-            Check {test_ledger_log_filename:?} for errors. Consider increasing [test.startup_wait] in Anchor.toml."
+            "Unable to get latest blockhash. Test validator does not look started. Check \
+             {test_ledger_log_filename:?} for errors. Consider increasing [test.startup_wait] in \
+             Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -4336,7 +4347,10 @@ fn set_workspace_dir_or_exit() {
 
             let cargo_toml_path = current_dir.join("Cargo.toml");
             if !cargo_toml_path.exists() {
-                println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                println!(
+                    "Not in a Solana workspace. This command requires either Anchor.toml or a \
+                     Cargo workspace with Solana programs."
+                );
                 std::process::exit(1);
             }
 
@@ -4347,7 +4361,10 @@ fn set_workspace_dir_or_exit() {
                     // (already in the right place)
                 }
                 _ => {
-                    println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                    println!(
+                        "Not in a Solana workspace. This command requires either Anchor.toml or a \
+                         Cargo workspace with Solana programs."
+                    );
                     std::process::exit(1);
                 }
             }
@@ -4360,7 +4377,10 @@ fn set_workspace_dir_or_exit() {
                 }
                 Some(parent) => {
                     if std::env::set_current_dir(parent).is_err() {
-                        println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                        println!(
+                            "Not in a Solana workspace. This command requires either Anchor.toml \
+                             or a Cargo workspace with Solana programs."
+                        );
                         std::process::exit(1);
                     }
                 }
@@ -4669,7 +4689,10 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                     }
 
                     if deployment.address.to_string() != actual_program_id {
-                        println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
+                        println!(
+                            "Found incorrect program id declaration in Anchor.toml for the \
+                             program `{name}`"
+                        );
 
                         // Update the program id
                         deployment.address = Pubkey::try_from(actual_program_id.as_str()).unwrap();
@@ -4721,10 +4744,9 @@ fn check_program_id_mismatch(cfg: &WithPath<Config>, program_name: Option<String
             if let Some(program_id_match) = incorrect_program_id {
                 let declared_id = program_id_match.as_str();
                 return Err(anyhow!(
-                    "Program ID mismatch detected for program '{}':\n  \
-                    Keypair file has: {}\n  \
-                    Source code has:  {}\n\n\
-                    Please run 'anchor keys sync' to update the program ID in your source code or use the '--ignore-keys' flag to skip this check.",
+                    "Program ID mismatch detected for program '{}':\n  Keypair file has: {}\n  \
+                     Source code has:  {}\n\nPlease run 'anchor keys sync' to update the program \
+                     ID in your source code or use the '--ignore-keys' flag to skip this check.",
                     program.lib_name,
                     actual_program_id,
                     declared_id

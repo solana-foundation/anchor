@@ -1,12 +1,15 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use quote::quote;
-
-use anchor_syn::codegen;
-use anchor_syn::parser::error::{self as error_parser, ErrorInput};
-use anchor_syn::ErrorArgs;
-use syn::{parse_macro_input, Expr};
+use {
+    anchor_syn::{
+        codegen,
+        parser::error::{self as error_parser, ErrorInput},
+        ErrorArgs,
+    },
+    proc_macro::TokenStream,
+    quote::quote,
+    syn::{parse_macro_input, Expr},
+};
 
 /// Generates `Error` and `type Result<T> = Result<T, Error>` types to be
 /// used as return types from Anchor instruction handlers. Importantly, the
