@@ -9,6 +9,188 @@ patch version will be incremented for features.
 
 ---
 
+## [1.0.0]
+
+### Features
+
+- lang, cli, client: Updated solana dependencies to the latest compatible
+  versions. Bumping CI and docker builds to use Solana CLI version 3.1.10
+  ([#4317](https://github.com/solana-foundation/anchor/pull/4317/))
+- avm: Added flags and version labels to explicitly handle pre-releases
+  (`avm list --pre-release`, `avm update --pre-release` and
+  `avm install latest-pre-release`)
+  ([#4335](https://github.com/solana-foundation/anchor/pull/4335))
+- avm: Added `avm self-update` command and passive version check warning for
+  out of date avm
+  ([#4338](https://github.com/solana-foundation/anchor/pull/4338))
+- lang: Add `Migration<'info, From, To>` account type for schema migrations
+  between account types
+  ([#4060](https://github.com/solana-foundation/anchor/pull/4060)).
+- cli: Added a `check_program_id_mismatch` in build time to check if the
+  program ID in the source code matches the program ID in the keypair file.
+  This check will be skipped during `anchor test`
+  ([#4018](https://github.com/solana-foundation/anchor/pull/4018)).
+- lang: Add instruction parser to `declare_program!`
+  ([#4118](https://github.com/solana-foundation/anchor/pull/4118)).
+- ts: Export all IDL types from the root. Users can now update `dist/cjs/idl`
+  imports to import directly from `@anchor-lang/core`
+  ([#3948](https://github.com/solana-foundation/anchor/pull/3948)).
+- lang: Add `declare_program!` support with just `anchor_client` and not
+  `anchor_lang`
+  ([#4157](https://github.com/solana-foundation/anchor/pull/4157)).
+- lang: Export `Owners` from `prelude`
+  ([#4189](https://github.com/solana-foundation/anchor/pull/4189)).
+- cli: Use surfpool by default for `anchor test` and `anchor localnet` commands
+  ([#4106](https://github.com/solana-foundation/anchor/pull/4106)).
+- lang: Optimize enums with all unit variants and empty arrays with `Lazy`
+  ([#4237](https://github.com/solana-foundation/anchor/pull/4237)).
+- lang: Include `init_if_needed` accounts in duplicate mutable account checks
+  ([#4239](https://github.com/solana-foundation/anchor/pull/4239)).
+- client: Accept `FnMut` for events closure
+  ([#4024](https://github.com/solana-foundation/anchor/pull/4024)).
+- client: Export all types used by the public API
+  ([#4211](https://github.com/solana-foundation/anchor/pull/4211)).
+- lang: Make `common::close` accept references
+  ([#4178](https://github.com/solana-foundation/anchor/pull/4178)).
+- cli/idl: Add `--allow-localnet` option for IDL commands; fix panic when run
+  outside a workspace
+  ([#4252](https://github.com/solana-foundation/anchor/pull/4252)).
+- lang: Check owner on account reload
+  ([#3837](https://github.com/solana-foundation/anchor/pull/3837)).
+- lang/ts: Upgrade borsh to 1.5.7
+  ([#4012](https://github.com/solana-foundation/anchor/pull/4012)).
+- syn: Relax seeds syntax to allow more flexible PDA seed expressions
+  ([#3813](https://github.com/solana-foundation/anchor/pull/3813)).
+- lang: Deprecate `AccountInfo` usage in `Accounts` macro with a compile-time
+  warning
+  ([#3854](https://github.com/solana-foundation/anchor/pull/3854)).
+- cli: Update `anchor init` to use the `multiple` program template by default
+  ([#3958](https://github.com/solana-foundation/anchor/pull/3958)).
+- cli: Add `hooks` section to `Anchor.toml` for
+  `{pre,post}-{build,test,deploy}` lifecycle hooks
+  ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
+- lang: Add generic program validation support to `Program` type allowing
+  `Program<'info>` for executable-only validation
+  ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
+- cli: Added `litesvm` test template and made it the default option on
+  `anchor init`
+  ([#4316](https://github.com/solana-foundation/anchor/pull/4316))
+- cli: Added `--install-agent-skills` to automatically install Solana agent
+  skills during `anchor init`
+  ([#4307](https://github.com/solana-foundation/anchor/pull/4307))
+
+### Fixes
+
+- lang: Fix incorrect deserialization for dynamically sized types when using
+  `lazy-account`
+  ([#4319](https://github.com/solana-foundation/anchor/pull/4319))
+- avm: Using a temporary installation dir on cargo install calls to prevent
+  cargo erroring out due to existing `anchor` symlink in `.avm/bin`
+  ([#4343](https://github.com/solana-foundation/anchor/pull/4343))
+- avm: Fixed handling of new Cargo.toml version location. Fixed handling of
+  pre-release version parsing
+  ([#4335](https://github.com/solana-foundation/anchor/pull/4335))
+- lang: Add missing `Lazy` bound on generics
+  ([#4240](https://github.com/solana-foundation/anchor/pull/4240)).
+- lang: Fix wrong generated error code in `declare_program!`
+  ([#4129](https://github.com/solana-foundation/anchor/pull/4129)).
+- idl: Fix defined types with unsupported fields not producing an error
+  ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
+- lang: Fix using non-instruction composite accounts multiple times with
+  `declare_program!`
+  ([#4113](https://github.com/solana-foundation/anchor/pull/4113)).
+- lang: Fix `declare_program!` messing up IDL errors generation
+  ([#4126](https://github.com/solana-foundation/anchor/pull/4126)).
+- idl: Fix `address` constraint not resolving constants that have numbers in
+  their identifiers
+  ([#4144](https://github.com/solana-foundation/anchor/pull/4144)).
+- lang: Fix constant nested string generation in `declare_program!`
+  ([#4158](https://github.com/solana-foundation/anchor/pull/4158)).
+- idl: Fix `local_file` method not found for `proc_macro2::Span` error
+  ([#4187](https://github.com/solana-foundation/anchor/pull/4187)).
+- lang: Relax duplicate mutable account constraint to only check types that
+  serialize on exit (`Account`, `LazyAccount`, `InterfaceAccount`, `Migration`)
+  ([#4202](https://github.com/solana-foundation/anchor/pull/4202)).
+- idl: Make `serde_json` optional
+  ([#4296](https://github.com/solana-foundation/anchor/pull/4296)).
+- lang: Fix `declare_program!` instruction parser with optional accounts
+  ([#4180](https://github.com/solana-foundation/anchor/pull/4180)).
+- lang: Use original `borsh` derives
+  ([#4205](https://github.com/solana-foundation/anchor/pull/4205)).
+- lang: Fix unexpected account substitution in `InterfaceAccount`
+  ([#4139](https://github.com/solana-foundation/anchor/pull/4139)).
+- idl: Respect `offset = ...` in IDL generation for custom errors
+  ([#4040](https://github.com/solana-foundation/anchor/pull/4040)).
+- cli: Relax separate dependency check for `solana-program`
+  ([#4166](https://github.com/solana-foundation/anchor/pull/4166)).
+- lang: Enforce type and count matching between instruction handler and
+  `#[instruction(..)]` args
+  ([#4000](https://github.com/solana-foundation/anchor/pull/4000)).
+- lang: Handle invalid camelCase identifiers more gracefully
+  ([#4021](https://github.com/solana-foundation/anchor/pull/4021)).
+- cli: Fix `i128`/`u128` deserialization
+  ([#3938](https://github.com/solana-foundation/anchor/pull/3938)).
+- ts: Fix incorrect Anchor dependency version requirements
+  ([#4138](https://github.com/solana-foundation/anchor/pull/4138)).
+- lang: Omit `parsers` module of `declare_program!` during on-chain (Solana)
+  builds
+  ([#4109](https://github.com/solana-foundation/anchor/pull/4109)).
+- docs: Fixed broken links and replaced coral-xyz github references to
+  solana-foundation
+  ([#4320](https://github.com/solana-foundation/anchor/pull/4320))
+
+### Breaking
+
+- cli: Remove program `arch` options
+  ([#4295](https://github.com/solana-foundation/anchor/pull/4295)).
+- lang: Disallow duplicate mutable accounts by default. But allows duplicate
+  mutable accounts in instruction contexts using `dup` constraint
+  ([#3946](https://github.com/solana-foundation/anchor/pull/3946)).
+- cli: Remove program id arguments of `idl init` and `idl upgrade` commands
+  ([#4130](https://github.com/solana-foundation/anchor/pull/4130)).
+- lang: Rename `utils` module of `declare_program!` to `parsers`
+  ([#4151](https://github.com/solana-foundation/anchor/pull/4151)).
+- lang: Remove the `interface-instructions` feature and the `#[interface]`
+  attribute
+  ([#4156](https://github.com/solana-foundation/anchor/pull/4156)).
+- cli: Remove the `login` command
+  ([#4182](https://github.com/solana-foundation/anchor/pull/4182)).
+- idl: Exclude external accounts
+  ([#4197](https://github.com/solana-foundation/anchor/pull/4197)).
+- idl: Remove the conflicting account names check
+  ([#4294](https://github.com/solana-foundation/anchor/pull/4294)).
+- deps: Update to Solana 3.0
+  ([#4031](https://github.com/solana-foundation/anchor/pull/4031)).
+- idl: Remove legacy IDL instructions and integrate Program Metadata for IDL
+  management
+  ([#3798](https://github.com/solana-foundation/anchor/pull/3798)).
+- ts: Rename TypeScript packages from `@coral-xyz/anchor` to
+  `@anchor-lang/anchor`
+  ([#4141](https://github.com/solana-foundation/anchor/pull/4141)).
+- lang: Remove program account info from CPI context
+  ([#2762](https://github.com/solana-foundation/anchor/pull/2762)).
+- cli: Remove dependency on the external `solana` CLI; native implementations
+  provided for balance, airdrop, address, deploy, and other commands
+  ([#4099](https://github.com/solana-foundation/anchor/pull/4099)).
+- idl: Disallow multiple `#[error_code]` definitions in a single program
+  ([#4300](https://github.com/solana-foundation/anchor/pull/4300)).
+- cli: Remove the `[registry]` section from `Anchor.toml`
+  ([#4299](https://github.com/solana-foundation/anchor/pull/4299)).
+- client: Make sending a tx not panic and instead return an Error when signing
+  fails
+  ([#3865](https://github.com/solana-foundation/anchor/pull/3865)).
+- lang: Rename `errors` and `ProgramError` of `declare_program!`
+  ([#4347](https://github.com/solana-foundation/anchor/pull/4347)).
+
+## [0.32.1] - 2025-10-09
+
+### Fixes
+
+- lang: Fix deprecation warnings on alloc and add solana-program to prelude
+  ([#3975](https://github.com/solana-foundation/anchor/pull/3975)).
+- cli: Fix race condition that could happen when deploying a program
+  ([#3976](https://github.com/solana-foundation/anchor/pull/3976)).
+
 ## [0.32.0] - 2025-10-08
 
 ### Features
