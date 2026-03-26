@@ -7,7 +7,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let name = &accs.ident;
     let ParsedGenerics {
         combined_generics,
-        trait_generics,
+        trait_generics: _,
         struct_generics,
         where_clause,
     } = generics(accs);
@@ -22,7 +22,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .collect();
     quote! {
         #[automatically_derived]
-        impl<#combined_generics> anchor_lang::ToAccountInfos<#trait_generics> for #name <#struct_generics> #where_clause{
+        impl<#combined_generics> anchor_lang::ToAccountInfos for #name <#struct_generics> #where_clause{
             fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountView> {
                 let mut account_infos = vec![];
 

@@ -303,7 +303,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Interf
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos
     for InterfaceAccount<'info, T>
 {
     fn to_account_infos(&self) -> Vec<AccountView> {
