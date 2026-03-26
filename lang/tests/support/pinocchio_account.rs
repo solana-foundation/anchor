@@ -5,13 +5,13 @@ use std::ptr;
 
 use anchor_lang::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
 use anchor_lang::prelude::Pubkey;
-use anchor_lang::AccountInfo;
+use anchor_lang::AccountView;
 
-/// Owns the backing allocation for a single `AccountInfo` / `AccountView`.
+/// Owns the backing allocation for a single `AccountView`.
 pub struct OwnedPinocchioAccount {
     #[allow(dead_code)]
     storage: Box<[u8]>,
-    pub info: AccountInfo,
+    pub info: AccountView,
 }
 
 impl OwnedPinocchioAccount {
@@ -39,7 +39,7 @@ impl OwnedPinocchioAccount {
                 data.len(),
             );
         }
-        let info = unsafe { AccountInfo::new_unchecked(header_ptr) };
+        let info = unsafe { AccountView::new_unchecked(header_ptr) };
         Self { storage, info }
     }
 
